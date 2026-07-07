@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.0.0
+ * Version: 3.0.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.0.0');
+    define('AIPS_VERSION', '3.0.1');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -233,18 +233,6 @@ final class AI_Post_Scheduler {
 
         if (is_wp_error($install_result)) {
             $logger->log('Table installation failed during activation: ' . $install_result->get_error_message(), 'error');
-
-            $notifications = class_exists('AIPS_Notifications') ? new AIPS_Notifications() : null;
-            if ($notifications instanceof AIPS_Notifications) {
-                $notifications->system_error(array(
-                    'title'         => __('Database installation failed', 'ai-post-scheduler'),
-                    'error_code'    => $install_result->get_error_code(),
-                    'error_message' => $install_result->get_error_message(),
-                    'url'           => admin_url('admin.php?page=aips-status'),
-                    'dedupe_key'    => 'db_install_failed_activation',
-                    'dedupe_window' => 1800,
-                ));
-            }
         }
         
         $crons = self::get_cron_events();

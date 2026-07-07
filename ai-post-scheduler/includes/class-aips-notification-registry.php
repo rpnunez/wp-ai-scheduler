@@ -49,12 +49,14 @@ class AIPS_Notification_Registry {
 		return array(
 			'author_topics_generated' => array(
 				'label'        => __('Author Topics Generated', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Author topics generated', 'ai-post-scheduler'),
 				'description'  => __('New author topics are available for review in the admin area.', 'ai-post-scheduler'),
 				'default_mode' => self::MODE_DB_ONLY,
 				'level'        => 'info',
 			),
 			'generation_failed' => array(
 				'label'         => __('Generation Failed', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Generation failed', 'ai-post-scheduler'),
 				'description'   => __('A manual or direct post generation request failed.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'error',
@@ -62,6 +64,7 @@ class AIPS_Notification_Registry {
 			),
 			'quota_alert' => array(
 				'label'         => __('Quota Alert', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Quota alert', 'ai-post-scheduler'),
 				'description'   => __('The AI provider is rejecting requests because usage limits or circuit protection were reached.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'error',
@@ -69,6 +72,7 @@ class AIPS_Notification_Registry {
 			),
 			'integration_error' => array(
 				'label'         => __('Integration Error', 'ai-post-scheduler'),
+				'admin_bar_title' => __('AI integration error', 'ai-post-scheduler'),
 				'description'   => __('The AI Engine dependency is unavailable or misconfigured.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'error',
@@ -76,6 +80,7 @@ class AIPS_Notification_Registry {
 			),
 			'scheduler_error' => array(
 				'label'         => __('Scheduler Error', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Scheduler error', 'ai-post-scheduler'),
 				'description'   => __('A scheduled automation run failed or could not obtain its execution lock.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'error',
@@ -83,6 +88,7 @@ class AIPS_Notification_Registry {
 			),
 			'system_error' => array(
 				'label'         => __('System Error', 'ai-post-scheduler'),
+				'admin_bar_title' => __('System error', 'ai-post-scheduler'),
 				'description'   => __('A plugin-level operational error occurred during activation, upgrades, or cron execution.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'error',
@@ -90,6 +96,7 @@ class AIPS_Notification_Registry {
 			),
 			'template_generated' => array(
 				'label'         => __('Template Generated', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Scheduled generation completed', 'ai-post-scheduler'),
 				'description'   => __('A scheduled template run generated one or more posts.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -97,6 +104,7 @@ class AIPS_Notification_Registry {
 			),
 			'manual_generation_completed' => array(
 				'label'         => __('Manual Generation Completed', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Manual generation completed', 'ai-post-scheduler'),
 				'description'   => __('A manually triggered generation request completed successfully.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -104,6 +112,7 @@ class AIPS_Notification_Registry {
 			),
 			'post_ready_for_review' => array(
 				'label'         => __('Post Ready For Review', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Post ready for review', 'ai-post-scheduler'),
 				'description'   => __('A generated post is waiting for editorial review.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -111,6 +120,7 @@ class AIPS_Notification_Registry {
 			),
 			'post_rejected' => array(
 				'label'         => __('Post Rejected', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Post rejected', 'ai-post-scheduler'),
 				'description'   => __('A generated draft was removed from the review queue.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'warning',
@@ -118,6 +128,7 @@ class AIPS_Notification_Registry {
 			),
 			'partial_generation_completed' => array(
 				'label'         => __('Partial Generation Completed', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Partial generation completed', 'ai-post-scheduler'),
 				'description'   => __('A post was saved with missing generated components and needs follow-up.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'warning',
@@ -146,6 +157,7 @@ class AIPS_Notification_Registry {
 			),
 			'history_cleanup' => array(
 				'label'         => __('History Cleanup', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Cleanup completed', 'ai-post-scheduler'),
 				'description'   => __('Operational cleanup completed.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -153,6 +165,7 @@ class AIPS_Notification_Registry {
 			),
 			'seeder_complete' => array(
 				'label'         => __('Seeder Completed', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Seeder completed', 'ai-post-scheduler'),
 				'description'   => __('Seeder operation finished successfully.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -160,6 +173,7 @@ class AIPS_Notification_Registry {
 			),
 			'template_change' => array(
 				'label'         => __('Template Changed', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Template updated', 'ai-post-scheduler'),
 				'description'   => __('A template was created, updated, cloned, or deleted.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -167,6 +181,7 @@ class AIPS_Notification_Registry {
 			),
 			'author_suggestions' => array(
 				'label'         => __('Author Suggestions Ready', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Author suggestions ready', 'ai-post-scheduler'),
 				'description'   => __('AI-generated author profile suggestions are available.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -174,6 +189,7 @@ class AIPS_Notification_Registry {
 			),
 			'circuit_breaker_opened' => array(
 				'label'         => __('Circuit Breaker Opened', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Circuit breaker opened', 'ai-post-scheduler'),
 				'description'   => __('The circuit breaker has tripped — AI requests are temporarily blocked after repeated failures.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'error',
@@ -181,6 +197,7 @@ class AIPS_Notification_Registry {
 			),
 			'rate_limit_reached' => array(
 				'label'         => __('Rate Limit Reached', 'ai-post-scheduler'),
+				'admin_bar_title' => __('AI rate limit reached', 'ai-post-scheduler'),
 				'description'   => __('The internal AI request rate limit has been reached. Requests are being paused.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_BOTH,
 				'level'         => 'warning',
@@ -188,6 +205,7 @@ class AIPS_Notification_Registry {
 			),
 			'research_topics_ready' => array(
 				'label'         => __('Research Topics Ready', 'ai-post-scheduler'),
+				'admin_bar_title' => __('Research topics ready', 'ai-post-scheduler'),
 				'description'   => __('Scheduled research completed and new trending topics are available.', 'ai-post-scheduler'),
 				'default_mode'  => self::MODE_DB_ONLY,
 				'level'         => 'info',
@@ -235,5 +253,22 @@ class AIPS_Notification_Registry {
 			self::MODE_EMAIL_ONLY => __('Email only', 'ai-post-scheduler'),
 			self::MODE_BOTH       => __('DB + Email', 'ai-post-scheduler'),
 		);
+	}
+
+	/**
+	 * Return the short admin-bar title for a notification type.
+	 *
+	 * @param string $type Notification type slug.
+	 * @param string $fallback Fallback title when registry metadata is absent.
+	 * @return string
+	 */
+	public static function get_admin_bar_title($type, $fallback = '') {
+		$registry = self::get_type_registry();
+
+		if (isset($registry[$type]['admin_bar_title']) && '' !== (string) $registry[$type]['admin_bar_title']) {
+			return (string) $registry[$type]['admin_bar_title'];
+		}
+
+		return (string) $fallback;
 	}
 }

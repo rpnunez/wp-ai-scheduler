@@ -18,6 +18,16 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	private $admin_bar;
 
 	/**
+	 * @var int
+	 */
+	private $admin_user_id;
+
+	/**
+	 * @var int
+	 */
+	private $secondary_admin_user_id;
+
+	/**
 	 * IDs created during tests, cleaned up in tearDown.
 	 *
 	 * @var int[]
@@ -31,17 +41,29 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 
 		$this->repository = new AIPS_Notifications_Repository();
 		$this->admin_bar  = new AIPS_Admin_Bar();
+		$this->admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->secondary_admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $this->admin_user_id );
 
-		// Start each test with a clean notifications table.
-		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notifications" );
+		$this->truncate_notification_tables();
 	}
 
 	public function tearDown(): void {
-		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notifications" );
+		$this->truncate_notification_tables();
 		$this->created_ids = array();
+		wp_set_current_user( 0 );
 		parent::tearDown();
+	}
+
+	/**
+	 * Reset notification tables between tests.
+	 *
+	 * @return void
+	 */
+	private function truncate_notification_tables() {
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notification_reads" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notifications" );
 	}
 
 	// -----------------------------------------------------------------------
@@ -129,10 +151,10 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	/**
 	 * Test that get_unread() returns only unread notifications.
 	 */
-	public function test_get_unread_returns_only_unread() {
+	public function test_get_unread_returns_only_unread_for_current_user() {
 		$id1 = $this->repository->create( 'test', 'Unread 1' );
 		$id2 = $this->repository->create( 'test', 'Unread 2' );
-		$id3 = $this->repository->create( 'test', 'Read one' );
+		$id3 = $this->repository->create( 'test', 'Read for primary admin only' );
 
 		$this->repository->mark_as_read( $id3 );
 
@@ -143,19 +165,31 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertContains( $id1, $result_ids );
 		$this->assertContains( $id2, $result_ids );
 		$this->assertNotContains( $id3, $result_ids );
+
+		wp_set_current_user( $this->secondary_admin_user_id );
+		$secondary_ids = array_map(
+			function ( $row ) {
+				return (int) $row->id;
+			},
+			$this->repository->get_unread()
+		);
+
+		$this->assertContains( $id3, $secondary_ids, 'A notification read by one admin should remain unread for another admin.' );
 	}
 
 	/**
 	 * Test that get_unread() respects the limit parameter.
 	 */
-	public function test_get_unread_respects_limit() {
-		for ( $i = 0; $i < 5; $i++ ) {
+	public function test_get_unread_respects_limit_and_returns_latest_unread_for_current_user() {
+		for ( $i = 0; $i < 25; $i++ ) {
 			$this->repository->create( 'test', 'Message ' . $i );
 		}
 
-		$results = $this->repository->get_unread( 3 );
+		$results = $this->repository->get_unread( 20 );
 
-		$this->assertCount( 3, $results );
+		$this->assertCount( 20, $results );
+		$this->assertSame( 'Message 24', $results[0]->message );
+		$this->assertSame( 'Message 5', $results[19]->message );
 	}
 
 	/**
@@ -200,7 +234,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	/**
 	 * Test that count_unread() returns the correct count.
 	 */
-	public function test_count_unread_returns_correct_count() {
+	public function test_count_unread_returns_correct_count_for_current_user() {
 		$id1 = $this->repository->create( 'test', 'Msg 1' );
 		$id2 = $this->repository->create( 'test', 'Msg 2' );
 		$this->repository->create( 'test', 'Msg 3' );
@@ -210,6 +244,9 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->repository->mark_as_read( $id2 );
 
 		$this->assertEquals( 1, $this->repository->count_unread() );
+
+		wp_set_current_user( $this->secondary_admin_user_id );
+		$this->assertEquals( 3, $this->repository->count_unread(), 'Unread counts should be scoped per admin user.' );
 	}
 
 	// -----------------------------------------------------------------------
@@ -219,7 +256,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	/**
 	 * Test that mark_as_read() sets is_read to 1 for the given ID.
 	 */
-	public function test_mark_as_read_updates_row() {
+	public function test_mark_as_read_creates_read_receipt_for_current_user() {
 		$id = $this->repository->create( 'test', 'Mark me read' );
 
 		$result = $this->repository->mark_as_read( $id );
@@ -228,12 +265,35 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertEquals( 0, $this->repository->count_unread() );
 
 		global $wpdb;
-		$read_at = $wpdb->get_var( $wpdb->prepare(
-			"SELECT read_at FROM {$wpdb->prefix}aips_notifications WHERE id = %d",
-			$id
+		$receipt = $wpdb->get_row( $wpdb->prepare(
+			"SELECT notification_id, user_id, read_at FROM {$wpdb->prefix}aips_notification_reads WHERE notification_id = %d AND user_id = %d",
+			$id,
+			$this->admin_user_id
 		) );
 
-		$this->assertNotEmpty( $read_at );
+		$this->assertNotNull( $receipt );
+		$this->assertSame( $this->admin_user_id, (int) $receipt->user_id );
+		$this->assertGreaterThan( 0, (int) $receipt->read_at );
+	}
+
+	/**
+	 * Test that mark_as_read() is idempotent per user.
+	 */
+	public function test_mark_as_read_is_idempotent_for_same_user() {
+		global $wpdb;
+
+		$id = $this->repository->create( 'test', 'Mark me once' );
+
+		$this->assertTrue( $this->repository->mark_as_read( $id ) );
+		$this->assertTrue( $this->repository->mark_as_read( $id ) );
+
+		$receipt_count = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->prefix}aips_notification_reads WHERE notification_id = %d AND user_id = %d",
+			$id,
+			$this->admin_user_id
+		) );
+
+		$this->assertSame( 1, $receipt_count );
 	}
 
 	/**
@@ -256,7 +316,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	/**
 	 * Test that mark_all_as_read() clears all unread notifications.
 	 */
-	public function test_mark_all_as_read_clears_unread() {
+	public function test_mark_all_as_read_clears_unread_for_current_user_only() {
 		$this->repository->create( 'test', 'Msg A' );
 		$this->repository->create( 'test', 'Msg B' );
 		$this->repository->create( 'test', 'Msg C' );
@@ -264,6 +324,9 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->repository->mark_all_as_read();
 
 		$this->assertEquals( 0, $this->repository->count_unread() );
+
+		wp_set_current_user( $this->secondary_admin_user_id );
+		$this->assertEquals( 3, $this->repository->count_unread(), 'Mark all as read should not affect another admin user.' );
 	}
 
 	// -----------------------------------------------------------------------
@@ -276,23 +339,37 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	public function test_cleanup_old_removes_old_read_notifications() {
 		global $wpdb;
 
-		// Insert an old read notification directly (bypassing current_time).
+		// Insert an old legacy read notification directly.
 		$wpdb->insert(
 			$wpdb->prefix . 'aips_notifications',
 			array(
 				'type'       => 'test',
+				'title'      => '',
 				'message'    => 'Old read',
 				'url'        => '',
 				'is_read'    => 1,
-				'created_at' => '2000-01-01 00:00:00',
+				'read_at'    => strtotime( '2000-01-01 00:00:00 UTC' ),
+				'created_at' => strtotime( '2000-01-01 00:00:00 UTC' ),
 			),
-			array( '%s', '%s', '%s', '%d', '%s' )
+			array( '%s', '%s', '%s', '%s', '%d', '%d', '%d' )
 		);
 		$old_id = (int) $wpdb->insert_id;
 
-		// Insert a recent read notification.
-		$recent_id = $this->repository->create( 'test', 'Recent read' );
-		$this->repository->mark_as_read( $recent_id );
+		// Insert a recent legacy read notification that should be retained.
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_notifications',
+			array(
+				'type'       => 'test',
+				'title'      => '',
+				'message'    => 'Recent legacy read',
+				'url'        => '',
+				'is_read'    => 1,
+				'read_at'    => time(),
+				'created_at' => time(),
+			),
+			array( '%s', '%s', '%s', '%s', '%d', '%d', '%d' )
+		);
+		$recent_id = (int) $wpdb->insert_id;
 
 		$deleted = $this->repository->cleanup_old( 30 );
 
@@ -377,7 +454,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	 * Test that ajax_mark_read() returns success and correct unread count.
 	 */
 	public function test_ajax_mark_read_success() {
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+		wp_set_current_user( $this->admin_user_id );
 
 		$id1 = $this->repository->create( 'test', 'Notification 1' );
 		$id2 = $this->repository->create( 'test', 'Notification 2' );
@@ -405,6 +482,9 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertTrue( $response['success'], 'Should return success' );
 		$this->assertEquals( 1, $response['data']['unread_count'], 'One notification should remain unread' );
 		$this->assertEquals( 1, $this->repository->count_unread(), 'DB count should match' );
+
+		wp_set_current_user( $this->secondary_admin_user_id );
+		$this->assertEquals( 2, $this->repository->count_unread(), 'Another admin should still see both notifications as unread.' );
 	}
 
 	// -----------------------------------------------------------------------
@@ -439,7 +519,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	 * Test that ajax_mark_all_read() marks all notifications and returns unread_count 0.
 	 */
 	public function test_ajax_mark_all_read_success() {
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+		wp_set_current_user( $this->admin_user_id );
 
 		$this->repository->create( 'test', 'Notif A' );
 		$this->repository->create( 'test', 'Notif B' );
@@ -467,6 +547,9 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		$this->assertTrue( $response['success'], 'Should return success' );
 		$this->assertEquals( 0, $response['data']['unread_count'], 'All notifications should be read' );
 		$this->assertEquals( 0, $this->repository->count_unread(), 'DB should have 0 unread' );
+
+		wp_set_current_user( $this->secondary_admin_user_id );
+		$this->assertEquals( 3, $this->repository->count_unread(), 'Mark all as read should only apply to the acting admin.' );
 	}
 
 	// -----------------------------------------------------------------------

@@ -20,6 +20,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Admin_Bar {
 
 	/**
+	 * Maximum notifications rendered in the flyout at once.
+	 */
+	private const NOTIFICATION_LIMIT = 20;
+
+	/**
 	 * Lazily-resolved notifications repository.
 	 * Null until the first rendering hook actually needs it.
 	 *
@@ -67,8 +72,12 @@ class AIPS_Admin_Bar {
 		wp_localize_script('aips-admin-bar', 'aipsAdminBarL10n', array(
 			'ajaxUrl'         => admin_url('admin-ajax.php'),
 			'nonce'           => wp_create_nonce('aips_admin_bar_nonce'),
+			'contextLabel'    => __('Context', 'ai-post-scheduler'),
 			'markReadError'   => __('Could not mark notification as read.', 'ai-post-scheduler'),
 			'markAllReadError' => __('Could not mark all notifications as read.', 'ai-post-scheduler'),
+			'unreadSummaryLabel' => __('unread', 'ai-post-scheduler'),
+			'latestSummaryTemplate' => __('Latest %1$d of %2$d unread', 'ai-post-scheduler'),
+			'showingSummaryTemplate' => __('Showing %1$d of %2$d unread', 'ai-post-scheduler'),
 		));
 	}
 
@@ -137,18 +146,33 @@ class AIPS_Admin_Bar {
 
 		$quick_links = array(
 			array(
+				'id'    => 'aips-toolbar-dashboard',
+				'title' => $this->build_quick_link_title('dashicons-chart-bar', __('Dashboard', 'ai-post-scheduler')),
+				'href'  => AIPS_Admin_Menu_Helper::get_page_url('dashboard'),
+			),
+			array(
+				'id'    => 'aips-toolbar-automations',
+				'title' => $this->build_quick_link_title('dashicons-controls-repeat', __('Automations', 'ai-post-scheduler')),
+				'href'  => AIPS_Admin_Menu_Helper::get_page_url('automations'),
+			),
+			array(
+				'id'    => 'aips-toolbar-history',
+				'title' => $this->build_quick_link_title('dashicons-backup', __('History', 'ai-post-scheduler')),
+				'href'  => AIPS_Admin_Menu_Helper::get_page_url('history'),
+			),
+			array(
 				'id'    => 'aips-toolbar-templates',
-				'title' => '<span class="dashicons dashicons-media-document"></span> ' . esc_html__('Templates', 'ai-post-scheduler'),
+				'title' => $this->build_quick_link_title('dashicons-media-document', __('Templates', 'ai-post-scheduler')),
 				'href'  => AIPS_Admin_Menu_Helper::get_page_url('templates'),
 			),
 			array(
 				'id'    => 'aips-toolbar-authors',
-				'title' => '<span class="dashicons dashicons-admin-users"></span> ' . esc_html__('Authors', 'ai-post-scheduler'),
+				'title' => $this->build_quick_link_title('dashicons-admin-users', __('Authors', 'ai-post-scheduler')),
 				'href'  => AIPS_Admin_Menu_Helper::get_page_url('authors'),
 			),
 			array(
 				'id'    => 'aips-toolbar-schedules',
-				'title' => '<span class="dashicons dashicons-calendar-alt"></span> ' . esc_html__('Schedules', 'ai-post-scheduler'),
+				'title' => $this->build_quick_link_title('dashicons-calendar-alt', __('Schedules', 'ai-post-scheduler')),
 				'href'  => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
 			),
 		);
@@ -163,7 +187,7 @@ class AIPS_Admin_Bar {
 		}
 
 		// ---------- Notifications group ----------
-		$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
+		$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(self::NOTIFICATION_LIMIT) : array();
 
 		$wp_admin_bar->add_group(array(
 			'id'     => 'aips-toolbar-notifications',
@@ -172,11 +196,11 @@ class AIPS_Admin_Bar {
 		));
 
 		if (empty($notifications)) {
-			// "No new notifications" placeholder
+			// "No notifications" placeholder
 			$wp_admin_bar->add_node(array(
 				'id'     => 'aips-toolbar-no-notifications',
 				'parent' => 'aips-toolbar-notifications',
-				'title'  => '<span class="aips-toolbar-empty">' . esc_html__('No new notifications', 'ai-post-scheduler') . '</span>',
+				'title'  => '<span class="aips-toolbar-empty">' . esc_html__('No notifications', 'ai-post-scheduler') . '</span>',
 				'href'   => false,
 				'meta'   => array('class' => 'aips-toolbar-no-notifications ab-empty-item'),
 			));
@@ -185,35 +209,12 @@ class AIPS_Admin_Bar {
 			$wp_admin_bar->add_node(array(
 				'id'     => 'aips-toolbar-notifications-header',
 				'parent' => 'aips-toolbar-notifications',
-				'title'  => '<span class="aips-toolbar-notif-heading">'
-					. esc_html__('Notifications', 'ai-post-scheduler')
-					. '</span>'
-					. '<button class="aips-mark-all-read" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '">'
-					. esc_html__('Mark all as read', 'ai-post-scheduler')
-					. '</button>',
+				'title'  => $this->build_notifications_header_title($unread_count, count($notifications)),
 				'href'   => false,
 				'meta'   => array('class' => 'aips-toolbar-notif-header ab-empty-item'),
 			));
 
 			foreach ($notifications as $notif) {
-				$title_markup = '';
-				if (!empty($notif->title)) {
-					$title_markup = '<span class="aips-notif-title">' . esc_html($notif->title) . '</span>';
-				}
-
-				$node_title = $title_markup . '<span class="aips-notif-message">';
-
-				if (!empty($notif->url)) {
-					$node_title .= '<a href="' . esc_url($notif->url) . '">' . esc_html($notif->message) . '</a>';
-				} else {
-					$node_title .= esc_html($notif->message);
-				}
-
-				$node_title .= '</span>'
-					. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
-					. '<span class="dashicons dashicons-yes-alt"></span>'
-					. '</button>';
-
 				$level_class = '';
 				if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
 					$level_class = ' aips-notif-level-' . $notif->level;
@@ -222,7 +223,7 @@ class AIPS_Admin_Bar {
 				$wp_admin_bar->add_node(array(
 					'id'     => 'aips-notif-' . absint($notif->id),
 					'parent' => 'aips-toolbar-notifications',
-					'title'  => $node_title,
+					'title'  => $this->build_notification_row_title($notif),
 					'href'   => false,
 					'meta'   => array(
 						'class'         => 'aips-toolbar-notification ab-empty-item' . $level_class,
@@ -298,6 +299,89 @@ class AIPS_Admin_Bar {
 		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
 		));
+	}
+
+	/**
+	 * Build the formatted quick-link label.
+	 *
+	 * @param string $icon Dashicon class suffix.
+	 * @param string $label Human-readable label.
+	 * @return string
+	 */
+	private function build_quick_link_title($icon, $label) {
+		return '<span class="aips-toolbar-link-inner">'
+			. '<span class="aips-toolbar-link-icon dashicons ' . esc_attr($icon) . '" aria-hidden="true"></span>'
+			. '<span class="aips-toolbar-link-label">' . esc_html($label) . '</span>'
+			. '</span>';
+	}
+
+	/**
+	 * Build the notifications header row HTML.
+	 *
+	 * @param int $unread_count Total unread notifications for the current user.
+	 * @param int $displayed_count Number of notifications rendered in the flyout.
+	 * @return string
+	 */
+	private function build_notifications_header_title($unread_count, $displayed_count) {
+		$summary = sprintf(
+			_n('%d unread', '%d unread', $unread_count, 'ai-post-scheduler'),
+			$unread_count
+		);
+
+		if ($unread_count > $displayed_count) {
+			$summary = sprintf(
+				__('Latest %1$d of %2$d unread', 'ai-post-scheduler'),
+				$displayed_count,
+				$unread_count
+			);
+		}
+
+		return '<div class="aips-toolbar-notif-header-inner">'
+			. '<div class="aips-toolbar-notif-header-copy">'
+			. '<span class="aips-toolbar-notif-heading">' . esc_html__('Notifications', 'ai-post-scheduler') . '</span>'
+			. '<span class="aips-toolbar-notif-summary">' . esc_html($summary) . '</span>'
+			. '</div>'
+			. '<button class="aips-mark-all-read" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '">'
+			. esc_html__('Mark all as read', 'ai-post-scheduler')
+			. '</button>'
+			. '</div>';
+	}
+
+	/**
+	 * Build one notification flyout row.
+	 *
+	 * @param object $notif Notification row.
+	 * @return string
+	 */
+	private function build_notification_row_title($notif) {
+		$title_markup = '';
+		if (!empty($notif->title)) {
+			$title_markup = '<span class="aips-notif-title">' . esc_html($notif->title) . '</span>';
+		}
+
+		$context_markup = '<span class="aips-notif-context aips-notif-context-disabled">'
+			. esc_html__('Context', 'ai-post-scheduler')
+			. '</span>';
+
+		if (!empty($notif->url)) {
+			$context_markup = '<a class="aips-notif-context" href="' . esc_url($notif->url) . '">'
+				. esc_html__('Context', 'ai-post-scheduler')
+				. '</a>';
+		}
+
+		return '<div class="aips-notif-grid">'
+			. '<div class="aips-notif-body">'
+			. $title_markup
+			. '<span class="aips-notif-message">' . esc_html($notif->message) . '</span>'
+			. '</div>'
+			. '<div class="aips-notif-actions">'
+			. $context_markup
+			. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
+			. '<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>'
+			. '<span class="screen-reader-text">' . esc_html__('Mark as read', 'ai-post-scheduler') . '</span>'
+			. '</button>'
+			. '</div>'
+			. '</div>';
 	}
 
 }

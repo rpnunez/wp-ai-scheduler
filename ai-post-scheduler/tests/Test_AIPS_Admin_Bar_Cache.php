@@ -25,6 +25,7 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 
 		// Clean up any existing notifications
 		global $wpdb;
+		$wpdb->query("DELETE FROM {$wpdb->prefix}aips_notification_reads");
 		$wpdb->query("DELETE FROM {$wpdb->prefix}aips_notifications");
 
 		// Clear cache
@@ -38,6 +39,7 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 	public function tearDown(): void {
 		// Clean up
 		global $wpdb;
+		$wpdb->query("DELETE FROM {$wpdb->prefix}aips_notification_reads");
 		$wpdb->query("DELETE FROM {$wpdb->prefix}aips_notifications");
 		AIPS_Cache_Factory::instance()->flush();
 		AIPS_Cache_Factory::reset();
@@ -59,6 +61,28 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 				return true;
 			}
 		};
+	}
+
+	private function find_node_by_id($admin_bar, $id) {
+		foreach ($admin_bar->nodes as $node) {
+			if (isset($node['id']) && $node['id'] === $id) {
+				return $node;
+			}
+		}
+
+		return null;
+	}
+
+	private function find_nodes_by_parent($admin_bar, $parent) {
+		$matches = array();
+
+		foreach ($admin_bar->nodes as $node) {
+			if (isset($node['parent']) && $node['parent'] === $parent) {
+				$matches[] = $node;
+			}
+		}
+
+		return $matches;
 	}
 
 	/**
@@ -255,5 +279,111 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 			$_POST    = $orig_post;
 			$_REQUEST = $orig_request;
 		}
+	}
+
+	/**
+	 * Test that the toolbar quick links point to the expected pages.
+	 */
+	public function test_toolbar_quick_links_use_expected_destinations() {
+		$wp_admin_bar = $this->make_admin_bar_double();
+
+		$this->admin_bar->add_toolbar_node($wp_admin_bar);
+
+		$this->assertSame(AIPS_Admin_Menu_Helper::get_page_url('dashboard'), $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-dashboard')['href']);
+		$this->assertSame(AIPS_Admin_Menu_Helper::get_page_url('automations'), $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-automations')['href']);
+		$this->assertSame(AIPS_Admin_Menu_Helper::get_page_url('templates'), $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-templates')['href']);
+		$this->assertSame(AIPS_Admin_Menu_Helper::get_page_url('authors'), $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-authors')['href']);
+		$this->assertSame(AIPS_Admin_Menu_Helper::get_page_url('schedule'), $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-schedules')['href']);
+		$this->assertSame(AIPS_Admin_Menu_Helper::get_page_url('history'), $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-history')['href']);
+	}
+
+	/**
+	 * Test that quick links are rendered in the requested two-column reading order.
+	 */
+	public function test_toolbar_quick_links_follow_requested_column_order() {
+		$wp_admin_bar = $this->make_admin_bar_double();
+
+		$this->admin_bar->add_toolbar_node($wp_admin_bar);
+
+		$link_nodes = $this->find_nodes_by_parent($wp_admin_bar, 'aips-toolbar-links');
+		$link_ids   = array_map(
+			function ($node) {
+				return $node['id'];
+			},
+			$link_nodes
+		);
+
+		$this->assertSame(
+			array(
+				'aips-toolbar-dashboard',
+				'aips-toolbar-automations',
+				'aips-toolbar-history',
+				'aips-toolbar-templates',
+				'aips-toolbar-authors',
+				'aips-toolbar-schedules',
+			),
+			$link_ids
+		);
+	}
+
+	/**
+	 * Test that the notifications header communicates when only the latest 20 unread items are shown.
+	 */
+	public function test_toolbar_notifications_header_shows_latest_subset_summary() {
+		$wp_admin_bar = $this->make_admin_bar_double();
+
+		for ($i = 0; $i < 25; $i++) {
+			$this->repository->create('test_notification', 'Test notification ' . $i);
+		}
+
+		AIPS_Cache_Factory::instance()->flush();
+		$this->admin_bar->add_toolbar_node($wp_admin_bar);
+
+		$header = $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-notifications-header');
+
+		$this->assertNotNull($header);
+		$this->assertStringContainsString('Latest 20 of 25 unread', $header['title']);
+		$this->assertStringContainsString('Mark all as read', $header['title']);
+	}
+
+	/**
+	 * Test that each notification row exposes dedicated Context and Mark as Read controls.
+	 */
+	public function test_toolbar_notification_row_renders_context_and_mark_read_controls() {
+		$wp_admin_bar = $this->make_admin_bar_double();
+
+		$notification_id = $this->repository->create_notification(array(
+			'type'    => 'post_ready_for_review',
+			'title'   => 'Post ready for review',
+			'message' => 'Generated post \"Example\" is awaiting review.',
+			'url'     => 'https://example.com/review',
+		));
+
+		AIPS_Cache_Factory::instance()->flush();
+		$this->admin_bar->add_toolbar_node($wp_admin_bar);
+
+		$notification = $this->find_node_by_id($wp_admin_bar, 'aips-notif-' . $notification_id);
+
+		$this->assertNotNull($notification);
+		$this->assertStringContainsString('aips-notif-actions', $notification['title']);
+		$this->assertStringContainsString('aips-notif-context', $notification['title']);
+		$this->assertStringContainsString('Context', $notification['title']);
+		$this->assertStringContainsString('aips-mark-read', $notification['title']);
+		$this->assertStringNotContainsString('<a href="https://example.com/review">Generated post', $notification['title']);
+	}
+
+	/**
+	 * Test that the empty notifications state uses the requested copy.
+	 */
+	public function test_toolbar_empty_state_uses_no_notifications_copy() {
+		$wp_admin_bar = $this->make_admin_bar_double();
+
+		$this->admin_bar->add_toolbar_node($wp_admin_bar);
+
+		$empty_state = $this->find_node_by_id($wp_admin_bar, 'aips-toolbar-no-notifications');
+
+		$this->assertNotNull($empty_state);
+		$this->assertStringContainsString('No notifications', $empty_state['title']);
+		$this->assertStringNotContainsString('No new notifications', $empty_state['title']);
 	}
 }

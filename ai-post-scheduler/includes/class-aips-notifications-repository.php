@@ -41,12 +41,18 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	private $table;
 
 	/**
+	 * @var string Full read-receipts table name.
+	 */
+	private $reads_table;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
 		global $wpdb;
-		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_notifications';
+		$this->wpdb       = $wpdb;
+		$this->table      = $wpdb->prefix . 'aips_notifications';
+		$this->reads_table = $wpdb->prefix . 'aips_notification_reads';
 	}
 
 	/**
@@ -149,15 +155,35 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 * @param int $limit Maximum number to return. Default 20.
 	 * @return array Array of notification objects.
 	 */
-	public function get_unread($limit = 20) {
+	public function get_unread($limit = 20, $user_id = 0) {
 		$limit = absint($limit);
 		if ($limit < 1) {
 			$limit = 20;
 		}
 
+		$resolved_user_id = $this->resolve_user_id($user_id);
+
+		if ($resolved_user_id < 1) {
+			return $this->wpdb->get_results(
+				$this->wpdb->prepare(
+					"SELECT id, type, title, message, url, level, is_read, read_at, created_at FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC, id DESC LIMIT %d",
+					$limit
+				)
+			);
+		}
+
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT id, type, title, message, url, level, is_read, read_at, created_at FROM {$this->table} WHERE is_read = 0 ORDER BY created_at DESC LIMIT %d",
+				"SELECT n.id, n.type, n.title, n.message, n.url, n.level, n.is_read, n.read_at, n.created_at
+				FROM {$this->table} n
+				LEFT JOIN {$this->reads_table} r
+					ON n.id = r.notification_id
+					AND r.user_id = %d
+				WHERE n.is_read = 0
+					AND r.notification_id IS NULL
+				ORDER BY n.created_at DESC, n.id DESC
+				LIMIT %d",
+				$resolved_user_id,
 				$limit
 			)
 		);
@@ -168,9 +194,26 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 *
 	 * @return int
 	 */
-	public function count_unread() {
+	public function count_unread($user_id = 0) {
+		$resolved_user_id = $this->resolve_user_id($user_id);
+
+		if ($resolved_user_id < 1) {
+			return (int) $this->wpdb->get_var(
+				"SELECT COUNT(*) FROM {$this->table} WHERE is_read = 0"
+			);
+		}
+
 		return (int) $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$this->table} WHERE is_read = 0"
+			$this->wpdb->prepare(
+				"SELECT COUNT(*)
+				FROM {$this->table} n
+				LEFT JOIN {$this->reads_table} r
+					ON n.id = r.notification_id
+					AND r.user_id = %d
+				WHERE n.is_read = 0
+					AND r.notification_id IS NULL",
+				$resolved_user_id
+			)
 		);
 	}
 
@@ -180,19 +223,37 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 * @param int $id Notification ID.
 	 * @return bool True on success.
 	 */
-	public function mark_as_read($id) {
-		$result = $this->wpdb->update(
-			$this->table,
-			array(
-				'is_read' => 1,
-				'read_at' => AIPS_DateTime::now()->timestamp(),
-			),
-			array('id' => absint($id)),
-			array('%d', '%d'),
-			array('%d')
+	public function mark_as_read($id, $user_id = 0) {
+		$id = absint($id);
+		$resolved_user_id = $this->resolve_user_id($user_id);
+
+		if ($id < 1 || $resolved_user_id < 1) {
+			return false;
+		}
+
+		$existing = $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT 1 FROM {$this->reads_table} WHERE notification_id = %d AND user_id = %d",
+				$id,
+				$resolved_user_id
+			)
 		);
 
-		return $result !== false;
+		if ($existing) {
+			return true;
+		}
+
+		$result = $this->wpdb->insert(
+			$this->reads_table,
+			array(
+				'notification_id' => $id,
+				'user_id'         => $resolved_user_id,
+				'read_at'         => AIPS_DateTime::now()->timestamp(),
+			),
+			array('%d', '%d', '%d')
+		);
+
+		return false !== $result;
 	}
 
 	/**
@@ -200,16 +261,27 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 *
 	 * @return bool True on success.
 	 */
-	public function mark_all_as_read() {
-		$result = $this->wpdb->update(
-			$this->table,
-			array(
-				'is_read' => 1,
-				'read_at' => AIPS_DateTime::now()->timestamp(),
-			),
-			array('is_read' => 0),
-			array('%d', '%d'),
-			array('%d')
+	public function mark_all_as_read($user_id = 0) {
+		$resolved_user_id = $this->resolve_user_id($user_id);
+
+		if ($resolved_user_id < 1) {
+			return false;
+		}
+
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"INSERT INTO {$this->reads_table} (notification_id, user_id, read_at)
+				SELECT n.id, %d, %d
+				FROM {$this->table} n
+				LEFT JOIN {$this->reads_table} r
+					ON n.id = r.notification_id
+					AND r.user_id = %d
+				WHERE n.is_read = 0
+					AND r.notification_id IS NULL",
+				$resolved_user_id,
+				AIPS_DateTime::now()->timestamp(),
+				$resolved_user_id
+			)
 		);
 
 		return $result !== false;
@@ -277,5 +349,24 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 		}
 
 		return $counts;
+	}
+
+	/**
+	 * Resolve the user ID for per-user unread/read operations.
+	 *
+	 * @param int $user_id Requested user ID.
+	 * @return int
+	 */
+	private function resolve_user_id($user_id) {
+		$user_id = absint($user_id);
+		if ($user_id > 0) {
+			return $user_id;
+		}
+
+		if (function_exists('get_current_user_id')) {
+			return absint(get_current_user_id());
+		}
+
+		return 0;
 	}
 }

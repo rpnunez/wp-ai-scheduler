@@ -122,18 +122,6 @@ class AIPS_DB_Migrations {
 				'error'
 			);
 
-			if ( class_exists( 'AIPS_Notifications' ) ) {
-				( new AIPS_Notifications() )->system_error( array(
-					'title'         => __( 'Database upgrade failed', 'ai-post-scheduler' ),
-					'error_code'    => $install_result->get_error_code(),
-					'error_message' => $install_result->get_error_message(),
-					'from_version'  => $from_version,
-					'url'           => admin_url( 'admin.php?page=aips-status' ),
-					'dedupe_key'    => 'db_upgrade_failed_' . sanitize_key( (string) $from_version ),
-					'dedupe_window' => 1800,
-				) );
-			}
-
 			// Return without stamping the version so the next request retries.
 			return;
 		}

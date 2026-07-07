@@ -67,6 +67,17 @@ class AIPS_Cache {
 	private static $system_enabled = null;
 
 	/**
+	 * Per-request memo of resolved tag versions, keyed "{group}\0{tag}".
+	 *
+	 * Instance-scoped: named cache instances are per-request singletons, so
+	 * this collapses the repeated tag-version SELECTs the repository trait
+	 * issues on every cache_read() without risking cross-driver staleness.
+	 *
+	 * @var array<string, int>
+	 */
+	private $tag_version_memo = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Cache_Driver|null $driver Optional driver. When null, the
@@ -245,6 +256,9 @@ class AIPS_Cache {
 		}
 		$result = $this->driver->delete( $key, $group );
 		if ($result) {
+			if (0 === strpos( (string) $key, 'tag_version:' )) {
+				unset( $this->tag_version_memo[ $group . "\0" . substr( (string) $key, strlen( 'tag_version:' ) ) ] );
+			}
 			$index = $this->get_cache_index();
 			if ($index) {
 				$index->record_delete( (string) $key, (string) $group );
@@ -305,6 +319,7 @@ class AIPS_Cache {
 		}
 		$result = $this->driver->flush();
 		if ($result) {
+			$this->tag_version_memo = array();
 			$index = $this->get_cache_index();
 			if ($index) {
 				$index->record_flush();
@@ -448,10 +463,18 @@ class AIPS_Cache {
 			return 1;
 		}
 
-		$key     = $this->build_tag_version_key( $tag );
-		$version = $this->get( $key, $group, 1 );
+		$tag_key  = $this->sanitize_tag( $tag );
+		$memo_key = $group . "\0" . $tag_key;
+		if (isset( $this->tag_version_memo[ $memo_key ] )) {
+			return $this->tag_version_memo[ $memo_key ];
+		}
 
-		return max( 1, (int) $version );
+		$key     = 'tag_version:' . $tag_key;
+		$version = max( 1, (int) $this->get( $key, $group, 1 ) );
+
+		$this->tag_version_memo[ $memo_key ] = $version;
+
+		return $version;
 	}
 
 	/**
@@ -476,6 +499,7 @@ class AIPS_Cache {
 		$current = $this->get( $key, $group, null );
 		$version = null === $current ? 2 : max( 2, (int) $current + 1 );
 		$this->set( $key, $version, 0, $group );
+		$this->tag_version_memo[ $group . "\0" . $tag_key ] = max( 1, (int) $version );
 		$this->record_tag_bump_event( array( $tag_key ), $group );
 
 		return max( 1, (int) $version );
@@ -527,6 +551,7 @@ class AIPS_Cache {
 			$current = $this->get( $key, $group, null );
 			$version = null === $current ? 2 : max( 2, (int) $current + 1 );
 			$this->set( $key, $version, 0, $group );
+			$this->tag_version_memo[ $group . "\0" . $tag ] = $version;
 			$versions[ $tag ] = $version;
 		}
 
