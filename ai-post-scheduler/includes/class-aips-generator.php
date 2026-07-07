@@ -23,19 +23,9 @@ class AIPS_Generator {
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository_Interface History repository for logger
-     */
-    private $history_repository;
-
-    /**
      * @var AIPS_History_Container|null Current history container
      */
     private $current_history;
-
-    /**
-     * @var AIPS_Generation_Logger Handles logging logic.
-     */
-    private $generation_logger;
 
     private $template_processor;
     private $image_service;
@@ -87,7 +77,6 @@ class AIPS_Generator {
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
         $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
@@ -102,8 +91,6 @@ class AIPS_Generator {
             $this->markdown_parser = null;
         }
 
-        // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
     }
 
     /**
@@ -279,24 +266,25 @@ class AIPS_Generator {
         $result = $this->generate_content($resolve_prompt, $options, $log_type);
 
         if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            $message = 'Failed to resolve AI variables: ' . $result->get_error_message();
+            $this->logger->log($message, 'warning');
+            if ($this->current_history) {
+                $this->current_history->record('warning', $message, null, null, array('component' => $log_type));
+            }
             return array();
         }
 
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
 
         if (empty($resolved_values)) {
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
-                'variables' => $ai_variables,
-                'raw_response' => $result,
-                'component' => $log_type,
-            ));
+            $message = 'AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.';
+            $context = array('variables' => $ai_variables, 'component' => $log_type);
+            $this->logger->log($message, 'warning', $context);
+            if ($this->current_history) {
+                $this->current_history->record('warning', $message, array('variables' => $ai_variables, 'raw_response' => $result, 'component' => $log_type));
+            }
         } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
-                'variables' => $ai_variables,
-                'resolved'   => $resolved_values,
-                'component' => $log_type,
-            ));
+            $this->logger->log('Resolved AI variables', 'info', array('variables' => $ai_variables, 'resolved' => $resolved_values, 'component' => $log_type));
         }
 
         return $resolved_values;
@@ -748,7 +736,7 @@ class AIPS_Generator {
             $content_options['context'] = $content_context;
         }
 
-        // Ask AI to generate the article body
+        // Generate the Post Content
         $content = $this->generate_content($content_prompt, $content_options, 'content');
 
         if (is_wp_error($content)) {
@@ -760,9 +748,47 @@ class AIPS_Generator {
         }
 
         $content = $this->normalize_generated_content_for_wordpress($content);
+        $content = $this->strip_leading_title_block_from_content($content);
         $component_statuses['post_content'] = ($content !== '');
 
-        // Resolve AI variables from the title prompt using the generated content
+        if (!$component_statuses['post_content']) {
+            $error_message = __('Post generation failed before a usable Post Content could be created.', 'ai-post-scheduler');
+
+            $error = new WP_Error(
+                'aips_generation_missing_required_content',
+                $error_message,
+                array(
+                    'component_statuses' => $component_statuses,
+                )
+            );
+
+            $this->current_history->complete_failure($error_message, array(
+                'component' => 'post_content',
+                'component_statuses' => $component_statuses,
+                'content_length' => mb_strlen($content),
+            ));
+
+            $this->current_history->record(
+                'metric_generation_result',
+                'Generation failed - required Post Content was not generated',
+                array(
+                    'outcome'          => 'failed',
+                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                    'image_attempted'  => false,
+                    'image_success'    => null,
+                )
+            );
+
+            $this->logger->log('Post generation failed before post creation', 'error', array(
+                'context_type' => $context->get_type(),
+                'context_id' => $context->get_id(),
+                'component_statuses' => $component_statuses,
+            ));
+
+            return $error;
+        }
+
+        // Resolve AI variables from the Title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title using the context and content.
@@ -779,7 +805,7 @@ class AIPS_Generator {
             );
         }
 
-        // Detect unresolved template placeholders in the generated title.
+        // Detect unresolved template placeholders in the generated Title.
         $has_unresolved_placeholders = false;
 
         if (!is_wp_error($title) && is_string($title)) {
@@ -787,24 +813,25 @@ class AIPS_Generator {
                 $has_unresolved_placeholders = true;
 
                 // Log a warning for observability when AI variables were not resolved correctly.
-                $this->generation_logger->warning(
-                    'Generated title contains unresolved AI variables; falling back to safe default title.',
-                    array(
-                        'context_type' => $context->get_type(),
-                        'context_id' => $context->get_id(),
-                        'topic'       => $context->get_topic(),
-                    )
+                $warn_ctx = array(
+                    'context_type' => $context->get_type(),
+                    'context_id'   => $context->get_id(),
+                    'topic'        => $context->get_topic(),
                 );
+                $this->logger->log( 'Generated title contains unresolved AI variables; falling back to safe default title.', 'warning', $warn_ctx );
+                if ($this->current_history) {
+                    $this->current_history->record( 'warning', 'Generated title contains unresolved AI variables; falling back to safe default title.', null, null, $warn_ctx );
+                }
             }
         }
 
         if (is_wp_error($title) || $has_unresolved_placeholders) {
-            // Fall back to a safe default title when AI fails or leaves unresolved variables.
-            $base_title = __('AI Generated Post', 'ai-post-scheduler');
+            // Fall back to a safe default Title when AI fails or leaves unresolved variables.
+            $base_title = __('AIPS Generated Post', 'ai-post-scheduler');
             $topic_str = $context->get_topic();
 
             if (!empty($topic_str)) {
-                // Include topic in fallback title for context, truncated for safety
+                // Include topic in fallback Title for context, truncated for safety
                 $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
             }
 
@@ -814,14 +841,15 @@ class AIPS_Generator {
             $component_statuses['post_title'] = true;
         }
 
-        $content = $this->strip_leading_title_block_from_content($content);
-
-        // Use actual generated content for excerpt, truncated to prevent token limits
+        // Use actual generated Content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
         $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
+
+        // Set Post Excerpt component status based on whether excerpt generation was successful
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
+        // Determine whether this Post has "Partial Generations" or not
         $generation_incomplete = in_array(false, $component_statuses, true);
 
         // Generation-time affiliate link injection (when enabled on the template/author).
@@ -914,10 +942,13 @@ class AIPS_Generator {
             'metric_generation_result',
             'Generation metric snapshot',
             array(
-                'outcome'          => $generation_incomplete ? 'partial' : 'completed',
-                'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                'image_attempted'  => $image_was_attempted,
-                'image_success'    => $image_was_attempted ? (bool) $featured_image_success : null,
+                'outcome'            => $generation_incomplete ? 'partial' : 'completed',
+                'duration_seconds'   => (int) round( microtime(true) - $generation_start ),
+                'image_attempted'    => $image_was_attempted,
+                'image_success'      => $image_was_attempted ? (bool) $featured_image_success : null,
+                'word_count'         => str_word_count( wp_strip_all_tags( (string) $content ) ),
+                'char_count'         => mb_strlen( (string) $content ),
+                'component_statuses' => $component_statuses,
             )
         );
 
@@ -936,7 +967,7 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generated with missing components', 'warning', array(
+            $this->logger->log('Post generated with missing components', 'warning', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
@@ -956,7 +987,7 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generated successfully', 'info', array(
+            $this->logger->log('Post generated successfully', 'info', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
@@ -972,8 +1003,6 @@ class AIPS_Generator {
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
-
-        $this->generation_logger->set_history_id(null);
 
         return $post_id;
     }
@@ -1109,7 +1138,7 @@ class AIPS_Generator {
 
         if (is_wp_error($featured_image_result)) {
             $component_success = false;
-            $this->generation_logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
+            $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
             // Log featured image generation error
             if ($this->current_history) {

@@ -173,6 +173,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$active_partial = $this->create_test_post_with_history('draft', 1);
 		$resolved_partial = $this->create_test_post_with_history('draft', 2);
 		$never_partial = $this->create_test_post_with_history('draft', 3);
+		$controller = new AIPS_Generated_Posts_Controller();
 
 		update_post_meta($active_partial['post_id'], 'aips_post_generation_incomplete', 'true');
 		update_post_meta($active_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
@@ -216,6 +217,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 				$found_resolved_partial = true;
 				$this->assertSame('false', get_post_meta($item->post_id, 'aips_post_generation_incomplete', true));
 				$this->assertSame('true', get_post_meta($item->post_id, 'aips_post_generation_had_partial', true));
+				$this->assertSame(array(), $controller->get_missing_components($item->component_statuses));
 			}
 			$this->assertNotEquals($never_partial['post_id'], $item->post_id);
 		}

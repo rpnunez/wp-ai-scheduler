@@ -19,6 +19,27 @@ trait AIPS_Cacheable_Repository {
 	private $repository_cache_bypass_depth = 0;
 
 	/**
+	 * Memoized policy map from the first call to repository_cache_policies().
+	 *
+	 * @var array|null
+	 */
+	private $repository_cache_policies_memo = null;
+
+	/**
+	 * Memoized observer instance from the first call to repository_cache_observer().
+	 *
+	 * @var AIPS_Repository_Cache_Observer|null
+	 */
+	private $repository_cache_observer_memo = null;
+
+	/**
+	 * Memoized cache-instance list for tag-version invalidations.
+	 *
+	 * @var array|null
+	 */
+	private $repository_cache_invalidation_caches_memo = null;
+
+	/**
 	 * Read through the repository cache using an explicit operation ID.
 	 *
 	 * @param string   $operation_id Explicit repository operation identifier.
@@ -58,28 +79,27 @@ trait AIPS_Cacheable_Repository {
 		$tag_versions = $cache->get_tag_versions( $tags, $this->repository_cache_group() );
 		$key          = AIPS_Repository_Cache_Key_Builder::build_key( $operation_id, $args, $tag_versions );
 		$key_hash     = hash( 'sha256', $key );
-		$observer     = $this->repository_cache_observer();
+		$observer     = $this->cached_repository_cache_observer();
 		$tier         = isset( $policy['tier'] ) ? (string) $policy['tier'] : AIPS_Repository_Cache_Config::TIER_NONE;
 		$allow_stale  = !empty( $policy['allow_stale_reads'] );
 
-		if (empty( $options['force_refresh'] ) && $cache->has( $key, $this->repository_cache_group() )) {
+		if (empty( $options['force_refresh'] )) {
 			$start   = microtime( true );
 			$payload = $cache->get( $key, $this->repository_cache_group() );
-			$this->record_repository_cache_read(
-				$observer,
-				array(
-					'operation_id' => $operation_id,
-					'key_hash'     => $key_hash,
-					'tier'         => $tier,
-					'tags'         => $tags,
-					'hit'          => true,
-					'miss'         => false,
-					'stale'        => false,
-					'elapsed_ms'   => $this->elapsed_ms( $start ),
-				)
-			);
-
 			if ($this->is_repository_cache_payload( $payload )) {
+				$this->record_repository_cache_read(
+					$observer,
+					array(
+						'operation_id' => $operation_id,
+						'key_hash'     => $key_hash,
+						'tier'         => $tier,
+						'tags'         => $tags,
+						'hit'          => true,
+						'miss'         => false,
+						'stale'        => false,
+						'elapsed_ms'   => $this->elapsed_ms( $start ),
+					)
+				);
 				return $payload['value'];
 			}
 		}
@@ -196,12 +216,12 @@ trait AIPS_Cacheable_Repository {
 			return;
 		}
 
-		foreach ( $this->repository_cache_invalidation_caches() as $cache ) {
+		foreach ( $this->get_memoized_invalidation_caches() as $cache ) {
 			$cache->bump_tag_versions( $tags, $this->repository_cache_group() );
 		}
 
 		$this->record_repository_cache_invalidation(
-			$this->repository_cache_observer(),
+			$this->cached_repository_cache_observer(),
 			array(
 				'operation_id'        => 'repository.invalidate',
 				'tags'                => $tags,
@@ -231,12 +251,29 @@ trait AIPS_Cacheable_Repository {
 	/**
 	 * Resolve the observer used for repository cache telemetry and logging.
 	 *
-	 * Repositories may override this to inject a shared observer.
+	 * Repositories may override this to inject a shared observer. The default
+	 * implementation is memoized per instance — override only when a fresh
+	 * observer is intentionally required on each call.
 	 *
 	 * @return AIPS_Repository_Cache_Observer
 	 */
 	protected function repository_cache_observer() {
 		return new AIPS_Repository_Cache_Observer();
+	}
+
+	/**
+	 * Return a memoized observer instance for internal use.
+	 *
+	 * Caches the result of repository_cache_observer() so a single object is
+	 * reused across all sub-operations within one cache_read() call.
+	 *
+	 * @return AIPS_Repository_Cache_Observer
+	 */
+	private function cached_repository_cache_observer(): AIPS_Repository_Cache_Observer {
+		if ($this->repository_cache_observer_memo === null) {
+			$this->repository_cache_observer_memo = $this->repository_cache_observer();
+		}
+		return $this->repository_cache_observer_memo;
 	}
 
 	/**
@@ -299,7 +336,7 @@ trait AIPS_Cacheable_Repository {
 	private function run_repository_cache_bypass( string $operation_id, array $args, callable $callback, array $policy, string $reason ) {
 		$start    = microtime( true );
 		$value    = $callback();
-		$observer = $this->repository_cache_observer();
+		$observer = $this->cached_repository_cache_observer();
 		$tags     = $this->repository_cache_tags( $operation_id, $policy, $args );
 
 		$this->record_repository_cache_bypass(
@@ -323,7 +360,11 @@ trait AIPS_Cacheable_Repository {
 	 * @return array
 	 */
 	private function repository_cache_policy_for( string $operation_id ): array {
-		$policies = $this->repository_cache_policies();
+		if ($this->repository_cache_policies_memo === null) {
+			$this->repository_cache_policies_memo = $this->repository_cache_policies();
+		}
+
+		$policies = $this->repository_cache_policies_memo;
 
 		return isset( $policies[ $operation_id ] ) && is_array( $policies[ $operation_id ] ) ? $policies[ $operation_id ] : array();
 	}
@@ -397,7 +438,7 @@ trait AIPS_Cacheable_Repository {
 			foreach ( $matches[1] as $placeholder ) {
 				if (!array_key_exists( $placeholder, $args ) || is_array( $args[ $placeholder ] ) || is_object( $args[ $placeholder ] )) {
 					$this->record_repository_cache_warning(
-						$this->repository_cache_observer(),
+						$this->cached_repository_cache_observer(),
 						array(
 							'operation_id'        => 'repository.policy.placeholder',
 							'tags'                => array( $tag ),
@@ -578,6 +619,18 @@ trait AIPS_Cacheable_Repository {
 	}
 
 	/**
+	 * Return a memoized list of cache instances for tag-version invalidations.
+	 *
+	 * @return array<int, AIPS_Cache>
+	 */
+	private function get_memoized_invalidation_caches(): array {
+		if ($this->repository_cache_invalidation_caches_memo === null) {
+			$this->repository_cache_invalidation_caches_memo = $this->repository_cache_invalidation_caches();
+		}
+		return $this->repository_cache_invalidation_caches_memo;
+	}
+
+	/**
 	 * Resolve distinct cache instances that must receive tag-version invalidations.
 	 *
 	 * @return array<int, AIPS_Cache>
@@ -586,7 +639,11 @@ trait AIPS_Cacheable_Repository {
 		$caches = array();
 		$seen   = array();
 
-		foreach ( $this->repository_cache_policies() as $policy ) {
+		if ($this->repository_cache_policies_memo === null) {
+			$this->repository_cache_policies_memo = $this->repository_cache_policies();
+		}
+
+		foreach ( $this->repository_cache_policies_memo as $policy ) {
 			if (!is_array( $policy )) {
 				continue;
 			}

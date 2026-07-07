@@ -134,7 +134,6 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_history_log (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             history_id bigint(20) NOT NULL,
-            log_type varchar(50) NOT NULL,
             history_type_id int DEFAULT 1,
             timestamp bigint(20) unsigned NOT NULL DEFAULT 0,
             details longtext,

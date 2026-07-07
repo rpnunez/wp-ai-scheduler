@@ -593,6 +593,12 @@
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
 
 			/* --- Row Action Events --- */
+			// Overflow toggle for the action group
+			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
+			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
+			$(document).on('click', this.onDocumentClick.bind(this));
+			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
+
 			// Individual row delete
 			$(document).on('click', '.aips-delete-history', this.deleteSingleItem.bind(this));
 
@@ -641,6 +647,53 @@
 		},
 
 
+
+		/* ========================================================================
+		 * Row Action Overflow Menu
+		 * ======================================================================== */
+
+		onRowActionOverflowToggle: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			var $toggle = $(e.currentTarget);
+			var menuId  = $toggle.attr('aria-controls');
+			var $menu   = menuId ? $('#' + menuId) : $();
+
+			if (!$menu.length) {
+				return;
+			}
+
+			var isExpanded = $toggle.attr('aria-expanded') === 'true';
+			this.closeAllRowActionMenus();
+
+			if (!isExpanded) {
+				$toggle.attr('aria-expanded', 'true');
+				$menu.prop('hidden', false);
+			}
+		},
+
+		onRowActionItemClick: function () {
+			this.closeAllRowActionMenus();
+		},
+
+		onDocumentClick: function (e) {
+			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+				return;
+			}
+			this.closeAllRowActionMenus();
+		},
+
+		onDocumentKeyDown: function (e) {
+			if (e.key === 'Escape') {
+				this.closeAllRowActionMenus();
+			}
+		},
+
+		closeAllRowActionMenus: function () {
+			$('.aips-row-action-overflow-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
+			$('.aips-row-action-menu').prop('hidden', true);
+		},
 
 		/**
 		 * Auto-open a specific history container from query args when available.
