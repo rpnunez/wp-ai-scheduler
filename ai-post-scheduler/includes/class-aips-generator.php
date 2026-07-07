@@ -862,8 +862,22 @@ class AIPS_Generator {
         // Set Post Excerpt component status based on whether excerpt generation was successful
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
-        // Determine whether this Post has "Partial Generations" or not
-        $generation_incomplete = in_array(false, $component_statuses, true);
+        // Determine whether this Post has "Partial Generations" based on
+        // components known before post creation (title/content/excerpt; the
+        // featured_image entry is already true here when no image was requested).
+        $pre_image_incomplete = in_array(false, $component_statuses, true);
+        $generation_incomplete = $pre_image_incomplete;
+
+        // Resolve the status the context/template would normally apply.
+        $intended_post_status = $context->get_post_status();
+
+        // Only use the configured/intended Post Status (e.g. "publish") when
+        // every component known so far succeeded. If title/excerpt failed
+        // and fell back, force the post to be saved as a draft regardless of
+        // the template's configured status. Featured image failure (if
+        // requested) is resolved after post creation below and can only
+        // ever downgrade further, never upgrade back to the intended status.
+        $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
 
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
@@ -871,6 +885,7 @@ class AIPS_Generator {
             'content' => $content,
             'excerpt' => $excerpt,
             'context' => $context,
+            'post_status' => $initial_post_status,
             // Provide SEO context for downstream plugins.
             'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
             'meta_description' => $excerpt,
@@ -915,6 +930,21 @@ class AIPS_Generator {
 
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
+
+        // If the featured image failed after post creation and the post was
+        // not already forced to draft pre-creation, downgrade it now. This
+        // never upgrades a post back to the intended status.
+        if ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
+            $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
+
+            if (is_wp_error($downgrade_result)) {
+                $this->generation_logger->log(
+                    'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
+                    'error',
+                    array('post_id' => $post_id)
+                );
+            }
+        }
 
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
