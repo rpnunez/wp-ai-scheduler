@@ -703,7 +703,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-topics-table">
     <thead>
         <tr>
-            <th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+            <th class="check-column"><input type="checkbox" class="aips-select-all-topics" aria-label="{{selectAllTopicsLabel}}"></th>
             <th class="column-topic">{{topicDetails}}</th>
             <th class="column-generated">{{generatedAtLabel}}</th>
             <th class="column-actions">{{actionsLabel}}</th>
@@ -788,7 +788,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-feedback-table">
     <thead>
         <tr>
-            <th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+            <th class="check-column"><input type="checkbox" class="aips-select-all-feedback" aria-label="{{selectAllFeedbackLabel}}"></th>
             <th class="column-topic">{{topicLabel}}</th>
             <th class="column-action">{{actionLabel}}</th>
             <th class="column-reason">{{reasonLabel}}</th>
@@ -872,7 +872,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-queue-table">
     <thead>
         <tr>
-            <th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>
+            <th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all" aria-label="{{selectAllQueueLabel}}"></th>
             <th scope="col">{{titleLabel}}</th>
             <th scope="col">{{authorLabel}}</th>
             <th scope="col">{{fieldLabel}}</th>
