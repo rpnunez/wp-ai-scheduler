@@ -15,6 +15,13 @@ class AIPS_Repository_Cache_Config {
 	const TIER_NONE = 'none';
 
 	/**
+	 * Memoized persistent driver name (resolved once per request).
+	 *
+	 * @var string|null
+	 */
+	private static $driver_name_cache = null;
+
+	/**
 	 * Return the resolved configuration for a repository cache tier.
 	 *
 	 * @param string $tier Tier name.
@@ -24,6 +31,10 @@ class AIPS_Repository_Cache_Config {
 		$tier              = self::normalize_tier( $tier );
 		$persistent_driver = self::get_persistent_driver_name();
 
+		// Note: stale-read serving is not yet implemented in AIPS_Cacheable_Repository.
+		// The 'allow_stale_reads' key is intentionally absent from tier configs to avoid
+		// implying that behaviour. Per-policy allow_stale_reads is accepted but only
+		// forwarded to telemetry until the feature is built out.
 		$configs = array(
 			self::TIER_REQUEST => array(
 				'tier'               => self::TIER_REQUEST,
@@ -31,7 +42,6 @@ class AIPS_Repository_Cache_Config {
 				'default_ttl'        => 0,
 				'persistent_allowed' => false,
 				'bypass_on_cron'     => false,
-				'allow_stale_reads'  => false,
 			),
 			self::TIER_SHORT   => array(
 				'tier'               => self::TIER_SHORT,
@@ -39,7 +49,6 @@ class AIPS_Repository_Cache_Config {
 				'default_ttl'        => 5 * MINUTE_IN_SECONDS,
 				'persistent_allowed' => true,
 				'bypass_on_cron'     => true,
-				'allow_stale_reads'  => false,
 			),
 			self::TIER_MEDIUM  => array(
 				'tier'               => self::TIER_MEDIUM,
@@ -47,7 +56,6 @@ class AIPS_Repository_Cache_Config {
 				'default_ttl'        => HOUR_IN_SECONDS,
 				'persistent_allowed' => true,
 				'bypass_on_cron'     => false,
-				'allow_stale_reads'  => true,
 			),
 			self::TIER_LONG    => array(
 				'tier'               => self::TIER_LONG,
@@ -55,7 +63,6 @@ class AIPS_Repository_Cache_Config {
 				'default_ttl'        => DAY_IN_SECONDS,
 				'persistent_allowed' => true,
 				'bypass_on_cron'     => false,
-				'allow_stale_reads'  => true,
 			),
 			self::TIER_NONE    => array(
 				'tier'               => self::TIER_NONE,
@@ -63,7 +70,6 @@ class AIPS_Repository_Cache_Config {
 				'default_ttl'        => 0,
 				'persistent_allowed' => false,
 				'bypass_on_cron'     => true,
-				'allow_stale_reads'  => false,
 			),
 		);
 
@@ -135,15 +141,24 @@ class AIPS_Repository_Cache_Config {
 	/**
 	 * Resolve the persistent cache driver from plugin settings.
 	 *
-	 * Uses direct option reads to avoid unnecessary config bootstrapping.
+	 * The driver name is memoized in a static property after the first
+	 * resolution so that repeated cache lookups within a single request
+	 * do not re-read the options table.
 	 *
 	 * @return string
 	 */
 	private static function get_persistent_driver_name(): string {
+		if (self::$driver_name_cache !== null) {
+			return self::$driver_name_cache;
+		}
+
 		$driver_name = get_option( 'aips_cache_driver', 'array' );
 		$driver_name = is_scalar( $driver_name ) ? strtolower( trim( (string) $driver_name ) ) : 'array';
+		$driver_name = '' !== $driver_name ? $driver_name : 'array';
 
-		return '' !== $driver_name ? $driver_name : 'array';
+		self::$driver_name_cache = $driver_name;
+
+		return self::$driver_name_cache;
 	}
 
 	/**

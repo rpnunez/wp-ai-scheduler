@@ -719,17 +719,121 @@
 
 /* History table column widths */
 .aips-history-table .column-title {
-    width: 28%;
+    width: 36%;
 }
 
 .aips-history-table .column-actions {
-    width: 340px;
-    min-width: 300px;
+    width: 160px;
+    min-width: 140px;
     white-space: nowrap;
 }
 
-.aips-history-table .column-actions .aips-btn-group {
-    flex-wrap: nowrap;
+/* Title cell layout */
+.aips-history-title {
+    display: block;
+    font-weight: 600;
+}
+
+.aips-history-subtitle {
+    display: block;
+    font-size: 12px;
+    color: var(--aips-gray-500, #757575);
+    margin-top: 2px;
+}
+
+.aips-creation-method-badge {
+    display: inline-block;
+    font-size: 10px;
+    margin-top: 4px;
+    padding: 1px 6px;
+    line-height: 1.6;
+    border-radius: 10px;
+}
+
+/* Row action group — shared pattern used across History, Authors, Post Review */
+.aips-row-action-group {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.aips-row-action-group .aips-btn:first-child {
+    border-radius: 5px 0 0 5px;
+}
+
+.aips-row-action-group .aips-btn:last-child {
+    border-radius: 0 5px 5px 0;
+}
+
+.aips-row-action-group .aips-btn {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.aips-row-action-group .aips-btn + .aips-btn {
+    border-left: 1px solid #dcdcde;
+}
+
+.aips-row-action-overflow-toggle::after {
+    content: "\f140";
+    font-family: dashicons;
+    font-size: 14px;
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.cell-actions {
+    position: relative;
+}
+
+.aips-row-action-menu {
+    min-width: 160px;
+    padding: 4px 0;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    background: #fff;
+    margin-top: 6px;
+    position: absolute;
+    right: 0;
+    z-index: 12;
+}
+
+.aips-row-action-menu[hidden] {
+    display: none !important;
+}
+
+.aips-row-action-menu .aips-row-action-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    text-decoration: none;
+    color: #1d2327;
+    border-top: 1px solid #f0f0f1;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+
+.aips-row-action-menu .aips-row-action-item:first-child {
+    border-top: 0;
+}
+
+.aips-row-action-menu .aips-row-action-item:hover,
+.aips-row-action-menu .aips-row-action-item:focus-visible {
+    background: #f6f7f7;
+    color: #1d2327;
 }
 
 /* Pagination in toolbar-right: let it fill the available space */
