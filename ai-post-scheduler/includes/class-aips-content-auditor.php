@@ -30,15 +30,22 @@ class AIPS_Content_Auditor {
     private $logger;
 
     /**
+     * @var AIPS_Prompt_Builder_Content_Audit Prompt builder.
+     */
+    private $prompt_builder;
+
+    /**
      * Initialize the auditor.
      *
      * @param AIPS_AI_Service_Interface|null $ai_service AI service instance.
      * @param AIPS_Logger_Interface|null     $logger Logger instance.
+     * @param AIPS_Prompt_Builder_Content_Audit|null $prompt_builder Prompt builder.
      */
-    public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null) {
+    public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_Prompt_Builder_Content_Audit $prompt_builder = null) {
         $container = AIPS_Container::get_instance();
         $this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
         $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Content_Audit();
     }
 
     /**
@@ -102,7 +109,7 @@ class AIPS_Content_Auditor {
         }
 
         // 2. Construct the prompt
-        $prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
+        $prompt = $this->prompt_builder->build_gap_analysis_prompt($niche, $existing_content);
 
         // 3. Call AI Service
         $options = array(
@@ -153,7 +160,7 @@ class AIPS_Content_Auditor {
         }
 
         // 2. Construct the prompt
-        $prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
+        $prompt = $this->prompt_builder->build_gap_analysis_prompt($niche, $existing_content);
 
         // 3. Call AI Service
         $options = array(
@@ -214,45 +221,4 @@ class AIPS_Content_Auditor {
         return null;
     }
 
-    /**
-     * Generate the prompt for the AI.
-     *
-     * @param string $niche The target niche.
-     * @param array $existing_content List of existing content summaries.
-     * @return string The constructed prompt.
-     */
-    private function generate_gap_analysis_prompt($niche, $existing_content) {
-        $content_list = "";
-        if (!empty($existing_content)) {
-            foreach ($existing_content as $item) {
-                $content_list .= "- {$item['title']} (Category: {$item['categories']})\n";
-            }
-        } else {
-            $content_list = "(No existing content found)";
-        }
-
-        $prompt = "You are an SEO Content Strategist. The website's core niche is: {$niche}.\n\n";
-        $prompt .= "Here is a list of the last " . count($existing_content) . " published articles on the site:\n";
-        $prompt .= $content_list . "\n\n";
-        
-        $prompt .= "Task: Analyze the existing content coverage against the target niche. Identify 5-7 major sub-topics, 'pillar' pages, or content clusters that are MISSING or under-represented.\n\n";
-        
-        $prompt .= "Return a JSON array of objects. Each object must have:\n";
-        $prompt .= "- \"missing_topic\": The title of the missing topic or cluster (string)\n";
-        $prompt .= "- \"priority\": \"High\" or \"Medium\" (string)\n";
-        $prompt .= "- \"reason\": A brief explanation of why this is a gap and why it's needed (string)\n";
-        $prompt .= "- \"search_intent\": The primary user intent (e.g., Informational, Transactional) (string)\n\n";
-        
-        $prompt .= "Example format:\n";
-        $prompt .= "[\n";
-        $prompt .= "  {\n";
-        $prompt .= "    \"missing_topic\": \"Advanced Composting Techniques\",\n";
-        $prompt .= "    \"priority\": \"High\",\n";
-        $prompt .= "    \"reason\": \"You have basic gardening tips but lack technical soil health content which establishes authority.\",\n";
-        $prompt .= "    \"search_intent\": \"Informational\"\n";
-        $prompt .= "  }\n";
-        $prompt .= "]";
-
-        return $prompt;
-    }
 }

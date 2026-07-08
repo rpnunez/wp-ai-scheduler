@@ -10,8 +10,14 @@ class AIPS_Planner {
      */
     private $bulk_generator_service;
 
-    public function __construct() {
+    /**
+     * @var AIPS_Prompt_Builder_Planner Planner prompt builder.
+     */
+    private $prompt_builder;
+
+    public function __construct(?AIPS_Prompt_Builder_Planner $prompt_builder = null) {
         $this->bulk_generator_service = $this->make_bulk_generator_service();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Planner();
         add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
         add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
         add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
@@ -42,9 +48,7 @@ class AIPS_Planner {
             AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'));
         }
 
-        $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'. \n";
-        $prompt .= "Return ONLY a valid JSON array of strings. Do not include any other text, markdown formatting, or numbering. \n";
-        $prompt .= "Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]";
+        $prompt = $this->prompt_builder->build_topics_prompt($niche, $count);
 
         $result = $generator->generate_content($prompt, array('temperature' => 0.7), 'planner_topics');
 

@@ -25,6 +25,20 @@ if (!defined('ABSPATH')) {
  * dynamically using AI during content generation.
  */
 class AIPS_Template_Processor {
+
+    /**
+     * @var AIPS_Prompt_Builder_AI_Variables AI variable prompt builder.
+     */
+    private $ai_variables_prompt_builder;
+
+    /**
+     * Constructor.
+     *
+     * @param AIPS_Prompt_Builder_AI_Variables|null $ai_variables_prompt_builder AI variable prompt builder.
+     */
+    public function __construct(?AIPS_Prompt_Builder_AI_Variables $ai_variables_prompt_builder = null) {
+        $this->ai_variables_prompt_builder = $ai_variables_prompt_builder ?: new AIPS_Prompt_Builder_AI_Variables();
+    }
     
     /**
      * Process template variables in a given string.
@@ -136,21 +150,7 @@ class AIPS_Template_Processor {
      * @return string The prompt to send to AI for variable resolution.
      */
     public function build_ai_variables_prompt($ai_variables, $context) {
-        if (empty($ai_variables)) {
-            return '';
-        }
-        
-        $variables_list = implode(', ', $ai_variables);
-        
-        $prompt = "Based on the following content context, provide creative and appropriate values for these variables: {$variables_list}\n\n";
-        $prompt .= "Content Context:\n{$context}\n\n";
-        $prompt .= "IMPORTANT: Respond ONLY with a JSON object containing the variable names as keys and their values. ";
-        $prompt .= "Do not include any explanation or extra text. ";
-        $prompt .= "Example format: {\"VariableName1\": \"Value1\", \"VariableName2\": \"Value2\"}\n\n";
-        $prompt .= "Provide values that are specific, relevant, and would make sense in the context of the content. ";
-        $prompt .= "For comparison articles, ensure the values are distinct from each other.";
-        
-        return $prompt;
+        return $this->ai_variables_prompt_builder->build($ai_variables, $context);
     }
     
     /**
