@@ -10,6 +10,7 @@
 - **DST Production Seed Script**: Added DevStackTips production seeder script. ([#1756](../../pull/1756))
 
 ### Changed
+- **Planner Queue Management**: Staggered bulk-scheduled 'once' topics to improve background queue efficiency.
 - **Admin History**: Replaced full page reload with AJAX table reload when retrying failed generations to improve user flow.
 - Refactored multiple admin UI actions to update DOM tables dynamically without a full page reload for a smoother user experience.
 - **Cache Drivers**: Reduced available cache drivers to Array, WP Object Cache, and Database for simplicity and reliability. ([#1708](../../pull/1708))
@@ -116,6 +117,7 @@ All notable changes to this project will be documented in this file.
   - Eliminates 1970 UI date bugs from mixed timestamp formats
 
 ### Changed
+- **Planner Queue Management**: Staggered bulk-scheduled 'once' topics to improve background queue efficiency.
 - **Template Post Duplication Fix**: Resolved issue causing duplicate posts from single template runs
 - **System Status Operations**: Separated nonces per operation, direct logic execution, configurable batch sizes
 - **Performance Tab**: Renamed "Cache" to "Performance" with "Enable Cache System" toggle
@@ -134,6 +136,7 @@ All notable changes to this project will be documented in this file.
 - **Query diagnostics**: telemetry payloads now summarize slow queries and duplicate queries when `SAVEQUERIES` is available, using `AIPS_TELEMETRY_SLOW_QUERY_MS` and bounded query samples.
 
 ### Changed
+- **Planner Queue Management**: Staggered bulk-scheduled 'once' topics to improve background queue efficiency.
 - **Telemetry schema**: `aips_telemetry` now stores top-level request type, event categories, cache counters, total event count, and query anomaly counters for server-side filtering and faster list rendering.
 
 ## [2.3.1] - 2026-04-09
@@ -164,6 +167,7 @@ All notable changes to this project will be documented in this file.
 
 ## [refactor-post-generation-flow] - 2026-02-07
 ### Changed
+- **Planner Queue Management**: Staggered bulk-scheduled 'once' topics to improve background queue efficiency.
 - **MAJOR**: Refactored post generation to use AI Engine's Chatbot feature for conversational context
   - Content, title, and excerpt now generated in a single conversation with shared context
   - AI "remembers" previously generated components, resulting in better coherence
