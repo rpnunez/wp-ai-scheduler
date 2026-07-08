@@ -4,37 +4,25 @@ import Backbone from 'backbone';
 import mediator from './utils/mediator';
 import '../css/main.css';
 
-// Import all legacy scripts to bundle them
+// Import utility scripts (still legacy)
 import '../../js/datetime.js';
 import '../../js/utilities.js';
 import '../../js/templates.js';
+
+// Import remaining legacy admin scripts (to be ported)
 import '../../js/admin-bar.js';
-import '../../js/admin-dashboard.js';
 import '../../js/admin-db.js';
 import '../../js/admin-dev-tools.js';
 import '../../js/admin-embeddings.js';
 import '../../js/admin-generated-posts.js';
-import '../../js/admin-history.js';
-import '../../js/admin-internal-links.js';
-import '../../js/admin-planner.js';
 import '../../js/admin-post-review.js';
 import '../../js/admin-post-slices.js';
-import '../../js/admin-research.js';
 import '../../js/admin-seeder.js';
-import '../../js/admin-settings.js';
-import '../../js/admin-sources.js';
 import '../../js/admin-system-status.js';
-import '../../js/admin-view-session.js';
 import '../../js/ai-assistance.js';
 import '../../js/cache-monitor.js';
-import '../../js/calendar.js';
-import '../../js/campaign-wizard.js';
-import '../../js/campaigns.js';
 import '../../js/onboarding.js';
 import '../../js/taxonomy.js';
-import '../../js/telemetry.js';
-import '../../js/admin.js';
-import '../../js/authors.js';
 
 import { TemplatesView } from './views/templates';
 import { SchedulesView } from './views/schedules';
@@ -53,6 +41,8 @@ import { VoicesView } from './views/voices';
 import { SectionsView } from './views/sections';
 import { SettingsView } from './views/settings';
 import { DashboardView } from './views/dashboard';
+import { PostSlicesView } from './views/post-slices';
+import { SystemStatusView } from './views/system-status';
 
 // Initialize global namespace
 window.AIPS = window.AIPS || {};
@@ -103,6 +93,8 @@ AIPS.VoicesViewClass = VoicesView;
 AIPS.SectionsViewClass = SectionsView;
 AIPS.SettingsViewClass = SettingsView;
 AIPS.DashboardViewClass = DashboardView;
+AIPS.PostSlicesViewClass = PostSlicesView;
+AIPS.SystemStatusViewClass = SystemStatusView;
 
 // Bootstrap application on document ready
 $(document).ready(() => {
@@ -177,6 +169,16 @@ $(document).ready(() => {
 	// Conditionally instantiate Dashboard view
 	if ($('#aips-dashboard-panel').length) {
 		AIPS.dashboardView = new DashboardView();
+	}
+
+	// Conditionally instantiate Post Slices view
+	if ($('#aips-post-slices-table').length || $('#aips-post-slice-modal').length) {
+		AIPS.postSlicesView = new PostSlicesView();
+	}
+
+	// Conditionally instantiate System Status view
+	if ($('.aips-status-data-panel').length) {
+		AIPS.systemStatusView = new SystemStatusView();
 	}
 
 	// Call any legacy bootstrap hooks
