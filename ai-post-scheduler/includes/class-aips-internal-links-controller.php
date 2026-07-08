@@ -191,7 +191,7 @@ class AIPS_Internal_Links_Controller {
 		$ids = $this->service->generate_suggestions_for_post($post_id, $max_suggestions, $threshold);
 
 		if (is_wp_error($ids)) {
-			AIPS_Ajax_Response::error(array('message' => $ids->get_error_message()));
+			AIPS_Ajax_Response::wp_error($ids);
 		}
 
 		AIPS_Ajax_Response::success(array(
@@ -370,7 +370,7 @@ class AIPS_Internal_Links_Controller {
 		$result = $this->service->index_post($post_id);
 
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		$suggestion_ids = $this->service->generate_suggestions_for_post($post_id);
@@ -507,7 +507,7 @@ class AIPS_Internal_Links_Controller {
 		$result = $this->inserter_service->find_insertion_locations($suggestion_id);
 
 		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		AIPS_Ajax_Response::success(array(
