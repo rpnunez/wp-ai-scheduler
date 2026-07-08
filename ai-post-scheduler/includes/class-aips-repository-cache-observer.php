@@ -148,7 +148,7 @@ class AIPS_Repository_Cache_Observer {
 	 */
 	private function record_telemetry(array $context) {
 		try {
-			if (!class_exists('AIPS_Telemetry') || !AIPS_Telemetry::is_enabled()) {
+			if (!class_exists('AIPS_Telemetry') || !AIPS_Telemetry::is_subsystem_enabled('cache')) {
 				return;
 			}
 

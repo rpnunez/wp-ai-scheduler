@@ -57,6 +57,20 @@ class AIPS_Cache {
 	private $pending_context = array();
 
 	/**
+	 * Per-request aggregated cache telemetry counters.
+	 *
+	 * @var array<string,int>
+	 */
+	private static $telemetry_counts = array();
+
+	/**
+	 * Whether the cache telemetry shutdown flush has been registered.
+	 *
+	 * @var bool
+	 */
+	private static $telemetry_shutdown_registered = false;
+
+	/**
 	 * Per-request memoised result of the system-enabled check.
 	 *
 	 * Null means "not yet read". Populated on the first call to
@@ -556,22 +570,50 @@ class AIPS_Cache {
 	 * @return void
 	 */
 	private function record_cache_event( $operation, array $data ) {
-		if (!class_exists( 'AIPS_Telemetry' ) || !AIPS_Telemetry::is_enabled()) {
+		if (!class_exists( 'AIPS_Telemetry' ) || !AIPS_Telemetry::is_subsystem_enabled('cache')) {
 			return;
 		}
 
-		$driver = get_class( $this->driver );
-		AIPS_Telemetry::instance()->add_event(
-			'cache',
-			array_merge(
-				array(
-					'type'      => 'cache_' . sanitize_key( $operation ),
-					'operation' => sanitize_key( $operation ),
-					'driver'    => sanitize_text_field( $driver ),
-				),
-				$data
-			)
-		);
+		$clean_op = sanitize_key( $operation );
+		$key      = $clean_op . 's';
+
+		if (!isset(self::$telemetry_counts[$key])) {
+			self::$telemetry_counts[$key] = 0;
+		}
+		self::$telemetry_counts[$key]++;
+
+		if (array_key_exists('hit', $data)) {
+			$hit_key = $data['hit'] ? 'hits' : 'misses';
+			self::$telemetry_counts[$hit_key] = isset(self::$telemetry_counts[$hit_key]) ? self::$telemetry_counts[$hit_key] + 1 : 1;
+		}
+
+		if (array_key_exists('present', $data)) {
+			$present_key = $data['present'] ? 'hits' : 'misses';
+			self::$telemetry_counts[$present_key] = isset(self::$telemetry_counts[$present_key]) ? self::$telemetry_counts[$present_key] + 1 : 1;
+		}
+
+		if (!self::$telemetry_shutdown_registered) {
+			self::$telemetry_shutdown_registered = true;
+			register_shutdown_function(array(__CLASS__, 'flush_cache_telemetry_summary'));
+		}
+	}
+
+	/**
+	 * Flush aggregated cache telemetry counters.
+	 *
+	 * @return void
+	 */
+	public static function flush_cache_telemetry_summary() {
+		if (empty(self::$telemetry_counts) || !class_exists('AIPS_Telemetry') || !AIPS_Telemetry::is_subsystem_enabled('cache')) {
+			return;
+		}
+
+		AIPS_Telemetry::instance()->add_event('cache', array_merge(array(
+			'type'           => 'cache_summary',
+			'payload_policy' => AIPS_Telemetry::payload_policy_for('cache'),
+		), self::$telemetry_counts));
+
+		self::$telemetry_counts = array();
 	}
 
 	/**
