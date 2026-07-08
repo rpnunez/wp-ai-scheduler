@@ -1,0 +1,18 @@
+﻿{
+    "schema_version":  1,
+    "finding_id":  "d938ad93630ed19f1653f3f48f37303ab15792ce",
+    "type":  "scheduler_datetime_gap",
+    "severity":  "low",
+    "status":  "open",
+    "path":  "ai-post-scheduler/includes/class-aips-author-topics-controller.php",
+    "symbol":  "AIPS_Author_Topics_Controller",
+    "anchor":  "schedule_embeddings_job:time-base_timestamp",
+    "lines":  [
+                  834
+              ],
+    "rationale":  "Embeddings job dispatch builds a future timestamp with raw time() in an AJAX controller helper.",
+    "remediation":  "Use AIPS_DateTime::now()-\u003eaddSeconds(5)-\u003etimestamp() or delegate scheduling to the job scheduler layer.",
+    "first_seen_run_id":  "aips-20260509T202750Z",
+    "last_seen_run_id":  "aips-20260509T202750Z",
+    "updated_at":  "2026-05-09T20:27:50Z"
+}

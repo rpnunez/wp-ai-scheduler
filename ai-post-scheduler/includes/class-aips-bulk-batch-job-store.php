@@ -106,7 +106,7 @@ class AIPS_Bulk_Batch_Job_Store {
 		global $wpdb;
 
 		$job_id = $this->generate_uuid();
-		$now    = time();
+		$now    = $this->now_timestamp();
 
 		// Strip any non-serialisable keys (closures, objects) from options.
 		$safe_options = $this->strip_non_serialisable( $options );
@@ -231,7 +231,7 @@ class AIPS_Bulk_Batch_Job_Store {
 			$wpdb->prepare(
 				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				self::STATUS_COMPLETED,
-				time(),
+				$this->now_timestamp(),
 				$job_id,
 				self::STATUS_PROCESSING
 			)
@@ -256,7 +256,7 @@ class AIPS_Bulk_Batch_Job_Store {
 			$wpdb->prepare(
 				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				self::STATUS_PROCESSING,
-				time(),
+				$this->now_timestamp(),
 				$job_id,
 				self::STATUS_PENDING
 			)
@@ -278,7 +278,7 @@ class AIPS_Bulk_Batch_Job_Store {
 
 		$data   = array(
 			'status'     => $status,
-			'updated_at' => time(),
+			'updated_at' => $this->now_timestamp(),
 		);
 		$format = array( '%s', '%d' );
 
@@ -315,7 +315,7 @@ class AIPS_Bulk_Batch_Job_Store {
 			$wpdb->prepare(
 				"UPDATE {$this->table()} SET processed = processed + %d, updated_at = %d WHERE job_id = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$count,
-				time(),
+				$this->now_timestamp(),
 				$job_id
 			)
 		);
@@ -337,7 +337,7 @@ class AIPS_Bulk_Batch_Job_Store {
 	public function cleanup_old_jobs(): int {
 		global $wpdb;
 
-		$cutoff = time() - ( self::CLEANUP_DAYS * DAY_IN_SECONDS );
+		$cutoff = $this->now_timestamp() - ( self::CLEANUP_DAYS * DAY_IN_SECONDS );
 
 		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prepare(
@@ -352,6 +352,15 @@ class AIPS_Bulk_Batch_Job_Store {
 	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------
+
+	/**
+	 * Return the current UTC Unix timestamp through the shared date/time abstraction.
+	 *
+	 * @return int
+	 */
+	private function now_timestamp(): int {
+		return AIPS_DateTime::now()->timestamp();
+	}
 
 	/**
 	 * Remove non-serialisable values (closures, objects) from an options array.
