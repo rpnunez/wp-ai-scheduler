@@ -34,7 +34,7 @@ export const CampaignsView = BaseListView.extend({
 		'click .aips-wizard-step-tab': 'onStepTabClick',
 		'click #aips-wizard-finalize': 'onFinalizeClick',
 		'click #aips-add-post-type-rule': 'onAddPostTypeRule',
-		'click '.aips-remove-post-type-rule': 'onRemovePostTypeRule',
+		'click .aips-remove-post-type-rule': 'onRemovePostTypeRule',
 		'click #aips-ai-preview-accept': 'onAcceptAiPreview',
 		'click #aips-ai-preview-regenerate': 'onRegenerateAiPreview',
 		'click #aips-ai-preview-edit': 'onEditAiIntake',

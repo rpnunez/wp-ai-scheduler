@@ -46,6 +46,12 @@ import { CalendarView } from './views/calendar';
 import { ResearchView } from './views/research';
 import { InternalLinksView } from './views/internal-links';
 import { SourcesView } from './views/sources';
+import { CampaignsView } from './views/campaigns';
+import { TelemetryView } from './views/telemetry';
+import { StructuresView } from './views/structures';
+import { VoicesView } from './views/voices';
+import { SectionsView } from './views/sections';
+import { SettingsView } from './views/settings';
 
 // Initialize global namespace
 window.AIPS = window.AIPS || {};
@@ -89,6 +95,12 @@ AIPS.CalendarViewClass = CalendarView;
 AIPS.ResearchViewClass = ResearchView;
 AIPS.InternalLinksViewClass = InternalLinksView;
 AIPS.SourcesViewClass = SourcesView;
+AIPS.CampaignsViewClass = CampaignsView;
+AIPS.TelemetryViewClass = TelemetryView;
+AIPS.StructuresViewClass = StructuresView;
+AIPS.VoicesViewClass = VoicesView;
+AIPS.SectionsViewClass = SectionsView;
+AIPS.SettingsViewClass = SettingsView;
 
 // Bootstrap application on document ready
 $(document).ready(() => {
@@ -128,6 +140,36 @@ $(document).ready(() => {
 	// Conditionally instantiate Sources view
 	if ($('#aips-sources-table').length) {
 		AIPS.sourcesView = new SourcesView();
+	}
+
+	// Conditionally instantiate Campaigns view
+	if ($('#aips-campaigns-table').length || $('#aips-campaign-wizard').length) {
+		AIPS.campaignsView = new CampaignsView();
+	}
+
+	// Conditionally instantiate Telemetry view
+	if ($('#aips-telemetry-container').length || $('.aips-telemetry-chart').length) {
+		AIPS.telemetryView = new TelemetryView();
+	}
+
+	// Conditionally instantiate Structures view
+	if ($('#aips-structures-list').length || $('#aips-structures-modal').length) {
+		AIPS.structuresView = new StructuresView();
+	}
+
+	// Conditionally instantiate Voices view
+	if ($('#aips-voices-list').length || $('#aips-voices-modal').length) {
+		AIPS.voicesView = new VoicesView();
+	}
+
+	// Conditionally instantiate Sections view
+	if ($('#aips-sections-list').length || $('#aips-sections-modal').length) {
+		AIPS.sectionsView = new SectionsView();
+	}
+
+	// Conditionally instantiate Settings view
+	if ($('#aips-settings-form').length || $('#aips-settings-tab-nav').length) {
+		AIPS.settingsView = new SettingsView();
 	}
 
 	// Call any legacy bootstrap hooks
