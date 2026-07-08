@@ -52,6 +52,7 @@ import { StructuresView } from './views/structures';
 import { VoicesView } from './views/voices';
 import { SectionsView } from './views/sections';
 import { SettingsView } from './views/settings';
+import { DashboardView } from './views/dashboard';
 
 // Initialize global namespace
 window.AIPS = window.AIPS || {};
@@ -101,6 +102,7 @@ AIPS.StructuresViewClass = StructuresView;
 AIPS.VoicesViewClass = VoicesView;
 AIPS.SectionsViewClass = SectionsView;
 AIPS.SettingsViewClass = SettingsView;
+AIPS.DashboardViewClass = DashboardView;
 
 // Bootstrap application on document ready
 $(document).ready(() => {
@@ -170,6 +172,11 @@ $(document).ready(() => {
 	// Conditionally instantiate Settings view
 	if ($('#aips-settings-form').length || $('#aips-settings-tab-nav').length) {
 		AIPS.settingsView = new SettingsView();
+	}
+
+	// Conditionally instantiate Dashboard view
+	if ($('#aips-dashboard-panel').length) {
+		AIPS.dashboardView = new DashboardView();
 	}
 
 	// Call any legacy bootstrap hooks
