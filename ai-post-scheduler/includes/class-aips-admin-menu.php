@@ -22,6 +22,27 @@ class AIPS_Admin_Menu {
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
+        add_filter('admin_body_class', array($this, 'add_plugin_body_class'));
+    }
+
+    /**
+     * Tag every plugin admin page with an `aips-admin-page` body class.
+     *
+     * `#wpbody` needs `display: flow-root` on plugin pages so that `#wpwrap`
+     * grows to contain floated content and the WordPress footer renders below
+     * it instead of at the viewport bottom. The CSS also applies this via a
+     * `:has()` selector, but `:has()` is unsupported in older browsers, so this
+     * body class is the reliable mechanism the CSS falls back to.
+     *
+     * @param string $classes Space-separated list of existing body classes.
+     * @return string
+     */
+    public function add_plugin_body_class($classes) {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if (strpos($page, 'aips-') === 0 || $page === 'ai-post-scheduler') {
+            $classes .= ' aips-admin-page';
+        }
+        return $classes;
     }
 
     /**
