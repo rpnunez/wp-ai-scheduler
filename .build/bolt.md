@@ -26,3 +26,9 @@
 ## 2026-03-24 - [Optimize Dashboard History Retrieval]
 **Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
 **Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.
+## 2026-07-01 - [N+1 Internal Links Generation]
+**Area:** ai-post-scheduler/includes/class-aips-internal-links-service.php
+**Status:** opened PR
+**PR:** To be created
+**Learning:** The internal links service looped over suggestion results and called `get_post()` individually to fetch titles for anchor text, resulting in N+1 queries.
+**Action:** When looping over post IDs to call `get_post()`, use `_prime_post_caches(array_unique($post_ids), false, true)` before the loop (with a `function_exists` check) to bulk load the posts.

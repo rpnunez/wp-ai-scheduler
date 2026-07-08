@@ -298,6 +298,11 @@ class AIPS_Internal_Links_Service {
 
 		$created_ids = array();
 
+		if (!empty($neighbors) && function_exists('_prime_post_caches')) {
+			$post_ids = array_column($neighbors, 'id');
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		foreach ($neighbors as $neighbor) {
 			$target_post_id  = (int) $neighbor['id'];
 			$similarity      = (float) $neighbor['similarity'];
