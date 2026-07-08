@@ -91,6 +91,7 @@ class AIPS_Sources_Data_Repository {
 
 		$extracted_text = isset( $data['extracted_text'] ) ? sanitize_textarea_field( $data['extracted_text'] ) : '';
 		$content_hash   = '' !== $extracted_text ? hash( 'sha256', $extracted_text ) : null;
+		$char_count     = isset( $data['char_count'] ) ? absint( $data['char_count'] ) : ( function_exists( 'mb_strlen' ) ? mb_strlen( $extracted_text ) : strlen( $extracted_text ) );
 
 		// Skip if this exact content snapshot is already stored.
 		if ( null !== $content_hash ) {
@@ -115,7 +116,7 @@ class AIPS_Sources_Data_Repository {
 			'meta_description' => isset( $data['meta_description'] ) ? sanitize_textarea_field( $data['meta_description'] ) : '',
 			'extracted_text'   => $extracted_text,
 			'raw_html'         => isset( $data['raw_html'] ) ? $data['raw_html'] : '',
-			'char_count'       => isset( $data['char_count'] ) ? absint( $data['char_count'] ) : 0,
+			'char_count'       => $char_count,
 			'content_hash'     => $content_hash,
 			'num_used'         => 0,
 			'fetch_status'     => isset( $data['fetch_status'] ) ? sanitize_text_field( $data['fetch_status'] ) : 'success',
@@ -129,6 +130,478 @@ class AIPS_Sources_Data_Repository {
 		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d' );
 		$result = $this->wpdb->insert( $this->table_name, $row, $format );
 		return $result !== false;
+	}
+
+	/**
+	 * Retrieve one source data row by ID.
+	 *
+	 * @param int $id Source data row ID.
+	 * @return object|null Row object or null if not found.
+	 */
+	public function get_by_id( $id ) {
+		return $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE id = %d",
+				absint( $id )
+			)
+		);
+	}
+
+	/**
+	 * Retrieve a paginated set of source data rows for one source.
+	 *
+	 * @param int    $source_id Source ID.
+	 * @param string $search    Optional search term. Defaults to cheaper fields unless search_body_text is enabled.
+	 * @param int    $per_page  Rows per page.
+	 * @param int    $page      Current page.
+	 * @param array  $filters   Optional structured filters.
+	 * @return array{items:array,total:int,pages:int,current_page:int,per_page:int} Paginated results.
+	 */
+	public function get_paginated_by_source_id( $source_id, $search = '', $per_page = 20, $page = 1, array $filters = array() ) {
+		$source_id = absint( $source_id );
+		$per_page  = max( 1, min( 100, absint( $per_page ) ) );
+		$page      = max( 1, absint( $page ) );
+		$offset    = ( $page - 1 ) * $per_page;
+		$search    = is_string( $search ) ? trim( $search ) : '';
+		$filters   = $this->normalize_pagination_filters( $filters );
+
+		if ( $source_id <= 0 ) {
+			return array(
+				'items'        => array(),
+				'total'        => 0,
+				'pages'        => 0,
+				'current_page' => $page,
+				'per_page'     => $per_page,
+			);
+		}
+
+		$where = 'WHERE source_id = %d';
+		$args  = array( $source_id );
+
+		if ( '' !== $filters['fetch_status'] ) {
+			$where .= ' AND fetch_status = %s';
+			$args[] = $filters['fetch_status'];
+		}
+
+		if ( $filters['http_status_class'] > 0 ) {
+			$where .= ' AND http_status >= %d AND http_status <= %d';
+			$args[] = $filters['http_status_class'];
+			$args[] = $filters['http_status_class'] + 99;
+		}
+
+		if ( $filters['fetched_after'] > 0 ) {
+			$where .= ' AND fetched_at >= %d';
+			$args[] = $filters['fetched_after'];
+		}
+
+		if ( $filters['fetched_before'] > 0 ) {
+			$where .= ' AND fetched_at <= %d';
+			$args[] = $filters['fetched_before'];
+		}
+
+		if ( $filters['min_char_count'] > 0 ) {
+			$where .= ' AND char_count >= %d';
+			$args[] = $filters['min_char_count'];
+		}
+
+		if ( $filters['max_char_count'] > 0 ) {
+			$where .= ' AND char_count <= %d';
+			$args[] = $filters['max_char_count'];
+		}
+
+		if ( '' !== $search ) {
+			$like          = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$search_fields = array( 'url', 'page_title', 'meta_description', 'fetch_status', 'error_message' );
+
+			if ( ! empty( $filters['search_body_text'] ) ) {
+				$search_fields[] = 'extracted_text';
+			}
+
+			$where .= ' AND (' . implode( ' LIKE %s OR ', $search_fields ) . ' LIKE %s)';
+			foreach ( $search_fields as $field ) {
+				$args[] = $like;
+			}
+		}
+
+		$total = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM {$this->table_name} {$where}",
+				...$args
+			)
+		);
+
+		$query_args   = $args;
+		$query_args[] = $per_page;
+		$query_args[] = $offset;
+
+		// Longtext columns (extracted_text, raw_html) are excluded from the list
+		// query and replaced with a bounded snippet plus computed byte lengths,
+		// since list rows only ever display a short preview + a size figure.
+		// Full content is available via get_by_id().
+		$items = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id, source_id, url, page_title, meta_description, fetch_status, http_status, error_message,
+				        char_count, num_used, content_hash, fetched_at, created_at, updated_at,
+				        LEFT(extracted_text, 500) AS extracted_text,
+				        LENGTH(extracted_text) AS extracted_text_bytes,
+				        LENGTH(raw_html) AS raw_html_bytes
+				 FROM {$this->table_name} {$where} ORDER BY fetched_at DESC, id DESC LIMIT %d OFFSET %d",
+				...$query_args
+			)
+		);
+
+		return array(
+			'items'        => $items,
+			'total'        => $total,
+			'pages'        => (int) ceil( $total / $per_page ),
+			'current_page' => $page,
+			'per_page'     => $per_page,
+		);
+	}
+
+	/**
+	 * Retrieve a paginated set of source data rows across all sources.
+	 *
+	 * Rows are enriched with source_label and source_url from the sources table.
+	 *
+	 * @param string $search   Optional search term.
+	 * @param int    $per_page Rows per page.
+	 * @param int    $page     Current page.
+	 * @param array  $filters  Optional structured filters (same keys as get_paginated_by_source_id, plus source_id).
+	 * @return array{items:array,total:int,pages:int,current_page:int,per_page:int} Paginated results.
+	 */
+	public function get_paginated( $search = '', $per_page = 20, $page = 1, array $filters = array() ) {
+		$per_page      = max( 1, min( 100, absint( $per_page ) ) );
+		$page          = max( 1, absint( $page ) );
+		$offset        = ( $page - 1 ) * $per_page;
+		$search        = is_string( $search ) ? trim( $search ) : '';
+		$sources_table = $this->wpdb->prefix . 'aips_sources';
+
+		$filter_source_id = isset( $filters['source_id'] ) ? absint( $filters['source_id'] ) : 0;
+		$norm             = $this->normalize_pagination_filters( $filters );
+
+		$where = 'WHERE 1=1';
+		$args  = array();
+
+		if ( $filter_source_id > 0 ) {
+			$where .= ' AND sd.source_id = %d';
+			$args[] = $filter_source_id;
+		}
+
+		if ( '' !== $norm['fetch_status'] ) {
+			$where .= ' AND sd.fetch_status = %s';
+			$args[] = $norm['fetch_status'];
+		}
+
+		if ( $norm['http_status_class'] > 0 ) {
+			$where .= ' AND sd.http_status >= %d AND sd.http_status <= %d';
+			$args[] = $norm['http_status_class'];
+			$args[] = $norm['http_status_class'] + 99;
+		}
+
+		if ( $norm['fetched_after'] > 0 ) {
+			$where .= ' AND sd.fetched_at >= %d';
+			$args[] = $norm['fetched_after'];
+		}
+
+		if ( $norm['fetched_before'] > 0 ) {
+			$where .= ' AND sd.fetched_at <= %d';
+			$args[] = $norm['fetched_before'];
+		}
+
+		if ( $norm['min_char_count'] > 0 ) {
+			$where .= ' AND sd.char_count >= %d';
+			$args[] = $norm['min_char_count'];
+		}
+
+		if ( $norm['max_char_count'] > 0 ) {
+			$where .= ' AND sd.char_count <= %d';
+			$args[] = $norm['max_char_count'];
+		}
+
+		if ( '' !== $search ) {
+			$like          = '%' . $this->wpdb->esc_like( $search ) . '%';
+			$search_fields = array( 'sd.url', 'sd.page_title', 'sd.meta_description', 'sd.fetch_status', 'sd.error_message', 's.label', 's.url' );
+
+			if ( ! empty( $norm['search_body_text'] ) ) {
+				$search_fields[] = 'sd.extracted_text';
+			}
+
+			$where .= ' AND (' . implode( ' LIKE %s OR ', $search_fields ) . ' LIKE %s)';
+			foreach ( $search_fields as $field ) {
+				$args[] = $like;
+			}
+		}
+
+		$count_sql = "SELECT COUNT(*) FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where}";
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$total = (int) ( empty( $args ) ? $this->wpdb->get_var( $count_sql ) : $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, ...$args ) ) );
+
+		$query_args   = $args;
+		$query_args[] = $per_page;
+		$query_args[] = $offset;
+
+		// See get_paginated_by_source_id() for why longtext columns are excluded
+		// from the list query in favor of a bounded snippet + byte lengths.
+		$items = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT sd.id, sd.source_id, sd.url, sd.page_title, sd.meta_description, sd.fetch_status, sd.http_status, sd.error_message,
+				        sd.char_count, sd.num_used, sd.content_hash, sd.fetched_at, sd.created_at, sd.updated_at,
+				        LEFT(sd.extracted_text, 500) AS extracted_text,
+				        LENGTH(sd.extracted_text) AS extracted_text_bytes,
+				        LENGTH(sd.raw_html) AS raw_html_bytes,
+				        s.label AS source_label, s.url AS source_url
+				 FROM {$this->table_name} sd LEFT JOIN {$sources_table} s ON sd.source_id = s.id {$where} ORDER BY sd.fetched_at DESC, sd.id DESC LIMIT %d OFFSET %d",
+				...$query_args
+			)
+		);
+
+		return array(
+			'items'        => $items,
+			'total'        => $total,
+			'pages'        => (int) ceil( $total / $per_page ),
+			'current_page' => $page,
+			'per_page'     => $per_page,
+		);
+	}
+
+	/**
+	 * Normalize structured filters for source data pagination.
+	 *
+	 * @param array $filters Raw filter values.
+	 * @return array Normalized filter values.
+	 */
+	private function normalize_pagination_filters( array $filters ): array {
+		$allowed_statuses     = array( 'pending', 'success', 'failed' );
+		$allowed_http_classes = array( 100, 200, 300, 400, 500 );
+
+		$fetch_status = isset( $filters['fetch_status'] ) ? sanitize_key( $filters['fetch_status'] ) : '';
+		if ( ! in_array( $fetch_status, $allowed_statuses, true ) ) {
+			$fetch_status = '';
+		}
+
+		$http_status_class = isset( $filters['http_status_class'] ) ? absint( $filters['http_status_class'] ) : 0;
+		if ( ! in_array( $http_status_class, $allowed_http_classes, true ) ) {
+			$http_status_class = 0;
+		}
+
+		$fetched_after  = isset( $filters['fetched_after'] ) ? $this->date_filter_to_timestamp( $filters['fetched_after'], false ) : 0;
+		$fetched_before = isset( $filters['fetched_before'] ) ? $this->date_filter_to_timestamp( $filters['fetched_before'], true ) : 0;
+
+		return array(
+			'fetch_status'      => $fetch_status,
+			'http_status_class' => $http_status_class,
+			'fetched_after'     => $fetched_after,
+			'fetched_before'    => $fetched_before,
+			'min_char_count'    => isset( $filters['min_char_count'] ) ? absint( $filters['min_char_count'] ) : 0,
+			'max_char_count'    => isset( $filters['max_char_count'] ) ? absint( $filters['max_char_count'] ) : 0,
+			'search_body_text'  => ! empty( $filters['search_body_text'] ),
+		);
+	}
+
+	/**
+	 * Convert a YYYY-MM-DD filter to a UTC timestamp.
+	 *
+	 * @param mixed $date   Date filter input.
+	 * @param bool  $end_of_day Whether to return the final second of the date.
+	 * @return int Timestamp or zero when invalid.
+	 */
+	private function date_filter_to_timestamp( $date, bool $end_of_day = false ): int {
+		$date = is_string( $date ) ? trim( $date ) : '';
+		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $matches ) ) {
+			return 0;
+		}
+
+		if ( ! checkdate( (int) $matches[2], (int) $matches[3], (int) $matches[1] ) ) {
+			return 0;
+		}
+
+		try {
+			$date_time = AIPS_DateTime::fromDate( $date );
+			if ( $end_of_day ) {
+				$date_time = $date_time->advance( '+1 day -1 second' );
+			}
+			return $date_time->timestamp();
+		} catch ( Exception $e ) {
+			return 0;
+		}
+	}
+
+	/**
+	 * Update one source data row.
+	 *
+	 * @param int   $id   Source data row ID.
+	 * @param array $data Public source data fields to update.
+	 * @return bool True when the update succeeded, false otherwise.
+	 */
+	public function update( $id, array $data ) {
+		$id = absint( $id );
+		if ( $id <= 0 ) {
+			return false;
+		}
+
+		$allowed = array(
+			'url'              => '%s',
+			'page_title'       => '%s',
+			'meta_description' => '%s',
+			'extracted_text'   => '%s',
+			'raw_html'         => '%s',
+			'char_count'       => '%d',
+			'fetch_status'     => '%s',
+			'http_status'      => '%d',
+			'error_message'    => '%s',
+			'fetched_at'       => '%d',
+		);
+
+		$row    = array();
+		$format = array();
+		foreach ( $allowed as $key => $fmt ) {
+			if ( array_key_exists( $key, $data ) ) {
+				$row[ $key ] = $data[ $key ];
+				$format[]    = $fmt;
+			}
+		}
+
+		if ( empty( $row ) ) {
+			return false;
+		}
+
+		if ( array_key_exists( 'extracted_text', $row ) ) {
+			$text       = (string) $row['extracted_text'];
+			$char_count = function_exists( 'mb_strlen' ) ? mb_strlen( $text ) : strlen( $text );
+			if ( array_key_exists( 'char_count', $row ) ) {
+				$row['char_count'] = $char_count;
+			} else {
+				$row['char_count'] = $char_count;
+				$format[]          = '%d';
+			}
+			$row['content_hash'] = '' !== $text ? hash( 'sha256', $text ) : null;
+			$format[]            = '%s';
+		}
+
+		$row['updated_at'] = AIPS_DateTime::now()->timestamp();
+		$format[]          = '%d';
+
+		$result = $this->wpdb->update(
+			$this->table_name,
+			$row,
+			array( 'id' => $id ),
+			$format,
+			array( '%d' )
+		);
+
+		return false !== $result;
+	}
+
+	/**
+	 * Delete one source data row.
+	 *
+	 * @param int $id Source data row ID.
+	 * @return bool True when deleted, false otherwise.
+	 */
+	public function delete( $id ) {
+		$result = $this->wpdb->delete(
+			$this->table_name,
+			array( 'id' => absint( $id ) ),
+			array( '%d' )
+		);
+
+		return false !== $result && $result > 0;
+	}
+
+	/**
+	 * Retrieve recent generation history rows that used one source-data snapshot.
+	 *
+	 * @param int $id    Source data row ID.
+	 * @param int $limit Maximum rows to return.
+	 * @return array<int,array<string,mixed>> Usage rows for the admin modal.
+	 */
+	public function get_generation_usage( $id, $limit = 10 ) {
+		$id    = absint( $id );
+		$limit = max( 1, min( 50, absint( $limit ) ) );
+
+		if ( $id <= 0 ) {
+			return array();
+		}
+
+		$history_table     = $this->wpdb->prefix . 'aips_history';
+		$history_log_table = $this->wpdb->prefix . 'aips_history_log';
+		$candidate_limit   = $limit * 5;
+
+		$candidates = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT hl.details, hl.timestamp, h.id AS history_id, h.post_id, h.generated_title, h.created_at, h.completed_at, p.post_title
+				 FROM {$history_log_table} hl
+				 INNER JOIN {$history_table} h ON hl.history_id = h.id
+				 LEFT JOIN {$this->wpdb->posts} p ON h.post_id = p.ID
+				 WHERE hl.details LIKE %s
+				   AND hl.details LIKE %s
+				 ORDER BY hl.timestamp DESC, hl.id DESC
+				 LIMIT %d",
+				'%"source_data_ids"%',
+				'%' . $this->wpdb->esc_like( (string) $id ) . '%',
+				$candidate_limit
+			)
+		);
+
+		if ( empty( $candidates ) ) {
+			return array();
+		}
+
+		$usage = array();
+
+		foreach ( $candidates as $row ) {
+			$details = json_decode( (string) $row->details, true );
+			if ( ! is_array( $details ) ) {
+				continue;
+			}
+
+			if ( ! isset( $details['context'] ) || ! is_array( $details['context'] ) ) {
+				continue;
+			}
+
+			if ( empty( $details['context']['source_data_ids'] ) || ! is_array( $details['context']['source_data_ids'] ) ) {
+				continue;
+			}
+
+			$source_data_ids = array_map( 'absint', $details['context']['source_data_ids'] );
+			if ( ! in_array( $id, $source_data_ids, true ) ) {
+				continue;
+			}
+
+			$post_id = isset( $row->post_id ) ? absint( $row->post_id ) : 0;
+			$title   = '';
+
+			if ( isset( $row->post_title ) && '' !== (string) $row->post_title ) {
+				$title = (string) $row->post_title;
+			} elseif ( isset( $row->generated_title ) && '' !== (string) $row->generated_title ) {
+				$title = (string) $row->generated_title;
+			} else {
+				$title = sprintf(
+					/* translators: %d = history row ID */
+					__( 'History #%d', 'ai-post-scheduler' ),
+					(int) $row->history_id
+				);
+			}
+
+			$usage[] = array(
+				'history_id'    => (int) $row->history_id,
+				'post_id'       => $post_id,
+				'title'         => $title,
+				'history_url'   => AIPS_Admin_Menu_Helper::get_page_url( 'history', array( 'history_id' => (int) $row->history_id ) ),
+				'post_edit_url' => $post_id ? get_edit_post_link( $post_id, 'raw' ) : '',
+				'used_at'       => isset( $row->timestamp ) ? (int) $row->timestamp : 0,
+			);
+
+			if ( count( $usage ) >= $limit ) {
+				break;
+			}
+		}
+
+		return $usage;
 	}
 
 	/**

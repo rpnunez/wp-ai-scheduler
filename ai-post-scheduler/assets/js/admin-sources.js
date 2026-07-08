@@ -65,6 +65,14 @@
 			$(document).on('input', '#aips-source-search', this.filterSources.bind(this));
 			$(document).on('click', '#aips-source-search-clear, #aips-source-search-clear-2', this.clearSearch.bind(this));
 
+			// Source data modal.
+			$(document).on('click', '.aips-view-source-data', this.openSourceDataModal.bind(this));
+			$(document).on('click', '.aips-delete-source-data', this.deleteSourceData.bind(this));
+			$(document).on('click', '#aips-save-source-data-btn', this.saveSourceData.bind(this));
+			$(document).on('click', '#aips-source-data-modal-close-header', this.closeSourceDataModal.bind(this));
+			$(document).on('click', '#aips-source-data-modal-close-footer', this.closeSourceDataModal.bind(this));
+			$(document).on('click', '#aips-source-data-modal', this.onSourceDataOverlayClick.bind(this));
+
 			// Source Groups modal.
 			$(document).on('click', '#aips-manage-source-groups-btn', this.openGroupsModal.bind(this));
 			// $(document).on('click', '#aips-groups-modal .aips-modal-close', this.closeGroupsModal.bind(this)); // Handled globally by admin.js
@@ -296,6 +304,199 @@
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.toggleFailed, 'error');
 			});
+		},
+
+		// -----------------------------------------------------------------
+		// Source Data modal / CRUD
+		// -----------------------------------------------------------------
+
+		/**
+		 * Open the Source Data modal and load a row for editing.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		openSourceDataModal: function (e) {
+			e.preventDefault();
+			var id = parseInt($(e.currentTarget).data('id'), 10);
+			if (!id) {
+				return;
+			}
+
+			var self = this;
+			$.post(aipsAjax.ajaxUrl, {
+				action:  'aips_get_source_data',
+				nonce:   aipsSourcesL10n.sourceDataNonces.get,
+				data_id: id,
+			}, function (response) {
+				if (!response.success) {
+					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.viewDataFailed, 'error');
+					return;
+				}
+
+				var row = response.data.source_data || {};
+				var $modal = $('#aips-source-data-modal');
+				if (!$modal.length) {
+					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+					return;
+				}
+
+				var formFields = ['aips-source-data-id', 'aips-source-data-display-id', 'aips-source-data-source-id', 'aips-source-data-url', 'aips-source-data-page-title', 'aips-source-data-meta-description', 'aips-source-data-extracted-text', 'aips-source-data-raw-html', 'aips-source-data-fetch-status', 'aips-source-data-http-status', 'aips-source-data-error-message', 'aips-source-data-fetched-at', 'aips-source-data-char-count', 'aips-source-data-content-hash', 'aips-source-data-num-used', 'aips-source-data-created-at', 'aips-source-data-updated-at'];
+				var missingFields = formFields.filter(function(field) { return !$('#' + field).length; });
+				if (missingFields.length > 0) {
+					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+					return;
+				}
+
+				$('#aips-source-data-id').val(row.id || 0);
+				$('#aips-source-data-display-id').val(row.id || 0);
+				$('#aips-source-data-source-id').val(row.source_id || 0);
+				$('#aips-source-data-url').val(row.url || '');
+				$('#aips-source-data-page-title').val(row.page_title || '');
+				$('#aips-source-data-meta-description').val(row.meta_description || '');
+				$('#aips-source-data-extracted-text').val(row.extracted_text || '');
+				$('#aips-source-data-raw-html').val(row.raw_html || '');
+				$('#aips-source-data-fetch-status').val(row.fetch_status || 'success');
+				$('#aips-source-data-http-status').val(row.http_status || 0);
+				$('#aips-source-data-error-message').val(row.error_message || '');
+				$('#aips-source-data-fetched-at').val(row.fetched_at || 0);
+				$('#aips-source-data-char-count').val(row.char_count || 0);
+				$('#aips-source-data-content-hash').val(row.content_hash || '');
+				$('#aips-source-data-num-used').val(row.num_used || 0);
+				$('#aips-source-data-created-at').val(row.created_at || 0);
+				$('#aips-source-data-updated-at').val(row.updated_at || 0);
+				self.renderSourceDataUsage(response.data.usage || []);
+				$modal.show();
+			}).fail(function () {
+				AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+			});
+		},
+
+		/**
+		 * Render links to posts/history records that used a source-data row.
+		 *
+		 * @param {Array} usage Usage rows from the server.
+		 * @return {void}
+		 */
+		renderSourceDataUsage: function (usage) {
+			var $wrap = $('#aips-source-data-usage-wrap');
+			var $links = $('#aips-source-data-usage-links');
+
+			if (!usage || !usage.length) {
+				$links.empty();
+				$wrap.hide();
+				return;
+			}
+
+			$links.html(AIPS.Templates.render('aips-source-data-usage-list', { items: usage }));
+			$wrap.show();
+		},
+
+		/**
+		 * Save changes to the currently loaded source-data row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		saveSourceData: function (e) {
+			e.preventDefault();
+			var data = {
+				action:           'aips_save_source_data',
+				nonce:            aipsSourcesL10n.sourceDataNonces.save,
+				data_id:          $('#aips-source-data-id').val(),
+				url:              $('#aips-source-data-url').val(),
+				page_title:       $('#aips-source-data-page-title').val(),
+				meta_description: $('#aips-source-data-meta-description').val(),
+				extracted_text:   $('#aips-source-data-extracted-text').val(),
+				raw_html:         $('#aips-source-data-raw-html').val(),
+				fetch_status:     $('#aips-source-data-fetch-status').val(),
+				http_status:      $('#aips-source-data-http-status').val(),
+				error_message:    $('#aips-source-data-error-message').val(),
+				fetched_at:       $('#aips-source-data-fetched-at').val(),
+			};
+
+			$('#aips-save-source-data-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
+			var self = this;
+			$.post(aipsAjax.ajaxUrl, data, function (response) {
+				$('#aips-save-source-data-btn').prop('disabled', false).text(aipsSourcesL10n.saveData);
+				if (!response.success) {
+					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveDataFailed, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.closeSourceDataModal($.Event('click'));
+				window.location.reload();
+			}).fail(function () {
+				$('#aips-save-source-data-btn').prop('disabled', false).text(aipsSourcesL10n.saveData);
+				AIPS.Utilities.showToast(aipsSourcesL10n.saveDataFailed, 'error');
+			});
+		},
+
+		/**
+		 * Confirm then delete one source-data row.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		deleteSourceData: function (e) {
+			e.preventDefault();
+			var id = parseInt($(e.currentTarget).data('id'), 10);
+			var self = this;
+			AIPS.Utilities.confirm(aipsSourcesL10n.deleteDataConfirm, '', {
+				confirm: { text: aipsSourcesL10n.delete || 'Delete', className: 'button-primary' },
+				cancel: { text: aipsSourcesL10n.cancel || 'Cancel', className: 'button' }
+			}, function(confirmed) {
+				if (!confirmed) {
+					return;
+				}
+				self.performDeleteSourceData(id);
+			});
+		},
+
+		/**
+		 * Send the delete request for source data after confirmation.
+		 *
+		 * @param {number} id Source data row ID.
+		 * @return {void}
+		 */
+		performDeleteSourceData: function (id) {
+			$.post(aipsAjax.ajaxUrl, {
+				action:  'aips_delete_source_data',
+				nonce:   aipsSourcesL10n.sourceDataNonces.delete,
+				data_id: id,
+			}, function (response) {
+				if (!response.success) {
+					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.deleteDataFailed, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				window.location.reload();
+			}).fail(function () {
+				AIPS.Utilities.showToast(aipsSourcesL10n.deleteDataFailed, 'error');
+			});
+		},
+
+		/**
+		 * Close the Source Data modal.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		closeSourceDataModal: function (e) {
+			e.preventDefault();
+			$('#aips-source-data-modal').hide();
+		},
+
+		/**
+		 * Close the Source Data modal when the backdrop is clicked.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onSourceDataOverlayClick: function (e) {
+			if ($(e.target).is('#aips-source-data-modal')) {
+				$('#aips-source-data-modal').hide();
+			}
 		},
 
 		// -----------------------------------------------------------------

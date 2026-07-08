@@ -50,6 +50,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
 	private const PAGE_SOURCES = 'aips-sources';
+	private const PAGE_SOURCE_DATA = 'aips-source-data';
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
@@ -156,7 +157,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_taxonomy_assets();
 		}
 
-        if (self::PAGE_SOURCES === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->is_automations_tab($page, 'sources')) {
+        if (self::PAGE_SOURCES === $page || self::PAGE_SOURCE_DATA === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->hook_contains($hook, self::PAGE_SOURCE_DATA) || $this->is_automations_tab($page, 'sources')) {
 			$this->enqueue_sources_assets();
 		}
 
@@ -1469,6 +1470,16 @@ class AIPS_Admin_Assets {
                 'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
+                'deleteDataConfirm'  => __('Are you sure you want to delete this source data record?', 'ai-post-scheduler'),
+                'viewDataFailed'     => __('Failed to load source data.', 'ai-post-scheduler'),
+                'saveDataFailed'     => __('Failed to save source data.', 'ai-post-scheduler'),
+                'deleteDataFailed'   => __('Failed to delete source data.', 'ai-post-scheduler'),
+                'saveData'           => __('Save Source Data', 'ai-post-scheduler'),
+                'sourceDataNonces'   => array(
+                    'get'    => wp_create_nonce('aips_source_data_get'),
+                    'save'   => wp_create_nonce('aips_source_data_save'),
+                    'delete' => wp_create_nonce('aips_source_data_delete'),
+                ),
             ));
     }
 
