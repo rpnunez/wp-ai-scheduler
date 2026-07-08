@@ -12,6 +12,7 @@
 	
 	// Ensure AIPS object exists
 	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
 	
 	// AI Edit state
 	var aiEditState = {
@@ -276,6 +277,15 @@
 
 			if (regeneratedCount > 0) {
 				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllSuccess, 'success');
+				AIPS.Events.emitAction('aips.aiEdit.regenerateAllCompleted', {
+					historyId: aiEditState.historyId,
+					postId: aiEditState.postId,
+					regenerated: regenerated,
+					skipped: skipped,
+					errors: errors,
+					message: response.data.message || aipsAIEditL10n.regenerateAllSuccess,
+					source: 'ai-edit.regenerate-all'
+				});
 				return;
 			}
 
@@ -313,6 +323,14 @@
 
 				// Ensure revision list reflects the new regeneration snapshot if panel is open.
 				window.AIPS.refreshComponentRevisions(component);
+				AIPS.Events.emitAction('aips.aiEdit.componentRegenerated', {
+					historyId: aiEditState.historyId,
+					postId: aiEditState.postId,
+					component: component,
+					value: response.data.new_value,
+					message: aipsAIEditL10n.regenerateSuccess,
+					source: 'ai-edit.component-regenerate'
+				});
 			} else {
 				window.AIPS.showComponentStatus(component, 'error', response.data.message || aipsAIEditL10n.regenerateError);
 			}
@@ -557,6 +575,12 @@
 			
 			if (response.success) {
 				window.AIPS.showAIEditNotice(response.data.message, 'success');
+				AIPS.Events.emitAction('aips.aiEdit.saved', {
+					historyId: aiEditState.historyId,
+					postId: aiEditState.postId,
+					message: response.data.message,
+					source: 'ai-edit.save'
+				});
 				
 				// Close modal without unsaved-changes prompt
 				window.AIPS.closeAIEditModal(null, { skipConfirm: true });

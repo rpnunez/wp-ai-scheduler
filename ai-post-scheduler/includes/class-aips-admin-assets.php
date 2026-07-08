@@ -312,10 +312,12 @@ class AIPS_Admin_Assets {
 			true
 		);
 
+		$this->enqueue_events_script();
+
 		wp_enqueue_script(
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script'),
+			array('jquery', 'aips-datetime-script', 'aips-events-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -336,23 +338,32 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-templates-script',
             AIPS_PLUGIN_URL . 'assets/js/templates.js',
-            array('jquery'),
+            array('jquery', 'aips-events-script'),
             AIPS_VERSION,
             true
         );
 
-        wp_enqueue_script(
-            'aips-admin-script',
-            AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery', 'aips-utilities-script'),
-            AIPS_VERSION,
-            true
-        );
+		wp_enqueue_script(
+			'aips-admin-script',
+			AIPS_PLUGIN_URL . 'assets/js/admin.js',
+			array('jquery', 'aips-utilities-script'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-event-consumers-script',
+			AIPS_PLUGIN_URL . 'assets/js/event-consumers.js',
+			array('jquery', 'aips-events-script', 'aips-admin-script'),
+			AIPS_VERSION,
+			true
+		);
 
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+			'historyPageUrl' => AIPS_Admin_Menu_Helper::get_page_url('history'),
         ));
 
         $this->enqueue_history_modal_opener_script();
@@ -403,10 +414,12 @@ class AIPS_Admin_Assets {
             true
         );
 
+		$this->enqueue_events_script();
+
         wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery', 'aips-datetime-script'),
+            array('jquery', 'aips-datetime-script', 'aips-events-script'),
             AIPS_VERSION,
             true
         );
@@ -1765,5 +1778,20 @@ class AIPS_Admin_Assets {
             ),
         ));
     }
+
+	/**
+	 * Enqueue the shared JavaScript events wrapper.
+	 *
+	 * @return void
+	 */
+	private function enqueue_events_script() {
+		wp_enqueue_script(
+			'aips-events-script',
+			AIPS_PLUGIN_URL . 'assets/js/events.js',
+			array('wp-hooks'),
+			AIPS_VERSION,
+			true
+		);
+	}
 
 }

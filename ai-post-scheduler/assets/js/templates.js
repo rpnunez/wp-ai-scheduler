@@ -107,12 +107,22 @@
 			}
 
 			data = data || {};
-
-			return template.replace(/\{\{(\w+)\}\}/g, function (match, key) {
+			var rendered = template.replace(/\{\{(\w+)\}\}/g, function (match, key) {
 				return Object.prototype.hasOwnProperty.call(data, key)
 					? String(data[key])
 					: '';
 			});
+
+			if (AIPS.Events && AIPS.Events.hasAction('aips.template.rendered')) {
+				AIPS.Events.doAction('aips.template.rendered', {
+					templateId: id,
+					data: data,
+					html: rendered,
+					mode: 'raw'
+				});
+			}
+
+			return rendered;
 		},
 
 		/**

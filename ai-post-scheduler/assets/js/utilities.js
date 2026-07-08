@@ -75,6 +75,14 @@
 
             $container.append($toast);
 
+            if (window.AIPS.Events && window.AIPS.Events.hasAction('aips.ui.toast.shown')) {
+                window.AIPS.Events.doAction('aips.ui.toast.shown', {
+                    message: message,
+                    type: type,
+                    options: opts
+                });
+            }
+
             $toast.find('.aips-toast-close').on('click', function() {
                 $toast.addClass('closing');
                 setTimeout(function() { $toast.remove(); }, 300);
@@ -587,6 +595,15 @@
 			var $message = $(document.createElement('p')).text(this.sanitizePlainText(message));
 
 			$('#aips-campaign-wizard-notice').empty().append($notice.append($message));
+
+			if (window.AIPS.Events && window.AIPS.Events.hasAction('aips.ui.notice.shown')) {
+				window.AIPS.Events.doAction('aips.ui.notice.shown', {
+					message: message,
+					type: type,
+					region: '#aips-campaign-wizard-notice'
+				});
+			}
+
 			this.showToast(message, type);
 		},
 

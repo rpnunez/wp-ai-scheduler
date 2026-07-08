@@ -105,6 +105,10 @@
 						}
 					});
 					AIPS.adminBarUpdateBadge(response.data.unread_count);
+					AIPS.Events.emitAction('aips.notification.unreadCountChanged', {
+						unreadCount: response.data.unread_count,
+						source: 'admin-bar.mark-read'
+					});
 				} else {
 					$btn.prop('disabled', false);
 					alert(l10n.markReadError || 'Error marking notification as read.');
@@ -146,6 +150,10 @@
 					);
 
 					AIPS.adminBarUpdateBadge(response.data.unread_count || 0);
+					AIPS.Events.emitAction('aips.notification.unreadCountChanged', {
+						unreadCount: response.data.unread_count || 0,
+						source: 'admin-bar.mark-all-read'
+					});
 				} else {
 					$btn.prop('disabled', false);
 					alert(l10n.markAllReadError || 'Error marking all notifications as read.');

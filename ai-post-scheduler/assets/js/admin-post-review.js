@@ -320,7 +320,16 @@
 						success: function (response) {
 							if (response.success) {
 								var msg = response.data.message || aipsPostReviewL10n.regenerateSuccess;
-								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
+								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success', {
+									historyId: historyId,
+									eventSource: 'post-review.single-regenerate'
+								});
+								AIPS.Events.emitAction('aips.postReview.regenerationQueued', {
+									historyId: historyId,
+									postId: $btn.data('post-id') || null,
+									message: msg,
+									source: 'post-review.single-regenerate'
+								});
 								$row.fadeOut(400, function () {
 									$(this).remove();
 									AIPS.PostReview.updateDraftCount();
@@ -552,7 +561,11 @@
 							if (response && response.success) {
 								var successCount = (response.data && typeof response.data.success_count !== 'undefined') ? response.data.success_count : count;
 								var msg          = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', successCount);
-								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
+								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success', {
+									historyPageUrl: (window.aipsAjax && window.aipsAjax.historyPageUrl) ? window.aipsAjax.historyPageUrl : '',
+									historyPageLabel: 'Open History',
+									eventSource: 'post-review.bulk-regenerate'
+								});
 
 								var successIds = [];
 								if (response.data) {
@@ -587,6 +600,15 @@
 									failMsg = failMsg.replace('%d', response.data.failed_count);
 									AIPS.Utilities.showToast(failMsg, 'warning');
 								}
+
+								AIPS.Events.emitAction('aips.postReview.bulkRegenerationQueued', {
+									items: items.slice(0),
+									successIds: successIds.slice(0),
+									successCount: successCount,
+									failedCount: (response.data && response.data.failed_count) ? response.data.failed_count : 0,
+									message: msg,
+									source: 'post-review.bulk-regenerate'
+								});
 							} else {
 								AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.regenerateError, 'error');
 							}

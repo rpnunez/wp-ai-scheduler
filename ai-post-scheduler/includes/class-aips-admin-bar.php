@@ -57,9 +57,17 @@ class AIPS_Admin_Bar {
 		);
 
 		wp_enqueue_script(
+			'aips-events-script',
+			AIPS_PLUGIN_URL . 'assets/js/events.js',
+			array('wp-hooks'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-admin-bar',
 			AIPS_PLUGIN_URL . 'assets/js/admin-bar.js',
-			array('jquery'),
+			array('jquery', 'aips-events-script'),
 			AIPS_VERSION,
 			true
 		);

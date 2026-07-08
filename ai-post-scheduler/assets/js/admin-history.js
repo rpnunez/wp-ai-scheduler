@@ -16,6 +16,7 @@
 	'use strict';
 
 	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
 
 	/**
 	 * Shared utilities for managing history modals.
@@ -310,6 +311,13 @@
 		 */
 		initStandaloneOpener: function () {
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+			if (AIPS.Events) {
+				AIPS.Events.addAction(
+					'aips.history.modal.openRequested',
+					'aips/history-modal-shared',
+					this.onModalOpenRequested.bind(this)
+				);
+			}
 		},
 
 		/**
@@ -332,6 +340,20 @@
 			this.openStandaloneHistoryModal($(e.currentTarget));
 		},
 
+		/**
+		 * Handle History modal open requests coming from the shared event bus.
+		 *
+		 * @param {Object} payload Request payload.
+		 * @return {void}
+		 */
+		onModalOpenRequested: function (payload) {
+			if (!payload || !payload.historyId) {
+				return;
+			}
+
+			this.openStandaloneHistoryModalById(payload.historyId, payload.source || 'event');
+		},
+
 		getStandaloneAjaxConfig: function () {
 			if (window.aipsAjax && window.aipsAjax.ajaxUrl && window.aipsAjax.nonce) {
 				return window.aipsAjax;
@@ -346,6 +368,19 @@
 
 		openStandaloneHistoryModal: function ($button) {
 			var historyId = parseInt($button.data('history-id') || 0, 10);
+			var source = $button.data('source') || 'standalone-button';
+			this.openStandaloneHistoryModalById(historyId, source);
+		},
+
+		/**
+		 * Open the standalone History modal for a specific history container.
+		 *
+		 * @param {number|string} historyId History container ID.
+		 * @param {string} source Event source label.
+		 * @return {void}
+		 */
+		openStandaloneHistoryModalById: function (historyId, source) {
+			historyId = parseInt(historyId || 0, 10);
 			var ajaxConfig = this.getStandaloneAjaxConfig();
 			var $modal = $('#aips-history-modal');
 			var l10n = this.getModalL10n();
@@ -393,6 +428,11 @@
 					});
 					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
 					self.bindStandaloneModalEvents($modal);
+					AIPS.Events.emitAction('aips.history.modal.opened', {
+						historyId: historyId,
+						modalId: $modal.attr('id') || 'aips-history-modal',
+						source: source || 'standalone-button'
+					});
 					$modal.fadeIn(200);
 				},
 				error: function () {
@@ -555,6 +595,7 @@
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
+			this.bindEventHooks();
 			this.initHeartbeatAutoRefresh();
 			this.maybeOpenFromQuery();
 		},
@@ -644,6 +685,39 @@
 
 			// Page exit cleanup (namespaced)
 			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.onPageExit.bind(this));
+		},
+
+		/**
+		 * Register shared event-bus listeners for the History page.
+		 *
+		 * @return {void}
+		 */
+		bindEventHooks: function () {
+			if (!AIPS.Events) {
+				return;
+			}
+
+			AIPS.Events.addAction(
+				'aips.history.reloadRequested',
+				'aips/history-page',
+				this.onReloadRequested.bind(this)
+			);
+		},
+
+		/**
+		 * Handle event-bus requests to refresh the History page.
+		 *
+		 * @param {Object} payload Request payload.
+		 * @return {void}
+		 */
+		onReloadRequested: function (payload) {
+			if (!this.isHistoryPage()) {
+				return;
+			}
+
+			this.reload(null, {
+				fromHeartbeat: !!(payload && payload.fromHeartbeat)
+			});
 		},
 
 
@@ -751,6 +825,7 @@
 			e.stopPropagation();
 
 			var historyId = $(e.currentTarget).data('id');
+			var source = $(e.currentTarget).data('source') || 'history-page';
 			if (!historyId) {
 				return;
 			}
@@ -798,6 +873,11 @@
 						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
 					});
 					$content.html(modalHtml);
+					AIPS.Events.emitAction('aips.history.modal.opened', {
+						historyId: historyId,
+						modalId: $modal.attr('id') || 'aips-history-logs-modal',
+						source: source
+					});
 				},
 				error: function () {
 					$content.html(T.render('aips-tmpl-history-error-msg', {
@@ -1163,6 +1243,10 @@
 						success: function (response) {
 							if (response.success) {
 								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+								AIPS.Events.emitAction('aips.history.deleted', {
+									ids: ids.slice(0),
+									source: 'history.bulk-delete'
+								});
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
@@ -1214,6 +1298,10 @@
 						success: function (response) {
 							if (response.success) {
 								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
+								AIPS.Events.emitAction('aips.history.deleted', {
+									ids: [id],
+									source: 'history.single-delete'
+								});
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
@@ -1267,6 +1355,10 @@
 				success: function (response) {
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message, 'success');
+						AIPS.Events.emitAction('aips.history.retryQueued', {
+							historyId: id,
+							source: 'history.retry'
+						});
 						self.reload();
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
@@ -1456,6 +1548,21 @@
 					// Reset checkboxes and delete button.
 					$('#aips-cb-select-all').prop('checked', false);
 					self.updateDeleteButton();
+
+					AIPS.Events.emitAction('aips.history.reloaded', {
+						page: paged,
+						filters: {
+							status: self.statusFilter,
+							search: self.searchQuery,
+							domain: self.domainFilter,
+							actor: self.actorFilter,
+							correlationId: self.correlationId,
+							dateFrom: self.dateFrom,
+							dateTo: self.dateTo
+						},
+						stats: stats || null,
+						fromHeartbeat: !!options.fromHeartbeat
+					});
 				},
 				error: function () {
 					if (!options.fromHeartbeat) {
