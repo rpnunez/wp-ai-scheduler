@@ -178,11 +178,16 @@ class AIPS_Repository_Cache_Config {
 	/**
 	 * Build a stable named-cache identifier for a tier/group pair.
 	 *
+	 * Public so AIPS_Cache_Index can reconstruct the exact driver prefix used
+	 * for a repository cache row (identified by its tier + cache_group) when
+	 * reconciling potentially-hashed keys in prune_orphans() — this keeps the
+	 * format string defined in exactly one place.
+	 *
 	 * @param string $group Repository cache group.
 	 * @param string $tier Cache tier.
 	 * @return string
 	 */
-	private static function build_cache_name( string $group, string $tier ): string {
+	public static function build_cache_name( string $group, string $tier ): string {
 		$group = sanitize_key( $group );
 
 		return 'aips_repository_cache_' . sanitize_key( $tier ) . '_' . ( $group ? $group : 'default' );

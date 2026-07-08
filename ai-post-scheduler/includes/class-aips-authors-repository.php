@@ -117,7 +117,38 @@ class AIPS_Authors_Repository {
 			}
 		);
 	}
-	
+
+	/**
+	 * Fetch multiple rows by ID in one query.
+	 *
+	 * Uncached raw read: results feed per-request memo caches in callers
+	 * (e.g. AIPS_Generated_Posts_Controller), so a persistent-cache round
+	 * trip per ID would cost more than the query it saves.
+	 *
+	 * @param array $ids Row IDs.
+	 * @return array<int, object> Rows keyed by id; missing ids omitted.
+	 */
+	public function get_by_ids( array $ids ) {
+		$ids = array_values( array_filter( array_unique( array_map( 'absint', $ids ) ) ) );
+		if ( empty( $ids ) ) {
+			return array();
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $this->wpdb->get_results( $this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name} WHERE id IN ({$placeholders})",
+			$ids
+		) );
+
+		$map = array();
+		foreach ( (array) $rows as $row ) {
+			$map[ (int) $row->id ] = $row;
+		}
+
+		return $map;
+	}
+
 	/**
 	 * Create a new author.
 	 *

@@ -22,6 +22,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Cache {
 
 	/**
+	 * Prefix used to build the underlying storage key for a tag version
+	 * counter. Single source of truth — see build_tag_version_key().
+	 */
+	const TAG_VERSION_KEY_PREFIX = 'tag_version:';
+
+	/**
 	 * Underlying cache driver.
 	 *
 	 * @var AIPS_Cache_Driver
@@ -67,6 +73,17 @@ class AIPS_Cache {
 	private static $system_enabled = null;
 
 	/**
+	 * Per-request memo of resolved tag versions, keyed "{group}\0{tag}".
+	 *
+	 * Instance-scoped: named cache instances are per-request singletons, so
+	 * this collapses the repeated tag-version SELECTs the repository trait
+	 * issues on every cache_read() without risking cross-driver staleness.
+	 *
+	 * @var array<string, int>
+	 */
+	private $tag_version_memo = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Cache_Driver|null $driver Optional driver. When null, the
@@ -108,6 +125,11 @@ class AIPS_Cache {
 	 * @return AIPS_Cache_Index|null
 	 */
 	private function get_cache_index(): ?AIPS_Cache_Index {
+		// Request-scoped entries vanish at request end; indexing them costs
+		// DB writes for data the Cache Monitor could never usefully display.
+		if ($this->driver instanceof AIPS_Cache_Array_Driver) {
+			return null;
+		}
 		if ($this->cache_index !== null) {
 			return $this->cache_index;
 		}
@@ -116,6 +138,9 @@ class AIPS_Cache {
 		}
 		$this->cache_index_checked = true;
 
+		if (!AIPS_Cache_Index::is_monitor_enabled()) {
+			return null;
+		}
 		$enabled = get_option('aips_cache_monitor_index_enabled', '1');
 		if ($enabled === '0' || $enabled === 0 || $enabled === false) {
 			return null;
@@ -245,6 +270,9 @@ class AIPS_Cache {
 		}
 		$result = $this->driver->delete( $key, $group );
 		if ($result) {
+			if (0 === strpos( (string) $key, self::TAG_VERSION_KEY_PREFIX )) {
+				unset( $this->tag_version_memo[ $group . "\0" . substr( (string) $key, strlen( self::TAG_VERSION_KEY_PREFIX ) ) ] );
+			}
 			$index = $this->get_cache_index();
 			if ($index) {
 				$index->record_delete( (string) $key, (string) $group );
@@ -305,6 +333,7 @@ class AIPS_Cache {
 		}
 		$result = $this->driver->flush();
 		if ($result) {
+			$this->tag_version_memo = array();
 			$index = $this->get_cache_index();
 			if ($index) {
 				$index->record_flush();
@@ -340,7 +369,10 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return $callback();
 		}
-		if ($this->has( $key, $group )) {
+
+		$sentinel = new stdClass();
+		$value    = $this->get( $key, $group, $sentinel );
+		if ($value !== $sentinel) {
 			$this->record_cache_event(
 				'remember',
 				array(
@@ -350,7 +382,7 @@ class AIPS_Cache {
 					'hit'   => true,
 				)
 			);
-			return $this->get( $key, $group );
+			return $value;
 		}
 
 		$value = $callback();
@@ -448,10 +480,18 @@ class AIPS_Cache {
 			return 1;
 		}
 
-		$key     = $this->build_tag_version_key( $tag );
-		$version = $this->get( $key, $group, 1 );
+		$tag_key  = $this->sanitize_tag( $tag );
+		$memo_key = $group . "\0" . $tag_key;
+		if (isset( $this->tag_version_memo[ $memo_key ] )) {
+			return $this->tag_version_memo[ $memo_key ];
+		}
 
-		return max( 1, (int) $version );
+		$key     = $this->build_tag_version_key( $tag_key );
+		$version = max( 1, (int) $this->get( $key, $group, 1 ) );
+
+		$this->tag_version_memo[ $memo_key ] = $version;
+
+		return $version;
 	}
 
 	/**
@@ -476,6 +516,7 @@ class AIPS_Cache {
 		$current = $this->get( $key, $group, null );
 		$version = null === $current ? 2 : max( 2, (int) $current + 1 );
 		$this->set( $key, $version, 0, $group );
+		$this->tag_version_memo[ $group . "\0" . $tag_key ] = max( 1, (int) $version );
 		$this->record_tag_bump_event( array( $tag_key ), $group );
 
 		return max( 1, (int) $version );
@@ -527,6 +568,7 @@ class AIPS_Cache {
 			$current = $this->get( $key, $group, null );
 			$version = null === $current ? 2 : max( 2, (int) $current + 1 );
 			$this->set( $key, $version, 0, $group );
+			$this->tag_version_memo[ $group . "\0" . $tag ] = $version;
 			$versions[ $tag ] = $version;
 		}
 
@@ -581,7 +623,7 @@ class AIPS_Cache {
 	 * @return string
 	 */
 	private function build_tag_version_key( $tag ) {
-		return 'tag_version:' . $this->sanitize_tag( $tag );
+		return self::TAG_VERSION_KEY_PREFIX . $this->sanitize_tag( $tag );
 	}
 
 	/**

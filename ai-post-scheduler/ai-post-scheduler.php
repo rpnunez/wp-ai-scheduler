@@ -737,6 +737,9 @@ final class AI_Post_Scheduler {
 
         // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
         add_action('aips_cache_monitor_maintenance', function() {
+            if (!AIPS_Cache_Index::is_monitor_enabled()) {
+                return;
+            }
             $repository  = new AIPS_Cache_Monitor_Repository();
             $cache_index = new AIPS_Cache_Index();
             $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
@@ -845,6 +848,16 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Query-dump diagnostic: developer-mode-gated, off by default, never
+        // runs silently in production. See AIPS_Query_Dump for details.
+        $config = AIPS_Config::get_instance();
+        if ($config->get_option('aips_developer_mode') && $config->get_option('aips_query_dump_enabled')) {
+            if (!defined('SAVEQUERIES')) {
+                define('SAVEQUERIES', true);
+            }
+            new AIPS_Query_Dump();
+        }
     }
 
     /**

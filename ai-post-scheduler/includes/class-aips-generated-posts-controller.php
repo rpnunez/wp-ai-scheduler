@@ -89,11 +89,25 @@ class AIPS_Generated_Posts_Controller {
 			'campaign_id' => $campaign_id,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
-		
+
+		// Prime post caches for the generated posts loop
+		$this->prime_history_post_caches( $history['items'] );
+
+		$this->prime_source_caches( $history['items'] );
+
 		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
 		$date_format = get_option('date_format');
 		$time_format = get_option('time_format');
 		$datetime_format = $date_format . ' ' . $time_format;
+
+		// Batch schedule lookups for all templates on this page
+		$template_ids = array();
+		foreach ($history['items'] as $item) {
+			if (!empty( $item->template_id )) {
+				$template_ids[] = (int) $item->template_id;
+			}
+		}
+		$schedules_by_template = $this->schedule_repository->get_by_templates( $template_ids );
 
 		// Get schedule data for each post
 		$posts_data = array();
@@ -101,18 +115,16 @@ class AIPS_Generated_Posts_Controller {
 			if (!$item->post_id) {
 				continue;
 			}
-			
+
 			$post = get_post($item->post_id);
 			if (!$post) {
 				continue;
 			}
-			
+
 			// Get most recent schedule for this template (if exists)
 			$schedule = null;
-			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
+			if ($item->template_id && !empty( $schedules_by_template[ (int) $item->template_id ] )) {
+				$schedule = $schedules_by_template[ (int) $item->template_id ][0];
 			}
 			
 			// Format source information
@@ -154,6 +166,11 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 		));
+
+		// Prime post caches for the partial generations loop
+		$this->prime_history_post_caches( $partial_generations['items'] );
+
+		$this->prime_source_caches( $partial_generations['items'] );
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
@@ -202,6 +219,64 @@ class AIPS_Generated_Posts_Controller {
 		$controller = $this;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
+	}
+
+	/**
+	 * Warm the WP post cache for a page of history items in one query.
+	 *
+	 * @param array $items History rows carrying post_id.
+	 * @return void
+	 */
+	private function prime_history_post_caches( array $items ) {
+		$post_ids = array();
+		foreach ($items as $item) {
+			if (!empty( $item->post_id )) {
+				$post_ids[] = (int) $item->post_id;
+			}
+		}
+		if (!empty( $post_ids ) && function_exists( '_prime_post_caches' )) {
+			_prime_post_caches( array_unique( $post_ids ), false, false );
+		}
+	}
+
+	/**
+	 * Batch-load authors and topics referenced by a page of history items
+	 * into the per-request memo caches consumed by format_source().
+	 *
+	 * @param array $items History rows.
+	 * @return void
+	 */
+	private function prime_source_caches( array $items ) {
+		$author_ids = array();
+		$topic_ids  = array();
+		foreach ($items as $item) {
+			if (!empty( $item->author_id ) && !array_key_exists( $item->author_id, $this->author_cache )) {
+				$author_ids[] = (int) $item->author_id;
+			}
+			if (!empty( $item->topic_id ) && !array_key_exists( $item->topic_id, $this->topic_cache )) {
+				$topic_ids[] = (int) $item->topic_id;
+			}
+		}
+
+		if (!empty( $author_ids )) {
+			$authors_repository = new AIPS_Authors_Repository();
+			foreach ($author_ids as $id) {
+				$this->author_cache[ $id ] = null;
+			}
+			foreach ($authors_repository->get_by_ids( $author_ids ) as $id => $row) {
+				$this->author_cache[ $id ] = $row;
+			}
+		}
+
+		if (!empty( $topic_ids )) {
+			$topics_repository = new AIPS_Author_Topics_Repository();
+			foreach ($topic_ids as $id) {
+				$this->topic_cache[ $id ] = null;
+			}
+			foreach ($topics_repository->get_by_ids( $topic_ids ) as $id => $row) {
+				$this->topic_cache[ $id ] = $row;
+			}
+		}
 	}
 
 	/**
@@ -500,12 +575,12 @@ class AIPS_Generated_Posts_Controller {
 		if (!empty($history_item->template_id)) {
 			// Template-based generation with caching
 			$template_id = $history_item->template_id;
-			
-			if (!isset($this->template_cache[$template_id])) {
+
+			if (!array_key_exists($template_id, $this->template_cache)) {
 				$template_repository = new AIPS_Template_Repository();
 				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
 			}
-			
+
 			$template = $this->template_cache[$template_id];
 			$source = __('Template', 'ai-post-scheduler');
 			if ($template && isset($template->name)) {
@@ -515,13 +590,13 @@ class AIPS_Generated_Posts_Controller {
 			// Author Topic-based generation with caching
 			$author_id = $history_item->author_id;
 			$topic_id = $history_item->topic_id;
-			
-			if (!isset($this->author_cache[$author_id])) {
+
+			if (!array_key_exists($author_id, $this->author_cache)) {
 				$authors_repository = new AIPS_Authors_Repository();
 				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
 			}
-			
-			if (!isset($this->topic_cache[$topic_id])) {
+
+			if (!array_key_exists($topic_id, $this->topic_cache)) {
 				$topics_repository = new AIPS_Author_Topics_Repository();
 				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
 			}

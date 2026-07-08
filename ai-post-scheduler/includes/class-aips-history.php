@@ -1513,6 +1513,18 @@ class AIPS_History {
      * @return void
      */
     private function prepare_items_for_display( array &$items ) {
+        // One batched posts query + one terms query instead of a per-row
+        // SELECT from get_edit_post_link()/get_permalink() in history-row.php.
+        $post_ids = array();
+        foreach ($items as $item) {
+            if (!empty( $item->post_id )) {
+                $post_ids[] = (int) $item->post_id;
+            }
+        }
+        if (!empty( $post_ids ) && function_exists( '_prime_post_caches' )) {
+            _prime_post_caches( array_unique( $post_ids ), true, false );
+        }
+
         $date_format = get_option('date_format');
         $time_format = get_option('time_format');
         $format      = $date_format . ' ' . $time_format;

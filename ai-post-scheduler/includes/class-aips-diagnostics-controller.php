@@ -108,8 +108,12 @@ class AIPS_Diagnostics_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
-		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor'), true)) {
+		if (in_array($tab, array('status', 'seeder', 'insights'), true)) {
 			return true;
+		}
+
+		if ('cache-monitor' === $tab) {
+			return AIPS_Cache_Monitor_Controller::is_enabled();
 		}
 
 		if ('telemetry' === $tab) {

@@ -42,6 +42,9 @@ class AIPS_Cache_Monitor_Controller {
 	 * Resolve dependencies and register AJAX hooks.
 	 */
 	public function __construct() {
+		if (!self::is_enabled()) {
+			return;
+		}
 		$repository  = new AIPS_Cache_Monitor_Repository();
 		$cache_index = new AIPS_Cache_Index();
 		$this->service = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
@@ -61,6 +64,16 @@ class AIPS_Cache_Monitor_Controller {
 		add_action('wp_ajax_aips_cache_monitor_maintenance',      array($this, 'ajax_maintenance'));
 	}
 
+	/**
+	 * Whether the Cache Monitor feature is enabled.
+	 *
+	 * @return bool
+	 */
+	public static function is_enabled(): bool {
+		$value = AIPS_Config::get_instance()->get_option( 'aips_cache_monitor_enabled' );
+		return ($value !== '0' && $value !== 0 && $value !== false && $value !== null && $value !== '');
+	}
+
 	// -----------------------------------------------------------------------
 	// Admin page render
 	// -----------------------------------------------------------------------
@@ -73,6 +86,13 @@ class AIPS_Cache_Monitor_Controller {
 	public function render_page( bool $embedded = false ): void {
 		if (!current_user_can('manage_options')) {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
+		}
+
+		if (!self::is_enabled() || !$this->service) {
+			echo '<div class="notice notice-info"><p>' .
+				esc_html__( 'The Cache Monitor is disabled. Enable it under Settings → Performance.', 'ai-post-scheduler' ) .
+				'</p></div>';
+			return;
 		}
 
 		$service      = $this->service;
