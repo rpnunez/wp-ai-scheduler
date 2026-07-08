@@ -49,7 +49,7 @@ if (is_object($history)) {
                 </div>
                 <div class="aips-page-actions">
                     <button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
-                        <span class="dashicons dashicons-download"></span>
+                        <span class="dashicons dashicons-download" aria-hidden="true"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -87,7 +87,7 @@ if (is_object($history)) {
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
-                        <span class="dashicons dashicons-filter"></span>
+                        <span class="dashicons dashicons-filter" aria-hidden="true"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -105,21 +105,21 @@ if (is_object($history)) {
             <div class="aips-panel-toolbar">
                 <div class="aips-toolbar-left">
                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
-                        <span class="dashicons dashicons-trash"></span>
+                        <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                         <?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?>
                     </button>
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
-                        <span class="dashicons dashicons-update"></span>
+                        <span class="dashicons dashicons-update" aria-hidden="true"></span>
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
                 <div class="aips-toolbar-right aips-history-pagination-cell">
                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
-                        <span class="dashicons dashicons-dismiss"></span>
+                        <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                         <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
                     </button>
                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="all">
-                        <span class="dashicons dashicons-trash"></span>
+                        <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>
                     <div id="aips-history-pagination-wrap">
@@ -162,7 +162,7 @@ if (is_object($history)) {
                                             <?php if ($has_active_filter): ?>
                                                 <br><br>
                                                 <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
-                                                    <span class="dashicons dashicons-dismiss"></span>
+                                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                                     <?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
                                                 </button>
                                             <?php endif; ?>
@@ -180,7 +180,7 @@ if (is_object($history)) {
                             <p class="aips-empty-state-description"><?php esc_html_e('No history containers match your search criteria. Try a different search term or filter.', 'ai-post-scheduler'); ?></p>
                             <div class="aips-empty-state-actions">
                                 <button type="button" class="aips-btn aips-btn-primary aips-clear-history-search-btn">
-                                    <span class="dashicons dashicons-dismiss"></span>
+                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                     <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                                 </button>
                             </div>

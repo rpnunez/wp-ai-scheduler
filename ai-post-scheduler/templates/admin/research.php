@@ -233,7 +233,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                     </label>
                     
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="load-topics">
-                        <span class="dashicons dashicons-filter"></span>
+                        <span class="dashicons dashicons-filter" aria-hidden="true"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -248,19 +248,19 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <div class="aips-panel-toolbar">
                 <div class="aips-toolbar-left">
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-topics" disabled>
-                        <span class="dashicons dashicons-trash"></span>
+                        <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                         <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-schedule-selected-topics" disabled>
-                        <span class="dashicons dashicons-calendar-alt"></span>
+                        <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                         <?php esc_html_e('Schedule', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-generate-selected-topics" disabled>
-                        <span class="dashicons dashicons-media-text"></span>
+                        <span class="dashicons dashicons-media-text" aria-hidden="true"></span>
                         <?php esc_html_e('Generate', 'ai-post-scheduler'); ?>
                     </button>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-topics-btn">
-                        <span class="dashicons dashicons-update"></span>
+                        <span class="dashicons dashicons-update" aria-hidden="true"></span>
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -325,7 +325,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                     </table>
                     <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
                         <button type="submit" class="aips-btn aips-btn-primary">
-                            <span class="dashicons dashicons-calendar-alt"></span>
+                            <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                             <?php esc_html_e('Schedule Topics', 'ai-post-scheduler'); ?>
                         </button>
                         <span class="spinner" style="float: none; margin: 0;"></span>
@@ -346,7 +346,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-gap-analysis-controls">
                     <input type="text" id="gap-niche" class="regular-text" placeholder="<?php esc_attr_e('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
                     <button type="button" class="aips-btn aips-btn-primary" id="analyze-gaps-btn">
-                        <span class="dashicons dashicons-chart-area"></span>
+                        <span class="dashicons dashicons-chart-area" aria-hidden="true"></span>
                         <?php esc_html_e('Analyze Site for Gaps', 'ai-post-scheduler'); ?>
                     </button>
                     <span class="spinner" style="float: none; margin-left: 10px;"></span>
@@ -403,7 +403,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <?php if (!empty($templates)): ?>
                     <button type="button" class="aips-btn aips-btn-primary" id="aips-generate-now-confirm">
-                        <span class="dashicons dashicons-media-text"></span>
+                        <span class="dashicons dashicons-media-text" aria-hidden="true"></span>
                         <?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?>
                     </button>
                 <?php endif; ?>
@@ -498,7 +498,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <td>
                 <div class="aips-topic-actions">
                     <button class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="{{id}}">
-                        <span class="dashicons dashicons-trash"></span> {{delete_label}}
+                        <span class="dashicons dashicons-trash" aria-hidden="true"></span> {{delete_label}}
                     </button>
                 </div>
             </td>

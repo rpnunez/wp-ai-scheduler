@@ -38,7 +38,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 				</div>
 				<div class="aips-page-actions">
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-post-slice-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
+						<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
 						<?php esc_html_e('Add Post Slice', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -111,12 +111,12 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 									<td class="column-status">
 										<?php if ($is_active): ?>
 											<span class="aips-badge aips-badge-success">
-												<span class="dashicons dashicons-yes-alt"></span>
+												<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 												<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
 											</span>
 										<?php else: ?>
 											<span class="aips-badge aips-badge-neutral">
-												<span class="dashicons dashicons-minus"></span>
+												<span class="dashicons dashicons-minus" aria-hidden="true"></span>
 												<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
 											</span>
 										<?php endif; ?>
@@ -126,7 +126,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 											<button type="button" class="aips-btn aips-btn-sm aips-edit-post-slice"
 												data-id="<?php echo esc_attr($slice_id); ?>"
 												title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-edit"></span>
+												<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 												<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
 											</button>
 											<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-post-slice"
@@ -141,7 +141,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 											<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-post-slice"
 												data-id="<?php echo esc_attr($slice_id); ?>"
 												title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-trash"></span>
+												<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 												<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
 											</button>
 										</div>

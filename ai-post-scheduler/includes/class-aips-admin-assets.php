@@ -1430,6 +1430,7 @@ class AIPS_Admin_Assets {
                 'selectPost'             => __('Please select at least one post.', 'ai-post-scheduler'),
                 'selectAction'           => __('Please select an action.', 'ai-post-scheduler'),
                 'selectItem'             => __('Please select at least one item.', 'ai-post-scheduler'),
+                'closeLabel'             => __('Remove post', 'ai-post-scheduler'),
                 'confirmBulkAction'      => __('Are you sure you want to %s %d items?', 'ai-post-scheduler'),
                 'confirmDelete'          => __('Are you sure you want to delete this item?', 'ai-post-scheduler'),
                 'confirmCreateTerm'      => __('Create this term in WordPress?', 'ai-post-scheduler'),
