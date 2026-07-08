@@ -522,51 +522,63 @@ class AIPS_Dashboard_Repository {
 		return array(
 			'dashboard.get_summary_stats' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS,
 				'description' => 'Cache dashboard summary aggregates.',
 			),
 			'dashboard.get_schedules_run_count' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS,
 				'description' => 'Cache dashboard schedule execution counts.',
 			),
 			'dashboard.get_topics_stats' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS,
 				'description' => 'Cache dashboard topic aggregates.',
 			),
 			'dashboard.get_ai_stats' => array(
 				'tier'        => 'short',
-				'description' => 'Cache dashboard AI request/error aggregates.',
+				'ttl'         => DAY_IN_SECONDS,
+				'description' => 'Cache dashboard AI request/error aggregates (longer TTL for historical data).',
 			),
 			'dashboard.get_upcoming_runs_count' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS,
 				'description' => 'Cache upcoming dashboard run counts.',
 			),
 			'dashboard.get_recent_posts' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS / 2,
 				'description' => 'Cache recent generated post rows for the dashboard.',
 			),
 			'dashboard.get_recent_topics' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS / 2,
 				'description' => 'Cache recent author topic rows for the dashboard.',
 			),
 			'dashboard.get_posts_by_topic' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS / 2,
 				'description' => 'Cache topic-derived post rows for the dashboard.',
 			),
 			'dashboard.get_executed_schedules' => array(
 				'tier'        => 'short',
+				'ttl'         => HOUR_IN_SECONDS / 2,
 				'description' => 'Cache executed schedule rows for the dashboard.',
 			),
 			'dashboard.get_daily_generation_stats' => array(
 				'tier'        => 'short',
-				'description' => 'Cache daily generation chart data.',
+				'ttl'         => DAY_IN_SECONDS,
+				'description' => 'Cache daily generation chart data (longer TTL - data finalized at end of day).',
 			),
 			'dashboard.get_daily_topic_totals' => array(
 				'tier'        => 'short',
-				'description' => 'Cache daily topic chart data.',
+				'ttl'         => DAY_IN_SECONDS,
+				'description' => 'Cache daily topic chart data (longer TTL - data finalized at end of day).',
 			),
 			'dashboard.get_daily_ai_stats' => array(
 				'tier'        => 'short',
-				'description' => 'Cache daily AI chart data.',
+				'ttl'         => DAY_IN_SECONDS,
+				'description' => 'Cache daily AI chart data (longer TTL - data finalized at end of day).',
 			),
 		);
 	}
