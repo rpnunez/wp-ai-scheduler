@@ -793,6 +793,9 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_ajax() {
+        // Register centralised AJAX response middleware (e.g. rate-limit enrichment).
+        AIPS_Ajax_Middleware::register();
+
         $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : '';
 
         $controller_class = AIPS_Ajax_Registry::get_controller_for($action);
