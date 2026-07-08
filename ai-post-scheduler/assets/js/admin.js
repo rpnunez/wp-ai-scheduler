@@ -89,7 +89,7 @@
 
                 var d = resp.data;
                 var escapeHtml = function(value) {
-                    return String(value || '')
+                    return String(value == null ? '' : value)
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;')
@@ -97,38 +97,28 @@
                         .replace(/'/g, '&#39;');
                 };
 
-                var typeLabels = {
-                    template_schedule: aipsScheduleL10n.typeTemplateLabel,
-                    author_topic_gen: aipsScheduleL10n.typeAuthorTopicLabel,
-                    author_post_gen: aipsScheduleL10n.typeAuthorPostLabel
-                };
-
-                var queueTotal = 0;
-                $.each(d.queue_depth || {}, function(_, count) {
-                    queueTotal += parseInt(count || 0, 10);
-                });
-
                 var counts = d.schedule_counts || {};
+                var overdue = parseInt(counts.overdue || 0, 10);
                 var cards = [
                     {
-                        label: aipsScheduleL10n.activeSchedulesLabel,
+                        label: aipsScheduleL10n.activeSchedulesLabel  || 'Active Schedules',
                         value: parseInt(counts.active || 0, 10),
                         tone: 'neutral'
                     },
                     {
-                        label: aipsScheduleL10n.upcomingSchedulesLabel,
+                        label: aipsScheduleL10n.upcomingSchedulesLabel || 'Upcoming (24h)',
                         value: parseInt(counts.upcoming_24h || 0, 10),
-                        tone: 'success'
+                        tone: parseInt(counts.upcoming_24h || 0, 10) > 0 ? 'success' : 'neutral'
                     },
                     {
-                        label: aipsScheduleL10n.queueDepthLabel,
-                        value: queueTotal,
-                        tone: 'info'
+                        label: aipsScheduleL10n.overdueSchedulesLabel  || 'Overdue',
+                        value: overdue,
+                        tone: overdue > 0 ? 'error' : 'neutral'
                     },
                     {
-                        label: aipsScheduleL10n.bulkFailedLabel,
-                        value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
-                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                        label: aipsScheduleL10n.inactiveSchedulesLabel || 'Inactive / Paused',
+                        value: parseInt(counts.inactive || 0, 10),
+                        tone: 'neutral'
                     }
                 ];
 
@@ -140,48 +130,7 @@
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
-                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var typeLabel = typeLabels[item.type] || item.type || '';
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
-                    '</div>';
-                });
-
-                $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
-                );
-
-                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
-                    '</div>';
-                });
-
-                $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
-                );
-
                 var warnings = [];
-                if (d.last_error) {
-                    warnings.push('<div class="notice notice-error inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.lastErrorDetected) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.history) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.viewHistory) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.system_status) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.systemStatus) + '</a></p></div>');
-                }
-                if (d.retry_pending) {
-                    warnings.push('<div class="notice notice-warning inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.retryPending) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.notifications) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.notifications) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.telemetry) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.telemetry) + '</a></p></div>');
-                }
                 if (parseInt((counts.overdue || 0), 10) > 0) {
                     warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
                 }
@@ -193,15 +142,15 @@
          * Activate the tab matching the current URL hash on page load.
          *
          * Reads `window.location.hash`, strips the leading `#`, and triggers
-         * a click on the corresponding `.nav-tab[data-tab]` element so the
-         * correct tab panel is displayed immediately after navigation.
+         * a click on the corresponding `.aips-tab-link[data-tab]` element so
+         * the correct tab panel is displayed immediately after navigation.
          */
         handleInitialTabFromHash: function() {
             // Check for hash in URL and activate the corresponding tab
             var hash = window.location.hash;
             if (hash) {
                 var tabId = hash.substring(1); // Remove the # prefix
-                var $tabLink = $('.nav-tab[data-tab], .aips-tab-link[data-tab]').filter(function() {
+                var $tabLink = $('.aips-tab-link[data-tab]').filter(function() {
                     return $(this).data('tab') === tabId;
                 });
                 if ($tabLink.length) {
@@ -344,7 +293,6 @@
             $(document).on('click', '#aips-test-connection', this.testConnection);
 
             // Tabs
-            $(document).on('click', '.nav-tab', this.switchTab);
             $(document).on('click', '.aips-tab-link', this.switchAipsTab);
             
             // Preserve tab hash on form submissions
@@ -481,45 +429,6 @@
             });
         },
 
-        /**
-         * Switch to the tab identified by the clicked `.nav-tab`'s `data-tab`
-         * attribute.
-         *
-         * Updates `window.location.hash`, toggles `.nav-tab-active` and ARIA
-         * attributes on the tab links, and shows/hides the corresponding
-         * `.aips-tab-content` panel.
-         *
-         * @param {Event} e - Click event from a `.nav-tab` element.
-         */
-        switchTab: function(e) {
-            e.preventDefault();
-            var tabId = $(this).data('tab');
-
-            // Update the URL hash instead of query parameter
-            window.location.hash = '#' + tabId;
-
-            // Update nav-tab states and accessibility
-            $('.nav-tab')
-                .removeClass('nav-tab-active')
-                .attr('aria-selected', 'false')
-                .attr('tabindex', '-1');
-            $(this)
-                .addClass('nav-tab-active')
-                .attr('aria-selected', 'true')
-                .attr('tabindex', '0')
-                .focus();
-
-            // Update tab content visibility and ARIA attributes
-            $('.aips-tab-content')
-                .hide()
-                .attr('hidden', 'hidden')
-                .attr('aria-hidden', 'true');
-            $('#' + tabId + '-tab')
-                .show()
-                .removeAttr('hidden')
-                .attr('aria-hidden', 'false');
-        },
-        
         /**
          * Switch to an AIPS sub-tab identified by the clicked `.aips-tab-link`'s
          * `data-tab` attribute.

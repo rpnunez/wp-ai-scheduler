@@ -75,40 +75,8 @@ class AIPS_Schedule_Controller {
             $next_runs[$family] = wp_next_scheduled($hook) ?: null;
         }
 
-        $queue_hooks = array(
-            'aips_process_schedule_batch',
-            'aips_process_author_topics_slice',
-            'aips_retry_failed_author_slices_topics',
-            'aips_process_author_post_slice',
-            'aips_retry_failed_author_slices_posts',
-            'aips_process_bulk_batch',
-            'aips_process_author_embeddings',
-            'aips_index_posts_batch',
-        );
-        $queue_depth = array_fill_keys($queue_hooks, 0);
-        $queue_timeline = array();
         $now = time();
         $next_24h = $now + DAY_IN_SECONDS;
-        $cron = _get_cron_array();
-        if (is_array($cron)) {
-            foreach ($cron as $timestamp => $hooks) {
-                if ((int) $timestamp > $next_24h) {
-                    continue;
-                }
-                foreach ($queue_hooks as $hook) {
-                    if (!isset($hooks[$hook])) {
-                        continue;
-                    }
-                    $count = is_array($hooks[$hook]) ? count($hooks[$hook]) : 0;
-                    $queue_depth[$hook] += $count;
-                    $queue_timeline[] = array(
-                        'hook' => $hook,
-                        'timestamp' => (int) $timestamp,
-                        'count' => $count,
-                    );
-                }
-            }
-        }
 
         // Build schedule timeline from the same unified source the table uses,
         // so the strip matches "Next Run" values shown to operators.
@@ -151,8 +119,7 @@ class AIPS_Schedule_Controller {
             return (int) $a['timestamp'] - (int) $b['timestamp'];
         });
 
-        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
-        $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
+        $inactive_schedules = count($all_schedules) - $active_schedules;
 
         $last_success = array();
         foreach ($families as $family => $hook) {
@@ -166,18 +133,13 @@ class AIPS_Schedule_Controller {
 
         $payload = array(
             'next_runs' => $next_runs,
-            'timeline' => $timeline,
-            'queue_timeline' => $queue_timeline,
-            'queue_depth' => $queue_depth,
-            'bulk_jobs' => $bulk_counts,
             'schedule_counts' => array(
-                'active' => $active_schedules,
-                'upcoming_24h' => count($timeline),
-                'overdue' => $overdue_schedules,
+                'active'      => $active_schedules,
+                'upcoming_24h'=> count($timeline),
+                'overdue'     => $overdue_schedules,
+                'inactive'    => $inactive_schedules,
             ),
             'last_success' => $last_success,
-            'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
-            'last_error' => $bulk_counts['failed'] > 0,
             'quick_links' => array(
                 'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
                 'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
