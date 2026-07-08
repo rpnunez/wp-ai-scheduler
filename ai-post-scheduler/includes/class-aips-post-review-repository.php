@@ -19,17 +19,17 @@ if (!defined('ABSPATH')) {
  * Repository for querying and managing draft posts that need review.
  */
 class AIPS_Post_Review_Repository {
-	
+
 	/**
 	 * @var string The history table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -38,19 +38,20 @@ class AIPS_Post_Review_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_history';
 	}
-	
+
 	/**
-	 * Get paginated draft posts with optional filtering.
+	 * Get paginated draft/pending posts with optional filtering.
 	 *
 	 * @param array $args {
 	 *     Optional. Query arguments.
 	 *
-	 *     @type int    $per_page    Number of items per page. Default 20.
-	 *     @type int    $page        Current page number. Default 1.
-	 *     @type string $search      Search term for title. Default empty.
-	 *     @type int    $template_id Filter by template ID. Default 0.
-	 *     @type string $orderby     Column to order by. Default 'created_at'.
-	 *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+	 *     @type int    $per_page      Number of items per page. Default 20.
+	 *     @type int    $page          Current page number. Default 1.
+	 *     @type string $search        Search term for title. Default empty.
+	 *     @type int    $template_id   Filter by template ID. Default 0.
+	 *     @type string $review_status Filter by review flag: '' (all), 'needs_revision', 'clean'. Default ''.
+	 *     @type string $orderby       Column to order by. Default 'created_at'.
+	 *     @type string $order         Order direction (ASC/DESC). Default 'DESC'.
 	 * }
 	 * @return array {
 	 *     @type array $items        Array of draft post items.
@@ -61,29 +62,40 @@ class AIPS_Post_Review_Repository {
 	 */
 	public function get_draft_posts($args = array()) {
 		$defaults = array(
-			'per_page' => 20,
-			'page' => 1,
-			'search' => '',
-			'template_id' => 0,
-			'orderby' => 'created_at',
-			'order' => 'DESC',
+			'per_page'      => 20,
+			'page'          => 1,
+			'search'        => '',
+			'template_id'   => 0,
+			'review_status' => '',
+			'orderby'       => 'created_at',
+			'order'         => 'DESC',
 		);
-		
+
 		$args = wp_parse_args($args, $defaults);
-		
+
 		$offset = ($args['page'] - 1) * $args['per_page'];
 
 		// Build where clauses
 		$where_clauses = array("1=1");
 		$where_args = array();
-		
+
 		// Only get completed generations that have a post_id
 		$where_clauses[] = "h.status = 'completed'";
 		$where_clauses[] = "h.post_id IS NOT NULL";
-		
-		// Join with wp_posts to check post_status
-		$where_clauses[] = "p.post_status = 'draft'";
-		
+
+		// Both draft and WP-native pending posts belong in the review queue
+		$where_clauses[] = "p.post_status IN ('draft', 'pending')";
+
+		// Optional review_status flag filter (stored in post meta _aips_review_status)
+		$review_status = sanitize_key($args['review_status']);
+		if ($review_status === 'needs_revision') {
+			$where_clauses[] = "pm_status.meta_value = %s";
+			$where_args[] = 'needs_revision';
+		} elseif ($review_status === 'clean') {
+			$where_clauses[] = "(pm_status.meta_value IS NULL OR pm_status.meta_value != %s)";
+			$where_args[] = 'needs_revision';
+		}
+
 		if (!empty($args['template_id'])) {
 			$where_clauses[] = "h.template_id = %d";
 			$where_args[] = $args['template_id'];
@@ -95,84 +107,99 @@ class AIPS_Post_Review_Repository {
 			$where_args[] = $search_term;
 			$where_args[] = $search_term;
 		}
-		
+
 		$where_sql = implode(' AND ', $where_clauses);
 
 		// Validate orderby and order
 		$orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'post_title')) ? $args['orderby'] : 'created_at';
 		$order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
-		
+
 		// For post_title ordering, use p.post_title
 		if ($orderby === 'post_title') {
 			$orderby_sql = "p.post_title $order";
 		} else {
 			$orderby_sql = "h.$orderby $order";
 		}
-		
-		$templates_table = $this->wpdb->prefix . 'aips_templates';
-		$posts_table = $this->wpdb->posts;
-		
+
+		$templates_table  = $this->wpdb->prefix . 'aips_templates';
+		$posts_table      = $this->wpdb->posts;
+		$postmeta_table   = $this->wpdb->postmeta;
+
 		// Query for items
 		$query_args = $where_args;
 		$query_args[] = $args['per_page'];
 		$query_args[] = $offset;
 
 		$results = $this->wpdb->get_results($this->wpdb->prepare("
-			SELECT 
+			SELECT
 				h.*,
 				t.name as template_name,
 				p.post_title,
+				p.post_status as wp_post_status,
 				p.post_modified,
-				p.post_author as wp_post_author
+				p.post_author as wp_post_author,
+				pm_note.meta_value AS review_note,
+				pm_status.meta_value AS review_status
 			FROM {$this->table_name} h
 			LEFT JOIN {$templates_table} t ON h.template_id = t.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
+			LEFT JOIN {$postmeta_table} pm_note ON p.ID = pm_note.post_id AND pm_note.meta_key = '_aips_review_note'
+			LEFT JOIN {$postmeta_table} pm_status ON p.ID = pm_status.post_id AND pm_status.meta_key = '_aips_review_status'
 			WHERE $where_sql
 			ORDER BY $orderby_sql
 			LIMIT %d OFFSET %d
 		", $query_args));
-		
+
+		// Only join pm_status in the count query when the filter actually references it
+		$count_join = '';
+		if (!empty($review_status)) {
+			$count_join = "LEFT JOIN {$postmeta_table} pm_status ON p.ID = pm_status.post_id AND pm_status.meta_key = '_aips_review_status'";
+		}
+
 		// Query for total count
-		if (!empty($where_args)) {
+		$count_args = $where_args;
+		if (!empty($count_args)) {
 			$total = $this->wpdb->get_var($this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name} h 
+				"SELECT COUNT(*) FROM {$this->table_name} h
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
+				{$count_join}
 				WHERE $where_sql",
-				$where_args
+				$count_args
 			));
 		} else {
 			$total = $this->wpdb->get_var(
-				"SELECT COUNT(*) FROM {$this->table_name} h 
+				"SELECT COUNT(*) FROM {$this->table_name} h
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
+				{$count_join}
 				WHERE $where_sql"
 			);
 		}
-		
+
 		return array(
-			'items' => $results,
-			'total' => (int) $total,
-			'pages' => ceil($total / $args['per_page']),
+			'items'        => $results,
+			'total'        => (int) $total,
+			'pages'        => ceil($total / $args['per_page']),
 			'current_page' => $args['page'],
 		);
 	}
-	
+
 	/**
-	 * Get count of draft posts.
+	 * Get count of posts in the review queue (draft + pending status).
 	 *
-	 * @return int Number of draft posts.
+	 * @return int Number of posts awaiting review.
 	 */
 	public function get_draft_count() {
 		$posts_table = $this->wpdb->posts;
-		
+
 		$count = $this->wpdb->get_var("
-			SELECT COUNT(*) 
+			SELECT COUNT(*)
 			FROM {$this->table_name} h
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
-			WHERE h.status = 'completed' 
-			AND h.post_id IS NOT NULL 
-			AND p.post_status = 'draft'
+			WHERE h.status = 'completed'
+			AND h.post_id IS NOT NULL
+			AND p.post_status IN ('draft', 'pending')
 		");
-		
+
 		return (int) $count;
 	}
 }

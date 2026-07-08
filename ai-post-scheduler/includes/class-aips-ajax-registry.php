@@ -191,6 +191,8 @@ class AIPS_Ajax_Registry {
 		'aips_bulk_regenerate_posts'      => 'AIPS_Post_Review',
 		'aips_get_post_preview'           => 'AIPS_Post_Review',
 		'aips_delete_draft_post'          => 'AIPS_Post_Review',
+		'aips_save_review_note'           => 'AIPS_Post_Review',
+		'aips_flag_needs_revision'        => 'AIPS_Post_Review',
 
 		// Admin Bar
 		'aips_mark_notification_read'     => 'AIPS_Admin_Bar',

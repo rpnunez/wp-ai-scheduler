@@ -208,6 +208,179 @@
 	color: #8a4b00;
 }
 
+/* ==========================================================================
+   Wait-time indicator
+   ========================================================================== */
+
+.aips-wait-time {
+	display: block;
+	font-size: 11px;
+	color: var(--aips-text-tertiary, #757575);
+	margin-top: 2px;
+}
+
+.aips-wait-time--stale {
+	color: #b45309;
+	font-weight: 600;
+}
+
+/* ==========================================================================
+   Review status badge (Needs Revision)
+   ========================================================================== */
+
+.aips-badge {
+	display: inline-block;
+	padding: 2px 7px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.5;
+	vertical-align: middle;
+	margin-left: 6px;
+}
+
+.aips-badge--warning {
+	background: #fef3c7;
+	color: #92400e;
+	border: 1px solid #fbbf24;
+}
+
+/* ==========================================================================
+   Post title cell layout
+   ========================================================================== */
+
+.aips-post-title-cell {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.aips-post-title-cell .cell-primary {
+	flex: 0 1 auto;
+}
+
+/* ==========================================================================
+   Review notes
+   ========================================================================== */
+
+.aips-review-note-wrap {
+	margin-top: 4px;
+}
+
+.aips-review-note-display {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 20px;
+}
+
+.aips-review-note-text {
+	font-size: 12px;
+	color: var(--aips-text-secondary, #50575e);
+	font-style: italic;
+}
+
+.aips-review-note-empty .aips-note-add-btn {
+	opacity: 0.5;
+	font-size: 12px;
+}
+
+tr:hover .aips-review-note-empty .aips-note-add-btn {
+	opacity: 1;
+}
+
+.aips-btn-link {
+	background: transparent;
+	border: 0;
+	padding: 0 2px;
+	cursor: pointer;
+	color: #2271b1;
+	font: inherit;
+	text-decoration: underline;
+	display: inline-flex;
+	align-items: center;
+}
+
+.aips-btn-link:hover {
+	color: #135e96;
+}
+
+.aips-btn-link .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.aips-review-note-editor {
+	margin-top: 4px;
+}
+
+.aips-note-textarea {
+	width: 100%;
+	max-width: 400px;
+	font-size: 12px;
+	resize: vertical;
+}
+
+.aips-note-editor-actions {
+	display: flex;
+	gap: 6px;
+	margin-top: 4px;
+}
+
+/* ==========================================================================
+   Needs Revision menu item
+   ========================================================================== */
+
+.aips-row-action-menu .aips-flag-needs-revision-btn {
+	color: #92400e;
+}
+
+.aips-row-action-menu .aips-flag-needs-revision-btn.aips-needs-revision-active {
+	color: #50575e;
+}
+
+/* ==========================================================================
+   Schedule Publish modal sizing
+   ========================================================================== */
+
+.aips-schedule-modal-content {
+	width: 480px;
+	max-width: 95%;
+}
+
+.aips-schedule-modal-body {
+	padding: 20px 24px;
+}
+
+.aips-schedule-modal-subtitle {
+	font-weight: 600;
+	margin-bottom: 16px;
+	color: #1d2327;
+}
+
+.aips-schedule-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.aips-schedule-field .description {
+	font-size: 12px;
+	color: var(--aips-text-tertiary, #757575);
+	margin-top: 6px;
+}
+
+.aips-modal-footer {
+	display: flex;
+	gap: 8px;
+	padding: 12px 24px;
+	border-top: 1px solid var(--aips-gray-100, #dcdcde);
+	background: var(--aips-gray-50, #f6f7f7);
+	border-radius: 0 0 6px 6px;
+}
+
 /* Compact responsive mode */
 @media (max-width: 860px) {
 	.aips-row-action-group {

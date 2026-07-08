@@ -845,6 +845,9 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Dashboard widget: shows pending review count with a link to the queue.
+        ( new AIPS_WP_Widgets() )->register();
     }
 
     /**
