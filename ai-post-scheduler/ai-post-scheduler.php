@@ -845,6 +845,14 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Seeder admin must be constructed here (not lazily inside the page-render
+        // callback) so its admin_enqueue_scripts hook registers before WordPress
+        // fires that hook — admin-header.php dispatches admin_enqueue_scripts
+        // before invoking the page's render callback, so registering the hook
+        // from inside the render callback would always be too late.
+        global $aips_seeder_admin;
+        $aips_seeder_admin = new AIPS_Seeder_Admin();
     }
 
     /**

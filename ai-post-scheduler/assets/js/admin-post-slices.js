@@ -120,6 +120,17 @@
 		},
 
 		/**
+		 * Show a success toast for a mutation response and refresh the page.
+		 *
+		 * @param {Object} data Response data, expected to carry a `message` string.
+		 * @return {void}
+		 */
+		notifySuccessAndRefresh: function (data) {
+			AIPS.Utilities.showToast(data.message, 'success');
+			this.refreshPage();
+		},
+
+		/**
 		 * Create or update a post slice.
 		 *
 		 * @param {Event} e Click event.
@@ -150,9 +161,8 @@
 				loadingLabel: aipsPostSlicesL10n.saving,
 				errorFallback: aipsPostSlicesL10n.saveFailed,
 				onSuccess: function (data) {
-					AIPS.Utilities.showToast(data.message, 'success');
 					$('#aips-post-slice-modal').hide();
-					self.refreshPage();
+					self.notifySuccessAndRefresh(data);
 				}
 			});
 		},
@@ -178,8 +188,7 @@
 				data: { slice_id: id },
 				errorFallback: aipsPostSlicesL10n.deleteFailed,
 				onSuccess: function (data) {
-					AIPS.Utilities.showToast(data.message, 'success');
-					self.refreshPage();
+					self.notifySuccessAndRefresh(data);
 				}
 			});
 		},
@@ -207,8 +216,7 @@
 				},
 				errorFallback: aipsPostSlicesL10n.toggleFailed,
 				onSuccess: function (data) {
-					AIPS.Utilities.showToast(data.message, 'success');
-					self.refreshPage();
+					self.notifySuccessAndRefresh(data);
 				}
 			});
 		},

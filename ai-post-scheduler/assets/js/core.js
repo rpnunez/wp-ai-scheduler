@@ -52,8 +52,12 @@
 		 * @param {jQuery}   [options.$button]         Button to auto-manage via
 		 *                                             `AIPS.Utilities.setButtonLoading()` /
 		 *                                             `resetButton()` for the lifetime of the request.
-		 * @param {string}   [options.loadingLabel]    Label passed to `setButtonLoading()`.
-		 *                                             Only used when `options.$button` is given.
+		 *                                             Reset is guaranteed to run before `onSuccess`/
+		 *                                             `onError`, even if that callback throws.
+		 * @param {string}   [options.loadingLabel]    Label passed to `setButtonLoading()`. When
+		 *                                             omitted, `options.$button` is only disabled —
+		 *                                             its content is left untouched rather than being
+		 *                                             blanked to an empty label.
 		 * @param {boolean}  [options.toastOnError]    Auto-show an error toast via
 		 *                                             `AIPS.Utilities.showToast()` on failure.
 		 *                                             Default `true`. Set `false` when the caller
@@ -63,12 +67,19 @@
 		 * @param {Function} [options.onSuccess]       `function(data, response)` — called when
 		 *                                             `response.success` is true. `data` is
 		 *                                             `response.data` (or `{}` if absent).
-		 * @param {Function} [options.onError]         `function(message, response)` — called on
-		 *                                             both application-level failure
-		 *                                             (`response.success === false`) and
-		 *                                             network/transport failure. `response` is
-		 *                                             `null` for network-level failures, since
-		 *                                             there is no response body to parse.
+		 * @param {Function} [options.onError]         `function(message, response, isTransportError)`
+		 *                                             — called on failure. `response` is the parsed
+		 *                                             JSON body when the server sent one — including
+		 *                                             non-2xx responses such as
+		 *                                             `AIPS_Ajax_Response::permission_denied()`/
+		 *                                             `not_found()`, which jQuery still routes through
+		 *                                             its failure path — or `undefined` when no body
+		 *                                             could be parsed at all (a true network/transport
+		 *                                             failure). `isTransportError` is `true` when
+		 *                                             jQuery treated the request as failed (any
+		 *                                             non-2xx status or transport-level failure),
+		 *                                             `false` when the server responded 2xx with
+		 *                                             `response.success === false`.
 		 *
 		 * @return {jqXHR} The underlying jQuery XHR/promise object.
 		 */
@@ -84,7 +95,11 @@
 			var toastOnError = options.toastOnError !== false;
 
 			if ($button) {
-				AIPS.Utilities.setButtonLoading($button, options.loadingLabel || '');
+				if (options.loadingLabel) {
+					AIPS.Utilities.setButtonLoading($button, options.loadingLabel);
+				} else {
+					$button.prop('disabled', true);
+				}
 			}
 
 			var xhr = $.ajax({
@@ -94,6 +109,26 @@
 				data: data
 			});
 
+			// Registered before .done()/.fail() below so the button is always
+			// restored first, even if a caller's onSuccess/onError callback throws
+			// (jQuery's Callbacks list has no exception isolation between callbacks).
+			if ($button) {
+				xhr.always(function () {
+					AIPS.Utilities.resetButton($button);
+				});
+			}
+
+			function handleFailure(response, isTransportError) {
+				var message = AIPS.Core.Http.getErrorMessage(response, options.errorFallback);
+
+				if (toastOnError) {
+					AIPS.Utilities.showToast(message, 'error');
+				}
+				if (typeof options.onError === 'function') {
+					options.onError(message, response, isTransportError);
+				}
+			}
+
 			xhr.done(function (response) {
 				if (response && response.success) {
 					if (typeof options.onSuccess === 'function') {
@@ -102,34 +137,16 @@
 					return;
 				}
 
-				var message = AIPS.Core.Http.getErrorMessage(response, options.errorFallback);
-
-				if (toastOnError) {
-					AIPS.Utilities.showToast(message, 'error');
-				}
-				if (typeof options.onError === 'function') {
-					options.onError(message, response);
-				}
+				handleFailure(response, false);
 			});
 
-			xhr.fail(function () {
-				var message = options.errorFallback
-					|| (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain)
-					|| 'An error occurred. Please try again.';
-
-				if (toastOnError) {
-					AIPS.Utilities.showToast(message, 'error');
-				}
-				if (typeof options.onError === 'function') {
-					options.onError(message, null);
-				}
+			xhr.fail(function (jqXHR) {
+				// Non-2xx HTTP responses (e.g. AIPS_Ajax_Response::permission_denied()/
+				// not_found()) still carry a parsed JSON body on jqXHR.responseJSON —
+				// read it so getErrorMessage() can surface the server's real message
+				// instead of always falling back to a generic one.
+				handleFailure(jqXHR ? jqXHR.responseJSON : undefined, true);
 			});
-
-			if ($button) {
-				xhr.always(function () {
-					AIPS.Utilities.resetButton($button);
-				});
-			}
 
 			return xhr;
 		},

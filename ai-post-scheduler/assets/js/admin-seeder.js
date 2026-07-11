@@ -69,13 +69,12 @@ jQuery(document).ready(function($) {
             },
             toastOnError: false,
             onSuccess: function(data) {
-                $log.append(`<div style="color: green;">✔ ${data.message}</div>`);
+                $log.append(AIPS.Templates.render('aips-tmpl-seeder-log-success', { message: data.message }));
                 processQueue(queue);
             },
-            onError: function(message, response) {
-                // response is null for network/transport-level failures.
-                var prefix = response === null ? '✘ AJAX Error: ' : '✘ Error: ';
-                $log.append(`<div style="color: red;">${prefix}${message}</div>`);
+            onError: function(message, response, isTransportError) {
+                var prefix = isTransportError ? '✘ AJAX Error: ' : '✘ Error: ';
+                $log.append(AIPS.Templates.render('aips-tmpl-seeder-log-error', { prefix: prefix, message: message }));
                 processQueue(queue); // Continue anyway
             }
         });

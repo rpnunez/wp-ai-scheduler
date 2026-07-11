@@ -80,6 +80,14 @@ if (!defined('ABSPATH')) {
 <div id="aips-seeder-log" style="background: #f0f0f1; padding: 15px; border: 1px solid #c3c4c7; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.6;"></div>
 </div>
 </div>
+
+<script type="text/html" id="aips-tmpl-seeder-log-success">
+	<div style="color: green;">✔ {{message}}</div>
+</script>
+<script type="text/html" id="aips-tmpl-seeder-log-error">
+	<div style="color: red;">{{prefix}}{{message}}</div>
+</script>
+
 <?php if (empty($embedded)) : ?>
 </div>
 </div>
