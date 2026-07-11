@@ -342,6 +342,14 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-core-script',
+            AIPS_PLUGIN_URL . 'assets/js/core.js',
+            array('jquery', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'aips-utilities-script'),
@@ -728,7 +736,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
               'aips-admin-embeddings',
               AIPS_PLUGIN_URL . 'assets/js/admin-embeddings.js',
-              array('jquery', 'aips-admin-script'),
+              array('jquery', 'aips-admin-script', 'aips-core-script'),
               AIPS_VERSION,
               true
           );
@@ -776,7 +784,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-slices',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-slices.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );

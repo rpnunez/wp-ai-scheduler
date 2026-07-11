@@ -43,27 +43,19 @@
 			console.log('Queueing embeddings computation for author ID:', authorId, 'with batch size:', batchSize);
 
 			// Make AJAX request
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_compute_topic_embeddings',
 				data: {
-					action: 'aips_compute_topic_embeddings',
-					nonce: aipsAjax.nonce,
 					author_id: authorId,
 					batch_size: batchSize
 				},
-				success: function(response) {
-					if (response.success) {
-						console.log('Embeddings queued successfully:', response.data);
-						alert(response.data.message);
-					} else {
-						console.error('Failed to queue embeddings:', response.data);
-						alert('Error: ' + (response.data.message || 'Failed to queue embeddings.'));
-					}
+				errorFallback: 'Failed to queue embeddings.',
+				onSuccess: function(data) {
+					console.log('Embeddings queued successfully:', data);
+					AIPS.Utilities.showToast(data.message, 'success');
 				},
-				error: function(xhr, status, error) {
-					console.error('AJAX error while queueing embeddings:', error);
-					alert('Network error: Failed to queue embeddings.');
+				onError: function(message) {
+					console.error('Failed to queue embeddings:', message);
 				}
 			});
 		}

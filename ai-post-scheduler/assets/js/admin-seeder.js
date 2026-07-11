@@ -60,26 +60,22 @@ jQuery(document).ready(function($) {
         const task = queue.shift();
         $log.append(`<div>Generating ${task.count} ${task.label}...</div>`);
 
-        $.ajax({
-            url: aipsAjax.ajaxUrl,
-            type: 'POST',
+        AIPS.Core.Http.ajaxRequest({
+            action: 'aips_process_seeder',
             data: {
-                action: 'aips_process_seeder',
-                nonce: aipsAjax.nonce,
                 type: task.type,
                 count: task.count,
                 keywords: task.keywords
             },
-            success: function(response) {
-                if (response.success) {
-                    $log.append(`<div style="color: green;">✔ ${response.data.message}</div>`);
-                } else {
-                    $log.append(`<div style="color: red;">✘ Error: ${response.data.message}</div>`);
-                }
+            toastOnError: false,
+            onSuccess: function(data) {
+                $log.append(`<div style="color: green;">✔ ${data.message}</div>`);
                 processQueue(queue);
             },
-            error: function(xhr, status, error) {
-                $log.append(`<div style="color: red;">✘ AJAX Error: ${error}</div>`);
+            onError: function(message, response) {
+                // response is null for network/transport-level failures.
+                var prefix = response === null ? '✘ AJAX Error: ' : '✘ Error: ';
+                $log.append(`<div style="color: red;">${prefix}${message}</div>`);
                 processQueue(queue); // Continue anyway
             }
         });
