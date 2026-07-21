@@ -118,21 +118,15 @@
 
 		$( document ).on( 'click', '.aips-cache-flush-expired', function () {
 		var $btn = $( this );
-		$btn.prop( 'disabled', true );
-		$.post( ajaxUrl, {
+		AIPS.Core.Http.ajaxRequest( {
 			action: 'aips_cache_monitor_flush_expired',
-			nonce:  $btn.data( 'nonce' ) || ACTION_NONCE
-		} ).done( function ( res ) {
-			$btn.prop( 'disabled', false );
-			if ( res.success ) {
-				AIPS.Utilities.showToast( res.data.message, 'success' );
-			} else {
-				AIPS.Utilities.showToast( res.data.message, 'error' );
+			nonce:  $btn.data( 'nonce' ) || ACTION_NONCE,
+			$button: $btn,
+			errorFallback: aipsCacheMonitor.i18n.requestFailed || 'Request failed.',
+			onSuccess: function ( data ) {
+				AIPS.Utilities.showToast( data.message, 'success' );
 			}
-		} ).fail( function () {
-			$btn.prop( 'disabled', false );
-			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
-			} );
+		} );
 	} );
 
 	// -----------------------------------------------------------------------
@@ -150,17 +144,14 @@
 				label:     aipsCacheMonitor.i18n.confirmBtn || 'Confirm Flush',
 				className: 'aips-btn-danger',
 				action:    function () {
-					$.post( ajaxUrl, {
-						action:    'aips_cache_monitor_flush_all',
-						nonce:     actionNonce,
-						confirmed: 1
-					} ).done( function ( res ) {
-						if ( res.success ) {
-							AIPS.Utilities.showToast( res.data.message, 'success' );
-						} else {
-							AIPS.Utilities.showToast( res.data.message, 'error' );
+					AIPS.Core.Http.ajaxRequest( {
+						action: 'aips_cache_monitor_flush_all',
+						nonce:  actionNonce,
+						data:   { confirmed: 1 },
+						onSuccess: function ( data ) {
+							AIPS.Utilities.showToast( data.message, 'success' );
 						}
-						} );
+					} );
 				}
 			} ]
 		);
@@ -183,18 +174,15 @@
 				label:     aipsCacheMonitor.i18n.flushGroupBtn || 'Flush Group',
 				className: 'aips-btn-danger',
 				action:    function () {
-					$.post( ajaxUrl, {
-						action:      'aips_cache_monitor_flush_group',
-						nonce:       actionNonce,
-						cache_group: group
-					} ).done( function ( res ) {
-						if ( res.success ) {
-							AIPS.Utilities.showToast( res.data.message, 'success' );
+					AIPS.Core.Http.ajaxRequest( {
+						action: 'aips_cache_monitor_flush_group',
+						nonce:  actionNonce,
+						data:   { cache_group: group },
+						onSuccess: function ( data ) {
+							AIPS.Utilities.showToast( data.message, 'success' );
 							setTimeout( function () { location.reload(); }, 1200 );
-						} else {
-							AIPS.Utilities.showToast( res.data.message, 'error' );
 						}
-						} );
+					} );
 				}
 			} ]
 		);
@@ -208,18 +196,15 @@
 		var $btn = $( this );
 		var tag  = $btn.data( 'tag' );
 
-		$.post( ajaxUrl, {
+		AIPS.Core.Http.ajaxRequest( {
 			action: 'aips_cache_monitor_invalidate_tag',
 			nonce:  $btn.data( 'nonce' ) || ACTION_NONCE,
-			tag:    tag
-		} ).done( function ( res ) {
-			if ( res.success ) {
-				AIPS.Utilities.showToast( res.data.message, 'success' );
-				$btn.closest( 'tr' ).find( '.aips-badge' ).text( 'v' + res.data.new_version );
-			} else {
-				AIPS.Utilities.showToast( res.data.message, 'error' );
+			data:   { tag: tag },
+			onSuccess: function ( data ) {
+				AIPS.Utilities.showToast( data.message, 'success' );
+				$btn.closest( 'tr' ).find( '.aips-badge' ).text( 'v' + data.new_version );
 			}
-			} );
+		} );
 	} );
 
 	// -----------------------------------------------------------------------
@@ -230,17 +215,14 @@
 		var $btn   = $( this );
 		var domain = $btn.data( 'domain' );
 
-		$.post( ajaxUrl, {
+		AIPS.Core.Http.ajaxRequest( {
 			action: 'aips_cache_monitor_invalidate_domain',
 			nonce:  $btn.data( 'nonce' ) || ACTION_NONCE,
-			domain: domain
-		} ).done( function ( res ) {
-			if ( res.success ) {
-				AIPS.Utilities.showToast( res.data.message, 'success' );
-			} else {
-				AIPS.Utilities.showToast( res.data.message, 'error' );
+			data:   { domain: domain },
+			onSuccess: function ( data ) {
+				AIPS.Utilities.showToast( data.message, 'success' );
 			}
-			} );
+		} );
 	} );
 
 	// -----------------------------------------------------------------------
@@ -286,17 +268,15 @@
 		$( '#aips-cache-inspect-modal' ).show();
 		$( '#aips-cache-inspect-body' ).html( '<p>' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</p>' );
 
-		$.post( ajaxUrl, {
-			action:   'aips_cache_monitor_inspect',
-			nonce:    READ_NONCE,
-			key_hash: hash
-		} ).done( function ( res ) {
-			if ( ! res.success ) {
-				$( '#aips-cache-inspect-body' ).html( '<p>' + esc( res.data.message ) + '</p>' );
-				return;
-			}
-
-			var d           = res.data;
+		AIPS.Core.Http.ajaxRequest( {
+			action: 'aips_cache_monitor_inspect',
+			nonce:  READ_NONCE,
+			data:   { key_hash: hash },
+			toastOnError: false,
+			onError: function ( message ) {
+				$( '#aips-cache-inspect-body' ).html( '<p>' + esc( message ) + '</p>' );
+			},
+			onSuccess: function ( d ) {
 			var expiresFmt  = d.expires_at > 0 ? formatTs( d.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
 			var ttlRemFmt   = d.ttl_remaining !== null && d.ttl_remaining !== undefined ? d.ttl_remaining + 's' : 'N/A';
 
@@ -323,7 +303,8 @@
 			}
 
 			$( '#aips-cache-inspect-body' ).html( html );
-			} );
+			}
+		} );
 	} );
 
 		$( document ).on( 'click', '.aips-modal-close', function () {
@@ -347,18 +328,15 @@
 		var hash        = $el.data( 'hash' );
 		var actionNonce = $el.closest( '[data-nonce]' ).data( 'nonce' ) || ACTION_NONCE;
 
-		$.post( ajaxUrl, {
-			action:   'aips_cache_monitor_delete_entry',
-			nonce:    actionNonce,
-			key_hash: hash
-		} ).done( function ( res ) {
-			if ( res.success ) {
-				AIPS.Utilities.showToast( res.data.message, 'success' );
+		AIPS.Core.Http.ajaxRequest( {
+			action: 'aips_cache_monitor_delete_entry',
+			nonce:  actionNonce,
+			data:   { key_hash: hash },
+			onSuccess: function ( data ) {
+				AIPS.Utilities.showToast( data.message, 'success' );
 				$el.closest( 'tr' ).fadeOut( 300, function () { $( this ).remove(); } );
-			} else {
-				AIPS.Utilities.showToast( res.data.message, 'error' );
 			}
-			} );
+		} );
 	} );
 
 	// -----------------------------------------------------------------------
@@ -379,16 +357,14 @@
 			return;
 		}
 
-		$.post( ajaxUrl, {
-			action:     'aips_cache_monitor_delete_bulk',
-			nonce:      $( this ).data( 'nonce' ) || ACTION_NONCE,
-			key_hashes: hashes
-		} ).done( function ( res ) {
-			if ( res.success ) {
-				AIPS.Utilities.showToast( res.data.message, 'success' );
+		AIPS.Core.Bulk.dispatch( {
+			action:   'aips_cache_monitor_delete_bulk',
+			ids:      hashes,
+			idsField: 'key_hashes',
+			nonce:    $( this ).data( 'nonce' ) || ACTION_NONCE,
+			onSuccess: function ( data ) {
+				AIPS.Utilities.showToast( data.message, 'success' );
 				self.loadEntries();
-			} else {
-				AIPS.Utilities.showToast( res.data.message, 'error' );
 			}
 		} );
 	} );
@@ -398,38 +374,39 @@
 	// -----------------------------------------------------------------------
 
 		$( '#aips-ops-search-btn' ).on( 'click', function () {
-		var params = {
-			action:           'aips_cache_monitor_operations',
-			nonce:            $( this ).data( 'nonce' ) || READ_NONCE,
-			repository_class: $( '#aips-ops-filter-repo' ).val(),
-			tier:             $( '#aips-ops-filter-tier' ).val()
-		};
+		var opsNonce = $( this ).data( 'nonce' ) || READ_NONCE;
 
 		$( '#aips-ops-tbody' ).html(
 			'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
 		);
 
-		$.post( ajaxUrl, params ).done( function ( res ) {
-			if ( ! res.success ) { AIPS.Utilities.showToast( res.data.message, 'error' ); return; }
+		AIPS.Core.Http.ajaxRequest( {
+			action: 'aips_cache_monitor_operations',
+			nonce:  opsNonce,
+			data: {
+				repository_class: $( '#aips-ops-filter-repo' ).val(),
+				tier:             $( '#aips-ops-filter-tier' ).val()
+			},
+			onSuccess: function ( data ) {
+				var ops  = data.operations || [];
+				var html = '';
 
-			var ops  = res.data.operations || [];
-			var html = '';
+				$.each( ops, function ( i, op ) {
+					html += '<tr>';
+					html += '<td><code>' + esc( op.operation_id ) + '</code></td>';
+					html += '<td><small>' + esc( op.repository_class ) + '</small></td>';
+					html += '<td>' + esc( op.tier ) + '</td>';
+					html += '<td>' + esc( op.index_count ) + '</td>';
+					html += '<td>' + formatBytes( op.total_size ) + '</td>';
+					html += '<td>' + formatTs( op.last_updated ) + '</td>';
+					html += '</tr>';
+					} );
 
-			$.each( ops, function ( i, op ) {
-				html += '<tr>';
-				html += '<td><code>' + esc( op.operation_id ) + '</code></td>';
-				html += '<td><small>' + esc( op.repository_class ) + '</small></td>';
-				html += '<td>' + esc( op.tier ) + '</td>';
-				html += '<td>' + esc( op.index_count ) + '</td>';
-				html += '<td>' + formatBytes( op.total_size ) + '</td>';
-				html += '<td>' + formatTs( op.last_updated ) + '</td>';
-				html += '</tr>';
-				} );
-
-			if ( ! html ) {
-				html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noOps || 'No operations found.' ) + '</td></tr>';
+				if ( ! html ) {
+					html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noOps || 'No operations found.' ) + '</td></tr>';
+				}
+				$( '#aips-ops-tbody' ).html( html );
 			}
-			$( '#aips-ops-tbody' ).html( html );
 		} );
 	} );
 
@@ -452,43 +429,39 @@
 		var actionNonce = $btn.data( 'nonce' ) || ACTION_NONCE;
 		var $result     = $( '#aips-maintenance-result' );
 
-		$btn.prop( 'disabled', true );
-
-		$.post( ajaxUrl, {
-			action:             'aips_cache_monitor_maintenance',
-			nonce:              actionNonce,
-			maintenance_action: action
-		} ).done( function ( res ) {
-			$btn.prop( 'disabled', false );
-
-			// Export: trigger file download.
-			if ( action === 'export_diagnostics' && res.success ) {
-				try {
-					var blob = new Blob( [ JSON.stringify( res.data.diagnostics, null, 2 ) ], { type: 'application/json' } );
-					var url  = URL.createObjectURL( blob );
-					var a    = document.createElement( 'a' );
-					a.href     = url;
-					a.download = 'aips-cache-diagnostics-' + Date.now() + '.json';
-					document.body.appendChild( a );
-					a.click();
-					document.body.removeChild( a );
-					URL.revokeObjectURL( url );
-				} catch ( err ) {
-					AIPS.Utilities.showToast( 'Export failed: ' + err.message, 'error' );
+		AIPS.Core.Http.ajaxRequest( {
+			action: 'aips_cache_monitor_maintenance',
+			nonce:  actionNonce,
+			data:   { maintenance_action: action },
+			$button: $btn,
+			toastOnError: false,
+			errorFallback: aipsCacheMonitor.i18n.requestFailed || 'Request failed.',
+			onSuccess: function ( data ) {
+				// Export: trigger file download.
+				if ( action === 'export_diagnostics' ) {
+					try {
+						var blob = new Blob( [ JSON.stringify( data.diagnostics, null, 2 ) ], { type: 'application/json' } );
+						var url  = URL.createObjectURL( blob );
+						var a    = document.createElement( 'a' );
+						a.href     = url;
+						a.download = 'aips-cache-diagnostics-' + Date.now() + '.json';
+						document.body.appendChild( a );
+						a.click();
+						document.body.removeChild( a );
+						URL.revokeObjectURL( url );
+					} catch ( err ) {
+						AIPS.Utilities.showToast( 'Export failed: ' + err.message, 'error' );
+					}
+					return;
 				}
-				return;
-			}
 
-			if ( res.success ) {
-				$result.show().html( '<div class="notice notice-success inline"><p>' + esc( res.data.message ) + '</p></div>' );
-				AIPS.Utilities.showToast( res.data.message, 'success' );
-			} else {
-				$result.show().html( '<div class="notice notice-error inline"><p>' + esc( res.data.message ) + '</p></div>' );
-				AIPS.Utilities.showToast( res.data.message, 'error' );
+				$result.show().html( '<div class="notice notice-success inline"><p>' + esc( data.message ) + '</p></div>' );
+				AIPS.Utilities.showToast( data.message, 'success' );
+			},
+			onError: function ( message ) {
+				$result.show().html( '<div class="notice notice-error inline"><p>' + esc( message ) + '</p></div>' );
+				AIPS.Utilities.showToast( message, 'error' );
 			}
-		} ).fail( function () {
-			$btn.prop( 'disabled', false );
-			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
 		} );
 		} );
 		},
@@ -496,8 +469,6 @@
 		loadEntries: function() {
 			var self = this;
 			var params = $.extend( {}, self.entriesState.filters, {
-				action:   'aips_cache_monitor_entries',
-				nonce:    READ_NONCE,
 				page:     self.entriesState.page,
 				per_page: self.entriesState.perPage,
 				orderby:  self.entriesState.orderby,
@@ -508,13 +479,13 @@
 				'<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
 			);
 
-			$.post( ajaxUrl, params ).done( function ( res ) {
-				if ( ! res.success ) {
-					AIPS.Utilities.showToast( res.data.message, 'error' );
-					return;
-				}
+			AIPS.Core.Http.ajaxRequest( {
+				action: 'aips_cache_monitor_entries',
+				nonce:  READ_NONCE,
+				data:   params,
+				onSuccess: function ( data ) {
 
-				var rows = res.data.rows || [];
+				var rows = data.rows || [];
 				var html = '';
 
 				$.each( rows, function ( i, row ) {
@@ -548,12 +519,12 @@
 				$( '#aips-cache-entries-tbody' ).html( html );
 
 				// Pagination
-				var totalPages  = res.data.total_pages || 1;
-				var currentPage = res.data.page        || 1;
+				var totalPages  = data.total_pages || 1;
+				var currentPage = data.page        || 1;
 				var pagHtml     = '';
 
 				if ( totalPages > 1 ) {
-					pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + res.data.total + ' total)' ) + '</span> ';
+					pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + data.total + ' total)' ) + '</span> ';
 					if ( currentPage > 1 ) {
 						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
 					}
@@ -562,14 +533,13 @@
 					}
 				}
 				$( '#aips-cache-entries-pagination' ).html( pagHtml );
+				}
 			} );
 		},
 
 		loadEvents: function() {
 			var self = this;
 			var params = {
-				action:     'aips_cache_monitor_events',
-				nonce:      READ_NONCE,
 				event_type: $( '#aips-events-filter-type' ).val(),
 				page:       self.eventsPage,
 				per_page:   50
@@ -579,10 +549,13 @@
 				'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
 			);
 
-			$.post( ajaxUrl, params ).done( function ( res ) {
-				if ( ! res.success ) { AIPS.Utilities.showToast( res.data.message, 'error' ); return; }
+			AIPS.Core.Http.ajaxRequest( {
+				action: 'aips_cache_monitor_events',
+				nonce:  READ_NONCE,
+				data:   params,
+				onSuccess: function ( data ) {
 
-				var rows = res.data.rows || [];
+				var rows = data.rows || [];
 				var html = '';
 
 				$.each( rows, function ( i, ev ) {
@@ -600,6 +573,7 @@
 					html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noEvents || 'No events found.' ) + '</td></tr>';
 				}
 				$( '#aips-events-tbody' ).html( html );
+				}
 			} );
 		}
 	};

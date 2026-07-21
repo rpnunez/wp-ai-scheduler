@@ -471,11 +471,11 @@ class AIPS_Admin_Assets {
         // a second registration, so THIS array is the one that actually takes effect
         // everywhere, including on the full History page. Keep it in sync with what
         // admin-history.js actually uses (AIPS.Utilities, aipsAjax/AIPS.Templates via
-        // aips-admin-script, AIPS.Core.Table, AIPS.Core.Bulk).
+        // aips-admin-script, AIPS.Core.Http, AIPS.Core.Table, AIPS.Core.Bulk).
         wp_enqueue_script(
             'aips-admin-history',
             AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-            array('jquery', 'aips-utilities-script', 'heartbeat', 'aips-admin-script', 'aips-templates-script', 'aips-core-table-script', 'aips-core-bulk-script'),
+            array('jquery', 'aips-utilities-script', 'heartbeat', 'aips-admin-script', 'aips-templates-script', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script'),
             AIPS_VERSION,
             true
         );
@@ -1140,7 +1140,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-ai-edit',
                 AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
-                array('jquery', 'aips-admin-script'),
+                array('jquery', 'aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1627,7 +1627,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-telemetry-script',
                 AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
-				array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs', 'aips-datetime-script'),
+				array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs', 'aips-datetime-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1709,7 +1709,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-internal-links',
                 AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1784,7 +1784,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-cache-monitor',
             AIPS_PLUGIN_URL . 'assets/js/cache-monitor.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-bulk-script'),
             AIPS_VERSION,
             true
         );

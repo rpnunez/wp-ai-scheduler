@@ -147,11 +147,10 @@
 			this.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshing || 'Refreshing...');
 			$refreshButtons.prop('disabled', true);
 
-			$.post(
-				ajaxurl,
-				{
-					action: 'aips_get_telemetry',
-					nonce: window.aipsTelemetryL10n.nonce || '',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_telemetry',
+				nonce: window.aipsTelemetryL10n.nonce || '',
+				data: {
 					page: page,
 					per_page: this.perPage,
 					type: $('#aips-telemetry-type-filter').val() || '',
@@ -162,24 +161,21 @@
 					start_date: $('#aips-telemetry-start-date').val() || '',
 					end_date: $('#aips-telemetry-end-date').val() || ''
 				},
-				function(response) {
-					if (!response || !response.success || !response.data) {
-						self.handleRequestFailure();
-						return;
-					}
+				toastOnError: false,
+				onSuccess: function(data) {
+					self.page = data.page || 1;
+					self.totalPages = data.total_pages || 1;
+					self.perPage = data.per_page || self.perPage;
 
-					self.page = response.data.page || 1;
-					self.totalPages = response.data.total_pages || 1;
-					self.perPage = response.data.per_page || self.perPage;
-
-					$('#aips-telemetry-start-date').val(response.data.start_date || '');
-					$('#aips-telemetry-end-date').val(response.data.end_date || '');
-					self.renderRows(response.data.rows || []);
-					self.updatePagination(response.data);
-					self.updateCharts(response.data.charts || {});
+					$('#aips-telemetry-start-date').val(data.start_date || '');
+					$('#aips-telemetry-end-date').val(data.end_date || '');
+					self.renderRows(data.rows || []);
+					self.updatePagination(data);
+					self.updateCharts(data.charts || {});
+				},
+				onError: function() {
+					self.handleRequestFailure();
 				}
-			).fail(function() {
-				self.handleRequestFailure();
 			}).always(function() {
 				self.setLoadingState(false);
 				self.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshLabel || 'Refresh');
@@ -310,23 +306,22 @@
 
 			$button.prop('disabled', true);
 
-			$.post(
-				ajaxurl,
-				{
-					action: 'aips_get_telemetry_details',
-					nonce: window.aipsTelemetryL10n.detailsNonce || '',
-					id: rowId
-				},
-				function(response) {
-					if (!response || !response.success || !response.data || !response.data.row) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_telemetry_details',
+				nonce: window.aipsTelemetryL10n.detailsNonce || '',
+				data: { id: rowId },
+				toastOnError: false,
+				onSuccess: function(data) {
+					if (!data.row) {
 						self.handleDetailsFailure();
 						return;
 					}
 
-					self.renderDetailsModal(response.data);
+					self.renderDetailsModal(data);
+				},
+				onError: function() {
+					self.handleDetailsFailure();
 				}
-			).fail(function() {
-				self.handleDetailsFailure();
 			}).always(function() {
 				$button.prop('disabled', false);
 			});
