@@ -350,6 +350,30 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-core-table-script',
+            AIPS_PLUGIN_URL . 'assets/js/core-table.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-core-modal-script',
+            AIPS_PLUGIN_URL . 'assets/js/core-modal.js',
+            array('jquery', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-core-bulk-script',
+            AIPS_PLUGIN_URL . 'assets/js/core-bulk.js',
+            array('jquery', 'aips-core-script', 'aips-core-table-script', 'aips-core-modal-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'aips-utilities-script'),
@@ -440,10 +464,18 @@ class AIPS_Admin_Assets {
      * @return void
      */
     private function enqueue_history_modal_opener_script() {
+        // NOTE: this is the FIRST wp_enqueue_script() call for the 'aips-admin-history'
+        // handle on any admin page (enqueue_global_assets() always runs before the
+        // page-specific enqueue_history_assets(), which re-declares this same handle
+        // further below) -- WordPress does not update a handle's dependency array on
+        // a second registration, so THIS array is the one that actually takes effect
+        // everywhere, including on the full History page. Keep it in sync with what
+        // admin-history.js actually uses (AIPS.Utilities, aipsAjax/AIPS.Templates via
+        // aips-admin-script, AIPS.Core.Table, AIPS.Core.Bulk).
         wp_enqueue_script(
             'aips-admin-history',
             AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-            array('jquery', 'aips-utilities-script', 'heartbeat'),
+            array('jquery', 'aips-utilities-script', 'heartbeat', 'aips-admin-script', 'aips-templates-script', 'aips-core-table-script', 'aips-core-bulk-script'),
             AIPS_VERSION,
             true
         );
@@ -533,7 +565,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
-            array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-bulk-script'),
             AIPS_VERSION,
             true
           );
@@ -784,7 +816,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-slices',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-slices.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-core-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script'),
                 AIPS_VERSION,
                 true
             );
@@ -968,7 +1000,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
               'aips-admin-research',
               AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-              array('aips-admin-script', 'aips-templates-script'),
+              array('aips-admin-script', 'aips-templates-script', 'aips-core-table-script', 'aips-core-bulk-script'),
               AIPS_VERSION,
               true
           );
@@ -1049,7 +1081,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                array('aips-admin-script', 'aips-admin-view-session', 'aips-core-table-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1177,6 +1209,13 @@ class AIPS_Admin_Assets {
                 true
             );
 
+            // NOTE: 'aips-admin-history' is already registered (with the real,
+            // effective dependency array) by enqueue_history_modal_opener_script(),
+            // which enqueue_global_assets() always calls first -- WordPress does not
+            // update a handle's dependencies on a second wp_enqueue_script() call for
+            // the same handle, so the array below has no effect. It's kept only to
+            // ensure the handle is enqueued (not just registered) on this page; see
+            // enqueue_history_modal_opener_script() for the deps that actually apply.
             wp_enqueue_script(
                 'aips-admin-history',
                 AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
@@ -1460,7 +1499,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-sources',
                 AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
-                array('jquery', 'aips-utilities-script'),
+                array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-core-modal-script', 'aips-core-table-script'),
                 AIPS_VERSION,
                 true
             );

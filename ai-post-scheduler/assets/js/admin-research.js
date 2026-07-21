@@ -110,15 +110,12 @@
         submitResearchFromSourcesForm: function(e) {
             e.preventDefault();
 
-            var $form    = $(e.currentTarget);
             var $submit  = $('#source-research-submit');
             var $spinner = $('#source-research-spinner');
 
             var niche    = $('#source-research-niche').val();
             var count    = $('#source-research-count').val();
-            var termIds  = $form.find('input[name="term_ids[]"]:checked').map(function() {
-                return $(this).val();
-            }).get();
+            var termIds  = AIPS.Core.Table.getSelectedIds('#aips-research-from-sources-form input[name="term_ids[]"]');
 
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
@@ -397,8 +394,10 @@
          * @param {Event} e Change event.
          */
         toggleAllTopics: function(e) {
-            var isChecked = $(e.currentTarget).is(':checked');
-            $('.topic-checkbox:visible').prop('checked', isChecked);
+            AIPS.Core.Table.toggleAllRows({
+                checked: $(e.currentTarget).is(':checked'),
+                rowCheckboxSelector: '.topic-checkbox:visible'
+            });
             AIPS.updateSelectedTopics();
         },
 
@@ -416,14 +415,12 @@
          * Refresh selected-topic state and related action-button availability.
          */
         updateSelectedTopics: function() {
-            AIPS.researchSelectedTopics = $('.topic-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
+            AIPS.researchSelectedTopics = AIPS.Core.Table.getSelectedIds('.topic-checkbox');
 
-            var hasSelected = AIPS.researchSelectedTopics.length > 0;
-            $('#aips-delete-selected-topics').prop('disabled', !hasSelected);
-            $('#aips-schedule-selected-topics').prop('disabled', !hasSelected);
-            $('#aips-generate-selected-topics').prop('disabled', !hasSelected);
+            AIPS.Core.Bulk.updateToolbarState({
+                count: AIPS.researchSelectedTopics.length,
+                $toolbarActions: $('#aips-delete-selected-topics, #aips-schedule-selected-topics, #aips-generate-selected-topics')
+            });
         },
 
         /**
@@ -805,37 +802,21 @@
                 return;
             }
 
-            AIPS.Utilities.confirm(
-                (aipsResearchL10n.deleteTopicsConfirm || 'Delete ' + AIPS.researchSelectedTopics.length + ' selected topic(s)?'),
-                'Notice',
-                [
-                    { label: aipsResearchL10n.cancel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                    {
-                        label: aipsResearchL10n.confirmDelete || 'Yes, delete',
-                        className: 'aips-btn aips-btn-danger-solid',
-                        action: function() {
-                            $.ajax({
-                                url: ajaxurl,
-                                type: 'POST',
-                                data: {
-                                    action: 'aips_delete_trending_topic_bulk',
-                                    nonce: $('#aips_nonce').val(),
-                                    topic_ids: AIPS.researchSelectedTopics
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        AIPS.Utilities.showToast(response.data.message, 'success');
-                                        AIPS.researchSelectedTopics = [];
-                                        $('#load-topics').trigger('click');
-                                    } else {
-                                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                                    }
-                                }
-                            });
-                        }
-                    }
-                ]
-            );
+            AIPS.Core.Bulk.dispatch({
+                action: 'aips_delete_trending_topic_bulk',
+                ids: AIPS.researchSelectedTopics,
+                idsField: 'topic_ids',
+                nonce: $('#aips_nonce').val(),
+                confirmMessage: aipsResearchL10n.deleteTopicsConfirm || 'Delete ' + AIPS.researchSelectedTopics.length + ' selected topic(s)?',
+                confirmHeading: 'Notice',
+                confirmLabel: aipsResearchL10n.confirmDelete || 'Yes, delete',
+                cancelLabel: aipsResearchL10n.cancel || 'No, cancel',
+                onSuccess: function(data) {
+                    AIPS.Utilities.showToast(data.message, 'success');
+                    AIPS.researchSelectedTopics = [];
+                    $('#load-topics').trigger('click');
+                }
+            });
         },
 
         /**

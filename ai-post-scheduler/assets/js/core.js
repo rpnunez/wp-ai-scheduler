@@ -58,6 +58,9 @@
 		 *                                             omitted, `options.$button` is only disabled —
 		 *                                             its content is left untouched rather than being
 		 *                                             blanked to an empty label.
+		 * @param {boolean}  [options.loadingLabelIsHtml] When `true`, `loadingLabel` is inserted as
+		 *                                             raw HTML (e.g. a dashicon spinner) rather than
+		 *                                             escaped text — forwarded to `setButtonLoading()`.
 		 * @param {boolean}  [options.toastOnError]    Auto-show an error toast via
 		 *                                             `AIPS.Utilities.showToast()` on failure.
 		 *                                             Default `true`. Set `false` when the caller
@@ -96,7 +99,7 @@
 
 			if ($button) {
 				if (options.loadingLabel) {
-					AIPS.Utilities.setButtonLoading($button, options.loadingLabel);
+					AIPS.Utilities.setButtonLoading($button, options.loadingLabel, { isHtml: !!options.loadingLabelIsHtml });
 				} else {
 					$button.prop('disabled', true);
 				}

@@ -36,8 +36,7 @@
 			$(document).on('click', '#aips-save-post-slice-btn', this.saveSlice.bind(this));
 			$(document).on('click', '.aips-delete-post-slice', this.deleteSlice.bind(this));
 			$(document).on('click', '.aips-toggle-post-slice', this.toggleSlice.bind(this));
-			// $(document).on('click', '#aips-post-slice-modal .aips-modal-close', this.closeModal.bind(this)); // Handled globally by admin.js
-			$(document).on('click', '#aips-post-slice-modal', this.onOverlayClick.bind(this));
+			// Modal close (button + backdrop click + Escape) is handled globally by admin.js.
 			$(document).on('input', '#aips-post-slice-search', this.filterSlices.bind(this));
 			$(document).on('click', '#aips-post-slice-search-clear, #aips-post-slice-search-clear-2', this.clearSearch.bind(this));
 		},
@@ -52,9 +51,10 @@
 			e.preventDefault();
 			this.currentSliceId = 0;
 			this.resetForm();
-			$('#aips-post-slice-modal').find('.aips-modal-title').text(aipsPostSlicesL10n.addNewSlice);
-			$('#aips-post-slice-modal').show();
-			$('#aips-post-slice-name').trigger('focus');
+			AIPS.Core.Modal.open('#aips-post-slice-modal', {
+				title: aipsPostSlicesL10n.addNewSlice,
+				focusSelector: '#aips-post-slice-name'
+			});
 		},
 
 		/**
@@ -72,38 +72,18 @@
 
 			this.currentSliceId = id;
 
-			$('#aips-post-slice-id').val(id);
-			$('#aips-post-slice-name').val($row.data('name') || '');
-			$('#aips-post-slice-description').val($row.data('description') || '');
-			$('#aips-post-slice-sort-order').val($row.data('sort-order') || 0);
-			$('#aips-post-slice-is-active').prop('checked', parseInt($row.data('active'), 10) === 1);
+			AIPS.Core.Modal.populateFields('#aips-post-slice-modal', {
+				'#aips-post-slice-id': id,
+				'#aips-post-slice-name': $row.data('name') || '',
+				'#aips-post-slice-description': $row.data('description') || '',
+				'#aips-post-slice-sort-order': $row.data('sort-order') || 0,
+				'#aips-post-slice-is-active': parseInt($row.data('active'), 10) === 1
+			});
 
-			$('#aips-post-slice-modal').find('.aips-modal-title').text(aipsPostSlicesL10n.editSlice);
-			$('#aips-post-slice-modal').show();
-			$('#aips-post-slice-name').trigger('focus');
-		},
-
-		/**
-		 * Close the modal.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		closeModal: function (e) {
-			e.preventDefault();
-			$('#aips-post-slice-modal').hide();
-		},
-
-		/**
-		 * Close the modal when clicking the backdrop.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		onOverlayClick: function (e) {
-			if ($(e.target).is('#aips-post-slice-modal')) {
-				$('#aips-post-slice-modal').hide();
-			}
+			AIPS.Core.Modal.open('#aips-post-slice-modal', {
+				title: aipsPostSlicesL10n.editSlice,
+				focusSelector: '#aips-post-slice-name'
+			});
 		},
 
 		/**
@@ -112,11 +92,13 @@
 		 * @return {void}
 		 */
 		resetForm: function () {
-			$('#aips-post-slice-id').val(0);
-			$('#aips-post-slice-name').val('');
-			$('#aips-post-slice-description').val('');
-			$('#aips-post-slice-sort-order').val(0);
-			$('#aips-post-slice-is-active').prop('checked', true);
+			AIPS.Core.Modal.resetFields('#aips-post-slice-modal', {
+				'#aips-post-slice-id': 0,
+				'#aips-post-slice-name': '',
+				'#aips-post-slice-description': '',
+				'#aips-post-slice-sort-order': 0,
+				'#aips-post-slice-is-active': true
+			});
 		},
 
 		/**
@@ -177,18 +159,19 @@
 			e.preventDefault();
 
 			var id = parseInt($(e.currentTarget).data('id'), 10);
-
-			if (!confirm(aipsPostSlicesL10n.deleteConfirm)) {
-				return;
-			}
-
 			var self = this;
-			AIPS.Core.Http.ajaxRequest({
-				action: 'aips_delete_post_slice',
-				data: { slice_id: id },
-				errorFallback: aipsPostSlicesL10n.deleteFailed,
-				onSuccess: function (data) {
-					self.notifySuccessAndRefresh(data);
+
+			AIPS.Core.Modal.confirmDelete({
+				message: aipsPostSlicesL10n.deleteConfirm,
+				onConfirm: function () {
+					AIPS.Core.Http.ajaxRequest({
+						action: 'aips_delete_post_slice',
+						data: { slice_id: id },
+						errorFallback: aipsPostSlicesL10n.deleteFailed,
+						onSuccess: function (data) {
+							self.notifySuccessAndRefresh(data);
+						}
+					});
 				}
 			});
 		},
@@ -228,23 +211,12 @@
 		 * @return {void}
 		 */
 		filterSlices: function (e) {
-			var term = $(e.currentTarget).val().toLowerCase().trim();
-			var $rows = $('#aips-post-slices-table tbody tr');
-			var visible = 0;
-
-			$('#aips-post-slice-search-clear').toggle(term.length > 0);
-
-			$rows.each(function () {
-				var text = $(this).text().toLowerCase();
-				var show = !term || text.indexOf(term) !== -1;
-				$(this).toggle(show);
-
-				if (show) {
-					visible++;
-				}
+			AIPS.Core.Table.filterRows({
+				term: $(e.currentTarget).val(),
+				$rows: $('#aips-post-slices-table tbody tr'),
+				$clearButton: $('#aips-post-slice-search-clear'),
+				$noResults: $('#aips-post-slice-search-no-results')
 			});
-
-			$('#aips-post-slice-search-no-results').toggle(visible === 0 && term.length > 0);
 		},
 
 		/**

@@ -73,7 +73,10 @@
 		 * @return {void}
 		 */
 		onSelectAllChange: function (e) {
-			$('.aips-post-checkbox').prop('checked', $(e.currentTarget).prop('checked'));
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.currentTarget).prop('checked'),
+				rowCheckboxSelector: '.aips-post-checkbox'
+			});
 		},
 
 		/**
@@ -83,8 +86,10 @@
 		 * @return {void}
 		 */
 		onCheckboxChange: function (e) {
-			var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
-			$('#cb-select-all-1').prop('checked', allChecked);
+			AIPS.Core.Table.syncSelectAll({
+				$selectAll: $('#cb-select-all-1'),
+				rowCheckboxSelector: '.aips-post-checkbox'
+			});
 		},
 
 		// -----------------------------------------------------------------

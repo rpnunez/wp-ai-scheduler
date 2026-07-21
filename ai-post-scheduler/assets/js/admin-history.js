@@ -1100,8 +1100,10 @@
 		 * @param {Event} e
 		 */
 		toggleSelectAll: function (e) {
-			var checked = $(e.target).prop('checked');
-			$('.aips-history-cb').prop('checked', checked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.target).prop('checked'),
+				rowCheckboxSelector: '.aips-history-cb'
+			});
 			this.updateDeleteButton();
 		},
 
@@ -1110,17 +1112,20 @@
 		 */
 		onRowCheckboxChange: function () {
 			this.updateDeleteButton();
-			var allChecked = $('.aips-history-cb').length > 0
-				&& $('.aips-history-cb:not(:checked)').length === 0;
-			$('#aips-cb-select-all').prop('checked', allChecked);
+			AIPS.Core.Table.syncSelectAll({
+				$selectAll: $('#aips-cb-select-all'),
+				rowCheckboxSelector: '.aips-history-cb'
+			});
 		},
 
 		/**
 		 * Enable or disable the Delete Selected button based on current selections.
 		 */
 		updateDeleteButton: function () {
-			var count = $('.aips-history-cb:checked').length;
-			$('#aips-delete-selected-btn').prop('disabled', count === 0);
+			AIPS.Core.Bulk.updateToolbarState({
+				rowCheckboxSelector: '.aips-history-cb',
+				$toolbarActions: $('#aips-delete-selected-btn')
+			});
 		},
 
 		/**
@@ -1131,56 +1136,30 @@
 		deleteSelected: function (e) {
 			e.preventDefault();
 
-			var ids = [];
-			$('.aips-history-cb:checked').each(function () {
-				ids.push($(this).val());
-			});
+			var ids = AIPS.Core.Table.getSelectedIds('.aips-history-cb');
 
 			if (!ids.length) {
 				return;
 			}
 
-			var self     = this;
-			var $btn     = $(e.currentTarget);
-			var origHtml = $btn.html();
-			var msg      = aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.';
+			var self = this;
 
-			AIPS.Utilities.confirm(msg, 'Notice', [
-				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
-				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$btn.prop('disabled', true).html(
-						'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026')
-					);
-
-					$.ajax({
-						url: aipsAjax.ajaxUrl,
-						type: 'POST',
-						data: {
-							action: 'aips_bulk_delete_history',
-							nonce: aipsAjax.nonce,
-							ids: ids
-						},
-						success: function (response) {
-							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
-								self.reload();
-							} else {
-								AIPS.Utilities.showToast(
-									response.data && response.data.message
-										? response.data.message
-										: (aipsHistoryL10n.errorDeleting || 'Error deleting items.'),
-									'error'
-								);
-								$btn.prop('disabled', false).html(origHtml);
-							}
-						},
-						error: function () {
-							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
-							$btn.prop('disabled', false).html(origHtml);
-						}
-					});
-				}}
-			]);
+			AIPS.Core.Bulk.dispatch({
+				action: 'aips_bulk_delete_history',
+				ids: ids,
+				confirmMessage: aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.',
+				confirmHeading: 'Notice',
+				confirmLabel: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete',
+				cancelLabel: aipsHistoryL10n.cancelLabel || 'No, cancel',
+				$button: $(e.currentTarget),
+				loadingLabel: '<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026'),
+				loadingLabelIsHtml: true,
+				errorFallback: aipsHistoryL10n.errorDeleting || 'Error deleting items.',
+				onSuccess: function () {
+					AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+					self.reload();
+				}
+			});
 		},
 
 		/**

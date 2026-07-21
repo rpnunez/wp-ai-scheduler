@@ -160,25 +160,19 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						const requests = authorIds.map((authorId) => {
-							return $.ajax({
-								url: ajaxurl,
-								type: 'POST',
-								data: {
-									action: 'aips_generate_topics_now',
-									nonce: aipsAuthorsL10n.nonce,
-									author_id: authorId
+						AIPS.Core.Bulk.runForEach({
+							ids: authorIds,
+							action: 'aips_generate_topics_now',
+							buildData: (authorId) => ({ author_id: authorId }),
+							nonce: aipsAuthorsL10n.nonce,
+							toastSummary: false,
+							onComplete: (successCount) => {
+								if (successCount > 0) {
+									AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
+									setTimeout(() => location.reload(), 800);
+								} else {
+									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 								}
-							});
-						});
-
-						Promise.allSettled(requests).then((results) => {
-							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
-							if (successCount > 0) {
-								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
-								setTimeout(() => location.reload(), 800);
-							} else {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 							}
 						});
 					}
@@ -200,25 +194,19 @@
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						const requests = authorIds.map((authorId) => {
-							return $.ajax({
-								url: ajaxurl,
-								type: 'POST',
-								data: {
-									action: 'aips_delete_author',
-									nonce: aipsAuthorsL10n.nonce,
-									author_id: authorId
+						AIPS.Core.Bulk.runForEach({
+							ids: authorIds,
+							action: 'aips_delete_author',
+							buildData: (authorId) => ({ author_id: authorId }),
+							nonce: aipsAuthorsL10n.nonce,
+							toastSummary: false,
+							onComplete: (successCount) => {
+								if (successCount > 0) {
+									AIPS.Utilities.showToast((aipsAuthorsL10n.authorDeletedBulk || '%d author(s) deleted.').replace('%d', successCount), 'success');
+									setTimeout(() => location.reload(), 800);
+								} else {
+									AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting authors.', 'error');
 								}
-							});
-						});
-
-						Promise.allSettled(requests).then((results) => {
-							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
-							if (successCount > 0) {
-								AIPS.Utilities.showToast((aipsAuthorsL10n.authorDeletedBulk || '%d author(s) deleted.').replace('%d', successCount), 'success');
-								setTimeout(() => location.reload(), 800);
-							} else {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting authors.', 'error');
 							}
 						});
 					}
