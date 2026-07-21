@@ -16,7 +16,9 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_System_Status_Controller
  *
- * Registers and handles AJAX actions for the System Status page.
+ * Registers and handles AJAX actions for the System Status page. All
+ * operation logic lives in AIPS_System_Refresh_Service; handlers here only
+ * verify nonces/capabilities, sanitize input, and shape the JSON response.
  */
 class AIPS_System_Status_Controller {
 	/**
@@ -25,14 +27,9 @@ class AIPS_System_Status_Controller {
 	private $resilience_service;
 
 	/**
-	 * @var AIPS_History_Repository
+	 * @var AIPS_System_Refresh_Service
 	 */
-	private $history_repository;
-
-	/**
-	 * @var AIPS_Bulk_Batch_Job_Store|null
-	 */
-	private $bulk_batch_job_store;
+	private $refresh_service;
 
 	/**
 	 * @var AIPS_Container
@@ -46,13 +43,9 @@ class AIPS_System_Status_Controller {
 			? $this->container->make(AIPS_Resilience_Service::class)
 			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null);
 
-		$this->history_repository = $this->container->has(AIPS_History_Repository::class)
-			? $this->container->make(AIPS_History_Repository::class)
-			: new AIPS_History_Repository();
-
-		$this->bulk_batch_job_store = $this->container->has(AIPS_Bulk_Batch_Job_Store::class)
-			? $this->container->make(AIPS_Bulk_Batch_Job_Store::class)
-			: (class_exists('AIPS_Bulk_Batch_Job_Store') ? new AIPS_Bulk_Batch_Job_Store() : null);
+		$this->refresh_service = $this->container->has(AIPS_System_Refresh_Service::class)
+			? $this->container->make(AIPS_System_Refresh_Service::class)
+			: new AIPS_System_Refresh_Service();
 
 		add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
 		add_action('wp_ajax_aips_status_reschedule_missed_cron', array($this, 'ajax_reschedule_missed_cron'));
@@ -61,6 +54,26 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_clear_partial_generations', array($this, 'ajax_clear_partial_generations'));
 		add_action('wp_ajax_aips_status_cleanup_stale_jobs_cache', array($this, 'ajax_cleanup_stale_jobs_cache'));
 		add_action('wp_ajax_aips_rebuild_caches', array($this, 'ajax_rebuild_caches'));
+		add_action('wp_ajax_aips_status_refresh_system', array($this, 'ajax_refresh_system'));
+		add_action('wp_ajax_aips_status_cache_maintenance', array($this, 'ajax_cache_maintenance'));
+		add_action('wp_ajax_aips_status_cleanup_notifications', array($this, 'ajax_cleanup_notifications'));
+		add_action('wp_ajax_aips_status_reset_resilience', array($this, 'ajax_reset_resilience'));
+		add_action('wp_ajax_aips_status_repair_datetime', array($this, 'ajax_repair_datetime'));
+	}
+
+	/**
+	 * Verify the per-action nonce and capability, terminating on failure.
+	 *
+	 * @param string $action AJAX action name (doubles as nonce action).
+	 * @return void
+	 */
+	private function verify_request($action) {
+		if ( ! check_ajax_referer($action, 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
 	}
 
 	/**
@@ -69,13 +82,7 @@ class AIPS_System_Status_Controller {
 	 * @return void
 	 */
 	public function ajax_reset_circuit_breaker() {
-		if ( ! check_ajax_referer('aips_reset_circuit_breaker', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_reset_circuit_breaker');
 
 		if ($this->resilience_service && method_exists($this->resilience_service, 'reset_circuit_breaker')) {
 			$this->resilience_service->reset_circuit_breaker();
@@ -85,129 +92,89 @@ class AIPS_System_Status_Controller {
 	}
 
 	public function ajax_reschedule_missed_cron() {
-		if ( ! check_ajax_referer('aips_status_reschedule_missed_cron', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_status_reschedule_missed_cron');
 
-		$cron_events = AI_Post_Scheduler::get_cron_events();
-		$rescheduled = 0;
-		$base_timestamp = AIPS_DateTime::now()->timestamp() + MINUTE_IN_SECONDS;
-		foreach ($cron_events as $hook => $config) {
-			$schedule = isset($config['schedule']) ? $config['schedule'] : 'hourly';
-			wp_unschedule_hook($hook);
-			if (wp_schedule_event($base_timestamp, $schedule, $hook) !== false) {
-				$rescheduled++;
-			}
-		}
-		AIPS_Ajax_Response::success(array('message' => sprintf(__('Flushed and rescheduled %d cron events.', 'ai-post-scheduler'), $rescheduled)));
+		AIPS_Ajax_Response::success($this->refresh_service->reschedule_missed_cron());
 	}
 
 	public function ajax_retry_failed_slices() {
-		if ( ! check_ajax_referer('aips_status_retry_failed_slices', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_status_retry_failed_slices');
 
-		// Immediately schedule retry hooks for both topics and posts.
-		// This bypasses the 5-minute delay and processes failed slices now.
-		$scheduled = 0;
-		$now = AIPS_DateTime::now()->timestamp();
-		if (wp_schedule_single_event($now, 'aips_retry_failed_author_slices_topics')) {
-			$scheduled++;
-		}
-		if (wp_schedule_single_event($now, 'aips_retry_failed_author_slices_posts')) {
-			$scheduled++;
-		}
-		AIPS_Ajax_Response::success(array('message' => sprintf(__('Scheduled %d failed slice retry hooks.', 'ai-post-scheduler'), $scheduled)));
+		AIPS_Ajax_Response::success($this->refresh_service->retry_failed_slices());
 	}
 
 	public function ajax_repair_campaign_data() {
-		if ( ! check_ajax_referer('aips_status_repair_campaign_data', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_status_repair_campaign_data');
 
-		$this->history_repository->repair_missing_campaign_ids();
-
-		AIPS_Ajax_Response::success(array(
-			'message' => __('Campaign data repair completed. Refresh Campaigns or Content if you want to verify repaired counts and filters immediately.', 'ai-post-scheduler'),
-		));
+		AIPS_Ajax_Response::success($this->refresh_service->repair_campaign_data());
 	}
 
 	public function ajax_clear_partial_generations() {
-		if ( ! check_ajax_referer('aips_status_clear_partial_generations', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_status_clear_partial_generations');
 
-		$partials = $this->history_repository->get_partial_generations(array('per_page' => 10));
-		$reconciled = 0;
-		if (!empty($partials['items'])) {
-			foreach ($partials['items'] as $item) {
-				if (!empty($item->post_id)) {
-					do_action('aips_post_components_updated', (int) $item->post_id, array(), array());
-					$reconciled++;
-				}
-			}
-		}
-		AIPS_Ajax_Response::success(array('message' => sprintf(__('Reconciled %d partial generations.', 'ai-post-scheduler'), $reconciled)));
+		AIPS_Ajax_Response::success($this->refresh_service->clear_partial_generations());
 	}
 
 	public function ajax_cleanup_stale_jobs_cache() {
-		if ( ! check_ajax_referer('aips_status_cleanup_stale_jobs_cache', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_status_cleanup_stale_jobs_cache');
 
-		$deleted = 0;
-		if ($this->bulk_batch_job_store) {
-			$deleted = $this->bulk_batch_job_store->cleanup_old_jobs();
-		}
-		$cache_flushed = false;
-		if (class_exists('AIPS_Cache_Factory')) {
-			$cache = AIPS_Cache_Factory::make();
-			$cache_flushed = $cache ? (bool) $cache->flush() : false;
-		}
-		AIPS_Ajax_Response::success(array('message' => sprintf(__('Cleaned %1$d stale jobs. Cache flushed: %2$s.', 'ai-post-scheduler'), $deleted, $cache_flushed ? __('yes', 'ai-post-scheduler') : __('no', 'ai-post-scheduler'))));
+		AIPS_Ajax_Response::success($this->refresh_service->cleanup_stale_jobs_cache());
 	}
 
 	public function ajax_rebuild_caches() {
-		if ( ! check_ajax_referer('aips_rebuild_caches', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_rebuild_caches');
 
 		$subsystem = isset($_POST['subsystem']) ? sanitize_key(wp_unslash($_POST['subsystem'])) : 'all';
-		$subsystems = AIPS_Cache_Policy::get_subsystems();
-		$allowed_subsystems = array_keys($subsystems);
-		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
-			$subsystem = 'all';
+
+		AIPS_Ajax_Response::success($this->refresh_service->rebuild_caches($subsystem));
+	}
+
+	/**
+	 * AJAX: Run every safe maintenance operation in one request.
+	 *
+	 * Responds success even when individual steps fail; the payload carries
+	 * per-step results so the UI can surface partial failures.
+	 *
+	 * @return void
+	 */
+	public function ajax_refresh_system() {
+		$this->verify_request('aips_status_refresh_system');
+
+		AIPS_Ajax_Response::success($this->refresh_service->refresh_system());
+	}
+
+	public function ajax_cache_maintenance() {
+		$this->verify_request('aips_status_cache_maintenance');
+
+		$result = $this->refresh_service->run_cache_maintenance();
+		if (empty($result['success'])) {
+			AIPS_Ajax_Response::error($result['message']);
 		}
 
-		$affected = AIPS_Cache_Invalidation_Bus::rebuild($subsystem);
-		$subsystem_label = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
-		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+		AIPS_Ajax_Response::success($result);
+	}
 
-		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystem' => $subsystem, 'affected_caches' => $affected));
+	public function ajax_cleanup_notifications() {
+		$this->verify_request('aips_status_cleanup_notifications');
 
-		AIPS_Ajax_Response::success(array(
-			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
-			'subsystem' => $subsystem,
-			'affected' => $affected,
-		));
+		AIPS_Ajax_Response::success($this->refresh_service->cleanup_notifications(30));
+	}
+
+	public function ajax_reset_resilience() {
+		$this->verify_request('aips_status_reset_resilience');
+
+		$result = $this->refresh_service->reset_resilience();
+		if (empty($result['success'])) {
+			AIPS_Ajax_Response::error($result['message']);
+		}
+
+		AIPS_Ajax_Response::success($result);
+	}
+
+	public function ajax_repair_datetime() {
+		$this->verify_request('aips_status_repair_datetime');
+
+		AIPS_Ajax_Response::success($this->refresh_service->repair_datetime());
 	}
 
 }

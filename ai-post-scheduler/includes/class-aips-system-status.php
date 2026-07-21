@@ -8,6 +8,9 @@ class AIPS_System_Status {
 
     public function render_page($embedded = false) {
         $system_info = $this->get_system_info();
+        if ( isset( $system_info['database'] ) ) {
+            $system_info['database'] = $this->condense_database_checks( $system_info['database'] );
+        }
         $data_management = $this->get_data_management();
         $embedded = (bool) $embedded;
 
@@ -54,5 +57,50 @@ class AIPS_System_Status {
     public function get_system_info() {
         $diagnostics = new AIPS_System_Diagnostics_Service();
         return $diagnostics->get_system_info();
+    }
+
+    /**
+     * Condense the per-table database checks for display.
+     *
+     * When every table check passes, the whole list is replaced with a single
+     * summary row. When any table fails, only the failing rows are kept, with
+     * a trailing summary row for the healthy remainder. Presentation-only —
+     * the diagnostics service keeps returning the full per-table data.
+     *
+     * @param array $checks Database section checks.
+     * @return array
+     */
+    public function condense_database_checks( array $checks ) {
+        $total   = count( $checks );
+        $failing = array();
+
+        foreach ( $checks as $key => $check ) {
+            if ( ! isset( $check['status'] ) || 'ok' !== $check['status'] ) {
+                $failing[ $key ] = $check;
+            }
+        }
+
+        if ( 0 === $total ) {
+            return $checks;
+        }
+
+        if ( empty( $failing ) ) {
+            return array(
+                'tables_summary' => array(
+                    'label'  => __( 'Plugin Tables', 'ai-post-scheduler' ),
+                    'value'  => sprintf( __( 'All %d tables OK', 'ai-post-scheduler' ), $total ),
+                    'status' => 'ok',
+                ),
+            );
+        }
+
+        $ok_count = $total - count( $failing );
+        $failing['tables_summary'] = array(
+            'label'  => __( 'Plugin Tables', 'ai-post-scheduler' ),
+            'value'  => sprintf( __( '%1$d of %2$d tables OK', 'ai-post-scheduler' ), $ok_count, $total ),
+            'status' => 'warning',
+        );
+
+        return $failing;
     }
 }

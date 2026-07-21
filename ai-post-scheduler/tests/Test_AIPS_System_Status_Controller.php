@@ -40,11 +40,13 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 		$history_repository->expects($this->once())
 			->method('repair_missing_campaign_ids');
 
+		$refresh_service = new AIPS_System_Refresh_Service($history_repository);
+
 		$controller = new AIPS_System_Status_Controller();
 		$reflection = new ReflectionClass($controller);
-		$property = $reflection->getProperty('history_repository');
+		$property = $reflection->getProperty('refresh_service');
 		$property->setAccessible(true);
-		$property->setValue($controller, $history_repository);
+		$property->setValue($controller, $refresh_service);
 
 		$_POST = array(
 			'nonce' => wp_create_nonce('aips_status_repair_campaign_data'),
@@ -59,6 +61,34 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 
 	public function test_ajax_registry_includes_campaign_repair_action() {
 		$this->assertSame('AIPS_System_Status_Controller', AIPS_Ajax_Registry::get_controller_for('aips_status_repair_campaign_data'));
+	}
+
+	public function test_ajax_registry_includes_new_maintenance_actions() {
+		$actions = array(
+			'aips_status_refresh_system',
+			'aips_status_cache_maintenance',
+			'aips_status_cleanup_notifications',
+			'aips_status_reset_resilience',
+			'aips_status_repair_datetime',
+		);
+
+		foreach ($actions as $action) {
+			$this->assertSame('AIPS_System_Status_Controller', AIPS_Ajax_Registry::get_controller_for($action), $action);
+		}
+	}
+
+	public function test_ajax_refresh_system_rejects_invalid_nonce() {
+		$controller = new AIPS_System_Status_Controller();
+
+		$_POST = array(
+			'nonce' => 'invalid-nonce',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_refresh_system'));
+
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Invalid nonce.', $response['data']['message']);
 	}
 
 	private function capture_ajax(callable $callable) {

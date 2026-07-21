@@ -4552,89 +4552,139 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
     max-width: 100%;
 }
 
-/* Ensure status content can be reordered cleanly in Diagnostics embed mode */
-.aips-status-page {
-    display: flex;
-    flex-direction: column;
+/* System Health: flat action section that blends into the page */
+.aips-system-health-panel {
+    margin-bottom: 24px;
 }
 
-.aips-status-data-controls {
-    display: flex;
-    justify-content: flex-end;
-    margin: 0 0 12px;
-}
-
-/* Show pointer affordance for clickable status panels */
-.aips-status-page .aips-status-data-panel {
-    cursor: pointer;
-}
-
-/* Move action sections above long system info tables */
-.aips-status-actions-sections {
-    order: -1;
-}
-
-/* Collapsible table/info section headers */
-.aips-status-data-panel .aips-panel-header {
+.aips-system-health-header h2 {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 6px;
+    margin: 0 0 4px;
+    font-size: var(--aips-text-lg);
+    font-weight: var(--aips-font-semibold);
+    color: var(--aips-gray-900);
 }
 
-.aips-status-data-panel .aips-panel-header h2 {
-    margin: 0;
+.aips-system-health-header p {
+    margin: 0 0 12px;
+    color: var(--aips-gray-600);
 }
 
-.aips-panel-collapse-toggle .dashicons {
+.aips-refresh-system-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.aips-refresh-system-results {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    background: var(--aips-white);
+    border: 1px solid var(--aips-gray-200);
+    border-radius: var(--aips-radius-md);
+}
+
+.aips-refresh-step {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 13px;
+}
+
+.aips-refresh-step .dashicons {
     font-size: 16px;
-    line-height: 1;
     width: 16px;
     height: 16px;
-    margin-right: 4px;
+    align-self: center;
 }
 
-/* Make collapse controls more visible against white panel headers */
-.aips-panel-collapse-toggle {
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    color: #3730a3;
-    font-weight: 600;
-    box-shadow: 0 1px 2px rgba(55, 48, 163, 0.14);
+.aips-refresh-step-ok .dashicons {
+    color: var(--aips-success);
 }
 
-.aips-panel-collapse-toggle:hover,
-.aips-panel-collapse-toggle:focus {
-    background: #e0e7ff;
-    border-color: #a5b4fc;
-    color: #312e81;
+.aips-refresh-step-failed .dashicons {
+    color: var(--aips-error);
 }
 
-.aips-panel-collapse-toggle .dashicons {
-    color: #3730a3;
-    transition: transform 0.16s ease, color 0.16s ease;
+.aips-refresh-step-message {
+    color: var(--aips-gray-600);
 }
 
-.aips-panel-collapse-label {
-    letter-spacing: 0.01em;
+.aips-status-op-group {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
 }
 
-@keyframes aips-chevron-pop {
-    0% {
-        transform: scale(1);
+.aips-status-op-group-label {
+    flex: 0 0 110px;
+    font-size: 12px;
+    font-weight: var(--aips-font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--aips-gray-500);
+}
+
+/* Diagnostics grid: compact two-column card layout */
+.aips-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 20px;
+}
+
+.aips-status-grid .aips-status-card {
+    margin-bottom: 0;
+}
+
+.aips-status-card .aips-panel-header {
+    padding: 10px 16px;
+}
+
+.aips-status-card .aips-panel-header h2 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.aips-status-kv-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 40%) 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--aips-gray-100);
+    font-size: 13px;
+}
+
+.aips-status-kv-row:last-child {
+    border-bottom: none;
+}
+
+.aips-status-kv-label {
+    font-weight: var(--aips-font-semibold);
+    color: var(--aips-gray-800);
+}
+
+.aips-status-kv-value {
+    color: var(--aips-gray-600);
+    overflow-wrap: anywhere;
+}
+
+.aips-status-kv-status {
+    justify-self: end;
+}
+
+@media (max-width: 1100px) {
+    .aips-status-grid {
+        grid-template-columns: 1fr;
     }
-
-    50% {
-        transform: scale(1.18);
-    }
-
-    100% {
-        transform: scale(1);
-    }
-}
-
-.aips-panel-collapse-toggle .dashicons.aips-chevron-pop {
-    animation: aips-chevron-pop 0.18s ease-out;
 }
 
 /* Tool rows: 2 panels per row (6/6 style) */

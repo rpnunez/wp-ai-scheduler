@@ -1,5 +1,6 @@
 /**
- * System Status page — toggle log detail rows and reset the circuit breaker.
+ * System Status page — log detail toggles, circuit breaker reset, and the
+ * System Health maintenance operations (including the one-click Refresh System).
  *
  * Relies on `aipsSystemStatusL10n` localised by AIPS_Admin_Assets:
  *   - nonce                           {string} wp_nonce for aips_reset_circuit_breaker
@@ -8,11 +9,18 @@
  *   - nonceRepairCampaignData         {string} wp_nonce for aips_status_repair_campaign_data
  *   - nonceClearPartialGenerations    {string} wp_nonce for aips_status_clear_partial_generations
  *   - nonceCleanupStaleJobsCache      {string} wp_nonce for aips_status_cleanup_stale_jobs_cache
+ *   - nonceRebuildCaches              {string} wp_nonce for aips_rebuild_caches
+ *   - nonceRefreshSystem              {string} wp_nonce for aips_status_refresh_system
+ *   - nonceCacheMaintenance           {string} wp_nonce for aips_status_cache_maintenance
+ *   - nonceCleanupNotifications       {string} wp_nonce for aips_status_cleanup_notifications
+ *   - nonceResetResilience            {string} wp_nonce for aips_status_reset_resilience
+ *   - nonceRepairDatetime             {string} wp_nonce for aips_status_repair_datetime
  *   - hideDetails                     {string} "Hide Details" label
  *   - showDetails                     {string} "Show Details" label
  *   - resetSuccess                    {string} Success confirmation text
  *   - resetFailed                     {string} Generic failure text
  *   - requestFailed                   {string} Network/AJAX failure text
+ *   - refreshRunning / refreshDone / refreshPartial {string} Refresh System status text
  *
  * @package AI_Post_Scheduler
  */
@@ -48,147 +56,10 @@
 		 */
 		bindEvents: function() {
 			$(document).on('click', '.aips-toggle-log-details', this.toggleLogDetails.bind(this));
-			$(document).on('click', '.aips-status-data-panel', this.toggleStatusSectionFromPanel.bind(this));
-			$(document).on('click', '.aips-panel-collapse-toggle', this.toggleStatusSection.bind(this));
-			$(document).on('click', '.aips-status-sections-toggle', this.toggleAllStatusSections.bind(this));
 			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
 			$(document).on('click', '.aips-status-op', this.runStatusOperation.bind(this));
 			$(document).on('click', '.aips-rebuild-cache-btn', this.rebuildCaches.bind(this));
-		},
-
-		/**
-		 * Toggle a data section when clicking anywhere on its panel.
-		 *
-		 * Clicks on interactive controls inside the panel are ignored so those
-		 * controls keep their native behaviour.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		toggleStatusSectionFromPanel: function(e) {
-			var $target = $(e.target);
-			var isInteractive = $target.closest('a, button, input, select, textarea, label').length > 0;
-
-			if (isInteractive) {
-				return;
-			}
-
-			var $panel = $(e.currentTarget);
-			var $button = $panel.find('.aips-panel-collapse-toggle').first();
-
-			if ($button.length) {
-				$button.trigger('click');
-			}
-		},
-
-		/**
-		 * Synchronize the "Expand all / Collapse all" control state based on
-		 * current data section visibility.
-		 *
-		 * @return {void}
-		 */
-		syncStatusSectionsToggleState: function() {
-			var $toggle = $('.aips-status-sections-toggle').first();
-			if (!$toggle.length) {
-				return;
-			}
-
-			var $bodies = $('.aips-status-data-panel-body');
-			if (!$bodies.length) {
-				$toggle.hide();
-				return;
-			}
-
-			var hiddenCount = $bodies.filter(function() {
-				return !$(this).is(':visible');
-			}).length;
-
-			if (hiddenCount === 0) {
-				$toggle.attr('data-mode', 'collapse').text('Collapse all');
-			} else {
-				$toggle.attr('data-mode', 'expand').text('Expand all');
-			}
-		},
-
-		/**
-		 * Toggle a System Status data section panel body.
-		 *
-		 * Only applies to table/info sections that include a collapse button.
-		 * Action sections do not include this control and remain always expanded.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		toggleStatusSection: function(e) {
-			e.preventDefault();
-			e.stopPropagation();
-
-			var $button = $(e.currentTarget);
-			var targetId = $button.data('target');
-			var $panelBody = $('#' + targetId);
-
-			if (!$panelBody.length) {
-				return;
-			}
-
-			var isExpanded = $button.attr('aria-expanded') === 'true';
-			var nextExpanded = !isExpanded;
-			var $icon = $button.find('.dashicons');
-			var $label = $button.find('.aips-panel-collapse-label');
-
-			$button.attr('aria-expanded', nextExpanded ? 'true' : 'false');
-			$icon
-				.toggleClass('dashicons-arrow-up-alt2', nextExpanded)
-				.toggleClass('dashicons-arrow-down-alt2', !nextExpanded);
-			$icon.addClass('aips-chevron-pop');
-			window.setTimeout(function() {
-				$icon.removeClass('aips-chevron-pop');
-			}, 180);
-			$label.text(nextExpanded ? 'Collapse' : 'Expand');
-
-			$panelBody
-				.attr('aria-hidden', nextExpanded ? 'false' : 'true')
-				.slideToggle(140);
-
-			this.syncStatusSectionsToggleState();
-		},
-
-		/**
-		 * Expand or collapse all System Status data sections.
-		 *
-		 * This only affects data table/info sections and intentionally excludes
-		 * action sections.
-		 *
-		 * @param {Event} e Click event.
-		 * @return {void}
-		 */
-		toggleAllStatusSections: function(e) {
-			e.preventDefault();
-
-			var $button = $(e.currentTarget);
-			var mode = $button.attr('data-mode') || 'expand';
-			var shouldExpand = mode === 'expand';
-			var $panelBodies = $('.aips-status-data-panel-body');
-			var $sectionButtons = $('.aips-panel-collapse-toggle');
-
-			if (shouldExpand) {
-				$panelBodies.stop(true, true).slideDown(140).attr('aria-hidden', 'false');
-				$sectionButtons.attr('aria-expanded', 'true');
-				$sectionButtons.find('.dashicons').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
-				$sectionButtons.find('.aips-panel-collapse-label').text('Collapse');
-			} else {
-				$panelBodies.stop(true, true).slideUp(140).attr('aria-hidden', 'true');
-				$sectionButtons.attr('aria-expanded', 'false');
-				$sectionButtons.find('.dashicons').removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
-				$sectionButtons.find('.aips-panel-collapse-label').text('Expand');
-			}
-
-			$sectionButtons.find('.dashicons').addClass('aips-chevron-pop');
-			window.setTimeout(function() {
-				$sectionButtons.find('.dashicons').removeClass('aips-chevron-pop');
-			}, 180);
-
-			this.syncStatusSectionsToggleState();
+			$(document).on('click', '.aips-refresh-system', this.refreshSystem.bind(this));
 		},
 
 		/**
@@ -282,7 +153,11 @@
 				'aips_status_retry_failed_slices': l10n.nonceRetrySlices || '',
 				'aips_status_repair_campaign_data': l10n.nonceRepairCampaignData || '',
 				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
-				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || ''
+				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || '',
+				'aips_status_cache_maintenance': l10n.nonceCacheMaintenance || '',
+				'aips_status_cleanup_notifications': l10n.nonceCleanupNotifications || '',
+				'aips_status_reset_resilience': l10n.nonceResetResilience || '',
+				'aips_status_repair_datetime': l10n.nonceRepairDatetime || ''
 			};
 
 			var nonce = nonceMap[action] || '';
@@ -322,11 +197,81 @@
 			});
 		},
 
+		/**
+		 * Run every safe maintenance operation in one request and render the
+		 * per-step results returned by the server.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		refreshSystem: function(e) {
+			e.preventDefault();
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+			var $btn = $(e.currentTarget);
+			var $spinner = $btn.siblings('.spinner');
+			var $results = $('.aips-refresh-system-results');
+
+			$btn.prop('disabled', true);
+			$spinner.addClass('is-active');
+			$results.hide().empty();
+
+			$.post(ajaxurl, { action: 'aips_status_refresh_system', nonce: l10n.nonceRefreshSystem || '' }, function(response) {
+				if (response && response.success && response.data) {
+					var data = response.data;
+					var failed = data.failed || 0;
+					var message = data.message || (failed > 0 ? (l10n.refreshPartial || 'System refresh finished with some failures.') : (l10n.refreshDone || 'System refresh complete.'));
+
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(message, failed > 0 ? 'warning' : 'success');
+					}
+					self.renderRefreshResults($results, data.steps || []);
+				} else {
+					var errMsg = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.');
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(errMsg, 'error');
+					}
+				}
+				$btn.prop('disabled', false);
+				$spinner.removeClass('is-active');
+			}).fail(function() {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+				}
+				$btn.prop('disabled', false);
+				$spinner.removeClass('is-active');
+			});
+		},
+
+		/**
+		 * Render the Refresh System per-step results list.
+		 *
+		 * Rows are built with .text() so server strings are never injected as HTML.
+		 *
+		 * @param {jQuery} $results Container element.
+		 * @param {Array}  steps    Step result objects {step, label, success, message}.
+		 * @return {void}
+		 */
+		renderRefreshResults: function($results, steps) {
+			$results.empty();
+
+			steps.forEach(function(step) {
+				var $row = $('<div>').addClass('aips-refresh-step' + (step.success ? ' aips-refresh-step-ok' : ' aips-refresh-step-failed'));
+				$row.append($('<span>').addClass('dashicons ' + (step.success ? 'dashicons-yes-alt' : 'dashicons-dismiss')));
+				$row.append($('<strong>').text(step.label || step.step || ''));
+				$row.append($('<span>').addClass('aips-refresh-step-message').text(step.message || ''));
+				$results.append($row);
+			});
+
+			if (steps.length) {
+				$results.show();
+			}
+		},
+
 	};
 
 	$(document).ready(function() {
 		AIPS.SystemStatus.init();
-		AIPS.SystemStatus.syncStatusSectionsToggleState();
 	});
 
 })(jQuery);
