@@ -192,7 +192,13 @@
 		 * @param {string}   [options.errorFallback]
 		 * @param {Function} [options.onSuccess]
 		 * @param {Function} [options.onError]
-		 * @return {void}
+		 * @return {jqXHR|undefined} The underlying jqXHR when fired immediately
+		 *                           (no `confirmMessage`), so callers can chain
+		 *                           `.always()` for cleanup that must run
+		 *                           regardless of outcome. `undefined` when
+		 *                           `confirmMessage` gates the request behind a
+		 *                           dialog, since firing is deferred until the
+		 *                           user confirms.
 		 */
 		dispatch: function (options) {
 			options = options || {};
@@ -202,7 +208,7 @@
 				var idsData = {};
 				idsData[idsField] = options.ids;
 
-				AIPS.Core.Http.ajaxRequest({
+				return AIPS.Core.Http.ajaxRequest({
 					action: options.action,
 					data: $.extend(idsData, options.data || {}),
 					nonce: options.nonce,
@@ -224,9 +230,10 @@
 					cancelLabel: options.cancelLabel,
 					onConfirm: fire
 				});
-			} else {
-				fire();
+				return undefined;
 			}
+
+			return fire();
 		}
 	};
 

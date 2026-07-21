@@ -104,8 +104,10 @@
 		 * @param {Event} e - Change event from `#aips-authors-select-all`.
 		 */
 		toggleSelectAllAuthors: function (e) {
-			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-author-checkbox').prop('checked', isChecked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.currentTarget).prop('checked'),
+				rowCheckboxSelector: '.aips-author-checkbox'
+			});
 		},
 
 		/**
@@ -119,9 +121,9 @@
 			e.preventDefault();
 
 			const action = $('#aips-authors-bulk-action-select').val();
-			const authorIds = $('.aips-author-checkbox:checked').map(function () {
-				return parseInt($(this).val(), 10);
-			}).get().filter(function (id) { return Number.isInteger(id) && id > 0; });
+			const authorIds = AIPS.Core.Table.getSelectedIds('.aips-author-checkbox').map(function (id) {
+				return parseInt(id, 10);
+			}).filter(function (id) { return Number.isInteger(id) && id > 0; });
 
 			if (!action) {
 				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
@@ -225,7 +227,6 @@
 		 */
 		openAddModal: function (e) {
 			e.preventDefault();
-			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
 
@@ -238,7 +239,7 @@
 			$('#author_include_sources').prop('checked', false);
 			$('.aips-author-source-group-cb').prop('checked', false);
 			$('#author-source-groups-selector').hide();
-			$('#aips-author-modal').fadeIn();
+			AIPS.Core.Modal.open('#aips-author-modal', { title: aipsAuthorsL10n.addNewAuthor });
 		},
 
 		/**
@@ -266,78 +267,76 @@
 			this.currentAuthorId = authorId;
 
 			// Show loading state
-			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.loading);
 			$('#aips-author-form').hide();
 			$('#aips-author-modal-loader').show();
-			$('#aips-author-modal').fadeIn();
+			AIPS.Core.Modal.open('#aips-author-modal', { title: aipsAuthorsL10n.loading });
 
 			// Load author data
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_author',
-					nonce: aipsAuthorsL10n.nonce,
-					author_id: authorId
-				},
-				success: (response) => {
-					if (response.success && response.data.author) {
-						const author = response.data.author;
-
-						if (String(this.currentAuthorId) !== String(author.id) || !$('#aips-author-modal').is(':visible')) {
-							return;
-						}
-						$('#aips-author-modal-loader').hide();
-						$('#aips-author-form').show();
-						$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.editAuthor);
-						$('#author_id').val(author.id);
-						$('#author_name').val(author.name);
-						$('#author_field_niche').val(author.field_niche);
-						$('#author_description').val(author.description);
-						$('#author_keywords').val(author.keywords || '');
-						$('#author_details').val(author.details || '');
-						$('#article_structure_id').val(author.article_structure_id || '');
-						$('#voice_tone').val(author.voice_tone || '');
-						$('#writing_style').val(author.writing_style || '');
-						// Extended profile fields
-						$('#author_target_audience').val(author.target_audience || '');
-						$('#author_expertise_level').val(author.expertise_level || '');
-						$('#author_content_goals').val(author.content_goals || '');
-						$('#author_excluded_topics').val(author.excluded_topics || '');
-						$('#author_preferred_content_length').val(author.preferred_content_length || '');
-						$('#author_language').val(author.language || 'en');
-						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
-						$('#author_manual_post_generation_quantity').val(author.manual_post_generation_quantity || 1);
-						$('#author_scheduled_post_generation_quantity').val(author.scheduled_post_generation_quantity || 1);
-						$('#topic_generation_quantity').val(author.topic_generation_quantity);
-						$('#topic_generation_frequency').val(author.topic_generation_frequency);
-						$('#post_generation_frequency').val(author.post_generation_frequency);
-						$('#is_active').prop('checked', author.is_active == 1);
-
-						// Restore source group settings.
-						var includeSources = author.include_sources == 1;
-						$('#author_include_sources').prop('checked', includeSources);
-						$('#author-source-groups-selector').toggle(includeSources);
-						$('.aips-author-source-group-cb').prop('checked', false);
-						var authorSgIds = [];
-						try {
-							authorSgIds = JSON.parse(author.source_group_ids || '[]');
-						} catch (parseErr) {
-							authorSgIds = [];
-						}
-						authorSgIds.forEach(function(tid) {
-							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
-						});
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
-
-						$('#aips-author-modal').fadeOut();
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_author',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { author_id: authorId },
+				toastOnError: false,
+				onSuccess: (data) => {
+					if (!data.author) {
+						AIPS.Utilities.showToast(data && data.message ? data.message : aipsAuthorsL10n.errorLoading, 'error');
+						AIPS.Core.Modal.close('#aips-author-modal');
+						return;
 					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoading, 'error');
 
-					$('#aips-author-modal').fadeOut();
+					const author = data.author;
+
+					if (String(this.currentAuthorId) !== String(author.id) || !$('#aips-author-modal').is(':visible')) {
+						return;
+					}
+					$('#aips-author-modal-loader').hide();
+					$('#aips-author-form').show();
+					$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.editAuthor);
+
+					AIPS.Core.Modal.populateFields('#aips-author-modal', {
+						'#author_id': author.id,
+						'#author_name': author.name,
+						'#author_field_niche': author.field_niche,
+						'#author_description': author.description,
+						'#author_keywords': author.keywords || '',
+						'#author_details': author.details || '',
+						'#article_structure_id': author.article_structure_id || '',
+						'#voice_tone': author.voice_tone || '',
+						'#writing_style': author.writing_style || '',
+						// Extended profile fields
+						'#author_target_audience': author.target_audience || '',
+						'#author_expertise_level': author.expertise_level || '',
+						'#author_content_goals': author.content_goals || '',
+						'#author_excluded_topics': author.excluded_topics || '',
+						'#author_preferred_content_length': author.preferred_content_length || '',
+						'#author_language': author.language || 'en',
+						'#author_max_posts_per_topic': author.max_posts_per_topic || 1,
+						'#author_manual_post_generation_quantity': author.manual_post_generation_quantity || 1,
+						'#author_scheduled_post_generation_quantity': author.scheduled_post_generation_quantity || 1,
+						'#topic_generation_quantity': author.topic_generation_quantity,
+						'#topic_generation_frequency': author.topic_generation_frequency,
+						'#post_generation_frequency': author.post_generation_frequency,
+						'#is_active': author.is_active == 1
+					});
+
+					// Restore source group settings (non-flat: array of checked term IDs).
+					var includeSources = author.include_sources == 1;
+					$('#author_include_sources').prop('checked', includeSources);
+					$('#author-source-groups-selector').toggle(includeSources);
+					$('.aips-author-source-group-cb').prop('checked', false);
+					var authorSgIds = [];
+					try {
+						authorSgIds = JSON.parse(author.source_group_ids || '[]');
+					} catch (parseErr) {
+						authorSgIds = [];
+					}
+					authorSgIds.forEach(function(tid) {
+						$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
+					});
+				},
+				onError: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoading, 'error');
+					AIPS.Core.Modal.close('#aips-author-modal');
 				}
 			});
 		},
@@ -356,29 +355,18 @@
 
 			const $form = $('#aips-author-form');
 			const $submitBtn = $form.find('[type="submit"]');
-			const formData = $form.serialize();
+			const formData = Object.fromEntries(new URLSearchParams($form.serialize()));
 
-			// Disable submit button
-			AIPS.Utilities.setButtonLoading($submitBtn, aipsAuthorsL10n.saving);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
-				success: (response) => {
-					if (response.success) {
-						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
-
-						setTimeout(() => location.reload(), 1000);
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSaving, 'error');
-				},
-				complete: () => {
-					AIPS.Utilities.resetButton($submitBtn);
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_save_author',
+				nonce: aipsAuthorsL10n.nonce,
+				data: formData,
+				$button: $submitBtn,
+				loadingLabel: aipsAuthorsL10n.saving,
+				errorFallback: aipsAuthorsL10n.errorSaving,
+				onSuccess: (data) => {
+					AIPS.Utilities.showToast(data.message || aipsAuthorsL10n.authorSaved, 'success');
+					setTimeout(() => location.reload(), 1000);
 				}
 			});
 		},
@@ -402,27 +390,14 @@
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'aips_delete_author',
-								nonce: aipsAuthorsL10n.nonce,
-								author_id: authorId
-							},
-							success: (response) => {
-								if (response.success) {
-									AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
-									setTimeout(() => location.reload(), 1000);
-								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting,
-										'error'
-									);
-								}
-							},
-							error: () => {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting, 'error');
+						AIPS.Core.Http.ajaxRequest({
+							action: 'aips_delete_author',
+							nonce: aipsAuthorsL10n.nonce,
+							data: { author_id: authorId },
+							errorFallback: aipsAuthorsL10n.errorDeleting,
+							onSuccess: (data) => {
+								AIPS.Utilities.showToast(data.message || aipsAuthorsL10n.authorDeleted, 'success');
+								setTimeout(() => location.reload(), 1000);
 							}
 						});
 					}
@@ -451,32 +426,16 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
-
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'aips_generate_topics_now',
-								nonce: aipsAuthorsL10n.nonce,
-								author_id: authorId
-							},
-							success: (response) => {
-								if (response.success) {
-									AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
-									setTimeout(() => location.reload(), 1000);
-								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating,
-										'error'
-									);
-								}
-							},
-							error: () => {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
-							},
-							complete: () => {
-								AIPS.Utilities.resetButton($btn);
+						AIPS.Core.Http.ajaxRequest({
+							action: 'aips_generate_topics_now',
+							nonce: aipsAuthorsL10n.nonce,
+							data: { author_id: authorId },
+							$button: $btn,
+							loadingLabel: aipsAuthorsL10n.generating,
+							errorFallback: aipsAuthorsL10n.errorGenerating,
+							onSuccess: (data) => {
+								AIPS.Utilities.showToast(data.message || aipsAuthorsL10n.topicsGenerated, 'success');
+								setTimeout(() => location.reload(), 1000);
 							}
 						});
 					}
@@ -536,52 +495,35 @@
 						className: 'aips-btn aips-btn-author-posts',
 						submit: true,
 						action: (formData) => {
-							// Set button to loading state
-							AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
-
-							$.ajax({
+							AIPS.Core.Http.ajaxRequest({
+								action: 'aips_unified_run_now',
+								nonce: aipsAjax.nonce,
 								url: aipsAjax.ajaxUrl,
-								type: 'POST',
 								data: {
-									action: 'aips_unified_run_now',
-									nonce: aipsAjax.nonce,
 									id: authorId,
 									type: type,
 									quantity: formData.quantity
 								},
-								success: (response) => {
-									if (response.success) {
-										let message = AIPS.Utilities.escapeHtml(
-											response.data && response.data.message
-												? response.data.message
-												: aipsAuthorsL10n.postsGenerated
-										);
+								$button: $btn,
+								loadingLabel: '<span class="dashicons dashicons-update aips-spin"></span>',
+								loadingLabelIsHtml: true,
+								errorFallback: aipsAuthorsL10n.errorGeneratingPosts,
+								onSuccess: (data) => {
+									let message = AIPS.Utilities.escapeHtml(
+										data.message ? data.message : aipsAuthorsL10n.postsGenerated
+									);
 
-										if (response.data && response.data.edit_url) {
-											const safeEditUrl = AIPS.Utilities.sanitizeUrl(response.data.edit_url);
+									if (data.edit_url) {
+										const safeEditUrl = AIPS.Utilities.sanitizeUrl(data.edit_url);
 
-											if (safeEditUrl) {
-												message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
-													AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
-												'</a>';
-											}
+										if (safeEditUrl) {
+											message += ' <a href="' + AIPS.Utilities.escapeAttribute(safeEditUrl) + '" target="_blank">' +
+												AIPS.Utilities.escapeHtml(aipsAuthorsL10n.editPost) +
+											'</a>';
 										}
-
-										AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
-									} else {
-										AIPS.Utilities.showToast(
-											response.data && response.data.message
-												? response.data.message
-												: aipsAuthorsL10n.errorGeneratingPosts,
-											'error'
-										);
 									}
-								},
-								error: () => {
-									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
-								},
-								complete: () => {
-									AIPS.Utilities.resetButton($btn);
+
+									AIPS.Utilities.showToast(message, 'success', { isHtml: true, duration: 8000 });
 								}
 							});
 						}
@@ -618,32 +560,24 @@
 			// Immediately show a loading skeleton while the AJAX request is in flight.
 			this.showTopicsLoading();
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_author_topics',
-					nonce: aipsAuthorsL10n.nonce,
-					author_id: this.currentAuthorId,
-					status: status
-				},
-				success: (response) => {
-					if (response.success) {
-						this.renderTopics(response.data.topics, status);
-						this.updateTopicCounts(response.data.status_counts);
-						if (status === 'pending') {
-							this.renderInlineSimilarityIndicators();
-						}
-						// After rendering new content, hide the loading skeleton and
-						// reveal the topics table for the requested tab.
-						this.hideTopicsLoading();
-					} else {
-						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
-						this.hideTopicsLoading();
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_author_topics',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { author_id: this.currentAuthorId, status: status },
+				toastOnError: false,
+				errorFallback: aipsAuthorsL10n.errorLoadingTopics,
+				onSuccess: (data) => {
+					this.renderTopics(data.topics, status);
+					this.updateTopicCounts(data.status_counts);
+					if (status === 'pending') {
+						this.renderInlineSimilarityIndicators();
 					}
+					// After rendering new content, hide the loading skeleton and
+					// reveal the topics table for the requested tab.
+					this.hideTopicsLoading();
 				},
-				error: () => {
-					$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.errorLoadingTopics + '</p>');
+				onError: (message) => {
+					$('#aips-topics-content').html('<p>' + (message || aipsAuthorsL10n.errorLoadingTopics) + '</p>');
 					this.hideTopicsLoading();
 				}
 			});
@@ -886,21 +820,17 @@
 
 			$('.aips-topic-similarity-slot').empty();
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_suggest_related_topics',
-					nonce: aipsAuthorsL10n.nonce,
-					author_id: this.currentAuthorId,
-					limit: 5
-				},
-				success: (response) => {
-					if (!response.success || !response.data || !Array.isArray(response.data.suggestions) || response.data.suggestions.length === 0) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_suggest_related_topics',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { author_id: this.currentAuthorId, limit: 5 },
+				toastOnError: false,
+				onSuccess: (data) => {
+					if (!data || !Array.isArray(data.suggestions) || data.suggestions.length === 0) {
 						return;
 					}
 
-					response.data.suggestions.forEach((item) => {
+					data.suggestions.forEach((item) => {
 						const topicId = parseInt(item.topic_id, 10);
 						const rawScore = typeof item.similarity_score === 'number' ? item.similarity_score : parseFloat(item.similarity_score);
 						const score = Number.isFinite(rawScore) ? Math.round(rawScore * 100) : 0;
@@ -917,8 +847,7 @@
 							$slot.html('<span class="aips-topic-similarity-badge ' + badgeClass + '" title="' + label + '"><span class="dashicons dashicons-info" aria-hidden="true"></span> ' + label + '</span>');
 						}
 					});
-				},
-				error: () => {}
+				}
 			});
 		},
 
@@ -1091,24 +1020,10 @@
 		 * `.aips-topics-table`. Shows a clear button when a term is active.
 		 */
 		filterTopics: function() {
-			var term = $('#aips-topic-search').val().toLowerCase().trim();
-			var $rows = $('.aips-topics-table tbody tr');
-			var $clearBtn = $('#aips-topic-search-clear');
-
-			if (term.length > 0) {
-				$clearBtn.show();
-			} else {
-				$clearBtn.hide();
-			}
-
-			$rows.each(function() {
-				var $row = $(this);
-				var title = $row.find('.topic-title').text().toLowerCase();
-				if (title.indexOf(term) > -1) {
-					$row.show();
-				} else {
-					$row.hide();
-				}
+			AIPS.Core.Table.filterRows({
+				term: $('#aips-topic-search').val(),
+				$rows: $('.aips-topics-table tbody tr'),
+				$clearButton: $('#aips-topic-search-clear')
 			});
 		},
 
@@ -1275,13 +1190,14 @@
 			const topicId = $(e.currentTarget).data('id');
 
 			// Open feedback modal
-			$('#feedback_topic_id').val(topicId);
-			$('#feedback_action').val('approve');
-			$('#aips-feedback-modal').find('.aips-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
+			AIPS.Core.Modal.populateFields('#aips-feedback-modal', {
+				'#feedback_topic_id': topicId,
+				'#feedback_action': 'approve'
+			});
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
 			this.populateCategoryOptions('approve');
-			$('#aips-feedback-modal').fadeIn();
+			AIPS.Core.Modal.open('#aips-feedback-modal', { title: aipsAuthorsL10n.approveTopicTitle || 'Approve Topic' });
 		},
 
 		/**
@@ -1298,13 +1214,14 @@
 			const topicId = $(e.currentTarget).data('id');
 
 			// Open feedback modal
-			$('#feedback_topic_id').val(topicId);
-			$('#feedback_action').val('reject');
-			$('#aips-feedback-modal').find('.aips-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
+			AIPS.Core.Modal.populateFields('#aips-feedback-modal', {
+				'#feedback_topic_id': topicId,
+				'#feedback_action': 'reject'
+			});
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
 			this.populateCategoryOptions('reject');
-			$('#aips-feedback-modal').fadeIn();
+			AIPS.Core.Modal.open('#aips-feedback-modal', { title: aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic' });
 		},
 
 		/**
@@ -1327,29 +1244,21 @@
 
 			const ajaxAction = action === 'approve' ? 'aips_approve_topic' : 'aips_reject_topic';
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: ajaxAction,
+				nonce: aipsAuthorsL10n.nonce,
 				data: {
-					action: ajaxAction,
-					nonce: aipsAuthorsL10n.nonce,
 					topic_id: topicId,
 					reason: reason,
 					reason_category: reasonCategory,
 					source: 'manual_ui'
 				},
-				success: (response) => {
-					if (response.success) {
-						$('#aips-feedback-modal').fadeOut();
-						$('#aips-feedback-form')[0].reset();
+				errorFallback: action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting,
+				onSuccess: () => {
+					AIPS.Core.Modal.close('#aips-feedback-modal');
+					$('#aips-feedback-form')[0].reset();
 
-						this.loadTopics('pending');
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting, 'error');
+					this.loadTopics('pending');
 				}
 			});
 		},
@@ -1370,23 +1279,20 @@
 
 			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loading + '</p>');
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_author_feedback',
-					nonce: aipsAuthorsL10n.nonce,
-					author_id: this.currentAuthorId
-				},
-				success: (response) => {
-					if (response.success && response.data.feedback) {
-						this.renderFeedback(response.data.feedback);
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_author_feedback',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { author_id: this.currentAuthorId },
+				toastOnError: false,
+				onSuccess: (data) => {
+					if (data.feedback) {
+						this.renderFeedback(data.feedback);
 					} else {
 						$('#aips-topics-content').html('<p>No feedback found.</p>');
 					}
 					this.hideTopicsLoading();
 				},
-				error: () => {
+				onError: () => {
 					$('#aips-topics-content').html('<p>Error loading feedback.</p>');
 					this.hideTopicsLoading();
 				}
@@ -1452,29 +1358,14 @@
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'aips_delete_topic',
-								nonce: aipsAuthorsL10n.nonce,
-								topic_id: topicId
-							},
-							success: (response) => {
-								if (response.success) {
-									const activeTab = $('.aips-tab-link.active').data('tab');
-									this.loadTopics(activeTab);
-								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message
-											? response.data.message
-											: aipsAuthorsL10n.errorDeletingTopic,
-										'error'
-									);
-								}
-							},
-							error: () => {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeletingTopic, 'error');
+						AIPS.Core.Http.ajaxRequest({
+							action: 'aips_delete_topic',
+							nonce: aipsAuthorsL10n.nonce,
+							data: { topic_id: topicId },
+							errorFallback: aipsAuthorsL10n.errorDeletingTopic,
+							onSuccess: () => {
+								const activeTab = $('.aips-tab-link.active').data('tab');
+								this.loadTopics(activeTab);
 							}
 						});
 					}
@@ -1531,28 +1422,17 @@
 				return;
 			}
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_edit_topic',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId,
-					topic_title: newTitle
-				},
-				success: (response) => {
-					if (response.success) {
-						$row.find('.topic-title').text(newTitle).show();
-						$row.find('.topic-title-edit').hide();
-						$row.find('.cell-actions').show();
-						$row.find('.aips-edit-topic').show();
-						$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSavingTopic, 'error');
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_edit_topic',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { topic_id: topicId, topic_title: newTitle },
+				errorFallback: aipsAuthorsL10n.errorSavingTopic,
+				onSuccess: () => {
+					$row.find('.topic-title').text(newTitle).show();
+					$row.find('.topic-title-edit').hide();
+					$row.find('.cell-actions').show();
+					$row.find('.aips-edit-topic').show();
+					$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 				}
 			});
 		},
@@ -1595,32 +1475,17 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
-
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'aips_generate_post_from_topic',
-								nonce: aipsAuthorsL10n.nonce,
-								topic_id: topicId
-							},
-							success: (response) => {
-								if (response.success) {
-									AIPS.Utilities.showToast(aipsAuthorsL10n.postGenerated, 'success');
-									const activeTab = $('.aips-tab-link.active').data('tab');
-									this.loadTopics(activeTab);
-								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost,
-										'error'
-									);
-									AIPS.Utilities.resetButton($btn);
-								}
-							},
-							error: () => {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
-								AIPS.Utilities.resetButton($btn);
+						AIPS.Core.Http.ajaxRequest({
+							action: 'aips_generate_post_from_topic',
+							nonce: aipsAuthorsL10n.nonce,
+							data: { topic_id: topicId },
+							$button: $btn,
+							loadingLabel: aipsAuthorsL10n.generating,
+							errorFallback: aipsAuthorsL10n.errorGeneratingPost,
+							onSuccess: () => {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.postGenerated, 'success');
+								const activeTab = $('.aips-tab-link.active').data('tab');
+								this.loadTopics(activeTab);
 							}
 						});
 					}
@@ -1729,25 +1594,17 @@
 		 * @param {number} topicId - The topic ID whose logs to load.
 		 */
 		loadTopicLogs: function (topicId) {
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_topic_logs',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_topic_logs',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { topic_id: topicId },
+				toastOnError: false,
+				errorFallback: aipsAuthorsL10n.logViewerError,
+				onSuccess: (data) => {
+					this.renderTopicLogs(data.logs);
 				},
-				success: (response) => {
-					if (response.success) {
-						this.renderTopicLogs(response.data.logs);
-					} else {
-						 $('#aips-topic-logs-modal').find('.aips-modal-content-body').html(
-							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.logViewerError) + '</p>'
-						);
-					}
-				},
-				error: () => {
-					 $('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.logViewerError + '</p>');
+				onError: (message) => {
+					$('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + message + '</p>');
 				}
 			});
 		},
@@ -1820,32 +1677,24 @@
 		 * @param {number} topicId - The topic ID whose posts to load.
 		 */
 		loadTopicPosts: function (topicId) {
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_topic_posts',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_topic_posts',
+				nonce: aipsAuthorsL10n.nonce,
+				data: { topic_id: topicId },
+				toastOnError: false,
+				errorFallback: aipsAuthorsL10n.errorLoadingPosts,
+				onSuccess: (data) => {
+					const topic = data.topic;
+					const posts = data.posts;
+
+					$('#aips-topic-posts-modal').find('.aips-modal-title').text(
+						aipsAuthorsL10n.postsGeneratedFrom + ': ' + AIPS.Utilities.escapeHtml(topic.topic_title)
+					);
+
+					this.renderTopicPosts(posts);
 				},
-				success: (response) => {
-					if (response.success) {
-						const topic = response.data.topic;
-						const posts = response.data.posts;
-						
-						$('#aips-topic-posts-modal').find('.aips-modal-title').text(
-							aipsAuthorsL10n.postsGeneratedFrom + ': ' + AIPS.Utilities.escapeHtml(topic.topic_title)
-						);
-						
-						this.renderTopicPosts(posts);
-					} else {
-						$('#aips-topic-posts-modal').find('.aips-modal-content-body').html(
-							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingPosts) + '</p>'
-						);
-					}
-				},
-				error: () => {
-					$('#aips-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
+				onError: (message) => {
+					$('#aips-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + message + '</p>');
 				}
 			});
 		},
@@ -1943,34 +1792,18 @@
 					label: 'Yes, publish',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.publishing || 'Publishing...');
-
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'aips_publish_post',
-								nonce: aipsAuthorsL10n.nonce,
-								post_id: postId
-							},
-							success: (response) => {
-								if (response.success) {
-									AIPS.Utilities.showToast(aipsAuthorsL10n.postPublished || 'Post published successfully.', 'success');
-									if (this.currentTopicPostsTopicId) {
-										this.loadTopicPosts(this.currentTopicPostsTopicId);
-									}
-									return;
+						AIPS.Core.Http.ajaxRequest({
+							action: 'aips_publish_post',
+							nonce: aipsAuthorsL10n.nonce,
+							data: { post_id: postId },
+							$button: $button,
+							loadingLabel: aipsAuthorsL10n.publishing || 'Publishing...',
+							errorFallback: aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.',
+							onSuccess: () => {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.postPublished || 'Post published successfully.', 'success');
+								if (this.currentTopicPostsTopicId) {
+									this.loadTopicPosts(this.currentTopicPostsTopicId);
 								}
-
-								AIPS.Utilities.resetButton($button);
-								AIPS.Utilities.showToast(
-									response.data && response.data.message ? response.data.message : (aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.'),
-									'error'
-								);
-							},
-							error: () => {
-								AIPS.Utilities.resetButton($button);
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorPublishingPost || 'Error publishing post.', 'error');
 							}
 						});
 					}
@@ -1984,8 +1817,10 @@
 		 * @param {Event} e - Change event from an `.aips-select-all-topics` element.
 		 */
 		toggleSelectAll: function (e) {
-			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-topic-checkbox').prop('checked', isChecked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.currentTarget).prop('checked'),
+				rowCheckboxSelector: '.aips-topic-checkbox'
+			});
 		},
 
 		/**
@@ -1995,8 +1830,10 @@
 		 * @param {Event} e - Change event from an `.aips-select-all-feedback` element.
 		 */
 		toggleSelectAllFeedback: function (e) {
-			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-feedback-checkbox').prop('checked', isChecked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.currentTarget).prop('checked'),
+				rowCheckboxSelector: '.aips-feedback-checkbox'
+			});
 		},
 
 		/**
@@ -2026,16 +1863,9 @@
 			}
 
 			// Get checked IDs based on current tab
-			const ids = [];
-			if (activeTab === 'feedback') {
-				$('.aips-feedback-checkbox:checked').each(function () {
-					ids.push($(this).val());
-				});
-			} else {
-				$('.aips-topic-checkbox:checked').each(function () {
-					ids.push($(this).val());
-				});
-			}
+			const ids = activeTab === 'feedback'
+				? AIPS.Core.Table.getSelectedIds('.aips-feedback-checkbox')
+				: AIPS.Core.Table.getSelectedIds('.aips-topic-checkbox');
 
 			if (ids.length === 0) {
 				const message = activeTab === 'feedback' 
@@ -2053,25 +1883,18 @@
 					label: 'Yes, continue',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						// Disable button while processing
-						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.processing || 'Processing...');
-
-						// Determine the AJAX action and data
-						let ajaxAction, data;
+						// Determine the AJAX action and ids field name
+						let ajaxAction, idsField;
 						if (activeTab === 'feedback') {
 							if (action === 'delete') {
 								ajaxAction = 'aips_bulk_delete_feedback';
-								data = {
-									action: ajaxAction,
-									nonce: aipsAuthorsL10n.nonce,
-									feedback_ids: ids
-								};
+								idsField = 'feedback_ids';
 							} else {
 								AIPS.Utilities.showToast('Invalid bulk action for feedback.', 'error');
-								AIPS.Utilities.resetButton($button);
 								return;
 							}
 						} else {
+							idsField = 'topic_ids';
 							switch (action) {
 								case 'approve':
 									ajaxAction = 'aips_bulk_approve_topics';
@@ -2087,60 +1910,48 @@
 									break;
 								default:
 									AIPS.Utilities.showToast('Invalid bulk action.', 'error');
-									AIPS.Utilities.resetButton($button);
 									return;
 							}
-							data = {
-								action: ajaxAction,
-								nonce: aipsAuthorsL10n.nonce,
-								topic_ids: ids
-							};
 						}
 
 						// For generate_now: fetch a time estimate first, open a progress
 						// bar modal, then run the (potentially long) generation request.
 						if (action === 'generate_now') {
-							this._runBulkGenerateWithProgress($button, ids, data, activeTab);
+							AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.processing || 'Processing...');
+							this._runBulkGenerateWithProgress($button, ids, {
+								action: ajaxAction,
+								nonce: aipsAuthorsL10n.nonce,
+								topic_ids: ids
+							}, activeTab);
 							return;
 						}
 
+						const resetSelection = () => {
+							$('.aips-bulk-action-select').val('');
+							$('.aips-select-all-topics').prop('checked', false);
+							$('.aips-topic-checkbox').prop('checked', false);
+							$('.aips-select-all-feedback').prop('checked', false);
+							$('.aips-feedback-checkbox').prop('checked', false);
+						};
+
 						// Execute all other bulk actions normally (no progress bar needed)
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: data,
-							success: (response) => {
-								if (response.success) {
-									AIPS.Utilities.showToast(response.data.message, 'success');
-									// Reload content for current tab
-									if (activeTab === 'feedback') {
-										this.loadFeedback();
-									} else {
-										this.loadTopics(activeTab);
-									}
+						AIPS.Core.Bulk.dispatch({
+							action: ajaxAction,
+							ids: ids,
+							idsField: idsField,
+							nonce: aipsAuthorsL10n.nonce,
+							$button: $button,
+							loadingLabel: aipsAuthorsL10n.processing || 'Processing...',
+							errorFallback: aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.',
+							onSuccess: (data) => {
+								AIPS.Utilities.showToast(data.message, 'success');
+								if (activeTab === 'feedback') {
+									this.loadFeedback();
 								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message
-											? response.data.message
-											: aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.',
-										'error'
-									);
+									this.loadTopics(activeTab);
 								}
-							},
-							error: () => {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
-							},
-							complete: () => {
-								AIPS.Utilities.resetButton($button);
-								// Reset dropdowns
-								$('.aips-bulk-action-select').val('');
-								// Uncheck all checkboxes
-								$('.aips-select-all-topics').prop('checked', false);
-								$('.aips-topic-checkbox').prop('checked', false);
-								$('.aips-select-all-feedback').prop('checked', false);
-								$('.aips-feedback-checkbox').prop('checked', false);
 							}
-						});
+						}).always(resetSelection);
 					}
 				}
 			]);
@@ -2194,21 +2005,15 @@
 			const DEFAULT_PER_POST_SECONDS = 30;
 
 			// Fetch the time estimate, then show progress bar + start generation.
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_bulk_generate_estimate',
-					nonce: aipsAuthorsL10n.nonce
-				},
-				success: (estimateResponse) => {
-					let perPost = DEFAULT_PER_POST_SECONDS;
-					if (estimateResponse && estimateResponse.success && estimateResponse.data && estimateResponse.data.per_post_seconds > 0) {
-						perPost = estimateResponse.data.per_post_seconds;
-					}
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_bulk_generate_estimate',
+				nonce: aipsAuthorsL10n.nonce,
+				toastOnError: false,
+				onSuccess: (data) => {
+					const perPost = data && data.per_post_seconds > 0 ? data.per_post_seconds : DEFAULT_PER_POST_SECONDS;
 					this._launchBulkGenerateProgress($button, ids, ajaxData, activeTab, perPost);
 				},
-				error: () => {
+				onError: () => {
 					// Fallback: proceed with default estimate
 					this._launchBulkGenerateProgress($button, ids, ajaxData, activeTab, DEFAULT_PER_POST_SECONDS);
 				}
@@ -2238,43 +2043,33 @@
 
 			// Reset helper called when the request finishes.
 			const resetUI = () => {
-				AIPS.Utilities.resetButton($button);
 				$('.aips-bulk-action-select').val('');
 				$('.aips-select-all-topics').prop('checked', false);
 				$('.aips-topic-checkbox').prop('checked', false);
 			};
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: ajaxData,
-				success: (response) => {
-					if (response.success) {
-						progressBar.complete(response.data.message, 'success');
-						// Reload topic list after the modal closes (~1.2 s).
-						setTimeout(() => {
-							this.loadTopics(activeTab);
-							AIPS.Utilities.showToast(response.data.message, 'success');
-						}, 1400);
-					} else {
-						const errMsg = (response.data && response.data.message)
-							? response.data.message
-							: (aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
-						progressBar.complete(errMsg, 'error');
-						setTimeout(() => {
-							AIPS.Utilities.showToast(errMsg, 'error');
-						}, 1400);
-					}
-				},
-				error: () => {
-					const errMsg = aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.';
-					progressBar.complete(errMsg, 'error');
+			AIPS.Core.Http.ajaxRequest({
+				action: ajaxData.action,
+				nonce: ajaxData.nonce,
+				data: { topic_ids: ajaxData.topic_ids },
+				$button: $button,
+				toastOnError: false,
+				errorFallback: aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.',
+				onSuccess: (data) => {
+					progressBar.complete(data.message, 'success');
+					// Reload topic list after the modal closes (~1.2 s).
 					setTimeout(() => {
-						AIPS.Utilities.showToast(errMsg, 'error');
+						this.loadTopics(activeTab);
+						AIPS.Utilities.showToast(data.message, 'success');
 					}, 1400);
 				},
-				complete: resetUI
-			});
+				onError: (message) => {
+					progressBar.complete(message, 'error');
+					setTimeout(() => {
+						AIPS.Utilities.showToast(message, 'error');
+					}, 1400);
+				}
+			}).always(resetUI);
 		},
 
 		/**
@@ -2285,14 +2080,11 @@
 		closeModals: function (e) {
 			e.preventDefault();
 			const shouldReloadAfterClose = $('#aips-suggest-authors-modal').is(':visible') && this.hasImportedSuggestedAuthor;
-			const $visibleModals = $('.aips-modal:visible');
 
-			$visibleModals.fadeOut();
+			AIPS.Core.Modal.close('.aips-modal:visible');
 
 			if (shouldReloadAfterClose) {
-				$visibleModals.promise().done(function () {
-					window.location.reload();
-				});
+				window.location.reload();
 			}
 		},
 
@@ -2306,7 +2098,7 @@
 			this.hasImportedSuggestedAuthor = false;
 			$('#aips-suggest-authors-results').hide();
 			$('#aips-suggest-authors-cards').html('');
-			$('#aips-suggest-authors-modal').fadeIn();
+			AIPS.Core.Modal.open('#aips-suggest-authors-modal');
 		},
 
 		/**
@@ -2333,33 +2125,24 @@
 				{ isHtml: true }
 			);
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_suggest_authors',
+				nonce: aipsAuthorsL10n.nonce,
 				data: {
-					action: 'aips_suggest_authors',
-					nonce: aipsAuthorsL10n.nonce,
 					site_niche: siteNiche,
 					target_audience: $('#aips-suggest-target-audience').val().trim(),
 					content_goals: $('#aips-suggest-content-goals').val().trim(),
 					count: $('#aips-suggest-count').val()
 				},
-				success: (response) => {
-					if (response.success && response.data.suggestions && response.data.suggestions.length > 0) {
-						this.renderSuggestedAuthors(response.data.suggestions);
+				$button: $btn,
+				errorFallback: aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.',
+				onSuccess: (data) => {
+					if (data.suggestions && data.suggestions.length > 0) {
+						this.renderSuggestedAuthors(data.suggestions);
 						$('#aips-suggest-authors-results').show();
 					} else {
-						const msg = (response.data && response.data.message)
-							? response.data.message
-							: (aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.');
-						AIPS.Utilities.showToast(msg, 'error');
+						AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
 					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
-				},
-				complete: () => {
-					AIPS.Utilities.resetButton($btn);
 				}
 			});
 		},
@@ -2444,12 +2227,10 @@
 				{ isHtml: true }
 			);
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_save_author',
+				nonce: aipsAuthorsL10n.nonce,
 				data: {
-					action: 'aips_save_author',
-					nonce: aipsAuthorsL10n.nonce,
 					name: suggestion.name,
 					field_niche: suggestion.field_niche,
 					description: suggestion.description || '',
@@ -2471,24 +2252,16 @@
 					post_status: 'draft',
 					is_active: 1
 				},
-				success: (response) => {
-					if (response.success) {
-						this.hasImportedSuggestedAuthor = true;
-						AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
-						$btn.prop('disabled', true).html(
-							'<span class="dashicons dashicons-yes"></span> ' +
-							(aipsAuthorsL10n.importedAuthor || 'Imported Author')
-						);
-					} else {
-						const msg = (response.data && response.data.message)
-							? response.data.message
-							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
-						AIPS.Utilities.showToast(msg, 'error');
-						AIPS.Utilities.resetButton($btn);
-					}
+				errorFallback: aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.',
+				onSuccess: () => {
+					this.hasImportedSuggestedAuthor = true;
+					AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
+					$btn.prop('disabled', true).html(
+						'<span class="dashicons dashicons-yes"></span> ' +
+						(aipsAuthorsL10n.importedAuthor || 'Imported Author')
+					);
 				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
+				onError: () => {
 					AIPS.Utilities.resetButton($btn);
 				}
 			});
@@ -2556,27 +2329,18 @@
 			$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p></div>');
 			$('#aips-queue-tablenav').hide();
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_generation_queue',
-					nonce: aipsAuthorsL10n.nonce
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_generation_queue',
+				nonce: aipsAuthorsL10n.nonce,
+				toastOnError: false,
+				errorFallback: aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.',
+				onSuccess: (data) => {
+					this.queueTopics = data.topics || [];
+					this.populateQueueFilters();
+					this.applyQueueFilters();
 				},
-				success: (response) => {
-					if (response.success && response.data.topics) {
-						this.queueTopics = response.data.topics;
-						this.populateQueueFilters();
-						this.applyQueueFilters();
-					} else {
-						$('#aips-queue-topics-list').html(
-							'<div class="aips-panel-body"><p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p></div>'
-						);
-						$('#aips-queue-tablenav').hide();
-					}
-				},
-				error: () => {
-					$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + (aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p></div>');
+				onError: (message) => {
+					$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + message + '</p></div>');
 					$('#aips-queue-tablenav').hide();
 				}
 			});
@@ -2793,8 +2557,10 @@
 		 * @param {Event} e - Change event from an `.aips-queue-select-all` element.
 		 */
 		toggleQueueSelectAll: function (e) {
-			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-queue-topic-checkbox').prop('checked', isChecked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.currentTarget).prop('checked'),
+				rowCheckboxSelector: '.aips-queue-topic-checkbox'
+			});
 		},
 
 		/**
@@ -2818,10 +2584,7 @@
 			}
 
 			// Get all checked topic IDs
-			const topicIds = [];
-			$('.aips-queue-topic-checkbox:checked').each(function () {
-				topicIds.push($(this).val());
-			});
+			const topicIds = AIPS.Core.Table.getSelectedIds('.aips-queue-topic-checkbox');
 
 			if (topicIds.length === 0) {
 				AIPS.Utilities.showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
@@ -2857,38 +2620,21 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.generating || 'Generating...');
-
-						$.ajax({
-							url: ajaxurl,
-							type: 'POST',
-							data: {
-								action: 'aips_bulk_generate_from_queue',
-								nonce: aipsAuthorsL10n.nonce,
-								topic_ids: topicIds
-							},
-							success: (response) => {
-								if (response.success) {
-									AIPS.Utilities.showToast(
-										response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.',
-										'success'
-									);
-									// Reload the queue
-									this.loadQueueTopics();
-								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message
-											? response.data.message
-											: aipsAuthorsL10n.errorGenerating || 'Error generating posts.',
-										'error'
-									);
-								}
-							},
-							error: () => {
-								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
-							},
-							complete: () => {
-								AIPS.Utilities.resetButton($button);
+						AIPS.Core.Bulk.dispatch({
+							action: 'aips_bulk_generate_from_queue',
+							ids: topicIds,
+							idsField: 'topic_ids',
+							nonce: aipsAuthorsL10n.nonce,
+							$button: $button,
+							loadingLabel: aipsAuthorsL10n.generating || 'Generating...',
+							errorFallback: aipsAuthorsL10n.errorGenerating || 'Error generating posts.',
+							onSuccess: (data) => {
+								AIPS.Utilities.showToast(
+									data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.',
+									'success'
+								);
+								// Reload the queue
+								this.loadQueueTopics();
 							}
 						});
 					}
