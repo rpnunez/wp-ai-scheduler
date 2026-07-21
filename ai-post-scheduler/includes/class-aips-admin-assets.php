@@ -376,7 +376,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script'),
             AIPS_VERSION,
             true
         );
