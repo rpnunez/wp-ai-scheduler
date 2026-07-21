@@ -1008,7 +1008,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
               'aips-admin-planner',
               AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
-              array('aips-admin-script'),
+              array('aips-admin-script', 'aips-core-script', 'aips-core-table-script'),
               AIPS_VERSION,
               true
           );
