@@ -358,6 +358,14 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-core-ui-script',
+            AIPS_PLUGIN_URL . 'assets/js/core-ui.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-core-modal-script',
             AIPS_PLUGIN_URL . 'assets/js/core-modal.js',
             array('jquery', 'aips-utilities-script'),
@@ -1140,7 +1148,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-ai-edit',
                 AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
-                array('jquery', 'aips-admin-script', 'aips-core-script'),
+                array('jquery', 'aips-admin-script', 'aips-core-script', 'aips-core-ui-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1433,7 +1441,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
                 AIPS_PLUGIN_URL . 'assets/js/admin-dev-tools.js',
-                array('aips-admin-script', 'aips-core-script'),
+                array('aips-admin-script', 'aips-core-script', 'aips-core-ui-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1466,7 +1474,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-taxonomy',
                 AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',
-                array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script'),
+                array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-ui-script'),
                 AIPS_VERSION,
                 true
             );

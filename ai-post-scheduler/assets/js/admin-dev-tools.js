@@ -22,7 +22,7 @@
                 return;
             }
 
-            $spinner.addClass('is-active');
+            AIPS.Core.UI.toggleSpinner($spinner, true);
 
             var formData = {};
             $.each($form.serializeArray(), function (i, field) {
@@ -52,7 +52,7 @@
                     $error.fadeIn();
                 }
             }).always(function () {
-                $spinner.removeClass('is-active');
+                AIPS.Core.UI.toggleSpinner($spinner, false);
             });
         });
     });

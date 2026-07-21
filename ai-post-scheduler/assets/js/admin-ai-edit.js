@@ -75,8 +75,11 @@
 		 * Load post components via AJAX
 		 */
 		loadAIEditComponents: function() {
-			$('.aips-ai-edit-loading').show();
-			$('.aips-ai-edit-content').hide();
+			AIPS.Core.UI.setLoading({
+				$loading: $('.aips-ai-edit-loading'),
+				$content: $('.aips-ai-edit-content'),
+				isLoading: true
+			});
 
 			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_get_post_components',
@@ -146,8 +149,11 @@
 			window.AIPS.updateAIEditCharCount('content');
 			
 			// Show content, hide loading
-			$('.aips-ai-edit-loading').hide();
-			$('.aips-ai-edit-content').show();
+			AIPS.Core.UI.setLoading({
+				$loading: $('.aips-ai-edit-loading'),
+				$content: $('.aips-ai-edit-content'),
+				isLoading: false
+			});
 		},
 		
 		/**
@@ -599,8 +605,11 @@
 			// Hide statuses
 			$('.aips-component-status').hide();
 			
-			$('.aips-ai-edit-loading').show();
-			$('.aips-ai-edit-content').hide();
+			AIPS.Core.UI.setLoading({
+				$loading: $('.aips-ai-edit-loading'),
+				$content: $('.aips-ai-edit-content'),
+				isLoading: true
+			});
 		},
 		
 		/**

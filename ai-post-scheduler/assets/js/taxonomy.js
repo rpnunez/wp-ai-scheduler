@@ -255,8 +255,11 @@
 			var activeSearchTerm = $('#aips-taxonomy-search').val();
 			var self = this;
 
-			$('#aips-taxonomy-loading').show();
-			$('#aips-taxonomy-content').hide();
+			AIPS.Core.UI.setLoading({
+				$loading: $('#aips-taxonomy-loading'),
+				$content: $('#aips-taxonomy-content'),
+				isLoading: true
+			});
 
 			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_get_taxonomy_items',
@@ -271,8 +274,11 @@
 					}
 				}
 			}).always(function() {
-				$('#aips-taxonomy-loading').hide();
-				$('#aips-taxonomy-content').show();
+				AIPS.Core.UI.setLoading({
+					$loading: $('#aips-taxonomy-loading'),
+					$content: $('#aips-taxonomy-content'),
+					isLoading: false
+				});
 			});
 		},
 
