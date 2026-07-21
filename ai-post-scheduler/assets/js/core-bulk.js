@@ -186,6 +186,9 @@
 		 * @param {jQuery}   [options.$button]
 		 * @param {string}   [options.loadingLabel]
 		 * @param {boolean}  [options.loadingLabelIsHtml]
+		 * @param {boolean}  [options.toastOnError]  Default `true`. Set `false` when the
+		 *                                           caller shows its own error feedback
+		 *                                           via `onError`.
 		 * @param {string}   [options.errorFallback]
 		 * @param {Function} [options.onSuccess]
 		 * @param {Function} [options.onError]
@@ -206,6 +209,7 @@
 					$button: options.$button,
 					loadingLabel: options.loadingLabel,
 					loadingLabelIsHtml: options.loadingLabelIsHtml,
+					toastOnError: options.toastOnError,
 					errorFallback: options.errorFallback,
 					onSuccess: options.onSuccess,
 					onError: options.onError

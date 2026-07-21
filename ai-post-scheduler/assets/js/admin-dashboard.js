@@ -125,27 +125,20 @@
 			$('.aips-dashboard-spinner-overlay').show();
 
 			var self = this;
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_dashboard_data',
-					nonce: l10n.nonce,
-					date_from: dateFromVal,
-					date_to: dateToVal
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_dashboard_data',
+				data: { date_from: dateFromVal, date_to: dateToVal },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: 'Failed to fetch dashboard data.',
+				onSuccess: function(data) {
+					self.updateDashboardData(data);
 				},
-				success: function(response) {
-					$('.aips-dashboard-spinner-overlay').hide();
-					if (response.success && response.data) {
-						self.updateDashboardData(response.data);
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to fetch dashboard data.', 'error');
-					}
-				},
-				error: function() {
-					$('.aips-dashboard-spinner-overlay').hide();
-					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
+			}).always(function() {
+				$('.aips-dashboard-spinner-overlay').hide();
 			});
 		},
 
@@ -187,29 +180,22 @@
 
 			$btn.text('Publishing...');
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_publish_post',
-					nonce: l10n.nonce,
-					post_id: postId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_publish_post',
+				data: { post_id: postId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: 'Failed to publish post.',
+				onSuccess: function() {
+					var $tr = $btn.closest('tr');
+					$tr.find('.aips-badge')
+						.removeClass('aips-badge-warning aips-badge-neutral')
+						.addClass('aips-badge-success')
+						.text('Completed');
+					$btn.remove();
 				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.aips-badge')
-							.removeClass('aips-badge-warning aips-badge-neutral')
-							.addClass('aips-badge-success')
-							.text('Completed');
-						$btn.remove();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
-						$btn.text('Publish Now');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 					$btn.text('Publish Now');
 				}
 			});
@@ -227,28 +213,22 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_approve_topic',
-					nonce: l10n.nonce,
-					id: topicId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_approve_topic',
+				data: { id: topicId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: 'Failed to approve topic.',
+				onSuccess: function() {
+					var $tr = $btn.closest('tr');
+					$tr.find('.status-badge')
+						.removeClass('aips-badge-warning aips-badge-error')
+						.addClass('aips-badge-success')
+						.text('Approved');
+					$tr.find('.actions-container').empty();
 				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.status-badge')
-							.removeClass('aips-badge-warning aips-badge-error')
-							.addClass('aips-badge-success')
-							.text('Approved');
-						$tr.find('.actions-container').empty();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to approve topic.', 'error');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while approving the topic.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
 			});
 		},
@@ -265,28 +245,22 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_reject_topic',
-					nonce: l10n.nonce,
-					id: topicId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_reject_topic',
+				data: { id: topicId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: 'Failed to reject topic.',
+				onSuccess: function() {
+					var $tr = $btn.closest('tr');
+					$tr.find('.status-badge')
+						.removeClass('aips-badge-warning aips-badge-success')
+						.addClass('aips-badge-error')
+						.text('Rejected');
+					$tr.find('.actions-container').empty();
 				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.status-badge')
-							.removeClass('aips-badge-warning aips-badge-success')
-							.addClass('aips-badge-error')
-							.text('Rejected');
-						$tr.find('.actions-container').empty();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to reject topic.', 'error');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while rejecting the topic.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
 			});
 		},
@@ -305,27 +279,20 @@
 
 			$btn.text('Running...');
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_unified_run_now',
-					nonce: l10n.nonce,
-					id: scheduleId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_unified_run_now',
+				data: { id: scheduleId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: 'Failed to trigger schedule.',
+				onSuccess: function() {
+					AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
 				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
-						$btn.text('Run Now');
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to trigger schedule.', 'error');
-						$btn.text('Run Now');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while triggering the schedule.', 'error');
-					$btn.text('Run Now');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
+			}).always(function() {
+				$btn.text('Run Now');
 			});
 		},
 

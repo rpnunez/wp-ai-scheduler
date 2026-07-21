@@ -783,7 +783,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
               'aips-ai-assistance-script',
               AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
-              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
+              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script', 'aips-core-script'),
               AIPS_VERSION,
               true
           );
@@ -1000,7 +1000,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
               'aips-admin-research',
               AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-              array('aips-admin-script', 'aips-templates-script', 'aips-core-table-script', 'aips-core-bulk-script'),
+              array('aips-admin-script', 'aips-templates-script', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script'),
               AIPS_VERSION,
               true
           );
@@ -1065,7 +1065,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1081,7 +1081,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session', 'aips-core-table-script'),
+                array('aips-admin-script', 'aips-admin-view-session', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1191,7 +1191,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-calendar-script',
                 AIPS_PLUGIN_URL . 'assets/js/calendar.js',
-                array('jquery', 'aips-admin-script'),
+                array('jquery', 'aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1204,7 +1204,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1310,7 +1310,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-onboarding',
                 AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1408,7 +1408,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-campaigns',
                 AIPS_PLUGIN_URL . 'assets/js/campaigns.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script', 'aips-core-modal-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1433,7 +1433,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
                 AIPS_PLUGIN_URL . 'assets/js/admin-dev-tools.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1446,7 +1446,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-db',
                 AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1466,7 +1466,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-taxonomy',
                 AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',
-                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1499,7 +1499,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-sources',
                 AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
-                array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-core-modal-script', 'aips-core-table-script'),
+                array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1526,7 +1526,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-settings',
                 AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1546,7 +1546,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-system-status',
                 AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1584,7 +1584,7 @@ class AIPS_Admin_Assets {
 		wp_enqueue_script(
 			'aips-dashboard-script',
 			AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
-			array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs', 'aips-templates-script'),
+			array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs', 'aips-templates-script', 'aips-core-script'),
 			AIPS_VERSION,
 			true
 		);

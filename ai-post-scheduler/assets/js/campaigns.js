@@ -48,29 +48,18 @@
 			var isActive = $button.data('is-active');
 			var newStatus = isActive ? 0 : 1;
 
-			$button.prop('disabled', true);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_toggle_campaign',
-					nonce: aipsAjax.nonce,
-					campaign_id: campaignId,
-					is_active: newStatus
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_toggle_campaign',
+				data: { campaign_id: campaignId, is_active: newStatus },
+				$button: $button,
+				toastOnError: false,
+				errorFallback: aipsCampaignsL10n.errorToggle,
+				onSuccess: function(data) {
+					AIPS.Utilities.showNotice('success', data.message);
+					location.reload();
 				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorToggle, 'error');
-						$button.prop('disabled', false);
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false);
+				onError: function(message) {
+					AIPS.Utilities.showNotice('error', message);
 				}
 			});
 		},
@@ -90,28 +79,18 @@
 				return;
 			}
 
-			$button.prop('disabled', true);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_duplicate_campaign',
-					nonce: aipsAjax.nonce,
-					campaign_id: campaignId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_duplicate_campaign',
+				data: { campaign_id: campaignId },
+				$button: $button,
+				toastOnError: false,
+				errorFallback: aipsCampaignsL10n.errorDuplicate,
+				onSuccess: function(data) {
+					AIPS.Utilities.showNotice('success', data.message);
+					location.reload();
 				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDuplicate, 'error');
-						$button.prop('disabled', false);
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false);
+				onError: function(message) {
+					AIPS.Utilities.showNotice('error', message);
 				}
 			});
 		},
@@ -131,28 +110,18 @@
 				return;
 			}
 
-			$button.prop('disabled', true);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_archive_campaign',
-					nonce: aipsAjax.nonce,
-					campaign_id: campaignId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_archive_campaign',
+				data: { campaign_id: campaignId },
+				$button: $button,
+				toastOnError: false,
+				errorFallback: aipsCampaignsL10n.errorArchive,
+				onSuccess: function(data) {
+					AIPS.Utilities.showNotice('success', data.message);
+					location.reload();
 				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorArchive, 'error');
-						$button.prop('disabled', false);
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false);
+				onError: function(message) {
+					AIPS.Utilities.showNotice('error', message);
 				}
 			});
 		},
@@ -168,18 +137,17 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			$.post(ajaxurl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_restore_campaign',
-				nonce: aipsAjax.nonce,
-				campaign_id: campaignId
-			}).done(function(response) {
-				if (response.success) {
+				data: { campaign_id: campaignId },
+				toastOnError: false,
+				errorFallback: aipsCampaignsL10n.errorRestore,
+				onSuccess: function() {
 					location.reload();
-				} else {
-					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorRestore, 'error');
+				},
+				onError: function(message) {
+					AIPS.Utilities.showNotice('error', message);
 				}
-			}).fail(function() {
-				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 			});
 		},
 
@@ -199,7 +167,7 @@
 			var successMessage = aipsCampaignsL10n.runNowSuccess || 'Campaign schedule completed.';
 
 			if (!scheduleId) {
-				AIPS.Utilities.showNotice(errorMessage, 'error');
+				AIPS.Utilities.showNotice('error', errorMessage);
 				return;
 			}
 
@@ -207,29 +175,23 @@
 				return;
 			}
 
-			$button.prop('disabled', true).addClass('is-busy');
+			$button.addClass('is-busy');
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_run_now',
-					nonce: aipsAjax.nonce,
-					schedule_id: scheduleId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_run_now',
+				data: { schedule_id: scheduleId },
+				$button: $button,
+				toastOnError: false,
+				errorFallback: errorMessage,
+				onSuccess: function(data) {
+					AIPS.Utilities.showNotice('success', data.message || successMessage);
+					location.reload();
 				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message || successMessage, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || errorMessage, 'error');
-						$button.prop('disabled', false).removeClass('is-busy');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false).removeClass('is-busy');
+				onError: function(message) {
+					AIPS.Utilities.showNotice('error', message);
 				}
+			}).always(function() {
+				$button.removeClass('is-busy');
 			});
 		},
 
@@ -244,22 +206,22 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmDelete)) {
-				return;
-			}
-
-			$.post(ajaxurl, {
-				action: 'aips_delete_campaign',
-				nonce: aipsAjax.nonce,
-				campaign_id: campaignId
-			}).done(function(response) {
-				if (response.success) {
-					location.reload();
-				} else {
-					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDelete, 'error');
+			AIPS.Core.Modal.confirmDelete({
+				message: aipsCampaignsL10n.confirmDelete,
+				onConfirm: function() {
+					AIPS.Core.Http.ajaxRequest({
+						action: 'aips_delete_campaign',
+						data: { campaign_id: campaignId },
+						toastOnError: false,
+						errorFallback: aipsCampaignsL10n.errorDelete,
+						onSuccess: function() {
+							location.reload();
+						},
+						onError: function(message) {
+							AIPS.Utilities.showNotice('error', message);
+						}
+					});
 				}
-			}).fail(function() {
-				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 			});
 		}
 	};

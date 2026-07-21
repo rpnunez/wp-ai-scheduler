@@ -81,39 +81,20 @@
 	function loadSessionData(historyId) {
 		// Show loading state
 		showLoadingModal();
-		
-		// Get AJAX URL and nonce from global variables
-		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.ajaxUrl);
+
 		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce);
-		
-		if (!ajaxUrl) {
-			showError('AJAX URL not found. Please refresh the page and try again.');
-			return;
-		}
-		
-		if (!nonce) {
-			showError('Security nonce not found. Please refresh the page and try again.');
-			return;
-		}
-		
-		$.ajax({
-			url: ajaxUrl,
-			type: 'POST',
-			data: {
-				action: 'aips_get_post_session',
-				nonce: nonce,
-				history_id: historyId
+
+		AIPS.Core.Http.ajaxRequest({
+			action: 'aips_get_post_session',
+			data: { history_id: historyId },
+			nonce: nonce,
+			toastOnError: false,
+			errorFallback: 'Failed to load session data. Please try again.',
+			onSuccess: function(data) {
+				displaySessionModal(data);
 			},
-			success: function(response) {
-				if (response.success) {
-					displaySessionModal(response.data);
-				} else {
-					showError(response.data.message || 'Failed to load session data.');
-				}
-			},
-			error: function(xhr, status, error) {
-				console.error('AJAX error:', status, error);
-				showError('Failed to load session data. Please try again.');
+			onError: function(message) {
+				showError(message);
 			}
 		});
 	}
@@ -322,32 +303,25 @@
 		
 		// Disable button and show loading state
 		$button.prop('disabled', true).text('Loading...');
-		
-		// Get AJAX URL and nonce
-		var ajaxUrl = window.ajaxurl || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.ajaxUrl);
+
 		var nonce = window.aipsAjaxNonce || (window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce);
-		
-		// Fetch the JSON data
-		$.ajax({
-			url: ajaxUrl,
-			type: 'POST',
-			data: {
-				action: 'aips_get_session_json',
-				nonce: nonce,
-				history_id: currentHistoryId
-			},
-			success: function(response) {
-				if (response.success && response.data.json) {
-					// Copy to clipboard
-					copyToClipboard(response.data.json, $button);
+
+		AIPS.Core.Http.ajaxRequest({
+			action: 'aips_get_session_json',
+			data: { history_id: currentHistoryId },
+			nonce: nonce,
+			toastOnError: false,
+			errorFallback: 'Failed to generate JSON.',
+			onSuccess: function(data) {
+				if (data.json) {
+					copyToClipboard(data.json, $button);
 				} else {
-					showModalNotification(response.data.message || 'Failed to generate JSON.', 'error');
+					showModalNotification('Failed to generate JSON.', 'error');
 					$button.prop('disabled', false).text('Copy Session JSON');
 				}
 			},
-			error: function(xhr, status, error) {
-				console.error('AJAX error:', status, error);
-				showModalNotification('Failed to load session JSON. Please try again.', 'error');
+			onError: function(message) {
+				showModalNotification(message, 'error');
 				$button.prop('disabled', false).text('Copy Session JSON');
 			}
 		});
@@ -373,28 +347,25 @@
 		if (currentLogCount <= CLIENT_LOG_THRESHOLD) {
 			// Small session: fetch the JSON via AJAX and trigger client-side download
 			$button.prop('disabled', true).text('Preparing download...');
-			$.ajax({
-				url: ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_session_json',
-					nonce: nonce,
-					history_id: currentHistoryId
-				},
-				success: function(response) {
-					if (response.success && response.data.json) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_session_json',
+				data: { history_id: currentHistoryId },
+				nonce: nonce,
+				toastOnError: false,
+				errorFallback: 'Failed to generate JSON for download.',
+				onSuccess: function(data) {
+					if (data.json) {
 						var filename = 'aips-session-' + currentHistoryId + '.json';
-						downloadJSON(response.data.json, filename);
+						downloadJSON(data.json, filename);
 						$button.prop('disabled', false).text('Download Session JSON');
 						showNotice('Session JSON download started. Check your browser downloads.', 'success');
 					} else {
-						showModalNotification(response.data.message || 'Failed to generate JSON for download.', 'error');
+						showModalNotification('Failed to generate JSON for download.', 'error');
 						$button.prop('disabled', false).text('Download Session JSON');
 					}
 				},
-				error: function(xhr, status, error) {
-					console.error('AJAX error:', status, error);
-					showModalNotification('Failed to load session JSON for download. Please try again.', 'error');
+				onError: function(message) {
+					showModalNotification(message, 'error');
 					$button.prop('disabled', false).text('Download Session JSON');
 				}
 			});

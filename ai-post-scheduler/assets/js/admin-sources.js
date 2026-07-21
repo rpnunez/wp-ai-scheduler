@@ -167,8 +167,6 @@
 			});
 
 			var data = {
-				action:         'aips_save_source',
-				nonce:          aipsAjax.nonce,
 				source_id:      this.currentSourceId,
 				url:            url,
 				label:          $('#aips-source-label').val().trim(),
@@ -181,23 +179,21 @@
 				data.is_active = 1;
 			}
 
-			$('#aips-save-source-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
-
-			var self = this;
-			$.post(aipsAjax.ajaxUrl, data, function (response) {
-				$('#aips-save-source-btn').prop('disabled', false).text(aipsSourcesL10n.saveSource);
-
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveFailed, 'error');
-					return;
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_save_source',
+				data: data,
+				$button: $('#aips-save-source-btn'),
+				loadingLabel: aipsSourcesL10n.saving,
+				toastOnError: false,
+				errorFallback: aipsSourcesL10n.saveFailed,
+				onSuccess: function (respData) {
+					AIPS.Utilities.showToast(respData.message, 'success');
+					AIPS.Core.Modal.close('#aips-source-modal');
+					this.refreshPage();
+				}.bind(this),
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
-
-				AIPS.Utilities.showToast(response.data.message, 'success');
-				$('#aips-source-modal').hide();
-				self.refreshPage();
-			}).fail(function () {
-				$('#aips-save-source-btn').prop('disabled', false).text(aipsSourcesL10n.saveSource);
-				AIPS.Utilities.showToast(aipsSourcesL10n.saveFailed, 'error');
 			});
 		},
 
@@ -219,20 +215,18 @@
 			AIPS.Core.Modal.confirmDelete({
 				message: aipsSourcesL10n.deleteConfirm,
 				onConfirm: function () {
-					$.post(aipsAjax.ajaxUrl, {
-						action:    'aips_delete_source',
-						nonce:     aipsAjax.nonce,
-						source_id: id,
-					}, function (response) {
-						if (!response.success) {
-							AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.deleteFailed, 'error');
-							return;
+					AIPS.Core.Http.ajaxRequest({
+						action: 'aips_delete_source',
+						data: { source_id: id },
+						toastOnError: false,
+						errorFallback: aipsSourcesL10n.deleteFailed,
+						onSuccess: function (data) {
+							AIPS.Utilities.showToast(data.message, 'success');
+							self.refreshPage();
+						},
+						onError: function (message) {
+							AIPS.Utilities.showToast(message, 'error');
 						}
-
-						AIPS.Utilities.showToast(response.data.message, 'success');
-						self.refreshPage();
-					}).fail(function () {
-						AIPS.Utilities.showToast(aipsSourcesL10n.deleteFailed, 'error');
 					});
 				}
 			});
@@ -256,21 +250,18 @@
 			var newStatus = isActive === 1 ? 0 : 1;
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
-				action:    'aips_toggle_source_active',
-				nonce:     aipsAjax.nonce,
-				source_id: id,
-				is_active: newStatus,
-			}, function (response) {
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.toggleFailed, 'error');
-					return;
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_toggle_source_active',
+				data: { source_id: id, is_active: newStatus },
+				toastOnError: false,
+				errorFallback: aipsSourcesL10n.toggleFailed,
+				onSuccess: function (data) {
+					AIPS.Utilities.showToast(data.message, 'success');
+					self.refreshPage();
+				},
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
-
-				AIPS.Utilities.showToast(response.data.message, 'success');
-				self.refreshPage();
-			}).fail(function () {
-				AIPS.Utilities.showToast(aipsSourcesL10n.toggleFailed, 'error');
 			});
 		},
 
@@ -304,25 +295,20 @@
 				return;
 			}
 
-			var $btn = $('#aips-add-group-btn');
-			$btn.prop('disabled', true);
-
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_save_source_group',
-				nonce:  aipsAjax.nonce,
-				name:   name,
-			}, function (response) {
-				$btn.prop('disabled', false);
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || 'Failed to create group.', 'error');
-					return;
+				data: { name: name },
+				$button: $('#aips-add-group-btn'),
+				toastOnError: false,
+				errorFallback: 'Failed to create group.',
+				onSuccess: function (data) {
+					AIPS.Utilities.showToast(data.message, 'success');
+					self.refreshPage();
+				},
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
-				AIPS.Utilities.showToast(response.data.message, 'success');
-				self.refreshPage();
-			}).fail(function () {
-				$btn.prop('disabled', false);
-				AIPS.Utilities.showToast('Failed to create group.', 'error');
 			});
 		},
 
@@ -340,19 +326,18 @@
 			AIPS.Core.Modal.confirmDelete({
 				message: aipsSourcesL10n.deleteGroupConfirm || 'Delete this Source Group? Sources in this group will not be deleted.',
 				onConfirm: function () {
-					$.post(aipsAjax.ajaxUrl, {
-						action:  'aips_delete_source_group',
-						nonce:   aipsAjax.nonce,
-						term_id: termId,
-					}, function (response) {
-						if (!response.success) {
-							AIPS.Utilities.showToast(response.data.message || 'Failed to delete group.', 'error');
-							return;
+					AIPS.Core.Http.ajaxRequest({
+						action: 'aips_delete_source_group',
+						data: { term_id: termId },
+						toastOnError: false,
+						errorFallback: 'Failed to delete group.',
+						onSuccess: function (data) {
+							AIPS.Utilities.showToast(data.message, 'success');
+							self.refreshPage();
+						},
+						onError: function (message) {
+							AIPS.Utilities.showToast(message, 'error');
 						}
-						AIPS.Utilities.showToast(response.data.message, 'success');
-						self.refreshPage();
-					}).fail(function () {
-						AIPS.Utilities.showToast('Failed to delete group.', 'error');
 					});
 				}
 			});
@@ -378,25 +363,21 @@
 			$icon.removeClass('dashicons-download').addClass('dashicons-update aips-spin');
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
-				action:    'aips_fetch_source_now',
-				nonce:     aipsAjax.nonce,
-				source_id: id,
-			}, function (response) {
-				$btn.prop('disabled', false);
-				$icon.removeClass('dashicons-update aips-spin').addClass('dashicons-download');
-
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || 'Fetch failed.', 'error');
-					return;
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_fetch_source_now',
+				data: { source_id: id },
+				toastOnError: false,
+				errorFallback: 'Fetch failed.',
+				onSuccess: function (data) {
+					AIPS.Utilities.showToast(data.message, 'success');
+					self.refreshPage();
+				},
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
-
-				AIPS.Utilities.showToast(response.data.message, 'success');
-				self.refreshPage();
-			}).fail(function () {
+			}).always(function () {
 				$btn.prop('disabled', false);
 				$icon.removeClass('dashicons-update aips-spin').addClass('dashicons-download');
-				AIPS.Utilities.showToast('Fetch failed.', 'error');
 			});
 		},
 
