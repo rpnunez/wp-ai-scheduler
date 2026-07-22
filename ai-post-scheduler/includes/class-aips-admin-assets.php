@@ -1027,10 +1027,20 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
           );
 
+          // 'backbone' is WP core's own bundled handle -- see the matching
+          // registration/comment in enqueue_cache_monitor_assets().
+          wp_enqueue_script(
+              'aips-core-backbone-script',
+              AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+              array('backbone', 'aips-core-script', 'aips-templates-script'),
+              AIPS_VERSION,
+              true
+          );
+
           wp_enqueue_script(
               'aips-admin-research',
               AIPS_PLUGIN_URL . 'assets/js/research.js',
-              array('aips-admin-script', 'aips-templates-script', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script'),
+              array('aips-admin-script', 'aips-templates-script', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
               AIPS_VERSION,
               true
           );

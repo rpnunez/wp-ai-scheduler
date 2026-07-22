@@ -13,12 +13,24 @@
         researchSelectedTopics: [],
 
         /**
+         * @type {Backbone.Collection|null}
+         */
+        topicsCollection: null,
+
+        /**
+         * @type {Backbone.View|null}
+         */
+        topicsView: null,
+
+        /**
          * Initialize the research admin module.
          *
          * Binds all delegated listeners and auto-loads topics when the page is
          * available.
          */
         initResearch: function() {
+            AIPS.topicsCollection = new AIPS.TopicCollection();
+            AIPS.topicsView = new AIPS.TopicsView({ collection: AIPS.topicsCollection });
             AIPS.bindResearchEvents();
 
             if ($('#load-topics').length) {
@@ -190,9 +202,10 @@
             var includeUsed = $('#filter-include-used').is(':checked');
             var status = includeUsed ? 'all' : 'new';
 
-            AIPS.Core.Http.ajaxRequest({
-                action: 'aips_get_trending_topics',
-                nonce: $('#aips_nonce').val(),
+            AIPS.researchSelectedTopics = [];
+            AIPS.updateSelectedTopics();
+
+            AIPS.topicsCollection.fetch({
                 data: {
                     niche: niche,
                     min_score: minScore,
@@ -200,116 +213,9 @@
                     status: status,
                     limit: 50
                 },
-                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.loadTopicsError) || 'Error loading topics.',
-                onSuccess: function(data) {
-                    AIPS.renderTopicsTable(data.topics);
-                }
+                reset: true,
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.loadTopicsError) || 'Error loading topics.'
             });
-        },
-
-        /**
-         * Render the topics table or empty state.
-         *
-         * @param {Array<Object>} topics Topics returned from AJAX.
-         */
-        renderTopicsTable: function(topics) {
-            var html = '';
-            var niche = $('#filter-niche').val();
-            var minScore = $('#filter-score').val();
-            var freshOnly = $('#filter-fresh').is(':checked');
-            var includeUsed = $('#filter-include-used').is(':checked');
-            var isFiltered = niche || minScore !== '0' || freshOnly || includeUsed;
-            var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
-
-            AIPS.researchSelectedTopics = [];
-            AIPS.updateSelectedTopics();
-
-            if (!topics || topics.length === 0) {
-                if (AIPS.Templates) {
-                    html = AIPS.Templates.render('aips-tmpl-research-empty-state', {
-                        title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
-                        description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
-                        button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
-                        button_class: isFiltered ? 'aips-btn-secondary' : 'aips-btn-primary',
-                        button_label: isFiltered
-                            ? (aipsResearchL10n.clearFilters || aipsResearchL10n.clearSearch || 'Clear Filters')
-                            : (aipsResearchL10n.startResearch || 'Start Research')
-                    });
-                }
-
-                $('#topics-container').html(html);
-                $('#bulk-schedule-section').hide();
-                $('#topics-tablenav').hide();
-                return;
-            }
-
-            if (AIPS.Templates) {
-                var rowsHtml = topics.map(function(topic) {
-                    var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                    var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
-                    var keywordsHtml = keywords.map(function(kw) {
-                        return AIPS.Templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
-                    }).join('');
-
-                    var reasonHtml = topic.reason
-                        ? AIPS.Templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
-                        : '';
-                    
-                    var generatedPostCount = parseInt(topic.generated_post_count || 0, 10);
-                    var postCountBadgeHtml = generatedPostCount > 0
-                        ? AIPS.Templates.render('aips-tmpl-research-topic-post-count-badge', {
-                            topic_id: esc(topic.id),
-                            count: esc(generatedPostCount)
-                        })
-                        : '';
-
-                    var statusLabel = (topic.status || 'new').toLowerCase();
-                    var statusLabelText = {
-                        'new': aipsResearchL10n.statusNew || 'New',
-                        'scheduled': aipsResearchL10n.statusScheduled || 'Scheduled',
-                        'generated': aipsResearchL10n.statusGenerated || 'Generated'
-                    }[statusLabel] || statusLabel;
-                    var statusChipHtml = AIPS.Templates.render('aips-tmpl-research-topic-status-chip', {
-                        status: esc(statusLabel),
-                        status_label: esc(statusLabelText)
-                    });
-
-                    return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
-                        id: esc(topic.id),
-                        topic: esc(topic.topic),
-                        status_chip_html: statusChipHtml,
-                        post_count_badge_html: postCountBadgeHtml,
-                        reason_html: reasonHtml,
-                        score_class: esc(scoreClass),
-                        score: esc(topic.score),
-                        niche: esc(topic.niche),
-                        keywords_html: keywordsHtml,
-                        researched_at: esc(AIPS.DateTime.formatRelative(topic.researched_at)),
-                        delete_label: esc(aipsResearchL10n.delete)
-                    });
-                }).join('');
-
-                var searchEmptyHtml = AIPS.Templates.render('aips-tmpl-research-topics-search-empty', {
-                    title: aipsResearchL10n.noTopicsFoundTitle,
-                    description: aipsResearchL10n.noTopicsFound,
-                    clear_label: aipsResearchL10n.clearSearch
-                });
-
-                html = AIPS.Templates.renderRaw('aips-tmpl-research-topics-table', {
-                    rows_html: rowsHtml,
-                    search_empty_html: searchEmptyHtml
-                });
-            }
-
-            $('#topics-container').html(html);
-
-            $('#topics-count').text(topics.length + ' ' + (topics.length === 1 ? 'topic' : 'topics'));
-            $('#topics-tablenav').show();
-            $('#bulk-schedule-section').hide();
-
-            if ($('#filter-search').val()) {
-                AIPS.filterTopics();
-            }
         },
 
         /**
@@ -413,12 +319,15 @@
                     label: 'Yes, delete',
                     className: 'aips-btn aips-btn-danger-solid',
                     action: function() {
-                        AIPS.Core.Http.ajaxRequest({
-                            action: 'aips_delete_trending_topic',
-                            nonce: $('#aips_nonce').val(),
-                            data: { topic_id: topicId },
-                            onSuccess: function() {
-                                $('#load-topics').trigger('click');
+                        var model = AIPS.topicsCollection.get(topicId);
+                        if (!model) {
+                            return;
+                        }
+
+                        model.destroy({
+                            wait: true,
+                            success: function(destroyedModel, response) {
+                                AIPS.Utilities.showToast(response.message, 'success');
                             }
                         });
                     }
@@ -736,8 +645,14 @@
                 cancelLabel: aipsResearchL10n.cancel || 'No, cancel',
                 onSuccess: function(data) {
                     AIPS.Utilities.showToast(data.message, 'success');
+
+                    var modelsToRemove = AIPS.researchSelectedTopics
+                        .map(function(id) { return AIPS.topicsCollection.get(id); })
+                        .filter(Boolean);
+                    AIPS.topicsCollection.remove(modelsToRemove);
+
                     AIPS.researchSelectedTopics = [];
-                    $('#load-topics').trigger('click');
+                    AIPS.updateSelectedTopics();
                 }
             });
         },
@@ -903,6 +818,124 @@
         reloadTopics: function(e) {
             e.preventDefault();
             $('#load-topics').trigger('click');
+        }
+    });
+
+    AIPS.TopicModel = AIPS.Core.Model.extend({
+        idAttribute: 'id',
+        idParam: 'topic_id',
+        ajaxActions: { delete: 'aips_delete_trending_topic' },
+        ajaxNonces: { delete: function() { return $('#aips_nonce').val(); } }
+    });
+
+    AIPS.TopicCollection = AIPS.Core.Collection.extend({
+        model: AIPS.TopicModel,
+        resultsKey: 'topics',
+        ajaxActions: { read: 'aips_get_trending_topics' },
+        ajaxNonces: { read: function() { return $('#aips_nonce').val(); } }
+    });
+
+    AIPS.TopicsView = AIPS.Core.View.extend({
+        el: '#topics-container',
+        rawTemplate: true, // Composes keyword/reason/badge/status-chip sub-templates.
+
+        initialize: function() {
+            // 'sync' alone covers fetch() whether or not {reset: true} is
+            // passed (Backbone fires both 'reset' and 'sync' for a reset
+            // fetch) -- listening to both would double-render.
+            this.listenTo(this.collection, 'sync remove', this.render);
+        },
+
+        render: function() {
+            var esc = AIPS.Templates.escape;
+            var topics = this.collection.toJSON();
+
+            var niche = $('#filter-niche').val();
+            var minScore = $('#filter-score').val();
+            var freshOnly = $('#filter-fresh').is(':checked');
+            var includeUsed = $('#filter-include-used').is(':checked');
+            var isFiltered = niche || minScore !== '0' || freshOnly || includeUsed;
+
+            if (!topics || topics.length === 0) {
+                var emptyHtml = AIPS.Templates.render('aips-tmpl-research-empty-state', {
+                    title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                    description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                    button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
+                    button_class: isFiltered ? 'aips-btn-secondary' : 'aips-btn-primary',
+                    button_label: isFiltered
+                        ? (aipsResearchL10n.clearFilters || aipsResearchL10n.clearSearch || 'Clear Filters')
+                        : (aipsResearchL10n.startResearch || 'Start Research')
+                });
+
+                this.$el.html(emptyHtml);
+                $('#bulk-schedule-section').hide();
+                $('#topics-tablenav').hide();
+                return;
+            }
+
+            var rowsHtml = topics.map(function(topic) {
+                var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
+                var keywordsHtml = keywords.map(function(kw) {
+                    return AIPS.Templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
+                }).join('');
+
+                var reasonHtml = topic.reason
+                    ? AIPS.Templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
+                    : '';
+
+                var generatedPostCount = parseInt(topic.generated_post_count || 0, 10);
+                var postCountBadgeHtml = generatedPostCount > 0
+                    ? AIPS.Templates.render('aips-tmpl-research-topic-post-count-badge', {
+                        topic_id: esc(topic.id),
+                        count: esc(generatedPostCount)
+                    })
+                    : '';
+
+                var statusLabel = (topic.status || 'new').toLowerCase();
+                var statusLabelText = {
+                    'new': aipsResearchL10n.statusNew || 'New',
+                    'scheduled': aipsResearchL10n.statusScheduled || 'Scheduled',
+                    'generated': aipsResearchL10n.statusGenerated || 'Generated'
+                }[statusLabel] || statusLabel;
+                var statusChipHtml = AIPS.Templates.render('aips-tmpl-research-topic-status-chip', {
+                    status: esc(statusLabel),
+                    status_label: esc(statusLabelText)
+                });
+
+                return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
+                    id: esc(topic.id),
+                    topic: esc(topic.topic),
+                    status_chip_html: statusChipHtml,
+                    post_count_badge_html: postCountBadgeHtml,
+                    reason_html: reasonHtml,
+                    score_class: esc(scoreClass),
+                    score: esc(topic.score),
+                    niche: esc(topic.niche),
+                    keywords_html: keywordsHtml,
+                    researched_at: esc(AIPS.DateTime.formatRelative(topic.researched_at)),
+                    delete_label: esc(aipsResearchL10n.delete)
+                });
+            }).join('');
+
+            var searchEmptyHtml = AIPS.Templates.render('aips-tmpl-research-topics-search-empty', {
+                title: aipsResearchL10n.noTopicsFoundTitle,
+                description: aipsResearchL10n.noTopicsFound,
+                clear_label: aipsResearchL10n.clearSearch
+            });
+
+            this.$el.html(AIPS.Templates.renderRaw('aips-tmpl-research-topics-table', {
+                rows_html: rowsHtml,
+                search_empty_html: searchEmptyHtml
+            }));
+
+            $('#topics-count').text(topics.length + ' ' + (topics.length === 1 ? 'topic' : 'topics'));
+            $('#topics-tablenav').show();
+            $('#bulk-schedule-section').hide();
+
+            if ($('#filter-search').val()) {
+                AIPS.filterTopics();
+            }
         }
     });
 
