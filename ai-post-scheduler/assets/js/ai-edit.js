@@ -531,9 +531,18 @@
 			// Close modal without unsaved-changes prompt
 			window.AIPS.closeAIEditModal(null, { skipConfirm: true });
 
-			// Refresh page to show updated data
+			// Refresh the currently active tab's content panel to show the
+			// updated post data. The active tab's id is captured now (not
+			// re-derived from the freshly-fetched HTML, which always marks
+			// "Generated Posts" active by default) so the right one of the
+			// three tab panels on this page gets swapped.
+			var tabId = $('.aips-tab-content.active').attr('id');
 			setTimeout(function() {
-				location.reload();
+				if (tabId) {
+					window.AIPS.refreshPageSection('#' + tabId + ' .aips-content-panel');
+				} else {
+					location.reload();
+				}
 			}, 1000);
 		},
 

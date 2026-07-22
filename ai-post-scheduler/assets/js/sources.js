@@ -416,16 +416,12 @@
 		// -----------------------------------------------------------------
 
 		/**
-		 * Reload the current page to reflect database changes.
+		 * Refresh the page's content panel via AJAX to reflect database changes.
 		 *
 		 * @return {void}
 		 */
 		refreshPage: function () {
-			if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') {
-				AIPS.refreshContentPanel('.aips-content-panel', '.aips-content-panel');
-			} else {
-				window.location.reload();
-			}
+			AIPS.refreshContentPanel('.aips-content-panel', '.aips-content-panel');
 		},
 	};
 

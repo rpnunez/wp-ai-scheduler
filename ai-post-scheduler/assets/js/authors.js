@@ -201,7 +201,7 @@
 							onComplete: (successCount) => {
 								if (successCount > 0) {
 									AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
-									setTimeout(() => location.reload(), 800);
+									setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '#authors-list-tab .aips-empty-state'), 800);
 								} else {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 								}
@@ -235,7 +235,7 @@
 							onComplete: (successCount) => {
 								if (successCount > 0) {
 									AIPS.Utilities.showToast((aipsAuthorsL10n.authorDeletedBulk || '%d author(s) deleted.').replace('%d', successCount), 'success');
-									setTimeout(() => location.reload(), 800);
+									setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '#authors-list-tab .aips-empty-state'), 800);
 								} else {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting authors.', 'error');
 								}
@@ -375,8 +375,8 @@
 		 * Serialize and save the author form via the `aips_save_author` AJAX action.
 		 *
 		 * Disables the submit button while the request is in flight.
-		 * Shows a success toast and reloads the page after 1 second on success,
-		 * or shows an error toast on failure.
+		 * Shows a success toast and refreshes the authors table after 1 second
+		 * on success, or shows an error toast on failure.
 		 *
 		 * @param {Event} e - Submit event from `#aips-author-form`.
 		 */
@@ -396,7 +396,8 @@
 				errorFallback: aipsAuthorsL10n.errorSaving,
 				onSuccess: (data) => {
 					AIPS.Utilities.showToast(data.message || aipsAuthorsL10n.authorSaved, 'success');
-					setTimeout(() => location.reload(), 1000);
+					AIPS.Core.Modal.close('#aips-author-modal');
+					setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '#authors-list-tab .aips-empty-state'), 1000);
 				}
 			});
 		},
@@ -405,8 +406,8 @@
 		 * Confirm and permanently delete an author via `aips_delete_author`.
 		 *
 		 * Shows a confirmation dialog. On confirmation, sends the AJAX delete
-		 * request. Reloads the page after 1 second on success or shows an error
-		 * toast on failure.
+		 * request. Refreshes the authors table after 1 second on success or
+		 * shows an error toast on failure.
 		 *
 		 * @param {Event} e - Click event from an `.aips-delete-author` element.
 		 */
@@ -427,7 +428,7 @@
 							errorFallback: aipsAuthorsL10n.errorDeleting,
 							onSuccess: (data) => {
 								AIPS.Utilities.showToast(data.message || aipsAuthorsL10n.authorDeleted, 'success');
-								setTimeout(() => location.reload(), 1000);
+								setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '#authors-list-tab .aips-empty-state'), 1000);
 							}
 						});
 					}
@@ -440,7 +441,8 @@
 		 *
 		 * Reads the author ID from the clicked element's `data-id` attribute,
 		 * shows a confirmation dialog, then sends `aips_generate_topics_now`.
-		 * Reloads the page after 1 second on success.
+		 * Refreshes the authors table (or the topics list, on the standalone
+		 * Author Topics page) after 1 second on success.
 		 *
 		 * @param {Event} e - Click event from an `.aips-generate-topics-now` element.
 		 */
@@ -465,7 +467,14 @@
 							errorFallback: aipsAuthorsL10n.errorGenerating,
 							onSuccess: (data) => {
 								AIPS.Utilities.showToast(data.message || aipsAuthorsL10n.topicsGenerated, 'success');
-								setTimeout(() => location.reload(), 1000);
+								// This button lives on both the Authors list (bulk row action)
+								// and the standalone Author Topics page (single-author header
+								// action) -- refresh whichever one is actually on screen.
+								if ($('#aips-topics-content').length) {
+									setTimeout(() => this.loadTopics(this.currentTopicsStatus || 'pending'), 1000);
+								} else {
+									setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '#authors-list-tab .aips-empty-state'), 1000);
+								}
 							}
 						});
 					}
@@ -1968,7 +1977,7 @@
 			AIPS.Core.Modal.close('.aips-modal:visible');
 
 			if (shouldReloadAfterClose) {
-				window.location.reload();
+				AIPS.refreshContentPanel('.aips-authors-table', '#authors-list-tab .aips-empty-state');
 			}
 		},
 

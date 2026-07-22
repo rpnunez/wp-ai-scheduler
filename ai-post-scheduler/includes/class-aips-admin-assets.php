@@ -607,7 +607,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
-            array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
+            array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script', 'aips-admin-script'),
             AIPS_VERSION,
             true
           );

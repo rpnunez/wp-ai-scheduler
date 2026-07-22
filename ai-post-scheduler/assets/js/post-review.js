@@ -346,14 +346,15 @@
 		// -----------------------------------------------------------------
 
 		/**
-		 * Reload the page when the reload button is clicked.
+		 * Refresh the Pending Review tab's content panel when the reload
+		 * button is clicked.
 		 *
 		 * @param {Event} e Click event.
 		 * @return {void}
 		 */
 		onReloadClick: function (e) {
 			e.preventDefault();
-			location.reload();
+			AIPS.refreshPageSection('#aips-pending-review-tab .aips-content-panel');
 		},
 
 		/**

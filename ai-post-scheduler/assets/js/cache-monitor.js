@@ -196,7 +196,7 @@
 						data:   { cache_group: group },
 						onSuccess: function ( data ) {
 							AIPS.Utilities.showToast( data.message, 'success' );
-							setTimeout( function () { location.reload(); }, 1200 );
+							setTimeout( function () { self.loadEntries(); }, 1200 );
 						}
 					} );
 				}
