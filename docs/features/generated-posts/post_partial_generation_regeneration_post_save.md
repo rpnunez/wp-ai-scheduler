@@ -126,7 +126,7 @@ $this->post_manager->update_generation_status_meta(
 3. Post **immediately disappears** from Partial Generations tab on next page load
 4. Post moves to regular Generated Posts tab (when published) or remains in Pending Review (if draft)
 
-**Current JS Flow** ([admin-ai-edit.js:444-465](ai-post-scheduler/assets/js/admin-ai-edit.js#L444)):
+**Current JS Flow** ([ai-edit.js:444-465](ai-post-scheduler/assets/js/ai-edit.js#L444)):
 - AJAX call to `aips_save_post_components` 
 - On success: displays "saved" message, closes modal, then **reloads entire page** (avoiding the metadata update issue via page reload)
 
@@ -141,7 +141,7 @@ $this->post_manager->update_generation_status_meta(
 | **Controller** | `ai-post-scheduler/includes/class-aips-generated-posts-controller.php` | `render_generated_posts_page()` (L80); `get_missing_components($json)` (L193) |
 | **AJAX Save Handler** | `ai-post-sculptor/includes/class-aips-ai-edit-controller.php` | `ajax_save_post_components()` (L240) |
 | **Template** | `ai-post-scheduler/templates/admin/generated-posts.php` | Partial Generations tab (L202-325) |
-| **JS Handler** | `ai-post-scheduler/assets/js/admin-ai-edit.js` | `onSaveChanges()` (L444); `onAIEditSaveSuccess()` (L460) |
+| **JS Handler** | `ai-post-scheduler/assets/js/ai-edit.js` | `onSaveChanges()` (L444); `onAIEditSaveSuccess()` (L460) |
 
 ---
 

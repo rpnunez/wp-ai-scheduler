@@ -110,8 +110,8 @@ The email will be sent once per day via WordPress cron if:
 
 ### Assets
 
-#### admin-post-review.js
-- **Location**: `assets/js/admin-post-review.js`
+#### post-review.js
+- **Location**: `assets/js/post-review.js`
 - **Purpose**: Handles client-side interactions and AJAX requests
 - **Key Features**:
   - Select all/deselect all functionality

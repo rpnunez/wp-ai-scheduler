@@ -142,7 +142,7 @@ Added to each component section:
 - Mobile-friendly
 
 #### 3. JavaScript Logic
-**File:** `assets/js/admin-ai-edit.js`
+**File:** `assets/js/ai-edit.js`
 
 **New Methods:**
 
@@ -310,6 +310,6 @@ For issues or questions:
 **Related Files:**
 - `templates/admin/generated-posts.php`
 - `assets/css/admin-ai-edit.css`
-- `assets/js/admin-ai-edit.js`
+- `assets/js/ai-edit.js`
 - `includes/class-aips-ai-edit-controller.php`
 - `includes/class-aips-component-regeneration-service.php`

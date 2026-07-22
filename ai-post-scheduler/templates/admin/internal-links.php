@@ -264,7 +264,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 </div><!-- /#aips-insert-modal -->
 
 <!-- =====================================================================
-     AIPS.Templates engine blocks for admin-internal-links.js
+     AIPS.Templates engine blocks for internal-links.js
      ===================================================================== -->
 
 <!-- Loading row for the suggestions table -->

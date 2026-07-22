@@ -23,7 +23,7 @@ $files = array(
 	'includes/class-aips-post-review-repository.php',
 	'includes/class-aips-post-review.php',
 	'templates/admin/post-review.php',
-	'assets/js/admin-post-review.js',
+	'assets/js/post-review.js',
 	'assets/css/admin.css',
 );
 
@@ -176,7 +176,7 @@ echo "\n";
 
 // Test 4: Check JavaScript
 echo "Test 4: Checking JavaScript file...\n";
-$js_path = AIPS_PLUGIN_DIR . 'assets/js/admin-post-review.js';
+$js_path = AIPS_PLUGIN_DIR . 'assets/js/post-review.js';
 $js_content = file_get_contents($js_path);
 
 $required_functions = array(
