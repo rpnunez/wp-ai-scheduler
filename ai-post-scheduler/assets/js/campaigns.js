@@ -56,7 +56,7 @@
 				errorFallback: aipsCampaignsL10n.errorToggle,
 				onSuccess: function(data) {
 					AIPS.Utilities.showNotice('success', data.message);
-					location.reload();
+					AIPS.refreshPageSection('.aips-campaigns-page');
 				},
 				onError: function(message) {
 					AIPS.Utilities.showNotice('error', message);
@@ -87,7 +87,7 @@
 				errorFallback: aipsCampaignsL10n.errorDuplicate,
 				onSuccess: function(data) {
 					AIPS.Utilities.showNotice('success', data.message);
-					location.reload();
+					AIPS.refreshPageSection('.aips-campaigns-page');
 				},
 				onError: function(message) {
 					AIPS.Utilities.showNotice('error', message);
@@ -118,7 +118,7 @@
 				errorFallback: aipsCampaignsL10n.errorArchive,
 				onSuccess: function(data) {
 					AIPS.Utilities.showNotice('success', data.message);
-					location.reload();
+					AIPS.refreshPageSection('.aips-campaigns-page');
 				},
 				onError: function(message) {
 					AIPS.Utilities.showNotice('error', message);
@@ -143,7 +143,7 @@
 				toastOnError: false,
 				errorFallback: aipsCampaignsL10n.errorRestore,
 				onSuccess: function() {
-					location.reload();
+					AIPS.refreshPageSection('.aips-campaigns-page');
 				},
 				onError: function(message) {
 					AIPS.Utilities.showNotice('error', message);
@@ -185,7 +185,7 @@
 				errorFallback: errorMessage,
 				onSuccess: function(data) {
 					AIPS.Utilities.showNotice('success', data.message || successMessage);
-					location.reload();
+					AIPS.refreshPageSection('.aips-campaigns-page');
 				},
 				onError: function(message) {
 					AIPS.Utilities.showNotice('error', message);
@@ -215,7 +215,7 @@
 						toastOnError: false,
 						errorFallback: aipsCampaignsL10n.errorDelete,
 						onSuccess: function() {
-							location.reload();
+							AIPS.refreshPageSection('.aips-campaigns-page');
 						},
 						onError: function(message) {
 							AIPS.Utilities.showNotice('error', message);
