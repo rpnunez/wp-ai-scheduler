@@ -14,11 +14,11 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixLengthsPsr4 = array (
-        'P' =>
+        'P' => 
         array (
             'PhpParser\\' => 10,
         ),
-        'D' =>
+        'D' => 
         array (
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
@@ -26,15 +26,15 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixDirsPsr4 = array (
-        'PhpParser\\' =>
+        'PhpParser\\' => 
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
-        'Doctrine\\Instantiator\\' =>
+        'Doctrine\\Instantiator\\' => 
         array (
             0 => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator',
         ),
-        'DeepCopy\\' =>
+        'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
@@ -76,6 +76,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Authors_Repository' => __DIR__ . '/../..' . '/includes/class-aips-authors-repository.php',
         'AIPS_Autoloader' => __DIR__ . '/../..' . '/includes/class-aips-autoloader.php',
         'AIPS_Autoloader_Test' => __DIR__ . '/../..' . '/tests/AIPS_Autoloader_Test.php',
+        'AIPS_Automations_Controller' => __DIR__ . '/../..' . '/includes/class-aips-automations-controller.php',
         'AIPS_Batch_Queue_Service' => __DIR__ . '/../..' . '/includes/class-aips-batch-queue-service.php',
         'AIPS_Batch_Queue_Service_Test' => __DIR__ . '/../..' . '/tests/AIPS_Batch_Queue_Service_Test.php',
         'AIPS_Batch_Slicer' => __DIR__ . '/../..' . '/includes/job/class-aips-batch-slicer.php',
@@ -109,6 +110,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_DB_Manager' => __DIR__ . '/../..' . '/includes/class-aips-db-manager.php',
         'AIPS_DB_Migrations' => __DIR__ . '/../..' . '/includes/class-aips-db-migrations.php',
         'AIPS_Dashboard_Controller' => __DIR__ . '/../..' . '/includes/class-aips-dashboard-controller.php',
+        'AIPS_Dashboard_Repository' => __DIR__ . '/../..' . '/includes/class-aips-dashboard-repository.php',
         'AIPS_Data_Management' => __DIR__ . '/../..' . '/includes/class-aips-data-management.php',
         'AIPS_Data_Management_Export' => __DIR__ . '/../..' . '/includes/class-aips-data-management-export.php',
         'AIPS_Data_Management_Export_JSON' => __DIR__ . '/../..' . '/includes/class-aips-data-management-export-json.php',
@@ -131,7 +133,6 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Generation_Context' => __DIR__ . '/../..' . '/includes/interface-aips-generation-context.php',
         'AIPS_Generation_Context_Factory' => __DIR__ . '/../..' . '/includes/class-aips-generation-context-factory.php',
         'AIPS_Generation_Execution_Runner' => __DIR__ . '/../..' . '/includes/class-aips-generation-execution-runner.php',
-        'AIPS_Generation_Logger' => __DIR__ . '/../..' . '/includes/class-aips-generation-logger.php',
         'AIPS_Generation_Result' => __DIR__ . '/../..' . '/includes/class-aips-generation-result.php',
         'AIPS_Generation_Session' => __DIR__ . '/../..' . '/includes/class-aips-generation-session.php',
         'AIPS_Generator' => __DIR__ . '/../..' . '/includes/class-aips-generator.php',
@@ -254,6 +255,10 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Test_Cacheable_Repository_Logger' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cacheable_Repository.php',
         'AIPS_Test_Cacheable_Repository_Subject' => __DIR__ . '/../..' . '/tests/Test_AIPS_Cacheable_Repository.php',
         'AIPS_Test_Campaigns_Repository_WPDB_Stub' => __DIR__ . '/../..' . '/tests/Test_AIPS_Campaigns_Repository.php',
+        'AIPS_Test_Generator_Required_Content_AI_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Required_Content.php',
+        'AIPS_Test_Generator_Required_Content_History_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Required_Content.php',
+        'AIPS_Test_Generator_Required_Content_History_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Required_Content.php',
+        'AIPS_Test_Generator_Required_Content_Post_Manager' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Required_Content.php',
         'AIPS_Test_History_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
         'AIPS_Test_History_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
         'AIPS_Test_Notifications_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Notification_Template.php',
@@ -1249,9 +1254,9 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Diagnostics_Embedded_Templates' => __DIR__ . '/../..' . '/tests/Test_AIPS_Diagnostics_Embedded_Templates.php',
         'Test_AIPS_Generate_Now_Timing' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generate_Now_Timing.php',
         'Test_AIPS_Generation_Context' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Context.php',
-        'Test_AIPS_Generation_Logger' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Logger.php',
         'Test_AIPS_Generation_Result' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generation_Result.php',
         'Test_AIPS_Generator_Content_Cleanup' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Content_Cleanup.php',
+        'Test_AIPS_Generator_Required_Content' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Required_Content.php',
         'Test_AIPS_History_Security' => __DIR__ . '/../..' . '/tests/Test_AIPS_History_Security.php',
         'Test_AIPS_Image_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Image_Service.php',
         'Test_AIPS_Image_Service_Collision' => __DIR__ . '/../..' . '/tests/Test_AIPS_Image_Service_Collision.php',
