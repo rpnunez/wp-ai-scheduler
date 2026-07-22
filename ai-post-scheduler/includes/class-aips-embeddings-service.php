@@ -47,7 +47,10 @@ class AIPS_Embeddings_Service {
 	}
 	
 	/**
-	 * Generate an embedding for a text string using Meow AI.
+	 * Generate an embedding for a text string via the active AI provider.
+	 *
+	 * Embeddings currently require the Meow AI Engine provider; other providers
+	 * report embeddings_not_supported.
 	 *
 	 * @param string $text The text to generate an embedding for.
 	 * @param array  $options Optional. Additional options for embedding generation.

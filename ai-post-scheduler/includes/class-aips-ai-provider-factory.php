@@ -99,6 +99,18 @@ class AIPS_AI_Provider_Factory {
     }
 
     /**
+     * Whether at least one AI provider is currently available.
+     *
+     * Provider-agnostic replacement for ad hoc class_exists('Meow_MWAI_Core')
+     * presence checks in dependency notices, dashboards, and wizards.
+     *
+     * @return bool
+     */
+    public static function has_available_provider(): bool {
+        return !empty(self::available_providers());
+    }
+
+    /**
      * List every known provider regardless of availability.
      *
      * @return array<string,string> Map of id => label.
@@ -140,6 +152,23 @@ class AIPS_AI_Provider_Factory {
     }
 
     /**
+     * @var array<string,AIPS_AI_Provider_Interface|null> Per-request instance cache.
+     */
+    private static $instances = array();
+
+    /**
+     * Clear the per-request provider instance cache.
+     *
+     * Needed by tests that reconfigure the simulated backend (e.g. swap the fake
+     * WP AI Client builder) between assertions; production code never requires it.
+     *
+     * @return void
+     */
+    public static function reset_cache(): void {
+        self::$instances = array();
+    }
+
+    /**
      * Instantiate a provider by id, or null if the id is unknown / class missing.
      *
      * Results are cached per request so that repeated factory calls within the
@@ -151,7 +180,7 @@ class AIPS_AI_Provider_Factory {
      * @return AIPS_AI_Provider_Interface|null
      */
     private static function instantiate(string $id): ?AIPS_AI_Provider_Interface {
-        static $instances = array();
+        $instances = &self::$instances;
 
         if (array_key_exists($id, $instances)) {
             return $instances[$id];

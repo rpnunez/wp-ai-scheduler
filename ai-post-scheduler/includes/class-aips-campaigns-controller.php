@@ -238,10 +238,10 @@ class AIPS_Campaigns_Controller {
 	private function build_campaign_warnings($campaign, $campaign_health) {
 		$warnings = array();
 
-		if (!class_exists('Meow_MWAI_Core')) {
+		if (!AIPS_AI_Provider_Factory::has_available_provider()) {
 			$warnings[] = array(
-				'type' => 'missing_ai_engine',
-				'message' => __('AI Engine is not active. Campaign generation will fail until Meow Apps AI Engine is installed and activated.', 'ai-post-scheduler'),
+				'type' => 'missing_ai_provider',
+				'message' => __('No AI provider is available. Campaign generation will fail until the Meow Apps AI Engine plugin is activated or a WordPress AI Client connector is configured.', 'ai-post-scheduler'),
 			);
 		}
 

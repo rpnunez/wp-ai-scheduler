@@ -2,8 +2,10 @@
 /**
  * AI Service Layer
  *
- * Abstracts AI Engine interactions and provides a clean interface for AI operations.
- * Separates AI communication logic from content generation orchestration.
+ * Abstracts AI provider interactions and provides a clean interface for AI
+ * operations. Separates AI communication logic from content generation
+ * orchestration; the raw transport is delegated to the active
+ * AIPS_AI_Provider_Interface implementation.
  *
  * @package AI_Post_Scheduler
  * @since 1.4.0
@@ -16,27 +18,10 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_AI_Service
  *
- * Provides AI content generation capabilities through AI Engine integration.
+ * Provides AI content generation capabilities through the active AI provider.
  * Handles error recovery, logging, and provides a consistent interface for AI operations.
  */
 class AIPS_AI_Service implements AIPS_AI_Service_Interface {
-
-    /**
-     * @var self|null Singleton instance.
-     */
-    private static $instance = null;
-
-    /**
-     * Get the shared singleton instance.
-     *
-     * @return self
-     */
-    public static function instance(): self {
-        if ( self::$instance === null ) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
 
     /**
      * @var AIPS_AI_Provider_Interface Active AI transport provider
@@ -624,7 +609,14 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                     return $error;
                 }
 
-                $this->log_call('image', $prompt, $options, null, $image_url);
+                // Data URIs can be megabytes of base64 — never log them verbatim.
+                $loggable_url = $image_url;
+
+                if (is_string($loggable_url) && strpos($loggable_url, 'data:') === 0 && strlen($loggable_url) > 100) {
+                    $loggable_url = substr($loggable_url, 0, 100) . '... [data URI truncated]';
+                }
+
+                $this->log_call('image', $prompt, $options, null, $loggable_url);
 
                 return $image_url;
             } catch (Exception $e) {
@@ -787,6 +779,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * Delegates the raw call to the active provider while reusing the service's
      * resilience and logging. Providers that cannot do embeddings surface an
      * 'embeddings_not_supported' error.
+     *
+     * Callers may pass 'embeddings_env_id' to target a specific Meow embeddings
+     * environment; there is no plugin setting for it, so by default embeddings
+     * run against the provider's default environment.
      *
      * @param string $text    The text to embed.
      * @param array  $options Optional. Canonical options (e.g. embeddings_env_id).

@@ -37,7 +37,9 @@ class AIPS_Stub_AI_Provider implements AIPS_AI_Provider_Interface {
     public function get_label(): string { return 'Stub'; }
     public function is_available(): bool { return $this->available; }
 
-    public function generate_text(string $prompt, array $params) {
+    public function get_unavailable_reason(): string { return $this->available ? '' : 'Stub provider disabled.'; }
+
+    public function generate_text(string $prompt, array $params): string {
         $this->last_prompt = $prompt;
         $this->last_params = $params;
         if ($this->text_throw !== null) {
@@ -46,19 +48,19 @@ class AIPS_Stub_AI_Provider implements AIPS_AI_Provider_Interface {
         return $this->text_return;
     }
 
-    public function generate_json(?string $prompt, array $params) {
+    public function generate_json(?string $prompt, array $params): ?array {
         $this->last_prompt = $prompt;
         $this->last_params = $params;
         return $this->json_return;
     }
 
-    public function generate_image(string $prompt, array $params) {
+    public function generate_image(string $prompt, array $params): string {
         $this->last_prompt = $prompt;
         $this->last_params = $params;
         return $this->image_return;
     }
 
-    public function generate_embedding(string $text, array $params) {
+    public function generate_embedding(string $text, array $params): array {
         $this->last_prompt = $text;
         $this->last_params = $params;
         return $this->embedding_return;
@@ -190,5 +192,32 @@ class Test_AIPS_AI_Service_With_Provider extends WP_UnitTestCase {
         $stub2 = new AIPS_Stub_AI_Provider();
         $stub2->embeddings = false;
         $this->assertFalse($this->make_service($stub2)->supports_embeddings());
+    }
+
+    public function test_env_id_setting_propagates_to_provider_params() {
+        update_option('aips_ai_env_id', 'env-123');
+
+        try {
+            $stub = new AIPS_Stub_AI_Provider();
+            $service = $this->make_service($stub);
+
+            $service->generate_text('Prompt');
+
+            $this->assertArrayHasKey('env_id', $stub->last_params);
+            $this->assertSame('env-123', $stub->last_params['env_id']);
+        } finally {
+            delete_option('aips_ai_env_id');
+        }
+    }
+
+    public function test_json_schema_option_propagates_to_provider_params() {
+        $stub = new AIPS_Stub_AI_Provider();
+        $service = $this->make_service($stub);
+        $schema = array('type' => 'object');
+
+        $service->generate_json('Prompt', array('json_schema' => $schema));
+
+        $this->assertArrayHasKey('json_schema', $stub->last_params);
+        $this->assertSame($schema, $stub->last_params['json_schema']);
     }
 }

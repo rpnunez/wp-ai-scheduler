@@ -29,6 +29,12 @@ class AIPS_Test_WP_AI_Client_Builder {
     public $image_response = 'data:image/png;base64,abc';
     public $prompt = '';
 
+    // Captured configuration for asserting canonical-parameter mapping.
+    public $captured_model_preferences = null;
+    public $captured_temperature = null;
+    public $captured_max_tokens = null;
+    public $captured_json_schema = null;
+
     public function set_prompt($prompt) {
         $this->prompt = $prompt;
         return $this;
@@ -43,18 +49,22 @@ class AIPS_Test_WP_AI_Client_Builder {
     }
 
     public function using_model_preference(...$models) {
+        $this->captured_model_preferences = $models;
         return $this;
     }
 
     public function using_temperature($temperature) {
+        $this->captured_temperature = $temperature;
         return $this;
     }
 
     public function using_max_tokens($max_tokens) {
+        $this->captured_max_tokens = $max_tokens;
         return $this;
     }
 
     public function as_json_response($schema) {
+        $this->captured_json_schema = $schema;
         return $this;
     }
 
@@ -64,6 +74,44 @@ class AIPS_Test_WP_AI_Client_Builder {
 
     public function generate_image() {
         return $this->image_response;
+    }
+}
+
+/**
+ * Builder whose chainable configuration methods return WP_Error, mimicking the
+ * real core builder's __call converting SDK exceptions to WP_Error mid-chain.
+ */
+class AIPS_Test_WP_AI_Client_Builder_Erroring_Chain extends AIPS_Test_WP_AI_Client_Builder {
+    public $failing_method = 'using_temperature';
+    public $chain_error_code = 'provider_down';
+
+    public function using_temperature($temperature) {
+        if ($this->failing_method === 'using_temperature') {
+            return new WP_Error($this->chain_error_code, 'boom');
+        }
+        return parent::using_temperature($temperature);
+    }
+
+    public function as_json_response($schema) {
+        if ($this->failing_method === 'as_json_response') {
+            return new WP_Error($this->chain_error_code, 'boom');
+        }
+        return parent::as_json_response($schema);
+    }
+}
+
+/**
+ * File-object stand-in for the AI Client's generated-image result.
+ */
+class AIPS_Test_WP_AI_Client_Image_File {
+    private $data_uri;
+
+    public function __construct($data_uri) {
+        $this->data_uri = $data_uri;
+    }
+
+    public function getDataUri() {
+        return $this->data_uri;
     }
 }
 
@@ -90,12 +138,18 @@ class AIPS_Test_WP_AI_Client_Builder_Without_JSON {
 
 class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
 
+    public function setUp(): void {
+        parent::setUp();
+        AIPS_AI_Provider_Factory::reset_cache();
+    }
+
     public function tearDown(): void {
         global $aips_wp_ai_client_test_builder, $mwai;
 
         $aips_wp_ai_client_test_builder = null;
         $mwai = null;
         delete_option('aips_ai_provider');
+        AIPS_AI_Provider_Factory::reset_cache();
         parent::tearDown();
     }
 
@@ -190,5 +244,95 @@ class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
 
         $this->assertIsArray($result);
         $this->assertTrue($result['fallback']);
+    }
+
+    public function test_generate_text_forwards_temperature_max_tokens_and_model_preferences() {
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $builder->text_response = 'Generated text';
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $result = (new AIPS_WP_AI_Client_Provider())->generate_text('Prompt', array(
+            'model'       => 'model-a, model-b',
+            'temperature' => 0.4,
+            'max_tokens'  => 512,
+        ));
+
+        $this->assertSame('Generated text', $result);
+        $this->assertSame(array('model-a', 'model-b'), $builder->captured_model_preferences);
+        $this->assertSame(0.4, $builder->captured_temperature);
+        $this->assertSame(512, $builder->captured_max_tokens);
+    }
+
+    public function test_generate_json_forwards_schema_to_as_json_response() {
+        global $aips_wp_ai_client_test_builder;
+
+        $schema = array(
+            'type'       => 'object',
+            'properties' => array('topic' => array('type' => 'string')),
+        );
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $builder->text_response = '{"topic":"Example"}';
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $result = (new AIPS_WP_AI_Client_Provider())->generate_json('Prompt', array(
+            'json_schema' => $schema,
+        ));
+
+        $this->assertSame($schema, $builder->captured_json_schema);
+        $this->assertSame(array('topic' => 'Example'), $result);
+    }
+
+    public function test_mid_chain_wp_error_throws_exception_with_code_prefix() {
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder_Erroring_Chain();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $provider = new AIPS_WP_AI_Client_Provider();
+
+        try {
+            $provider->generate_text('Prompt', array('temperature' => 0.5));
+            $this->fail('Expected an exception for a mid-chain WP_Error.');
+        } catch (Exception $e) {
+            $this->assertStringStartsWith('provider_down: ', $e->getMessage());
+            $this->assertSame('provider_down', $provider->extract_error_code($e->getMessage()));
+        }
+    }
+
+    public function test_generate_json_mid_chain_wp_error_throws_not_null() {
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder_Erroring_Chain();
+        $builder->failing_method = 'as_json_response';
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('provider_down');
+
+        (new AIPS_WP_AI_Client_Provider())->generate_json('Prompt', array(
+            'json_schema' => array('type' => 'object'),
+        ));
+    }
+
+    public function test_extract_error_code_recovers_prefixed_code() {
+        $provider = new AIPS_WP_AI_Client_Provider();
+
+        $this->assertSame('no_connector', $provider->extract_error_code('no_connector: nothing configured'));
+    }
+
+    public function test_generate_image_unwraps_file_object_data_uri() {
+        global $aips_wp_ai_client_test_builder;
+
+        $data_uri = 'data:image/png;base64,dGVzdA==';
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $builder->image_response = new AIPS_Test_WP_AI_Client_Image_File($data_uri);
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $result = (new AIPS_WP_AI_Client_Provider())->generate_image('Prompt', array());
+
+        $this->assertSame($data_uri, $result);
     }
 }

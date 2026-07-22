@@ -126,7 +126,7 @@ class AIPS_Settings_UI {
                 </option>
             <?php endforeach; ?>
         </select>
-        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then a WordPress AI Client connector that is ready for text generation. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then a WordPress AI Client connector that is ready for text generation. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference, with credentials managed under WordPress core Settings > AI Connectors).', 'ai-post-scheduler'); ?></p>
         <?php if (!empty($reasons)) : ?>
             <ul class="description aips-provider-readiness">
                 <?php foreach ($reasons as $id => $reason) : ?>
@@ -163,7 +163,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
         ?>
         <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Meow AI Engine only: environment ID to use (leave empty for the AI Engine default). Ignored by the WordPress AI Client, which manages connectors and credentials under WordPress core settings.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 

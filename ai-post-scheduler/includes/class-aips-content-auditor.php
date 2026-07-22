@@ -110,12 +110,6 @@ class AIPS_Content_Auditor {
             'json_schema' => $this->get_gap_analysis_json_schema(),
         );
 
-        // Check if a specific model is configured in settings, if it's "gpt-5-mini" (which doesn't exist publicly yet), override it.
-        $configured_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
-        if ($configured_model === 'gpt-5-mini') {
-             $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
-        }
-
         $response = $this->ai_service->generate_json($prompt, $options);
 
         if (is_wp_error($response)) {
@@ -160,12 +154,6 @@ class AIPS_Content_Auditor {
         $options = array(
             'temperature' => 0.7,
         );
-        
-        // Override potentially bad model setting
-        $configured_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
-        if ($configured_model === 'gpt-5-mini') {
-             $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
-        }
 
         $response = $this->ai_service->generate_text($prompt, $options);
 

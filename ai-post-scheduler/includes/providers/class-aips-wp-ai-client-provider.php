@@ -133,11 +133,42 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
     }
 
     /**
+     * Call a fluent builder method, guarding against WP_Error returns.
+     *
+     * The core builder proxies snake_case calls via __call and converts SDK
+     * exceptions into WP_Error returns even for chainable configuration methods.
+     * Without this guard a mid-chain WP_Error would fatal on the next chained
+     * call (WP_Error has no such methods). The is_callable check is always true
+     * for the real __call-based builder; it exists so duck-typed builders (test
+     * stubs, future implementations) without the method are skipped gracefully.
+     *
+     * @param object $builder Current builder instance.
+     * @param string $method  Builder method to invoke.
+     * @param mixed  ...$args Arguments for the method.
+     * @return object The (possibly new) builder instance.
+     * @throws Exception When the builder method returns a WP_Error.
+     */
+    private function chain($builder, string $method, ...$args) {
+        if (!is_callable(array($builder, $method))) {
+            return $builder;
+        }
+
+        $result = $builder->$method(...$args);
+
+        if (is_wp_error($result)) {
+            $this->throw_from_wp_error($result);
+        }
+
+        return $result;
+    }
+
+    /**
      * Build a configured prompt builder from canonical parameters.
      *
      * @param string $prompt Prompt text.
      * @param array  $params Canonical parameters.
      * @return object The Prompt_Builder_With_WP_Error instance.
+     * @throws Exception When the AI Client rejects the prompt or a configuration step.
      */
     private function build_prompt(string $prompt, array $params) {
         $builder = wp_ai_client_prompt($prompt);
@@ -150,19 +181,19 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
         if (!empty($params['model'])) {
             $preferences = array_filter(array_map('trim', explode(',', (string) $params['model'])));
 
-            if (!empty($preferences) && is_callable([$builder, 'using_model_preference'])) {
-                $builder = $builder->using_model_preference(...array_values($preferences));
+            if (!empty($preferences)) {
+                $builder = $this->chain($builder, 'using_model_preference', ...array_values($preferences));
             }
         }
 
-        if (isset($params['temperature']) && is_callable([$builder, 'using_temperature'])) {
-            $builder = $builder->using_temperature((float) $params['temperature']);
+        if (isset($params['temperature'])) {
+            $builder = $this->chain($builder, 'using_temperature', (float) $params['temperature']);
         }
 
         $max_tokens = isset($params['max_tokens']) ? $params['max_tokens'] : (isset($params['maxTokens']) ? $params['maxTokens'] : null);
 
-        if ($max_tokens !== null && is_callable([$builder, 'using_max_tokens'])) {
-            $builder = $builder->using_max_tokens((int) $max_tokens);
+        if ($max_tokens !== null) {
+            $builder = $this->chain($builder, 'using_max_tokens', (int) $max_tokens);
         }
 
         return $builder;
@@ -214,11 +245,16 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 
         $builder = $this->build_prompt((string) $prompt, $params);
 
+        // Structural unavailability (duck-typed builder without a JSON API, or no
+        // text-capable connector) requests the service's text-based fallback.
         if (!is_callable([$builder, 'as_json_response']) || !$this->supports_text_generation($builder)) {
             return null;
         }
 
-        $result = $builder->as_json_response($params['json_schema'])->generate_text();
+        // A real connector error mid-chain must throw (reaching the resilience
+        // layer), not silently trigger the fallback.
+        $builder = $this->chain($builder, 'as_json_response', $params['json_schema']);
+        $result  = $builder->generate_text();
 
         if (is_wp_error($result)) {
             $this->throw_from_wp_error($result);

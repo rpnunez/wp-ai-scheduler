@@ -8,8 +8,16 @@
 
 class Test_AIPS_AI_Provider_Factory extends WP_UnitTestCase {
 
+    public function setUp(): void {
+        parent::setUp();
+        // The factory caches provider instances per request, and the Meow adapter
+        // caches $mwai per instance — reset so each test sees its own globals.
+        AIPS_AI_Provider_Factory::reset_cache();
+    }
+
     public function tearDown(): void {
         delete_option('aips_ai_provider');
+        AIPS_AI_Provider_Factory::reset_cache();
         parent::tearDown();
     }
 
