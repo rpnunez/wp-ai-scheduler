@@ -421,10 +421,23 @@ class AIPS_Admin_Assets {
             true
         );
 
+        // admin.js is loaded on every admin page (not just Schedule), so its
+        // AIPS.Core.Model/Collection/View classes (Unified Schedule table)
+        // need this registered globally too, not per-page like the other
+        // aips-core-backbone-script registrations in this file. 'backbone' is
+        // WP core's own bundled handle -- see enqueue_cache_monitor_assets().
+        wp_enqueue_script(
+            'aips-core-backbone-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+            array('backbone', 'aips-core-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script'),
+            array('jquery', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
             AIPS_VERSION,
             true
         );

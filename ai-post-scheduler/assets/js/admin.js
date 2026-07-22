@@ -74,6 +74,42 @@
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
             this.initScheduleStatusStrip();
+            this.initUnifiedScheduleCollection();
+        },
+
+        /**
+         * Bootstrap a Backbone Collection from the server-rendered Unified
+         * Schedule rows (`.aips-unified-row`), one Model per row keyed by the
+         * existing composite `data-row-key` ("type:id").
+         *
+         * There is no JSON list endpoint for this table (it mixes several
+         * schedule types with different columns/actions, rendered once in
+         * PHP), so this deliberately does not `fetch()` -- it's a read-only
+         * snapshot of what's already in the DOM, same precedent as
+         * post-slices.js. What it buys: `aips_unified_toggle`/bulk toggle/
+         * bulk delete no longer reach into the DOM by hand
+         * (`updateUnifiedRowStatus` calls scattered across 3 call sites) --
+         * they patch the Model, and `AIPS.ScheduleItemsView` is the single
+         * place that turns a model change into the actual row patch.
+         */
+        initUnifiedScheduleCollection: function() {
+            var $rows = $('.aips-unified-row');
+            if (!$rows.length) {
+                return;
+            }
+
+            var models = $rows.map(function() {
+                var $row = $(this);
+                return {
+                    rowKey: $row.data('row-key'),
+                    type: $row.data('type'),
+                    item_id: $row.data('id'),
+                    is_active: parseInt($row.data('is-active'), 10) === 1 ? 1 : 0
+                };
+            }).get();
+
+            this.unifiedScheduleCollection = new AIPS.ScheduleItemCollection(models);
+            this.unifiedScheduleItemsView = new AIPS.ScheduleItemsView({ collection: this.unifiedScheduleCollection });
         },
 
         initScheduleStatusStrip: function() {
@@ -1637,6 +1673,7 @@
             var $el = $(this);
             var id = $el.data('id');
             var $row = $el.closest('tr');
+            var rowKey = $row.data('row-key');
 
             AIPS.Utilities.confirm(aipsScheduleL10n.deleteScheduleConfirm, 'Notice', [
                 { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
@@ -1646,9 +1683,19 @@
                         data: { schedule_id: id },
                         errorFallback: aipsAdminL10n.errorTryAgain,
                         onSuccess: function() {
-                            $row.fadeOut(function() {
-                                $(this).remove();
-                            });
+                            var model = rowKey && AIPS.unifiedScheduleCollection
+                                ? AIPS.unifiedScheduleCollection.get(rowKey)
+                                : null;
+
+                            if (model) {
+                                // Collection 'remove' -> AIPS.ScheduleItemsView.onRemove()
+                                // does the same fadeOut+remove() below.
+                                AIPS.unifiedScheduleCollection.remove(model);
+                            } else {
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                });
+                            }
                         }
                     });
                 }}
@@ -2387,15 +2434,24 @@
 
                         AIPS.Utilities.showToast(data.message, 'success');
 
-                        // Update each successful row's badge and toggle to reflect new state.
+                        // Patch each successful item's model; AIPS.ScheduleItemsView
+                        // reacts to the resulting 'change:is_active' and repaints the
+                        // row's badge/toggle the same way toggleUnifiedSchedule() does.
                         successfulItems.forEach(function(item) {
                             if (!item || !item.type || typeof item.id === 'undefined') {
                                 return;
                             }
                             var key  = item.type + ':' + item.id;
+                            var model = AIPS.unifiedScheduleCollection && AIPS.unifiedScheduleCollection.get(key);
+                            if (model) {
+                                model.set('is_active', isActive);
+                            }
+
                             var $row = $('tr[data-row-key="' + key + '"]');
                             if ($row.length) {
-                                AIPS.updateUnifiedRowStatus($row, isActive);
+                                if (!model) {
+                                    AIPS.updateUnifiedRowStatus($row, isActive);
+                                }
                                 // In partial success, unselect only successful rows to keep failures visible.
                                 if (Object.keys(failedKeysMap).length > 0) {
                                     $row.find('.aips-unified-select').prop('checked', false);
@@ -2438,10 +2494,18 @@
                         }
 
                         var rowKey = item.type + ':' + item.id;
-                        $('tr[data-row-key="' + rowKey + '"]').fadeOut(250, function() {
-                            $(this).remove();
-                            AIPS.updateUnifiedBulkActions();
-                        });
+                        var model = AIPS.unifiedScheduleCollection && AIPS.unifiedScheduleCollection.get(rowKey);
+
+                        if (model) {
+                            // 'remove' -> AIPS.ScheduleItemsView.onRemove() does the
+                            // same fadeOut+remove()+updateUnifiedBulkActions() below.
+                            AIPS.unifiedScheduleCollection.remove(model);
+                        } else {
+                            $('tr[data-row-key="' + rowKey + '"]').fadeOut(250, function() {
+                                $(this).remove();
+                                AIPS.updateUnifiedBulkActions();
+                            });
+                        }
                     });
 
                     AIPS.Utilities.showToast(data.message || 'Schedules deleted successfully.', 'success');
@@ -2454,23 +2518,30 @@
         /**
          * Toggle a single unified schedule's active status.
          *
-         * Bound to the `change` event on `.aips-unified-toggle-schedule`.
+         * Bound to the `change` event on `.aips-unified-toggle-schedule`. Uses
+         * `wait: true` so the model (and the row it drives via
+         * `AIPS.ScheduleItemsView`) only updates once the server confirms --
+         * same timing as the previous raw-ajaxRequest version, which only
+         * called `updateUnifiedRowStatus()` from its success callback.
          */
         toggleUnifiedSchedule: function() {
             var $toggle  = $(this);
             var id       = $toggle.data('id');
             var type     = $toggle.data('type');
             var isActive = $toggle.is(':checked') ? 1 : 0;
-            var $row     = $toggle.closest('tr');
+            var rowKey   = type + ':' + id;
 
-            AIPS.Core.Http.ajaxRequest({
-                action: 'aips_unified_toggle',
-                data: { id: id, type: type, is_active: isActive },
+            var model = AIPS.unifiedScheduleCollection && AIPS.unifiedScheduleCollection.get(rowKey);
+            if (!model) {
+                return;
+            }
+
+            model.save({ is_active: isActive }, {
+                wait: true,
+                patch: true,
+                attrs: { id: id, type: type, is_active: isActive },
                 errorFallback: aipsAdminL10n.errorOccurred,
-                onSuccess: function() {
-                    AIPS.updateUnifiedRowStatus($row, isActive);
-                },
-                onError: function() {
+                error: function() {
                     $toggle.prop('checked', !isActive);
                 }
             });
@@ -4158,6 +4229,53 @@
             }, function(err) {
                 console.error('Could not copy text: ', err);
             });
+        }
+    });
+
+    /**
+     * One Model per Unified Schedule row, keyed by the existing composite
+     * `data-row-key` ("type:id") since these rows span several distinct
+     * schedule types with no single numeric id shared across them. There is
+     * no `ajaxActions.read` -- the collection is bootstrapped from the DOM
+     * (see AIPS.initUnifiedScheduleCollection), never fetched.
+     */
+    AIPS.ScheduleItemModel = AIPS.Core.Model.extend({
+        idAttribute: 'rowKey',
+        ajaxActions: { patch: 'aips_unified_toggle' }
+    });
+
+    AIPS.ScheduleItemCollection = AIPS.Core.Collection.extend({
+        model: AIPS.ScheduleItemModel
+    });
+
+    /**
+     * Reacts to `unifiedScheduleCollection` changes by patching the matching
+     * `<tr data-row-key>` -- the single place that turns a model mutation
+     * into a DOM update, replacing the direct `updateUnifiedRowStatus()` /
+     * fadeOut+remove() calls that used to live at each of the 4 call sites
+     * (single toggle, bulk toggle, single delete, bulk delete).
+     */
+    AIPS.ScheduleItemsView = AIPS.Core.View.extend({
+        initialize: function() {
+            this.listenTo(this.collection, 'change:is_active', this.onStatusChange);
+            this.listenTo(this.collection, 'remove', this.onRemove);
+        },
+
+        onStatusChange: function(model) {
+            var $row = $('tr[data-row-key="' + model.id + '"]');
+            if ($row.length) {
+                AIPS.updateUnifiedRowStatus($row, model.get('is_active') ? 1 : 0);
+            }
+        },
+
+        onRemove: function(model) {
+            var $row = $('tr[data-row-key="' + model.id + '"]');
+            if ($row.length) {
+                $row.fadeOut(250, function() {
+                    $(this).remove();
+                    AIPS.updateUnifiedBulkActions();
+                });
+            }
         }
     });
 
