@@ -306,7 +306,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
 			'aips-datetime-script',
-			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+			AIPS_PLUGIN_URL . 'assets/js/core/datetime.js',
 			array('jquery'),
 			AIPS_VERSION,
 			true
@@ -314,7 +314,7 @@ class AIPS_Admin_Assets {
 
 		wp_enqueue_script(
 			'aips-utilities-script',
-			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+			AIPS_PLUGIN_URL . 'assets/js/core/utilities.js',
 			array('jquery', 'aips-datetime-script'),
 			AIPS_VERSION,
 			true
@@ -335,7 +335,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-templates-script',
-            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/templates.js',
             array('jquery'),
             AIPS_VERSION,
             true
@@ -343,7 +343,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-core-script',
-            AIPS_PLUGIN_URL . 'assets/js/core.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/core.js',
             array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
@@ -351,7 +351,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-core-table-script',
-            AIPS_PLUGIN_URL . 'assets/js/core-table.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-table.js',
             array('jquery'),
             AIPS_VERSION,
             true
@@ -359,7 +359,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-core-ui-script',
-            AIPS_PLUGIN_URL . 'assets/js/core-ui.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-ui.js',
             array('jquery'),
             AIPS_VERSION,
             true
@@ -367,7 +367,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-core-modal-script',
-            AIPS_PLUGIN_URL . 'assets/js/core-modal.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-modal.js',
             array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
@@ -375,7 +375,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-core-bulk-script',
-            AIPS_PLUGIN_URL . 'assets/js/core-bulk.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-bulk.js',
             array('jquery', 'aips-core-script', 'aips-core-table-script', 'aips-core-modal-script'),
             AIPS_VERSION,
             true
@@ -437,7 +437,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-datetime-script',
-            AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/datetime.js',
             array('jquery'),
             AIPS_VERSION,
             true
@@ -445,7 +445,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-utilities-script',
-            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/utilities.js',
             array('jquery', 'aips-datetime-script'),
             AIPS_VERSION,
             true

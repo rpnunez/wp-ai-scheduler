@@ -1,8 +1,10 @@
 ---
-applyTo: "assets/js/*.js,ai-post-scheduler/assets/js/*.js"
+applyTo: "assets/js/**/*.js,ai-post-scheduler/assets/js/**/*.js"
 ---
 
 Use this file for JavaScript changes in `assets/js/*.js`.
+
+Shared/foundational modules used across pages (`core.js`, `core-modal.js`, `core-table.js`, `core-bulk.js`, `core-ui.js`, `utilities.js`, `templates.js`, `datetime.js`) live in `assets/js/core/`. Everything else — a specific admin page's script — stays directly in `assets/js/`.
 
 Follow the `admin.js` module pattern for all plugin JavaScript files at a high level.
 

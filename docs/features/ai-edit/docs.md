@@ -100,7 +100,7 @@ var AIPS_FIELD_MAPS = {
 `AIPS.AIAssistance.formContext` defaults to `'authors'`. Each page using the module must override it **before** `init()` is called. The cleanest pattern is to call `init()` from your page-specific JS file after overriding `formContext`:
 
 ```js
-// In your page JS file (e.g. assets/js/templates.js), inside $(document).ready():
+// In your page JS file (e.g. assets/js/your-page.js), inside $(document).ready():
 if (typeof AIPS !== 'undefined' && AIPS.AIAssistance) {
     AIPS.AIAssistance.formContext = 'templates';
     AIPS.AIAssistance.init();
