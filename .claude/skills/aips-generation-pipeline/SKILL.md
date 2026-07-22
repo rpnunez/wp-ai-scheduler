@@ -21,11 +21,15 @@ lists, and every path through it must stay observable.
 3. **Assemble prompts through shared builders.** Never concatenate prompt strings in
    a caller; use the existing shared prompt builder(s) so template/voice/structure
    rules apply uniformly.
-4. **Preserve observability.** Any new or changed generation path must keep emitting
-   through `AIPS_Generation_Logger`, `AIPS_History_Service`, and
-   `AIPS_Correlation_Id` — these are what let a failed/partial generation be traced
-   and reconciled later (see `AIPS_Partial_Generation_State_Reconciler` /
-   `AIPS_Partial_Generation_Notifications` in `docs/AI_AGENT_REFERENCE.md`).
+4. **Preserve observability.** Any new or changed generation path must keep logging
+   through `AIPS_Logger_Interface` (`AIPS_Logger`) and `AIPS_History_Service_Interface`
+   (`AIPS_History_Service`) — both `AIPS_Generator` and `AIPS_Generation_Execution_Runner`
+   take these as constructor dependencies, resolved via the container when not
+   injected. This is what lets a failed/partial generation be traced and reconciled
+   later (see `AIPS_Partial_Generation_State_Reconciler` /
+   `AIPS_Partial_Generation_Notifications` in `docs/AI_AGENT_REFERENCE.md`). Note:
+   `AIPS_Correlation_Id` exists as a class but has no current call sites — don't
+   treat it as part of the active observability path.
 5. **Check resilience wiring.** If the change can fail transiently (external API
    calls), confirm it goes through `AIPS_Resilience_Service::retry_with_backoff()`
    rather than a bespoke retry loop.
@@ -39,8 +43,12 @@ lists, and every path through it must stay observable.
 
 ## Reference files
 
-- `ai-post-scheduler/includes/` — `class-aips-generation-context*.php`,
-  `class-aips-template-context.php`, `class-aips-topic-context.php`,
-  `class-aips-generator.php`, `class-aips-generation-logger.php`,
-  `class-aips-history-service.php`, `class-aips-correlation-id.php`,
-  `class-aips-resilience-service.php`
+- `ai-post-scheduler/includes/interface-aips-generation-context.php` (contract)
+- `ai-post-scheduler/includes/class-aips-generation-context-factory.php`
+- `ai-post-scheduler/includes/class-aips-template-context.php`
+- `ai-post-scheduler/includes/class-aips-topic-context.php`
+- `ai-post-scheduler/includes/class-aips-generator.php`
+- `ai-post-scheduler/includes/class-aips-generation-execution-runner.php`
+- `ai-post-scheduler/includes/class-aips-logger.php` / `interface-aips-logger-interface.php`
+- `ai-post-scheduler/includes/class-aips-history-service.php`
+- `ai-post-scheduler/includes/class-aips-resilience-service.php`
