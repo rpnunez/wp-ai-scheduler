@@ -832,10 +832,20 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION
             );
 
+            // 'backbone' is WP core's own bundled handle -- see the matching
+            // registration/comment in enqueue_cache_monitor_assets().
+            wp_enqueue_script(
+                'aips-core-backbone-script',
+                AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+                array('backbone', 'aips-core-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
             wp_enqueue_script(
                 'aips-admin-post-slices',
                 AIPS_PLUGIN_URL . 'assets/js/post-slices.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-backbone-script'),
                 AIPS_VERSION,
                 true
             );
@@ -856,6 +866,7 @@ class AIPS_Admin_Assets {
                 'deactivate'    => __('Deactivate', 'ai-post-scheduler'),
                 'active'        => __('Active', 'ai-post-scheduler'),
                 'inactive'      => __('Inactive', 'ai-post-scheduler'),
+                'noDescription' => __('No description', 'ai-post-scheduler'),
             ));
     }
 

@@ -47,21 +47,28 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 
 		<div class="aips-post-slices-summary" aria-label="<?php esc_attr_e('Post slice counts', 'ai-post-scheduler'); ?>">
 			<div class="aips-post-slices-summary-card">
-				<span class="aips-post-slices-summary-value"><?php echo esc_html($total_count); ?></span>
+				<span class="aips-post-slices-summary-value" id="aips-post-slices-count-total"><?php echo esc_html($total_count); ?></span>
 				<span class="aips-post-slices-summary-label"><?php esc_html_e('Total Slices', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-post-slices-summary-card is-active">
-				<span class="aips-post-slices-summary-value"><?php echo esc_html($active_count); ?></span>
+				<span class="aips-post-slices-summary-value" id="aips-post-slices-count-active"><?php echo esc_html($active_count); ?></span>
 				<span class="aips-post-slices-summary-label"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-post-slices-summary-card is-inactive">
-				<span class="aips-post-slices-summary-value"><?php echo esc_html($inactive_count); ?></span>
+				<span class="aips-post-slices-summary-value" id="aips-post-slices-count-inactive"><?php echo esc_html($inactive_count); ?></span>
 				<span class="aips-post-slices-summary-label"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
 			</div>
 		</div>
 
 		<div class="aips-content-panel">
-			<?php if (!empty($post_slices)): ?>
+			<?php /*
+			Both branches below are always rendered (not PHP if/else'd) so
+			AIPS.PostSlices.SlicesView can toggle between them client-side as
+			the Backbone collection goes from empty to non-empty (or back) —
+			e.g. deleting the last slice, or adding the first one — without a
+			page reload. Only the initial display: is decided server-side.
+			*/ ?>
+			<div id="aips-post-slices-table-wrapper" style="<?php echo empty($post_slices) ? 'display:none;' : ''; ?>">
 				<div class="aips-filter-bar">
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-post-slice-search"><?php esc_html_e('Search Post Slices:', 'ai-post-scheduler'); ?></label>
@@ -173,21 +180,47 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 						</button>
 					</div>
 				</div>
-			<?php else: ?>
-				<div class="aips-empty-state" id="aips-post-slices-empty">
-					<div class="dashicons dashicons-editor-paragraph aips-empty-state-icon" aria-hidden="true"></div>
-					<h3 class="aips-empty-state-title"><?php esc_html_e('No Post Slices Yet', 'ai-post-scheduler'); ?></h3>
-					<p class="aips-empty-state-description"><?php esc_html_e('Create post slices to steer generated posts toward specific editorial styles such as failure modes, tool selection, or implementation checklists.', 'ai-post-scheduler'); ?></p>
-					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-primary" id="aips-add-post-slice-empty-btn">
-							<?php esc_html_e('Add Your First Post Slice', 'ai-post-scheduler'); ?>
-						</button>
-					</div>
+			</div><!-- /#aips-post-slices-table-wrapper -->
+
+			<div class="aips-empty-state" id="aips-post-slices-empty" style="<?php echo empty($post_slices) ? '' : 'display:none;'; ?>">
+				<div class="dashicons dashicons-editor-paragraph aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Post Slices Yet', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('Create post slices to steer generated posts toward specific editorial styles such as failure modes, tool selection, or implementation checklists.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-post-slice-empty-btn">
+						<?php esc_html_e('Add Your First Post Slice', 'ai-post-scheduler'); ?>
+					</button>
 				</div>
-			<?php endif; ?>
+			</div>
 		</div>
 	</div>
 </div>
+
+<?php /* HTML template used by AIPS.PostSlices.SlicesView (Backbone) via AIPS.Templates.renderRaw() -- composes a status badge + "no description" placeholder, so buildRowData() in post-slices.js is responsible for escaping every field itself before it reaches this template. */ ?>
+<script type="text/html" id="aips-tmpl-post-slice-row">
+	<tr data-slice-id="{{id}}" data-name="{{name}}" data-description="{{description}}" data-sort-order="{{sort_order}}" data-active="{{is_active}}">
+		<td class="column-name cell-primary">{{name}}</td>
+		<td class="column-description">{{description_display}}</td>
+		<td class="column-sort-order">{{sort_order}}</td>
+		<td class="column-status">{{status_badge}}</td>
+		<td class="column-actions">
+			<div class="aips-action-buttons">
+				<button type="button" class="aips-btn aips-btn-sm aips-edit-post-slice" data-id="{{id}}" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-edit"></span>
+					<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+				</button>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-post-slice" data-id="{{id}}" data-active="{{is_active}}" title="{{toggle_title}}">
+					<span class="dashicons {{toggle_icon_class}}"></span>
+					<span class="screen-reader-text">{{toggle_title}}</span>
+				</button>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-post-slice" data-id="{{id}}" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-trash"></span>
+					<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
+				</button>
+			</div>
+		</td>
+	</tr>
+</script>
 
 <div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">

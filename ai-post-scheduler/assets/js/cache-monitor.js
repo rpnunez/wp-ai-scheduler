@@ -605,8 +605,12 @@
 
 			model.destroy( {
 				wait: true,
-				success: function ( data ) {
-					AIPS.Utilities.showToast( data.message, 'success' );
+				// Backbone.Model#destroy calls options.success as (model, response,
+				// options) — NOT the single-argument (response) shape the sync
+				// adapter's own internal callback uses. `response` here is the
+				// unwrapped AIPS_Ajax_Response data ({message, affected}).
+				success: function ( destroyedModel, response ) {
+					AIPS.Utilities.showToast( response.message, 'success' );
 				}
 				// No manual .fadeOut().remove() — Backbone removes the model on
 				// success, which fires 'remove' on the collection, which re-renders.

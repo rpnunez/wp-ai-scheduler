@@ -27,6 +27,21 @@
  *   });
  *   collection.fetch({ data: { page: 1 }, reset: true });
  *
+ * IMPORTANT — two different callback shapes are in play, easy to conflate:
+ *   1. What THIS module's sync adapter passes to Backbone's own internal
+ *      options.success/options.error (single argument: the unwrapped
+ *      response data). This is an implementation detail of aipsBackboneSync()
+ *      below, never seen by page-level code.
+ *   2. What Backbone.Model#fetch/#save/#destroy and Backbone.Collection#fetch
+ *      pass to the CALLER-supplied success/error option — this is Backbone's
+ *      own long-standing public API and is NOT single-argument:
+ *        model.fetch/save/destroy:  success(model, response, options)
+ *        collection.fetch:          success(collection, response, options)
+ *      Page-level code calling .save()/.destroy()/.fetch() must use these
+ *      multi-argument signatures — e.g. `success: function (model, resp) {
+ *      showToast(resp.message); }`, not `function (resp) { ... }`. Getting
+ *      this wrong fails silently (the callback just reads undefined fields).
+ *
  * @since 3.3.0
  */
 (function ($) {
@@ -79,7 +94,11 @@
 			}
 		}
 		if (isModel && (method === 'create' || method === 'update' || method === 'patch')) {
-			$.extend(data, target.toJSON());
+			// Prefer options.attrs when Backbone provides it (its own sync()
+			// does the same) — set for the 'patch' verb, and belt-and-braces
+			// for 'create'/'update' too rather than relying solely on
+			// target.toJSON() reflecting attrs mid-save().
+			$.extend(data, options.attrs || target.toJSON());
 		}
 
 		return AIPS.Core.Http.ajaxRequest({
@@ -89,6 +108,8 @@
 			toastOnError: options.toastOnError !== false,
 			errorFallback: options.errorFallback,
 			$button: options.$button,
+			loadingLabel: options.loadingLabel,
+			loadingLabelIsHtml: options.loadingLabelIsHtml,
 			onSuccess: function (unwrappedData /*, response */) {
 				// Backbone's Model.fetch/save/destroy pre-wrap options.success into a
 				// single-argument function(resp) before calling sync() — resp feeds
