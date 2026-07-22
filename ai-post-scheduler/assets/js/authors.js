@@ -15,9 +15,39 @@
 		hasImportedSuggestedAuthor: false,
 
 		/**
+		 * @type {Backbone.Collection|null}
+		 */
+		topicsCollection: null,
+
+		/**
+		 * @type {Backbone.View|null}
+		 */
+		topicsView: null,
+
+		/**
+		 * Status tab currently loaded into topicsCollection (`'pending'`,
+		 * `'approved'`, `'rejected'`, or `'posts_generated'`).
+		 *
+		 * @type {string|null}
+		 */
+		currentTopicsStatus: null,
+
+		/**
+		 * Per-status topic counts from the last `aips_get_author_topics`
+		 * response, kept in sync client-side for single/bulk approve, reject,
+		 * and delete (deterministic status transitions) so those don't need a
+		 * full refetch just to keep the tab badges/stat cards accurate.
+		 *
+		 * @type {Object}
+		 */
+		topicCounts: {},
+
+		/**
 		 * Initialise the Authors module by binding all event listeners.
 		 */
 		init: function () {
+			this.topicsCollection = new TopicCollection();
+			this.topicsView = new TopicsView({ collection: this.topicsCollection });
 			this.bindEvents();
 		},
 
@@ -549,38 +579,59 @@
 		/**
 		 * Fetch topics for the current author filtered by status.
 		 *
-		 * Sends the `aips_get_author_topics` AJAX action. On success, calls
-		 * `renderTopics` with the returned topics and `updateTopicCounts` with
-		 * the per-status counts. Shows an error message inline on failure.
+		 * Fetches through `topicsCollection` (`aips_get_author_topics`); the
+		 * Collection's `sync` triggers `TopicsView.render()`, which also fires
+		 * `renderInlineSimilarityIndicators()` for the pending tab once the new
+		 * rows actually exist in the DOM. `updateTopicCounts` runs here since
+		 * it targets tab-bar/stat-card elements outside the view's `el`.
 		 *
 		 * @param {string} status - The topic status tab to load
-		 *                          (`'pending'`, `'approved'`, or `'rejected'`).
+		 *                          (`'pending'`, `'approved'`, `'rejected'`, or
+		 *                          `'posts_generated'`).
 		 */
 		loadTopics: function (status) {
+			this.currentTopicsStatus = status;
+
 			// Immediately show a loading skeleton while the AJAX request is in flight.
 			this.showTopicsLoading();
 
-			AIPS.Core.Http.ajaxRequest({
-				action: 'aips_get_author_topics',
-				nonce: aipsAuthorsL10n.nonce,
+			this.topicsCollection.fetch({
 				data: { author_id: this.currentAuthorId, status: status },
+				reset: true,
 				toastOnError: false,
 				errorFallback: aipsAuthorsL10n.errorLoadingTopics,
-				onSuccess: (data) => {
-					this.renderTopics(data.topics, status);
-					this.updateTopicCounts(data.status_counts);
-					if (status === 'pending') {
-						this.renderInlineSimilarityIndicators();
-					}
+				success: (collection, response) => {
+					this.topicCounts = response.status_counts || {};
+					this.updateTopicCounts(this.topicCounts);
 					// After rendering new content, hide the loading skeleton and
 					// reveal the topics table for the requested tab.
 					this.hideTopicsLoading();
 				},
-				onError: (message) => {
-					$('#aips-topics-content').html('<p>' + (message || aipsAuthorsL10n.errorLoadingTopics) + '</p>');
+				error: (collection, response) => {
+					$('#aips-topics-content').html('<p>' + ((response && response.message) || aipsAuthorsL10n.errorLoadingTopics) + '</p>');
 					this.hideTopicsLoading();
 				}
 			});
+		},
+
+		/**
+		 * Apply a deterministic per-status count delta after a single/bulk
+		 * approve, reject, or delete action, then re-render the tab badges and
+		 * stat cards from the updated totals.
+		 *
+		 * Only used for transitions this module already knows are unambiguous
+		 * (a topic approved/rejected/deleted always leaves exactly one bucket
+		 * and, for approve/reject, enters exactly one other) — anything with a
+		 * server-side-only outcome (e.g. post generation, which depends on
+		 * `post_count`) keeps going through a full `loadTopics()` refetch.
+		 *
+		 * @param {Object} deltas - Map of status key -> signed integer delta.
+		 */
+		adjustTopicCounts: function (deltas) {
+			Object.keys(deltas).forEach((key) => {
+				this.topicCounts[key] = (this.topicCounts[key] || 0) + deltas[key];
+			});
+			this.updateTopicCounts(this.topicCounts);
 		},
 
 		/**
@@ -605,206 +656,6 @@
 			$('#aips-topics-loading').hide();
 			$('#aips-topics-content').show();
 			$('#aips-author-topics-panel').removeClass('aips-topics-loading-active');
-		},
-
-		/**
-		 * Build and inject the topics HTML table into `#aips-topics-content`.
-		 *
-		 * Renders a WordPress-style `widefat` table with checkboxes, topic
-		 * titles (with an inline edit input), generated-at dates, and
-		 * context-sensitive action buttons (quick approve/reject, edit, generate
-		 * post). Also renders collapsible detail rows for reviewed topics.
-		 *
-		 * @param {Array<Object>} topics - Array of topic data objects from the server.
-		 * @param {string}        status - Active tab status
-		 *                                 (`'pending'`, `'approved'`, or `'rejected'`).
-		 */
-		renderTopics: function (topics, status) {
-			if (!topics || topics.length === 0) {
-				$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.noTopicsFound + '</p>');
-				return;
-			}
-
-			let rowsHtml = '';
-			let secondaryDateHeaderHtml = '';
-			if (status === 'approved') {
-				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.dateApproved || 'Date Approved') + '</th>';
-			} else if (status === 'rejected') {
-				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.dateRejected || 'Date Rejected') + '</th>';
-			} else if (status === 'posts_generated') {
-				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.datePostGenerated || 'Date Post Generated') + '</th>';
-			}
-
-			const dtL10n = {
-				today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
-				yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
-			};
-
-			topics.forEach(topic => {
-				const rawReviewedAt = topic.reviewed_at || '';
-				const formattedReviewedAt = rawReviewedAt ? (AIPS.DateTime.formatDateLabel(rawReviewedAt, dtL10n) || rawReviewedAt) : '';
-
-				let detailContentHtml = '';
-				if (topic.topic_description) {
-					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
-						label: aipsAuthorsL10n.description || 'Description',
-						value: topic.topic_description
-					});
-				}
-				if (topic.topic_rationale) {
-					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
-						label: aipsAuthorsL10n.rationale || 'Rationale',
-						value: topic.topic_rationale
-					});
-				}
-				if (topic.reviewed_at && topic.reviewed_by) {
-					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
-						label: aipsAuthorsL10n.reviewed || 'Reviewed',
-						value: String(formattedReviewedAt) + ' by User ID ' + String(topic.reviewed_by)
-					});
-				}
-				if (topic.last_feedback) {
-					const feedbackAction = topic.last_feedback.action;
-					const feedbackLabel = feedbackAction === 'rejected'
-						? (aipsAuthorsL10n.reject || 'Rejected')
-						: (aipsAuthorsL10n.approve || 'Approved');
-
-					let categoryBadgeHtml = '';
-					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						categoryBadgeHtml = this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
-					}
-
-					let reasonHtml = topic.last_feedback.reason ? ' &mdash; ' + AIPS.Utilities.escapeHtml(topic.last_feedback.reason) : '';
-					let dateHtml = topic.last_feedback.created_at ? ' <span class="aips-feedback-date">' + AIPS.Utilities.escapeHtml(String(topic.last_feedback.created_at)) + '</span>' : '';
-
-					detailContentHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-detail-feedback', {
-						label: AIPS.Templates.escape(aipsAuthorsL10n.lastFeedback || 'Last Feedback'),
-						action: AIPS.Templates.escape(feedbackAction),
-						actionLabel: AIPS.Templates.escape(feedbackLabel),
-						categoryBadge: categoryBadgeHtml,
-						reason: reasonHtml,
-						date: dateHtml
-					});
-				}
-				if (topic.potential_duplicate && topic.duplicate_match) {
-					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-duplicate', {
-						label: aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate',
-						match: topic.duplicate_match
-					});
-				}
-
-				let expandBtnHtml = '';
-				let detailSectionHtml = '';
-				if (detailContentHtml !== '') {
-					const viewDetailsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewDetails || 'View Details');
-					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
-					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
-						id: topic.id,
-						content: detailContentHtml
-					});
-				}
-
-				let postCountBadgeHtml = '';
-				if (topic.post_count && topic.post_count > 0) {
-					const viewPostsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewPosts || 'View Posts');
-					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-context="author-topic" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
-				}
-
-				let duplicateBadgeHtml = '';
-				if (topic.potential_duplicate) {
-					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
-					const safeDupLabel = AIPS.Utilities.escapeHtml(dupLabel);
-					const safeDupTitleLabel = AIPS.Utilities.escapeAttribute(dupLabel);
-					const dupTitle = topic.duplicate_match ? safeDupTitleLabel + ': ' + AIPS.Utilities.escapeAttribute(topic.duplicate_match) : safeDupTitleLabel;
-					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning" aria-hidden="true"></span> ' + safeDupLabel + '</span>';
-				}
-
-				let feedbackBadgeHtml = '';
-				if (topic.last_feedback) {
-					const fbAction = topic.last_feedback.action;
-					const fbLabel = fbAction === 'rejected' ? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected') : (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
-					const fbTitle = topic.last_feedback.reason ? AIPS.Utilities.escapeAttribute(fbLabel) + ': ' + AIPS.Utilities.escapeAttribute(topic.last_feedback.reason) : AIPS.Utilities.escapeAttribute(fbLabel);
-					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + AIPS.Utilities.escapeHtml(fbLabel) + '</span>';
-					if (topic.last_feedback.reason_category) {
-						feedbackBadgeHtml += ' ' + this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
-					}
-				}
-
-				let secondaryDateCellHtml = '';
-				let secondaryDateValue = '';
-
-				if (status === 'approved') {
-					secondaryDateValue = topic.reviewed_at || '';
-				} else if (status === 'rejected') {
-					secondaryDateValue = topic.reviewed_at || '';
-				} else if (status === 'posts_generated') {
-					secondaryDateValue = topic.post_generated_at || '';
-				}
-
-				if (secondaryDateHeaderHtml) {
-					const formattedSecondaryDate = AIPS.DateTime.formatDateLabel(secondaryDateValue, dtL10n) || secondaryDateValue;
-					secondaryDateCellHtml = '<td class="column-date"><div class="cell-meta">' + AIPS.Utilities.escapeHtml(formattedSecondaryDate) + '</div></td>';
-				}
-
-				let actionsHtml = '';
-				if (status === 'pending') {
-					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-pending', {
-						id: topic.id,
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
-						editTitle: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
-						moreActionsTitle: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
-						moreActionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
-						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
-						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
-					});
-				} else if (status === 'approved' || status === 'posts_generated') {
-					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
-						id: topic.id,
-						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
-						moreActionsTitle: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
-						moreActionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions')
-					});
-				} else {
-					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-rejected', {
-						id: topic.id,
-						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
-					});
-				}
-
-				const rawGeneratedAt = topic.generated_at || '';
-				const formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
-
-				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
-					id: topic.id,
-					topicTitle: AIPS.Templates.escape(topic.topic_title),
-					expandBtn: expandBtnHtml,
-					postCountBadge: postCountBadgeHtml,
-					duplicateBadge: duplicateBadgeHtml,
-					feedbackBadge: feedbackBadgeHtml,
-					detailContent: detailSectionHtml,
-					generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
-					secondaryDateCell: secondaryDateCellHtml,
-					actions: actionsHtml
-				});
-			});
-
-			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
-				topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
-				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
-				secondaryDateHeader: secondaryDateHeaderHtml,
-				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
-				rows: rowsHtml
-			});
-
-			$('#aips-topics-content').html(tableHtml);
-
-			// Update the filter bar result count
-			var total = topics.length;
-			var countStr = total === 1
-				? total + ' ' + (aipsAuthorsL10n.topicCountSingular || 'topic')
-				: total + ' ' + (aipsAuthorsL10n.topicCountPlural || 'topics');
-			$('#aips-topics-result-count').text(countStr);
 		},
 
 		/**
@@ -1258,7 +1109,20 @@
 					AIPS.Core.Modal.close('#aips-feedback-modal');
 					$('#aips-feedback-form')[0].reset();
 
-					this.loadTopics('pending');
+					// Approve/reject with feedback is only reachable from the
+					// pending tab's actions -- the topic deterministically
+					// leaves 'pending' and enters 'approved'/'rejected', so
+					// patch the collection + counts directly instead of a
+					// full loadTopics('pending') refetch.
+					const model = this.topicsCollection.get(topicId);
+					if (model) {
+						this.topicsCollection.remove(model);
+					}
+					this.adjustTopicCounts(
+						action === 'approve'
+							? { pending: -1, approved: 1 }
+							: { pending: -1, rejected: 1 }
+					);
 				}
 			});
 		},
@@ -1342,9 +1206,9 @@
 		/**
 		 * Confirm and permanently delete a single topic via `aips_delete_topic`.
 		 *
-		 * Shows a confirmation dialog. On confirmation, sends the AJAX request
-		 * and reloads the currently active tab's topics on success, or shows an
-		 * error toast on failure.
+		 * Shows a confirmation dialog. On confirmation, calls `model.destroy()`,
+		 * which removes the row from `topicsCollection` (re-rendering the table)
+		 * and decrements the currently active tab's count.
 		 *
 		 * @param {Event} e - Click event from an `.aips-delete-topic` element.
 		 */
@@ -1358,14 +1222,16 @@
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Core.Http.ajaxRequest({
-							action: 'aips_delete_topic',
-							nonce: aipsAuthorsL10n.nonce,
-							data: { topic_id: topicId },
+						const model = this.topicsCollection.get(topicId);
+						if (!model) {
+							return;
+						}
+
+						model.destroy({
+							wait: true,
 							errorFallback: aipsAuthorsL10n.errorDeletingTopic,
-							onSuccess: () => {
-								const activeTab = $('.aips-tab-link.active').data('tab');
-								this.loadTopics(activeTab);
+							success: () => {
+								this.adjustTopicCounts({ [this.currentTopicsStatus]: -1 });
 							}
 						});
 					}
@@ -1947,6 +1813,24 @@
 								AIPS.Utilities.showToast(data.message, 'success');
 								if (activeTab === 'feedback') {
 									this.loadFeedback();
+								} else if (action === 'delete') {
+									// Deterministic: every requested id leaves the
+									// currently active tab. approve/reject are only
+									// offered from the pending tab's dropdown, so
+									// they always mean "leaves pending, enters the
+									// target status" -- delete removes from whatever
+									// tab is active.
+									const removed = ids.map((id) => this.topicsCollection.get(id)).filter(Boolean);
+									this.topicsCollection.remove(removed);
+									this.adjustTopicCounts({ [activeTab]: -removed.length });
+								} else if (action === 'approve' || action === 'reject') {
+									const removed = ids.map((id) => this.topicsCollection.get(id)).filter(Boolean);
+									this.topicsCollection.remove(removed);
+									this.adjustTopicCounts(
+										action === 'approve'
+											? { pending: -removed.length, approved: removed.length }
+											: { pending: -removed.length, rejected: removed.length }
+									);
 								} else {
 									this.loadTopics(activeTab);
 								}
@@ -2267,7 +2151,230 @@
 			});
 		}
 	};
-	
+
+	const TopicModel = AIPS.Core.Model.extend({
+		idAttribute: 'id',
+		idParam: 'topic_id',
+		ajaxActions: { delete: 'aips_delete_topic' },
+		ajaxNonces: { delete: function () { return aipsAuthorsL10n.nonce; } }
+	});
+
+	const TopicCollection = AIPS.Core.Collection.extend({
+		model: TopicModel,
+		resultsKey: 'topics',
+		ajaxActions: { read: 'aips_get_author_topics' },
+		ajaxNonces: { read: function () { return aipsAuthorsL10n.nonce; } }
+	});
+
+	const TopicsView = AIPS.Core.View.extend({
+		el: '#aips-topics-content',
+		rawTemplate: true, // Composes detail/feedback/badge/actions sub-templates.
+
+		initialize: function () {
+			// 'sync' alone covers fetch() whether or not {reset: true} is
+			// passed (Backbone fires both 'reset' and 'sync' for a reset
+			// fetch) -- listening to both would double-render.
+			this.listenTo(this.collection, 'sync remove', this.render);
+		},
+
+		render: function () {
+			const topics = this.collection.toJSON();
+			const status = AuthorsModule.currentTopicsStatus;
+
+			if (!topics || topics.length === 0) {
+				this.$el.html('<p>' + aipsAuthorsL10n.noTopicsFound + '</p>');
+				return;
+			}
+
+			let rowsHtml = '';
+			let secondaryDateHeaderHtml = '';
+			if (status === 'approved') {
+				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.dateApproved || 'Date Approved') + '</th>';
+			} else if (status === 'rejected') {
+				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.dateRejected || 'Date Rejected') + '</th>';
+			} else if (status === 'posts_generated') {
+				secondaryDateHeaderHtml = '<th class="column-date">' + AIPS.Utilities.escapeHtml(aipsAuthorsL10n.datePostGenerated || 'Date Post Generated') + '</th>';
+			}
+
+			const dtL10n = {
+				today: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateToday) ? aipsAuthorsL10n.dateToday : 'Today',
+				yesterday: (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.dateYesterday) ? aipsAuthorsL10n.dateYesterday : 'Yesterday'
+			};
+
+			topics.forEach(topic => {
+				const rawReviewedAt = topic.reviewed_at || '';
+				const formattedReviewedAt = rawReviewedAt ? (AIPS.DateTime.formatDateLabel(rawReviewedAt, dtL10n) || rawReviewedAt) : '';
+
+				let detailContentHtml = '';
+				if (topic.topic_description) {
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.description || 'Description',
+						value: topic.topic_description
+					});
+				}
+				if (topic.topic_rationale) {
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.rationale || 'Rationale',
+						value: topic.topic_rationale
+					});
+				}
+				if (topic.reviewed_at && topic.reviewed_by) {
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.reviewed || 'Reviewed',
+						value: String(formattedReviewedAt) + ' by User ID ' + String(topic.reviewed_by)
+					});
+				}
+				if (topic.last_feedback) {
+					const feedbackAction = topic.last_feedback.action;
+					const feedbackLabel = feedbackAction === 'rejected'
+						? (aipsAuthorsL10n.reject || 'Rejected')
+						: (aipsAuthorsL10n.approve || 'Approved');
+
+					let categoryBadgeHtml = '';
+					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
+						categoryBadgeHtml = AuthorsModule.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
+					}
+
+					let reasonHtml = topic.last_feedback.reason ? ' &mdash; ' + AIPS.Utilities.escapeHtml(topic.last_feedback.reason) : '';
+					let dateHtml = topic.last_feedback.created_at ? ' <span class="aips-feedback-date">' + AIPS.Utilities.escapeHtml(String(topic.last_feedback.created_at)) + '</span>' : '';
+
+					detailContentHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-detail-feedback', {
+						label: AIPS.Templates.escape(aipsAuthorsL10n.lastFeedback || 'Last Feedback'),
+						action: AIPS.Templates.escape(feedbackAction),
+						actionLabel: AIPS.Templates.escape(feedbackLabel),
+						categoryBadge: categoryBadgeHtml,
+						reason: reasonHtml,
+						date: dateHtml
+					});
+				}
+				if (topic.potential_duplicate && topic.duplicate_match) {
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-duplicate', {
+						label: aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate',
+						match: topic.duplicate_match
+					});
+				}
+
+				let expandBtnHtml = '';
+				let detailSectionHtml = '';
+				if (detailContentHtml !== '') {
+					const viewDetailsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewDetails || 'View Details');
+					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
+					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
+						id: topic.id,
+						content: detailContentHtml
+					});
+				}
+
+				let postCountBadgeHtml = '';
+				if (topic.post_count && topic.post_count > 0) {
+					const viewPostsTitle = AIPS.Utilities.escapeAttribute(aipsAuthorsL10n.viewPosts || 'View Posts');
+					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-context="author-topic" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
+				}
+
+				let duplicateBadgeHtml = '';
+				if (topic.potential_duplicate) {
+					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
+					const safeDupLabel = AIPS.Utilities.escapeHtml(dupLabel);
+					const safeDupTitleLabel = AIPS.Utilities.escapeAttribute(dupLabel);
+					const dupTitle = topic.duplicate_match ? safeDupTitleLabel + ': ' + AIPS.Utilities.escapeAttribute(topic.duplicate_match) : safeDupTitleLabel;
+					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning" aria-hidden="true"></span> ' + safeDupLabel + '</span>';
+				}
+
+				let feedbackBadgeHtml = '';
+				if (topic.last_feedback) {
+					const fbAction = topic.last_feedback.action;
+					const fbLabel = fbAction === 'rejected' ? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected') : (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
+					const fbTitle = topic.last_feedback.reason ? AIPS.Utilities.escapeAttribute(fbLabel) + ': ' + AIPS.Utilities.escapeAttribute(topic.last_feedback.reason) : AIPS.Utilities.escapeAttribute(fbLabel);
+					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + AIPS.Utilities.escapeHtml(fbLabel) + '</span>';
+					if (topic.last_feedback.reason_category) {
+						feedbackBadgeHtml += ' ' + AuthorsModule.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
+					}
+				}
+
+				let secondaryDateCellHtml = '';
+				let secondaryDateValue = '';
+
+				if (status === 'approved') {
+					secondaryDateValue = topic.reviewed_at || '';
+				} else if (status === 'rejected') {
+					secondaryDateValue = topic.reviewed_at || '';
+				} else if (status === 'posts_generated') {
+					secondaryDateValue = topic.post_generated_at || '';
+				}
+
+				if (secondaryDateHeaderHtml) {
+					const formattedSecondaryDate = AIPS.DateTime.formatDateLabel(secondaryDateValue, dtL10n) || secondaryDateValue;
+					secondaryDateCellHtml = '<td class="column-date"><div class="cell-meta">' + AIPS.Utilities.escapeHtml(formattedSecondaryDate) + '</div></td>';
+				}
+
+				let actionsHtml = '';
+				if (status === 'pending') {
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-pending', {
+						id: topic.id,
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						editTitle: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						moreActionsTitle: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
+						moreActionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
+						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
+						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
+					});
+				} else if (status === 'approved' || status === 'posts_generated') {
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
+						id: topic.id,
+						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						moreActionsTitle: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions'),
+						moreActionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.moreActions || 'More actions')
+					});
+				} else {
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-rejected', {
+						id: topic.id,
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+					});
+				}
+
+				const rawGeneratedAt = topic.generated_at || '';
+				const formattedGeneratedAt = AIPS.DateTime.formatDateLabel(rawGeneratedAt, dtL10n) || rawGeneratedAt;
+
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
+					id: topic.id,
+					topicTitle: AIPS.Templates.escape(topic.topic_title),
+					expandBtn: expandBtnHtml,
+					postCountBadge: postCountBadgeHtml,
+					duplicateBadge: duplicateBadgeHtml,
+					feedbackBadge: feedbackBadgeHtml,
+					detailContent: detailSectionHtml,
+					generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
+					secondaryDateCell: secondaryDateCellHtml,
+					actions: actionsHtml
+				});
+			});
+
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
+				topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
+				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
+				secondaryDateHeader: secondaryDateHeaderHtml,
+				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+				rows: rowsHtml
+			});
+
+			this.$el.html(tableHtml);
+
+			// Update the filter bar result count
+			const total = topics.length;
+			const countStr = total === 1
+				? total + ' ' + (aipsAuthorsL10n.topicCountSingular || 'topic')
+				: total + ' ' + (aipsAuthorsL10n.topicCountPlural || 'topics');
+			$('#aips-topics-result-count').text(countStr);
+
+			// Similarity badges target `.aips-topic-similarity-slot` elements
+			// that only exist once the pending rows above are in the DOM.
+			if (status === 'pending') {
+				AuthorsModule.renderInlineSimilarityIndicators();
+			}
+		}
+	});
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		queueTopics: [],
