@@ -62,6 +62,42 @@
         },
 
         /**
+         * Refresh an arbitrary page section via AJAX instead of a full
+         * location.reload().
+         *
+         * Unlike refreshContentPanel() (which always swaps the nearest
+         * `.aips-content-panel` ancestor of a given inner selector), this
+         * replaces `containerSelector`'s own element directly -- for pages
+         * like System Status where one action (e.g. reinstalling the DB) can
+         * affect several independent panels at once, so there's no single
+         * "the" content panel to target.
+         *
+         * @param {string}   containerSelector - Selector present in both the
+         *                                       current and freshly-fetched DOM;
+         *                                       its element is replaced wholesale.
+         * @param {function} [callback]        - Optional callback after a
+         *                                       successful replacement.
+         */
+        refreshPageSection: function(containerSelector, callback) {
+            $.get(location.href, function(html) {
+                var $newDoc = $('<div>').append($.parseHTML(html));
+                var $newContent = $newDoc.find(containerSelector);
+                var $existing = $(containerSelector);
+
+                if ($newContent.length && $existing.length) {
+                    $existing.replaceWith($newContent);
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
+                } else {
+                    location.reload();
+                }
+            }).fail(function() {
+                location.reload();
+            });
+        },
+
+        /**
          * Bootstrap the AIPS admin interface.
          *
          * Registers all delegated event listeners, runs the initial AI variables
@@ -678,17 +714,12 @@
             
             $btn.prop('disabled', true);
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        var t = response.data.template;
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_get_template',
+                data: { template_id: id },
+                $button: $btn,
+                onSuccess: function(data) {
+                    var t = data.template;
                         var selectedCategories = [];
                         if (Array.isArray(t.post_category)) {
                             selectedCategories = t.post_category.map(String);
@@ -746,19 +777,11 @@
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
-                        // Initialize wizard to step 1
-                        AIPS.wizardGoToStep(1, $('#aips-template-modal'));
-                        $('#aips-template-modal').show();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
+                    // Initialize wizard to step 1
+                    AIPS.wizardGoToStep(1, $('#aips-template-modal'));
+                    $('#aips-template-modal').show();
                 },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                }
+                errorFallback: aipsAdminL10n.errorTryAgain
             });
         },
 
@@ -780,24 +803,14 @@
                 { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
                     AIPS.Utilities.setButtonLoading($btn, 'Cloning...');
 
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_clone_template',
-                            nonce: aipsAjax.nonce,
-                            template_id: id
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_clone_template',
+                        data: { template_id: id },
+                        errorFallback: aipsAdminL10n.errorTryAgain,
+                        onSuccess: function() {
+                            AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
                         },
-                        success: function(response) {
-                            if (response.success) {
-                                AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
-                                AIPS.Utilities.resetButton($btn);
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                        onError: function() {
                             AIPS.Utilities.resetButton($btn);
                         }
                     });
@@ -840,30 +853,16 @@
             // Confirmed, proceed with deletion
             AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_delete_template',
+                data: { template_id: id },
+                errorFallback: aipsAdminL10n.errorTryAgain,
+                onSuccess: function() {
+                    $row.fadeOut(function() {
+                        $(this).remove();
+                    });
                 },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                        // Reset button state on error
-                        $btn.text($btn.data('original-text'));
-                        $btn.removeClass('aips-confirm-delete');
-                        $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                onError: function() {
                     // Reset button state on error
                     $btn.text($btn.data('original-text'));
                     $btn.removeClass('aips-confirm-delete');
@@ -901,14 +900,9 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_save_template',
                 data: {
-                    action: 'aips_save_template',
-                    nonce: aipsAjax.nonce,
                     template_id: $('#template_id').val(),
                     name: $('#template_name').val(),
                     description: $('#template_description').val(),
@@ -933,23 +927,16 @@
                     }()),
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
-                success: function(response) {
-                    if (response.success) {
-                        var savedId = response.data.template_id;
-                        if (response.data && response.data.slicing_notice && response.data.slicing_notice.message) {
-                            AIPS.Utilities.showToast(response.data.slicing_notice.message, 'warning');
-                        }
-                        AIPS.lastSavedTemplateId = savedId;
-                        AIPS.showPostSaveActions(savedId);
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                $button: $btn,
+                loadingLabel: aipsAdminL10n.saving,
+                errorFallback: aipsAdminL10n.errorTryAgain,
+                onSuccess: function(data) {
+                    var savedId = data.template_id;
+                    if (data.slicing_notice && data.slicing_notice.message) {
+                        AIPS.Utilities.showToast(data.slicing_notice.message, 'warning');
                     }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
+                    AIPS.lastSavedTemplateId = savedId;
+                    AIPS.showPostSaveActions(savedId);
                 }
             });
         },
@@ -976,15 +963,10 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving, {isHtml: true});
-
             // Save with is_active set to 0 (inactive)
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_save_template',
                 data: {
-                    action: 'aips_save_template',
-                    nonce: aipsAjax.nonce,
                     template_id: $('#template_id').val(),
                     name: $('#template_name').val(),
                     description: $('#template_description').val(),
@@ -1009,29 +991,23 @@
                     }()),
                     is_active: 0 // Save as inactive draft
                 },
-                success: function(response) {
-                    if (response.success) {
-                        // Update the template_id so subsequent saves update the same draft
-                        if (response.data && response.data.template_id) {
-                            $('#template_id').val(response.data.template_id);
-                            AIPS.lastSavedTemplateId = response.data.template_id;
-                        }
-
-                        AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
-
-                        if (response.data && response.data.slicing_notice && response.data.slicing_notice.message) {
-                            AIPS.Utilities.showToast(response.data.slicing_notice.message, 'warning');
-                        }
-                        AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                $button: $btn,
+                loadingLabel: '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving,
+                loadingLabelIsHtml: true,
+                errorFallback: aipsAdminL10n.errorTryAgain,
+                onSuccess: function(data) {
+                    // Update the template_id so subsequent saves update the same draft
+                    if (data.template_id) {
+                        $('#template_id').val(data.template_id);
+                        AIPS.lastSavedTemplateId = data.template_id;
                     }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
+
+                    AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
+
+                    if (data.slicing_notice && data.slicing_notice.message) {
+                        AIPS.Utilities.showToast(data.slicing_notice.message, 'warning');
+                    }
+                    AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
                 }
             });
         },
@@ -1058,12 +1034,9 @@
             }
 
             var $btn = $(this);
-            AIPS.Utilities.setButtonLoading($btn, '<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating, {isHtml: true});
 
             // Gather all form data
             var data = {
-                action: 'aips_test_template',
-                nonce: aipsAjax.nonce,
                 template_id: $('#template_id').val(),
                 name: $('#template_name').val(),
                 description: $('#template_description').val(),
@@ -1082,36 +1055,29 @@
                 post_author: $('#post_author').val(),
             };
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_test_template',
                 data: data,
-                success: function(response) {
-                    if (response.success) {
-                        var result = response.data.result;
+                $button: $btn,
+                loadingLabel: '<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating,
+                loadingLabelIsHtml: true,
+                errorFallback: aipsAdminL10n.generationFailed,
+                onSuccess: function(data) {
+                    var result = data.result;
 
-                        // Populate modal
-                        $('#aips-test-title').text(result.title || '-');
-                        $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
+                    // Populate modal
+                    $('#aips-test-title').text(result.title || '-');
+                    $('#aips-test-excerpt').text(result.excerpt || '-');
+                    $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
 
-                        if (result.image_prompt) {
-                            $('#aips-test-image-row').show();
-                            $('#aips-test-image').text(result.image_prompt);
-                        } else {
-                            $('#aips-test-image-row').hide();
-                        }
-
-                        $('#aips-test-result-modal').show();
+                    if (result.image_prompt) {
+                        $('#aips-test-image-row').show();
+                        $('#aips-test-image').text(result.image_prompt);
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
+                        $('#aips-test-image-row').hide();
                     }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
+
+                    $('#aips-test-result-modal').show();
                 }
             });
         },
@@ -1131,28 +1097,14 @@
             var id = $(this).data('id');
             var $btn = $(this);
 
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.generating);
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_run_now',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.showGeneratedPostsModal(response.data);
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_run_now',
+                data: { template_id: id },
+                $button: $btn,
+                loadingLabel: aipsAdminL10n.generating,
+                errorFallback: aipsAdminL10n.errorTryAgain,
+                onSuccess: function(data) {
+                    AIPS.showGeneratedPostsModal(data);
                 }
             });
         },
@@ -3535,29 +3487,16 @@
 
             if (!templateId) return;
 
-            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span> ' + aipsAdminL10n.generating, {isHtml: true});
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_run_now',
-                    nonce: aipsAjax.nonce,
-                    template_id: templateId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#aips-template-modal').hide();
-                        AIPS.showGeneratedPostsModal(response.data);
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_run_now',
+                data: { template_id: templateId },
+                $button: $btn,
+                loadingLabel: '<span class="dashicons dashicons-update aips-spin"></span> ' + aipsAdminL10n.generating,
+                loadingLabelIsHtml: true,
+                errorFallback: aipsAdminL10n.errorTryAgain,
+                onSuccess: function(data) {
+                    $('#aips-template-modal').hide();
+                    AIPS.showGeneratedPostsModal(data);
                 }
             });
         },
@@ -4089,8 +4028,6 @@
             
             // Gather form data
             var formData = {
-                action: 'aips_preview_template_prompts',
-                nonce: aipsAjax.nonce,
                 prompt_template: $('#prompt_template').val(),
                 title_prompt: $('#title_prompt').val(),
                 voice_id: parseInt($('#voice_id').val()) || 0,
@@ -4105,54 +4042,50 @@
                     return ids;
                 }())
             };
-            
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
+
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_preview_template_prompts',
                 data: formData,
-                success: function(response) {
+                toastOnError: false,
+                errorFallback: aipsTemplatesL10n.failedToGeneratePreview,
+                onSuccess: function(data) {
                     $loading.hide();
-                    
-                    if (response.success) {
-                        var prompts = response.data.prompts;
-                        var metadata = response.data.metadata;
-                        
-                        // Update metadata section
-                        if (metadata.voice) {
-                            $('#aips-preview-voice').show().find('.aips-preview-voice-name').text(metadata.voice);
-                        } else {
-                            $('#aips-preview-voice').hide();
-                        }
-                        
-                        if (metadata.article_structure) {
-                            $('#aips-preview-structure').show().find('.aips-preview-structure-name').text(metadata.article_structure);
-                        } else {
-                            $('#aips-preview-structure').hide();
-                        }
-                        
-                        $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsTemplatesL10n.exampleTopic);
-                        
-                        // Update prompt sections
-                        $('#aips-preview-content-prompt').text(prompts.content || '-');
-                        $('#aips-preview-title-prompt').text(prompts.title || '-');
-                        $('#aips-preview-excerpt-prompt').text(prompts.excerpt || '-');
-                        
-                        if (prompts.image) {
-                            $('#aips-preview-image-section').show();
-                            $('#aips-preview-image-prompt').text(prompts.image);
-                        } else {
-                            $('#aips-preview-image-section').hide();
-                        }
-                        
-                        $sections.show();
+
+                    var prompts = data.prompts;
+                    var metadata = data.metadata;
+
+                    // Update metadata section
+                    if (metadata.voice) {
+                        $('#aips-preview-voice').show().find('.aips-preview-voice-name').text(metadata.voice);
                     } else {
-                        var errorMsg = response.data.message || aipsTemplatesL10n.failedToGeneratePreview;
-                        $error.text(errorMsg).show();
+                        $('#aips-preview-voice').hide();
                     }
+
+                    if (metadata.article_structure) {
+                        $('#aips-preview-structure').show().find('.aips-preview-structure-name').text(metadata.article_structure);
+                    } else {
+                        $('#aips-preview-structure').hide();
+                    }
+
+                    $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsTemplatesL10n.exampleTopic);
+
+                    // Update prompt sections
+                    $('#aips-preview-content-prompt').text(prompts.content || '-');
+                    $('#aips-preview-title-prompt').text(prompts.title || '-');
+                    $('#aips-preview-excerpt-prompt').text(prompts.excerpt || '-');
+
+                    if (prompts.image) {
+                        $('#aips-preview-image-section').show();
+                        $('#aips-preview-image-prompt').text(prompts.image);
+                    } else {
+                        $('#aips-preview-image-section').hide();
+                    }
+
+                    $sections.show();
                 },
-                error: function() {
+                onError: function(message, response, isTransportError) {
                     $loading.hide();
-                    $error.text(aipsTemplatesL10n.previewNetworkError).show();
+                    $error.text(isTransportError ? aipsTemplatesL10n.previewNetworkError : message).show();
                 }
             });
         },

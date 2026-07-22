@@ -383,26 +383,22 @@
 		sendAjax: function(action, step, done) {
 			$('#aips-campaign-spinner').addClass('is-active');
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				method: 'POST',
-				dataType: 'json',
+			AIPS.Core.Http.ajaxRequest({
+				action: this.sanitizePlainText(action),
 				data: {
-					action: this.sanitizePlainText(action),
-					nonce: this.sanitizePlainText(aipsAjax.nonce),
 					step: typeof step === 'undefined' ? this.steps[this.currentStepIndex] : this.sanitizePlainText(step),
 					payload: JSON.stringify(this.getPayload()),
 				},
-			})
-				.done(function(response) {
-					AIPS.CampaignWizard.handleAjaxDone(response, done);
-				})
-				.fail(function() {
-					AIPS.CampaignWizard.handleAjaxFailure(done);
-				})
-				.always(function() {
-					$('#aips-campaign-spinner').removeClass('is-active');
-				});
+				toastOnError: false,
+				onSuccess: function(data) {
+					done(null, data || {});
+				},
+				onError: function(message) {
+					done(new Error(message));
+				}
+			}).always(function() {
+				$('#aips-campaign-spinner').removeClass('is-active');
+			});
 		},
 
 		/**
@@ -415,25 +411,22 @@
 		sendAiAssistAjax: function(intake, done) {
 			$('#aips-campaign-spinner').addClass('is-active');
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				method: 'POST',
-				dataType: 'json',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_campaign_wizard_ai_generate',
+				nonce: this.sanitizePlainText(aipsCampaignWizardL10n.campaignWizardAIGenerateNonce),
 				data: {
-					action: 'aips_campaign_wizard_ai_generate',
-					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.campaignWizardAIGenerateNonce),
 					intake: JSON.stringify(this.sanitizeAiIntake(intake)),
 				},
-			})
-				.done(function(response) {
-					AIPS.CampaignWizard.handleAjaxDone(response, done);
-				})
-				.fail(function() {
-					AIPS.CampaignWizard.handleAjaxFailure(done);
-				})
-				.always(function() {
-					$('#aips-campaign-spinner').removeClass('is-active');
-				});
+				toastOnError: false,
+				onSuccess: function(data) {
+					done(null, data || {});
+				},
+				onError: function(message) {
+					done(new Error(message));
+				}
+			}).always(function() {
+				$('#aips-campaign-spinner').removeClass('is-active');
+			});
 		},
 
 		/**
@@ -750,46 +743,6 @@
 				var dayValue = self.sanitizePlainText(day);
 				$('[name="day_preferences[]"][value="' + dayValue + '"]').prop('checked', true);
 			});
-		},
-
-		/**
-		 * Handle a completed AJAX response.
-		 *
-		 * @param {Object}   response AJAX response.
-		 * @param {Function} done     Completion callback.
-		 * @return {void}
-		 */
-		handleAjaxDone: function(response, done) {
-			if (response && response.success) {
-				done(null, response.data || {});
-				return;
-			}
-
-			done(new Error(this.getAjaxErrorMessage(response)));
-		},
-
-		/**
-		 * Handle a failed AJAX request.
-		 *
-		 * @param {Function} done Completion callback.
-		 * @return {void}
-		 */
-		handleAjaxFailure: function(done) {
-			done(new Error(aipsAdminL10n.errorTryAgain || 'An error occurred.'));
-		},
-
-		/**
-		 * Extract an AJAX error message from a response.
-		 *
-		 * @param {Object} response AJAX response.
-		 * @return {string}
-		 */
-		getAjaxErrorMessage: function(response) {
-			if (response && response.data && response.data.message) {
-				return response.data.message;
-			}
-
-			return aipsAdminL10n.errorTryAgain || 'An error occurred.';
 		},
 
 		/**

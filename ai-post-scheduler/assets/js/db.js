@@ -12,7 +12,7 @@
          *
          * Shows a confirmation dialog, then sends the `aips_repair_db` AJAX
          * action which attempts to create any missing tables or columns.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-repair-db` element.
          */
@@ -30,7 +30,7 @@
                         errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
-                            setTimeout(function() { location.reload(); }, 1500);
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
                         onError: function(message) {
                             AIPS.Utilities.showToast(message, 'error');
@@ -62,7 +62,7 @@
                         errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
-                            setTimeout(function() { location.reload(); }, 1500);
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
                         onError: function(message) {
                             AIPS.Utilities.showToast(message, 'error');
@@ -78,7 +78,7 @@
          * Reads the `#aips-backup-db` checkbox to decide whether to back up
          * existing data first. Shows a confirmation dialog with an appropriate
          * warning, then sends the `aips_reinstall_db` AJAX action.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-reinstall-db` element.
          */
@@ -105,7 +105,7 @@
                         errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
-                            setTimeout(function() { location.reload(); }, 1500);
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
                         onError: function(message) {
                             AIPS.Utilities.showToast(message, 'error');
@@ -120,7 +120,7 @@
          *
          * Shows a warning confirmation dialog (this action cannot be undone),
          * then sends the `aips_wipe_db` AJAX action.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-wipe-db` element.
          */
@@ -138,7 +138,7 @@
                         errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
-                            setTimeout(function() { location.reload(); }, 1500);
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
                         onError: function(message) {
                             AIPS.Utilities.showToast(message, 'error');
@@ -204,7 +204,7 @@
          * Validates that a file has been chosen via `#aips-import-file`, shows a
          * destructive-data-loss warning dialog, then sends a multipart AJAX
          * request to the `aips_import_data` action using `FormData`.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-import-data` element.
          */
@@ -224,36 +224,29 @@
             AIPS.Utilities.confirm(confirmMsg, 'Warning', [
                 { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, import', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Importing...');
+                    var formData = new FormData();
+                    formData.append('format', format);
+                    formData.append('import_file', fileInput.files[0]);
 
-            var formData = new FormData();
-            formData.append('action', 'aips_import_data');
-            formData.append('nonce', aipsAjax.nonce);
-            formData.append('format', format);
-            formData.append('import_file', fileInput.files[0]);
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        setTimeout(function() { location.reload(); }, 1500);
-                    } else {
-                        AIPS.Utilities.showToast('Import failed: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred during import.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Import Data');
-                    fileInput.value = '';
-                }
-            });
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_import_data',
+                        data: formData,
+                        $button: $btn,
+                        loadingLabel: 'Importing...',
+                        toastOnError: false,
+                        onSuccess: function(data) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
+                        },
+                        onError: function(message, response, isTransportError) {
+                            AIPS.Utilities.showToast(
+                                isTransportError ? 'An error occurred during import.' : ('Import failed: ' + message),
+                                'error'
+                            );
+                        }
+                    }).always(function() {
+                        fileInput.value = '';
+                    });
                 }}
             ]);
         },
@@ -301,8 +294,8 @@
          *
          * Shows a confirmation dialog warning that active cron events will be
          * removed and re-scheduled, then sends the `aips_flush_cron_events` AJAX
-         * action. Reloads the page after a short delay on success so the updated
-         * cron diagnostics are visible.
+         * action. Refreshes the status page section after a short delay on success
+         * so the updated cron diagnostics are visible.
          *
          * @param {Event} e - Click event from an `.aips-flush-cron` element.
          */
@@ -335,7 +328,7 @@
                                 }
                                 AIPS.Utilities.showToast(data.message, 'success');
                                 $result.html('<p class="aips-status-message aips-status-success">' + $('<span>').text(summary).html() + '</p>').show();
-                                setTimeout(function() { location.reload(); }, 2000);
+                                setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 2000);
                             },
                             onError: function(message) {
                                 AIPS.Utilities.showToast(message, 'error');

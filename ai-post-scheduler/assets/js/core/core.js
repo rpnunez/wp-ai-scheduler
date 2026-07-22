@@ -42,7 +42,12 @@
 		 *
 		 * @param {Object}   options                 Request options.
 		 * @param {string}   options.action           Required. The `wp_ajax_*` action name.
-		 * @param {Object}   [options.data]           Extra fields merged into the POST body.
+		 * @param {Object|FormData} [options.data]     Extra fields merged into the POST body.
+		 *                                             Pass a `FormData` instance for multipart/file
+		 *                                             uploads — `action`/`nonce` are appended to it
+		 *                                             directly (instead of `$.extend`-merged) and the
+		 *                                             request is sent with `processData`/`contentType`
+		 *                                             disabled so jQuery doesn't try to serialize it.
 		 * @param {string}   [options.nonce]          Nonce override. Defaults to `aipsAjax.nonce`.
 		 *                                             Pages with multiple distinct nonces (e.g. one
 		 *                                             per operation) must pass this explicitly.
@@ -93,7 +98,7 @@
 			var nonce = options.nonce !== undefined
 				? options.nonce
 				: ((window.aipsAjax && aipsAjax.nonce) || '');
-			var data = $.extend({}, options.data || {}, { action: options.action, nonce: nonce });
+			var isFormData = (typeof FormData !== 'undefined') && (options.data instanceof FormData);
 			var $button = options.$button;
 			var toastOnError = options.toastOnError !== false;
 
@@ -105,12 +110,23 @@
 				}
 			}
 
-			var xhr = $.ajax({
+			var ajaxSettings = {
 				url: url,
 				type: options.method || 'POST',
-				dataType: 'json',
-				data: data
-			});
+				dataType: 'json'
+			};
+
+			if (isFormData) {
+				options.data.append('action', options.action);
+				options.data.append('nonce', nonce);
+				ajaxSettings.data = options.data;
+				ajaxSettings.processData = false;
+				ajaxSettings.contentType = false;
+			} else {
+				ajaxSettings.data = $.extend({}, options.data || {}, { action: options.action, nonce: nonce });
+			}
+
+			var xhr = $.ajax(ajaxSettings);
 
 			// Registered before .done()/.fail() below so the button is always
 			// restored first, even if a caller's onSuccess/onError callback throws
