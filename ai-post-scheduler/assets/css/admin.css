@@ -223,8 +223,14 @@
 
 .aips-schedule-status-summary-cards {
     display: grid;
-    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: var(--aips-space-3);
+}
+
+#aips-schedule-status-queue-heading {
+    cursor: help;
+    border-bottom: 1px dotted var(--aips-gray-400);
+    display: inline-block;
 }
 
 .aips-schedule-status-card {
@@ -1374,6 +1380,24 @@
     display: flex;
     gap: var(--aips-space-3);
     justify-content: center;
+}
+
+.aips-empty-state-help {
+    max-width: 480px;
+    margin: var(--aips-space-6) auto 0;
+    padding-top: var(--aips-space-5);
+    border-top: 1px solid var(--aips-gray-200);
+    text-align: left;
+    font-size: var(--aips-text-sm);
+    color: var(--aips-gray-600);
+}
+
+.aips-empty-state-help p {
+    margin: 0 0 var(--aips-space-2);
+}
+
+.aips-empty-state-help p:last-child {
+    margin-bottom: 0;
 }
 
 /* ==========================================================================

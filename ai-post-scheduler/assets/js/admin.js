@@ -160,6 +160,24 @@
                     queueTotal += parseInt(count || 0, 10);
                 });
 
+                var formatDuration = function(seconds) {
+                    seconds = parseInt(seconds, 10);
+                    if (!seconds || seconds <= 0) {
+                        return '—';
+                    }
+                    if (seconds < 60) {
+                        return seconds + 's';
+                    }
+                    var minutes = Math.floor(seconds / 60);
+                    var remSeconds = seconds % 60;
+                    if (minutes < 60) {
+                        return minutes + 'm ' + remSeconds + 's';
+                    }
+                    var hours = Math.floor(minutes / 60);
+                    var remMinutes = minutes % 60;
+                    return hours + 'h ' + remMinutes + 'm';
+                };
+
                 var counts = d.schedule_counts || {};
                 var cards = [
                     {
@@ -181,6 +199,11 @@
                         label: aipsScheduleL10n.bulkFailedLabel,
                         value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
                         tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                    },
+                    {
+                        label: aipsScheduleL10n.avgDurationLabel || 'Avg. Generation Time',
+                        value: formatDuration(d.avg_duration_seconds),
+                        tone: 'neutral'
                     }
                 ];
 
@@ -191,6 +214,15 @@
                     '</div>';
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
+
+                var bulkJobs = d.bulk_jobs || {};
+                $('#aips-schedule-status-queue-heading').attr(
+                    'title',
+                    (aipsScheduleL10n.queueHeadingTooltip || 'Pending: %1$d · Processing: %2$d · Failed: %3$d')
+                        .replace('%1$d', parseInt(bulkJobs.pending || 0, 10))
+                        .replace('%2$d', parseInt(bulkJobs.processing || 0, 10))
+                        .replace('%3$d', parseInt(bulkJobs.failed || 0, 10))
+                );
 
                 var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
                     return a.timestamp - b.timestamp;
@@ -350,6 +382,7 @@
             $(document).on('click', '.aips-filter-chip', this.filterUnifiedByChip);
             $(document).on('mouseenter focus', '.aips-view-schedule-failure-reason', this.loadScheduleFailureReason);
             $(document).on('click', '.aips-toggle-row-history', this.toggleRowHistory);
+            $(document).on('click', '.aips-unified-duplicate', this.duplicateUnifiedSchedule);
 
 
 
@@ -2930,6 +2963,51 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
+                    AIPS.Utilities.resetButton($btn);
+                }
+            });
+        },
+
+        /**
+         * Duplicate a template schedule as a new, paused copy and refresh the
+         * table to show it.
+         *
+         * @param {Event} e - Click event from `.aips-unified-duplicate`.
+         */
+        duplicateUnifiedSchedule: function(e) {
+            e.preventDefault();
+
+            var $btn  = $(this);
+            var id    = $btn.data('id');
+            var type  = $btn.data('type');
+
+            if (!id || !type) { return; }
+
+            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_unified_duplicate',
+                    nonce: aipsAjax.nonce,
+                    id: id,
+                    type: type
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
+                        AIPS.Utilities.resetButton($btn);
+                        return;
+                    }
+
+                    AIPS.Utilities.showToast(response.data.message, 'success');
+                    AIPS.refreshContentPanel('.aips-unified-schedule-table', '.aips-empty-state', function() {
+                        AIPS.initScheduleSparklines();
+                    });
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                     AIPS.Utilities.resetButton($btn);
                 }
             });

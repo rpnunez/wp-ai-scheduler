@@ -246,6 +246,40 @@ class AIPS_Unified_Schedule_Service {
 	}
 
 	/**
+	 * Duplicate a schedule as a new, paused copy.
+	 *
+	 * Currently only template schedules can be duplicated — author-topic and
+	 * author-post schedules are per-author settings, not standalone rows.
+	 *
+	 * @param int    $id   Numeric ID.
+	 * @param string $type One of the TYPE_* constants.
+	 * @return int|WP_Error New schedule ID on success.
+	 */
+	public function duplicate($id, $type) {
+		if (self::TYPE_TEMPLATE !== $type) {
+			return new WP_Error(
+				'not_duplicable',
+				__('This schedule type cannot be duplicated.', 'ai-post-scheduler')
+			);
+		}
+
+		$source = $this->schedule_repository->get_by_id($id);
+		if (!$source) {
+			return new WP_Error('not_found', __('Schedule not found.', 'ai-post-scheduler'));
+		}
+
+		$scheduler = new AIPS_Scheduler();
+		$next_run  = $scheduler->calculate_next_run($source->frequency);
+
+		$new_id = $this->schedule_repository->duplicate($id, $next_run);
+		if (!$new_id) {
+			return new WP_Error('duplicate_failed', __('Failed to duplicate schedule.', 'ai-post-scheduler'));
+		}
+
+		return $new_id;
+	}
+
+	/**
 	 * Get run-history log entries for a schedule.
 	 *
 	 * @param int    $id    Numeric ID.

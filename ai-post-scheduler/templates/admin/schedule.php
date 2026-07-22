@@ -192,7 +192,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
 					</div>
 					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+						<h3 class="aips-schedule-status-heading" id="aips-schedule-status-queue-heading" tabindex="0"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
 						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
 					</div>
 				</div>
@@ -498,6 +498,17 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									<span class="dashicons dashicons-controls-play"></span>
 								</button>
 
+								<!-- Duplicate (template schedules only) -->
+								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE): ?>
+								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-duplicate"
+									data-id="<?php echo esc_attr($sched['id']); ?>"
+									data-type="<?php echo esc_attr($sched['type']); ?>"
+									aria-label="<?php esc_attr_e('Duplicate schedule', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('Duplicate', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-admin-page"></span>
+								</button>
+								<?php endif; ?>
+
 								<!-- Delete (template schedules only) -->
 								<?php if ($sched['can_delete']): ?>
 								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
@@ -573,6 +584,24 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<span class="dashicons dashicons-plus-alt"></span>
 							<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
 						</button>
+					</div>
+					<?php endif; ?>
+					<?php if (empty($type_filter)): ?>
+					<div class="aips-empty-state-help">
+						<p>
+							<strong><?php esc_html_e('How schedules work:', 'ai-post-scheduler'); ?></strong>
+							<?php esc_html_e('A schedule pairs a template (or an author) with a frequency — e.g. daily or weekly — so new content is generated automatically. "Next Run" shows when the schedule will fire next; it updates each time the schedule runs.', 'ai-post-scheduler'); ?>
+						</p>
+						<p>
+							<?php
+							printf(
+								/* translators: 1: link to Templates tab, 2: link to Authors tab */
+								esc_html__('Post-generation schedules are created from the %1$s tab. Author topic/post schedules are configured on the %2$s tab.', 'ai-post-scheduler'),
+								'<a href="' . esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')) . '">' . esc_html__('Templates', 'ai-post-scheduler') . '</a>',
+								'<a href="' . esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')) . '">' . esc_html__('Authors', 'ai-post-scheduler') . '</a>'
+							);
+							?>
+						</p>
 					</div>
 					<?php endif; ?>
 				</div>

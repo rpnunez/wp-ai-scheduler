@@ -48,6 +48,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
         add_action('wp_ajax_aips_get_schedule_sparklines', array($this, 'ajax_get_schedule_sparklines'));
+        add_action('wp_ajax_aips_unified_duplicate', array($this, 'ajax_unified_duplicate'));
     }
 
     public function ajax_get_schedule_status_read_model() {
@@ -155,6 +156,22 @@ class AIPS_Schedule_Controller {
         $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
         $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
 
+        // Weighted average generation duration across all flows (last 14 days).
+        $duration_rows = $this->history_repository->get_average_duration_by_flow(14);
+        $avg_duration_seconds = null;
+        if (!empty($duration_rows)) {
+            $total_weighted = 0;
+            $total_samples  = 0;
+            foreach ($duration_rows as $row) {
+                $samples = (int) $row['sample_count'];
+                $total_weighted += (float) $row['avg_duration_seconds'] * $samples;
+                $total_samples  += $samples;
+            }
+            if ($total_samples > 0) {
+                $avg_duration_seconds = (int) round($total_weighted / $total_samples);
+            }
+        }
+
         $last_success = array();
         foreach ($families as $family => $hook) {
             $runs = $this->history_repository->get_history(array(
@@ -177,6 +194,7 @@ class AIPS_Schedule_Controller {
                 'overdue' => $overdue_schedules,
             ),
             'last_success' => $last_success,
+            'avg_duration_seconds' => $avg_duration_seconds,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
             'last_error' => $bulk_counts['failed'] > 0,
             'quick_links' => array(
@@ -1147,5 +1165,37 @@ class AIPS_Schedule_Controller {
         $sparklines  = $service->get_sparklines($items, 8);
 
         AIPS_Ajax_Response::success(array('sparklines' => $sparklines));
+    }
+
+    /**
+     * Duplicate a schedule as a new, paused copy (template schedules only).
+     */
+    public function ajax_unified_duplicate() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+
+        if (!$id || empty($type)) {
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        $service = new AIPS_Unified_Schedule_Service();
+        $result  = $service->duplicate($id, $type);
+
+        if (is_wp_error($result)) {
+            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+        }
+
+        AIPS_Ajax_Response::success(array(
+            'message'        => __('Schedule duplicated. The copy is paused — review and activate it when ready.', 'ai-post-scheduler'),
+            'new_schedule_id' => (int) $result,
+        ));
     }
 }
