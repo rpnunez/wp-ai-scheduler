@@ -4390,6 +4390,57 @@
     padding: 8px 0;
 }
 
+/* Inline "Recent Activity" row-expand preview (Schedules table) */
+.aips-unified-row-detail td {
+    background: var(--aips-gray-50);
+    border-top: none;
+}
+
+.aips-inline-history {
+    padding: var(--aips-space-2) var(--aips-space-5) var(--aips-space-4);
+}
+
+.aips-inline-history-loading,
+.aips-inline-history-empty {
+    padding: var(--aips-space-2) 0;
+    color: var(--aips-gray-500);
+    font-size: var(--aips-text-sm);
+}
+
+.aips-toggle-row-history .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+}
+
+/* Run-outcome sparkline (Schedules table Stats column) */
+.aips-schedule-sparkline {
+    margin-top: var(--aips-space-1);
+    min-height: 10px;
+}
+
+.aips-sparkline {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.aips-sparkline-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.aips-sparkline-dot-success {
+    background: var(--aips-success);
+}
+
+.aips-sparkline-dot-failed {
+    background: var(--aips-error);
+}
+
 .aips-timeline-item {
     display: flex;
     gap: 12px;

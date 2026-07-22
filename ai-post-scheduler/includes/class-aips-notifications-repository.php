@@ -278,4 +278,38 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 
 		return $counts;
 	}
+
+	/**
+	 * Fetch unread `scheduler_error` notifications, keyed by the
+	 * `schedule_id` recorded in each notification's `meta` payload.
+	 *
+	 * Notification volume is low (unread system alerts), so this filters
+	 * the JSON `meta` blob in PHP rather than requiring an indexed column.
+	 *
+	 * @return array<int,object> Map of schedule_id => notification row.
+	 */
+	public function get_unread_scheduler_errors_by_schedule() {
+		$rows = $this->wpdb->get_results(
+			"SELECT id, title, message, url, meta, created_at FROM {$this->table} WHERE is_read = 0 AND type = 'scheduler_error' ORDER BY created_at DESC"
+		);
+
+		$by_schedule = array();
+		if (empty($rows)) {
+			return $by_schedule;
+		}
+
+		foreach ($rows as $row) {
+			$meta = json_decode((string) $row->meta, true);
+			if (empty($meta['schedule_id'])) {
+				continue;
+			}
+
+			$schedule_id = absint($meta['schedule_id']);
+			if (!isset($by_schedule[$schedule_id])) {
+				$by_schedule[$schedule_id] = $row;
+			}
+		}
+
+		return $by_schedule;
+	}
 }

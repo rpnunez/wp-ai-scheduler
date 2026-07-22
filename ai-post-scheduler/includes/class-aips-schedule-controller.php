@@ -47,6 +47,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
+        add_action('wp_ajax_aips_get_schedule_sparklines', array($this, 'ajax_get_schedule_sparklines'));
     }
 
     public function ajax_get_schedule_status_read_model() {
@@ -1110,5 +1111,41 @@ class AIPS_Schedule_Controller {
         $entries = $service->get_history($id, $type, $limit);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
+    }
+
+    /**
+     * Batch-fetch recent run-status sparklines for multiple schedules in one
+     * request, so the Schedules table can render inline sparklines without
+     * one AJAX call per row.
+     */
+    public function ajax_get_schedule_sparklines() {
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            AIPS_Ajax_Response::permission_denied();
+        }
+
+        $raw_items = isset($_POST['items']) ? json_decode(wp_unslash($_POST['items']), true) : null;
+        if (!is_array($raw_items)) {
+            AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
+        }
+
+        $items = array();
+        foreach (array_slice($raw_items, 0, 200) as $raw_item) {
+            if (empty($raw_item['id']) || empty($raw_item['type'])) {
+                continue;
+            }
+            $items[] = array(
+                'id'   => absint($raw_item['id']),
+                'type' => sanitize_key($raw_item['type']),
+            );
+        }
+
+        $service     = new AIPS_Unified_Schedule_Service();
+        $sparklines  = $service->get_sparklines($items, 8);
+
+        AIPS_Ajax_Response::success(array('sparklines' => $sparklines));
     }
 }

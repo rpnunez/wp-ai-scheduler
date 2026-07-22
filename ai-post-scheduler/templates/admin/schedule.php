@@ -358,12 +358,20 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php endif; ?>
 							<div class="aips-row-actions">
 								<a href="#"
+									class="aips-toggle-row-history"
+									data-id="<?php echo esc_attr($sched['id']); ?>"
+									data-type="<?php echo esc_attr($sched['type']); ?>"
+									data-limit="5">
+									<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
+									<?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?>
+								</a>
+								<a href="#"
 									class="aips-view-unified-history"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									data-name="<?php echo esc_attr($sched['title']); ?>"
 									data-limit="5">
-									<?php esc_html_e('History', 'ai-post-scheduler'); ?>
+									<?php esc_html_e('Full History', 'ai-post-scheduler'); ?>
 								</a>
 							</div>
 						</td>
@@ -408,6 +416,10 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php if (!empty($sched['stats_label'])): ?>
 							<div class="cell-meta"><?php echo esc_html($sched['stats_label']); ?></div>
 							<?php endif; ?>
+							<div class="aips-schedule-sparkline"
+								data-id="<?php echo esc_attr($sched['id']); ?>"
+								data-type="<?php echo esc_attr($sched['type']); ?>"
+								aria-hidden="true"></div>
 						</td>
 						<td class="column-status">
 							<div class="aips-schedule-status-wrapper" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -430,6 +442,14 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									<span class="dashicons dashicons-shield-alt"></span>
 									<?php echo esc_html('half_open' === $sched['circuit_state'] ? __('Recovering', 'ai-post-scheduler') : __('Circuit Open', 'ai-post-scheduler')); ?>
 								</span>
+								<?php endif; ?>
+								<?php if (!empty($sched['unread_notification'])): ?>
+								<a class="aips-badge aips-badge-error"
+									href="<?php echo esc_url($sched['unread_notification']['url'] ?: AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>"
+									title="<?php echo esc_attr($sched['unread_notification']['message']); ?>">
+									<span class="dashicons dashicons-bell"></span>
+									<?php esc_html_e('Alert', 'ai-post-scheduler'); ?>
+								</a>
 								<?php endif; ?>
 								<label class="aips-toggle">
 									<input type="checkbox"
@@ -460,6 +480,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									data-is-active="<?php echo esc_attr($is_active); ?>">
 									<span class="dashicons dashicons-edit"></span>
 								</button>
+								<?php else: ?>
+								<a class="aips-btn aips-btn-sm aips-btn-ghost"
+									href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors', array('author_id' => $sched['author_id'] ?? 0))); ?>"
+									aria-label="<?php esc_attr_e('Managed from the Authors tab', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('This schedule is configured per-author. Edit it from the Authors tab.', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-admin-users"></span>
+								</a>
 								<?php endif; ?>
 
 								<!-- Run Now (all types) -->
@@ -485,7 +512,29 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									title="<?php esc_attr_e('This schedule cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 								</button>
+								<?php elseif ($sched['type'] !== AIPS_Unified_Schedule_Service::TYPE_TEMPLATE): ?>
+								<button class="aips-btn aips-btn-sm aips-btn-ghost" disabled
+									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('This schedule type cannot be deleted here — manage it from the Authors tab.', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-trash"></span>
+								</button>
 								<?php endif; ?>
+							</div>
+						</td>
+					</tr>
+					<tr class="aips-unified-row-detail" style="display:none;">
+						<td colspan="9">
+							<div class="aips-inline-history"
+								data-id="<?php echo esc_attr($sched['id']); ?>"
+								data-type="<?php echo esc_attr($sched['type']); ?>">
+								<div class="aips-inline-history-loading" style="display:none;">
+									<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
+									<?php esc_html_e('Loading…', 'ai-post-scheduler'); ?>
+								</div>
+								<div class="aips-inline-history-empty" style="display:none;">
+									<?php esc_html_e('No history events have been recorded for this schedule yet.', 'ai-post-scheduler'); ?>
+								</div>
+								<ul class="aips-inline-history-list aips-history-timeline" style="margin:0;padding:0;list-style:none;"></ul>
 							</div>
 						</td>
 					</tr>
@@ -642,7 +691,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 	role="dialog" aria-modal="true">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
-			<h2 class="aips-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title" id="aips-schedule-history-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">

@@ -74,6 +74,58 @@
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
             this.initScheduleStatusStrip();
+            this.initScheduleSparklines();
+        },
+
+        /**
+         * Batch-fetch and render a compact pass/fail sparkline (last few run
+         * outcomes) for every visible row in the Schedules table, in a single
+         * request rather than one AJAX call per row.
+         */
+        initScheduleSparklines: function() {
+            var $sparklines = $('.aips-schedule-sparkline');
+            if (!$sparklines.length) {
+                return;
+            }
+
+            var items = [];
+            $sparklines.each(function() {
+                items.push({ id: $(this).data('id'), type: $(this).data('type') });
+            });
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_schedule_sparklines',
+                    nonce: aipsAjax.nonce,
+                    items: JSON.stringify(items)
+                },
+                success: function(response) {
+                    if (!response || !response.success || !response.data) {
+                        return;
+                    }
+
+                    var sparklines = response.data.sparklines || {};
+                    $sparklines.each(function() {
+                        var $el = $(this);
+                        var key  = $el.data('type') + ':' + $el.data('id');
+                        var runs = sparklines[key];
+                        if (!runs || !runs.length) {
+                            return;
+                        }
+
+                        var $dots = $('<span>', { 'class': 'aips-sparkline' });
+                        runs.forEach(function(run) {
+                            $dots.append($('<span>', {
+                                'class': 'aips-sparkline-dot ' + (run.status === 'failed' ? 'aips-sparkline-dot-failed' : 'aips-sparkline-dot-success'),
+                                'title': run.timestamp + ': ' + run.status
+                            }));
+                        });
+                        $el.empty().append($dots);
+                    });
+                }
+            });
         },
 
         initScheduleStatusStrip: function() {
@@ -297,6 +349,7 @@
             $(document).on('click', '.aips-sortable-col', this.sortUnifiedTable);
             $(document).on('click', '.aips-filter-chip', this.filterUnifiedByChip);
             $(document).on('mouseenter focus', '.aips-view-schedule-failure-reason', this.loadScheduleFailureReason);
+            $(document).on('click', '.aips-toggle-row-history', this.toggleRowHistory);
 
 
 
@@ -2330,6 +2383,9 @@
 
                 var match = textMatch && chipMatch;
                 $row.toggle(match);
+                if (!match) {
+                    $row.next('.aips-unified-row-detail').hide();
+                }
                 if (match) { found++; }
             });
 
@@ -2371,8 +2427,15 @@
                 return 0;
             });
 
+            // Each schedule row has a sibling `.aips-unified-row-detail` (the
+            // inline history preview) that must move with it to stay paired.
             $.each($rows, function(i, row) {
-                $tbody.append(row);
+                var $row = $(row);
+                var $detail = $row.next('.aips-unified-row-detail');
+                $tbody.append($row);
+                if ($detail.length) {
+                    $tbody.append($detail);
+                }
             });
         },
 
@@ -2877,6 +2940,60 @@
          *
          * @param {Event} e - Click event from `.aips-view-unified-history`.
          */
+        /**
+         * Icon/class lookup for schedule history timeline entries, shared by
+         * the full-history modal and the inline row-expand preview.
+         */
+        scheduleHistoryIconMap: {
+            'schedule_created':          { icon: 'dashicons-plus-alt',      cls: 'aips-timeline-created'  },
+            'schedule_updated':          { icon: 'dashicons-edit',           cls: 'aips-timeline-updated'  },
+            'schedule_enabled':          { icon: 'dashicons-yes-alt',        cls: 'aips-timeline-enabled'  },
+            'schedule_disabled':         { icon: 'dashicons-minus',          cls: 'aips-timeline-disabled' },
+            'schedule_executed':         { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
+            'manual_schedule_started':   { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
+            'manual_schedule_completed': { icon: 'dashicons-yes',            cls: 'aips-timeline-success'  },
+            'manual_schedule_failed':    { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
+            'schedule_failed':           { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
+            'post_published':            { icon: 'dashicons-media-document', cls: 'aips-timeline-success'  },
+            'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
+            'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
+            'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
+            'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
+        },
+
+        /**
+         * Render normalised schedule-history entries as timeline `<li>` items
+         * into the given list element. Used by both the History modal and the
+         * inline row-expand preview so the two stay visually consistent.
+         *
+         * @param {Array}  entries - Normalised entries from `aips_get_unified_schedule_history`.
+         * @param {jQuery} $list   - Target `<ul>` to append items to (assumed empty).
+         */
+        renderScheduleHistoryEntries: function(entries, $list) {
+            var iconMap     = AIPS.scheduleHistoryIconMap;
+            var defaultIcon = { icon: 'dashicons-info', cls: '' };
+
+            entries.forEach(function(entry) {
+                var info    = iconMap[entry.event_type] || defaultIcon;
+                var isError = (entry.history_type_id === 2 || entry.event_status === 'failed');
+                if (isError && !info.cls) {
+                    info = { icon: 'dashicons-warning', cls: 'aips-timeline-error' };
+                }
+
+                var $item    = $('<li>', { 'class': 'aips-timeline-item ' + info.cls });
+                var $icon    = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
+                                   .append($('<span>', { 'class': 'dashicons ' + info.icon }));
+                var $content = $('<div>', { 'class': 'aips-timeline-content' });
+                var $msg     = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
+                var $time    = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
+                                   .text(entry.timestamp);
+
+                $content.append($msg).append($time);
+                $item.append($icon).append($content);
+                $list.append($item);
+            });
+        },
+
         viewUnifiedScheduleHistory: function(e) {
             e.preventDefault();
 
@@ -2925,50 +3042,84 @@
                         return;
                     }
 
-                    var iconMap = {
-                        'schedule_created':          { icon: 'dashicons-plus-alt',      cls: 'aips-timeline-created'  },
-                        'schedule_updated':          { icon: 'dashicons-edit',           cls: 'aips-timeline-updated'  },
-                        'schedule_enabled':          { icon: 'dashicons-yes-alt',        cls: 'aips-timeline-enabled'  },
-                        'schedule_disabled':         { icon: 'dashicons-minus',          cls: 'aips-timeline-disabled' },
-                        'schedule_executed':         { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
-                        'manual_schedule_started':   { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
-                        'manual_schedule_completed': { icon: 'dashicons-yes',            cls: 'aips-timeline-success'  },
-                        'manual_schedule_failed':    { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
-                        'schedule_failed':           { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
-                        'post_published':            { icon: 'dashicons-media-document', cls: 'aips-timeline-success'  },
-                        'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
-                        'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
-                        'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
-                        'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
-                    };
-                    var defaultIcon = { icon: 'dashicons-info', cls: '' };
-
-                    entries.forEach(function(entry) {
-                        var info    = iconMap[entry.event_type] || defaultIcon;
-                        var isError = (entry.history_type_id === 2 || entry.event_status === 'failed');
-                        if (isError && !info.cls) {
-                            info = { icon: 'dashicons-warning', cls: 'aips-timeline-error' };
-                        }
-
-                        var $item    = $('<li>', { 'class': 'aips-timeline-item ' + info.cls });
-                        var $icon    = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
-                                           .append($('<span>', { 'class': 'dashicons ' + info.icon }));
-                        var $content = $('<div>', { 'class': 'aips-timeline-content' });
-                        var $msg     = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
-                        var $time    = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
-                                           .text(entry.timestamp);
-
-                        $content.append($msg).append($time);
-                        $item.append($icon).append($content);
-                        $list.append($item);
-                    });
-
+                    AIPS.renderScheduleHistoryEntries(entries, $list);
                     $list.show();
                 },
                 error: function() {
                     $loading.hide();
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                     $modal.hide();
+                }
+            });
+        },
+
+        /**
+         * Toggle the inline "Recent Activity" preview row beneath a schedule
+         * row. Fetches and caches the history entries on first expand.
+         *
+         * @param {Event} e - Click event from `.aips-toggle-row-history`.
+         */
+        toggleRowHistory: function(e) {
+            e.preventDefault();
+
+            var $link   = $(this);
+            var id      = $link.data('id');
+            var type    = $link.data('type');
+            var limit   = $link.data('limit') || 5;
+            var $detail = $link.closest('tr').next('.aips-unified-row-detail');
+
+            if (!$detail.length) { return; }
+
+            var isOpen = $detail.is(':visible');
+            if (isOpen) {
+                $detail.hide();
+                $link.find('.dashicons').removeClass('dashicons-arrow-up-alt2').addClass('dashicons-arrow-down-alt2');
+                return;
+            }
+
+            $detail.show();
+            $link.find('.dashicons').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-up-alt2');
+
+            var $container = $detail.find('.aips-inline-history');
+            if ($container.data('loaded')) { return; }
+            $container.data('loaded', true);
+
+            var $loading = $container.find('.aips-inline-history-loading');
+            var $empty   = $container.find('.aips-inline-history-empty');
+            var $list    = $container.find('.aips-inline-history-list');
+
+            $loading.show();
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_unified_schedule_history',
+                    nonce: aipsAjax.nonce,
+                    id: id,
+                    type: type,
+                    limit: limit
+                },
+                success: function(response) {
+                    $loading.hide();
+
+                    if (!response.success) {
+                        $empty.text(response.data.message || aipsAdminL10n.errorOccurred).show();
+                        return;
+                    }
+
+                    var entries = response.data.entries;
+                    if (!entries || entries.length === 0) {
+                        $empty.show();
+                        return;
+                    }
+
+                    AIPS.renderScheduleHistoryEntries(entries, $list);
+                    $list.show();
+                },
+                error: function() {
+                    $loading.hide();
+                    $empty.text(aipsAdminL10n.errorTryAgain).show();
                 }
             });
         },
