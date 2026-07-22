@@ -316,7 +316,13 @@
 		rawTemplate: true,
 
 		initialize: function () {
-			this.listenTo(this.collection, 'add remove change sync reset', this.render);
+			// 'sync' alone would cover a fetch() (Backbone fires both 'reset'
+			// and 'sync' for a {reset: true} fetch -- listening to both would
+			// double-render); kept here since this collection is bootstrapped
+			// from the DOM today rather than fetched, so 'sync'/'reset' don't
+			// currently fire, but 'add'/'remove'/'change' do (create/delete/
+			// toggle).
+			this.listenTo(this.collection, 'add remove change sync', this.render);
 		},
 
 		render: function () {

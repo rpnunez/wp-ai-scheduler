@@ -18,10 +18,15 @@
 		currentTab: 'categories',
 		searchTimeout: null,
 
+		itemsCollection: null,
+		itemsView: null,
+
 		/**
 		 * Initialize the Taxonomy module.
 		 */
 		init: function() {
+			this.itemsCollection = new AIPS.Taxonomy.ItemCollection();
+			this.itemsView = new AIPS.Taxonomy.ItemsView({ collection: this.itemsCollection });
 			this.bindEvents();
 			this.loadTaxonomyItems('categories');
 		},
@@ -261,14 +266,12 @@
 				isLoading: true
 			});
 
-			AIPS.Core.Http.ajaxRequest({
-				action: 'aips_get_taxonomy_items',
-				nonce: aipsTaxonomyL10n.nonce,
+			this.itemsCollection.fetch({
 				data: { taxonomy_type: taxonomyType },
+				reset: true,
 				toastOnError: false,
-				onSuccess: function(data) {
-					self.updateStats(data.stats || null);
-					self.renderTaxonomyItems(data.items);
+				success: function(collection, response) {
+					self.updateStats(response.stats || null);
 					if (activeSearchTerm) {
 						$('#aips-taxonomy-search').trigger('search');
 					}
@@ -280,46 +283,6 @@
 					isLoading: false
 				});
 			});
-		},
-
-		/**
-		 * Render taxonomy items into the content area.
-		 *
-		 * @param {Array} items Array of taxonomy item objects.
-		 */
-		renderTaxonomyItems: function(items) {
-			var rowsHtml = '';
-			var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
-
-			items.forEach(function(item) {
-				var actions = this.renderItemActions(item);
-
-				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-taxonomy-row', {
-					id: item.id,
-					name: esc(item.name),
-					taxonomy_type: item.taxonomy_type,
-					status: item.status,
-					status_label: esc(AIPS.Utilities.toTitleCase(item.status)),
-					generated_at: esc(item.created_at),
-					actions: actions
-				});
-			}.bind(this));
-
-			if (!rowsHtml) {
-				rowsHtml = '<tr><td colspan="5" style="text-align: center;">No items found.</td></tr>';
-			}
-
-			var tableHtml = AIPS.Templates.renderRaw('aips-tmpl-taxonomy-table', {
-				selectAllLabel: 'Select all taxonomy items',
-				nameLabel: 'Name',
-				statusLabel: 'Status',
-				generatedAtLabel: 'Generated',
-				actionsLabel: 'Actions',
-				rows: rowsHtml
-			});
-
-			$('#aips-taxonomy-content').html(tableHtml);
-			this.updateVisibleResultCount();
 		},
 
 		/**
@@ -421,7 +384,26 @@
 				onSuccess: function(data) {
 					AIPS.Utilities.showToast(data.message, 'success');
 					self.updateStats(data.stats || null);
-					self.loadTaxonomyItems(self.currentTab);
+
+					// approve/reject/delete are simple, deterministic status
+					// writes -- patch the requested ids directly rather than
+					// re-fetching the whole list. generate_terms can fail
+					// per-item for reasons the response doesn't expose (already
+					// approved, term_exists edge cases, ...) with no way to tell
+					// which ids actually changed, so it keeps the full reload.
+					if (action === 'approve' || action === 'reject') {
+						var newStatus = action === 'approve' ? 'approved' : 'rejected';
+						itemIds.forEach(function(id) {
+							var model = self.itemsCollection.get(id);
+							if (model) { model.set('status', newStatus); }
+						});
+					} else if (action === 'delete') {
+						self.itemsCollection.remove(self.itemsCollection.filter(function(model) {
+							return itemIds.indexOf(model.id) !== -1;
+						}));
+					} else {
+						self.loadTaxonomyItems(self.currentTab);
+					}
 				}
 			});
 		},
@@ -434,7 +416,7 @@
 		approveTaxonomy: function(e) {
 			e.preventDefault();
 			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_approve_taxonomy');
+			this.updateItemStatus(itemId, 'aips_approve_taxonomy', 'approved');
 		},
 
 		/**
@@ -445,7 +427,7 @@
 		rejectTaxonomy: function(e) {
 			e.preventDefault();
 			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_reject_taxonomy');
+			this.updateItemStatus(itemId, 'aips_reject_taxonomy', 'rejected');
 		},
 
 		/**
@@ -458,6 +440,8 @@
 
 			var itemId = $(e.currentTarget).data('id');
 			var self = this;
+			var model = this.itemsCollection.get(itemId);
+			if (!model) { return; }
 
 			AIPS.Utilities.confirm(aipsTaxonomyL10n.confirmDelete, 'Notice', [
 				{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
@@ -465,15 +449,16 @@
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: function() {
-						AIPS.Core.Http.ajaxRequest({
-							action: 'aips_delete_taxonomy',
-							nonce: aipsTaxonomyL10n.nonce,
-							data: { item_id: itemId },
+						model.destroy({
+							wait: true,
 							errorFallback: aipsTaxonomyL10n.deleteFailed,
-							onSuccess: function(data) {
-								self.updateStats(data.stats || null);
-								self.loadTaxonomyItems(self.currentTab);
+							// Backbone.Model#destroy calls success as (model, response, options).
+							success: function(destroyedModel, response) {
+								self.updateStats(response.stats || null);
 							}
+							// No manual re-render — Backbone removes the model on
+							// success, which fires 'remove' on the collection, which
+							// the view listens to and re-renders from.
 						});
 					}
 				}
@@ -490,6 +475,8 @@
 
 			var itemId = $(e.currentTarget).data('id');
 			var self = this;
+			var model = this.itemsCollection.get(itemId);
+			if (!model) { return; }
 
 			AIPS.Utilities.confirm(aipsTaxonomyL10n.confirmCreateTerm, 'Notice', [
 				{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
@@ -497,6 +484,10 @@
 					label: 'Yes, create',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: function() {
+						// Not routed through Backbone.sync: this is a domain-specific
+						// transition (approved -> created), not a generic update/patch,
+						// and the response shape (message/term_id/item/stats) doesn't
+						// match what Model#save() expects back.
 						AIPS.Core.Http.ajaxRequest({
 							action: 'aips_create_taxonomy_term',
 							nonce: aipsTaxonomyL10n.nonce,
@@ -505,7 +496,7 @@
 							onSuccess: function(data) {
 								AIPS.Utilities.showToast(data.message, 'success');
 								self.updateStats(data.stats || null);
-								self.loadTaxonomyItems(self.currentTab);
+								model.set(data.item);
 							}
 						});
 					}
@@ -516,11 +507,20 @@
 		/**
 		 * Update a taxonomy item's status via AJAX.
 		 *
-		 * @param {number} itemId Taxonomy item ID.
-		 * @param {string} action AJAX action name.
+		 * Not routed through Backbone.sync for the same reason as createTerm()
+		 * above: approve/reject are named transitions with their own action
+		 * names, not a generic update/patch verb, and the response carries no
+		 * stats/item data to feed back into the model automatically. The new
+		 * status is known locally (we requested it), so it's set directly.
+		 *
+		 * @param {number} itemId    Taxonomy item ID.
+		 * @param {string} action    AJAX action name.
+		 * @param {string} newStatus Status to set on the model on success.
 		 */
-		updateItemStatus: function(itemId, action) {
+		updateItemStatus: function(itemId, action, newStatus) {
 			var self = this;
+			var model = this.itemsCollection.get(itemId);
+			if (!model) { return; }
 
 			AIPS.Core.Http.ajaxRequest({
 				action: action,
@@ -529,7 +529,7 @@
 				errorFallback: aipsTaxonomyL10n.updateFailed,
 				onSuccess: function(data) {
 					self.updateStats(data.stats || null);
-					self.loadTaxonomyItems(self.currentTab);
+					model.set('status', newStatus);
 				}
 			});
 		},
@@ -595,6 +595,78 @@
 			var label = normalizedCount === 1 ? aipsTaxonomyL10n.item : aipsTaxonomyL10n.items;
 
 			$('#aips-taxonomy-result-count').text(normalizedCount + ' ' + label);
+		}
+	});
+
+	// -----------------------------------------------------------------------
+	// Model/Collection/View (see assets/js/core/core-backbone.js for the sync
+	// adapter these build on). Approve/reject/create-term are named status
+	// transitions with their own action names and response shapes rather than
+	// a generic update/patch verb, so they stay plain AIPS.Core.Http.ajaxRequest
+	// calls (see updateItemStatus()/createTerm()), with the model patched
+	// afterward so the view still reacts to it. Delete is a real CRUD verb and
+	// goes through Backbone.sync via ItemModel.ajaxActions.
+	// -----------------------------------------------------------------------
+
+	AIPS.Taxonomy.ItemModel = AIPS.Core.Model.extend({
+		idAttribute: 'id',
+		idParam: 'item_id',
+		ajaxActions: { delete: 'aips_delete_taxonomy' },
+		ajaxNonces: { delete: function () { return aipsTaxonomyL10n.nonce; } }
+	});
+
+	AIPS.Taxonomy.ItemCollection = AIPS.Core.Collection.extend({
+		model: AIPS.Taxonomy.ItemModel,
+		resultsKey: 'items',
+		ajaxActions: { read: 'aips_get_taxonomy_items' },
+		ajaxNonces: { read: function () { return aipsTaxonomyL10n.nonce; } }
+	});
+
+	AIPS.Taxonomy.ItemsView = AIPS.Core.View.extend({
+		el: '#aips-taxonomy-content',
+		rawTemplate: true, // Composes the actions sub-template + status badge markup.
+
+		initialize: function () {
+			// 'sync' alone covers fetch() whether or not {reset: true} is
+			// passed (Backbone fires both 'reset' and 'sync' for a reset
+			// fetch) -- listening to both would double-render.
+			this.listenTo(this.collection, 'sync change remove', this.render);
+		},
+
+		render: function () {
+			var esc = AIPS.Templates.escape;
+			var rowsHtml = '';
+
+			this.collection.each(function (model) {
+				var item = model.toJSON();
+				var actions = AIPS.Taxonomy.renderItemActions(item);
+
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-taxonomy-row', {
+					id: item.id,
+					name: esc(item.name),
+					taxonomy_type: item.taxonomy_type,
+					status: item.status,
+					status_label: esc(AIPS.Utilities.toTitleCase(item.status)),
+					generated_at: esc(item.created_at),
+					actions: actions
+				});
+			});
+
+			if (!rowsHtml) {
+				rowsHtml = '<tr><td colspan="5" style="text-align: center;">No items found.</td></tr>';
+			}
+
+			this.$el.html(AIPS.Templates.renderRaw('aips-tmpl-taxonomy-table', {
+				selectAllLabel: 'Select all taxonomy items',
+				nameLabel: 'Name',
+				statusLabel: 'Status',
+				generatedAtLabel: 'Generated',
+				actionsLabel: 'Actions',
+				rows: rowsHtml
+			}));
+
+			AIPS.Taxonomy.updateVisibleResultCount();
+			return this;
 		}
 	});
 
