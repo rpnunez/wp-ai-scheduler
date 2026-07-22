@@ -38,7 +38,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Saved.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -51,7 +51,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Author created.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -64,7 +64,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Template created.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -95,7 +95,7 @@ jQuery(document).ready(function ($) {
 			}
 
 			showNotice('success', out.message || 'Topics generated.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -117,7 +117,7 @@ jQuery(document).ready(function ($) {
 			}
 
 			showNotice('success', out.message || 'Post generated.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -161,7 +161,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Reset.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 });
