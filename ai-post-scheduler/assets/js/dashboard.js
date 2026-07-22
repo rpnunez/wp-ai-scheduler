@@ -18,6 +18,18 @@
 		/** @type {Object.<string, Chart>} Active Chart.js instances keyed by canvas ID. */
 		charts: {},
 
+		/** @type {Backbone.Collection|null} */
+		postsCollection: null,
+
+		/** @type {Backbone.Collection|null} */
+		topicsCollection: null,
+
+		/** @type {Backbone.Collection|null} */
+		topicPostsCollection: null,
+
+		/** @type {Backbone.Collection|null} */
+		schedulesCollection: null,
+
 		/**
 		 * Initialise the dashboard page.
 		 *
@@ -34,6 +46,35 @@
 
 			// Render charts from embedded data.
 			this.renderCharts();
+
+			this.initListCollections();
+		},
+
+		/**
+		 * Set up the 4 list-tab Collections/Views (posts, topics, topic-posts,
+		 * schedules). These start empty -- the initial page load renders its
+		 * rows server-side in PHP, same as before. They only get populated via
+		 * `.reset()` from `aips_get_dashboard_data`'s response in
+		 * `updateDashboardData()`, replacing the old generic tabsConfig loop
+		 * with one View per tab.
+		 *
+		 * The 4 single-item action handlers below (`handlePublishPost` etc.)
+		 * are left as-is: each already patches the exact row it was clicked
+		 * from via `$btn.closest('tr')`, so there's no "which row is this"
+		 * problem for Backbone to solve here, and no client-side row template
+		 * would safely reconstruct `title_html`/`actions_html` for rows that
+		 * came from the initial PHP render.
+		 */
+		initListCollections: function() {
+			this.postsCollection = new AIPS.Core.Collection();
+			this.topicsCollection = new AIPS.Core.Collection();
+			this.topicPostsCollection = new AIPS.Core.Collection();
+			this.schedulesCollection = new AIPS.Core.Collection();
+
+			new AIPS.Dashboard.PostsView({ collection: this.postsCollection });
+			new AIPS.Dashboard.TopicsView({ collection: this.topicsCollection });
+			new AIPS.Dashboard.TopicPostsView({ collection: this.topicPostsCollection });
+			new AIPS.Dashboard.SchedulesView({ collection: this.schedulesCollection });
 		},
 
 		/**
@@ -557,72 +598,100 @@
 				}
 			}
 
-			// 5. Render list tables using AIPS.Templates
-			if (window.AIPS && AIPS.Templates) {
-				var tabsConfig = [
-					{
-						panelId: '#tab-posts',
-						dataList: data.recent_posts,
-						templateId: 'aips-tmpl-dashboard-posts-row',
-						processItem: function(item) {
-							item.title_html = item.edit_url 
-								? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
-								: '<div class="cell-primary">' + item.generated_title + '</div>';
-							item.actions_html = (item.status === 'draft' || item.status === 'pending')
-								? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-publish-post" data-id="' + item.post_id + '">Publish Now</a></div>'
-								: '';
-						}
-					},
-					{
-						panelId: '#tab-topics',
-						dataList: data.recent_topics,
-						templateId: 'aips-tmpl-dashboard-topics-row',
-						processItem: function(item) {
-							item.actions_html = (item.status === 'pending')
-								? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-approve-topic" data-id="' + item.id + '">Approve</a> | <a href="#" class="aips-dashboard-reject-topic" style="color:#d63638;" data-id="' + item.id + '">Reject</a></div>'
-								: '';
-						}
-					},
-					{
-						panelId: '#tab-topic-posts',
-						dataList: data.posts_by_topic,
-						templateId: 'aips-tmpl-dashboard-topic-posts-row',
-						processItem: function(item) {
-							item.title_html = item.edit_url 
-								? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
-								: '<div class="cell-primary">' + item.generated_title + '</div>';
-						}
-					},
-					{
-						panelId: '#tab-schedules',
-						dataList: data.executed_schedules,
-						templateId: 'aips-tmpl-dashboard-schedules-row',
-						processItem: function(item) {
-							item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '">Run Now</a></div>';
-						}
-					}
-				];
-
-				$.each(tabsConfig, function(i, config) {
-					var $panel = $(config.panelId);
-					if (config.dataList && config.dataList.length > 0) {
-						var html = '';
-						$.each(config.dataList, function(idx, item) {
-							if (config.processItem) {
-								config.processItem(item);
-							}
-							html += AIPS.Templates.renderRaw(config.templateId, item);
-						});
-						$panel.find('.aips-table-wrap').show().find('tbody').html(html);
-						$panel.find('.aips-empty-state').hide();
-					} else {
-						$panel.find('.aips-table-wrap').hide();
-						$panel.find('.aips-empty-state').show();
-					}
-				});
+			// 5. Reset the 4 list Collections; each View's 'reset' listener
+			// re-renders its own tab (see AIPS.Dashboard.PostsView etc. below).
+			if (window.AIPS && AIPS.Templates && this.postsCollection) {
+				this.postsCollection.reset(data.recent_posts || []);
+				this.topicsCollection.reset(data.recent_topics || []);
+				this.topicPostsCollection.reset(data.posts_by_topic || []);
+				this.schedulesCollection.reset(data.executed_schedules || []);
 			}
 		}
 	};
+
+	/**
+	 * Shared render helper: build one tab's row HTML from its collection,
+	 * toggle the table/empty-state, and inject via templateId. `processItem`
+	 * mutates a shallow item copy with the same derived HTML fields the old
+	 * tabsConfig loop computed (title_html/actions_html) before rendering.
+	 *
+	 * @param {Backbone.View} view       The view instance (for `.collection`).
+	 * @param {string}        panelId    Tab panel selector (e.g. '#tab-posts').
+	 * @param {string}        templateId AIPS.Templates row template id.
+	 * @param {Function}      [processItem] Optional (item) => void mutator.
+	 */
+	function renderDashboardTab(view, panelId, templateId, processItem) {
+		var $panel = $(panelId);
+		var items = view.collection.toJSON();
+
+		if (items.length > 0) {
+			var html = items.map(function(item) {
+				item = $.extend({}, item);
+				if (processItem) {
+					processItem(item);
+				}
+				return AIPS.Templates.renderRaw(templateId, item);
+			}).join('');
+			$panel.find('.aips-table-wrap').show().find('tbody').html(html);
+			$panel.find('.aips-empty-state').hide();
+		} else {
+			$panel.find('.aips-table-wrap').hide();
+			$panel.find('.aips-empty-state').show();
+		}
+	}
+
+	AIPS.Dashboard.PostsView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-posts', 'aips-tmpl-dashboard-posts-row', function(item) {
+				item.title_html = item.edit_url
+					? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
+					: '<div class="cell-primary">' + item.generated_title + '</div>';
+				item.actions_html = (item.status === 'draft' || item.status === 'pending')
+					? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-publish-post" data-id="' + item.post_id + '">Publish Now</a></div>'
+					: '';
+			});
+		}
+	});
+
+	AIPS.Dashboard.TopicsView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-topics', 'aips-tmpl-dashboard-topics-row', function(item) {
+				item.actions_html = (item.status === 'pending')
+					? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-approve-topic" data-id="' + item.id + '">Approve</a> | <a href="#" class="aips-dashboard-reject-topic" style="color:#d63638;" data-id="' + item.id + '">Reject</a></div>'
+					: '';
+			});
+		}
+	});
+
+	AIPS.Dashboard.TopicPostsView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-topic-posts', 'aips-tmpl-dashboard-topic-posts-row', function(item) {
+				item.title_html = item.edit_url
+					? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
+					: '<div class="cell-primary">' + item.generated_title + '</div>';
+			});
+		}
+	});
+
+	AIPS.Dashboard.SchedulesView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-schedules', 'aips-tmpl-dashboard-schedules-row', function(item) {
+				item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '">Run Now</a></div>';
+			});
+		}
+	});
 
 	$(document).ready(function() {
 		AIPS.Dashboard.init();
