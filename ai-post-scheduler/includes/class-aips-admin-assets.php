@@ -1805,10 +1805,22 @@ class AIPS_Admin_Assets {
      * @return void
      */
     private function enqueue_cache_monitor_assets() {
+        // 'backbone' is WP core's own bundled handle (available since WP 3.5;
+        // this plugin requires 5.8+), already declaring underscore + jquery as
+        // its own dependencies -- no vendor file or build step needed, unlike
+        // aips-chartjs which is vendored locally for pages needing charts.
+        wp_enqueue_script(
+            'aips-core-backbone-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+            array('backbone', 'aips-core-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'aips-cache-monitor',
             AIPS_PLUGIN_URL . 'assets/js/cache-monitor.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-bulk-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
             AIPS_VERSION,
             true
         );

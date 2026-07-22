@@ -756,6 +756,28 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 			<?php endif; ?>
 
 		</div><!-- /.aips-cache-monitor-content -->
+
+		<?php /* HTML template used by AIPS.CacheMonitor.EntriesView (Backbone) via AIPS.Templates.render() */ ?>
+		<script type="text/html" id="aips-tmpl-cache-entry-row">
+			<tr data-hash="{{key_hash}}" style="{{row_opacity_style}}">
+				<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="{{key_hash}}" /></td>
+				<td class="cell-primary">
+					<code class="aips-key-hash" title="{{key_hash}}">{{key_hash_short}}</code>
+					<div class="row-actions">
+						<span><a href="#" class="aips-cache-inspect-link" data-hash="{{key_hash}}">{{inspect_label}}</a></span> |
+						<span class="delete"><a href="#" class="aips-cache-delete-link" style="color:#a00;" data-hash="{{key_hash}}">{{delete_label}}</a></span>
+					</div>
+				</td>
+				<td>{{cache_group}}</td>
+				<td><small>{{operation_id}}</small></td>
+				<td>{{tier}}</td>
+				<td>{{driver}}</td>
+				<td><small>{{value_type}}</small></td>
+				<td>{{value_size_fmt}}</td>
+				<td>{{expires_fmt}}</td>
+				<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="{{key_hash}}">{{inspect_label}}</button></td>
+			</tr>
+		</script>
 		<?php if (!$is_embedded) : ?>
 	</div><!-- /.aips-page-container -->
 </div><!-- /.wrap -->

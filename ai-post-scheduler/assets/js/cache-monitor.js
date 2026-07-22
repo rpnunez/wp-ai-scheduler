@@ -84,6 +84,8 @@
 	AIPS.CacheMonitor = {
 		entriesState: null,
 		eventsPage: 1,
+		entriesCollection: null,
+		entriesView: null,
 
 		init: function() {
 			if ( ! this.entriesState ) {
@@ -98,6 +100,8 @@
 
 			this.bindEvents();
 			if ( $( '#aips-cache-entries-tbody' ).length ) {
+				this.entriesCollection = new AIPS.CacheMonitor.EntryCollection();
+				this.entriesView = new AIPS.CacheMonitor.EntriesView( { collection: this.entriesCollection } );
 				this.loadEntries();
 			}
 		},
@@ -109,7 +113,7 @@
 	// -----------------------------------------------------------------------
 
 		$( '.aips-cache-monitor-refresh' ).on( 'click', function () {
-		location.reload();
+		self.loadEntries();
 		} );
 
 	// -----------------------------------------------------------------------
@@ -319,25 +323,10 @@
 		} );
 
 	// -----------------------------------------------------------------------
-	// Delete single entry
+	// Delete single entry — handled by AIPS.CacheMonitor.EntriesView's own
+	// delegated 'click .aips-cache-delete-link' event (see onDeleteClick()),
+	// scoped to #aips-cache-entries-tbody. No document-level handler needed.
 	// -----------------------------------------------------------------------
-
-		$( document ).on( 'click', '.aips-cache-delete-link', function ( e ) {
-		e.preventDefault();
-		var $el         = $( this );
-		var hash        = $el.data( 'hash' );
-		var actionNonce = $el.closest( '[data-nonce]' ).data( 'nonce' ) || ACTION_NONCE;
-
-		AIPS.Core.Http.ajaxRequest( {
-			action: 'aips_cache_monitor_delete_entry',
-			nonce:  actionNonce,
-			data:   { key_hash: hash },
-			onSuccess: function ( data ) {
-				AIPS.Utilities.showToast( data.message, 'success' );
-				$el.closest( 'tr' ).fadeOut( 300, function () { $( this ).remove(); } );
-			}
-		} );
-	} );
 
 	// -----------------------------------------------------------------------
 	// Bulk delete
@@ -364,7 +353,12 @@
 			nonce:    $( this ).data( 'nonce' ) || ACTION_NONCE,
 			onSuccess: function ( data ) {
 				AIPS.Utilities.showToast( data.message, 'success' );
-				self.loadEntries();
+				// No re-fetch: remove the deleted models from the collection directly.
+				// This fires 'remove' on the collection, which the view is already
+				// listening to, so it re-renders itself.
+				self.entriesCollection.remove( self.entriesCollection.filter( function ( model ) {
+					return hashes.indexOf( model.id ) !== -1;
+				} ) );
 			}
 		} );
 	} );
@@ -475,66 +469,34 @@
 				order:    self.entriesState.order
 			} );
 
-			$( '#aips-cache-entries-tbody' ).html(
+			self.entriesView.$el.html(
 				'<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
 			);
 
-			AIPS.Core.Http.ajaxRequest( {
-				action: 'aips_cache_monitor_entries',
-				nonce:  READ_NONCE,
-				data:   params,
-				onSuccess: function ( data ) {
-
-				var rows = data.rows || [];
-				var html = '';
-
-				$.each( rows, function ( i, row ) {
-					var expiresFmt = row.expires_at > 0 ? formatTs( row.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
-					var rowStyle   = row.is_expired ? ' style="opacity:0.55;"' : '';
-
-					html += '<tr data-hash="' + escAttr( row.key_hash ) + '"' + rowStyle + '>';
-					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" /></td>';
-					html += '<td class="cell-primary">';
-					html += '<code class="aips-key-hash" title="' + escAttr( row.key_hash ) + '">' + esc( row.key_hash.substring( 0, 12 ) + '…' ) + '</code>';
-					html += '<div class="row-actions">';
-					html += '<span><a href="#" class="aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</a></span> | ';
-					html += '<span class="delete"><a href="#" class="aips-cache-delete-link" style="color:#a00;" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.delete || 'Delete' ) + '</a></span>';
-					html += '</div>';
-					html += '</td>';
-					html += '<td>' + esc( row.cache_group ) + '</td>';
-					html += '<td><small>' + esc( row.operation_id ) + '</small></td>';
-					html += '<td>' + esc( row.tier ) + '</td>';
-					html += '<td>' + esc( row.driver ) + '</td>';
-					html += '<td><small>' + esc( row.value_type ) + '</small></td>';
-					html += '<td>' + formatBytes( row.value_size ) + '</td>';
-					html += '<td>' + esc( expiresFmt ) + '</td>';
-					html += '<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</button></td>';
-					html += '</tr>';
-				} );
-
-				if ( ! html ) {
-					html = '<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.noEntries || 'No entries found.' ) + '</td></tr>';
-				}
-
-				$( '#aips-cache-entries-tbody' ).html( html );
-
-				// Pagination
-				var totalPages  = data.total_pages || 1;
-				var currentPage = data.page        || 1;
-				var pagHtml     = '';
-
-				if ( totalPages > 1 ) {
-					pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + data.total + ' total)' ) + '</span> ';
-					if ( currentPage > 1 ) {
-						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
-					}
-					if ( currentPage < totalPages ) {
-						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-next">' + esc( aipsCacheMonitor.i18n.next || 'Next' ) + ' &raquo;</button>';
-					}
-				}
-				$( '#aips-cache-entries-pagination' ).html( pagHtml );
+			self.entriesCollection.fetch( {
+				data: params,
+				reset: true, // Replace, don't merge-by-id — page 2 must fully replace page 1.
+				success: function ( collection ) {
+					self.renderEntriesPagination( collection );
 				}
 			} );
+		},
+
+		renderEntriesPagination: function ( collection ) {
+			var totalPages  = collection.totalPages || 1;
+			var currentPage = collection.page        || 1;
+			var pagHtml     = '';
+
+			if ( totalPages > 1 ) {
+				pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + collection.total + ' total)' ) + '</span> ';
+				if ( currentPage > 1 ) {
+					pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
+				}
+				if ( currentPage < totalPages ) {
+					pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-next">' + esc( aipsCacheMonitor.i18n.next || 'Next' ) + ' &raquo;</button>';
+				}
+			}
+			$( '#aips-cache-entries-pagination' ).html( pagHtml );
 		},
 
 		loadEvents: function() {
@@ -577,6 +539,80 @@
 			} );
 		}
 	};
+
+	// -----------------------------------------------------------------------
+	// Entries tab: Backbone Model/Collection/View (pilot — see
+	// assets/js/core/core-backbone.js for the sync adapter these build on).
+	// Entries are written by the cache layer itself, never created/edited via
+	// this UI, so only 'read' and 'delete' are configured; calling
+	// model.save() would throw (no 'create'/'update' action declared), which
+	// is intentional — a clear signal rather than a silent no-op.
+	// -----------------------------------------------------------------------
+
+	AIPS.CacheMonitor.EntryModel = AIPS.Core.Model.extend( {
+		idAttribute: 'key_hash',
+		ajaxActions: { delete: 'aips_cache_monitor_delete_entry' },
+		ajaxNonces:  { delete: function () { return ACTION_NONCE; } }
+	} );
+
+	AIPS.CacheMonitor.EntryCollection = AIPS.Core.Collection.extend( {
+		model: AIPS.CacheMonitor.EntryModel,
+		resultsKey: 'rows',
+		ajaxActions: { read: 'aips_cache_monitor_entries' },
+		ajaxNonces:  { read: function () { return READ_NONCE; } }
+	} );
+
+	AIPS.CacheMonitor.EntriesView = AIPS.Core.View.extend( {
+		el: '#aips-cache-entries-tbody',
+		templateId: 'aips-tmpl-cache-entry-row',
+
+		events: {
+			'click .aips-cache-delete-link': 'onDeleteClick'
+		},
+
+		initialize: function () {
+			this.listenTo( this.collection, 'sync remove', this.render );
+		},
+
+		render: function () {
+			if ( ! this.collection.length ) {
+				this.$el.html(
+					'<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.noEntries || 'No entries found.' ) + '</td></tr>'
+				);
+				return this;
+			}
+
+			var html = '';
+			this.collection.each( function ( model ) {
+				var data = model.toJSON();
+				data.expires_fmt        = data.expires_at > 0 ? formatTs( data.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
+				data.key_hash_short     = data.key_hash.substring( 0, 12 ) + '…';
+				data.value_size_fmt     = formatBytes( data.value_size );
+				data.row_opacity_style  = data.is_expired ? 'opacity:0.55;' : '';
+				data.inspect_label      = aipsCacheMonitor.i18n.inspect || 'Inspect';
+				data.delete_label       = aipsCacheMonitor.i18n.delete || 'Delete';
+				html += this.renderModel( data );
+			}, this );
+			this.$el.html( html );
+			return this;
+		},
+
+		onDeleteClick: function ( e ) {
+			e.preventDefault();
+			var hash  = $( e.currentTarget ).data( 'hash' );
+			var model = this.collection.get( hash );
+			if ( ! model ) { return; }
+
+			model.destroy( {
+				wait: true,
+				success: function ( data ) {
+					AIPS.Utilities.showToast( data.message, 'success' );
+				}
+				// No manual .fadeOut().remove() — Backbone removes the model on
+				// success, which fires 'remove' on the collection, which re-renders.
+			} );
+		}
+	} );
 
 	$( function () {
 		AIPS.CacheMonitor.init();
