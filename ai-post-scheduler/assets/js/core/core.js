@@ -93,7 +93,7 @@
 			var nonce = options.nonce !== undefined
 				? options.nonce
 				: ((window.aipsAjax && aipsAjax.nonce) || '');
-			var data = $.extend({ action: options.action, nonce: nonce }, options.data || {});
+			var data = $.extend({}, options.data || {}, { action: options.action, nonce: nonce });
 			var $button = options.$button;
 			var toastOnError = options.toastOnError !== false;
 

@@ -200,7 +200,7 @@
                     status: status,
                     limit: 50
                 },
-                errorFallback: 'Error loading topics.',
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.loadTopicsError) || 'Error loading topics.',
                 onSuccess: function(data) {
                     AIPS.renderTopicsTable(data.topics);
                 }
@@ -532,7 +532,7 @@
                 action: 'aips_perform_gap_analysis',
                 nonce: $('#aips_nonce').val(),
                 data: { niche: niche },
-                errorFallback: 'An error occurred during gap analysis.',
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.gapAnalysisError) || 'An error occurred during gap analysis.',
                 onSuccess: function(data) {
                     AIPS.renderGapResults(data.gaps);
                 }
@@ -609,7 +609,7 @@
                 data: { gap_topic: topic, niche: niche },
                 $button: $btn,
                 loadingLabel: aipsResearchL10n.generatingIdeas || 'Generating...',
-                errorFallback: 'An error occurred while generating topics.',
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.generateTopicsError) || 'An error occurred while generating topics.',
                 onSuccess: function(data) {
                     AIPS.Utilities.showToast(data.message, 'success');
                     $('.aips-tab-link[data-tab="trending"]').trigger('click');

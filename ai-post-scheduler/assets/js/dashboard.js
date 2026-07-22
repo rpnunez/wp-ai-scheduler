@@ -130,7 +130,7 @@
 				data: { date_from: dateFromVal, date_to: dateToVal },
 				nonce: l10n.nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to fetch dashboard data.',
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.fetchDataFailed) || 'Failed to fetch dashboard data.',
 				onSuccess: function(data) {
 					self.updateDashboardData(data);
 				},
@@ -185,7 +185,7 @@
 				data: { post_id: postId },
 				nonce: l10n.nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to publish post.',
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.publishPostFailed) || 'Failed to publish post.',
 				onSuccess: function() {
 					var $tr = $btn.closest('tr');
 					$tr.find('.aips-badge')
@@ -218,7 +218,7 @@
 				data: { id: topicId },
 				nonce: l10n.nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to approve topic.',
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.approveTopicFailed) || 'Failed to approve topic.',
 				onSuccess: function() {
 					var $tr = $btn.closest('tr');
 					$tr.find('.status-badge')
@@ -250,7 +250,7 @@
 				data: { id: topicId },
 				nonce: l10n.nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to reject topic.',
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.rejectTopicFailed) || 'Failed to reject topic.',
 				onSuccess: function() {
 					var $tr = $btn.closest('tr');
 					$tr.find('.status-badge')
@@ -284,7 +284,7 @@
 				data: { id: scheduleId },
 				nonce: l10n.nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to trigger schedule.',
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.triggerScheduleFailed) || 'Failed to trigger schedule.',
 				onSuccess: function() {
 					AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
 				},

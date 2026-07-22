@@ -27,7 +27,7 @@
                         $button: $btn,
                         loadingLabel: 'Repairing...',
                         toastOnError: false,
-                        errorFallback: 'An error occurred.',
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
                             setTimeout(function() { location.reload(); }, 1500);
@@ -59,7 +59,7 @@
                         $button: $btn,
                         loadingLabel: 'Fixing...',
                         toastOnError: false,
-                        errorFallback: 'An error occurred.',
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
                             setTimeout(function() { location.reload(); }, 1500);
@@ -102,7 +102,7 @@
                         $button: $btn,
                         loadingLabel: 'Reinstalling...',
                         toastOnError: false,
-                        errorFallback: 'An error occurred.',
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
                             setTimeout(function() { location.reload(); }, 1500);
@@ -135,7 +135,7 @@
                         $button: $btn,
                         loadingLabel: 'Wiping...',
                         toastOnError: false,
-                        errorFallback: 'An error occurred.',
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
                         onSuccess: function(data) {
                             AIPS.Utilities.showToast(data.message, 'success');
                             setTimeout(function() { location.reload(); }, 1500);
@@ -278,7 +278,7 @@
                         $button: $btn,
                         loadingLabel: 'Running...',
                         toastOnError: false,
-                        errorFallback: 'An error occurred while running hygiene.',
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.dbHygieneFailed) || 'An error occurred while running hygiene.',
                         onSuccess: function(data) {
                             var details = data && data.details ? data.details : {};
                             var summary = 'Removed options: ' + (details.removed_options || 0)
@@ -325,7 +325,7 @@
                             $button: $btn,
                             loadingLabel: 'Flushing...',
                             toastOnError: false,
-                            errorFallback: 'Flush failed.',
+                            errorFallback: (window.aipsAdminL10n && aipsAdminL10n.dbFlushFailed) || 'Flush failed.',
                             onSuccess: function(data) {
                                 var details = data && data.details ? data.details : {};
                                 var rescheduled = details.rescheduled ? details.rescheduled.join(', ') : '';

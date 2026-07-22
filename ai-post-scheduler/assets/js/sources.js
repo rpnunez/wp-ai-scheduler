@@ -301,7 +301,7 @@
 				data: { name: name },
 				$button: $('#aips-add-group-btn'),
 				toastOnError: false,
-				errorFallback: 'Failed to create group.',
+				errorFallback: (window.aipsSourcesL10n && aipsSourcesL10n.createGroupFailed) || 'Failed to create group.',
 				onSuccess: function (data) {
 					AIPS.Utilities.showToast(data.message, 'success');
 					self.refreshPage();
@@ -330,7 +330,7 @@
 						action: 'aips_delete_source_group',
 						data: { term_id: termId },
 						toastOnError: false,
-						errorFallback: 'Failed to delete group.',
+						errorFallback: (window.aipsSourcesL10n && aipsSourcesL10n.deleteGroupFailed) || 'Failed to delete group.',
 						onSuccess: function (data) {
 							AIPS.Utilities.showToast(data.message, 'success');
 							self.refreshPage();
@@ -367,7 +367,7 @@
 				action: 'aips_fetch_source_now',
 				data: { source_id: id },
 				toastOnError: false,
-				errorFallback: 'Fetch failed.',
+				errorFallback: (window.aipsSourcesL10n && aipsSourcesL10n.fetchFailed) || 'Fetch failed.',
 				onSuccess: function (data) {
 					AIPS.Utilities.showToast(data.message, 'success');
 					self.refreshPage();

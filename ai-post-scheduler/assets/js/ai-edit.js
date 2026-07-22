@@ -819,7 +819,7 @@
 				},
 				nonce: aipsAIEditL10n.nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to restore revision',
+				errorFallback: (window.aipsAIEditL10n && aipsAIEditL10n.revisionRestoreFailed) || 'Failed to restore revision',
 				onSuccess: function(data) {
 					if (data.value) {
 						// Update the component input with restored value

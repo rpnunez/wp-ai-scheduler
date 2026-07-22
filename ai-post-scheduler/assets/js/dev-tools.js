@@ -34,7 +34,7 @@
                 data: formData,
                 $button: $btn,
                 toastOnError: false,
-                errorFallback: 'An error occurred. Please try again.',
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
                 onSuccess: function (data) {
                     $('#aips-dev-output-message').text(data.message);
 

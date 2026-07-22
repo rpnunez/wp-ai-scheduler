@@ -349,6 +349,46 @@ class AIPS_Admin_Assets {
             true
         );
 
+        // Localized directly onto aips-core-script (not aips-admin-script) so
+        // AIPS.Core.Http.ajaxRequest()'s default nonce/URL/error-message fallbacks
+        // work on any page that enqueues aips-core-script, without an implicit
+        // dependency on aips-admin-script also being loaded.
+        wp_localize_script('aips-core-script', 'aipsAjax', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+        ));
+
+        // Shared strings needed on every plugin admin page.
+        wp_localize_script('aips-core-script', 'aipsAdminL10n', array(
+            // Generic error/status strings used across multiple pages
+            'errorOccurred'       => __('An error occurred.', 'ai-post-scheduler'),
+            'errorTryAgain'       => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            // Confirm dialog button labels (used by voices, schedules, structures, sections)
+            'confirmCancelButton' => __('No, cancel', 'ai-post-scheduler'),
+            'confirmDeleteButton' => __('Yes, delete', 'ai-post-scheduler'),
+            // Common button loading states
+            'saving'              => __('Saving...', 'ai-post-scheduler'),
+            'generating'          => __('Generating...', 'ai-post-scheduler'),
+            'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
+            // Status/badge labels used on multiple list pages
+            'activeLabel'         => __('Active', 'ai-post-scheduler'),
+            'inactiveLabel'       => __('Inactive', 'ai-post-scheduler'),
+            'defaultLabel'        => __('Default', 'ai-post-scheduler'),
+            // Voice dropdown placeholder — referenced on both Voices and Templates pages
+            'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
+            // "None" placeholder for the *template* wizard summary (schedule wizard uses
+            // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
+            'noneOption'          => __('None', 'ai-post-scheduler'),
+            // errorFallback strings for AIPS.Core.Http.ajaxRequest() call sites that
+            // don't have a more specific page-level L10n object of their own.
+            'embeddingsQueueFailed'      => __('Failed to queue embeddings.', 'ai-post-scheduler'),
+            'schedulesUpdateFailed'      => __('Failed to update schedules.', 'ai-post-scheduler'),
+            'calendarEventsLoadFailed'   => __('Failed to load calendar events.', 'ai-post-scheduler'),
+            'dbHygieneFailed'            => __('An error occurred while running hygiene.', 'ai-post-scheduler'),
+            'dbFlushFailed'              => __('Flush failed.', 'ai-post-scheduler'),
+        ));
+
         wp_enqueue_script(
             'aips-core-table-script',
             AIPS_PLUGIN_URL . 'assets/js/core/core-table.js',
@@ -389,36 +429,7 @@ class AIPS_Admin_Assets {
             true
         );
 
-        wp_localize_script('aips-admin-script', 'aipsAjax', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aips_ajax_nonce'),
-            'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
-        ));
-
         $this->enqueue_history_modal_opener_script();
-
-        // Shared strings needed on every plugin admin page.
-        wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
-            // Generic error/status strings used across multiple pages
-            'errorOccurred'       => __('An error occurred.', 'ai-post-scheduler'),
-            'errorTryAgain'       => __('An error occurred. Please try again.', 'ai-post-scheduler'),
-            // Confirm dialog button labels (used by voices, schedules, structures, sections)
-            'confirmCancelButton' => __('No, cancel', 'ai-post-scheduler'),
-            'confirmDeleteButton' => __('Yes, delete', 'ai-post-scheduler'),
-            // Common button loading states
-            'saving'              => __('Saving...', 'ai-post-scheduler'),
-            'generating'          => __('Generating...', 'ai-post-scheduler'),
-            'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
-            // Status/badge labels used on multiple list pages
-            'activeLabel'         => __('Active', 'ai-post-scheduler'),
-            'inactiveLabel'       => __('Inactive', 'ai-post-scheduler'),
-            'defaultLabel'        => __('Default', 'ai-post-scheduler'),
-            // Voice dropdown placeholder — referenced on both Voices and Templates pages
-            'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
-            // "None" placeholder for the *template* wizard summary (schedule wizard uses
-            // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
-            'noneOption'          => __('None', 'ai-post-scheduler'),
-        ));
     }
 
     /**
@@ -1062,6 +1073,9 @@ class AIPS_Admin_Assets {
               'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
               'generatingButton' => __('Generating...', 'ai-post-scheduler'),
               'selectTemplateRequired' => __('Please select a template before generating.', 'ai-post-scheduler'),
+              'loadTopicsError' => __('Error loading topics.', 'ai-post-scheduler'),
+              'gapAnalysisError' => __('An error occurred during gap analysis.', 'ai-post-scheduler'),
+              'generateTopicsError' => __('An error occurred while generating topics.', 'ai-post-scheduler'),
           ));
     }
 
@@ -1142,6 +1156,9 @@ class AIPS_Admin_Assets {
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
+                'sessionLoadError' => __('Failed to load session data. Please try again.', 'ai-post-scheduler'),
+                'generateJsonError' => __('Failed to generate JSON.', 'ai-post-scheduler'),
+                'generateJsonDownloadError' => __('Failed to generate JSON for download.', 'ai-post-scheduler'),
             ));
 
             // AI Edit Modal (for Generated Posts page)
@@ -1182,6 +1199,7 @@ class AIPS_Admin_Assets {
                 'revisionManualEdit' => __('Manual Edit', 'ai-post-scheduler'),
                 'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
                 'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
+                'revisionRestoreFailed' => __('Failed to restore revision', 'ai-post-scheduler'),
             ));
     }
 
@@ -1217,21 +1235,11 @@ class AIPS_Admin_Assets {
                 true
             );
 
-            // NOTE: 'aips-admin-history' is already registered (with the real,
-            // effective dependency array) by enqueue_history_modal_opener_script(),
-            // which enqueue_global_assets() always calls first -- WordPress does not
-            // update a handle's dependencies on a second wp_enqueue_script() call for
-            // the same handle, so the array below has no effect. It's kept only to
-            // ensure the handle is enqueued (not just registered) on this page; see
-            // enqueue_history_modal_opener_script() for the deps that actually apply.
-            wp_enqueue_script(
-                'aips-admin-history',
-                AIPS_PLUGIN_URL . 'assets/js/history.js',
-                array('jquery', 'aips-admin-script', 'aips-templates-script'),
-                AIPS_VERSION,
-                true
-            );
-
+            // 'aips-admin-history' is already registered and enqueued (with its real
+            // dependency array) by enqueue_history_modal_opener_script(), which
+            // enqueue_global_assets() always calls before this method runs -- see
+            // that method for the deps that actually apply. Only localization is
+            // needed here.
             wp_localize_script('aips-admin-history', 'aipsHistoryL10n', array(
                 'loading'              => __('Loading…', 'ai-post-scheduler'),
                 'reloading'            => __('Reloading…', 'ai-post-scheduler'),
@@ -1524,6 +1532,9 @@ class AIPS_Admin_Assets {
                 'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
+                'createGroupFailed' => __('Failed to create group.', 'ai-post-scheduler'),
+                'deleteGroupFailed' => __('Failed to delete group.', 'ai-post-scheduler'),
+                'fetchFailed'       => __('Fetch failed.', 'ai-post-scheduler'),
             ));
     }
 
@@ -1607,6 +1618,11 @@ class AIPS_Admin_Assets {
 			'chartTopicsLabel'     => __('Topics Generated', 'ai-post-scheduler'),
 			'chartErrorRateLabel'  => __('Error Rate (%)', 'ai-post-scheduler'),
 			'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+			'fetchDataFailed'      => __('Failed to fetch dashboard data.', 'ai-post-scheduler'),
+			'publishPostFailed'    => __('Failed to publish post.', 'ai-post-scheduler'),
+			'approveTopicFailed'   => __('Failed to approve topic.', 'ai-post-scheduler'),
+			'rejectTopicFailed'    => __('Failed to reject topic.', 'ai-post-scheduler'),
+			'triggerScheduleFailed' => __('Failed to trigger schedule.', 'ai-post-scheduler'),
 		));
 	}
 

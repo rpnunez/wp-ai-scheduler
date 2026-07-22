@@ -39,19 +39,14 @@
 			authorId = parseInt(authorId) || 0;
 			batchSize = parseInt(batchSize) || 20;
 
-			// Show a console message
-			console.log('Queueing embeddings computation for author ID:', authorId, 'with batch size:', batchSize);
-
-			// Make AJAX request
 			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_compute_topic_embeddings',
 				data: {
 					author_id: authorId,
 					batch_size: batchSize
 				},
-				errorFallback: 'Failed to queue embeddings.',
+				errorFallback: (window.aipsAdminL10n && aipsAdminL10n.embeddingsQueueFailed) || 'Failed to queue embeddings.',
 				onSuccess: function(data) {
-					console.log('Embeddings queued successfully:', data);
 					AIPS.Utilities.showToast(data.message, 'success');
 				},
 				onError: function(message) {

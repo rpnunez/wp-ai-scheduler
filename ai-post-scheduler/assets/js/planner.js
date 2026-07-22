@@ -35,7 +35,7 @@
                 action: 'aips_generate_topics',
                 data: { niche: niche, count: count },
                 $button: $btn,
-                errorFallback: 'An error occurred. Please try again.',
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
                 onSuccess: function(data) {
                     window.AIPS.renderTopics(data.topics);
                     $('#planner-results').addClass('active');
@@ -364,7 +364,7 @@
                 action: 'aips_bulk_generate_now',
                 data: { topics: topics, template_id: templateId },
                 $button: $btn,
-                errorFallback: 'An error occurred. Please try again.',
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
                 onSuccess: function(data) {
                     var failedTopics = data.failed_topics || data.errors || [];
                     var hasFailedTopics = $.isArray(failedTopics) ? failedTopics.length > 0 : false;
@@ -448,7 +448,7 @@
                     frequency: $('#bulk-frequency').val()
                 },
                 $button: $btn,
-                errorFallback: 'An error occurred. Please try again.',
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
                 onSuccess: function(data) {
                     AIPS.Utilities.showToast(data.message, 'success');
 

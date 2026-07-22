@@ -89,7 +89,7 @@
 			data: { history_id: historyId },
 			nonce: nonce,
 			toastOnError: false,
-			errorFallback: 'Failed to load session data. Please try again.',
+			errorFallback: (window.aipsPostReviewL10n && aipsPostReviewL10n.sessionLoadError) || 'Failed to load session data. Please try again.',
 			onSuccess: function(data) {
 				displaySessionModal(data);
 			},
@@ -311,7 +311,7 @@
 			data: { history_id: currentHistoryId },
 			nonce: nonce,
 			toastOnError: false,
-			errorFallback: 'Failed to generate JSON.',
+			errorFallback: (window.aipsPostReviewL10n && aipsPostReviewL10n.generateJsonError) || 'Failed to generate JSON.',
 			onSuccess: function(data) {
 				if (data.json) {
 					copyToClipboard(data.json, $button);
@@ -352,7 +352,7 @@
 				data: { history_id: currentHistoryId },
 				nonce: nonce,
 				toastOnError: false,
-				errorFallback: 'Failed to generate JSON for download.',
+				errorFallback: (window.aipsPostReviewL10n && aipsPostReviewL10n.generateJsonDownloadError) || 'Failed to generate JSON for download.',
 				onSuccess: function(data) {
 					if (data.json) {
 						var filename = 'aips-session-' + currentHistoryId + '.json';

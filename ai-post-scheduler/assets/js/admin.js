@@ -2034,7 +2034,7 @@
                 data: { is_active: isActive },
                 $button: $applyBtn,
                 loadingLabel: isActive ? 'Activating...' : 'Pausing...',
-                errorFallback: 'Failed to update schedules.',
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.schedulesUpdateFailed) || 'Failed to update schedules.',
                 onSuccess: function(data) {
                     AIPS.Utilities.showToast(data.message, 'success');
                     ids.forEach(function(id) {

@@ -197,7 +197,7 @@
 					month: calendarState.currentMonth
 				},
 				toastOnError: false,
-				errorFallback: 'Failed to load calendar events.',
+				errorFallback: (window.aipsAdminL10n && aipsAdminL10n.calendarEventsLoadFailed) || 'Failed to load calendar events.',
 				onSuccess: function(data) {
 					calendarState.events = data.events || [];
 					self.renderCalendar();
