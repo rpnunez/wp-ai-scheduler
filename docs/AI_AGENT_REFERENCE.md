@@ -64,3 +64,35 @@ Single-event hooks:
 - `aips_process_bulk_batch`
 - `aips_process_author_embeddings`
 - `aips_index_posts_batch`
+
+## Claude Code skills and subagents
+
+`.claude/skills/` and `.claude/agents/` give Claude Code auto-triggering, repo-grounded
+knowledge of this plugin's recurring workflows. These complement (don't replace)
+`AGENTS.md`/`CLAUDE.md`; see those files for the underlying architecture rules these
+implement. Equivalent tooling for other agents lives in `.codex/skills/` and
+`.github/agents/` — the two are maintained independently.
+
+Skills (`.claude/skills/<name>/SKILL.md`, auto-trigger by description):
+
+| Skill | Use for |
+|---|---|
+| `aips-ajax-endpoint` | Adding/reviewing an AJAX action: registry entry, controller, service, repository, test. |
+| `aips-db-schema-change` | Schema/table/index changes: `AIPS_DB_Manager`, `AIPS_DB_Migrations`, version bump. |
+| `aips-generation-pipeline` | Content-generation flow changes: context objects, `AIPS_Generator`, prompt builders, logging. |
+| `aips-bulk-batch-job` | New bulk/batch job types: `AIPS_Bulk_Batch_Processor` strategy registration. |
+| `aips-admin-ui-js` | Admin template/JS changes: module pattern, `AIPS.Templates`/`AIPS.Utilities`, layout structure. |
+| `aips-repository-boundary` | Understanding/satisfying `composer lint:repository-boundary`. |
+| `aips-pr-prep` | Pre-PR checklist: verification steps and risk labels from `.github/pull_request_template.md`. |
+
+Subagents (`.claude/agents/<name>.md`, invoked explicitly or by task match):
+
+| Subagent | Role |
+|---|---|
+| `aips-qa` | Test planning/verification using this repo's actual test conventions. |
+| `aips-architecture-guardian` | Mechanical diff check: repository boundary, AJAX registry completeness, layer separation. |
+| `aips-release-prep` | Performance-regression check (`bin/benchmark.php`) and version-bump consistency. |
+
+For roles Claude Code already ships (janitor/simplification, security review, PR
+triage, architecture planning), reuse the built-in `simplify` and `security-review`
+skills and the `Explore`/`Plan` agents rather than adding new ones.
