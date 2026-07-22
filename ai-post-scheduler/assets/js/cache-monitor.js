@@ -86,6 +86,10 @@
 		eventsPage: 1,
 		entriesCollection: null,
 		entriesView: null,
+		operationsCollection: null,
+		operationsView: null,
+		eventsCollection: null,
+		eventsView: null,
 
 		init: function() {
 			if ( ! this.entriesState ) {
@@ -103,6 +107,14 @@
 				this.entriesCollection = new AIPS.CacheMonitor.EntryCollection();
 				this.entriesView = new AIPS.CacheMonitor.EntriesView( { collection: this.entriesCollection } );
 				this.loadEntries();
+			}
+			if ( $( '#aips-ops-tbody' ).length ) {
+				this.operationsCollection = new AIPS.CacheMonitor.OperationCollection();
+				this.operationsView = new AIPS.CacheMonitor.OperationsView( { collection: this.operationsCollection } );
+			}
+			if ( $( '#aips-events-tbody' ).length ) {
+				this.eventsCollection = new AIPS.CacheMonitor.EventCollection();
+				this.eventsView = new AIPS.CacheMonitor.EventsView( { collection: this.eventsCollection } );
 			}
 		},
 
@@ -368,39 +380,16 @@
 	// -----------------------------------------------------------------------
 
 		$( '#aips-ops-search-btn' ).on( 'click', function () {
-		var opsNonce = $( this ).data( 'nonce' ) || READ_NONCE;
-
 		$( '#aips-ops-tbody' ).html(
 			'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
 		);
 
-		AIPS.Core.Http.ajaxRequest( {
-			action: 'aips_cache_monitor_operations',
-			nonce:  opsNonce,
+		self.operationsCollection.fetch( {
 			data: {
 				repository_class: $( '#aips-ops-filter-repo' ).val(),
 				tier:             $( '#aips-ops-filter-tier' ).val()
 			},
-			onSuccess: function ( data ) {
-				var ops  = data.operations || [];
-				var html = '';
-
-				$.each( ops, function ( i, op ) {
-					html += '<tr>';
-					html += '<td><code>' + esc( op.operation_id ) + '</code></td>';
-					html += '<td><small>' + esc( op.repository_class ) + '</small></td>';
-					html += '<td>' + esc( op.tier ) + '</td>';
-					html += '<td>' + esc( op.index_count ) + '</td>';
-					html += '<td>' + formatBytes( op.total_size ) + '</td>';
-					html += '<td>' + formatTs( op.last_updated ) + '</td>';
-					html += '</tr>';
-					} );
-
-				if ( ! html ) {
-					html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noOps || 'No operations found.' ) + '</td></tr>';
-				}
-				$( '#aips-ops-tbody' ).html( html );
-			}
+			reset: true
 		} );
 	} );
 
@@ -412,6 +401,9 @@
 		self.eventsPage = 1;
 		self.loadEvents();
 		} );
+
+		$( document ).on( 'click', '.aips-events-prev', function () { self.eventsPage--; self.loadEvents(); } );
+		$( document ).on( 'click', '.aips-events-next', function () { self.eventsPage++; self.loadEvents(); } );
 
 	// -----------------------------------------------------------------------
 	// Maintenance tab
@@ -501,42 +493,39 @@
 
 		loadEvents: function() {
 			var self = this;
-			var params = {
-				event_type: $( '#aips-events-filter-type' ).val(),
-				page:       self.eventsPage,
-				per_page:   50
-			};
 
-			$( '#aips-events-tbody' ).html(
+			self.eventsView.$el.html(
 				'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
 			);
 
-			AIPS.Core.Http.ajaxRequest( {
-				action: 'aips_cache_monitor_events',
-				nonce:  READ_NONCE,
-				data:   params,
-				onSuccess: function ( data ) {
-
-				var rows = data.rows || [];
-				var html = '';
-
-				$.each( rows, function ( i, ev ) {
-					html += '<tr>';
-					html += '<td>' + esc( formatTs( ev.created_at ) ) + '</td>';
-					html += '<td><code>' + esc( ev.event_type ) + '</code></td>';
-					html += '<td>' + esc( ev.cache_group ) + '</td>';
-					html += '<td>' + esc( ev.affected_count ) + '</td>';
-					html += '<td>' + esc( ev.user_id ) + '</td>';
-					html += '<td>' + esc( ev.message ) + '</td>';
-					html += '</tr>';
-				} );
-
-				if ( ! html ) {
-					html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noEvents || 'No events found.' ) + '</td></tr>';
-				}
-				$( '#aips-events-tbody' ).html( html );
+			self.eventsCollection.fetch( {
+				data: {
+					event_type: $( '#aips-events-filter-type' ).val(),
+					page:       self.eventsPage,
+					per_page:   50
+				},
+				reset: true,
+				success: function ( collection ) {
+					self.renderEventsPagination( collection );
 				}
 			} );
+		},
+
+		renderEventsPagination: function ( collection ) {
+			var totalPages  = collection.totalPages || 1;
+			var currentPage = collection.page        || 1;
+			var pagHtml     = '';
+
+			if ( totalPages > 1 ) {
+				pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + collection.total + ' total)' ) + '</span> ';
+				if ( currentPage > 1 ) {
+					pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-events-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
+				}
+				if ( currentPage < totalPages ) {
+					pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-events-next">' + esc( aipsCacheMonitor.i18n.next || 'Next' ) + ' &raquo;</button>';
+				}
+			}
+			$( '#aips-events-pagination' ).html( pagHtml );
 		}
 	};
 
@@ -615,6 +604,94 @@
 				// No manual .fadeOut().remove() — Backbone removes the model on
 				// success, which fires 'remove' on the collection, which re-renders.
 			} );
+		}
+	} );
+
+	// -----------------------------------------------------------------------
+	// Operations tab: Backbone Collection/View (read-only — no per-row
+	// mutation exists for operations, so no Model.ajaxActions are declared;
+	// the base AIPS.Core.Model is used purely for its idAttribute/toJSON().
+	// -----------------------------------------------------------------------
+
+	AIPS.CacheMonitor.OperationModel = AIPS.Core.Model.extend( {
+		idAttribute: 'operation_id'
+	} );
+
+	AIPS.CacheMonitor.OperationCollection = AIPS.Core.Collection.extend( {
+		model: AIPS.CacheMonitor.OperationModel,
+		resultsKey: 'operations',
+		ajaxActions: { read: 'aips_cache_monitor_operations' },
+		ajaxNonces:  { read: function () { return READ_NONCE; } }
+	} );
+
+	AIPS.CacheMonitor.OperationsView = AIPS.Core.View.extend( {
+		el: '#aips-ops-tbody',
+		templateId: 'aips-tmpl-cache-operation-row',
+
+		initialize: function () {
+			this.listenTo( this.collection, 'sync', this.render );
+		},
+
+		render: function () {
+			if ( ! this.collection.length ) {
+				this.$el.html(
+					'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noOps || 'No operations found.' ) + '</td></tr>'
+				);
+				return this;
+			}
+
+			var html = '';
+			this.collection.each( function ( model ) {
+				var data = model.toJSON();
+				data.total_size_fmt = formatBytes( data.total_size );
+				data.last_updated_fmt = formatTs( data.last_updated );
+				html += this.renderModel( data );
+			}, this );
+			this.$el.html( html );
+			return this;
+		}
+	} );
+
+	// -----------------------------------------------------------------------
+	// Events tab: Backbone Collection/View (read-only audit log — same
+	// shape as Operations above, no per-row mutation exists).
+	// -----------------------------------------------------------------------
+
+	AIPS.CacheMonitor.EventModel = AIPS.Core.Model.extend( {
+		idAttribute: 'id'
+	} );
+
+	AIPS.CacheMonitor.EventCollection = AIPS.Core.Collection.extend( {
+		model: AIPS.CacheMonitor.EventModel,
+		resultsKey: 'rows',
+		ajaxActions: { read: 'aips_cache_monitor_events' },
+		ajaxNonces:  { read: function () { return READ_NONCE; } }
+	} );
+
+	AIPS.CacheMonitor.EventsView = AIPS.Core.View.extend( {
+		el: '#aips-events-tbody',
+		templateId: 'aips-tmpl-cache-event-row',
+
+		initialize: function () {
+			this.listenTo( this.collection, 'sync', this.render );
+		},
+
+		render: function () {
+			if ( ! this.collection.length ) {
+				this.$el.html(
+					'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noEvents || 'No events found.' ) + '</td></tr>'
+				);
+				return this;
+			}
+
+			var html = '';
+			this.collection.each( function ( model ) {
+				var data = model.toJSON();
+				data.created_at_fmt = formatTs( data.created_at );
+				html += this.renderModel( data );
+			}, this );
+			this.$el.html( html );
+			return this;
 		}
 	} );
 

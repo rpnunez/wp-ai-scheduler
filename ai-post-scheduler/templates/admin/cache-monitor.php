@@ -778,6 +778,30 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 				<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="{{key_hash}}">{{inspect_label}}</button></td>
 			</tr>
 		</script>
+
+		<?php /* HTML template used by AIPS.CacheMonitor.OperationsView (Backbone) via AIPS.Templates.render() */ ?>
+		<script type="text/html" id="aips-tmpl-cache-operation-row">
+			<tr>
+				<td><code>{{operation_id}}</code></td>
+				<td><small>{{repository_class}}</small></td>
+				<td>{{tier}}</td>
+				<td>{{index_count}}</td>
+				<td>{{total_size_fmt}}</td>
+				<td>{{last_updated_fmt}}</td>
+			</tr>
+		</script>
+
+		<?php /* HTML template used by AIPS.CacheMonitor.EventsView (Backbone) via AIPS.Templates.render() */ ?>
+		<script type="text/html" id="aips-tmpl-cache-event-row">
+			<tr>
+				<td>{{created_at_fmt}}</td>
+				<td><code>{{event_type}}</code></td>
+				<td>{{cache_group}}</td>
+				<td>{{affected_count}}</td>
+				<td>{{user_id}}</td>
+				<td>{{message}}</td>
+			</tr>
+		</script>
 		<?php if (!$is_embedded) : ?>
 	</div><!-- /.aips-page-container -->
 </div><!-- /.wrap -->
