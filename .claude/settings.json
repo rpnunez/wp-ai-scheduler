@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *ai-post-scheduler/includes/class-aips-*-controller.php|*ai-post-scheduler/includes/class-aips-*-service.php) COMPOSER_ALLOW_SUPERUSER=1 bash -c 'cd ai-post-scheduler && composer lint:repository-boundary' ;; esac",
+            "statusMessage": "Checking repository boundary..."
+          },
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *ai-post-scheduler/includes/class-aips-db-manager.php) echo \"{\\\"systemMessage\\\": \\\"Reminder: schema changes require bumping both the \\`Version:\\` header and \\`AIPS_VERSION\\` constant in ai-post-scheduler/ai-post-scheduler.php.\\\"}\" ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}

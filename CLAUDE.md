@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is the canonical cross-agent instruction source — read it first. This file adds Claude Code-specific orientation and does not duplicate what is already there.
 
+## Claude Code skills and subagents
+
+`.claude/skills/` and `.claude/agents/` encode this plugin's recurring workflows (AJAX endpoints, schema changes, generation pipeline, bulk batch jobs, admin UI/JS, repository-boundary enforcement, PR prep) so they auto-trigger instead of relying on prose recall. See the catalog in `docs/AI_AGENT_REFERENCE.md` — don't duplicate that inventory here.
+
 ## Commands
 
 All Composer and PHPUnit commands run from `ai-post-scheduler/`.
