@@ -294,6 +294,9 @@
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
             $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
+            $(document).on('click', '.aips-sortable-col', this.sortUnifiedTable);
+            $(document).on('click', '.aips-filter-chip', this.filterUnifiedByChip);
+            $(document).on('mouseenter focus', '.aips-view-schedule-failure-reason', this.loadScheduleFailureReason);
 
 
 
@@ -2264,24 +2267,13 @@
          */
         filterUnifiedSchedules: function(e) {
             var term = $(this).val().toLowerCase().trim();
-            var $clear = $('#aips-unified-search-clear');
-            $clear.toggle(term.length > 0);
-
-            var $rows = $('.aips-unified-row');
-            var found = 0;
-
-            $rows.each(function() {
-                var text = $(this).text().toLowerCase();
-                var match = !term || text.indexOf(term) !== -1;
-                $(this).toggle(match);
-                if (match) { found++; }
-            });
-
-            $('#aips-unified-search-no-results').toggle(found === 0 && $rows.length > 0);
+            $('#aips-unified-search-clear').toggle(term.length > 0);
+            AIPS.applyUnifiedRowFilters();
         },
 
         /**
-         * Clear the unified schedule search field and restore all rows.
+         * Clear the unified schedule search field and re-apply any active
+         * quick filter chip.
          *
          * Bound to `#aips-unified-search-clear` and `.aips-clear-unified-search-btn`.
          *
@@ -2290,9 +2282,136 @@
         clearUnifiedSearch: function(e) {
             e.preventDefault();
             $('#aips-unified-search').val('');
-            $('.aips-unified-row').show();
             $('#aips-unified-search-clear').hide();
-            $('#aips-unified-search-no-results').hide();
+            AIPS.applyUnifiedRowFilters();
+        },
+
+        /**
+         * Select a quick-filter chip (Failed / Due now / Paused / No recent
+         * runs) and re-apply row filtering. Only one chip is active at a time.
+         *
+         * @param {Event} e - Click event from `.aips-filter-chip`.
+         */
+        filterUnifiedByChip: function(e) {
+            e.preventDefault();
+            $('.aips-filter-chip').removeClass('active');
+            $(this).addClass('active');
+            AIPS.applyUnifiedRowFilters();
+        },
+
+        /**
+         * Apply the combined search-term + quick-filter-chip criteria to the
+         * unified schedule table, showing/hiding rows accordingly.
+         */
+        applyUnifiedRowFilters: function() {
+            var term = $('#aips-unified-search').val();
+            term = term ? term.toLowerCase().trim() : '';
+            var chip = $('.aips-filter-chip.active').data('quick-filter') || '';
+            var now = Math.floor(Date.now() / 1000);
+
+            var $rows = $('.aips-unified-row');
+            var found = 0;
+
+            $rows.each(function() {
+                var $row = $(this);
+                var textMatch = !term || $row.text().toLowerCase().indexOf(term) !== -1;
+
+                var chipMatch = true;
+                if (chip === 'failed') {
+                    chipMatch = $row.data('status') === 'failed';
+                } else if (chip === 'due') {
+                    var nextRunTs = parseInt($row.data('next-run-ts'), 10) || 0;
+                    chipMatch = String($row.data('is-active')) === '1' && nextRunTs > 0 && nextRunTs < now;
+                } else if (chip === 'paused') {
+                    chipMatch = String($row.data('is-active')) !== '1';
+                } else if (chip === 'stale') {
+                    chipMatch = !(parseInt($row.data('last-run'), 10) > 0);
+                }
+
+                var match = textMatch && chipMatch;
+                $row.toggle(match);
+                if (match) { found++; }
+            });
+
+            $('#aips-unified-search-no-results').toggle(found === 0 && $rows.length > 0);
+        },
+
+        /**
+         * Sort the unified schedule table by the clicked column header.
+         * Toggles ascending/descending on repeat clicks of the same column.
+         *
+         * @param {Event} e - Click event from `.aips-sortable-col`.
+         */
+        sortUnifiedTable: function(e) {
+            var $th       = $(this);
+            var sortKey   = $th.data('sort-key');
+            var sortType  = $th.data('sort-type') || 'text';
+            var $table    = $th.closest('table');
+            var $tbody    = $table.find('tbody');
+            var ascending = !$th.hasClass('aips-sorted-asc');
+
+            $table.find('.aips-sortable-col').removeClass('aips-sorted-asc aips-sorted-desc');
+            $th.addClass(ascending ? 'aips-sorted-asc' : 'aips-sorted-desc');
+
+            var $rows = $tbody.find('.aips-unified-row').get();
+            $rows.sort(function(a, b) {
+                var aVal = $(a).data(sortKey);
+                var bVal = $(b).data(sortKey);
+
+                if (sortType === 'number') {
+                    aVal = parseInt(aVal, 10) || 0;
+                    bVal = parseInt(bVal, 10) || 0;
+                    return ascending ? aVal - bVal : bVal - aVal;
+                }
+
+                aVal = (aVal || '').toString().toLowerCase();
+                bVal = (bVal || '').toString().toLowerCase();
+                if (aVal < bVal) { return ascending ? -1 : 1; }
+                if (aVal > bVal) { return ascending ? 1 : -1; }
+                return 0;
+            });
+
+            $.each($rows, function(i, row) {
+                $tbody.append(row);
+            });
+        },
+
+        /**
+         * Lazily fetch the most recent history entry for a failed schedule and
+         * show it as the button's tooltip. Fetched once per page load and
+         * cached on the element via a data flag.
+         *
+         * @param {Event} e - mouseenter/focus event from `.aips-view-schedule-failure-reason`.
+         */
+        loadScheduleFailureReason: function(e) {
+            var $btn = $(this);
+            if ($btn.data('loaded')) { return; }
+            $btn.data('loaded', true);
+
+            var id   = $btn.data('id');
+            var type = $btn.data('type');
+            if (!id || !type) { return; }
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_unified_schedule_history',
+                    nonce: aipsAjax.nonce,
+                    id: id,
+                    type: type,
+                    limit: 1
+                },
+                success: function(response) {
+                    if (!response.success) { return; }
+                    var entries = response.data.entries;
+                    if (entries && entries.length > 0 && entries[0].message) {
+                        $btn.attr('title', entries[0].message);
+                    } else {
+                        $btn.attr('title', aipsAdminL10n.errorOccurred || '');
+                    }
+                }
+            });
         },
 
         /**

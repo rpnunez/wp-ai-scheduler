@@ -327,6 +327,7 @@ class AIPS_Unified_Schedule_Service {
 				'can_delete'           => empty($schedule->campaign_id),
 				'history_id'           => $schedule_history_id ? $schedule_history_id : null,
 				'template_id'          => (int) $schedule->template_id,
+				'circuit_state'        => isset($schedule->circuit_state) ? $schedule->circuit_state : 'closed',
 			);
 		}
 

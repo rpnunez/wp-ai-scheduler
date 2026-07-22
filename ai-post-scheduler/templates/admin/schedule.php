@@ -226,6 +226,15 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				</div>
 			</div>
 
+			<!-- Quick Filter Chips -->
+			<div class="aips-quick-filters" role="group" aria-label="<?php esc_attr_e('Quick filters', 'ai-post-scheduler'); ?>">
+				<button type="button" class="aips-filter-chip active" data-quick-filter=""><?php esc_html_e('All', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-filter-chip" data-quick-filter="failed"><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-filter-chip" data-quick-filter="due"><?php esc_html_e('Due now', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-filter-chip" data-quick-filter="paused"><?php esc_html_e('Paused', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-filter-chip" data-quick-filter="stale"><?php esc_html_e('No recent runs', 'ai-post-scheduler'); ?></button>
+			</div>
+
 			<!-- Bulk Actions Toolbar -->
 			<div class="aips-panel-toolbar">
 				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
@@ -258,13 +267,25 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<th class="check-column">
 								<input type="checkbox" id="cb-select-all-unified" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
 							</th>
-							<th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+							<th class="aips-sortable-col" data-sort-key="title" data-sort-type="text">
+								<?php esc_html_e('Title', 'ai-post-scheduler'); ?>
+								<span class="dashicons dashicons-sort aips-sort-indicator" aria-hidden="true"></span>
+							</th>
 							<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 							<th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
+							<th class="aips-sortable-col" data-sort-key="last-run" data-sort-type="number">
+								<?php esc_html_e('Last Run', 'ai-post-scheduler'); ?>
+								<span class="dashicons dashicons-sort aips-sort-indicator" aria-hidden="true"></span>
+							</th>
+							<th class="aips-sortable-col" data-sort-key="next-run" data-sort-type="number">
+								<?php esc_html_e('Next Run', 'ai-post-scheduler'); ?>
+								<span class="dashicons dashicons-sort aips-sort-indicator" aria-hidden="true"></span>
+							</th>
 							<th><?php esc_html_e('Stats', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+							<th class="aips-sortable-col" data-sort-key="status" data-sort-type="text">
+								<?php esc_html_e('Status', 'ai-post-scheduler'); ?>
+								<span class="dashicons dashicons-sort aips-sort-indicator" aria-hidden="true"></span>
+							</th>
 							<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 						</tr>
 					</thead>
@@ -304,6 +325,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-row-key="<?php echo $row_key; ?>"
 						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
+						data-status="<?php echo esc_attr($status); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
 						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
 						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
@@ -311,6 +333,8 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
 						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
 						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
+						data-last-run="<?php echo esc_attr($last_run_ts); ?>"
+						data-next-run-ts="<?php echo esc_attr($next_run_ts); ?>"
 						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
@@ -386,11 +410,27 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php endif; ?>
 						</td>
 						<td class="column-status">
-							<div class="aips-schedule-status-wrapper" style="display:flex;align-items:center;gap:8px;">
+							<div class="aips-schedule-status-wrapper" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 								<span class="aips-badge <?php echo esc_attr($badge_cls); ?>">
 									<span class="dashicons <?php echo esc_attr($icon_cls); ?>"></span>
 									<?php echo esc_html($status_lbl); ?>
 								</span>
+								<?php if ($status === 'failed'): ?>
+								<button type="button"
+									class="aips-btn aips-btn-sm aips-btn-ghost aips-view-schedule-failure-reason"
+									data-id="<?php echo esc_attr($sched['id']); ?>"
+									data-type="<?php echo esc_attr($sched['type']); ?>"
+									aria-label="<?php esc_attr_e('Why did this fail?', 'ai-post-scheduler'); ?>"
+									title="<?php esc_attr_e('Loading failure reason…', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-info-outline"></span>
+								</button>
+								<?php endif; ?>
+								<?php if (!empty($sched['circuit_state']) && $sched['circuit_state'] !== 'closed'): ?>
+								<span class="aips-badge aips-badge-warning" title="<?php echo esc_attr('half_open' === $sched['circuit_state'] ? __('Circuit breaker is testing recovery after repeated failures.', 'ai-post-scheduler') : __('Circuit breaker is open — runs are being skipped after repeated failures.', 'ai-post-scheduler')); ?>">
+									<span class="dashicons dashicons-shield-alt"></span>
+									<?php echo esc_html('half_open' === $sched['circuit_state'] ? __('Recovering', 'ai-post-scheduler') : __('Circuit Open', 'ai-post-scheduler')); ?>
+								</span>
+								<?php endif; ?>
 								<label class="aips-toggle">
 									<input type="checkbox"
 										class="aips-unified-toggle-schedule"

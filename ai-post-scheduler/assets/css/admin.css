@@ -383,6 +383,65 @@
     min-width: 200px;
 }
 
+/* Quick-filter chips (Schedules table) */
+.aips-quick-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-2);
+    flex-wrap: wrap;
+    padding: 0 var(--aips-space-5) var(--aips-space-4);
+}
+
+.aips-filter-chip {
+    background: var(--aips-white);
+    color: var(--aips-gray-600);
+    border: 1px solid var(--aips-gray-300);
+    border-radius: 999px;
+    padding: var(--aips-space-1) var(--aips-space-3);
+    font-size: var(--aips-text-xs);
+    font-weight: var(--aips-font-medium);
+    cursor: pointer;
+    transition: all var(--aips-transition-base);
+}
+
+.aips-filter-chip:hover {
+    border-color: var(--aips-gray-400);
+}
+
+.aips-filter-chip.active {
+    background: var(--aips-primary);
+    border-color: var(--aips-primary);
+    color: var(--aips-white);
+}
+
+/* Sortable table column headers (Schedules table) */
+.aips-sortable-col {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.aips-sort-indicator {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    opacity: 0.4;
+    vertical-align: middle;
+}
+
+.aips-sortable-col.aips-sorted-asc .aips-sort-indicator,
+.aips-sortable-col.aips-sorted-desc .aips-sort-indicator {
+    opacity: 1;
+}
+
+.aips-sortable-col.aips-sorted-asc .aips-sort-indicator:before {
+    content: "\f142";
+}
+
+.aips-sortable-col.aips-sorted-desc .aips-sort-indicator:before {
+    content: "\f140";
+}
+
 /* Pagination tablenav inside content panels.
    Override WordPress float-based layout with flexbox:
    count on the left, pagination links on the right. */
