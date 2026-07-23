@@ -66,6 +66,21 @@ class AIPS_Resilience_Service {
     );
 
     /**
+     * Bounds for retrying the local rate-limiter gate inside execute_safely().
+     *
+     * The local sliding-window limiter (check_rate_limit()) is self-imposed, not a
+     * provider error — a burst of calls for a single post (title/content/excerpt)
+     * can exhaust it even though the provider itself is healthy. These bounds keep
+     * the wait short enough to be safe for synchronous callers (e.g. the "Run Now"
+     * AJAX request, subject to PHP max_execution_time) while still giving the
+     * window a real chance to free up.
+     *
+     * @var int
+     */
+    const RATE_LIMIT_RETRY_MAX_ATTEMPTS = 3;
+    const RATE_LIMIT_RETRY_MAX_WAIT_SECONDS = 10;
+
+    /**
      * Message-based pattern map.
      *
      * Meow AI Engine forwards the raw provider error message as the PHP exception
@@ -246,8 +261,9 @@ class AIPS_Resilience_Service {
             return new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
         }
 
-        // Check rate limiting
-        if (!$this->check_rate_limit()) {
+        // Check rate limiting, waiting (bounded) for capacity to free up rather than
+        // failing a burst of calls (e.g. title/content/excerpt for one post) outright.
+        if (!$this->wait_for_rate_limit_capacity($type)) {
             return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
         }
 
@@ -659,5 +675,69 @@ class AIPS_Resilience_Service {
         delete_transient('aips_rate_limiter_requests');
         $this->logger->log('Rate limiter manually reset', 'info');
         return true;
+    }
+
+    /**
+     * Wait (bounded, with backoff) for the local rate limiter to allow a request.
+     *
+     * Unlike execute_with_retry() — which retries a provider call that already
+     * failed — this retries the local rate-limit *gate* itself, so a burst of
+     * calls (e.g. title/content/excerpt for one post) doesn't fail outright just
+     * because it briefly exhausted the sliding window.
+     *
+     * @param string $type Request type for logging.
+     * @return bool True once the rate limiter allows the request (a slot has
+     *              already been recorded), false if capacity never freed up
+     *              within RATE_LIMIT_RETRY_MAX_ATTEMPTS.
+     */
+    private function wait_for_rate_limit_capacity($type) {
+        for ($attempt = 1; $attempt <= self::RATE_LIMIT_RETRY_MAX_ATTEMPTS; $attempt++) {
+            if ($this->check_rate_limit()) {
+                if ($attempt > 1) {
+                    $this->logger->log("Rate limit capacity freed up on attempt {$attempt}", 'info', array(
+                        'type' => $type,
+                    ));
+                }
+                return true;
+            }
+
+            if ($attempt >= self::RATE_LIMIT_RETRY_MAX_ATTEMPTS) {
+                break;
+            }
+
+            $wait = min(
+                self::RATE_LIMIT_RETRY_MAX_WAIT_SECONDS,
+                max(1, $this->seconds_until_rate_limit_slot_frees())
+            );
+
+            $this->logger->log("Rate limit reached, waiting {$wait}s before retry (attempt {$attempt})", 'warning', array(
+                'type' => $type,
+            ));
+
+            sleep($wait);
+        }
+
+        return false;
+    }
+
+    /**
+     * Compute how many seconds remain until the oldest request in the current
+     * rate-limit window ages out, i.e. until a slot actually frees up.
+     *
+     * @return int Seconds until a slot frees (0 if none are tracked or already expired).
+     */
+    private function seconds_until_rate_limit_slot_frees() {
+        $rl_config = $this->config->get_rate_limit_config();
+        $period = $rl_config['period'];
+
+        $requests = get_transient('aips_rate_limiter_requests');
+        if (empty($requests)) {
+            return 0;
+        }
+
+        sort($requests);
+        $oldest = $requests[0];
+
+        return max(0, ($oldest + $period) - time());
     }
 }
