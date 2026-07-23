@@ -47,11 +47,11 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
                 <div class="aips-page-actions">
                     <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
-                        <span class="dashicons dashicons-lightbulb"></span>
+                        <span class="dashicons dashicons-lightbulb" aria-hidden="true"></span>
                         <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
                     </button>
                     <button class="aips-btn aips-btn-primary aips-add-author-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
+                        <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
@@ -170,7 +170,7 @@ $site_ctx = AIPS_Site_Context::get();
                                             aria-label="<?php echo esc_attr($indicator_label); ?>"
                                             aria-describedby="aips-quality-tooltip-<?php echo esc_attr($author->id); ?>"
                                         >
-                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>"></span>
+                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>" aria-hidden="true"></span>
                                             <span id="aips-quality-tooltip-<?php echo esc_attr($author->id); ?>" class="aips-quality-tooltip" role="tooltip">
                                                 <span class="aips-quality-tooltip-title"><?php echo esc_html($indicator_label); ?></span>
                                                 <span class="aips-quality-tooltip-score"><?php echo esc_html($quality_score_text); ?></span>
@@ -195,19 +195,19 @@ $site_ctx = AIPS_Site_Context::get();
                                     <td>
                                         <?php if ($author->is_active): ?>
                                         <span class="aips-badge aips-badge-success">
-                                            <span class="dashicons dashicons-yes-alt"></span>
+                                            <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
                                             <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
                                         </span>
                                         <?php else: ?>
                                         <span class="aips-badge aips-badge-neutral">
-                                            <span class="dashicons dashicons-minus"></span>
+                                            <span class="dashicons dashicons-minus" aria-hidden="true"></span>
                                             <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
                                         </span>
                                         <?php endif; ?>
                                         <?php if ($policy_flags_count >= 3): ?>
                                         <div style="margin-top: 6px;">
                                             <span class="aips-badge aips-badge-warning">
-                                                <span class="dashicons dashicons-warning"></span>
+                                                <span class="dashicons dashicons-warning" aria-hidden="true"></span>
                                                 <?php
                                                 printf(
                                                     esc_html__('Policy flags: %d', 'ai-post-scheduler'),
@@ -221,7 +221,7 @@ $site_ctx = AIPS_Site_Context::get();
                                     <td>
                                         <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
                                             <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'author_topics', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
-                                                <span class="dashicons dashicons-visibility"></span>
+                                                <span class="dashicons dashicons-visibility" aria-hidden="true"></span>
                                                 <?php echo esc_html(sprintf(_n('%d Topic', '%d Topics', $total_topics, 'ai-post-scheduler'), $total_topics)); ?>
                                             </a>
                                             <div class="cell-meta" style="font-size: 11px;">
@@ -233,7 +233,7 @@ $site_ctx = AIPS_Site_Context::get();
                                     </td>
                                     <td>
                                         <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
-                                            <span class="dashicons dashicons-admin-post"></span>
+                                            <span class="dashicons dashicons-admin-post" aria-hidden="true"></span>
                                             <?php echo esc_html(sprintf(_n('%d Post', '%d Posts', $posts_count, 'ai-post-scheduler'), $posts_count)); ?>
                                         </a>
                                     </td>
@@ -241,20 +241,20 @@ $site_ctx = AIPS_Site_Context::get();
                                         <div class="cell-actions">
                                             <div class="aips-author-generation-actions">
                                                 <button class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
-                                                    <span class="dashicons dashicons-update"></span>
+                                                    <span class="dashicons dashicons-update" aria-hidden="true"></span>
                                                     <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
                                                 </button>
                                                 <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" data-quantity="<?php echo esc_attr(isset($author->manual_post_generation_quantity) ? max(1, (int) $author->manual_post_generation_quantity) : 1); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
-                                                    <span class="dashicons dashicons-admin-post"></span>
+                                                    <span class="dashicons dashicons-admin-post" aria-hidden="true"></span>
                                                     <?php esc_html_e('Generate Posts', 'ai-post-scheduler'); ?>
                                                 </button>
                                             </div>
                                             <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-                                                <span class="dashicons dashicons-edit"></span>
+                                                <span class="dashicons dashicons-edit" aria-hidden="true"></span>
                                                 <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                             </button>
                                             <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-                                                <span class="dashicons dashicons-trash"></span>
+                                                <span class="dashicons dashicons-trash" aria-hidden="true"></span>
                                                 <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                                             </button>
                                         </div>
@@ -291,7 +291,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <p class="aips-empty-state-description"><?php esc_html_e('No authors match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
                             <button type="button" class="aips-btn aips-btn-primary aips-clear-author-search-btn">
-                                <span class="dashicons dashicons-dismiss"></span>
+                                <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                 <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                             </button>
                         </div>
@@ -307,7 +307,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <p class="aips-empty-state-description"><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
                             <button class="aips-btn aips-btn-primary aips-add-author-btn">
-                                <span class="dashicons dashicons-plus-alt"></span>
+                                <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                                 <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
                             </button>
                         </div>
@@ -329,7 +329,7 @@ $site_ctx = AIPS_Site_Context::get();
                             <option value=""><?php esc_html_e('All Fields/Niches', 'ai-post-scheduler'); ?></option>
                         </select>
                         <button type="button" id="aips-queue-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-                            <span class="dashicons dashicons-filter"></span>
+                            <span class="dashicons dashicons-filter" aria-hidden="true"></span>
                             <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -354,7 +354,7 @@ $site_ctx = AIPS_Site_Context::get();
                     </div>
                     <div class="aips-toolbar-right">
                         <button type="button" id="aips-queue-reload-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
-                            <span class="dashicons dashicons-update"></span>
+                            <span class="dashicons dashicons-update" aria-hidden="true"></span>
                             <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -677,7 +677,7 @@ $site_ctx = AIPS_Site_Context::get();
                 <div class="aips-modal-footer form-actions">
                     <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                     <button type="submit" id="aips-suggest-authors-submit" class="aips-btn aips-btn-primary">
-                        <span class="dashicons dashicons-lightbulb"></span>
+                        <span class="dashicons dashicons-lightbulb" aria-hidden="true"></span>
                         <?php esc_html_e('Generate Suggestions', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
