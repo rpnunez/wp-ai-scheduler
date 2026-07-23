@@ -414,6 +414,16 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
         });
+
+        // Register AIPS_System_Diagnostics_Service
+        $container->singleton(AIPS_System_Diagnostics_Service::class, function( $container ) {
+            return new AIPS_System_Diagnostics_Service();
+        });
+
+        // Register AIPS_System_Status_Diagnostics_Service
+        $container->singleton(AIPS_System_Status_Diagnostics_Service::class, function( $container ) {
+            return new AIPS_System_Status_Diagnostics_Service();
+        });
     }
 
     /**
