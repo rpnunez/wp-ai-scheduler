@@ -372,17 +372,93 @@
 					.append($('<span class="aips-stress-call-time"></span>').text(call.time || ''))
 			);
 
+			var request = call.request || {};
+			var response = call.response || {};
+
+			// Prompts are mostly newlines. Rendering them through JSON.stringify
+			// collapses the whole thing onto one line of literal \n escapes, which
+			// is the opposite of readable — so long text fields are shown as text
+			// and only the structured leftovers go through the JSON viewer.
 			var $request = $('<div class="aips-ai-section"></div>');
 			$request.append($('<h5></h5>').text(t('request', 'Request')));
-			$request.append(this.jsonViewer(call.request));
+			$request.append(this.textBlock(t('prompt', 'Prompt'), request.prompt));
+
+			if (request.options && Object.keys(request.options).length) {
+				$request.append(this.structuredBlock(t('options', 'Options'), request.options, ['context', 'instructions']));
+			}
+
 			$block.append($request);
 
 			var $response = $('<div class="aips-ai-section"></div>');
 			$response.append($('<h5></h5>').text(t('response', 'Response')));
-			$response.append(this.jsonViewer(call.response));
+
+			if (response.error) {
+				$response.append(this.textBlock(t('error', 'Error'), response.error));
+			}
+
+			$response.append(this.textBlock(t('content', 'Content'), response.content));
 			$block.append($response);
 
 			return $block;
+		},
+
+		/**
+		 * Render a labelled multi-line string with its newlines intact.
+		 *
+		 * @param {string} label
+		 * @param {*}      text
+		 * @returns {jQuery}
+		 */
+		textBlock: function (label, text) {
+			var $block = $('<div class="aips-stress-field"></div>');
+
+			$block.append($('<h6></h6>').text(label));
+
+			if (text === null || typeof text === 'undefined' || text === '') {
+				$block.append($('<p class="aips-no-data"></p>').text(t('noValue', 'No value returned.')));
+
+				return $block;
+			}
+
+			$block.append(
+				$('<div class="aips-json-viewer"><pre></pre></div>')
+					.find('pre').text(typeof text === 'string' ? text : JSON.stringify(text, null, 2)).end()
+			);
+
+			return $block;
+		},
+
+		/**
+		 * Render an object as JSON, pulling named long-text keys out into their
+		 * own text blocks so their newlines survive.
+		 *
+		 * @param {string}   label
+		 * @param {Object}   value
+		 * @param {string[]} textKeys Keys to render as text rather than JSON.
+		 * @returns {jQuery}
+		 */
+		structuredBlock: function (label, value, textKeys) {
+			var $wrap = $('<div class="aips-stress-field-group"></div>');
+			var rest = {};
+			var self = this;
+
+			Object.keys(value).forEach(function (key) {
+				if (textKeys.indexOf(key) !== -1 && typeof value[key] === 'string') {
+					$wrap.append(self.textBlock(key, value[key]));
+					return;
+				}
+
+				rest[key] = value[key];
+			});
+
+			if (Object.keys(rest).length) {
+				var $block = $('<div class="aips-stress-field"></div>');
+				$block.append($('<h6></h6>').text(label));
+				$block.append(this.jsonViewer(rest));
+				$wrap.append($block);
+			}
+
+			return $wrap;
 		},
 
 		/**

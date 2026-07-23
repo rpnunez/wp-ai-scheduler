@@ -427,13 +427,34 @@
 	color: var(--aips-gray-500);
 }
 
+/* Labelled sub-blocks within a request/response section. */
+
+.aips-stress-field {
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-stress-field:last-child {
+	margin-bottom: 0;
+}
+
+.aips-stress-field h6 {
+	margin: 0 0 var(--aips-space-1);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--aips-gray-500);
+}
+
 /* Long provider output must scroll inside its own box rather than stretching
- * the table and forcing the page to scroll horizontally. */
+ * the table and forcing the page to scroll horizontally. pre-wrap keeps the
+ * real newlines in a prompt visible instead of collapsing them. */
 .aips-stress-details .aips-json-viewer pre {
 	max-height: 320px;
 	overflow: auto;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
+	tab-size: 2;
 }
 
 /* -----------------------------------------------------------------------
