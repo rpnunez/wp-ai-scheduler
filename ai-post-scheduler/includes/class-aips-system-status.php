@@ -56,7 +56,11 @@ class AIPS_System_Status {
      * @return array
      */
     public function get_system_info() {
-        $diagnostics = new AIPS_System_Status_Diagnostics_Service();
+        $container   = AIPS_Container::get_instance();
+        $diagnostics = $container->has(AIPS_System_Status_Diagnostics_Service::class)
+        	? $container->make(AIPS_System_Status_Diagnostics_Service::class)
+        	: new AIPS_System_Status_Diagnostics_Service();
+
         return $diagnostics->get_system_info();
     }
 

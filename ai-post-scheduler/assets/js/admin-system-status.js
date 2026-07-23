@@ -266,7 +266,7 @@
 					if (AIPS.Utilities && AIPS.Utilities.showToast) {
 						AIPS.Utilities.showToast(message, failed > 0 ? 'warning' : 'success');
 					}
-					self.renderRefreshResults($results, data.steps || []);
+					self.renderRefreshResults($results, data.steps);
 				} else {
 					var errMsg = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.');
 					if (AIPS.Utilities && AIPS.Utilities.showToast) {

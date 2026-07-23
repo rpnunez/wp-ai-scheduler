@@ -143,7 +143,7 @@ class AIPS_System_Status_Controller {
 		$tasks = null;
 		if (isset($_POST['tasks'])) {
 			$tasks = wp_unslash($_POST['tasks']);
-			$tasks = is_array($tasks) ? array_values(array_filter(array_map('sanitize_key', $tasks))) : array();
+			$tasks = is_array($tasks) ? $tasks : array();
 		}
 
 		$result = $this->diagnostics_service->refresh_system($tasks);
