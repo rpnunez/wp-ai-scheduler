@@ -206,7 +206,7 @@ class AIPS_Automations_Controller {
 					'type'  => 'button',
 					'class' => 'aips-btn aips-btn-primary aips-add-schedule-btn',
 					'icon'  => 'dashicons-plus-alt',
-					'label' => __('Add Template Schedule', 'ai-post-scheduler'),
+					'label' => __('Add Schedule', 'ai-post-scheduler'),
 				),
 			);
 		}

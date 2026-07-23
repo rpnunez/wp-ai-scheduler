@@ -331,6 +331,9 @@ class AIPS_Admin_Assets {
             'minute'                   => __('1 minute', 'ai-post-scheduler'),
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
+            // Rate-limit toast strings (used by AIPS.Utilities.showAjaxError / buildRateLimitMessage)
+            'rateLimitedByPlugin'      => __('Requests to the AI scheduler are temporarily paused by the rate limiter.', 'ai-post-scheduler'),
+            'rateLimitRetryAfter'      => __('You can try again in %s.', 'ai-post-scheduler'),
         ));
 
         wp_enqueue_script(
@@ -421,6 +424,8 @@ class AIPS_Admin_Assets {
             'minute'                   => __('1 minute', 'ai-post-scheduler'),
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
+            'rateLimitedByPlugin'      => __('Requests to the AI scheduler are temporarily paused by the rate limiter.', 'ai-post-scheduler'),
+            'rateLimitRetryAfter'      => __('You can try again in %s.', 'ai-post-scheduler'),
         ));
 
         $this->enqueue_history_modal_opener_script();

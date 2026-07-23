@@ -58,8 +58,8 @@ class AIPS_Container {
 	 */
 	private function __construct() {
 		// Container is empty until bindings are registered
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
+		if (AIPS_Telemetry::is_subsystem_enabled('performance')) {
+			AIPS_Telemetry::instance()->add_event( 'performance', array(
 				'type'  => 'class_initialized',
 				'class' => 'AIPS_Container',
 			) );
@@ -76,8 +76,8 @@ class AIPS_Container {
 	 * @return void
 	 */
 	public function bind($id, Closure $factory) {
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
+		if (AIPS_Telemetry::is_subsystem_enabled('performance')) {
+			AIPS_Telemetry::instance()->add_event( 'performance', array(
 				'type'   => 'class_referenced',
 				'method' => 'bind',
 				'class'  => $id,
@@ -96,8 +96,8 @@ class AIPS_Container {
 	 * @return void
 	 */
 	public function singleton($id, Closure $factory) {
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
+		if (AIPS_Telemetry::is_subsystem_enabled('performance')) {
+			AIPS_Telemetry::instance()->add_event( 'performance', array(
 				'type'   => 'class_referenced',
 				'method' => 'singleton',
 				'class'  => $id,
@@ -117,8 +117,8 @@ class AIPS_Container {
 	 * @throws RuntimeException If the binding is not registered.
 	 */
 	public function make($id) {
-		if (AIPS_Telemetry::is_enabled()) {
-			AIPS_Telemetry::instance()->add_event( 'classes', array(
+		if (AIPS_Telemetry::is_subsystem_enabled('performance')) {
+			AIPS_Telemetry::instance()->add_event( 'performance', array(
 				'type'   => 'class_referenced',
 				'method' => 'make',
 				'class'  => $id,
@@ -133,8 +133,8 @@ class AIPS_Container {
 			}
 
 			// Resolve and cache the instance
-			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( 'classes', array(
+			if (AIPS_Telemetry::is_subsystem_enabled('performance')) {
+				AIPS_Telemetry::instance()->add_event( 'performance', array(
 					'type'  => 'class_initialized',
 					'class' => $id,
 				) );
@@ -147,8 +147,8 @@ class AIPS_Container {
 		// Check if it's a transient binding
 		if (isset($this->bindings[$id])) {
 			// Always create a new instance for transient bindings
-			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( 'classes', array(
+			if (AIPS_Telemetry::is_subsystem_enabled('performance')) {
+				AIPS_Telemetry::instance()->add_event( 'performance', array(
 					'type'  => 'class_initialized',
 					'class' => $id,
 				) );

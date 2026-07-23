@@ -245,7 +245,7 @@ class AIPS_AI_Edit_Controller {
 		
 		if (is_wp_error($result)) {
 			$this->log_wp_error($result, __METHOD__);
-			AIPS_Ajax_Response::error(__('An error occurred during component regeneration.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 		
 		AIPS_Ajax_Response::success(array('new_value' => $result));
@@ -327,7 +327,7 @@ class AIPS_AI_Edit_Controller {
 		$result = $this->service->regenerate_all_components($context);
 		if (is_wp_error($result)) {
 			$this->log_wp_error($result, __METHOD__);
-			AIPS_Ajax_Response::error(__('An error occurred while regenerating all components.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		$regenerated_count = count($result['regenerated']);

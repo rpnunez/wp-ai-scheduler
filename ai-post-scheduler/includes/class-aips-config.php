@@ -187,6 +187,11 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            'aips_telemetry_subsystems' => class_exists('AIPS_Telemetry_Subsystems') ? AIPS_Telemetry_Subsystems::default_enabled_map() : array(
+                'generation' => true,
+                'errors'     => true,
+                'cron'       => true,
+            ),
             // Cache Monitor
             'aips_cache_monitor_enabled'               => true,
             'aips_cache_monitor_index_enabled'         => true,
