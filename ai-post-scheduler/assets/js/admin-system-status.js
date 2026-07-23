@@ -296,11 +296,12 @@
 		renderRefreshResults: function($results, steps) {
 			var normalizedSteps = Array.isArray(steps) ? steps : [];
 
-			$results.empty().hide();
-
 			if (!normalizedSteps.length) {
+				$results.empty().hide();
 				return;
 			}
+
+			$results.empty();
 
 			normalizedSteps.forEach(function(step) {
 				var refreshStep = step || {};

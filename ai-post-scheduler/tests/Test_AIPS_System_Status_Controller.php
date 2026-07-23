@@ -31,6 +31,19 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_controller($diagnostics_service = null) {
+		$controller = new AIPS_System_Status_Controller();
+
+		if (null !== $diagnostics_service) {
+			$reflection = new ReflectionClass($controller);
+			$property = $reflection->getProperty('diagnostics_service');
+			$property->setAccessible(true);
+			$property->setValue($controller, $diagnostics_service);
+		}
+
+		return $controller;
+	}
+
 	public function test_ajax_repair_campaign_data_runs_history_repair_and_returns_success() {
 		$history_repository = $this->getMockBuilder('AIPS_History_Repository')
 			->disableOriginalConstructor()
@@ -42,11 +55,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 
 		$diagnostics_service = new AIPS_System_Diagnostics_Service($history_repository);
 
-		$controller = new AIPS_System_Status_Controller();
-		$reflection = new ReflectionClass($controller);
-		$property = $reflection->getProperty('diagnostics_service');
-		$property->setAccessible(true);
-		$property->setValue($controller, $diagnostics_service);
+		$controller = $this->make_controller($diagnostics_service);
 
 		$_POST = array(
 			'nonce' => wp_create_nonce('aips_status_repair_campaign_data'),
@@ -78,7 +87,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 	}
 
 	public function test_ajax_refresh_system_rejects_invalid_nonce() {
-		$controller = new AIPS_System_Status_Controller();
+		$controller = $this->make_controller();
 
 		$_POST = array(
 			'nonce' => 'invalid-nonce',
@@ -92,7 +101,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 	}
 
 	public function test_ajax_refresh_system_rejects_empty_task_selection() {
-		$controller = new AIPS_System_Status_Controller();
+		$controller = $this->make_controller();
 
 		$_POST = array(
 			'nonce' => wp_create_nonce('aips_status_refresh_system'),
@@ -122,11 +131,7 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 				'message'   => 'ok',
 			));
 
-		$controller = new AIPS_System_Status_Controller();
-		$reflection = new ReflectionClass($controller);
-		$property = $reflection->getProperty('diagnostics_service');
-		$property->setAccessible(true);
-		$property->setValue($controller, $diagnostics_service);
+		$controller = $this->make_controller($diagnostics_service);
 
 		$_POST = array(
 			'nonce' => wp_create_nonce('aips_status_refresh_system'),

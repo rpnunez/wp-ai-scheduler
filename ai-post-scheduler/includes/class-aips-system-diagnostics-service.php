@@ -240,15 +240,9 @@ class AIPS_System_Diagnostics_Service {
 			return array();
 		}
 
-		$selected_lookup = array_fill_keys(
-			array_filter(
-				array_map(
-					'sanitize_key',
-					$selected_tasks
-				)
-			),
-			true
-		);
+		$sanitized_tasks = array_map('sanitize_key', $selected_tasks);
+		$filtered_tasks  = array_filter($sanitized_tasks);
+		$selected_lookup = array_fill_keys($filtered_tasks, true);
 		$selected_order  = array();
 
 		foreach ($definitions as $step => $definition) {
