@@ -58,8 +58,8 @@ class AIPS_System_Status {
     public function get_system_info() {
         $container   = AIPS_Container::get_instance();
         $diagnostics = $container->has(AIPS_System_Status_Diagnostics_Service::class)
-        	? $container->make(AIPS_System_Status_Diagnostics_Service::class)
-        	: new AIPS_System_Status_Diagnostics_Service();
+            ? $container->make(AIPS_System_Status_Diagnostics_Service::class)
+            : new AIPS_System_Status_Diagnostics_Service();
 
         return $diagnostics->get_system_info();
     }
@@ -72,8 +72,8 @@ class AIPS_System_Status {
     private function get_refresh_task_groups() {
         $container = AIPS_Container::get_instance();
         $service   = $container->has(AIPS_System_Diagnostics_Service::class)
-        	? $container->make(AIPS_System_Diagnostics_Service::class)
-        	: new AIPS_System_Diagnostics_Service();
+            ? $container->make(AIPS_System_Diagnostics_Service::class)
+            : new AIPS_System_Diagnostics_Service();
 
         return $service->get_refresh_task_groups();
     }

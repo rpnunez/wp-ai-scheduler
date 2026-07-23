@@ -243,7 +243,7 @@
 
 			if (!selectedTasks.length) {
 				if (AIPS.Utilities && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast(l10n.selectTasksRequired || 'Select at least one maintenance task to run.', 'warning');
+					AIPS.Utilities.showToast(l10n.selectTasksRequired, 'warning');
 				}
 				$results.hide().empty();
 				return;
