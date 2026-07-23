@@ -75,6 +75,14 @@ class AIPS_Post_Manager {
             );
         }
 
+        // Allow the caller (service layer) to explicitly override the resolved
+        // Post Status — e.g. the generator forces 'draft' when required
+        // components failed to generate, regardless of the template/context's
+        // configured status. When not provided, behavior is unchanged.
+        if (isset($data['post_status']) && is_string($data['post_status']) && $data['post_status'] !== '') {
+            $post_status = $data['post_status'];
+        }
+
         // Normalise post_category to an array of int IDs regardless of source format.
         $post_category = $this->normalise_post_categories( $raw_category );
 
@@ -216,6 +224,31 @@ class AIPS_Post_Manager {
             return false;
         }
         return set_post_thumbnail($post_id, $attachment_id);
+    }
+
+    /**
+     * Force an existing post's status to a specific value, bypassing whatever
+     * status the template/context originally specified. Used by the generator
+     * to downgrade a post to 'draft' after the fact when the featured image
+     * fails post-creation.
+     *
+     * @param int    $post_id     Post ID.
+     * @param string $post_status New post status (e.g. 'draft').
+     * @return int|WP_Error Post ID on success, WP_Error on failure.
+     */
+    public function force_post_status($post_id, $post_status) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return new WP_Error('invalid_post_id', __('A valid post ID is required to update post status.', 'ai-post-scheduler'));
+        }
+
+        return wp_update_post(
+            array(
+                'ID'          => $post_id,
+                'post_status' => $post_status,
+            ),
+            true
+        );
     }
 
     /**
