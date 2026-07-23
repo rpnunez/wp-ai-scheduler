@@ -920,6 +920,9 @@ class AIPS_Admin_Assets {
                 'queueDepthLabel'                => __('Queue depth:', 'ai-post-scheduler'),
                 'bulkPendingLabel'               => __('Bulk pending:', 'ai-post-scheduler'),
                 'bulkFailedLabel'                => __('Bulk failed:', 'ai-post-scheduler'),
+                'avgDurationLabel'               => __('Avg. Generation Time', 'ai-post-scheduler'),
+                /* translators: %1$d: pending job count, %2$d: processing job count, %3$d: failed job count */
+                'queueHeadingTooltip'            => __('Pending: %1$d · Processing: %2$d · Failed: %3$d', 'ai-post-scheduler'),
                 'activeSchedulesLabel'           => __('Active schedules', 'ai-post-scheduler'),
                 'upcomingSchedulesLabel'         => __('Upcoming in next 24h', 'ai-post-scheduler'),
                 'overdueSchedulesLabel'          => __('Overdue schedules', 'ai-post-scheduler'),

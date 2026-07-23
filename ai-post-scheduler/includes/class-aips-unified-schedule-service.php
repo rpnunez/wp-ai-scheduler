@@ -26,6 +26,20 @@ class AIPS_Unified_Schedule_Service {
 	const TYPE_AUTHOR_TOPIC = 'author_topic_gen';
 	const TYPE_AUTHOR_POST  = 'author_post_gen';
 
+	/** History event types that represent an actual run attempt (vs. administrative events like schedule_updated). */
+	const RUN_EVENT_TYPES = array(
+		'schedule_executed',
+		'manual_schedule_started',
+		'manual_schedule_completed',
+		'manual_schedule_failed',
+		'schedule_failed',
+		'post_published',
+		'post_draft',
+		'post_generated',
+		'author_topic_generation',
+		'topic_post_generation',
+	);
+
 	/**
 	 * @var AIPS_Schedule_Repository
 	 */
@@ -52,6 +66,11 @@ class AIPS_Unified_Schedule_Service {
 	private $author_topic_logs_repository;
 
 	/**
+	 * @var AIPS_Notifications_Repository_Interface
+	 */
+	private $notifications_repository;
+
+	/**
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
@@ -60,6 +79,7 @@ class AIPS_Unified_Schedule_Service {
 		$this->history_repository           = new AIPS_History_Repository();
 		$this->author_topics_repository     = new AIPS_Author_Topics_Repository();
 		$this->author_topic_logs_repository = new AIPS_Author_Topic_Logs_Repository();
+		$this->notifications_repository     = AIPS_Notifications_Repository::instance();
 	}
 
 	/**
@@ -226,6 +246,40 @@ class AIPS_Unified_Schedule_Service {
 	}
 
 	/**
+	 * Duplicate a schedule as a new, paused copy.
+	 *
+	 * Currently only template schedules can be duplicated — author-topic and
+	 * author-post schedules are per-author settings, not standalone rows.
+	 *
+	 * @param int    $id   Numeric ID.
+	 * @param string $type One of the TYPE_* constants.
+	 * @return int|WP_Error New schedule ID on success.
+	 */
+	public function duplicate($id, $type) {
+		if (self::TYPE_TEMPLATE !== $type) {
+			return new WP_Error(
+				'not_duplicable',
+				__('This schedule type cannot be duplicated.', 'ai-post-scheduler')
+			);
+		}
+
+		$source = $this->schedule_repository->get_by_id($id);
+		if (!$source) {
+			return new WP_Error('not_found', __('Schedule not found.', 'ai-post-scheduler'));
+		}
+
+		$scheduler = new AIPS_Scheduler();
+		$next_run  = $scheduler->calculate_next_run($source->frequency);
+
+		$new_id = $this->schedule_repository->duplicate($id, $next_run);
+		if (!$new_id) {
+			return new WP_Error('duplicate_failed', __('Failed to duplicate schedule.', 'ai-post-scheduler'));
+		}
+
+		return $new_id;
+	}
+
+	/**
 	 * Get run-history log entries for a schedule.
 	 *
 	 * @param int    $id    Numeric ID.
@@ -270,6 +324,60 @@ class AIPS_Unified_Schedule_Service {
 		}
 	}
 
+	/**
+	 * Get a compact pass/fail sequence of the most recent *run* events for a
+	 * schedule (administrative events like schedule_updated are excluded),
+	 * oldest first, for rendering an inline sparkline.
+	 *
+	 * @param int    $id    Numeric ID.
+	 * @param string $type  One of the TYPE_* constants.
+	 * @param int    $limit Max runs to return.
+	 * @return array List of array('status' => 'success'|'failed', 'timestamp' => string).
+	 */
+	public function get_sparkline($id, $type, $limit = 8) {
+		$limit   = absint($limit) ?: 8;
+		$entries = $this->get_history($id, $type, max($limit * 3, 20));
+
+		$runs = array();
+		foreach ($entries as $entry) {
+			if (!in_array($entry['event_type'], self::RUN_EVENT_TYPES, true)) {
+				continue;
+			}
+
+			$failed = (2 === (int) $entry['history_type_id']) || ('failed' === $entry['event_status']);
+
+			$runs[] = array(
+				'status'    => $failed ? 'failed' : 'success',
+				'timestamp' => $entry['timestamp'],
+			);
+
+			if (count($runs) >= $limit) {
+				break;
+			}
+		}
+
+		return array_reverse($runs);
+	}
+
+	/**
+	 * Batch version of get_sparkline() for multiple schedules in one call.
+	 *
+	 * @param array $items List of array('id' => int, 'type' => string).
+	 * @param int   $limit Max runs per schedule.
+	 * @return array Map of "type:id" => sparkline array.
+	 */
+	public function get_sparklines(array $items, $limit = 8) {
+		$result = array();
+		foreach ($items as $item) {
+			if (empty($item['id']) || empty($item['type'])) {
+				continue;
+			}
+			$key = $item['type'] . ':' . absint($item['id']);
+			$result[$key] = $this->get_sparkline(absint($item['id']), sanitize_key($item['type']), $limit);
+		}
+		return $result;
+	}
+
 	// -------------------------------------------------------------------------
 	// Private helpers
 	// -------------------------------------------------------------------------
@@ -296,6 +404,8 @@ class AIPS_Unified_Schedule_Service {
 			$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($history_ids);
 		}
 
+		$unread_errors_by_schedule = $this->notifications_repository->get_unread_scheduler_errors_by_schedule();
+
 		foreach ($raw as $schedule) {
 			$schedule_history_id = !empty($schedule->schedule_history_id) ? (int) $schedule->schedule_history_id : 0;
 			$stats  = isset($schedule_stats[$schedule_history_id]) ? (int) $schedule_stats[$schedule_history_id] : 0;
@@ -306,6 +416,10 @@ class AIPS_Unified_Schedule_Service {
 
 			$title = !empty($schedule->title) ? $schedule->title
 				: ($schedule->template_name ?: sprintf(__('Schedule #%d', 'ai-post-scheduler'), $schedule->id));
+
+			$unread_notification = isset($unread_errors_by_schedule[absint($schedule->id)])
+				? $unread_errors_by_schedule[absint($schedule->id)]
+				: null;
 
 			$result[] = array(
 				'id'                   => absint($schedule->id),
@@ -327,6 +441,13 @@ class AIPS_Unified_Schedule_Service {
 				'can_delete'           => empty($schedule->campaign_id),
 				'history_id'           => $schedule_history_id ? $schedule_history_id : null,
 				'template_id'          => (int) $schedule->template_id,
+				'circuit_state'        => isset($schedule->circuit_state) ? $schedule->circuit_state : 'closed',
+				'unread_notification'  => $unread_notification ? array(
+					'id'      => (int) $unread_notification->id,
+					'title'   => $unread_notification->title,
+					'message' => $unread_notification->message,
+					'url'     => $unread_notification->url,
+				) : null,
 			);
 		}
 

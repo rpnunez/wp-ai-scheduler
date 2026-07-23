@@ -223,8 +223,14 @@
 
 .aips-schedule-status-summary-cards {
     display: grid;
-    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: var(--aips-space-3);
+}
+
+#aips-schedule-status-queue-heading {
+    cursor: help;
+    border-bottom: 1px dotted var(--aips-gray-400);
+    display: inline-block;
 }
 
 .aips-schedule-status-card {
@@ -381,6 +387,65 @@
 
 .aips-filter-right .aips-form-input {
     min-width: 200px;
+}
+
+/* Quick-filter chips (Schedules table) */
+.aips-quick-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-2);
+    flex-wrap: wrap;
+    padding: 0 var(--aips-space-5) var(--aips-space-4);
+}
+
+.aips-filter-chip {
+    background: var(--aips-white);
+    color: var(--aips-gray-600);
+    border: 1px solid var(--aips-gray-300);
+    border-radius: 999px;
+    padding: var(--aips-space-1) var(--aips-space-3);
+    font-size: var(--aips-text-xs);
+    font-weight: var(--aips-font-medium);
+    cursor: pointer;
+    transition: all var(--aips-transition-base);
+}
+
+.aips-filter-chip:hover {
+    border-color: var(--aips-gray-400);
+}
+
+.aips-filter-chip.active {
+    background: var(--aips-primary);
+    border-color: var(--aips-primary);
+    color: var(--aips-white);
+}
+
+/* Sortable table column headers (Schedules table) */
+.aips-sortable-col {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.aips-sort-indicator {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    opacity: 0.4;
+    vertical-align: middle;
+}
+
+.aips-sortable-col.aips-sorted-asc .aips-sort-indicator,
+.aips-sortable-col.aips-sorted-desc .aips-sort-indicator {
+    opacity: 1;
+}
+
+.aips-sortable-col.aips-sorted-asc .aips-sort-indicator:before {
+    content: "\f142";
+}
+
+.aips-sortable-col.aips-sorted-desc .aips-sort-indicator:before {
+    content: "\f140";
 }
 
 /* Pagination tablenav inside content panels.
@@ -1315,6 +1380,24 @@
     display: flex;
     gap: var(--aips-space-3);
     justify-content: center;
+}
+
+.aips-empty-state-help {
+    max-width: 480px;
+    margin: var(--aips-space-6) auto 0;
+    padding-top: var(--aips-space-5);
+    border-top: 1px solid var(--aips-gray-200);
+    text-align: left;
+    font-size: var(--aips-text-sm);
+    color: var(--aips-gray-600);
+}
+
+.aips-empty-state-help p {
+    margin: 0 0 var(--aips-space-2);
+}
+
+.aips-empty-state-help p:last-child {
+    margin-bottom: 0;
 }
 
 /* ==========================================================================
@@ -4329,6 +4412,57 @@
 
 .aips-history-timeline {
     padding: 8px 0;
+}
+
+/* Inline "Recent Activity" row-expand preview (Schedules table) */
+.aips-unified-row-detail td {
+    background: var(--aips-gray-50);
+    border-top: none;
+}
+
+.aips-inline-history {
+    padding: var(--aips-space-2) var(--aips-space-5) var(--aips-space-4);
+}
+
+.aips-inline-history-loading,
+.aips-inline-history-empty {
+    padding: var(--aips-space-2) 0;
+    color: var(--aips-gray-500);
+    font-size: var(--aips-text-sm);
+}
+
+.aips-toggle-row-history .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+}
+
+/* Run-outcome sparkline (Schedules table Stats column) */
+.aips-schedule-sparkline {
+    margin-top: var(--aips-space-1);
+    min-height: 10px;
+}
+
+.aips-sparkline {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.aips-sparkline-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.aips-sparkline-dot-success {
+    background: var(--aips-success);
+}
+
+.aips-sparkline-dot-failed {
+    background: var(--aips-error);
 }
 
 .aips-timeline-item {
