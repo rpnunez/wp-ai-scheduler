@@ -112,7 +112,9 @@ class AIPS_Diagnostics_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
-		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor'), true)) {
+		// Keep in step with get_tabs(): a tab listed there but missing here is
+		// rejected by get_active_tab_key() and silently falls back to the default.
+		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor', 'stress-test'), true)) {
 			return true;
 		}
 
