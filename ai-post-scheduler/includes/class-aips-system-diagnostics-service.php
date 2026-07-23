@@ -241,7 +241,7 @@ class AIPS_System_Diagnostics_Service {
 		}
 
 		$sanitized_tasks = array_map('sanitize_key', $selected_tasks);
-		$filtered_tasks  = array_filter($sanitized_tasks);
+		$filtered_tasks  = array_filter($sanitized_tasks, 'strlen');
 		$selected_lookup = array_fill_keys($filtered_tasks, true);
 		$selected_order  = array();
 

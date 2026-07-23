@@ -31,6 +31,15 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	/**
+	 * Build a controller and optionally swap only its diagnostics service.
+	 *
+	 * Tests covering other controller dependencies should instantiate and wire
+	 * those collaborators independently.
+	 *
+	 * @param AIPS_System_Diagnostics_Service|null $diagnostics_service Optional diagnostics service override.
+	 * @return AIPS_System_Status_Controller
+	 */
 	private function make_controller($diagnostics_service = null) {
 		$controller = new AIPS_System_Status_Controller();
 

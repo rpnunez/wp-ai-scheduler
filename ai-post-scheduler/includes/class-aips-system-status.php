@@ -51,15 +51,26 @@ class AIPS_System_Status {
         return new AIPS_Data_Management();
     }
     /**
+     * Resolve a service from the container when available.
+     *
+     * @param string $class_name Service class name.
+     * @return object
+     */
+    private function resolve_service($class_name) {
+        $container = AIPS_Container::get_instance();
+
+        return $container->has($class_name)
+            ? $container->make($class_name)
+            : new $class_name();
+    }
+
+    /**
      * Get system info by delegating to diagnostics service.
      *
      * @return array
      */
     public function get_system_info() {
-        $container   = AIPS_Container::get_instance();
-        $diagnostics = $container->has(AIPS_System_Status_Diagnostics_Service::class)
-            ? $container->make(AIPS_System_Status_Diagnostics_Service::class)
-            : new AIPS_System_Status_Diagnostics_Service();
+        $diagnostics = $this->resolve_service(AIPS_System_Status_Diagnostics_Service::class);
 
         return $diagnostics->get_system_info();
     }
@@ -70,10 +81,7 @@ class AIPS_System_Status {
      * @return array<int, array<string, mixed>>
      */
     private function get_refresh_task_groups() {
-        $container = AIPS_Container::get_instance();
-        $service   = $container->has(AIPS_System_Diagnostics_Service::class)
-            ? $container->make(AIPS_System_Diagnostics_Service::class)
-            : new AIPS_System_Diagnostics_Service();
+        $service = $this->resolve_service(AIPS_System_Diagnostics_Service::class);
 
         return $service->get_refresh_task_groups();
     }

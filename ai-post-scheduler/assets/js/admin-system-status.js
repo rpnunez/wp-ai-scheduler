@@ -294,6 +294,7 @@
 		 * @return {void}
 		 */
 		renderRefreshResults: function($results, steps) {
+			// The server payload can omit or mangle `steps`; normalize before rendering.
 			var normalizedSteps = Array.isArray(steps) ? steps : [];
 
 			if (!normalizedSteps.length) {
