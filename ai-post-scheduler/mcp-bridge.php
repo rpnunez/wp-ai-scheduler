@@ -1192,11 +1192,12 @@ class AIPS_MCP_Bridge {
 		if ($include_logs && isset($history->log)) {
 			$formatted_logs = array();
 			foreach ($history->log as $log) {
+				$log_details = json_decode($log->details, true);
 				$formatted_logs[] = array(
 					'id' => $log->id,
-					'log_type' => $log->log_type,
+					'log_type' => is_array($log_details) && isset($log_details['log_subtype']) ? (string) $log_details['log_subtype'] : '',
 					'history_type_id' => isset($log->history_type_id) ? $log->history_type_id : null,
-					'details' => json_decode($log->details, true),
+					'details' => $log_details,
 					'timestamp' => $log->timestamp
 				);
 			}

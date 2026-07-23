@@ -190,11 +190,13 @@ class AIPS_Dashboard_Repository {
 			function() use ( $from_ts, $to_ts ) {
 				$row = $this->wpdb->get_row($this->wpdb->prepare(
 					"SELECT
-						SUM(CASE WHEN hl.log_type = 'ai_request' THEN 1 ELSE 0 END) as ai_calls,
-						SUM(CASE WHEN hl.log_type = 'error' AND hl.details LIKE '%%AI generation failed%%' THEN 1 ELSE 0 END) as ai_errors
+						SUM(CASE WHEN hl.history_type_id = %d THEN 1 ELSE 0 END) as ai_calls,
+						SUM(CASE WHEN hl.history_type_id = %d AND hl.details LIKE '%%AI generation failed%%' THEN 1 ELSE 0 END) as ai_errors
 					 FROM {$this->history_log_table} hl
 					 INNER JOIN {$this->history_table} h ON hl.history_id = h.id
 					 WHERE h.created_at >= %d AND h.created_at <= %d",
+					AIPS_History_Type::AI_REQUEST,
+					AIPS_History_Type::ERROR,
 					(int) $from_ts,
 					(int) $to_ts
 				));
@@ -476,13 +478,15 @@ class AIPS_Dashboard_Repository {
 			function() use ( $from_ts, $to_ts ) {
 				$results = $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT DATE(FROM_UNIXTIME(hl.timestamp)) AS day,
-							SUM(CASE WHEN hl.log_type = 'ai_request' THEN 1 ELSE 0 END) AS ai_calls,
-							SUM(CASE WHEN hl.log_type = 'error' AND hl.details LIKE '%%AI generation failed%%' THEN 1 ELSE 0 END) AS ai_errors
+							SUM(CASE WHEN hl.history_type_id = %d THEN 1 ELSE 0 END) AS ai_calls,
+							SUM(CASE WHEN hl.history_type_id = %d AND hl.details LIKE '%%AI generation failed%%' THEN 1 ELSE 0 END) AS ai_errors
 					 FROM {$this->history_log_table} hl
 					 INNER JOIN {$this->history_table} h ON hl.history_id = h.id
 					 WHERE h.created_at >= %d AND h.created_at <= %d
 					 GROUP BY day
 					 ORDER BY day ASC",
+					AIPS_History_Type::AI_REQUEST,
+					AIPS_History_Type::ERROR,
 					(int) $from_ts,
 					(int) $to_ts
 				));

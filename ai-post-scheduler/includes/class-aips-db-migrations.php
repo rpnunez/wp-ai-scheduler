@@ -158,6 +158,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_0_1();
 		}
 
+		if ( version_compare( $from_version, '3.1.0', '<' ) ) {
+			$this->migrate_to_3_1_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -887,6 +891,83 @@ class AIPS_DB_Migrations {
 				AND generated_pm.meta_id IS NULL",
 				$query_args
 			)
+		);
+	}
+
+	/**
+	 * Migration for version 3.1.0.
+	 *
+	 * Drops the `log_type` column from `aips_history_log`. The semantic label
+	 * previously stored there is moved into the `details` JSON payload under the
+	 * `log_subtype` key by the container layer before every insert, so existing
+	 * rows are backfilled in batches before the column is dropped.
+	 *
+	 * Guarded by SHOW COLUMNS so it is a no-op on fresh installs where dbDelta
+	 * has already applied the target schema without the column.
+	 */
+	private function migrate_to_3_1_0() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		// No-op if the table doesn't exist yet.
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		// No-op if log_type was already dropped (fresh install / re-run guard).
+		$column_exists = $wpdb->get_var(
+			$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'log_type' ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+		if ( ! $column_exists ) {
+			return;
+		}
+
+		// Backfill: copy log_type into details JSON as log_subtype, in batches.
+		$batch_size = 500;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT id, log_type, details FROM `{$table}` WHERE id > %d ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$last_id,
+					$batch_size
+				)
+			);
+
+			foreach ( $rows as $row ) {
+				$details = json_decode( $row->details, true );
+				if ( ! is_array( $details ) ) {
+					$details = array();
+				}
+
+				// Only write if not already backfilled.
+				if ( ! isset( $details['log_subtype'] ) ) {
+					$details['log_subtype'] = (string) $row->log_type;
+					$wpdb->update(
+						$table,
+						array( 'details' => wp_json_encode( $details ) ),
+						array( 'id' => (int) $row->id ),
+						array( '%s' ),
+						array( '%d' )
+					);
+					++$updated;
+				}
+			}
+
+			if ( ! empty( $rows ) ) {
+				$last_id = (int) end( $rows )->id;
+			}
+		} while ( ! empty( $rows ) );
+
+		// Drop the column now that data is safely in details JSON.
+		$wpdb->query( "ALTER TABLE `{$table}` DROP COLUMN log_type" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		$this->logger->log(
+			"migrate_to_3_1_0: backfilled {$updated} rows, dropped log_type column from {$table}",
+			'info'
 		);
 	}
 
