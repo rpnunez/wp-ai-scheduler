@@ -12,6 +12,8 @@ Never build HTML via string concatenation in JS. Always use:
 
 Define markup in `<script type="text/html" id="tmpl-...">` blocks in the relevant admin template.
 
+When rendering templates that include nested, pre-rendered HTML fragments, use `renderRaw()` only for that composition boundary and keep inner value rendering on `render()` whenever possible.
+
 ---
 
 ## DB Schema Changes: AIPS_DB_Manager + Version Bump
@@ -69,3 +71,10 @@ Never call `location.reload()` after an AJAX action. Instead:
 ## Admin UI Design System
 
 For all admin interface work, use `ai-post-scheduler/docs/Design_Guidelines.md` as the single source of truth for tokens, shared component classes, approved usage, and migration patterns.
+
+---
+
+## Template Partials: Reuse Shared Markup
+
+When the same admin markup repeats across pages, extract it into `ai-post-scheduler/templates/partials/*.php` and include it from page templates.  
+Example: source-group checkbox lists now share `templates/partials/source-group-checkboxes.php` instead of duplicating per-page markup.

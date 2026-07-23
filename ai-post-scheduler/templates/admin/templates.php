@@ -31,7 +31,7 @@ $is_embedded_templates_view = !empty($embedded);
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost is-hidden"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -50,23 +50,6 @@ $is_embedded_templates_view = !empty($embedded);
                     </thead>
                     <tbody>
                         <?php
-                        $history_service = new AIPS_History();
-                        $templates_class = new AIPS_Templates();
-                        $campaigns_repo = AIPS_Campaigns_Repository::instance();
-                        $campaign_options = $campaigns_repo->get_campaign_filter_options();
-                        $campaign_map = array();
-                        foreach ($campaign_options as $campaign_option) {
-                            $campaign_map[(int) $campaign_option->id] = $campaign_option;
-                        }
-                        $category_name_map = array();
-                        foreach ($categories as $category) {
-                            $category_name_map[(int) $category->term_id] = $category->name;
-                        }
-
-                        // Pre-fetch stats to avoid N+1 queries
-                        $all_generated_counts = $history_service->get_all_template_stats();
-                        $all_pending_stats = $templates_class->get_all_pending_stats();
-
                         foreach ($templates as $template):
                             $generated_count = isset($all_generated_counts[$template->id]) ? $all_generated_counts[$template->id] : 0;
                             $pending_stats = isset($all_pending_stats[$template->id]) ? $all_pending_stats[$template->id] : array('today' => 0, 'week' => 0, 'month' => 0);
@@ -76,7 +59,7 @@ $is_embedded_templates_view = !empty($embedded);
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
                                 <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
                                     <?php $campaign = $campaign_map[(int) $template->campaign_id]; ?>
-                                    <div class="cell-meta" style="margin-top: 4px;">
+                                    <div class="cell-meta aips-template-campaign-meta">
                                         <a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'))); ?>">
                                             <?php echo esc_html($campaign->name); ?>
                                         </a>
@@ -89,35 +72,25 @@ $is_embedded_templates_view = !empty($embedded);
                                 </span>
                             </td>
                             <td class="column-category">
-                                <?php 
-                                $cats = AIPS_Template_Data::parse_post_categories($template->post_category ?? null);
-                                if (!empty($cats)) {
-                                    $cat_names = array();
-                                    foreach ($cats as $cat_id) {
-                                        if (isset($category_name_map[(int) $cat_id])) {
-                                            $cat_names[] = esc_html($category_name_map[(int) $cat_id]);
-                                        }
-                                    }
-                                    if (!empty($cat_names)) {
-                                        echo implode(', ', $cat_names);
-                                    } else {
-                                        echo '<span class="cell-meta">—</span>';
-                                    }
+                                <?php
+                                $template_categories = isset($template_category_names[(int) $template->id]) ? $template_category_names[(int) $template->id] : array();
+                                if (!empty($template_categories)) {
+                                    echo esc_html(implode(', ', $template_categories));
                                 } else {
                                     echo '<span class="cell-meta">—</span>';
                                 }
                                 ?>
                             </td>
                             <td>
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div class="aips-template-stats-stack">
                                     <div>
-                                        <strong style="font-size: 14px;"><?php echo esc_html($generated_count); ?></strong>
+                                        <strong class="aips-template-generated-count"><?php echo esc_html($generated_count); ?></strong>
                                         <span class="cell-meta"><?php esc_html_e('generated', 'ai-post-scheduler'); ?></span>
-                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'template_id' => absint( $template->id ) ), admin_url( 'admin.php' ) ) ); ?>" style="font-size: 12px; margin-left: 4px;">
+                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'template_id' => absint( $template->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-template-generated-link">
                                             <?php esc_html_e('(view)', 'ai-post-scheduler'); ?>
                                         </a>
                                     </div>
-                                    <div class="cell-meta" style="font-size: 11px;">
+                                    <div class="cell-meta aips-template-pending-meta">
                                         <?php esc_html_e('Pending:', 'ai-post-scheduler'); ?>
                                         <?php esc_html_e('Today:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['today']); ?> |
                                         <?php esc_html_e('Week:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['week']); ?> |
@@ -168,7 +141,7 @@ $is_embedded_templates_view = !empty($embedded);
                 </table>
                 
                 <!-- No Search Results State -->
-                <div id="aips-template-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                <div id="aips-template-search-no-results" class="aips-empty-state aips-template-search-empty-state is-hidden">
                     <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Found', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('No templates match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
@@ -224,7 +197,7 @@ $is_embedded_templates_view = !empty($embedded);
 <?php endif; ?>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
-    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal is-hidden" data-wizard-steps="4">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 class="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
@@ -281,7 +254,7 @@ $is_embedded_templates_view = !empty($embedded);
                             <p class="description"><?php esc_html_e('Optional. Helps you remember the purpose of this template.', 'ai-post-scheduler'); ?></p>
                         </div>
 
-                        <hr style="margin: 20px 0;">
+                        <hr class="aips-form-divider">
 
                         <h3>
                             <?php esc_html_e('Title & Excerpt Settings', 'ai-post-scheduler'); ?>
@@ -301,7 +274,7 @@ $is_embedded_templates_view = !empty($embedded);
                         </div>
 
                         <!-- AI Variables Panel -->
-                        <div class="aips-form-row aips-ai-variables-panel" style="display: none;">
+                        <div class="aips-form-row aips-ai-variables-panel is-hidden">
                             <div class="aips-ai-variables-header">
                                 <span class="dashicons dashicons-admin-generic"></span>
                                 <strong><?php esc_html_e('AI Variables Detected', 'ai-post-scheduler'); ?></strong>
@@ -344,7 +317,7 @@ $is_embedded_templates_view = !empty($embedded);
                     </div>
                     
                     <!-- Step 2: Content -->
-                    <div class="aips-wizard-step-content" data-step="2" style="display: none;">
+                    <div class="aips-wizard-step-content is-hidden" data-step="2">
                         <h3>
                             <?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?>
                             <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>"></span>
@@ -365,7 +338,7 @@ $is_embedded_templates_view = !empty($embedded);
                         <div class="aips-form-row">
                             <label for="voice_id"><?php esc_html_e('Voice', 'ai-post-scheduler'); ?></label>
                             <div class="aips-voice-selector">
-                                <input type="text" id="voice_search" class="regular-text" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>" style="margin-bottom: 8px;">
+                                <input type="text" id="voice_search" class="regular-text aips-voice-search-input" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>">
                                 <select id="voice_id" name="voice_id" class="regular-text">
                                     <option value="0"><?php esc_html_e('No Voice (Use Default)', 'ai-post-scheduler'); ?></option>
                                 </select>
@@ -379,15 +352,6 @@ $is_embedded_templates_view = !empty($embedded);
                             <p class="description"><?php esc_html_e('Generate one or more posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
                         </div>
 
-                        <?php
-                        $template_source_groups = get_terms(array(
-                            'taxonomy'   => 'aips_source_group',
-                            'hide_empty' => false,
-                        ));
-                        if (is_wp_error($template_source_groups)) {
-                            $template_source_groups = array();
-                        }
-                        ?>
                         <div class="aips-form-row">
                             <label class="aips-checkbox-label">
                                 <input type="checkbox" id="include_sources" name="include_sources" value="1">
@@ -396,34 +360,22 @@ $is_embedded_templates_view = !empty($embedded);
                             <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the content generation prompt.', 'ai-post-scheduler'); ?></p>
                         </div>
 
-                        <div id="template-source-groups-selector" style="display:none; margin-top:8px;">
+                        <div id="template-source-groups-selector" class="is-hidden aips-source-group-selector">
                             <div class="aips-form-row">
                                 <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
-                                <?php if (!empty($template_source_groups)): ?>
-                                    <div class="aips-checkbox-group">
-                                        <?php foreach ($template_source_groups as $sg): ?>
-                                            <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
-                                                <input type="checkbox"
-                                                    name="source_group_ids[]"
-                                                    class="aips-template-source-group-cb"
-                                                    value="<?php echo esc_attr($sg->term_id); ?>">
-                                                <?php echo esc_html($sg->name); ?>
-                                            </label>
-                                        <?php endforeach; ?>
-                                    </div>
-                                    <p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the prompt.', 'ai-post-scheduler'); ?></p>
-                                <?php else: ?>
-                                    <p class="description">
-                                        <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
-                                    </p>
-                                <?php endif; ?>
+                                <?php
+                                $source_groups = $template_source_groups;
+                                $checkbox_name = 'source_group_ids[]';
+                                $checkbox_class = 'aips-template-source-group-cb';
+                                $description_text = __('Select one or more Source Groups whose active sources will be included in the prompt.', 'ai-post-scheduler');
+                                include AIPS_PLUGIN_DIR . 'templates/partials/source-group-checkboxes.php';
+                                ?>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Step 3: Featured Image -->
-                    <div class="aips-wizard-step-content" data-step="3" style="display: none;">
+                    <div class="aips-wizard-step-content is-hidden" data-step="3">
                         <h3><?php esc_html_e('Featured Image Options', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Configure whether and how to generate featured images for your posts.', 'ai-post-scheduler'); ?></p>
                         
@@ -435,7 +387,7 @@ $is_embedded_templates_view = !empty($embedded);
                             <p class="description"><?php esc_html_e('If checked, a featured image will be attached to the generated post.', 'ai-post-scheduler'); ?></p>
                         </div>
 
-                        <div class="aips-featured-image-settings" style="display: none;">
+                        <div class="aips-featured-image-settings is-hidden">
                             <div class="aips-form-row">
                                 <label for="featured_image_source"><?php esc_html_e('Featured Image Source', 'ai-post-scheduler'); ?></label>
                                 <select id="featured_image_source" name="featured_image_source">
@@ -452,19 +404,19 @@ $is_embedded_templates_view = !empty($embedded);
                                 <p class="description"><?php esc_html_e('Used when generating the image with AI.', 'ai-post-scheduler'); ?></p>
                             </div>
 
-                            <div class="aips-form-row aips-image-source aips-image-source-unsplash" style="display: none;">
+                            <div class="aips-form-row aips-image-source aips-image-source-unsplash is-hidden">
                                 <label for="featured_image_unsplash_keywords"><?php esc_html_e('Unsplash Keywords', 'ai-post-scheduler'); ?></label>
                                 <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>">
                                 <p class="description"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
                             </div>
 
-                            <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
+                            <div class="aips-form-row aips-image-source aips-image-source-media is-hidden">
                                 <label><?php esc_html_e('Media Library Images', 'ai-post-scheduler'); ?></label>
                                 <div class="aips-media-library-picker">
                                     <input type="hidden" id="featured_image_media_ids" name="featured_image_media_ids" value="">
                                     <button type="button" class="aips-btn aips-btn-secondary" id="featured_image_media_select"><?php esc_html_e('Select Images', 'ai-post-scheduler'); ?></button>
                                     <button type="button" class="aips-btn aips-btn-ghost" id="featured_image_media_clear"><?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?></button>
-                                    <div id="featured_image_media_preview" class="description" style="margin-top: 6px;"><?php esc_html_e('No images selected.', 'ai-post-scheduler'); ?></div>
+                                    <div id="featured_image_media_preview" class="description aips-media-preview-description"><?php esc_html_e('No images selected.', 'ai-post-scheduler'); ?></div>
                                 </div>
                                 <p class="description"><?php esc_html_e('One image will be chosen at random from the selected media library items.', 'ai-post-scheduler'); ?></p>
                             </div>
@@ -472,7 +424,7 @@ $is_embedded_templates_view = !empty($embedded);
                     </div>
                     
                     <!-- Step 4: Summary & Post Settings -->
-                    <div class="aips-wizard-step-content" data-step="4" style="display: none;">
+                    <div class="aips-wizard-step-content is-hidden" data-step="4">
                         <h3><?php esc_html_e('Review & Post Settings', 'ai-post-scheduler'); ?></h3>
                         <p class="description"><?php esc_html_e('Review your template configuration and set post publishing options.', 'ai-post-scheduler'); ?></p>
                         
@@ -512,7 +464,7 @@ $is_embedded_templates_view = !empty($embedded);
                         </div>
                         
                         <!-- Post Settings -->
-                        <h4 style="margin-top: 20px;"><?php esc_html_e('Post Settings', 'ai-post-scheduler'); ?></h4>
+                        <h4 class="aips-template-post-settings-heading"><?php esc_html_e('Post Settings', 'ai-post-scheduler'); ?></h4>
                         
                         <div class="aips-form-columns">
                             <div class="aips-form-row">
@@ -526,7 +478,7 @@ $is_embedded_templates_view = !empty($embedded);
                             
                             <div class="aips-form-row">
                                 <label for="post_category"><?php esc_html_e('Categories', 'ai-post-scheduler'); ?></label>
-                                <select id="post_category" name="post_category[]" multiple size="5" style="min-height:100px;">
+                                <select id="post_category" name="post_category[]" multiple size="5" class="aips-category-multi-select">
                                     <?php foreach ($categories as $cat): ?>
                                     <option value="<?php echo esc_attr($cat->term_id); ?>"><?php echo esc_html($cat->name); ?></option>
                                     <?php endforeach; ?>
@@ -561,22 +513,22 @@ $is_embedded_templates_view = !empty($embedded);
                     </div>
                     
                     <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
-                    <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
-                        <div style="text-align: center; padding: 30px 20px;">
-                            <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
-                            <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
-                            <p class="description" style="font-size: 14px; margin-bottom: 24px;"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-wizard-step-content aips-post-save-step is-hidden" data-step="5">
+                        <div class="aips-post-save-step-container">
+                            <span class="dashicons dashicons-yes-alt aips-post-save-step-icon" aria-hidden="true"></span>
+                            <h3 class="aips-post-save-step-title" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
+                            <p class="description aips-post-save-step-description"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
                             
-                            <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
-                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px; text-decoration: none;">
+                            <div class="aips-next-steps-grid">
+                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary aips-next-step-action">
                                     <span class="dashicons dashicons-calendar-alt"></span>
                                     <?php esc_html_e('Schedule This Template', 'ai-post-scheduler'); ?>
                                 </a>
-                                <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary aips-next-step-action">
                                     <span class="dashicons dashicons-controls-play"></span>
                                     <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                 </button>
-                                <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost aips-next-step-action">
                                     <span class="dashicons dashicons-dismiss"></span>
                                     <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
                                 </button>
@@ -587,7 +539,7 @@ $is_embedded_templates_view = !empty($embedded);
             </div>
             <div class="aips-modal-footer aips-wizard-footer">
                 <div class="aips-footer-left">
-                    <button type="button" class="aips-btn aips-btn-secondary aips-wizard-back" style="display: none;">
+                    <button type="button" class="aips-btn aips-btn-secondary aips-wizard-back is-hidden">
                         <span class="dashicons dashicons-arrow-left-alt2"></span>
                         <?php esc_html_e('Back', 'ai-post-scheduler'); ?>
                     </button>
@@ -628,19 +580,19 @@ $is_embedded_templates_view = !empty($embedded);
                         <span class="aips-preview-drawer-label"><?php esc_html_e('Prompt Preview', 'ai-post-scheduler'); ?></span>
                     </button>
                 </div>
-                <div class="aips-preview-drawer-content" style="display: none;">
-                    <div class="aips-preview-loading" style="display: none;">
+                <div class="aips-preview-drawer-content is-hidden">
+                    <div class="aips-preview-loading is-hidden">
                         <span class="spinner is-active"></span>
                         <span><?php esc_html_e('Generating preview...', 'ai-post-scheduler'); ?></span>
                     </div>
-                    <div class="aips-preview-error" style="display: none;"></div>
-                    <div class="aips-preview-sections" style="display: none;">
+                    <div class="aips-preview-error is-hidden"></div>
+                    <div class="aips-preview-sections is-hidden">
                         <div class="aips-preview-metadata">
-                            <div class="aips-preview-meta-item" id="aips-preview-voice" style="display: none;">
+                            <div class="aips-preview-meta-item is-hidden" id="aips-preview-voice">
                                 <strong><?php esc_html_e('Voice:', 'ai-post-scheduler'); ?></strong>
                                 <span class="aips-preview-voice-name"></span>
                             </div>
-                            <div class="aips-preview-meta-item" id="aips-preview-structure" style="display: none;">
+                            <div class="aips-preview-meta-item is-hidden" id="aips-preview-structure">
                                 <strong><?php esc_html_e('Article Structure:', 'ai-post-scheduler'); ?></strong>
                                 <span class="aips-preview-structure-name"></span>
                             </div>
@@ -665,7 +617,7 @@ $is_embedded_templates_view = !empty($embedded);
                             <div class="aips-preview-prompt-text" id="aips-preview-excerpt-prompt"></div>
                         </div>
                         
-                        <div class="aips-preview-section" id="aips-preview-image-section" style="display: none;">
+                        <div class="aips-preview-section is-hidden" id="aips-preview-image-section">
                             <h4><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></h4>
                             <div class="aips-preview-prompt-text" id="aips-preview-image-prompt"></div>
                         </div>
@@ -675,7 +627,7 @@ $is_embedded_templates_view = !empty($embedded);
         </div>
     </div>
     
-    <div id="aips-test-result-modal" class="aips-modal" style="display: none;">
+    <div id="aips-test-result-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 class="aips-modal-title"><?php esc_html_e('Test Generation Result', 'ai-post-scheduler'); ?></h2>
@@ -685,22 +637,22 @@ $is_embedded_templates_view = !empty($embedded);
                 <div id="aips-test-result-container">
                     <div class="aips-form-row">
                         <label><strong><?php esc_html_e('Generated Title:', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-title" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                        <div id="aips-test-title" class="aips-preview-box aips-preview-box-surface"></div>
                     </div>
 
                     <div class="aips-form-row">
                         <label><strong><?php esc_html_e('Generated Excerpt:', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-excerpt" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                        <div id="aips-test-excerpt" class="aips-preview-box aips-preview-box-surface"></div>
                     </div>
 
-                    <div class="aips-form-row" id="aips-test-image-row" style="display: none;">
+                    <div class="aips-form-row is-hidden" id="aips-test-image-row">
                         <label><strong><?php esc_html_e('Image Preview (Prompt/Keywords):', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-image" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                        <div id="aips-test-image" class="aips-preview-box aips-preview-box-surface"></div>
                     </div>
 
                     <div class="aips-form-row">
                         <label><strong><?php esc_html_e('Generated Content:', 'ai-post-scheduler'); ?></strong></label>
-                        <div class="aips-preview-box aips-modal-content-body" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
+                        <div class="aips-preview-box aips-modal-content-body aips-preview-box-surface aips-preview-box-scroll"></div>
                     </div>
                 </div>
             </div>
@@ -710,7 +662,7 @@ $is_embedded_templates_view = !empty($embedded);
         </div>
     </div>
 
-    <div id="aips-post-success-modal" class="aips-modal" style="display: none;">
+    <div id="aips-post-success-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 class="aips-modal-title"
@@ -723,7 +675,7 @@ $is_embedded_templates_view = !empty($embedded);
                 <div class="aips-post-success-summary">
                     <span class="dashicons dashicons-yes-alt aips-post-success-icon"></span>
                     <p class="aips-post-success-message" id="aips-success-message"><?php esc_html_e('1 post has been generated.', 'ai-post-scheduler'); ?></p>
-                    <p id="aips-success-note" class="description aips-post-success-note" style="display: none;"></p>
+                    <p id="aips-success-note" class="description aips-post-success-note is-hidden"></p>
                 </div>
                 <div id="aips-post-results-container" class="aips-post-results-container"></div>
             </div>
@@ -772,7 +724,7 @@ $is_embedded_templates_view = !empty($embedded);
         </tr>
     </script>
 
-    <div id="aips-post-quick-preview-modal" class="aips-modal" style="display: none;">
+    <div id="aips-post-quick-preview-modal" class="aips-modal is-hidden">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 class="aips-modal-title"><?php esc_html_e('Post Quick Preview', 'ai-post-scheduler'); ?></h2>

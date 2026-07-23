@@ -243,6 +243,42 @@ class AIPS_Templates {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
+        $history_service = new AIPS_History();
+        $all_generated_counts = $history_service->get_all_template_stats();
+        $all_pending_stats = $this->get_all_pending_stats();
+
+        $campaign_options = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
+        $campaign_map = array();
+        foreach ($campaign_options as $campaign_option) {
+            $campaign_map[(int) $campaign_option->id] = $campaign_option;
+        }
+
+        $category_name_map = array();
+        foreach ($categories as $category) {
+            $category_name_map[(int) $category->term_id] = $category->name;
+        }
+        $template_category_names = array();
+        foreach ($templates as $template) {
+            $template_id = isset($template->id) ? (int) $template->id : 0;
+            $category_names = array();
+            $category_ids = AIPS_Template_Data::parse_post_categories(isset($template->post_category) ? $template->post_category : null);
+
+            foreach ($category_ids as $category_id) {
+                if (isset($category_name_map[(int) $category_id])) {
+                    $category_names[] = $category_name_map[(int) $category_id];
+                }
+            }
+
+            $template_category_names[$template_id] = $category_names;
+        }
+
+        $template_source_groups = get_terms(array(
+            'taxonomy'   => 'aips_source_group',
+            'hide_empty' => false,
+        ));
+        if (is_wp_error($template_source_groups)) {
+            $template_source_groups = array();
+        }
 
         include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
     }
