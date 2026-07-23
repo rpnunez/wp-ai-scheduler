@@ -428,6 +428,15 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Ability_Catalog_Service::class, function( $container ) {
             return new AIPS_Ability_Catalog_Service($container->make(AIPS_Ability_Service::class));
         });
+
+        // Register AIPS_Ability_Workflow_Executor
+        $container->singleton(AIPS_Ability_Workflow_Executor::class, function( $container ) {
+            return new AIPS_Ability_Workflow_Executor(
+                $container->make(AIPS_Ability_Workflow_Repository::class),
+                $container->make(AIPS_Ability_Catalog_Service::class),
+                $container->make(AIPS_Ability_Service::class)
+            );
+        });
     }
 
     /**
@@ -736,6 +745,19 @@ final class AI_Post_Scheduler {
                 return $post_id;
             }
         );
+
+        // Ability Workflow run execution/continuation: a dedicated single-event
+        // hook, deliberately NOT registered through AIPS_Bulk_Batch_Processor's
+        // strategy registry — workflow steps run in dependency order with
+        // conditional branching that can only be resolved once earlier steps
+        // have produced output, so they cannot be pre-sliced like a flat,
+        // order-independent batch job. The executor reschedules this same
+        // hook itself to continue a run across invocations (time budget or
+        // retry backoff).
+        // Args: run_id, correlation_id.
+        add_action('aips_run_ability_workflow', function( $run_id, $correlation_id = '' ) {
+            (new AIPS_Ability_Workflow_Executor())->process_run((int) $run_id, (string) $correlation_id);
+        }, 10, 2);
 
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {

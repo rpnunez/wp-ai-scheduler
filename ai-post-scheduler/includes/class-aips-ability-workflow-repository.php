@@ -680,6 +680,11 @@ class AIPS_Ability_Workflow_Repository {
 		$update_data = array( 'status' => $status );
 		$format      = array( '%s' );
 
+		if ( array_key_exists( 'input_snapshot', $extra ) ) {
+			$update_data['input_snapshot'] = wp_json_encode( is_array( $extra['input_snapshot'] ) ? $extra['input_snapshot'] : array() );
+			$format[]                      = '%s';
+		}
+
 		if ( array_key_exists( 'output_snapshot', $extra ) ) {
 			$update_data['output_snapshot'] = wp_json_encode( is_array( $extra['output_snapshot'] ) ? $extra['output_snapshot'] : array() );
 			$format[]                       = '%s';
