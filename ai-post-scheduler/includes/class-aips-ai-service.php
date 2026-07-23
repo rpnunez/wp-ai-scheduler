@@ -64,6 +64,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     private $resilience_service;
 
     /**
+     * @var AIPS_Ability_Service|null Ability service adapter.
+     */
+    private $ability_service;
+
+    /**
      * Optional query option keys supported by AI Engine.
      */
     private const OPTIONAL_QUERY_OPTION_KEYS = array(
@@ -79,7 +84,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     /**
      * Initialize the AI Service.
      */
-    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null) {
+    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null, $ability_service = null) {
         if ($logger) {
             $this->logger = $logger;
         } else {
@@ -92,6 +97,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
+        $this->ability_service = $ability_service;
 
         $this->call_log = array();
     }
@@ -135,7 +141,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $ability_result = $this->generate_with_ability('text', $prompt, $options);
+
+            if (!is_wp_error($ability_result)) {
+                return $ability_result;
+            }
+
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'), array('ability_error' => $ability_result));
             $this->log_call('text', $prompt, $options, $error);
             $this->emit_integration_error_notification('text', $error, $options);
             return $error;
@@ -241,7 +253,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         // If AI Engine is not available, log and emit notification, then return error
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $ability_result = $this->generate_with_ability('json', $prompt, $options);
+
+            if (!is_wp_error($ability_result)) {
+                return $ability_result;
+            }
+
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'), array('ability_error' => $ability_result));
 
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
@@ -389,7 +407,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         $ai = $this->get_ai_engine();
 
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $ability_result = $this->generate_with_ability('json', $prompt, $options);
+
+            if (!is_wp_error($ability_result)) {
+                return $ability_result;
+            }
+
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'), array('ability_error' => $ability_result));
             $this->log_call('json', $prompt, $options, $error);
             $this->emit_integration_error_notification('json', $error, $options);
             return $error;
@@ -604,7 +628,13 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $ability_result = $this->generate_with_ability('image', $prompt, $options);
+
+            if (!is_wp_error($ability_result)) {
+                return $ability_result;
+            }
+
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'), array('ability_error' => $ability_result));
 
             $this->log_call('image', $prompt, $options, $error);
             $this->emit_integration_error_notification('image', $error, $options);
@@ -675,6 +705,126 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         return $result;
     }
     
+    /**
+     * Generate through the runtime ability provider when the direct AI Engine path is unavailable.
+     *
+     * @param string $type    Request type.
+     * @param string $prompt  Prompt.
+     * @param array  $options Options.
+     * @return string|array|WP_Error
+     */
+    private function generate_with_ability($type, $prompt, $options = array()) {
+        $ability = $this->get_ability_service();
+
+        if (!$ability) {
+            return new WP_Error('ability_provider_missing', __('No ability provider is available.', 'ai-post-scheduler'));
+        }
+
+        $slugs = $this->get_ability_slugs_for_type($type, $options);
+        $payload = array(
+            'prompt' => $prompt,
+            'options' => $options,
+            'type' => $type,
+        );
+
+        foreach ($slugs as $slug) {
+            $available = $ability->is_available($slug);
+
+            if (is_wp_error($available) || !$available) {
+                continue;
+            }
+
+            $response = $ability->invoke($slug, $payload, $options);
+
+            if (is_wp_error($response)) {
+                return $response;
+            }
+
+            return $this->extract_ability_content($type, $response);
+        }
+
+        return new WP_Error('ability_unavailable', sprintf(__('No ability is available for %s generation.', 'ai-post-scheduler'), $type));
+    }
+
+    /**
+     * Resolve ability service without requiring it in legacy constructor paths.
+     *
+     * @return AIPS_Ability_Service|null
+     */
+    private function get_ability_service() {
+        if ($this->ability_service instanceof AIPS_Ability_Service) {
+            return $this->ability_service;
+        }
+
+        $container = AIPS_Container::get_instance();
+
+        if ($container->has(AIPS_Ability_Service::class)) {
+            $this->ability_service = $container->make(AIPS_Ability_Service::class);
+            return $this->ability_service;
+        }
+
+        if (class_exists('AIPS_Ability_Service')) {
+            $this->ability_service = new AIPS_Ability_Service($this->logger);
+            return $this->ability_service;
+        }
+
+        return null;
+    }
+
+    /**
+     * Build candidate ability slugs for a generation type.
+     *
+     * @param string $type    Request type.
+     * @param array  $options Options.
+     * @return array
+     */
+    private function get_ability_slugs_for_type($type, $options) {
+        if (!empty($options['ability_slug'])) {
+            return array(sanitize_key($options['ability_slug']));
+        }
+
+        $map = array(
+            'text' => array('aips_generate_text', 'generate_text', 'text_generation'),
+            'json' => array('aips_generate_json', 'generate_json', 'json_generation'),
+            'image' => array('aips_generate_image', 'generate_image', 'image_generation'),
+        );
+
+        return isset($map[$type]) ? $map[$type] : array();
+    }
+
+    /**
+     * Extract caller-facing content from normalized ability response.
+     *
+     * @param string $type     Request type.
+     * @param array  $response Normalized response.
+     * @return string|array|WP_Error
+     */
+    private function extract_ability_content($type, $response) {
+        if ($type === 'json') {
+            if (isset($response['data']) && is_array($response['data'])) {
+                return $response['data'];
+            }
+
+            if (isset($response['content']) && is_array($response['content'])) {
+                return $response['content'];
+            }
+
+            return is_array($response) ? $response : new WP_Error('ability_response_malformed', __('Ability JSON response was malformed.', 'ai-post-scheduler'));
+        }
+
+        foreach (array('content', 'text', 'url', 'image_url') as $key) {
+            if (isset($response[$key]) && is_scalar($response[$key])) {
+                return (string) $response[$key];
+            }
+        }
+
+        if ($type === 'image' && isset($response[0]) && is_scalar($response[0])) {
+            return (string) $response[0];
+        }
+
+        return new WP_Error('ability_response_malformed', __('Ability response did not include generated content.', 'ai-post-scheduler'));
+    }
+
     /**
      * Calculate the appropriate maxTokens for an AI request.
      *

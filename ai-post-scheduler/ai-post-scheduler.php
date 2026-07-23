@@ -390,6 +390,10 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Logger::class);
         });
 
+        $container->singleton(AIPS_Ability_Service::class, function( $container ) {
+            return new AIPS_Ability_Service($container->make(AIPS_Logger_Interface::class));
+        });
+
         $container->singleton(AIPS_AI_Service::class, function( $container ) {
             return AIPS_AI_Service::instance();
         });
