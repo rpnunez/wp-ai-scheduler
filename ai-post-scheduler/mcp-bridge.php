@@ -423,8 +423,8 @@ class AIPS_MCP_Bridge {
 	}
 	
 	/**
-	 * Handle incoming JSON-RPC request
-	 * 
+	 * Handle incoming JSON-RPC request (HTTP POST)
+	 *
 	 * @return void
 	 */
 	public function handle_request() {
@@ -433,33 +433,76 @@ class AIPS_MCP_Bridge {
 			$this->send_error(-32001, 'Insufficient permissions. Admin access required.');
 			return;
 		}
-		
+
 		// Get request body
 		$input = file_get_contents('php://input');
 		$request = json_decode($input, true);
-		
+
 		if (json_last_error() !== JSON_ERROR_NONE) {
 			$this->send_error(-32700, 'Parse error: Invalid JSON');
 			return;
 		}
-		
+
 		// Validate JSON-RPC structure
 		if (!isset($request['method'])) {
 			$this->send_error(-32600, 'Invalid Request: missing method');
 			return;
 		}
-		
+
 		$method = $request['method'];
 		$params = isset($request['params']) ? $request['params'] : array();
 		$id = isset($request['id']) ? $request['id'] : null;
-		
+
 		// Execute tool
 		$result = $this->execute_tool($method, $params);
-		
+
 		if (is_wp_error($result)) {
 			$this->send_error(-32000, $result->get_error_message(), $id);
 		} else {
 			$this->send_success($result, $id);
+		}
+	}
+
+	/**
+	 * Handle stdio requests (CLI/MCP mode)
+	 * Reads JSON-RPC messages from stdin and writes responses to stdout
+	 *
+	 * @return void
+	 */
+	public function handle_stdio_request() {
+		// Bypass user capability check in CLI mode (trusted execution environment)
+		while (true) {
+			// Read one line from stdin
+			$line = fgets(STDIN);
+			if ($line === false || $line === '') {
+				break;
+			}
+
+			$request = json_decode(trim($line), true);
+
+			if (json_last_error() !== JSON_ERROR_NONE) {
+				$this->send_stdio_error(-32700, 'Parse error: Invalid JSON');
+				continue;
+			}
+
+			// Validate JSON-RPC structure
+			if (!isset($request['method'])) {
+				$this->send_stdio_error(-32600, 'Invalid Request: missing method');
+				continue;
+			}
+
+			$method = $request['method'];
+			$params = isset($request['params']) ? $request['params'] : array();
+			$id = isset($request['id']) ? $request['id'] : null;
+
+			// Execute tool with bypass_cap_check = true (CLI is trusted)
+			$result = $this->execute_tool($method, $params, true);
+
+			if (is_wp_error($result)) {
+				$this->send_stdio_error(-32000, $result->get_error_message(), $id);
+			} else {
+				$this->send_stdio_success($result, $id);
+			}
 		}
 	}
 	
@@ -542,7 +585,7 @@ class AIPS_MCP_Bridge {
 	
 	/**
 	 * Send JSON-RPC error response
-	 * 
+	 *
 	 * @param int $code Error code
 	 * @param string $message Error message
 	 * @param mixed $id Request ID
@@ -559,6 +602,38 @@ class AIPS_MCP_Bridge {
 			'id' => $id
 		));
 		exit;
+	}
+
+	/**
+	 * Send JSON-RPC success response via stdio
+	 *
+	 * @param mixed $result Result data
+	 * @param mixed $id Request ID
+	 */
+	private function send_stdio_success($result, $id = null) {
+		fwrite(STDOUT, json_encode(array(
+			'jsonrpc' => '2.0',
+			'result' => $result,
+			'id' => $id
+		)) . "\n");
+	}
+
+	/**
+	 * Send JSON-RPC error response via stdio
+	 *
+	 * @param int $code Error code
+	 * @param string $message Error message
+	 * @param mixed $id Request ID
+	 */
+	private function send_stdio_error($code, $message, $id = null) {
+		fwrite(STDOUT, json_encode(array(
+			'jsonrpc' => '2.0',
+			'error' => array(
+				'code' => $code,
+				'message' => $message
+			),
+			'id' => $id
+		)) . "\n");
 	}
 	
 	// ===== Tool Handlers =====
@@ -1117,11 +1192,12 @@ class AIPS_MCP_Bridge {
 		if ($include_logs && isset($history->log)) {
 			$formatted_logs = array();
 			foreach ($history->log as $log) {
+				$log_details = json_decode($log->details, true);
 				$formatted_logs[] = array(
 					'id' => $log->id,
-					'log_type' => $log->log_type,
+					'log_type' => is_array($log_details) && isset($log_details['log_subtype']) ? (string) $log_details['log_subtype'] : '',
 					'history_type_id' => isset($log->history_type_id) ? $log->history_type_id : null,
-					'details' => json_decode($log->details, true),
+					'details' => $log_details,
 					'timestamp' => $log->timestamp
 				);
 			}
@@ -1707,8 +1783,16 @@ class AIPS_MCP_Bridge {
 	}
 }
 
-// If called directly via HTTP
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle both HTTP and CLI (stdio) execution
+$is_cli = php_sapi_name() === 'cli' || php_sapi_name() === 'cli-server';
+$is_http_post = isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST';
+
+if ($is_http_post) {
+	// HTTP POST: standard JSON-RPC request/response
 	$bridge = new AIPS_MCP_Bridge();
 	$bridge->handle_request();
+} elseif ($is_cli) {
+	// CLI/stdio: MCP server mode for stdio transport
+	$bridge = new AIPS_MCP_Bridge();
+	$bridge->handle_stdio_request();
 }
