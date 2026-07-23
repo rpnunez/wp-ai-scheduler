@@ -54,6 +54,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
+	private const PAGE_STRESS_TEST    = 'aips-stress-test';
 
     /**
      * Initialize the class.
@@ -176,6 +177,59 @@ class AIPS_Admin_Assets {
 			$this->enqueue_cache_monitor_assets();
 		}
 
+		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
+			$this->enqueue_stress_test_assets();
+		}
+
+	}
+
+	/**
+	 * Enqueue assets for the Stress Test page.
+	 *
+	 * @return void
+	 */
+	private function enqueue_stress_test_assets() {
+		wp_enqueue_style(
+			'aips-stress-test-style',
+			AIPS_PLUGIN_URL . 'assets/css/stress-test.css',
+			array('aips-admin-style'),
+			AIPS_VERSION
+		);
+
+		wp_enqueue_script(
+			'aips-admin-stress-test',
+			AIPS_PLUGIN_URL . 'assets/js/admin-stress-test.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-stress-test', 'aipsStressTest', array(
+			'nonce' => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'i18n'  => array(
+				'running'               => __('Running…', 'ai-post-scheduler'),
+				'notRun'                => __('Not run', 'ai-post-scheduler'),
+				'notRunYet'             => __('Run this case to see the request and response.', 'ai-post-scheduler'),
+				'requestFailed'         => __('Request failed. Check the browser console and the plugin log.', 'ai-post-scheduler'),
+				'timedOut'              => __('The request timed out before the provider responded.', 'ai-post-scheduler'),
+				'aiValue'               => __('AI response value', 'ai-post-scheduler'),
+				'aiValueHint'           => __('Exactly what the provider returned.', 'ai-post-scheduler'),
+				'pluginValue'           => __('Plugin final value', 'ai-post-scheduler'),
+				'pluginValueHint'       => __('After the plugin parsed and normalized it.', 'ai-post-scheduler'),
+				'noValue'               => __('No value returned.', 'ai-post-scheduler'),
+				'aiCalls'               => __('AI calls', 'ai-post-scheduler'),
+				'noCalls'               => __('No AI calls were recorded for this case.', 'ai-post-scheduler'),
+				'request'               => __('Request', 'ai-post-scheduler'),
+				'response'              => __('Response', 'ai-post-scheduler'),
+				'allPassed'             => __('All tests passed', 'ai-post-scheduler'),
+				'someFailed'            => __('Some tests failed', 'ai-post-scheduler'),
+				'passedIn'              => __('passed in', 'ai-post-scheduler'),
+				'cancel'                => __('Cancel', 'ai-post-scheduler'),
+				'confirmCleanup'        => __('This permanently deletes every post and image created by the Stress Test page. Continue?', 'ai-post-scheduler'),
+				'confirmCleanupHeading' => __('Delete test data', 'ai-post-scheduler'),
+				'confirmCleanupAction'  => __('Yes, delete', 'ai-post-scheduler'),
+			),
+		));
 	}
 
 	/**

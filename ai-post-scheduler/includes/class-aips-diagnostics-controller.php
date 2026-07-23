@@ -63,6 +63,10 @@ class AIPS_Diagnostics_Controller {
 			);
 		}
 
+		$tabs['stress-test'] = array(
+			'label' => __('Stress Test', 'ai-post-scheduler'),
+		);
+
 		$tabs['insights'] = array(
 			'label' => __('Insights', 'ai-post-scheduler'),
 		);
@@ -157,6 +161,9 @@ class AIPS_Diagnostics_Controller {
 			case 'cache-monitor':
 				$this->render_cache_monitor_tab();
 				break;
+			case 'stress-test':
+				$this->render_stress_test_tab();
+				break;
 			case 'telemetry':
 				$this->render_telemetry_tab();
 				break;
@@ -217,6 +224,16 @@ class AIPS_Diagnostics_Controller {
 	 */
 	private function render_cache_monitor_tab() {
 		$controller = new AIPS_Cache_Monitor_Controller();
+		$controller->render_page(true);
+	}
+
+	/**
+	 * Render the Stress Test tab.
+	 *
+	 * @return void
+	 */
+	private function render_stress_test_tab() {
+		$controller = new AIPS_Stress_Test_Controller();
 		$controller->render_page(true);
 	}
 
