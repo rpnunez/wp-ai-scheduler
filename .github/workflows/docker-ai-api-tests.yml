@@ -1,0 +1,58 @@
+name: Docker AI/API Focused Tests
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-ai-api-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-ai-api-tests:
+    name: AI/API PHPUnit via Docker Compose (MariaDB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, xml, curl, zip, dom, fileinfo
+          tools: composer:v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion mariadb-client
+
+      - name: Install Composer dependencies
+        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Start the Docker DB service (MariaDB)
+        run: docker compose up -d db
+
+      - name: Wait for the DB container to report healthy
+        run: |
+          for _ in $(seq 1 60); do
+            STATUS="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' wp-ai-scheduler-db 2>/dev/null || true)"
+            if [ "$STATUS" = "healthy" ]; then
+              echo "DB is healthy."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::DB container never became healthy."
+          docker compose logs db
+          exit 1
+
+      - name: Run AI/API-focused WordPress PHPUnit tests (Docker-backed)
+        run: bash scripts/run-wp-tests-docker.sh ai-api
+
+      - name: Tear down Docker services
+        if: always()
+        run: docker compose down
