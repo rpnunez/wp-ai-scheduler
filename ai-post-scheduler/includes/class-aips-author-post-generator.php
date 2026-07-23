@@ -631,7 +631,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		// Store elapsed time in post meta for future progress-bar estimation.
 		if (!is_wp_error($result) && $result > 0) {
 			$elapsed = round(microtime(true) - $start_time, 2);
-			update_post_meta($result, '_aips_post_generation_total_time', $elapsed);
+			update_post_meta($result, AIPS_Post_Manager::META_POST_GENERATION_TOTAL_TIME, $elapsed);
 		}
 		
 		return $result;
@@ -650,7 +650,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		// Preserve the original post status before setting it to draft
 		$original_post = get_post($post_id);
 		if ($original_post && isset($original_post->post_status)) {
-			update_post_meta($post_id, '_aips_original_post_status', $original_post->post_status);
+			update_post_meta($post_id, AIPS_Post_Manager::META_ORIGINAL_POST_STATUS, $original_post->post_status);
 		}
 
 		// Set the old post to draft

@@ -1578,10 +1578,10 @@ class AIPS_MCP_Bridge {
 		}
 		
 		// Get AI-specific metadata from post meta
-		$ai_model = get_post_meta($post_id, '_aips_ai_model', true);
-		$ai_prompt = get_post_meta($post_id, '_aips_prompt', true);
-		$generation_time = get_post_meta($post_id, '_aips_generation_time', true);
-		$tokens_used = get_post_meta($post_id, '_aips_tokens_used', true);
+		$ai_model = get_post_meta($post_id, AIPS_Post_Manager::META_AI_MODEL, true);
+		$ai_prompt = get_post_meta($post_id, AIPS_Post_Manager::META_PROMPT, true);
+		$generation_time = get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_TIME, true);
+		$tokens_used = get_post_meta($post_id, AIPS_Post_Manager::META_TOKENS_USED, true);
 		
 		// Build response
 		$metadata = array(
