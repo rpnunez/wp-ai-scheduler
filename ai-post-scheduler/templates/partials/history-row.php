@@ -16,35 +16,26 @@ if (!defined('ABSPATH')) {
         <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" class="aips-history-cb" name="history[]" value="<?php echo esc_attr($item->id); ?>">
     </th>
     <td class="column-title">
+        <?php $display_title = AIPS_History::get_display_title( $item ); ?>
         <?php if ($item->post_id): ?>
         <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
-            <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+            <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
         </a>
         <?php else: ?>
-        <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+        <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
+        <?php endif; ?>
+        <?php if (!empty($item->template_name)): ?>
+        <span class="aips-history-subtitle"><?php echo esc_html($item->template_name); ?></span>
+        <?php elseif (!empty($item->template_id)): ?>
+        <span class="aips-history-subtitle"><?php echo esc_html(sprintf(__('Template #%d (deleted)', 'ai-post-scheduler'), $item->template_id)); ?></span>
+        <?php endif; ?>
+        <?php if (!empty($item->creation_method)): ?>
+        <span class="aips-badge aips-badge-neutral aips-creation-method-badge">
+            <?php echo esc_html(AIPS_History::get_creation_method_label($item->creation_method)); ?>
+        </span>
         <?php endif; ?>
         <?php if ($item->status === 'failed' && $item->error_message): ?>
         <div class="aips-error-message" style="font-size: 12px; color: #dc3232; margin-top: 4px;"><?php echo esc_html($item->error_message); ?></div>
-        <?php endif; ?>
-    </td>
-    <td class="column-template">
-        <span class="aips-meta-text">
-          <?php
-          if (!empty($item->template_name)) {
-              echo esc_html($item->template_name);
-          } elseif (!empty($item->template_id)) {
-              echo esc_html(sprintf(__('Template #%d (deleted)', 'ai-post-scheduler'), $item->template_id));
-          } elseif (!empty($item->topic_id)) {
-              echo esc_html__('From Topic', 'ai-post-scheduler');
-          } else {
-              echo '-';
-          }
-          ?>
-        </span>
-        <?php if (!empty($item->creation_method)): ?>
-        <span class="aips-badge aips-badge-neutral aips-creation-method-badge" style="font-size:10px;margin-left:4px;">
-            <?php echo esc_html(ucfirst(str_replace('_', ' ', $item->creation_method))); ?>
-        </span>
         <?php endif; ?>
     </td>
     <td class="column-status">
@@ -77,34 +68,52 @@ if (!defined('ABSPATH')) {
         <span class="aips-meta-text"><?php echo esc_html($item->formatted_date); ?></span>
     </td>
     <td class="column-actions">
-        <div class="aips-btn-group aips-btn-group-inline">
-            <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
-                <span class="dashicons dashicons-list-view"></span>
-                <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
-            </button>
-
-            <?php if (!empty($item->template_id) || !empty($item->topic_id)): ?>
-                <button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" data-history-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-                    <span class="dashicons dashicons-visibility"></span>
+        <div class="cell-actions">
+            <div class="aips-row-action-group">
+                <button type="button"
+                        class="aips-btn aips-btn-sm aips-btn-secondary aips-view-history-logs"
+                        data-id="<?php echo esc_attr($item->id); ?>">
+                    <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
+                </button>
+                <button type="button"
+                        class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="aips-history-row-actions-<?php echo esc_attr($item->id); ?>">
+                    <span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
+                </button>
+            </div>
+            <div id="aips-history-row-actions-<?php echo esc_attr($item->id); ?>"
+                 class="aips-row-action-menu"
+                 hidden>
+                <?php if (!empty($item->template_id) || !empty($item->topic_id)): ?>
+                <button type="button"
+                        class="aips-row-action-item aips-view-session"
+                        data-history-id="<?php echo esc_attr($item->id); ?>">
                     <?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
                 </button>
-            <?php endif; ?>
-
-            <?php if ($item->post_id): ?>
-                <a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url(get_permalink($item->post_id)); ?>" target="_blank" rel="noopener noreferrer" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
-                    <span class="dashicons dashicons-external"></span>
-                    <?php esc_html_e('View', 'ai-post-scheduler'); ?>
+                <?php endif; ?>
+                <?php if ($item->post_id): ?>
+                <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>"
+                   class="aips-row-action-item"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <?php esc_html_e('View Post', 'ai-post-scheduler'); ?>
                 </a>
-            <?php endif; ?>
-
-            <?php if ($item->status === 'failed' && $item->template_id): ?>
-                <button class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
-                    <span class="dashicons dashicons-update"></span>
+                <?php endif; ?>
+                <?php if ($item->status === 'failed' && $item->template_id): ?>
+                <button type="button"
+                        class="aips-row-action-item aips-retry-generation"
+                        data-id="<?php echo esc_attr($item->id); ?>">
                     <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
                 </button>
-            <?php endif; ?>
-
+                <?php endif; ?>
+                <button type="button"
+                        class="aips-row-action-item aips-delete-history"
+                        data-id="<?php echo esc_attr($item->id); ?>">
+                    <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
         </div>
     </td>
 </tr>
-

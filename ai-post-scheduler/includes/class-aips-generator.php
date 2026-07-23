@@ -23,19 +23,9 @@ class AIPS_Generator {
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository_Interface History repository for logger
-     */
-    private $history_repository;
-
-    /**
      * @var AIPS_History_Container|null Current history container
      */
     private $current_history;
-
-    /**
-     * @var AIPS_Generation_Logger Handles logging logic.
-     */
-    private $generation_logger;
 
     private $template_processor;
     private $image_service;
@@ -87,7 +77,6 @@ class AIPS_Generator {
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
         $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
@@ -102,8 +91,6 @@ class AIPS_Generator {
             $this->markdown_parser = null;
         }
 
-        // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
     }
 
     /**
@@ -279,24 +266,25 @@ class AIPS_Generator {
         $result = $this->generate_content($resolve_prompt, $options, $log_type);
 
         if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            $message = 'Failed to resolve AI variables: ' . $result->get_error_message();
+            $this->logger->log($message, 'warning');
+            if ($this->current_history) {
+                $this->current_history->record('warning', $message, null, null, array('component' => $log_type));
+            }
             return array();
         }
 
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
 
         if (empty($resolved_values)) {
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
-                'variables' => $ai_variables,
-                'raw_response' => $result,
-                'component' => $log_type,
-            ));
+            $message = 'AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.';
+            $context = array('variables' => $ai_variables, 'component' => $log_type);
+            $this->logger->log($message, 'warning', $context);
+            if ($this->current_history) {
+                $this->current_history->record('warning', $message, array('variables' => $ai_variables, 'raw_response' => $result, 'component' => $log_type));
+            }
         } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
-                'variables' => $ai_variables,
-                'resolved'   => $resolved_values,
-                'component' => $log_type,
-            ));
+            $this->logger->log('Resolved AI variables', 'info', array('variables' => $ai_variables, 'resolved' => $resolved_values, 'component' => $log_type));
         }
 
         return $resolved_values;
@@ -791,13 +779,11 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generation failed before post creation', 'error', array(
+            $this->logger->log('Post generation failed before post creation', 'error', array(
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
                 'component_statuses' => $component_statuses,
             ));
-
-            $this->generation_logger->set_history_id(null);
 
             return $error;
         }
@@ -827,14 +813,15 @@ class AIPS_Generator {
                 $has_unresolved_placeholders = true;
 
                 // Log a warning for observability when AI variables were not resolved correctly.
-                $this->generation_logger->warning(
-                    'Generated title contains unresolved AI variables; falling back to safe default title.',
-                    array(
-                        'context_type' => $context->get_type(),
-                        'context_id' => $context->get_id(),
-                        'topic'       => $context->get_topic(),
-                    )
+                $warn_ctx = array(
+                    'context_type' => $context->get_type(),
+                    'context_id'   => $context->get_id(),
+                    'topic'        => $context->get_topic(),
                 );
+                $this->logger->log( 'Generated title contains unresolved AI variables; falling back to safe default title.', 'warning', $warn_ctx );
+                if ($this->current_history) {
+                    $this->current_history->record( 'warning', 'Generated title contains unresolved AI variables; falling back to safe default title.', null, null, $warn_ctx );
+                }
             }
         }
 
@@ -862,8 +849,22 @@ class AIPS_Generator {
         // Set Post Excerpt component status based on whether excerpt generation was successful
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
-        // Determine whether this Post has "Partial Generations" or not
-        $generation_incomplete = in_array(false, $component_statuses, true);
+        // Determine whether this Post has "Partial Generations" based on
+        // components known before post creation (title/content/excerpt; the
+        // featured_image entry is already true here when no image was requested).
+        $pre_image_incomplete = in_array(false, $component_statuses, true);
+        $generation_incomplete = $pre_image_incomplete;
+
+        // Resolve the status the context/template would normally apply.
+        $intended_post_status = $context->get_post_status();
+
+        // Only use the configured/intended Post Status (e.g. "publish") when
+        // every component known so far succeeded. If title/excerpt failed
+        // and fell back, force the post to be saved as a draft regardless of
+        // the template's configured status. Featured image failure (if
+        // requested) is resolved after post creation below and can only
+        // ever downgrade further, never upgrade back to the intended status.
+        $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
 
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
@@ -871,6 +872,7 @@ class AIPS_Generator {
             'content' => $content,
             'excerpt' => $excerpt,
             'context' => $context,
+            'post_status' => $initial_post_status,
             // Provide SEO context for downstream plugins.
             'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
             'meta_description' => $excerpt,
@@ -916,6 +918,21 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
+        // If the featured image failed after post creation and the post was
+        // not already forced to draft pre-creation, downgrade it now. This
+        // never upgrades a post back to the intended status.
+        if ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
+            $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
+
+            if (is_wp_error($downgrade_result)) {
+                $this->generation_logger->log(
+                    'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
+                    'error',
+                    array('post_id' => $post_id)
+                );
+            }
+        }
+
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
         }
@@ -944,10 +961,13 @@ class AIPS_Generator {
             'metric_generation_result',
             'Generation metric snapshot',
             array(
-                'outcome'          => $generation_incomplete ? 'partial' : 'completed',
-                'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                'image_attempted'  => $image_was_attempted,
-                'image_success'    => $image_was_attempted ? (bool) $featured_image_success : null,
+                'outcome'            => $generation_incomplete ? 'partial' : 'completed',
+                'duration_seconds'   => (int) round( microtime(true) - $generation_start ),
+                'image_attempted'    => $image_was_attempted,
+                'image_success'      => $image_was_attempted ? (bool) $featured_image_success : null,
+                'word_count'         => str_word_count( wp_strip_all_tags( (string) $content ) ),
+                'char_count'         => mb_strlen( (string) $content ),
+                'component_statuses' => $component_statuses,
             )
         );
 
@@ -966,7 +986,7 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generated with missing components', 'warning', array(
+            $this->logger->log('Post generated with missing components', 'warning', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
@@ -986,7 +1006,7 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generated successfully', 'info', array(
+            $this->logger->log('Post generated successfully', 'info', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
@@ -1002,8 +1022,6 @@ class AIPS_Generator {
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
-
-        $this->generation_logger->set_history_id(null);
 
         return $post_id;
     }
@@ -1139,7 +1157,7 @@ class AIPS_Generator {
 
         if (is_wp_error($featured_image_result)) {
             $component_success = false;
-            $this->generation_logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
+            $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
             // Log featured image generation error
             if ($this->current_history) {

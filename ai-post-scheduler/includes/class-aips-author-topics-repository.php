@@ -78,22 +78,28 @@ class AIPS_Author_Topics_Repository {
 	/**
 	 * Get a single topic by ID.
 	 *
-	 * @param int $id Topic ID.
+	 * @param int      $id        Topic ID.
+	 * @param int|null $author_id Optional. When the caller already knows the owning author ID,
+	 *                            supply it here so the per-author cache tag is included in the
+	 *                            key, enabling targeted invalidation without a global flush.
 	 * @return object|null Topic object or null if not found.
 	 */
-	public function get_by_id($id) {
+	public function get_by_id($id, $author_id = null) {
+		$id        = absint( $id );
+		$author_id = ($author_id !== null && absint( $author_id ) > 0) ? absint( $author_id ) : null;
+		$args      = array( 'topic_id' => $id );
+		if ($author_id !== null) {
+			$args['author_id'] = $author_id;
+		}
+
 		return $this->cache_read(
 			'author_topics.get_by_id',
-			array(
-				'topic_id' => absint( $id ),
-			),
+			$args,
 			function() use ( $id ) {
-				$topic = $this->wpdb->get_row($this->wpdb->prepare(
+				return $this->wpdb->get_row($this->wpdb->prepare(
 					"SELECT * FROM {$this->table_name} WHERE id = %d",
 					$id
 				));
-
-				return $topic;
 			}
 		);
 	}
@@ -250,7 +256,8 @@ class AIPS_Author_Topics_Repository {
 			array('%d')
 		);
 		if ( false !== $result ) {
-			$this->invalidate_author_topic_cache_by_id( $id, 'author_topic_updated' );
+			$author_id_hint = isset( $data['author_id'] ) && absint( $data['author_id'] ) > 0 ? absint( $data['author_id'] ) : null;
+			$this->invalidate_author_topic_cache_by_id( $id, 'author_topic_updated', $author_id_hint );
 		}
 
 		return $result;
@@ -702,20 +709,33 @@ class AIPS_Author_Topics_Repository {
 	/**
 	 * Invalidate author-topic caches using topic context when available.
 	 *
-	 * @param int    $topic_id Topic ID.
-	 * @param string $reason Invalidation reason.
+	 * @param int      $topic_id  Topic ID.
+	 * @param string   $reason    Invalidation reason.
+	 * @param int|null $author_id Optional known author ID; avoids a DB lookup when supplied.
 	 * @return void
 	 */
-	private function invalidate_author_topic_cache_by_id( $topic_id, $reason ) {
+	private function invalidate_author_topic_cache_by_id( $topic_id, $reason, $author_id = null ) {
+		if ($author_id !== null && absint( $author_id ) > 0) {
+			$context = array(
+				'topic_id'  => absint( $topic_id ),
+				'author_id' => absint( $author_id ),
+			);
+		} else {
+			$context = $this->author_topic_context_by_id( $topic_id );
+		}
+
 		$this->invalidate_cache_domain(
 			'author_topic',
-			$this->author_topic_context_by_id( $topic_id ),
+			$context,
 			(string) $reason
 		);
 	}
 
 	/**
 	 * Resolve minimal author-topic invalidation context by topic ID.
+	 *
+	 * Issues one DB query to retrieve author_id. Only called when author_id is
+	 * not available from caller context.
 	 *
 	 * @param int $topic_id Topic ID.
 	 * @return array
