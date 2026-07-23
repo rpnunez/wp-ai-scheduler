@@ -67,6 +67,10 @@ Current tables managed by the plugin:
 - `aips_article_structures` - Article structure definitions
 - `aips_prompt_sections` - Reusable prompt sections
 - `aips_trending_topics` - Trending topic research
+- `aips_ability_workflows` - Ability Workflow definitions
+- `aips_ability_workflow_steps` - Ability Workflow step definitions
+- `aips_ability_workflow_runs` - Ability Workflow execution runs
+- `aips_ability_workflow_step_runs` - Per-step results for an Ability Workflow run
 
 ## Troubleshooting
 
