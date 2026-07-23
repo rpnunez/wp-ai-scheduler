@@ -8,6 +8,7 @@ class AIPS_System_Status {
 
     public function render_page($embedded = false) {
         $system_info = $this->get_system_info();
+        $refresh_task_groups = $this->get_refresh_task_groups();
         if ( isset( $system_info['database'] ) ) {
             $system_info['database'] = $this->condense_database_checks( $system_info['database'] );
         }
@@ -55,8 +56,22 @@ class AIPS_System_Status {
      * @return array
      */
     public function get_system_info() {
-        $diagnostics = new AIPS_System_Diagnostics_Service();
+        $diagnostics = new AIPS_System_Status_Diagnostics_Service();
         return $diagnostics->get_system_info();
+    }
+
+    /**
+     * Get the grouped Refresh System task metadata for the template.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function get_refresh_task_groups() {
+        $container = AIPS_Container::get_instance();
+        $service   = $container->has(AIPS_System_Diagnostics_Service::class)
+        	? $container->make(AIPS_System_Diagnostics_Service::class)
+        	: new AIPS_System_Diagnostics_Service();
+
+        return $service->get_refresh_task_groups();
     }
 
     /**

@@ -4572,6 +4572,37 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
     color: var(--aips-gray-600);
 }
 
+.aips-refresh-task-selector {
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    background: var(--aips-white);
+    border: 1px solid var(--aips-gray-200);
+    border-radius: var(--aips-radius-md);
+}
+
+.aips-refresh-task-selector-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.aips-refresh-task-selector-header .aips-status-op-group-label {
+    flex: 0 0 auto;
+}
+
+.aips-refresh-task-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+}
+
+.aips-refresh-task-list .aips-checkbox-label {
+    min-width: 220px;
+}
+
 .aips-refresh-system-row {
     display: flex;
     align-items: center;

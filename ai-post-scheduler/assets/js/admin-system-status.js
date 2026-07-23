@@ -21,6 +21,7 @@
  *   - resetFailed                     {string} Generic failure text
  *   - requestFailed                   {string} Network/AJAX failure text
  *   - refreshRunning / refreshDone / refreshPartial {string} Refresh System status text
+ *   - selectTasksRequired             {string} No-task-selected validation text
  *
  * @package AI_Post_Scheduler
  */
@@ -59,6 +60,7 @@
 			$(document).on('click', '.aips-reset-circuit-breaker', this.resetCircuitBreaker.bind(this));
 			$(document).on('click', '.aips-status-op', this.runStatusOperation.bind(this));
 			$(document).on('click', '.aips-rebuild-cache-btn', this.rebuildCaches.bind(this));
+			$(document).on('click', '.aips-toggle-refresh-tasks', this.toggleRefreshTasks.bind(this));
 			$(document).on('click', '.aips-refresh-system', this.refreshSystem.bind(this));
 		},
 
@@ -198,7 +200,33 @@
 		},
 
 		/**
-		 * Run every safe maintenance operation in one request and render the
+		 * Toggle the full Refresh System task selection set.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		toggleRefreshTasks: function(e) {
+			e.preventDefault();
+
+			var $tasks = $('.aips-refresh-task');
+			var allChecked = $tasks.length > 0 && $tasks.filter(':checked').length === $tasks.length;
+
+			$tasks.prop('checked', !allChecked);
+		},
+
+		/**
+		 * Collect the currently selected Refresh System task IDs.
+		 *
+		 * @return {Array}
+		 */
+		getSelectedRefreshTasks: function() {
+			return $('.aips-refresh-task:checked').map(function() {
+				return $(this).val();
+			}).get();
+		},
+
+		/**
+		 * Run the selected safe maintenance operations in one request and render the
 		 * per-step results returned by the server.
 		 *
 		 * @param {Event} e Click event.
@@ -211,12 +239,25 @@
 			var $btn = $(e.currentTarget);
 			var $spinner = $btn.siblings('.spinner');
 			var $results = $('.aips-refresh-system-results');
+			var selectedTasks = this.getSelectedRefreshTasks();
+
+			if (!selectedTasks.length) {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(l10n.selectTasksRequired || 'Select at least one maintenance task to run.', 'warning');
+				}
+				$results.hide().empty();
+				return;
+			}
 
 			$btn.prop('disabled', true);
 			$spinner.addClass('is-active');
 			$results.hide().empty();
 
-			$.post(ajaxurl, { action: 'aips_status_refresh_system', nonce: l10n.nonceRefreshSystem || '' }, function(response) {
+			if (AIPS.Utilities && AIPS.Utilities.showToast) {
+				AIPS.Utilities.showToast(l10n.refreshRunning || 'Refreshing system…', 'info');
+			}
+
+			$.post(ajaxurl, { action: 'aips_status_refresh_system', nonce: l10n.nonceRefreshSystem || '', tasks: selectedTasks }, function(response) {
 				if (response && response.success && response.data) {
 					var data = response.data;
 					var failed = data.failed || 0;
@@ -253,19 +294,25 @@
 		 * @return {void}
 		 */
 		renderRefreshResults: function($results, steps) {
-			$results.empty();
+			var normalizedSteps = Array.isArray(steps) ? steps : [];
 
-			steps.forEach(function(step) {
-				var $row = $('<div>').addClass('aips-refresh-step' + (step.success ? ' aips-refresh-step-ok' : ' aips-refresh-step-failed'));
-				$row.append($('<span>').addClass('dashicons ' + (step.success ? 'dashicons-yes-alt' : 'dashicons-dismiss')));
-				$row.append($('<strong>').text(step.label || step.step || ''));
-				$row.append($('<span>').addClass('aips-refresh-step-message').text(step.message || ''));
+			$results.empty().hide();
+
+			if (!normalizedSteps.length) {
+				return;
+			}
+
+			normalizedSteps.forEach(function(step) {
+				var refreshStep = step || {};
+				var success = !!refreshStep.success;
+				var $row = $('<div>').addClass('aips-refresh-step' + (success ? ' aips-refresh-step-ok' : ' aips-refresh-step-failed'));
+				$row.append($('<span>').addClass('dashicons ' + (success ? 'dashicons-yes-alt' : 'dashicons-dismiss')));
+				$row.append($('<strong>').text(refreshStep.label || refreshStep.step || ''));
+				$row.append($('<span>').addClass('aips-refresh-step-message').text(refreshStep.message || ''));
 				$results.append($row);
 			});
 
-			if (steps.length) {
-				$results.show();
-			}
+			$results.show();
 		},
 
 	};

@@ -1519,6 +1519,7 @@ class AIPS_Admin_Assets {
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),
                 'refreshDone'                           => __('System refresh complete.', 'ai-post-scheduler'),
                 'refreshPartial'                        => __('System refresh finished with some failures.', 'ai-post-scheduler'),
+                'selectTasksRequired'                   => __('Select at least one maintenance task to run.', 'ai-post-scheduler'),
                 'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
                 'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
                 'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),

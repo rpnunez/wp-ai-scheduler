@@ -32,6 +32,28 @@ if (!defined('ABSPATH')) {
                     <p><?php esc_html_e('One-click recovery and cleanup operations. Refresh System runs every safe maintenance operation in a single request.', 'ai-post-scheduler'); ?></p>
                 </div>
 
+                <?php if (!empty($refresh_task_groups)) : ?>
+                <div class="aips-refresh-task-selector">
+                    <div class="aips-refresh-task-selector-header">
+                        <span class="aips-status-op-group-label"><?php esc_html_e('Refresh tasks', 'ai-post-scheduler'); ?></span>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-toggle-refresh-tasks"><?php esc_html_e('Toggle All', 'ai-post-scheduler'); ?></button>
+                    </div>
+                    <?php foreach ($refresh_task_groups as $task_group) : ?>
+                        <div class="aips-status-op-group">
+                            <span class="aips-status-op-group-label"><?php echo esc_html($task_group['label']); ?></span>
+                            <div class="aips-checkbox-group aips-refresh-task-list">
+                                <?php foreach ($task_group['tasks'] as $task) : ?>
+                                    <label class="aips-checkbox-label">
+                                        <input type="checkbox" class="aips-refresh-task" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" checked>
+                                        <span><?php echo esc_html($task['label']); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+
                 <div class="aips-refresh-system-row">
                     <button type="button" class="aips-btn aips-btn-primary aips-refresh-system">
                         <span class="dashicons dashicons-update"></span>

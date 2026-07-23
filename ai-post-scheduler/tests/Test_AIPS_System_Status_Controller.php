@@ -40,13 +40,13 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 		$history_repository->expects($this->once())
 			->method('repair_missing_campaign_ids');
 
-		$refresh_service = new AIPS_System_Refresh_Service($history_repository);
+		$diagnostics_service = new AIPS_System_Diagnostics_Service($history_repository);
 
 		$controller = new AIPS_System_Status_Controller();
 		$reflection = new ReflectionClass($controller);
-		$property = $reflection->getProperty('refresh_service');
+		$property = $reflection->getProperty('diagnostics_service');
 		$property->setAccessible(true);
-		$property->setValue($controller, $refresh_service);
+		$property->setValue($controller, $diagnostics_service);
 
 		$_POST = array(
 			'nonce' => wp_create_nonce('aips_status_repair_campaign_data'),
@@ -89,6 +89,55 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 
 		$this->assertFalse($response['success']);
 		$this->assertStringContainsString('Invalid nonce.', $response['data']['message']);
+	}
+
+	public function test_ajax_refresh_system_rejects_empty_task_selection() {
+		$controller = new AIPS_System_Status_Controller();
+
+		$_POST = array(
+			'nonce' => wp_create_nonce('aips_status_refresh_system'),
+			'tasks' => array(),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_refresh_system'));
+
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Select at least one maintenance task', $response['data']['message']);
+	}
+
+	public function test_ajax_refresh_system_passes_selected_tasks_to_service() {
+		$diagnostics_service = $this->getMockBuilder('AIPS_System_Diagnostics_Service')
+			->disableOriginalConstructor()
+			->onlyMethods(array('refresh_system'))
+			->getMock();
+		$diagnostics_service->expects($this->once())
+			->method('refresh_system')
+			->with(array('cache_maintenance', 'repair_datetime'))
+			->willReturn(array(
+				'success'   => true,
+				'steps'     => array(),
+				'succeeded' => 2,
+				'failed'    => 0,
+				'message'   => 'ok',
+			));
+
+		$controller = new AIPS_System_Status_Controller();
+		$reflection = new ReflectionClass($controller);
+		$property = $reflection->getProperty('diagnostics_service');
+		$property->setAccessible(true);
+		$property->setValue($controller, $diagnostics_service);
+
+		$_POST = array(
+			'nonce' => wp_create_nonce('aips_status_refresh_system'),
+			'tasks' => array('cache_maintenance', 'repair_datetime'),
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax(array($controller, 'ajax_refresh_system'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('ok', $response['data']['message']);
 	}
 
 	private function capture_ajax(callable $callable) {
