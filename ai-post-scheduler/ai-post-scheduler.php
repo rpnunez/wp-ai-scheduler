@@ -423,6 +423,11 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Ability_Workflow_Repository::class, function( $container ) {
             return AIPS_Ability_Workflow_Repository::instance();
         });
+
+        // Register AIPS_Ability_Catalog_Service
+        $container->singleton(AIPS_Ability_Catalog_Service::class, function( $container ) {
+            return new AIPS_Ability_Catalog_Service($container->make(AIPS_Ability_Service::class));
+        });
     }
 
     /**
