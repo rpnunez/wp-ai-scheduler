@@ -151,6 +151,14 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_token_budget'),
 				'default'           => $defaults['aips_max_tokens_content'],
 			),
+			'aips_conversational_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_generation'],
+			),
+			'aips_conversational_metadata_turn' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_metadata_turn'],
+			),
 			'aips_unsplash_access_key' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_unsplash_access_key'],
@@ -308,6 +316,22 @@ class AIPS_Settings {
             'aips_max_tokens_content',
             __('Max Tokens for Post Content', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_content_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_generation',
+            __('Conversational Generation', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_generation_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_metadata_turn',
+            __('Combined Metadata Turn', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_metadata_turn_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );

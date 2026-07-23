@@ -61,6 +61,34 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	}
 
 	/**
+	 * Build an excerpt prompt for a conversation that already contains the article.
+	 *
+	 * The article body and title are the two preceding turns, so neither is
+	 * pasted back in. Only used when the active provider reports
+	 * supports_conversation(); build() remains the self-contained fallback.
+	 *
+	 * Note for filter consumers: the aips_excerpt_prompt filter still fires, but
+	 * its $title and $content arguments are empty strings here because neither is
+	 * part of the prompt. A filter that interpolates them must tolerate that.
+	 *
+	 * @param object|null $voice Optional voice object with excerpt instructions.
+	 * @param string|null $topic Optional topic to inject into voice instructions.
+	 * @return string
+	 */
+	public function build_followup($voice = null, $topic = null) {
+		$excerpt_prompt = "Now write an excerpt for that article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+
+		$voice_instructions = $this->build_instructions($voice, $topic);
+		if (!empty($voice_instructions)) {
+			$excerpt_prompt .= $voice_instructions . "\n\n";
+		}
+
+		$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
+
+		return apply_filters('aips_excerpt_prompt', $excerpt_prompt, '', '', $voice, $topic);
+	}
+
+	/**
 	 * Build voice-specific excerpt instructions.
 	 *
 	 * @param object|null $voice Voice configuration object.

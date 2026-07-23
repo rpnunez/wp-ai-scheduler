@@ -645,15 +645,19 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     /**
      * Calculate the appropriate maxTokens for an AI request.
      *
-     * Combines the estimated input (prompt) token cost with the expected output
-     * size for the given request type, applies a 25% safety buffer, and caps the
-     * result at the configured aips_max_tokens_limit setting to prevent
-     * unexpectedly large or costly requests.
+     * maxTokens is an output-only cap on every backend the plugin supports (Meow
+     * forwards it verbatim; the WordPress AI Client maps it to the model config's
+     * maxTokens). The budget is therefore derived purely from the expected output
+     * size for the request type, plus a 25% safety buffer, capped at the
+     * configured aips_max_tokens_limit setting.
      *
-     * Token estimation uses the standard approximation of 1 token ≈ 4 characters.
+     * The prompt length is deliberately NOT part of this figure. Adding it made a
+     * long prompt silently raise the response allowance well above the configured
+     * per-type budget, and would make the same request shrink once conversational
+     * generation moves the article out of the prompt and into the transcript.
      *
-     * @param string     $prompt The prompt that will be sent to the AI. Its length
-     *                           is used to estimate the input token cost.
+     * @param string     $prompt Unused; retained so the signature stays compatible
+     *                           with callers and the request-type dispatch below.
      * @param string|int $type   Request type: 'title', 'excerpt', 'content', or a
      *                           custom integer expected-output token count. Unknown
      *                           string types fall back to 'content' sizing.
@@ -694,6 +698,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 'buffer_ratio' => 0.25,
                 'minimum_tokens' => 1,
                 'respect_config_limit' => true,
+                'include_prompt_tokens' => false,
             )
         );
     }
@@ -770,6 +775,15 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $params['json_schema'] = $options['json_schema'];
         }
 
+        // Expand a conversation transcript into the canonical 'messages' payload.
+        // Providers that report supports_conversation() === false simply ignore it,
+        // so callers never need to branch on provider capability when forwarding.
+        if (isset($options['conversation']) && $options['conversation'] instanceof AIPS_AI_Conversation) {
+            if (!$options['conversation']->is_empty()) {
+                $params['messages'] = $options['conversation']->to_array();
+            }
+        }
+
         return $params;
     }
 
@@ -844,6 +858,18 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     }
 
     /**
+     * Whether the active provider can replay conversation history.
+     *
+     * Callers use this to decide between conversational follow-up prompts and
+     * self-contained prompts that paste prior output back in.
+     *
+     * @return bool
+     */
+    public function supports_conversation() {
+        return $this->provider->is_available() && $this->provider->supports_conversation();
+    }
+
+    /**
      * Emit an integration error notification payload.
      *
      * @param string   $request_type Request type.
@@ -898,6 +924,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         $prompt_for_length   = (string) $prompt;
         $response_for_length = (string) $response;
 
+        // A conversation transcript holds the full article text. Logging it
+        // verbatim on every call would balloon the log and the history record, so
+        // reduce it to a summary.
+        $options = $this->summarize_conversation_option($options);
+
         // Normalize error to a string message if a WP_Error is provided.
         if ($error instanceof WP_Error) {
             $error_message = $error->get_error_message();
@@ -938,6 +969,30 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         ));
     }
     
+    /**
+     * Replace a conversation transcript in an options array with a summary.
+     *
+     * @param mixed $options Options array as supplied by the caller.
+     * @return array Options safe to serialize into logs and history records.
+     */
+    private function summarize_conversation_option($options) {
+        if (!is_array($options) || !isset($options['conversation'])) {
+            return is_array($options) ? $options : array();
+        }
+
+        $conversation = $options['conversation'];
+
+        if ($conversation instanceof AIPS_AI_Conversation) {
+            $options['conversation'] = sprintf(
+                '[conversation: %d exchanges, ~%d tokens]',
+                $conversation->count_exchanges(),
+                $conversation->estimated_tokens()
+            );
+        }
+
+        return $options;
+    }
+
     /**
      * Get all AI call logs from this session.
      *

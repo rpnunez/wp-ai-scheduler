@@ -65,6 +65,13 @@ interface AIPS_AI_Service_Interface {
 	public function supports_embeddings();
 
 	/**
+	 * Whether the active provider can replay conversation history.
+	 *
+	 * @return bool
+	 */
+	public function supports_conversation();
+
+	/**
 	 * Return captured AI call logs.
 	 *
 	 * @return array

@@ -18,6 +18,7 @@ class AIPS_Stub_AI_Provider implements AIPS_AI_Provider_Interface {
     public $available = true;
     public $native_json = true;
     public $embeddings = true;
+    public $conversation = true;
 
     /** @var array Captured params from the last call. */
     public $last_params = array();
@@ -68,6 +69,7 @@ class AIPS_Stub_AI_Provider implements AIPS_AI_Provider_Interface {
 
     public function supports_native_json(): bool { return $this->native_json; }
     public function supports_embeddings(): bool { return $this->embeddings; }
+    public function supports_conversation(): bool { return $this->conversation; }
 
     public function extract_error_code(string $message): string {
         return strpos($message, 'invalid_api_key') !== false ? 'invalid_api_key' : '';

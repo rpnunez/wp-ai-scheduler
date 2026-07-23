@@ -34,6 +34,9 @@ class AIPS_Test_WP_AI_Client_Builder {
     public $captured_temperature = null;
     public $captured_max_tokens = null;
     public $captured_json_schema = null;
+    public $captured_system_instruction = null;
+    public $captured_history = null;
+    public $with_history_call_count = 0;
 
     public function set_prompt($prompt) {
         $this->prompt = $prompt;
@@ -65,6 +68,17 @@ class AIPS_Test_WP_AI_Client_Builder {
 
     public function as_json_response($schema) {
         $this->captured_json_schema = $schema;
+        return $this;
+    }
+
+    public function using_system_instruction($instruction) {
+        $this->captured_system_instruction = $instruction;
+        return $this;
+    }
+
+    public function with_history(...$messages) {
+        $this->with_history_call_count++;
+        $this->captured_history = $messages;
         return $this;
     }
 
@@ -263,6 +277,78 @@ class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
         $this->assertSame(array('model-a', 'model-b'), $builder->captured_model_preferences);
         $this->assertSame(0.4, $builder->captured_temperature);
         $this->assertSame(512, $builder->captured_max_tokens);
+    }
+
+    public function test_generate_text_forwards_context_and_instructions_as_system_instruction() {
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        (new AIPS_WP_AI_Client_Provider())->generate_text('Prompt', array(
+            'context'      => 'Voice guidance.',
+            'instructions' => 'Output HTML only.',
+        ));
+
+        $this->assertSame("Voice guidance.\n\nOutput HTML only.", $builder->captured_system_instruction);
+    }
+
+    public function test_generate_text_omits_system_instruction_when_context_absent() {
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        (new AIPS_WP_AI_Client_Provider())->generate_text('Prompt', array('context' => '   '));
+
+        $this->assertNull($builder->captured_system_instruction);
+    }
+
+    public function test_generate_text_forwards_conversation_history_once_in_order() {
+        global $aips_wp_ai_client_test_builder;
+
+        if (!class_exists('WordPress\\AiClient\\Messages\\DTO\\UserMessage')) {
+            $this->markTestSkipped('WordPress AI Client message DTOs are not available.');
+        }
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $conversation = new AIPS_AI_Conversation();
+        $conversation->add_exchange('Write the article.', 'The article body.');
+
+        (new AIPS_WP_AI_Client_Provider())->generate_text('Now the title.', array(
+            'messages' => $conversation->to_array(),
+        ));
+
+        // withHistory() prepends, so it must be called exactly once with the whole
+        // transcript rather than once per turn.
+        $this->assertSame(1, $builder->with_history_call_count);
+        $this->assertCount(2, $builder->captured_history);
+        $this->assertTrue($builder->captured_history[0]->getRole()->isUser());
+        $this->assertFalse($builder->captured_history[1]->getRole()->isUser());
+    }
+
+    public function test_generate_text_skips_history_when_message_dtos_missing() {
+        global $aips_wp_ai_client_test_builder;
+
+        if (class_exists('WordPress\\AiClient\\Messages\\DTO\\UserMessage')) {
+            $this->markTestSkipped('Message DTOs are present; the missing-DTO path cannot be exercised.');
+        }
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $result = (new AIPS_WP_AI_Client_Provider())->generate_text('Now the title.', array(
+            'messages' => array(
+                array('role' => 'user', 'text' => 'Write the article.'),
+                array('role' => 'model', 'text' => 'The article body.'),
+            ),
+        ));
+
+        $this->assertSame(0, $builder->with_history_call_count);
+        $this->assertNotEmpty($result);
+        $this->assertFalse((new AIPS_WP_AI_Client_Provider())->supports_conversation());
     }
 
     public function test_generate_json_forwards_schema_to_as_json_response() {

@@ -372,6 +372,61 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the conversational generation setting field.
+     *
+     * When enabled, the title, excerpt, and image-prompt steps continue the same
+     * conversation as the content step instead of each pasting a copy of the
+     * article into a fresh prompt. Requires an AI provider that can replay
+     * conversation history.
+     *
+     * @return void
+     */
+    public function conversational_generation_field_callback() {
+        $value     = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
+        $supported = AIPS_AI_Provider_Factory::create()->supports_conversation();
+        ?>
+        <input type="hidden" name="aips_conversational_generation" value="0">
+        <label>
+            <input type="checkbox" name="aips_conversational_generation" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Generate post components as one conversation instead of separate prompts', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('The model keeps the article it just wrote in context, so titles and excerpts stay consistent with the body and the article text is not re-sent with every request.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$supported) : ?>
+            <p class="description">
+                <strong><?php esc_html_e('The active AI provider does not support conversation history. This setting has no effect until you switch to one that does.', 'ai-post-scheduler'); ?></strong>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Render the combined metadata turn setting field.
+     *
+     * @return void
+     */
+    public function conversational_metadata_turn_field_callback() {
+        $value  = AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+        $parent = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
+        ?>
+        <input type="hidden" name="aips_conversational_metadata_turn" value="0">
+        <label>
+            <input type="checkbox" name="aips_conversational_metadata_turn" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Request the title, excerpt, and image prompt in a single structured response', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('Collapses up to four follow-up requests into one, roughly halving the number of AI calls per post. Falls back to separate requests if the response cannot be parsed.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$parent) : ?>
+            <p class="description">
+                <strong><?php esc_html_e('Requires Conversational Generation to be enabled.', 'ai-post-scheduler'); ?></strong>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
      * Render the developer mode setting field.
      *
      * Displays a checkbox to enable or disable developer mode.

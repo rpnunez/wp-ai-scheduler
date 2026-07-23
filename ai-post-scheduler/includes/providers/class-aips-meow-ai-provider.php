@@ -98,13 +98,61 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
         }
 
         // Optional advanced keys forwarded verbatim to simpleTextQuery().
-        foreach (array('context', 'instructions', 'messages', 'embeddings_env_id', 'max_results', 'api_key') as $key) {
+        foreach (array('context', 'instructions', 'embeddings_env_id', 'max_results', 'api_key') as $key) {
             if (isset($params[$key])) {
                 $native[$key] = $params[$key];
             }
         }
 
+        // Conversation history uses the plugin's canonical role names; AI Engine
+        // expects OpenAI-style 'assistant' for model turns and a 'content' key.
+        if (!empty($params['messages']) && is_array($params['messages'])) {
+            $messages = $this->map_messages($params['messages']);
+
+            if (!empty($messages)) {
+                $native['messages'] = $messages;
+            }
+        }
+
         return $native;
+    }
+
+    /**
+     * Translate conversation turns into AI Engine's message format.
+     *
+     * Accepts the plugin's canonical shape (role user|model, 'text') and passes
+     * through entries already in AI Engine's own shape ('content'). The
+     * pass-through matters because 'messages' was a documented free-form option
+     * forwarded verbatim before conversation support existed — dropping
+     * unrecognised entries would silently discard a caller's history.
+     *
+     * @param array $turns Canonical turns from AIPS_AI_Conversation, or native messages.
+     * @return array AI Engine messages.
+     */
+    private function map_messages(array $turns): array {
+        $messages = array();
+
+        foreach ($turns as $turn) {
+            if (!is_array($turn) || !isset($turn['role'])) {
+                continue;
+            }
+
+            if (isset($turn['text'])) {
+                $messages[] = array(
+                    'role'    => ($turn['role'] === AIPS_AI_Conversation::ROLE_MODEL) ? 'assistant' : 'user',
+                    'content' => (string) $turn['text'],
+                );
+
+                continue;
+            }
+
+            if (isset($turn['content'])) {
+                // Already native; forward unchanged.
+                $messages[] = $turn;
+            }
+        }
+
+        return $messages;
     }
 
     /**
@@ -132,6 +180,15 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
 
         if (!$this->supports_native_json()) {
             // Signal the service to use its text-based JSON fallback.
+            return null;
+        }
+
+        // simpleJsonQuery cannot carry conversation history. Silently dropping it
+        // would leave the model answering a follow-up prompt ("based on the article
+        // you just wrote...") with no article in context, producing confidently
+        // fabricated output. Request the text-based JSON fallback instead: it runs
+        // through generate_text(), which does forward messages.
+        if (!empty($params['messages']) && is_array($params['messages'])) {
             return null;
         }
 
@@ -219,6 +276,17 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
      */
     public function supports_embeddings(): bool {
         return class_exists('Meow_MWAI_Query_Embed') && isset($GLOBALS['mwai_core']) && $GLOBALS['mwai_core'] !== null;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * AI Engine's simpleTextQuery() accepts a 'messages' parameter carrying prior
+     * turns. map_messages() converts the plugin's canonical roles to the
+     * user/assistant pair it expects.
+     */
+    public function supports_conversation(): bool {
+        return $this->is_available();
     }
 
     /**

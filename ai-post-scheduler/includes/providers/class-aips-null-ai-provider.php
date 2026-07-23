@@ -58,6 +58,10 @@ class AIPS_Null_AI_Provider implements AIPS_AI_Provider_Interface {
         return false;
     }
 
+    public function supports_conversation(): bool {
+        return false;
+    }
+
     public function extract_error_code(string $message): string {
         return '';
     }

@@ -132,6 +132,9 @@ class AIPS_Config {
             'aips_max_tokens_excerpt' => 300,
             'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
+            // Conversational generation (requires a provider with supports_conversation())
+            'aips_conversational_generation' => false,
+            'aips_conversational_metadata_turn' => false,
             // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,

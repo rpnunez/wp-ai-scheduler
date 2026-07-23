@@ -410,9 +410,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
      * Test that maxTokens is dynamically calculated when no token option is supplied.
      *
      * With no explicit maxTokens and no request_type, the 'content' type sizing is used.
-     * Calculation: (prompt_tokens + output_tokens) + 25% buffer, capped at aips_max_tokens_limit (16000).
-     * For a prompt of "Prompt" (6 chars): prompt_tokens = ceil(6/4) = 2; output_tokens = 4000 (content);
-     * base_total = 4002; buffer = ceil(4002 * 0.25) = ceil(1000.5) = 1001; result = 4002 + 1001 = 5003.
+     * Calculation: output_tokens + 25% buffer, capped at aips_max_tokens_limit (16000).
+     * maxTokens is an output-only cap on every supported backend, so the prompt
+     * length is not part of it: output_tokens = 4000 (content); result = 5000.
      */
     public function test_prepare_options_default_maxTokens_used_when_not_specified() {
         global $mwai;
@@ -430,14 +430,12 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertArrayHasKey('maxTokens', $capture->params, 'maxTokens must always be set in params.');
             $this->assertIsInt($capture->params['maxTokens'], 'maxTokens must be an integer.');
             $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be a positive integer.');
-            // "Prompt" = 6 chars → prompt_tokens = ceil(6/4) = 2; content output_tokens from setting (default 4000);
-            // base_total = 2 + output_tokens; buffer = ceil(base_total * 0.25); result = base_total + buffer.
-            $prompt_tokens = (int) ceil(strlen('Prompt') / 4); // 2
+            // maxTokens is an output-only cap, so the prompt length is not a factor:
+            // result = output_tokens + ceil(output_tokens * 0.25).
             $output_tokens = (int) get_option('aips_max_tokens_content', 4000);
-            $base_total    = $prompt_tokens + $output_tokens;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
-            $this->assertSame($expected, $capture->params['maxTokens'], 'Dynamic maxTokens should include prompt size in calculation.');
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
+            $this->assertSame($expected, $capture->params['maxTokens'], 'Dynamic maxTokens should size the output budget only.');
         } finally {
             $mwai = $original_mwai;
         }
@@ -460,11 +458,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service = new AIPS_AI_Service();
             $service->generate_text($prompt, array('request_type' => 'title'));
 
-            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
             $output_tokens = (int) get_option('aips_max_tokens_title', 150);
-            $base_total    = $prompt_tokens + $output_tokens;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
 
             $this->assertSame($expected, $capture->params['maxTokens'], 'Title request_type should produce title-sized maxTokens.');
         } finally {
@@ -489,11 +485,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service = new AIPS_AI_Service();
             $service->generate_text($prompt, array('request_type' => 'excerpt'));
 
-            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
             $output_tokens = (int) get_option('aips_max_tokens_excerpt', 300);
-            $base_total    = $prompt_tokens + $output_tokens;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
 
             $this->assertSame($expected, $capture->params['maxTokens'], 'Excerpt request_type should produce excerpt-sized maxTokens.');
         } finally {
@@ -521,10 +515,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service = new AIPS_AI_Service();
             $service->generate_text($prompt, array('request_type' => 'title'));
 
-            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
-            $base_total    = $prompt_tokens + 500;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
+            $output_tokens = 500;
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
 
             $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_title should override the default title budget.');
         } finally {
@@ -557,10 +550,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service = new AIPS_AI_Service();
             $service->generate_text($prompt, array('request_type' => 'excerpt'));
 
-            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
-            $base_total    = $prompt_tokens + 800;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
+            $output_tokens = 800;
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
 
             $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_excerpt should override the default excerpt budget.');
         } finally {
@@ -593,10 +585,9 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service = new AIPS_AI_Service();
             $service->generate_text($prompt, array('request_type' => 'content'));
 
-            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
-            $base_total    = $prompt_tokens + 8000;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
+            $output_tokens = 8000;
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
 
             $this->assertSame($expected, $capture->params['maxTokens'], 'Custom aips_max_tokens_content should override the default content budget.');
         } finally {
@@ -611,7 +602,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
 
     /**
      * Test that a zero or empty per-type token option is clamped to 1 so
-     * maxTokens is always at least prompt-sized (never unexpectedly tiny).
+     * maxTokens is always a positive integer (never zero or negative).
      */
     public function test_calculate_max_tokens_zero_content_setting_clamped_to_one() {
         global $mwai;
@@ -630,11 +621,10 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $service = new AIPS_AI_Service();
             $service->generate_text($prompt, array('request_type' => 'content'));
 
-            // output_tokens clamped to 1; expected = (prompt_tokens + 1) + 25% buffer.
-            $prompt_tokens = (int) ceil(strlen($prompt) / 4);
-            $base_total    = $prompt_tokens + 1;
-            $buffer        = (int) ceil($base_total * 0.25);
-            $expected      = $base_total + $buffer;
+            // output_tokens clamped to 1; expected = 1 + 25% buffer.
+            $output_tokens = 1;
+            $buffer        = (int) ceil($output_tokens * 0.25);
+            $expected      = $output_tokens + $buffer;
 
             $this->assertGreaterThan(0, $capture->params['maxTokens'], 'maxTokens must be positive even when per-type setting is 0.');
             $this->assertSame($expected, $capture->params['maxTokens'], 'Zero content setting should be clamped to 1 for the output token budget.');

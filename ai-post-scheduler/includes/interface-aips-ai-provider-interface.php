@@ -126,6 +126,21 @@ interface AIPS_AI_Provider_Interface {
     public function supports_embeddings(): bool;
 
     /**
+     * Whether this provider can replay prior turns as conversation history.
+     *
+     * When true, the canonical 'messages' parameter — an ordered list of
+     * array{role: 'user'|'model', text: string} entries produced by
+     * AIPS_AI_Conversation — is sent alongside the prompt so the model can refer
+     * back to text it already produced instead of having it pasted into the
+     * prompt again.
+     *
+     * When false, callers must keep building self-contained prompts.
+     *
+     * @return bool
+     */
+    public function supports_conversation(): bool;
+
+    /**
      * Classify a backend error message into a canonical provider error code.
      *
      * Used by the resilience layer to decide whether to retry, open the circuit
