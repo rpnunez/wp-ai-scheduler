@@ -427,12 +427,13 @@ class AIPS_Admin_Menu {
     /**
      * Render the Schedule management page.
      *
-     * Includes the schedule template file.
+     * Delegates to the Schedule controller.
      *
      * @return void
      */
     public function render_schedule_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+        $controller = new AIPS_Schedule_Controller();
+        $controller->render_page();
     }
 
     /**
@@ -571,7 +572,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_history_page() {
-        $history_handler = new AIPS_History();
+        $history_handler = new AIPS_History_Controller();
         $history_handler->render_page();
     }
 

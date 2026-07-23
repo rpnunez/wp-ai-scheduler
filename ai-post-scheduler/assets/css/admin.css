@@ -4319,6 +4319,48 @@
     display: none !important;
 }
 
+.aips-w-auto {
+    width: auto;
+}
+
+.aips-mt-4 {
+    margin-top: 4px;
+}
+
+.aips-opacity-70 {
+    opacity: 0.7;
+}
+
+.aips-text-xs {
+    font-size: 11px;
+}
+
+.aips-text-warning {
+    color: var(--aips-warning);
+}
+
+.aips-center-text {
+    text-align: center;
+}
+
+.aips-p-20 {
+    padding: 20px;
+}
+
+.aips-empty-state-spacious {
+    padding: 60px 20px;
+}
+
+.aips-empty-state-medium {
+    padding: 40px 20px;
+}
+
+.aips-list-reset {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
 .aips-form-divider {
     margin: 20px 0;
 }

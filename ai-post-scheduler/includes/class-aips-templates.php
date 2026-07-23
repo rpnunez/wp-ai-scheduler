@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_Templates {
+class AIPS_Templates implements AIPS_Admin_Controller_Interface {
     
     private $table_name;
     
@@ -280,6 +280,19 @@ class AIPS_Templates {
             $template_source_groups = array();
         }
 
-        include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
+        AIPS_Template_Renderer::render(
+            'templates/admin/templates.php',
+            array(
+                'embedded'                => $embedded,
+                'templates'               => $templates,
+                'categories'              => $categories,
+                'users'                   => $users,
+                'all_generated_counts'    => $all_generated_counts,
+                'all_pending_stats'       => $all_pending_stats,
+                'campaign_map'            => $campaign_map,
+                'template_category_names' => $template_category_names,
+                'template_source_groups'  => $template_source_groups,
+            )
+        );
     }
 }
