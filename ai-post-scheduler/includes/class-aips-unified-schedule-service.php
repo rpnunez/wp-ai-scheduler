@@ -472,7 +472,7 @@ class AIPS_Unified_Schedule_Service {
 			$entries[] = array(
 				'id'              => absint($log->id),
 				'timestamp'       => esc_html($log->timestamp),
-				'log_type'        => esc_html($log->log_type),
+				'log_type'        => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
 				'history_type_id' => absint($log->history_type_id),
 				'message'         => isset($details['message']) ? esc_html($details['message']) : '',
 				'event_type'      => isset($input['event_type']) ? esc_html($input['event_type']) : '',
