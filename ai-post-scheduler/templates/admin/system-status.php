@@ -43,8 +43,9 @@ if (!defined('ABSPATH')) {
                             <span class="aips-status-op-group-label"><?php echo esc_html($task_group['label']); ?></span>
                             <div class="aips-checkbox-group aips-refresh-task-list">
                                 <?php foreach ($task_group['tasks'] as $task) : ?>
-                                    <label class="aips-checkbox-label">
-                                        <input type="checkbox" class="aips-refresh-task" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" checked>
+                                    <?php $task_input_id = 'aips-refresh-task-' . $task['step']; ?>
+                                    <label class="aips-checkbox-label" for="<?php echo esc_attr($task_input_id); ?>">
+                                        <input type="checkbox" id="<?php echo esc_attr($task_input_id); ?>" class="aips-refresh-task" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" checked>
                                         <span><?php echo esc_html($task['label']); ?></span>
                                     </label>
                                 <?php endforeach; ?>

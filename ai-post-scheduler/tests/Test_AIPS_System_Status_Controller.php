@@ -154,6 +154,12 @@ class Test_AIPS_System_Status_Controller extends WP_UnitTestCase {
 		$this->assertSame('ok', $response['data']['message']);
 	}
 
+	/**
+	 * Capture the JSON response emitted by an AJAX controller method.
+	 *
+	 * @param callable $callable AJAX callback under test.
+	 * @return array<string, mixed>|null
+	 */
 	private function capture_ajax(callable $callable) {
 		ob_start();
 

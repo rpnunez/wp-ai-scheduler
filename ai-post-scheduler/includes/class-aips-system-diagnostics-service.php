@@ -86,81 +86,101 @@ class AIPS_System_Diagnostics_Service {
 	}
 
 	/**
+	 * Build a refresh task definition array.
+	 *
+	 * @param string   $label        Result label.
+	 * @param string   $button_label UI label.
+	 * @param string   $group        Task group key.
+	 * @param string   $action       AJAX action.
+	 * @param callable $callback     Task callback.
+	 * @return array<string, mixed>
+	 */
+	private function build_refresh_task_definition($label, $button_label, $group, $action, $callback) {
+		return array(
+			'label'        => $label,
+			'button_label' => $button_label,
+			'group'        => $group,
+			'action'       => $action,
+			'callback'     => $callback,
+		);
+	}
+
+	/**
 	 * Build the ordered task list used for bundled refresh operations.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function get_refresh_task_definitions() {
 		return array(
-			'cache_maintenance' => array(
-				'label'        => __('Cache maintenance', 'ai-post-scheduler'),
-				'button_label' => __('Prune Cache Data', 'ai-post-scheduler'),
-				'group'        => 'cleanup_repair',
-				'action'       => 'aips_status_cache_maintenance',
-				'callback'     => array($this, 'run_cache_maintenance'),
+			'cache_maintenance' => $this->build_refresh_task_definition(
+				__('Cache maintenance', 'ai-post-scheduler'),
+				__('Prune Cache Data', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_cache_maintenance',
+				array($this, 'run_cache_maintenance')
 			),
-			'cleanup_notifications' => array(
-				'label'        => __('Notification cleanup', 'ai-post-scheduler'),
-				'button_label' => __('Clean Old Notifications', 'ai-post-scheduler'),
-				'group'        => 'cleanup_repair',
-				'action'       => 'aips_status_cleanup_notifications',
-				'callback'     => array($this, 'cleanup_notifications'),
+			'cleanup_notifications' => $this->build_refresh_task_definition(
+				__('Notification cleanup', 'ai-post-scheduler'),
+				__('Clean Old Notifications', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_cleanup_notifications',
+				array($this, 'cleanup_notifications')
 			),
-			'cleanup_stale_jobs_cache' => array(
-				'label'        => __('Stale batch jobs/cache cleanup', 'ai-post-scheduler'),
-				'button_label' => __('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'),
-				'group'        => 'recovery',
-				'action'       => 'aips_status_cleanup_stale_jobs_cache',
-				'callback'     => array($this, 'cleanup_stale_jobs_cache'),
+			'cleanup_stale_jobs_cache' => $this->build_refresh_task_definition(
+				__('Stale batch jobs/cache cleanup', 'ai-post-scheduler'),
+				__('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'),
+				'recovery',
+				'aips_status_cleanup_stale_jobs_cache',
+				array($this, 'cleanup_stale_jobs_cache')
 			),
-			'clear_partial_generations' => array(
-				'label'        => __('Clear stuck partial generations', 'ai-post-scheduler'),
-				'button_label' => __('Clear Stuck Partial Generations', 'ai-post-scheduler'),
-				'group'        => 'recovery',
-				'action'       => 'aips_status_clear_partial_generations',
-				'callback'     => array($this, 'clear_partial_generations'),
+			'clear_partial_generations' => $this->build_refresh_task_definition(
+				__('Clear stuck partial generations', 'ai-post-scheduler'),
+				__('Clear Stuck Partial Generations', 'ai-post-scheduler'),
+				'recovery',
+				'aips_status_clear_partial_generations',
+				array($this, 'clear_partial_generations')
 			),
-			'repair_campaign_data' => array(
-				'label'        => __('Campaign data repair', 'ai-post-scheduler'),
-				'button_label' => __('Repair Campaign Data', 'ai-post-scheduler'),
-				'group'        => 'recovery',
-				'action'       => 'aips_status_repair_campaign_data',
-				'callback'     => array($this, 'repair_campaign_data'),
+			'repair_campaign_data' => $this->build_refresh_task_definition(
+				__('Campaign data repair', 'ai-post-scheduler'),
+				__('Repair Campaign Data', 'ai-post-scheduler'),
+				'recovery',
+				'aips_status_repair_campaign_data',
+				array($this, 'repair_campaign_data')
 			),
-			'repair_datetime' => array(
-				'label'        => __('Schedule timing repair', 'ai-post-scheduler'),
-				'button_label' => __('Repair Schedule Timings', 'ai-post-scheduler'),
-				'group'        => 'cleanup_repair',
-				'action'       => 'aips_status_repair_datetime',
-				'callback'     => array($this, 'repair_datetime'),
+			'repair_datetime' => $this->build_refresh_task_definition(
+				__('Schedule timing repair', 'ai-post-scheduler'),
+				__('Repair Schedule Timings', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_repair_datetime',
+				array($this, 'repair_datetime')
 			),
-			'reschedule_missed_cron' => array(
-				'label'        => __('Reschedule cron events', 'ai-post-scheduler'),
-				'button_label' => __('Reschedule Missed Cron Hooks', 'ai-post-scheduler'),
-				'group'        => 'recovery',
-				'action'       => 'aips_status_reschedule_missed_cron',
-				'callback'     => array($this, 'reschedule_missed_cron'),
+			'reschedule_missed_cron' => $this->build_refresh_task_definition(
+				__('Reschedule cron events', 'ai-post-scheduler'),
+				__('Reschedule Missed Cron Hooks', 'ai-post-scheduler'),
+				'recovery',
+				'aips_status_reschedule_missed_cron',
+				array($this, 'reschedule_missed_cron')
 			),
-			'retry_failed_slices' => array(
-				'label'        => __('Retry failed slices', 'ai-post-scheduler'),
-				'button_label' => __('Retry Failed Slices', 'ai-post-scheduler'),
-				'group'        => 'recovery',
-				'action'       => 'aips_status_retry_failed_slices',
-				'callback'     => array($this, 'retry_failed_slices'),
+			'retry_failed_slices' => $this->build_refresh_task_definition(
+				__('Retry failed slices', 'ai-post-scheduler'),
+				__('Retry Failed Slices', 'ai-post-scheduler'),
+				'recovery',
+				'aips_status_retry_failed_slices',
+				array($this, 'retry_failed_slices')
 			),
-			'reset_resilience' => array(
-				'label'        => __('Reset resilience state', 'ai-post-scheduler'),
-				'button_label' => __('Reset Resilience', 'ai-post-scheduler'),
-				'group'        => 'cleanup_repair',
-				'action'       => 'aips_status_reset_resilience',
-				'callback'     => array($this, 'reset_resilience'),
+			'reset_resilience' => $this->build_refresh_task_definition(
+				__('Reset resilience state', 'ai-post-scheduler'),
+				__('Reset Resilience', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_reset_resilience',
+				array($this, 'reset_resilience')
 			),
-			'rebuild_caches' => array(
-				'label'        => __('Rebuild caches', 'ai-post-scheduler'),
-				'button_label' => __('Rebuild Caches', 'ai-post-scheduler'),
-				'group'        => 'cleanup_repair',
-				'action'       => 'aips_rebuild_caches',
-				'callback'     => array($this, 'rebuild_caches'),
+			'rebuild_caches' => $this->build_refresh_task_definition(
+				__('Rebuild caches', 'ai-post-scheduler'),
+				__('Rebuild Caches', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_rebuild_caches',
+				array($this, 'rebuild_caches')
 			),
 		);
 	}
@@ -233,11 +253,11 @@ class AIPS_System_Diagnostics_Service {
 		$definitions = $this->get_refresh_task_definitions();
 
 		if (null === $selected_tasks) {
-			return $definitions;
+			$selected_tasks = array_keys($definitions);
 		}
 
 		if (!is_array($selected_tasks)) {
-			return array();
+			$selected_tasks = array();
 		}
 
 		$sanitized_tasks = array_map('sanitize_key', $selected_tasks);

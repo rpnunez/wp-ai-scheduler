@@ -1,4 +1,9 @@
 <?php
+/**
+ * Tests for AIPS_System_Status_Diagnostics_Service.
+ *
+ * @package AI_Post_Scheduler
+ */
 
 class Test_AIPS_System_Status_Diagnostics_Service extends WP_UnitTestCase {
 
