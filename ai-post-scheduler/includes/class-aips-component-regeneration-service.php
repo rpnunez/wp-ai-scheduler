@@ -270,7 +270,7 @@ class AIPS_Component_Regeneration_Service {
 			$thumbnail_id = absint($this->get_post_meta_value($post_id, '_thumbnail_id'));
 		}
 
-		$component_statuses = json_decode((string) $this->get_post_meta_value($post_id, 'aips_post_generation_component_statuses'), true);
+		$component_statuses = json_decode((string) $this->get_post_meta_value($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES), true);
 		$has_featured_image_status = is_array($component_statuses)
 			&& array_key_exists('featured_image', $component_statuses);
 		$featured_image_status = $has_featured_image_status ? $component_statuses['featured_image'] : null;

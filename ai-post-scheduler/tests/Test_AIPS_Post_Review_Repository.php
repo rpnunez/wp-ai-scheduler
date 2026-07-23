@@ -175,25 +175,25 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$never_partial = $this->create_test_post_with_history('draft', 3);
 		$controller = new AIPS_Generated_Posts_Controller();
 
-		update_post_meta($active_partial['post_id'], 'aips_post_generation_incomplete', 'true');
-		update_post_meta($active_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($active_partial['post_id'], AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($active_partial['post_id'], AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title' => true,
 			'post_excerpt' => false,
 			'featured_image' => true,
 			'post_content' => true,
 		)));
 
-		update_post_meta($resolved_partial['post_id'], 'aips_post_generation_incomplete', 'false');
-		update_post_meta($resolved_partial['post_id'], 'aips_post_generation_had_partial', 'true');
-		update_post_meta($resolved_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($resolved_partial['post_id'], AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'false');
+		update_post_meta($resolved_partial['post_id'], AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
+		update_post_meta($resolved_partial['post_id'], AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title' => true,
 			'post_excerpt' => true,
 			'featured_image' => true,
 			'post_content' => true,
 		)));
 
-		update_post_meta($never_partial['post_id'], 'aips_post_generation_incomplete', 'false');
-		update_post_meta($never_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($never_partial['post_id'], AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'false');
+		update_post_meta($never_partial['post_id'], AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title' => true,
 			'post_excerpt' => true,
 			'featured_image' => true,
@@ -211,12 +211,12 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		foreach ($result['items'] as $item) {
 			if ((int) $item->post_id === (int) $active_partial['post_id']) {
 				$found_active_partial = true;
-				$this->assertSame('true', get_post_meta($item->post_id, 'aips_post_generation_incomplete', true));
+				$this->assertSame('true', get_post_meta($item->post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
 			}
 			if ((int) $item->post_id === (int) $resolved_partial['post_id']) {
 				$found_resolved_partial = true;
-				$this->assertSame('false', get_post_meta($item->post_id, 'aips_post_generation_incomplete', true));
-				$this->assertSame('true', get_post_meta($item->post_id, 'aips_post_generation_had_partial', true));
+				$this->assertSame('false', get_post_meta($item->post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+				$this->assertSame('true', get_post_meta($item->post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 				$this->assertSame(array(), $controller->get_missing_components($item->component_statuses));
 			}
 			$this->assertNotEquals($never_partial['post_id'], $item->post_id);

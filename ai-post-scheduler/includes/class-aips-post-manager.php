@@ -19,6 +19,32 @@ if (!defined('ABSPATH')) {
  * featured image attachment, and generation metadata state updates.
  */
 class AIPS_Post_Manager {
+	public const META_GENERATED_POST                         = '_aips_generated_post';
+	public const META_GENERATION_COMPONENT_STATUSES          = '_aips_post_generation_component_statuses';
+	public const META_GENERATION_INCOMPLETE                  = '_aips_post_generation_incomplete';
+	public const META_GENERATION_HAD_PARTIAL                 = '_aips_post_generation_had_partial';
+	public const META_POST_GENERATION_TOTAL_TIME             = '_aips_post_generation_total_time';
+	public const META_TRENDING_TOPIC_ID                      = '_aips_trending_topic_id';
+	public const META_TRENDING_TOPIC_TEXT                    = '_aips_trending_topic_text';
+	public const META_ORIGINAL_POST_STATUS                   = '_aips_original_post_status';
+	public const META_AI_MODEL                               = '_aips_ai_model';
+	public const META_PROMPT                                 = '_aips_prompt';
+	public const META_GENERATION_TIME                        = '_aips_generation_time';
+	public const META_TOKENS_USED                            = '_aips_tokens_used';
+	public const CANONICAL_PLUGIN_POST_META_KEYS            = array(
+		self::META_GENERATED_POST,
+		self::META_GENERATION_COMPONENT_STATUSES,
+		self::META_GENERATION_INCOMPLETE,
+		self::META_GENERATION_HAD_PARTIAL,
+		self::META_POST_GENERATION_TOTAL_TIME,
+		self::META_TRENDING_TOPIC_ID,
+		self::META_TRENDING_TOPIC_TEXT,
+		self::META_ORIGINAL_POST_STATUS,
+		self::META_AI_MODEL,
+		self::META_PROMPT,
+		self::META_GENERATION_TIME,
+		self::META_TOKENS_USED,
+	);
 
     /**
      * Create a new post from generated content.
@@ -106,6 +132,8 @@ class AIPS_Post_Manager {
         if (is_wp_error($post_id)) {
             return $post_id;
         }
+
+        update_post_meta($post_id, self::META_GENERATED_POST, '1');
 
         if (isset($data['generation_incomplete']) || isset($data['component_statuses'])) {
             $this->update_generation_status_meta(
@@ -382,7 +410,7 @@ class AIPS_Post_Manager {
                 'post_content'   => !empty($component_statuses['post_content']),
             );
 
-            update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($normalized_statuses));
+            update_post_meta($post_id, self::META_GENERATION_COMPONENT_STATUSES, wp_json_encode($normalized_statuses));
         }
 
         if ($generation_incomplete === null && is_array($normalized_statuses)) {
@@ -390,17 +418,17 @@ class AIPS_Post_Manager {
         }
 
         if ($generation_incomplete !== null) {
-            update_post_meta($post_id, 'aips_post_generation_incomplete', $generation_incomplete ? 'true' : 'false');
+            update_post_meta($post_id, self::META_GENERATION_INCOMPLETE, $generation_incomplete ? 'true' : 'false');
         }
 
-        $had_partial = ('true' === (string) $this->get_post_meta_value($post_id, 'aips_post_generation_had_partial'));
+        $had_partial = ('true' === (string) $this->get_post_meta_value($post_id, self::META_GENERATION_HAD_PARTIAL));
         if (!$had_partial) {
-            $existing_incomplete = ('true' === (string) $this->get_post_meta_value($post_id, 'aips_post_generation_incomplete'));
+            $existing_incomplete = ('true' === (string) $this->get_post_meta_value($post_id, self::META_GENERATION_INCOMPLETE));
             $had_partial = $existing_incomplete || (true === $generation_incomplete);
         }
 
         if ($had_partial) {
-            update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+            update_post_meta($post_id, self::META_GENERATION_HAD_PARTIAL, 'true');
         }
     }
 
@@ -423,7 +451,7 @@ class AIPS_Post_Manager {
             return null;
         }
 
-        $existing_statuses = json_decode((string) $this->get_post_meta_value($post_id, 'aips_post_generation_component_statuses'), true);
+        $existing_statuses = json_decode((string) $this->get_post_meta_value($post_id, self::META_GENERATION_COMPONENT_STATUSES), true);
         $has_thumbnail = !empty(get_post_thumbnail_id($post_id));
 
         $component_statuses = array(
