@@ -206,7 +206,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-admin-post aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Generated Posts', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No content has been generated in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -262,7 +262,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-lightbulb aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-lightbulb aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Topics Created', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No author topics were generated in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -308,7 +308,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-admin-links aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-admin-links aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Topic-based Posts', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No posts were generated from approved author topics in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -373,7 +373,7 @@ if (!defined('ABSPATH')) {
 						</div>
 						<?php else: ?>
 						<div class="aips-empty-state">
-							<span class="dashicons dashicons-yes aips-empty-state-icon"></span>
+							<span class="dashicons dashicons-yes aips-empty-state-icon" aria-hidden="true"></span>
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Executed', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No automated schedules have run in the selected date range.', 'ai-post-scheduler'); ?></p>
 						</div>
@@ -493,7 +493,7 @@ if (!defined('ABSPATH')) {
 				</div>
 				<?php else: ?>
 				<div class="aips-empty-state">
-					<span class="dashicons dashicons-calendar-alt aips-empty-state-icon"></span>
+					<span class="dashicons dashicons-calendar-alt aips-empty-state-icon" aria-hidden="true"></span>
 					<p class="aips-empty-state-description"><?php esc_html_e('No automated runs scheduled for the next 30 days. Check your schedule configurations.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<?php endif; ?>
