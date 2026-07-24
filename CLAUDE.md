@@ -6,6 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is the canonical cross-agent instruction source — read it first. This file adds Claude Code-specific orientation and does not duplicate what is already there.
 
+## Claude Code subagents and skills
+
+Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Claude Code based on their `description` field, or invoked by name:
+
+| Subagent | When to use |
+|---|---|
+| `qa-reviewer` | Test planning, bug hunting, edge-case analysis, implementation verification |
+| `ajax-controller-reviewer` | Reviewing nonce/capability/sanitization compliance in AJAX controllers |
+| `db-migration-reviewer` | Reviewing schema changes against `AIPS_DB_Manager`/`AIPS_DB_Migrations` patterns |
+| `feature-slicer` | Breaking a feature request into independently testable, mergeable slices |
+| `generation-pipeline-reviewer` | Reviewing changes to generation context, prompt builders, or resilience flows |
+| `pr-triage` | Overlap detection, risk classification, and review readiness for pull requests |
+
+Skills (step-by-step implementation guides) live in `.claude/skills/`:
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`.
+
+Saved workflow: `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit nonce/capability/sanitization/escaping compliance.
+
 ## Commands
 
 All Composer and PHPUnit commands run from `ai-post-scheduler/`.

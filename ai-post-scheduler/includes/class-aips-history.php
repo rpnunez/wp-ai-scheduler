@@ -111,11 +111,15 @@ class AIPS_History {
             AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
         }
 
+        do_action('aips_history_before_delete', $ids);
+
         $result = $this->repository->delete_bulk($ids);
 
         if ($result === false) {
             AIPS_Ajax_Response::error(__('Failed to delete items.', 'ai-post-scheduler'));
         }
+
+        do_action('aips_history_deleted', $ids);
 
         AIPS_Ajax_Response::success(array(), __('Selected items deleted successfully.', 'ai-post-scheduler'));
     }
@@ -1372,7 +1376,13 @@ class AIPS_History {
      * @return mixed
      */
     public function clear_history($status = '') {
-        return $this->repository->delete_by_status($status);
+        do_action('aips_history_before_delete', $status);
+
+        $result = $this->repository->delete_by_status($status);
+
+        do_action('aips_history_deleted', $status);
+
+        return $result;
     }
 
     /**
