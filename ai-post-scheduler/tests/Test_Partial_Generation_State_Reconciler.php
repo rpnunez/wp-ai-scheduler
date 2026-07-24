@@ -84,7 +84,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * When the primary key (aips_post_generation_component_statuses) does NOT
+	 * When the primary key (_aips_post_generation_component_statuses) does NOT
 	 * exist in post meta, on_save_post() must return early without calling
 	 * reconcile_generation_status_meta_from_post() or firing the hook.
 	 */
@@ -116,7 +116,7 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		));
 		$aips_test_meta = array(
 			$post_id => array(
-				'aips_post_generation_component_statuses' => 'some_value',
+				AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES => 'some_value',
 			),
 		);
 
@@ -145,9 +145,9 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 		// metadata_exists returns true because the row exists (even with an empty value).
 		$aips_test_meta = array(
 			$post_id => array(
-				'aips_post_generation_component_statuses' => '',
-				'aips_post_generation_incomplete'         => '',
-				'aips_post_generation_had_partial'        => '',
+				AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES => '',
+				AIPS_Post_Manager::META_GENERATION_INCOMPLETE         => '',
+				AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL        => '',
 			),
 		);
 
@@ -174,14 +174,14 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 			'post_status'  => 'draft',
 		));
 
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title'     => false,
 			'post_excerpt'   => false,
 			'featured_image' => true,
 			'post_content'   => false,
 		)));
-		update_post_meta($post_id, 'aips_post_generation_incomplete', 'true');
-		update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
 
 		wp_update_post(array(
 			'ID'           => $post_id,
@@ -192,10 +192,10 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 
 		$this->reconciler->on_save_post($post_id, get_post($post_id), true);
 
-		$this->assertSame('false', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
-		$this->assertSame('true', get_post_meta($post_id, 'aips_post_generation_had_partial', true));
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 
-		$statuses = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['post_title']);
 		$this->assertTrue($statuses['post_excerpt']);
@@ -214,14 +214,14 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 			'post_status'  => 'draft',
 		));
 
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title'     => false,
 			'post_excerpt'   => false,
 			'featured_image' => true,
 			'post_content'   => false,
 		)));
-		update_post_meta($post_id, 'aips_post_generation_incomplete', 'true');
-		update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
 
 		wp_update_post(array(
 			'ID'           => $post_id,
@@ -232,10 +232,10 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 
 		$this->reconciler->on_after_insert_post($post_id, get_post($post_id), true, null);
 
-		$this->assertSame('false', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
-		$this->assertSame('true', get_post_meta($post_id, 'aips_post_generation_had_partial', true));
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 
-		$statuses = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['post_title']);
 		$this->assertTrue($statuses['post_excerpt']);
@@ -254,14 +254,14 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 			'post_status'  => 'draft',
 		));
 
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title'     => false,
 			'post_excerpt'   => false,
 			'featured_image' => true,
 			'post_content'   => false,
 		)));
-		update_post_meta($post_id, 'aips_post_generation_incomplete', 'true');
-		update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
 
 		wp_update_post(array(
 			'ID'           => $post_id,
@@ -271,8 +271,8 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 
 		$this->reconciler->on_after_insert_post($post_id, get_post($post_id), true);
 
-		$this->assertSame('false', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
-		$statuses = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['post_excerpt']);
 		$this->assertTrue($statuses['post_content']);
@@ -295,27 +295,27 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 			'post_status'    => 'inherit',
 		));
 
-		update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode(array(
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
 			'post_title'     => true,
 			'post_excerpt'   => true,
 			'featured_image' => false,
 			'post_content'   => true,
 		)));
-		update_post_meta($post_id, 'aips_post_generation_incomplete', 'true');
-		update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
 
 		$this->reconciler->on_save_post($post_id, get_post($post_id), true);
-		$this->assertSame('true', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
 
 		update_post_meta($post_id, '_thumbnail_id', $attachment_id);
 		$this->reconciler->on_post_components_updated($post_id, array('featured_image'), array(
 			'featured_image_id' => $attachment_id,
 		));
 
-		$this->assertSame('false', get_post_meta($post_id, 'aips_post_generation_incomplete', true));
-		$this->assertSame('true', get_post_meta($post_id, 'aips_post_generation_had_partial', true));
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
 
-		$statuses = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
 		$this->assertIsArray($statuses);
 		$this->assertTrue($statuses['featured_image']);
 	}

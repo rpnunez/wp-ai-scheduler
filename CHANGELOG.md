@@ -1,3 +1,11 @@
+## [3.0.1] - 2026-07-07
+
+### Added
+- **Generated Post Marker**: All plugin-created posts now receive `_aips_generated_post = '1'`, making them easy to identify and filter.
+
+### Changed
+- **Private Post Meta Normalization**: Standardized plugin-owned post meta on the private `_aips_*` convention and added a migration to rename legacy partial-generation keys.
+
 ## [3.0.0] - 2026-06-21
 
 ### Added
