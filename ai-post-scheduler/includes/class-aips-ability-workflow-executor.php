@@ -173,6 +173,14 @@ class AIPS_Ability_Workflow_Executor {
 		);
 
 		if ( ! $scheduled ) {
+			// Mark the already-created run row failed instead of leaving it
+			// orphaned at 'queued' forever with nothing to ever process it.
+			$this->repository->update_run_status(
+				$run_id,
+				AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED,
+				array( 'finished_at' => time() )
+			);
+
 			return new WP_Error( 'ability_workflow_dispatch_failed', __( 'Failed to schedule workflow run.', 'ai-post-scheduler' ) );
 		}
 
@@ -295,7 +303,12 @@ class AIPS_Ability_Workflow_Executor {
 			}
 
 			if ( microtime( true ) >= $deadline ) {
-				$this->schedule_continuation( $run_id, $correlation_id, self::CONTINUATION_DELAY_SECONDS );
+				if ( ! $this->schedule_continuation( $run_id, $correlation_id, self::CONTINUATION_DELAY_SECONDS ) ) {
+					// Without a scheduled continuation nothing will ever
+					// resume this run — fail it now instead of leaving it
+					// stuck at 'running' indefinitely.
+					$this->finish_run( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $history, __( 'Failed to schedule workflow continuation.', 'ai-post-scheduler' ) );
+				}
 				return;
 			}
 
@@ -471,7 +484,18 @@ class AIPS_Ability_Workflow_Executor {
 				)
 			);
 
-			$this->schedule_continuation( $run_id, $correlation_id, $backoff_seconds );
+			if ( ! $this->schedule_continuation( $run_id, $correlation_id, $backoff_seconds ) ) {
+				// No further progress is possible without a scheduled retry —
+				// fail the run outright rather than leaving it stuck at
+				// 'running' forever with nothing left to resume it.
+				$this->finish_run(
+					$run_id,
+					AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED,
+					$history,
+					/* translators: %s: step key */
+					sprintf( __( 'Failed to schedule a retry for step "%s".', 'ai-post-scheduler' ), $step->step_key )
+				);
+			}
 
 			return array( 'status' => 'failed', 'output' => array(), 'retry_scheduled' => true );
 		}
@@ -608,10 +632,10 @@ class AIPS_Ability_Workflow_Executor {
 	 * @param int    $run_id         Run ID.
 	 * @param string $correlation_id Correlation ID to resume under.
 	 * @param int    $delay_seconds  Delay before the event fires.
-	 * @return void
+	 * @return bool True if the event was scheduled successfully.
 	 */
-	private function schedule_continuation( int $run_id, string $correlation_id, int $delay_seconds ): void {
-		$this->job_scheduler->schedule_simple(
+	private function schedule_continuation( int $run_id, string $correlation_id, int $delay_seconds ): bool {
+		return $this->job_scheduler->schedule_simple(
 			self::HOOK,
 			time() + $delay_seconds,
 			array( $run_id, $correlation_id ),
