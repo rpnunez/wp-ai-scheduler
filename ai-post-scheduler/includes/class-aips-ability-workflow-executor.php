@@ -281,7 +281,13 @@ class AIPS_Ability_Workflow_Executor {
 		}
 
 		$variables = $this->build_variables( $run, $steps, $existing_step_runs );
-		$skip_keys = array();
+
+		// Rebuilt from persisted step statuses/strategies on every
+		// invocation (not just accumulated within this pass) so a 'skip'
+		// cascade triggered by an earlier invocation isn't lost if the run
+		// was interrupted (time budget / retry backoff) before every
+		// dependent step in the cascade had been reached.
+		$skip_keys = $this->rebuild_skip_cascade( $steps, $resolved_status );
 
 		foreach ( $steps as $step ) {
 			if ( isset( $resolved_status[ $step->step_key ] ) ) {
@@ -521,6 +527,43 @@ class AIPS_Ability_Workflow_Executor {
 				$this->mark_dependents_skipped( $candidate->step_key, $steps, $skip_keys );
 			}
 		}
+	}
+
+	/**
+	 * Reconstruct the full skip-cascade set from persisted step statuses and
+	 * strategies. Called at the start of every run_internal() invocation so
+	 * that a 'skip' strategy's cascade is idempotently rebuilt from durable
+	 * state rather than relying on the in-memory accumulation of a single
+	 * pass through the steps loop — a run can span multiple cron
+	 * invocations (time budget continuations, retry backoff), and without
+	 * this, a cascade only partially applied before an interruption would
+	 * be lost, letting a step that should stay permanently skipped execute
+	 * on a later invocation.
+	 *
+	 * @param AIPS_Ability_Workflow_Step[] $steps           All steps for the workflow.
+	 * @param array                        $resolved_status Map of step_key => resolved status ('completed'/'failed'/'skipped').
+	 * @return array Map of step_key => true for every step that must be treated as skipped.
+	 */
+	private function rebuild_skip_cascade( array $steps, array $resolved_status ): array {
+		$skip_keys = array();
+
+		foreach ( $steps as $step ) {
+			$status = $resolved_status[ $step->step_key ] ?? '';
+
+			if ( 'completed' === $status ) {
+				$strategy = isset( $step->on_success['strategy'] ) ? $step->on_success['strategy'] : 'continue';
+			} elseif ( 'failed' === $status ) {
+				$strategy = isset( $step->on_failure['strategy'] ) ? $step->on_failure['strategy'] : 'stop';
+			} else {
+				continue;
+			}
+
+			if ( 'skip' === $strategy ) {
+				$this->mark_dependents_skipped( $step->step_key, $steps, $skip_keys );
+			}
+		}
+
+		return $skip_keys;
 	}
 
 	/**
