@@ -25,7 +25,9 @@ class AIPS_Resilience_Service {
      *
      * These codes are returned by OpenAI/compatible providers and may appear either as
      * structured JSON fields ({"error":{"code":"..."}}) or as substrings within
-     * human-readable exception messages forwarded by Meow AI Engine.
+     * human-readable exception messages forwarded by the active AI provider (Meow
+     * forwards raw provider messages; the WordPress AI Client adapter prefixes
+     * WP_Error codes as "code: message" and recovers them in extract_error_code()).
      *
      * @var string[]
      */
@@ -36,6 +38,21 @@ class AIPS_Resilience_Service {
         'invalid_request_error',
         'content_policy_violation',
         'billing_not_active',
+        'no_connector',
+    );
+
+    /**
+     * Capability codes raised by a provider adapter before any remote call is made
+     * (e.g. the WordPress AI Client connector cannot do image generation). They are
+     * configuration facts, not service faults: retrying cannot succeed, and they
+     * must not count toward the circuit breaker for the otherwise-healthy backend.
+     *
+     * @var string[]
+     */
+    const PERMANENT_CAPABILITY_CODES = array(
+        'text_generation_not_supported',
+        'image_generation_not_supported',
+        'embeddings_not_supported',
     );
 
     /**
@@ -68,10 +85,11 @@ class AIPS_Resilience_Service {
     /**
      * Message-based pattern map.
      *
-     * Meow AI Engine forwards the raw provider error message as the PHP exception
-     * message — there is no structured error code to inspect.  These patterns match
-     * the English-language strings that OpenAI (and compatible providers) actually
-     * send so that free-text messages can be mapped to canonical internal codes.
+     * AI provider adapters may forward the raw upstream error message as the PHP
+     * exception message with no structured error code to inspect (Meow AI Engine
+     * does this).  These patterns match the English-language strings that OpenAI
+     * (and compatible providers) actually send so that free-text messages can be
+     * mapped to canonical internal codes.
      *
      * Each entry: 'substring_pattern' => 'canonical_code'
      * Patterns are matched case-insensitively via stripos().
@@ -190,8 +208,14 @@ class AIPS_Resilience_Service {
             $last_error = $result;
             $error_code = $result->get_error_code();
 
-            // Do not retry permanent "user error" conditions or immediate-open codes — retrying wastes tokens.
-            $non_retryable = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES);
+            // Non-fault sentinels (e.g. json_query_unavailable) are not provider errors —
+            // retrying them wastes time; the caller handles them via a dedicated fallback path.
+            if (in_array($error_code, self::NON_FAULT_CODES, true)) {
+                break;
+            }
+
+            // Do not retry permanent "user error" conditions, capability gaps, or immediate-open codes — retrying wastes tokens.
+            $non_retryable = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES, self::PERMANENT_CAPABILITY_CODES);
             if (in_array($error_code, $non_retryable, true)) {
                 $this->logger->log("Non-retryable error '{$error_code}', aborting retry loop", 'error', array(
                     'type'       => $type,
@@ -258,9 +282,13 @@ class AIPS_Resilience_Service {
         // Self-generated resilience errors (circuit already open / rate-limited) and
         // the 'json_query_unavailable' signal (a non-fault fallback sentinel) are
         // excluded so that the caller's fallback path can record its own outcome.
+        // Permanent capability gaps are configuration facts raised before any remote
+        // call — they must not poison the breaker for the healthy request types.
         if (is_wp_error($result)) {
-            if (!in_array($result->get_error_code(), self::NON_FAULT_CODES, true)) {
-                $this->record_failure($result->get_error_code());
+            $code = $result->get_error_code();
+
+            if (!in_array($code, self::NON_FAULT_CODES, true) && !in_array($code, self::PERMANENT_CAPABILITY_CODES, true)) {
+                $this->record_failure($code);
             }
         } else {
             $this->record_success();
@@ -501,9 +529,10 @@ class AIPS_Resilience_Service {
     /**
      * Attempt to extract a structured provider error code from an exception message.
      *
-     * Meow AI Engine forwards the raw provider (OpenAI, etc.) error as the PHP
-     * exception message — there is no guaranteed structured error code field.
-     * This method uses a two-step approach:
+     * Provider adapters may forward the raw upstream (OpenAI, etc.) error as the PHP
+     * exception message — there is no guaranteed structured error code field.  (The
+     * WordPress AI Client adapter recovers its own "code: message" prefix before
+     * delegating here.)  This method uses a two-step approach:
      *
      * 1. Scan the raw message text for known human-readable patterns (MESSAGE_PATTERNS).
      *    This is the primary path because Meow AI Engine typically surfaces plain-text
@@ -521,7 +550,7 @@ class AIPS_Resilience_Service {
      * @return string Canonical provider error code, or '' when none can be identified.
      */
     public static function extract_error_code_from_message($message) {
-        // Step 1: Message pattern matching (primary — covers Meow AI Engine free-text errors)
+        // Step 1: Message pattern matching (primary — covers free-text provider errors)
         foreach (self::MESSAGE_PATTERNS as $pattern => $code) {
             if (stripos($message, $pattern) !== false) {
                 return $code;

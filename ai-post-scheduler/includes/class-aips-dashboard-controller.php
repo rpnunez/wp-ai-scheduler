@@ -456,6 +456,8 @@ class AIPS_Dashboard_Controller {
 		$topics_in_queue        = isset($topic_counts['approved']) ? $topic_counts['approved'] : 0;
 		$partial_generations    = $history_repo->get_partial_generations(array('per_page' => -1))['total'] ?? 0;
 
+		$ai_provider_available  = AIPS_AI_Provider_Factory::has_available_provider();
+
 		include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
 	}
 

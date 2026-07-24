@@ -115,6 +115,18 @@ class AIPS_Test_Generator_Required_Content_AI_Service implements AIPS_AI_Service
 		return new WP_Error('image_not_expected', 'Image generation should not be called.');
 	}
 
+	public function generate_embedding($text, $options = array()) {
+		return new WP_Error('embedding_not_expected', 'Embedding generation should not be called.');
+	}
+
+	public function supports_embeddings() {
+		return false;
+	}
+
+	public function supports_conversation() {
+		return false;
+	}
+
 	public function get_call_log() {
 		return array();
 	}

@@ -19,6 +19,9 @@ class AIPS_Test_Stub_AI_Service_For_Feedback implements AIPS_AI_Service_Interfac
 	public function is_available() { return true; }
 	public function generate_text($prompt, $options = array()) { return ""; }
 	public function generate_image($prompt, $options = array()) { return ""; }
+	public function generate_embedding($text, $options = array()) { return array(); }
+	public function supports_embeddings() { return false; }
+	public function supports_conversation() { return false; }
 	public function get_call_log() { return array(); }
 }
 

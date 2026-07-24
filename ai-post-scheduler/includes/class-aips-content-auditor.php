@@ -107,13 +107,8 @@ class AIPS_Content_Auditor {
         // 3. Call AI Service
         $options = array(
             'temperature' => 0.7,
+            'json_schema' => $this->get_gap_analysis_json_schema(),
         );
-
-        // Check if a specific model is configured in settings, if it's "gpt-5-mini" (which doesn't exist publicly yet), override it.
-        $configured_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
-        if ($configured_model === 'gpt-5-mini') {
-             $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
-        }
 
         $response = $this->ai_service->generate_json($prompt, $options);
 
@@ -159,12 +154,6 @@ class AIPS_Content_Auditor {
         $options = array(
             'temperature' => 0.7,
         );
-        
-        // Override potentially bad model setting
-        $configured_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
-        if ($configured_model === 'gpt-5-mini') {
-             $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
-        }
 
         $response = $this->ai_service->generate_text($prompt, $options);
 
@@ -215,6 +204,27 @@ class AIPS_Content_Auditor {
     }
 
     /**
+     * JSON schema for the gap analysis array returned by the AI.
+     *
+     * @return array<string, mixed>
+     */
+    private function get_gap_analysis_json_schema(): array {
+        return array(
+            'type'  => 'array',
+            'items' => array(
+                'type'       => 'object',
+                'properties' => array(
+                    'missing_topic' => array('type' => 'string'),
+                    'priority'      => array('type' => 'string', 'enum' => array('High', 'Medium')),
+                    'reason'        => array('type' => 'string'),
+                    'search_intent' => array('type' => 'string'),
+                ),
+                'required' => array('missing_topic', 'priority', 'reason', 'search_intent'),
+            ),
+        );
+    }
+
+    /**
      * Generate the prompt for the AI.
      *
      * @param string $niche The target niche.
@@ -237,21 +247,7 @@ class AIPS_Content_Auditor {
         
         $prompt .= "Task: Analyze the existing content coverage against the target niche. Identify 5-7 major sub-topics, 'pillar' pages, or content clusters that are MISSING or under-represented.\n\n";
         
-        $prompt .= "Return a JSON array of objects. Each object must have:\n";
-        $prompt .= "- \"missing_topic\": The title of the missing topic or cluster (string)\n";
-        $prompt .= "- \"priority\": \"High\" or \"Medium\" (string)\n";
-        $prompt .= "- \"reason\": A brief explanation of why this is a gap and why it's needed (string)\n";
-        $prompt .= "- \"search_intent\": The primary user intent (e.g., Informational, Transactional) (string)\n\n";
-        
-        $prompt .= "Example format:\n";
-        $prompt .= "[\n";
-        $prompt .= "  {\n";
-        $prompt .= "    \"missing_topic\": \"Advanced Composting Techniques\",\n";
-        $prompt .= "    \"priority\": \"High\",\n";
-        $prompt .= "    \"reason\": \"You have basic gardening tips but lack technical soil health content which establishes authority.\",\n";
-        $prompt .= "    \"search_intent\": \"Informational\"\n";
-        $prompt .= "  }\n";
-        $prompt .= "]";
+        $prompt .= "Return a JSON array where each item has: \"missing_topic\" (string), \"priority\" (\"High\" or \"Medium\"), \"reason\" (string), \"search_intent\" (string).";
 
         return $prompt;
     }

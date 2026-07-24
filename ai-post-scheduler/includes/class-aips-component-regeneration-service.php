@@ -94,6 +94,52 @@ class AIPS_Component_Regeneration_Service {
 	}
 	
 	/**
+	 * Rebuild the original generation conversation for a post.
+	 *
+	 * The transcript is reconstructed rather than stored: the content prompt is
+	 * deterministic from the generation context, and the article it produced is
+	 * the post body. That gives a regenerated component the same context the
+	 * original run had, without re-pasting the article into the prompt.
+	 *
+	 * @param AIPS_Generation_Context $generation_context Original generation context.
+	 * @param int                     $post_id            Post being regenerated.
+	 * @param bool                    $include_title      Whether to append the title
+	 *                                                    exchange. Excluded when the
+	 *                                                    title itself is being redone.
+	 * @return AIPS_AI_Conversation|null Transcript, or null when unavailable.
+	 */
+	private function build_conversation($generation_context, $post_id, $include_title = false) {
+		if (!$post_id || !$this->generator->supports_conversation()) {
+			return null;
+		}
+
+		$body = (string) get_post_field('post_content', $post_id);
+
+		if (trim($body) === '') {
+			return null;
+		}
+
+		$conversation = new AIPS_AI_Conversation();
+
+		if (!$conversation->add_exchange($this->post_content_prompt_builder->build($generation_context), $body)) {
+			return null;
+		}
+
+		if ($include_title) {
+			$title = (string) get_the_title($post_id);
+
+			if (trim($title) !== '') {
+				$conversation->add_exchange(
+					$this->post_title_prompt_builder->build_followup($generation_context),
+					$title
+				);
+			}
+		}
+
+		return $conversation;
+	}
+
+	/**
 	 * Get the generation context for a history record
 	 *
 	 * Retrieves the original generation context (Template or Topic) used to generate
@@ -128,9 +174,19 @@ class AIPS_Component_Regeneration_Service {
 		
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
-		
-		// Get template, voice, and topic for generator
-		if ($generation_context->get_type() === 'template') {
+
+		// Replay the original article so the new title is derived from it rather
+		// than from a prompt that pastes the body back in. The title exchange is
+		// excluded — that is the component being redone.
+		$conversation = $this->build_conversation($generation_context, $post_id);
+
+		if ($conversation !== null) {
+			$this->generator->set_conversation($conversation);
+
+			$result = $this->generator->generate_title_for_context($generation_context);
+
+			$this->generator->set_conversation(null);
+		} elseif ($generation_context->get_type() === 'template') {
 			if (!method_exists($generation_context, 'get_template')) {
 				return new WP_Error('invalid_context', __('Template context is missing template details.', 'ai-post-scheduler'));
 			}
@@ -138,7 +194,7 @@ class AIPS_Component_Regeneration_Service {
 			$template = call_user_func(array($generation_context, 'get_template'));
 			$voice = $generation_context->get_voice();
 			$topic = $generation_context->get_topic();
-			
+
 			// Use generator's generate_title method
 			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
@@ -148,11 +204,11 @@ class AIPS_Component_Regeneration_Service {
 			// Use generate_content with log_type 'title' for proper logging
 			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
-		
+
 		if (is_wp_error($result)) {
 			return $result;
 		}
-		
+
 		// Clean and return
 		return trim($result);
 	}
@@ -197,14 +253,22 @@ class AIPS_Component_Regeneration_Service {
 		if ($generation_context->get_type() === 'template') {
 			$voice = $generation_context->get_voice();
 		}
-		
+
+		// Replay the article and its title so the excerpt is written against the
+		// same context the original run had, without re-sending either.
+		$conversation = $this->build_conversation($generation_context, $post_id, true);
+
+		$this->generator->set_conversation($conversation);
+
 		// Use generator's generate_excerpt method
 		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str, array(), $generation_context);
-		
+
+		$this->generator->set_conversation(null);
+
 		if (is_wp_error($result)) {
 			return $result;
 		}
-		
+
 		return trim($result);
 	}
 	
@@ -231,9 +295,14 @@ class AIPS_Component_Regeneration_Service {
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
 		
+		// Deliberately not conversational: the component being regenerated IS the
+		// article, so replaying the previous body would bias the model toward
+		// reproducing it rather than writing a fresh one.
+		$this->generator->set_conversation(null);
+
 		// Build the content prompt using the generation context
 		$prompt = $this->post_content_prompt_builder->build($generation_context);
-		
+
 		// Generate content using the prompt
 		$result = $this->generator->generate_content($prompt);
 		

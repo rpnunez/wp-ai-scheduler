@@ -11,11 +11,14 @@ case "$MODE" in
   test)
     COMPOSER_COMMAND="composer test"
     ;;
+  ai-api|ai_api)
+    COMPOSER_COMMAND="composer test:setup && php vendor/bin/phpunit --configuration phpunit.xml tests/Test_AIPS_AI_Service.php tests/Test_AIPS_AI_Service_With_Provider.php tests/Test_AIPS_AI_Provider_Factory.php tests/Test_AIPS_WP_AI_Client_Provider.php tests/Test_AIPS_Provider_Availability.php tests/Test_AIPS_Resilience_Service.php tests/Test_AIPS_Resilience_Improvements.php"
+    ;;
   coverage|--coverage)
     COMPOSER_COMMAND="XDEBUG_MODE=coverage composer test:coverage"
     ;;
   *)
-    echo "Usage: bash scripts/run-wp-tests-docker.sh [test|coverage]" >&2
+    echo "Usage: bash scripts/run-wp-tests-docker.sh [test|ai-api|coverage]" >&2
     exit 1
     ;;
 esac

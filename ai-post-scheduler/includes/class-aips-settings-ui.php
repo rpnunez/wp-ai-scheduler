@@ -97,9 +97,50 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the AI provider selection field.
+     *
+     * Lets the admin pick which AI backend serves requests. "Auto-detect" lets
+     * AIPS_AI_Provider_Factory choose the first available provider (Meow first).
+     *
+     * @return void
+     */
+    public function ai_provider_field_callback() {
+        $value     = (string) AIPS_Config::get_instance()->get_option('aips_ai_provider');
+        $available = AIPS_AI_Provider_Factory::available_providers();
+        $reasons   = AIPS_AI_Provider_Factory::unavailable_reasons();
+        // Show every known provider so an unavailable one can still be selected,
+        // while clearly marking whether it is ready for text generation.
+        $all = AIPS_AI_Provider_Factory::all_providers();
+        ?>
+        <select name="aips_ai_provider" id="aips_ai_provider">
+            <option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (recommended)', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($all as $id => $label) : ?>
+                <?php $is_available = isset($available[$id]); ?>
+                <option value="<?php echo esc_attr($id); ?>" <?php selected($value, $id); ?>>
+                    <?php
+                    echo esc_html($label);
+                    if (!$is_available) {
+                        echo ' ' . esc_html__('(currently unavailable)', 'ai-post-scheduler');
+                    }
+                    ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then a WordPress AI Client connector that is ready for text generation. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference, with credentials managed under WordPress core Settings > AI Connectors).', 'ai-post-scheduler'); ?></p>
+        <?php if (!empty($reasons)) : ?>
+            <ul class="description aips-provider-readiness">
+                <?php foreach ($reasons as $id => $reason) : ?>
+                    <li><strong><?php echo esc_html(isset($all[$id]) ? $all[$id] : $id); ?>:</strong> <?php echo esc_html($reason); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
      * Render the AI model setting field.
      *
-     * Displays a text input for specifying a custom AI Engine model.
+     * Displays a text input for specifying a custom AI model.
      *
      * @return void
      */
@@ -107,7 +148,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('AI model to use (leave empty for the provider default). For the WordPress AI Client you may enter a comma-separated model preference list, e.g. "claude-sonnet-4-5, gemini-3-pro-preview".', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -122,7 +163,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
         ?>
         <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Meow AI Engine only: environment ID to use (leave empty for the AI Engine default). Ignored by the WordPress AI Client, which manages connectors and credentials under WordPress core settings.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -327,6 +368,61 @@ class AIPS_Settings_UI {
             <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
         </label>
+        <?php
+    }
+
+    /**
+     * Render the conversational generation setting field.
+     *
+     * When enabled, the title, excerpt, and image-prompt steps continue the same
+     * conversation as the content step instead of each pasting a copy of the
+     * article into a fresh prompt. Requires an AI provider that can replay
+     * conversation history.
+     *
+     * @return void
+     */
+    public function conversational_generation_field_callback() {
+        $value     = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
+        $supported = AIPS_AI_Provider_Factory::create()->supports_conversation();
+        ?>
+        <input type="hidden" name="aips_conversational_generation" value="0">
+        <label>
+            <input type="checkbox" name="aips_conversational_generation" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Generate post components as one conversation instead of separate prompts', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('The model keeps the article it just wrote in context, so titles and excerpts stay consistent with the body and the article text is not re-sent with every request.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$supported) : ?>
+            <p class="description">
+                <strong><?php esc_html_e('The active AI provider does not support conversation history. This setting has no effect until you switch to one that does.', 'ai-post-scheduler'); ?></strong>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Render the combined metadata turn setting field.
+     *
+     * @return void
+     */
+    public function conversational_metadata_turn_field_callback() {
+        $value  = AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+        $parent = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
+        ?>
+        <input type="hidden" name="aips_conversational_metadata_turn" value="0">
+        <label>
+            <input type="checkbox" name="aips_conversational_metadata_turn" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Request the title, excerpt, and image prompt in a single structured response', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('Collapses up to four follow-up requests into one, roughly halving the number of AI calls per post. Falls back to separate requests if the response cannot be parsed.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$parent) : ?>
+            <p class="description">
+                <strong><?php esc_html_e('Requires Conversational Generation to be enabled.', 'ai-post-scheduler'); ?></strong>
+            </p>
+        <?php endif; ?>
         <?php
     }
 
@@ -812,6 +908,27 @@ class AIPS_Settings_UI {
         }
 
         return in_array($value, $allowed, true) ? $value : 'array';
+    }
+
+    /**
+     * Sanitize the AI provider selection.
+     *
+     * Accepts an empty string (auto-detect) or a known provider id; anything
+     * else falls back to auto-detect.
+     *
+     * @param mixed $value Raw submitted value.
+     * @return string
+     */
+    public function sanitize_ai_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+
+        if ($value === '') {
+            return '';
+        }
+
+        $known = array_keys(AIPS_AI_Provider_Factory::all_providers());
+
+        return in_array($value, $known, true) ? $value : '';
     }
 
 }

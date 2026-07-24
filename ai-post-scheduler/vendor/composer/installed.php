@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'rpnunez/wp-ai-scheduler',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => 'd1f00e124cfcf7f37a95c4511837213c3f2b1498',
+        'pretty_version' => 'dev-claude/pr-1815-review-plan-4gm204',
+        'version' => 'dev-claude/pr-1815-review-plan-4gm204',
+        'reference' => '21463f687addca0db31c4a187cd39ffb2a7da23a',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -110,9 +110,9 @@
             'dev_requirement' => true,
         ),
         'rpnunez/wp-ai-scheduler' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
-            'reference' => 'd1f00e124cfcf7f37a95c4511837213c3f2b1498',
+            'pretty_version' => 'dev-claude/pr-1815-review-plan-4gm204',
+            'version' => 'dev-claude/pr-1815-review-plan-4gm204',
+            'reference' => '21463f687addca0db31c4a187cd39ffb2a7da23a',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

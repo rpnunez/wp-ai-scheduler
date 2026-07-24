@@ -201,22 +201,28 @@ if (!defined('ABSPATH')) {
                     </div>
                 </div>
 
-                <!-- AI Engine Status -->
+                <!-- AI Provider Status -->
                 <div class="aips-content-panel">
                     <div class="aips-panel-header">
                         <h2>
                             <span class="dashicons dashicons-admin-plugins"></span>
-                            <?php esc_html_e('AI Engine Status', 'ai-post-scheduler'); ?>
+                            <?php esc_html_e('AI Provider Status', 'ai-post-scheduler'); ?>
                         </h2>
                     </div>
                     <div class="aips-panel-body">
-                        <?php if (class_exists('Meow_MWAI_Core')): ?>
+                        <?php if (!empty($ai_provider_available)): ?>
                             <p class="aips-status-message aips-status-success">
                                 <span class="aips-badge aips-badge-success">
                                     <span class="dashicons dashicons-yes-alt"></span>
                                     <?php esc_html_e('Connected', 'ai-post-scheduler'); ?>
                                 </span>
-                                <?php esc_html_e('AI Engine is installed and active.', 'ai-post-scheduler'); ?>
+                                <?php
+                                printf(
+                                    /* translators: %s: active AI provider label. */
+                                    esc_html__('%s is active and ready.', 'ai-post-scheduler'),
+                                    esc_html($ai_provider_label)
+                                );
+                                ?>
                             </p>
                             <div class="aips-test-connection-wrapper">
                                 <button type="button" id="aips-test-connection" class="aips-btn aips-btn-secondary">
@@ -230,9 +236,15 @@ if (!defined('ABSPATH')) {
                             <p class="aips-status-message aips-status-error">
                                 <span class="aips-badge aips-badge-error">
                                     <span class="dashicons dashicons-dismiss"></span>
-                                    <?php esc_html_e('Not Found', 'ai-post-scheduler'); ?>
+                                    <?php esc_html_e('Not Available', 'ai-post-scheduler'); ?>
                                 </span>
-                                <?php esc_html_e('AI Engine is not installed or not activated. Please install and activate the AI Engine plugin.', 'ai-post-scheduler'); ?>
+                                <?php
+                                if (!empty($ai_provider_unavailable_msg)) {
+                                    echo esc_html($ai_provider_unavailable_msg);
+                                } else {
+                                    esc_html_e('No AI provider is available. Install the Meow Apps AI Engine plugin or configure a WordPress AI Client connector.', 'ai-post-scheduler');
+                                }
+                                ?>
                             </p>
                             <p class="aips-ai-engine-download-wrap">
                                 <a href="https://wordpress.org/plugins/ai-engine/" target="_blank" rel="noopener" class="aips-btn aips-btn-primary">

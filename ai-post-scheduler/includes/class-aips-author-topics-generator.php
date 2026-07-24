@@ -106,6 +106,7 @@ class AIPS_Author_Topics_Generator {
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
 			'temperature' => 0.7,
+			'json_schema' => $this->get_topic_json_schema(),
 		));
 		
 		if (is_wp_error($response)) {
@@ -236,6 +237,26 @@ class AIPS_Author_Topics_Generator {
 		}
 
 		return $section . "\n";
+	}
+
+	/**
+	 * JSON schema for the topic array returned by the AI.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_topic_json_schema(): array {
+		return array(
+			'type'  => 'array',
+			'items' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'title'    => array('type' => 'string'),
+					'score'    => array('type' => 'integer'),
+					'keywords' => array('type' => 'array', 'items' => array('type' => 'string')),
+				),
+				'required' => array('title', 'score', 'keywords'),
+			),
+		);
 	}
 
 	/**

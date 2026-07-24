@@ -238,10 +238,10 @@ class AIPS_Campaigns_Controller {
 	private function build_campaign_warnings($campaign, $campaign_health) {
 		$warnings = array();
 
-		if (!class_exists('Meow_MWAI_Core')) {
+		if (!AIPS_AI_Provider_Factory::has_available_provider()) {
 			$warnings[] = array(
-				'type' => 'missing_ai_engine',
-				'message' => __('AI Engine is not active. Campaign generation will fail until Meow Apps AI Engine is installed and activated.', 'ai-post-scheduler'),
+				'type' => 'missing_ai_provider',
+				'message' => __('No AI provider is available. Campaign generation will fail until the Meow Apps AI Engine plugin is activated or a WordPress AI Client connector is configured.', 'ai-post-scheduler'),
 			);
 		}
 
@@ -591,7 +591,9 @@ class AIPS_Campaigns_Controller {
 
 		$intake = $this->get_ai_intake_payload();
 		$prompt = $this->build_ai_campaign_prompt($intake);
-		$response = $this->ai_service->generate_json($prompt);
+		$response = $this->ai_service->generate_json($prompt, array(
+			'json_schema' => $this->get_campaign_json_schema(),
+		));
 
 		if (is_wp_error($response)) {
 			AIPS_Ajax_Response::error($response->get_error_message(), 'ai_generation_failed', 500);
@@ -599,10 +601,6 @@ class AIPS_Campaigns_Controller {
 
 		if (!is_array($response)) {
 			AIPS_Ajax_Response::error(__('AI response was not valid JSON.', 'ai-post-scheduler'), 'invalid_ai_response', 500);
-		}
-
-		if (isset($response[0]) && is_array($response[0])) {
-			$response = $response[0];
 		}
 
 		$draft = $this->normalise_payload(array_merge($this->get_draft(), $this->prepare_ai_payload($response, $intake)));
@@ -720,6 +718,36 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
+	 * JSON schema for the campaign object returned by the AI.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_campaign_json_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'campaign_name'        => array('type' => 'string'),
+				'content_goal'         => array('type' => 'string'),
+				'post_type'            => array('type' => 'string'),
+				'prompt_template'      => array('type' => 'string'),
+				'title_prompt'         => array('type' => 'string'),
+				'author_persona'       => array('type' => 'string'),
+				'campaign_mode'        => array('type' => 'string', 'enum' => array('template', 'author')),
+				'review_policy'        => array('type' => 'string', 'enum' => array('draft', 'approval', 'auto_publish')),
+				'frequency'            => array('type' => 'string'),
+				'time_window_start'    => array('type' => 'string'),
+				'time_window_end'      => array('type' => 'string'),
+				'post_tags'            => array('type' => 'string'),
+				'post_category'        => array('type' => 'integer'),
+				'template_style'       => array('type' => 'string'),
+				'sample_article_ideas' => array('type' => 'array', 'items' => array('type' => 'string')),
+				'risks_assumptions'    => array('type' => 'array', 'items' => array('type' => 'string')),
+			),
+			'required' => array('campaign_name', 'content_goal', 'post_type', 'prompt_template', 'title_prompt', 'campaign_mode', 'review_policy', 'sample_article_ideas'),
+		);
+	}
+
+	/**
 	 * Build AI prompt for campaign wizard generation.
 	 *
 	 * @param array $intake Sanitized intake values.
@@ -737,26 +765,13 @@ class AIPS_Campaigns_Controller {
 
 		return
 			"You are helping a WordPress user configure an AI content campaign.\n" .
-			"Return only a single JSON object with the exact keys below.\n" .
-			"Do not wrap the JSON in markdown and do not include any extra keys.\n\n" .
-			"Required keys:\n" .
-			"- campaign_name (string)\n" .
-			"- content_goal (string)\n" .
-			"- post_type (string)\n" .
-			"- prompt_template (string; use {{topic}} — lowercase, double curly braces — as the sole placeholder for the article subject; never use [TOPIC] or any other format)\n" .
-			"- title_prompt (string; must instruct the AI to generate exactly 1 title (never more); do NOT use {{topic}} here because {{topic}} maps to the final title in this system; this prompt must be self-contained and not rely on template variables; example: 'Generate exactly one concise, SEO-friendly article title aligned with the campaign goal and audience.')\n" .
-			"- author_persona (string)\n" .
-			"- campaign_mode (string: template|author)\n" .
-			"- review_policy (string: draft|approval|auto_publish)\n" .
-			"- frequency (string)\n" .
-			"- time_window_start (string HH:MM or empty)\n" .
-			"- time_window_end (string HH:MM or empty)\n" .
-			"- post_tags (string)\n" .
-			"- post_category (number, use 0 when unknown)\n" .
-			"- template_style (string from available_output_styles)\n" .
-			"- sample_article_ideas (array of 3 to 5 strings)\n" .
-			"- risks_assumptions (array of 2 to 4 strings)\n\n" .
-			"Use realistic, user-friendly values suitable for immediate editing and publishing.\n\n" .
+			"Return a single JSON object with realistic, user-friendly values suitable for immediate editing and publishing.\n\n" .
+			"Important constraints:\n" .
+			"- prompt_template: use {{topic}} (lowercase, double curly braces) as the sole placeholder for the article subject — never [TOPIC] or any other format.\n" .
+			"- title_prompt: must instruct the AI to generate exactly 1 title; do NOT use {{topic}} here (it maps to the final title in this system); make it self-contained.\n" .
+			"- campaign_mode: must be one of template|author\n" .
+			"- review_policy: must be one of draft|approval|auto_publish\n" .
+			"- post_category: use 0 when unknown\n\n" .
 			"Context:\n" . wp_json_encode($context);
 	}
 

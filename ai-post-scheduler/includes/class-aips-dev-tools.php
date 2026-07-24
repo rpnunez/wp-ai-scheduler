@@ -84,29 +84,25 @@ class AIPS_Dev_Tools {
             $prompt .= "\nIMPORTANT: Use custom AI variables in your prompts using {{VariableName}} syntax (e.g., {{TargetAudience}}, {{KeyFeature}}). Do not use system variables like {{date}} or {{topic}} unless necessary.\n";
         }
 
-        $prompt .= "\nReturn ONLY the raw JSON object. No markdown formatting or explanation.";
-
         // Call AI Service
         $ai_service = new AIPS_AI_Service();
-        $response = $ai_service->generate_text($prompt, array('temperature' => 0.7));
+        $data = $ai_service->generate_json($prompt, array(
+            'temperature'  => 0.7,
+            'json_schema'  => $this->build_scaffold_json_schema(
+                $include_voice,
+                $include_structure,
+                $include_title_prompt,
+                $include_content_prompt,
+                $include_image_prompt
+            ),
+        ));
 
-        if (is_wp_error($response)) {
-            AIPS_Ajax_Response::error(array('message' => $response->get_error_message()));
+        if (is_wp_error($data)) {
+            AIPS_Ajax_Response::error(array('message' => $data->get_error_message()));
         }
 
-        // Parse JSON
-        $json_str = trim($response);
-        // Remove markdown code blocks if present
-        $json_str = preg_replace('/^```(?:json)?\s*/i', '', $json_str);
-        $json_str = preg_replace('/\s*```$/', '', $json_str);
-
-        $data = json_decode($json_str, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-            AIPS_Ajax_Response::error(array(
-                'message' => __('Failed to parse AI response as JSON.', 'ai-post-scheduler'),
-                'debug' => $json_str
-            ));
+        if (!is_array($data)) {
+            AIPS_Ajax_Response::error(array('message' => __('Failed to parse AI response as JSON.', 'ai-post-scheduler')));
         }
 
         $created_items = array();
@@ -207,5 +203,84 @@ class AIPS_Dev_Tools {
             'message' => __('Scaffold generated successfully!', 'ai-post-scheduler'),
             'items' => $created_items
         ));
+    }
+
+    /**
+     * Build the JSON schema for the scaffold response based on which components were requested.
+     *
+     * @param bool $include_voice
+     * @param bool $include_structure
+     * @param bool $include_title_prompt
+     * @param bool $include_content_prompt
+     * @param bool $include_image_prompt
+     * @return array<string, mixed>
+     */
+    private function build_scaffold_json_schema(bool $include_voice, bool $include_structure, bool $include_title_prompt, bool $include_content_prompt, bool $include_image_prompt): array {
+        $properties = array();
+
+        if ($include_voice) {
+            $properties['voice'] = array(
+                'type'       => 'object',
+                'properties' => array(
+                    'name'                  => array('type' => 'string'),
+                    'title_prompt'          => array('type' => 'string'),
+                    'content_instructions'  => array('type' => 'string'),
+                    'excerpt_instructions'  => array('type' => 'string'),
+                ),
+                'required' => array('name', 'title_prompt', 'content_instructions'),
+            );
+        }
+
+        if ($include_structure) {
+            $properties['article_structure'] = array(
+                'type'       => 'object',
+                'properties' => array(
+                    'name'            => array('type' => 'string'),
+                    'description'     => array('type' => 'string'),
+                    'prompt_template' => array('type' => 'string'),
+                    'sections'        => array(
+                        'type'  => 'array',
+                        'items' => array(
+                            'type'       => 'object',
+                            'properties' => array(
+                                'key'         => array('type' => 'string'),
+                                'name'        => array('type' => 'string'),
+                                'description' => array('type' => 'string'),
+                                'content'     => array('type' => 'string'),
+                            ),
+                            'required' => array('key', 'name', 'description', 'content'),
+                        ),
+                    ),
+                ),
+                'required' => array('name', 'description', 'prompt_template', 'sections'),
+            );
+        }
+
+        $template_props    = array('name' => array('type' => 'string'));
+        $template_required = array('name');
+
+        if ($include_title_prompt) {
+            $template_props['title_prompt']  = array('type' => 'string');
+            $template_required[]             = 'title_prompt';
+        }
+        if ($include_content_prompt) {
+            $template_props['prompt_template'] = array('type' => 'string');
+            $template_required[]               = 'prompt_template';
+        }
+        if ($include_image_prompt) {
+            $template_props['image_prompt'] = array('type' => 'string');
+            $template_required[]            = 'image_prompt';
+        }
+
+        $properties['template'] = array(
+            'type'       => 'object',
+            'properties' => $template_props,
+            'required'   => $template_required,
+        );
+
+        return array(
+            'type'       => 'object',
+            'properties' => $properties,
+        );
     }
 }

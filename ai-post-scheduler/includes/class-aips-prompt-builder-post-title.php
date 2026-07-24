@@ -96,6 +96,50 @@ class AIPS_Prompt_Builder_Post_Title {
 	}
 
 	/**
+	 * Build a title prompt for a conversation that already contains the article.
+	 *
+	 * Identical to build() except that the article body is not pasted in — the
+	 * model already produced it as the preceding turn, so the prompt refers back
+	 * to it instead. Only used when the active provider reports
+	 * supports_conversation(); build() remains the self-contained fallback.
+	 *
+	 * Note for filter consumers: the aips_title_prompt filter still fires, but its
+	 * $content argument is an empty string here because the body is not part of
+	 * the prompt. A filter that interpolates it must tolerate that.
+	 *
+	 * @param AIPS_Generation_Context $context Generation context.
+	 * @return string
+	 */
+	public function build_followup($context) {
+		$title_instructions = '';
+		$topic_str = $context->get_topic();
+
+		if ($context->get_type() === 'template' && $context->get_voice_id()) {
+			$voice_obj = $context->get_voice();
+			if ($voice_obj && !empty($voice_obj->title_prompt)) {
+				$title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
+			}
+		}
+
+		if (empty($title_instructions)) {
+			$title_prompt = $context->get_title_prompt();
+			if (!empty($title_prompt)) {
+				$title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+			}
+		}
+
+		$prompt = 'Now generate a title for the article you just wrote. Respond with ONLY the most relevant title, nothing else.';
+
+		if (!empty($title_instructions)) {
+			$prompt .= " Here are your instructions:\n\n" . $title_instructions;
+		}
+
+		$prompt = $this->append_diversity_blocks($prompt, $context);
+
+		return apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, '');
+	}
+
+	/**
 	 * Build the common title prompt shell used by both legacy and context flows.
 	 *
 	 * @param string $title_instructions Processed title instructions.
@@ -112,19 +156,27 @@ class AIPS_Prompt_Builder_Post_Title {
 
 		$prompt .= "\n\nHere is the content:\n\n" . $content;
 
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($subject);
-		if (!empty($diversity_block)) {
-			$prompt .= "\n\n" . $diversity_block;
-		}
+		return $this->append_diversity_blocks($prompt, $subject);
+	}
 
-		$content_format_block = $this->diversity_injector->build_content_format_block($subject);
-		if (!empty($content_format_block)) {
-			$prompt .= "\n\n" . $content_format_block;
-		}
+	/**
+	 * Append the avoid-titles, content-format, and post-slice diversity blocks.
+	 *
+	 * @param string $prompt  Prompt built so far.
+	 * @param mixed  $subject Template object or generation context.
+	 * @return string
+	 */
+	private function append_diversity_blocks($prompt, $subject) {
+		$blocks = array(
+			$this->diversity_injector->build_avoid_titles_block($subject),
+			$this->diversity_injector->build_content_format_block($subject),
+			$this->diversity_injector->build_post_slice_block($subject),
+		);
 
-		$post_slice_block = $this->diversity_injector->build_post_slice_block($subject);
-		if (!empty($post_slice_block)) {
-			$prompt .= "\n\n" . $post_slice_block;
+		foreach ($blocks as $block) {
+			if (!empty($block)) {
+				$prompt .= "\n\n" . $block;
+			}
 		}
 
 		return $prompt;

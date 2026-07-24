@@ -1,0 +1,640 @@
+/**
+ * Stress Test admin page styles.
+ *
+ * Builds on the design tokens declared in admin.css. Status is carried by the
+ * data-status attribute on rows, the summary banner, and summary list items, so
+ * the JS only ever swaps one attribute rather than juggling class names.
+ *
+ * @since 3.2.0
+ */
+
+/* -----------------------------------------------------------------------
+ * Environment strip
+ * -------------------------------------------------------------------- */
+
+.aips-stress-env {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: var(--aips-space-4);
+	padding: var(--aips-space-4) var(--aips-space-5);
+	background: var(--aips-gray-50);
+	border-bottom: 1px solid var(--aips-gray-100);
+}
+
+.aips-stress-env-item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-1);
+	min-width: 0;
+}
+
+.aips-stress-env-label {
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--aips-gray-500);
+}
+
+.aips-stress-env-value {
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-900);
+	overflow-wrap: anywhere;
+}
+
+/* -----------------------------------------------------------------------
+ * Notices
+ * -------------------------------------------------------------------- */
+
+.aips-stress-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--aips-space-2);
+	margin: var(--aips-space-4) var(--aips-space-5);
+	padding: var(--aips-space-3) var(--aips-space-4);
+	border-radius: var(--aips-radius-sm);
+	border-left: 4px solid var(--aips-gray-300);
+	background: var(--aips-gray-50);
+	font-size: var(--aips-text-sm);
+}
+
+.aips-stress-notice-danger {
+	border-left-color: var(--aips-error);
+	background: var(--aips-error-light);
+	color: var(--aips-error-dark);
+}
+
+.aips-stress-notice .dashicons {
+	flex: 0 0 auto;
+}
+
+/* -----------------------------------------------------------------------
+ * Progress
+ * -------------------------------------------------------------------- */
+
+.aips-stress-progress {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-3) var(--aips-space-5);
+}
+
+.aips-stress-progress-bar {
+	position: relative;
+	flex: 1 1 auto;
+	height: 6px;
+	border-radius: 999px;
+	background: var(--aips-gray-100);
+	overflow: hidden;
+}
+
+.aips-stress-progress-bar span {
+	display: block;
+	height: 100%;
+	width: 0;
+	border-radius: 999px;
+	background: var(--aips-primary);
+	transition: width 240ms ease;
+}
+
+.aips-stress-progress-label {
+	flex: 0 0 auto;
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-600);
+	font-variant-numeric: tabular-nums;
+}
+
+/* -----------------------------------------------------------------------
+ * Summary banner
+ * -------------------------------------------------------------------- */
+
+.aips-stress-summary {
+	margin: var(--aips-space-4) var(--aips-space-5);
+}
+
+.aips-stress-summary-banner {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-4);
+	padding: var(--aips-space-5);
+	border-radius: var(--aips-radius-md, 4px);
+	border: 1px solid var(--aips-gray-100);
+}
+
+.aips-stress-summary[data-status="passed"] .aips-stress-summary-banner {
+	border-color: var(--aips-success);
+	background: var(--aips-success-light);
+}
+
+.aips-stress-summary[data-status="failed"] .aips-stress-summary-banner {
+	border-color: var(--aips-error);
+	background: var(--aips-error-light);
+}
+
+.aips-stress-summary-icon {
+	font-size: 40px;
+	width: 40px;
+	height: 40px;
+	line-height: 1;
+}
+
+.aips-stress-summary[data-status="passed"] .aips-stress-summary-icon {
+	color: var(--aips-success);
+}
+
+.aips-stress-summary[data-status="failed"] .aips-stress-summary-icon {
+	color: var(--aips-error);
+}
+
+.aips-stress-summary-text h3 {
+	margin: 0 0 var(--aips-space-1);
+	font-size: var(--aips-text-xl);
+	line-height: var(--aips-leading-tight);
+}
+
+.aips-stress-summary-text p {
+	margin: 0;
+	color: var(--aips-gray-600);
+	font-size: var(--aips-text-sm);
+}
+
+/* Banner entrance. Replayed by toggling .is-animating so a second run with the
+ * same outcome still animates. */
+.aips-stress-summary.is-animating .aips-stress-summary-banner {
+	animation: aips-stress-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.aips-stress-summary.is-animating .aips-stress-summary-icon {
+	animation: aips-stress-badge 600ms ease-out both;
+	animation-delay: 120ms;
+}
+
+@keyframes aips-stress-pop {
+	from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+	to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes aips-stress-badge {
+	0%   { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+	60%  { transform: scale(1.15) rotate(3deg); opacity: 1; }
+	100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Summary list */
+
+.aips-stress-summary-list {
+	margin: var(--aips-space-4) 0 0;
+	padding: 0;
+	list-style: none;
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-sm);
+	overflow: hidden;
+}
+
+.aips-stress-summary-list li {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+	margin: 0;
+	padding: var(--aips-space-2) var(--aips-space-4);
+	border-bottom: 1px solid var(--aips-gray-50);
+	font-size: var(--aips-text-sm);
+}
+
+.aips-stress-summary-list li:last-child {
+	border-bottom: 0;
+}
+
+.aips-stress-summary-dot {
+	flex: 0 0 auto;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--aips-gray-300);
+}
+
+.aips-stress-summary-list li[data-status="passed"] .aips-stress-summary-dot {
+	background: var(--aips-success);
+}
+
+.aips-stress-summary-list li[data-status="failed"] .aips-stress-summary-dot {
+	background: var(--aips-error);
+}
+
+.aips-stress-summary-label {
+	flex: 0 0 auto;
+	font-weight: var(--aips-font-medium);
+}
+
+.aips-stress-summary-detail {
+	flex: 1 1 auto;
+	min-width: 0;
+	color: var(--aips-gray-600);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aips-stress-summary-time {
+	flex: 0 0 auto;
+	color: var(--aips-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+
+/* -----------------------------------------------------------------------
+ * Case table
+ * -------------------------------------------------------------------- */
+
+.aips-stress-table .aips-stress-col-status { width: 40px; }
+.aips-stress-table .aips-stress-col-result { width: 30%; }
+.aips-stress-table .aips-stress-col-time   { width: 90px; text-align: right; }
+.aips-stress-table .aips-stress-col-actions { width: 90px; text-align: right; }
+
+.aips-stress-row {
+	cursor: pointer;
+}
+
+.aips-stress-row td {
+	vertical-align: top;
+	transition: background-color 120ms ease;
+}
+
+.aips-stress-row:hover td {
+	background: var(--aips-gray-50);
+}
+
+.aips-stress-row.is-expanded td,
+.aips-stress-row.is-expanded:hover td {
+	background: var(--aips-primary-light);
+}
+
+/* The Run button is inside the clickable row; keep its own cursor. */
+.aips-stress-row .aips-stress-run-one {
+	cursor: pointer;
+}
+
+/* Status indicator */
+
+.aips-stress-indicator {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	margin-top: 4px;
+	border-radius: 50%;
+	background: var(--aips-gray-200);
+	transition: background-color 160ms ease;
+}
+
+.aips-stress-row[data-status="passed"] .aips-stress-indicator {
+	background: var(--aips-success);
+	box-shadow: 0 0 0 3px var(--aips-success-light);
+}
+
+.aips-stress-row[data-status="failed"] .aips-stress-indicator {
+	background: var(--aips-error);
+	box-shadow: 0 0 0 3px var(--aips-error-light);
+}
+
+.aips-stress-row[data-status="running"] .aips-stress-indicator {
+	background: var(--aips-primary);
+	animation: aips-stress-pulse 1s ease-in-out infinite;
+}
+
+@keyframes aips-stress-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 var(--aips-primary-light); opacity: 1; }
+	50%      { box-shadow: 0 0 0 6px var(--aips-primary-light); opacity: 0.6; }
+}
+
+/* Case cell */
+
+.aips-stress-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+	font-size: var(--aips-text-base);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-900);
+}
+
+.aips-stress-toggle:hover,
+.aips-stress-toggle:focus-visible {
+	color: var(--aips-primary);
+}
+
+.aips-stress-caret {
+	transition: transform 160ms ease;
+}
+
+.aips-stress-toggle[aria-expanded="true"] .aips-stress-caret {
+	transform: rotate(90deg);
+}
+
+.aips-stress-case-desc {
+	margin: var(--aips-space-1) 0 0;
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-500);
+}
+
+.aips-stress-creates {
+	margin-top: var(--aips-space-2);
+}
+
+.aips-stress-result-text {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-700);
+}
+
+.aips-stress-row[data-status="failed"] .aips-stress-result-text {
+	color: var(--aips-error-dark);
+}
+
+.aips-stress-duration {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+
+/* -----------------------------------------------------------------------
+ * Expanded details
+ * -------------------------------------------------------------------- */
+
+.aips-stress-details-row td {
+	padding: 0;
+	background: var(--aips-gray-50);
+}
+
+.aips-stress-detail-body {
+	padding: var(--aips-space-5);
+}
+
+.aips-stress-compare {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: var(--aips-space-4);
+}
+
+.aips-stress-compare-col {
+	min-width: 0;
+	padding: var(--aips-space-4);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-sm);
+}
+
+.aips-stress-compare-col h4,
+.aips-stress-calls h4 {
+	margin: 0 0 var(--aips-space-1);
+	font-size: var(--aips-text-sm);
+	font-weight: var(--aips-font-semibold);
+}
+
+.aips-stress-hint {
+	margin: 0 0 var(--aips-space-3);
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-500);
+}
+
+.aips-stress-preview {
+	margin-top: var(--aips-space-4);
+}
+
+.aips-stress-preview img {
+	max-width: 320px;
+	height: auto;
+	border-radius: var(--aips-radius-sm);
+	border: 1px solid var(--aips-gray-100);
+}
+
+.aips-stress-calls {
+	margin-top: var(--aips-space-6);
+}
+
+.aips-stress-call {
+	margin-bottom: var(--aips-space-4);
+	padding: var(--aips-space-4);
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-sm);
+}
+
+.aips-stress-call-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--aips-space-3);
+	padding-bottom: var(--aips-space-2);
+	margin-bottom: var(--aips-space-3);
+	border-bottom: 1px solid var(--aips-gray-50);
+	border-left: 3px solid var(--aips-gray-200);
+	padding-left: var(--aips-space-3);
+}
+
+.aips-stress-call-head[data-status="passed"] { border-left-color: var(--aips-success); }
+.aips-stress-call-head[data-status="failed"] { border-left-color: var(--aips-error); }
+
+.aips-stress-call-time {
+	font-size: var(--aips-text-xs);
+	color: var(--aips-gray-500);
+}
+
+/* Request / Response panels -- visually separated halves of one call. */
+
+/* No overflow:hidden here -- it would clip the help tooltip that overflows the
+ * request panel. The head rounds its own top corners instead. */
+.aips-stress-side {
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-sm);
+}
+
+.aips-stress-side + .aips-stress-side {
+	margin-top: var(--aips-space-3);
+}
+
+.aips-stress-side-head {
+	padding: var(--aips-space-2) var(--aips-space-3);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	border-left: 3px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-sm) var(--aips-radius-sm) 0 0;
+}
+
+.aips-stress-side-request .aips-stress-side-head {
+	background: var(--aips-info-light);
+	color: var(--aips-info-dark);
+	border-left-color: var(--aips-info);
+}
+
+.aips-stress-side-response .aips-stress-side-head {
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-700);
+	border-left-color: var(--aips-gray-400);
+}
+
+.aips-stress-side-body {
+	padding: var(--aips-space-3);
+}
+
+/* "?" help affordance revealing the system instruction on hover/focus. */
+
+.aips-stress-help {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 15px;
+	height: 15px;
+	margin-left: var(--aips-space-2);
+	border-radius: 50%;
+	background: var(--aips-gray-200);
+	color: var(--aips-gray-700);
+	font-size: 10px;
+	font-weight: var(--aips-font-bold);
+	line-height: 1;
+	cursor: help;
+	vertical-align: middle;
+}
+
+.aips-stress-help:hover,
+.aips-stress-help:focus-visible {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+	outline: none;
+}
+
+.aips-stress-tooltip {
+	position: absolute;
+	left: 0;
+	top: calc(100% + 6px);
+	z-index: 20;
+	display: none;
+	width: max-content;
+	max-width: 460px;
+	max-height: 320px;
+	overflow: auto;
+	padding: var(--aips-space-3);
+	border-radius: var(--aips-radius-sm);
+	background: var(--aips-gray-900);
+	color: var(--aips-white);
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-normal);
+	text-transform: none;
+	letter-spacing: 0;
+	line-height: var(--aips-leading-normal);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+	text-align: left;
+	cursor: text;
+}
+
+.aips-stress-help:hover .aips-stress-tooltip,
+.aips-stress-help:focus .aips-stress-tooltip,
+.aips-stress-help:focus-within .aips-stress-tooltip {
+	display: block;
+}
+
+/* Condensed options as inline key/value pills. */
+
+.aips-stress-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+}
+
+.aips-stress-pill {
+	display: inline-flex;
+	align-items: stretch;
+	border-radius: var(--aips-radius-sm);
+	overflow: hidden;
+	font-size: var(--aips-text-xs);
+	border: 1px solid var(--aips-gray-100);
+}
+
+.aips-stress-pill-key {
+	padding: 2px var(--aips-space-2);
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-600);
+	font-weight: var(--aips-font-medium);
+}
+
+.aips-stress-pill-val {
+	padding: 2px var(--aips-space-2);
+	background: var(--aips-white);
+	color: var(--aips-gray-900);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Labelled sub-blocks within a request/response section. */
+
+.aips-stress-field {
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-stress-field:last-child {
+	margin-bottom: 0;
+}
+
+.aips-stress-field h6 {
+	margin: 0 0 var(--aips-space-1);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--aips-gray-500);
+}
+
+/* Long provider output must scroll inside its own box rather than stretching
+ * the table and forcing the page to scroll horizontally. pre-wrap keeps the
+ * real newlines in a prompt visible instead of collapsing them. */
+.aips-stress-details .aips-json-viewer pre {
+	max-height: 320px;
+	overflow: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	tab-size: 2;
+}
+
+/* -----------------------------------------------------------------------
+ * Test data badge
+ * -------------------------------------------------------------------- */
+
+.aips-stress-testdata-count {
+	display: inline-block;
+	min-width: 18px;
+	margin-left: var(--aips-space-1);
+	padding: 0 5px;
+	border-radius: 999px;
+	background: rgba(0, 0, 0, 0.18);
+	font-size: var(--aips-text-2xs);
+	line-height: 18px;
+	text-align: center;
+}
+
+.aips-stress-testdata-count[hidden] {
+	display: none;
+}
+
+/* -----------------------------------------------------------------------
+ * Reduced motion
+ * -------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.aips-stress-summary.is-animating .aips-stress-summary-banner,
+	.aips-stress-summary.is-animating .aips-stress-summary-icon,
+	.aips-stress-row[data-status="running"] .aips-stress-indicator {
+		animation: none;
+	}
+
+	.aips-stress-progress-bar span,
+	.aips-stress-caret,
+	.aips-stress-indicator {
+		transition: none;
+	}
+}

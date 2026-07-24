@@ -123,7 +123,8 @@ class AIPS_Config {
             'aips_db_version' => '0',
             'aips_onboarding_completed' => false,
             'aips_log_secret' => '',
-            // AI model
+            // AI provider & model
+            'aips_ai_provider' => '', // '' = auto-detect (Meow preferred)
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
             'aips_max_tokens_limit' => 16000,
@@ -131,6 +132,9 @@ class AIPS_Config {
             'aips_max_tokens_excerpt' => 300,
             'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
+            // Conversational generation (requires a provider with supports_conversation())
+            'aips_conversational_generation' => false,
+            'aips_conversational_metadata_turn' => false,
             // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
@@ -378,6 +382,7 @@ class AIPS_Config {
      */
     public function get_ai_config() {
         return array(
+            'provider'         => (string) $this->get_option('aips_ai_provider'),
             'model'            => (string) $this->get_option('aips_ai_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
