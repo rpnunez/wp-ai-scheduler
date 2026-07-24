@@ -302,10 +302,10 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::not_found( __( 'Workflow', 'ai-post-scheduler' ) );
 		}
 
-		$steps = $this->decode_json_field( $_POST['steps'] ?? '' );
+		$steps = $this->decode_steps_field( $_POST['steps'] ?? '' );
 
-		if ( ! is_array( $steps ) ) {
-			AIPS_Ajax_Response::invalid_request( __( 'Steps payload must be a JSON array.', 'ai-post-scheduler' ) );
+		if ( is_wp_error( $steps ) ) {
+			AIPS_Ajax_Response::invalid_request( $steps->get_error_message() );
 		}
 
 		$validation = $this->validator->validate( array( 'steps' => $steps ) );
@@ -361,5 +361,41 @@ class AIPS_Ability_Workflows_Controller {
 		$decoded = json_decode( wp_unslash( $raw ), true );
 
 		return is_array( $decoded ) ? $decoded : array();
+	}
+
+	/**
+	 * Decode the steps payload strictly, distinguishing "explicitly empty"
+	 * from "malformed JSON" — unlike decode_json_field(), a malformed value
+	 * here must NOT silently coerce to an empty array, since an empty steps
+	 * array passes validation trivially and would wipe every existing step
+	 * via AIPS_Ability_Workflow_Repository::save_steps()'s replace-all
+	 * semantics.
+	 *
+	 * @param mixed $raw Raw POST value.
+	 * @return array|WP_Error Decoded steps array, or WP_Error when the raw
+	 *                         value was non-empty but failed to decode.
+	 */
+	private function decode_steps_field( $raw ) {
+		if ( is_array( $raw ) ) {
+			return $raw;
+		}
+
+		if ( ! is_string( $raw ) ) {
+			return array();
+		}
+
+		$raw = trim( wp_unslash( $raw ) );
+
+		if ( '' === $raw ) {
+			return array();
+		}
+
+		$decoded = json_decode( $raw, true );
+
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
+			return new WP_Error( 'ability_workflow_steps_payload_invalid', __( 'Steps payload is not valid JSON.', 'ai-post-scheduler' ) );
+		}
+
+		return $decoded;
 	}
 }
