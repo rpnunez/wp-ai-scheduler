@@ -727,23 +727,29 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             'type' => $type,
         );
 
+        $last_error = null;
+
         foreach ($slugs as $slug) {
-            $available = $ability->is_available($slug);
-
-            if (is_wp_error($available) || !$available) {
-                continue;
-            }
-
             $response = $ability->invoke($slug, $payload, $options);
 
             if (is_wp_error($response)) {
-                return $response;
+                if ($response->get_error_code() !== 'ability_unavailable') {
+                    $last_error = $response;
+                }
+                continue;
             }
 
-            return $this->extract_ability_content($type, $response);
+            $content = $this->extract_ability_content($type, $response);
+
+            if (is_wp_error($content)) {
+                $last_error = $content;
+                continue;
+            }
+
+            return $content;
         }
 
-        return new WP_Error('ability_unavailable', sprintf(__('No ability is available for %s generation.', 'ai-post-scheduler'), $type));
+        return $last_error ?: new WP_Error('ability_unavailable', sprintf(__('No ability is available for %s generation.', 'ai-post-scheduler'), $type));
     }
 
     /**
@@ -780,7 +786,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     private function get_ability_slugs_for_type($type, $options) {
         if (!empty($options['ability_slug'])) {
-            return array(sanitize_key($options['ability_slug']));
+            return array(sanitize_text_field($options['ability_slug']));
         }
 
         $map = array(
