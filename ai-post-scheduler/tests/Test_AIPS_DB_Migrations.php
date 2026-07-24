@@ -120,4 +120,73 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$saved = get_option('aips_db_version');
 		$this->assertSame(AIPS_VERSION, $saved, 'aips_db_version should remain unchanged when versions match');
 	}
+
+	/**
+	 * Legacy partial-generation keys should be renamed and the generated-post
+	 * marker should be backfilled without duplicating rows on re-run.
+	 */
+	public function test_migrate_to_3_0_1_normalizes_partial_generation_meta() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array(
+			'post_title' => 'Legacy Partial Generation Post',
+		) );
+
+		add_post_meta( $post_id, 'aips_post_generation_component_statuses', wp_json_encode( array( 'post_title' => true ) ) );
+		add_post_meta( $post_id, 'aips_post_generation_incomplete', 'true' );
+		add_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode( array( 'post_title' => false ) ) );
+
+		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_DB_Migrations::check_and_run();
+		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$this->assertFalse( metadata_exists( 'post', $post_id, 'aips_post_generation_component_statuses' ) );
+		$this->assertFalse( metadata_exists( 'post', $post_id, 'aips_post_generation_incomplete' ) );
+		$this->assertSame(
+			wp_json_encode( array( 'post_title' => false ) ),
+			get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true )
+		);
+		$this->assertSame( 'true', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true ) );
+		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
+
+		global $wpdb;
+		$generated_marker_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*)
+				FROM {$wpdb->postmeta}
+				WHERE post_id = %d
+				AND meta_key = %s",
+				$post_id,
+				AIPS_Post_Manager::META_GENERATED_POST
+			)
+		);
+		$this->assertSame( 1, $generated_marker_count );
+	}
+
+	/**
+	 * The generated-post marker should also backfill for posts referenced only
+	 * by generation history.
+	 */
+	public function test_migrate_to_3_0_1_backfills_generated_post_marker_from_history() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array(
+			'post_title' => 'History Only Generated Post',
+		) );
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id         = $history_repository->create( array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+		) );
+
+		$this->assertNotFalse( $history_id );
+		$this->assertFalse( metadata_exists( 'post', $post_id, AIPS_Post_Manager::META_GENERATED_POST ) );
+
+		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
+	}
 }
