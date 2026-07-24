@@ -427,4 +427,75 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 			$this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $day);
 		}
 	}
+
+	/**
+	 * Regression: an incomplete row must not crash the duration query.
+	 *
+	 * created_at and completed_at are UNSIGNED BIGINT columns that default to 0.
+	 * An incomplete generation keeps completed_at = 0, so the average-duration
+	 * query's `completed_at - created_at` used to underflow the unsigned type and
+	 * MySQL rejected it with error 1690. The window guard (completed_at IS NOT
+	 * NULL) never excluded those rows because the column is NOT NULL. This proves
+	 * the incomplete row is now skipped rather than fataling the query.
+	 */
+	public function test_average_duration_by_flow_skips_incomplete_rows_without_underflow() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('Requires the full WordPress test library and a real database.');
+		}
+
+		$table = $wpdb->prefix . 'aips_history';
+		$now   = time();
+		$flow  = 'aips_underflow_probe';
+
+		// Incomplete row: completed_at stays 0. This is the row that used to blow
+		// up the query once it fell inside the lookback window.
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id'     => $this->test_template_id,
+				'status'          => 'partial',
+				'creation_method' => $flow,
+				'created_at'      => $now,
+				'completed_at'    => 0,
+			),
+			array('%d', '%s', '%s', '%d', '%d')
+		);
+		$this->test_history_ids[] = $wpdb->insert_id;
+
+		// A genuinely finished row in the same flow, so the average has data.
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id'     => $this->test_template_id,
+				'status'          => 'completed',
+				'creation_method' => $flow,
+				'created_at'      => $now,
+				'completed_at'    => $now + 42,
+			),
+			array('%d', '%s', '%s', '%d', '%d')
+		);
+		$this->test_history_ids[] = $wpdb->insert_id;
+
+		$wpdb->last_error = '';
+
+		$rows = $this->repository->get_average_duration_by_flow(30);
+
+		$this->assertSame('', $wpdb->last_error, 'Incomplete rows must not trigger an unsigned-underflow error.');
+		$this->assertIsArray($rows);
+
+		$probe = null;
+		foreach ($rows as $row) {
+			if (isset($row['flow_type']) && $row['flow_type'] === $flow) {
+				$probe = $row;
+				break;
+			}
+		}
+
+		$this->assertNotNull($probe, 'The probe flow should appear in the results.');
+		// Only the finished row (42s) is counted; the incomplete row is excluded.
+		$this->assertSame(1, (int) $probe['sample_count']);
+		$this->assertSame(42, (int) round((float) $probe['avg_duration_seconds']));
+	}
 }

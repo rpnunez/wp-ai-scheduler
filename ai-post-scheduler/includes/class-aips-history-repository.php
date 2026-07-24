@@ -177,8 +177,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function get_average_duration_by_flow($days = 14) {
         $days = max(1, absint($days));
 
+        // completed_at / created_at are UNSIGNED BIGINT timestamps defaulting to 0.
+        // Incomplete rows keep completed_at = 0, and `completed_at IS NOT NULL` never
+        // filters them because the column is NOT NULL. A bare `completed_at - created_at`
+        // then underflows the unsigned type (MySQL error 1690). Guard on
+        // completed_at >= created_at so only genuinely finished rows are averaged.
         return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT COALESCE(NULLIF(creation_method, ''), 'unknown') AS flow_type, AVG(completed_at - created_at) AS avg_duration_seconds, COUNT(*) AS sample_count FROM {$this->table_name} WHERE completed_at IS NOT NULL AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY flow_type ORDER BY avg_duration_seconds DESC",
+            "SELECT COALESCE(NULLIF(creation_method, ''), 'unknown') AS flow_type, AVG(completed_at - created_at) AS avg_duration_seconds, COUNT(*) AS sample_count FROM {$this->table_name} WHERE completed_at >= created_at AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY flow_type ORDER BY avg_duration_seconds DESC",
             $days
         ), ARRAY_A);
     }
