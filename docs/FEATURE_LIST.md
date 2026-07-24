@@ -1,6 +1,6 @@
 # AI Post Scheduler — Feature Reference
 
-**Plugin Version:** 1.7.3  
+**Plugin Version:** 3.0.0  
 **Total Classes:** 128  
 **Total Lines of Code:** ~44,000  
 **Feature Categories:** 9  
@@ -231,7 +231,7 @@ Extracted from `AIPS_AI_Service` to separate reliability concerns:
 - Rate limiter (request-per-minute cap)
 - Retry logic with exponential backoff
 
-### AI Edit (`AIPS_AI_Edit_Controller`, `AIPS_Component_Regeneration_Service`)
+### AI Assistance — Component Editing (`AIPS_AI_Edit_Controller`, `AIPS_Component_Regeneration_Service`)
 Post-generation editing via AI:
 
 - Regenerate individual post components: title, content, excerpt, or featured image
@@ -382,7 +382,7 @@ Available only when `aips_developer_mode` is enabled in Settings:
 - Enables external AI agents and tools to query and trigger plugin operations
 - Validated by `validate-mcp-bridge.php` (CLI-only, no WordPress required)
 
-Full MCP documentation: [docs/mcp/](mcp/)
+Full MCP documentation: [docs/MCP_BRIDGE.md](MCP_BRIDGE.md)
 
 ---
 

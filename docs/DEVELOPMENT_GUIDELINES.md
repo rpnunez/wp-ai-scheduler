@@ -66,6 +66,19 @@ Never call `location.reload()` after an AJAX action. Instead:
 
 ---
 
+## Date and Time Handling: AIPS_DateTime, Never Native PHP Date Functions
+
+All datetime columns in the database are stored as `BIGINT UNSIGNED` Unix timestamps (not MySQL DATETIME strings). Use the `AIPS_DateTime` class for all date/time operations:
+
+- **DB writes:** store the raw int — `AIPS_DateTime::now()->timestamp()`.
+- **Display:** `AIPS_DateTime::fromTimestamp($ts)->toDisplay($format)` or `->toHumanDiff()`.
+- **Parsing stored strings (legacy data only):** `AIPS_DateTime::fromMysql($str)->timestamp()`.
+- **ISO 8601:** `AIPS_DateTime::now()->toIso8601()`.
+
+Never use `current_time()`, `strtotime()`, `date()`, `date_i18n()`, or `gmdate()` in new code. For `updated_at` columns, repository UPDATE methods must set the value explicitly — `ON UPDATE CURRENT_TIMESTAMP` does not fire on BIGINT columns.
+
+---
+
 ## Admin UI Design System
 
 For all admin interface work, use `ai-post-scheduler/docs/Design_Guidelines.md` as the single source of truth for tokens, shared component classes, approved usage, and migration patterns.

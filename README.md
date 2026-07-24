@@ -70,7 +70,7 @@ Local URLs:
 - Admin: http://localhost:8080/wp-admin (admin/admin)
 - phpMyAdmin: http://localhost:8082
 
-See [docs/DEV.md](docs/DEV.md) for full setup details and [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) for a quick-reference card.
+See [docs/SETUP.md](docs/SETUP.md) for full setup details.
 
 ### Daily Workflow
 
@@ -91,7 +91,7 @@ make down
 ### Manual/Non-Docker Setup
 
 - See [ai-post-scheduler/readme.txt](ai-post-scheduler/readme.txt) for plugin installation details.
-- PHPUnit is maintained around the Docker-backed WordPress test environment. See [docs/DEV.md](docs/DEV.md) for the supported workflow.
+- PHPUnit is maintained around the Docker-backed WordPress test environment. See [docs/SETUP.md](docs/SETUP.md) for the supported workflow.
 
 ### Debugging (VS Code)
 
@@ -145,18 +145,16 @@ php bin/benchmark.php \
   --fail-on-regression
 ```
 
-Performance benchmarks run automatically in CI on pull requests and fail PRs when thresholds are exceeded. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for details.
+Benchmarks can be run manually; no CI workflow currently enforces them automatically.
 
 ## Documentation
 
-- [docs/FEATURES.MD](docs/FEATURES.MD) — complete feature reference
-- [docs/DEV.md](docs/DEV.md) — developer setup and environment guide
-- [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) — quick-reference cheat sheet
+- [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md) — complete feature reference
+- [docs/SETUP.md](docs/SETUP.md) — developer setup and environment guide
 - [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
-- [docs/SETUP.md](docs/SETUP.md)
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — performance benchmarking and CI integration
 - [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — coding and architectural guidelines
+- [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md) — MCP bridge API reference
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
 ## Contributing

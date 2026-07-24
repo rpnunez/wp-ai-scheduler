@@ -18,7 +18,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Batch/bulk jobs: `AIPS_Batch_Queue_Service`, `AIPS_Bulk_Batch_Processor`, `AIPS_Bulk_Batch_Job_Store`, `AIPS_Bulk_Generator_Service`, and `includes/job/`.
 - Resilience: `AIPS_Resilience_Service::retry_with_backoff()`.
 - Cache: `AIPS_Cache`, `AIPS_Cache_Factory`, `AIPS_Cache_Invalidation_Bus`, repository cache traits/config.
-- Partial generation recovery: `AIPS_Partial_Generation_Notifications`, `AIPS_Partial_Generation_State_Reconciler`, `AIPS_Component_Regeneration_Service`, `AIPS_Session_To_JSON`.
+- Partial generation recovery: `AIPS_Partial_Generation_Notifications`, `AIPS_Partial_Generation_State_Reconciler`, `AIPS_Component_Regeneration_Service`, `AIPS_Session_To_JSON`. Posts with incomplete generation are tracked via two post meta keys: `aips_post_generation_incomplete` (string `'true'`/`'false'`) and `aips_post_generation_component_statuses` (JSON object mapping component names to boolean completion status). `AIPS_History_Repository::get_partial_generations()` queries these to surface the list in the Generated Posts UI.
 - Sources: `AIPS_Sources_*` classes and the `aips_source_group` taxonomy.
 - Embeddings: `AIPS_Embeddings_Service`, `AIPS_Embeddings_Cron`, `AIPS_Post_Embeddings_Repository`.
 - Internal links: `AIPS_Internal_Links_Controller`, services/repository, and the `aips_index_posts_batch` cron.

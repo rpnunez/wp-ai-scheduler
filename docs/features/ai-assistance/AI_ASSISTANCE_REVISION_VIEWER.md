@@ -1,18 +1,18 @@
-# AI Edit Revision Viewer - Implementation Documentation
+# AI Assistance — Revision Viewer
 
 ## Overview
 
-The AI Edit feature now includes a complete Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image).
+The AI Assistance feature includes a Revision Viewer that allows users to view and restore previous versions of post components (title, excerpt, content, featured image).
 
 ## User Interface
 
 ### Component Structure
 
-Each component in the AI Edit modal now has:
+Each component in the AI Assistance modal has:
 
 1. **Component Header** - Title and Regenerate button
 2. **Component Body** - Input field (text/textarea/image)
-3. **Revision Viewer** - NEW! Collapsible panel with:
+3. **Revision Viewer** - Collapsible panel with:
    - "View Revisions" button with count badge
    - Revision history list
    - Restore buttons for each revision
@@ -26,7 +26,7 @@ Each component in the AI Edit modal now has:
 │ [Text Input or Textarea]                    │
 │ Character count: 45                         │
 ├─────────────────────────────────────────────┤
-│ 🔄 View Revisions (3)  ← NEW BUTTON        │
+│ 🔄 View Revisions (3)                       │
 ├─────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────┐ │
 │ │ 📅 2024-02-10 10:30 AM                  │ │
@@ -125,6 +125,9 @@ Added to each component section:
 ```
 
 #### 2. CSS Styling
+
+> **Compatibility note:** The runtime files below retain their original `ai-edit` filenames. These names are legacy identifiers in the codebase and will be updated in a separate refactoring pass.
+
 **File:** `assets/css/admin-ai-edit.css`
 
 **Key Classes:**
@@ -168,6 +171,8 @@ $(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevisio
 
 #### AJAX Endpoints
 
+> **Compatibility note:** These AJAX action names use the legacy `aips_*_component*` convention. They remain unchanged for runtime compatibility.
+
 **1. Get Component Revisions**
 - **Action:** `aips_get_component_revisions`
 - **Parameters:**
@@ -184,7 +189,7 @@ $(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevisio
           "id": 123,
           "created_at": "2024-02-10 10:30 AM",
           "value": "Previous title text",
-          "metadata": {...}
+          "metadata": {}
         }
       ]
     }
@@ -212,7 +217,7 @@ $(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevisio
 
 ### Viewing Revisions
 
-1. User opens AI Edit modal for a post
+1. User opens AI Assistance modal for a post
 2. User clicks "View Revisions" button on any component
 3. System:
    - Shows loading spinner
@@ -267,17 +272,6 @@ Every action has visual feedback:
 3. **Efficient Rendering:** jQuery DOM manipulation optimized
 4. **Smooth Animations:** CSS transitions instead of JavaScript
 
-## Future Enhancements
-
-Potential improvements for future versions:
-
-1. **Diff View:** Show differences between current and revision
-2. **Bulk Restore:** Restore multiple components at once
-3. **Revision Notes:** Add notes/comments to revisions
-4. **Search/Filter:** Search through revision history
-5. **Compare Mode:** Side-by-side comparison
-6. **Revision Preview:** Full-screen preview before restore
-
 ## Testing Checklist
 
 - [ ] View Revisions button appears on all components
@@ -294,20 +288,10 @@ Potential improvements for future versions:
 - [ ] Keyboard navigation works
 - [ ] Works for all component types (title, excerpt, content, image)
 
-## Support
+## Related Files
 
-For issues or questions:
-1. Check browser console for JavaScript errors
-2. Verify AJAX endpoints return proper JSON
-3. Check PHP error logs for backend issues
-4. Confirm user has proper permissions
-5. Test with different post types and contexts
+> **Compatibility note:** The runtime files listed below retain their original `ai-edit` filenames. These are legacy identifiers in the codebase and will be updated in a separate refactoring pass.
 
----
-
-**Implementation completed:** February 10, 2024
-**Version:** 2.0.0
-**Related Files:**
 - `templates/admin/generated-posts.php`
 - `assets/css/admin-ai-edit.css`
 - `assets/js/admin-ai-edit.js`
