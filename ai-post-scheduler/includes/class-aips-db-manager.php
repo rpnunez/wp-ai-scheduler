@@ -33,6 +33,10 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
+        'aips_ability_workflows',
+        'aips_ability_workflow_steps',
+        'aips_ability_workflow_runs',
+        'aips_ability_workflow_step_runs',
     );
 
     public function __construct() {
@@ -94,6 +98,10 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
+        $table_ability_workflows          = $tables['aips_ability_workflows'];
+        $table_ability_workflow_steps     = $tables['aips_ability_workflow_steps'];
+        $table_ability_workflow_runs      = $tables['aips_ability_workflow_runs'];
+        $table_ability_workflow_step_runs = $tables['aips_ability_workflow_step_runs'];
 
         $sql = array();
 
@@ -637,6 +645,88 @@ class AIPS_DB_Manager {
             KEY event_type (event_type),
             KEY created_at (created_at),
             KEY user_id (user_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_ability_workflows (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            uuid varchar(36) NOT NULL,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'draft',
+            trigger_type varchar(50) NOT NULL DEFAULT 'manual',
+            trigger_config longtext DEFAULT NULL,
+            settings longtext DEFAULT NULL,
+            version int(11) NOT NULL DEFAULT 1,
+            created_by bigint(20) DEFAULT NULL,
+            updated_by bigint(20) DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uuid (uuid),
+            KEY status (status),
+            KEY trigger_type (trigger_type),
+            KEY created_by (created_by),
+            KEY updated_at (updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_ability_workflow_steps (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            workflow_id bigint(20) NOT NULL,
+            step_key varchar(100) NOT NULL,
+            name varchar(255) DEFAULT NULL,
+            ability_name varchar(191) NOT NULL,
+            position int(11) NOT NULL DEFAULT 0,
+            depends_on text DEFAULT NULL,
+            input_map longtext DEFAULT NULL,
+            condition_tree longtext DEFAULT NULL,
+            output_alias varchar(100) DEFAULT NULL,
+            on_success longtext DEFAULT NULL,
+            on_failure longtext DEFAULT NULL,
+            retry_policy longtext DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY workflow_id (workflow_id),
+            KEY workflow_position (workflow_id, position),
+            KEY ability_name (ability_name),
+            KEY step_key (step_key)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_ability_workflow_runs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            workflow_id bigint(20) NOT NULL,
+            workflow_version int(11) NOT NULL DEFAULT 1,
+            status varchar(20) NOT NULL DEFAULT 'queued',
+            trigger_context longtext DEFAULT NULL,
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            finished_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_by bigint(20) DEFAULT NULL,
+            correlation_id varchar(36) DEFAULT NULL,
+            PRIMARY KEY  (id),
+            KEY workflow_id (workflow_id),
+            KEY status (status),
+            KEY workflow_status_started (workflow_id, status, started_at),
+            KEY correlation_id (correlation_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_ability_workflow_step_runs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            run_id bigint(20) NOT NULL,
+            workflow_id bigint(20) NOT NULL,
+            step_id bigint(20) DEFAULT NULL,
+            step_key varchar(100) NOT NULL,
+            ability_name varchar(191) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            input_snapshot longtext DEFAULT NULL,
+            output_snapshot longtext DEFAULT NULL,
+            error longtext DEFAULT NULL,
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            finished_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY run_id (run_id),
+            KEY workflow_id (workflow_id),
+            KEY run_step_status (run_id, step_key, status),
+            KEY ability_name (ability_name)
         ) $charset_collate;";
 
         return $sql;

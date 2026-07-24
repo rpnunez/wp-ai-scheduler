@@ -19,6 +19,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     public function tearDown(): void {
+        remove_all_filters('aips_ability_provider');
         parent::tearDown();
     }
 
@@ -748,5 +749,248 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $mwai = $original_mwai;
             $mwai_core = $original_core;
         }
+    }
+
+    // -------------------------------------------------------------------
+    // Ability-fallback path (generate_with_ability())
+    //
+    // These tests deliberately construct their own AIPS_AI_Service with a
+    // *fresh* AIPS_Ability_Service passed as the 4th constructor arg rather
+    // than relying on $this->service or the DI container:
+    //
+    //  - AIPS_AI_Service::get_ability_service() only accepts an object that
+    //    is `instanceof AIPS_Ability_Service` for its constructor-injected
+    //    4th arg; a duck-typed double would be silently discarded.
+    //  - AIPS_Container's bound AIPS_Ability_Service is a process-wide
+    //    singleton, and AIPS_Ability_Service::get_provider() caches its
+    //    resolved provider on first success and never re-checks the
+    //    aips_ability_provider filter afterward — reusing the container
+    //    singleton across tests would leak one test's fake provider into
+    //    every later test in the same run.
+    //
+    // A fresh, explicitly-passed AIPS_Ability_Service instance per test
+    // avoids both hazards. The aips_ability_provider filter registered by
+    // register_fake_ability_provider() is removed in tearDown() above.
+    // -------------------------------------------------------------------
+
+    /**
+     * Force AIPS_AI_Service::get_ai_engine() to report unavailable without
+     * depending on the implicit absence of global $mwai in the test
+     * bootstrap. Setting the private $ai_engine property to `false` (not
+     * `null`) permanently pins it, since get_ai_engine() only re-fetches
+     * from the global when the cached value is strictly null.
+     *
+     * @param AIPS_AI_Service $service Service instance to pin.
+     * @return void
+     */
+    private function force_ai_engine_unavailable(AIPS_AI_Service $service) {
+        $reflection = new ReflectionClass($service);
+        $prop = $reflection->getProperty('ai_engine');
+        $prop->setAccessible(true);
+        $prop->setValue($service, false);
+    }
+
+    /**
+     * Register a fake ability provider via the aips_ability_provider filter.
+     *
+     * @param callable $list   Callable returning the raw ability list.
+     * @param callable $invoke Callable(slug, payload, options) returning the raw invoke response.
+     * @return void
+     */
+    private function register_fake_ability_provider($list, $invoke) {
+        add_filter('aips_ability_provider', function () use ($list, $invoke) {
+            return array(
+                'name'   => 'test-provider',
+                'list'   => $list,
+                'invoke' => $invoke,
+            );
+        });
+    }
+
+    public function test_generate_text_falls_back_to_ability_when_ai_engine_unavailable() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array('aips_generate_text' => array('slug' => 'aips_generate_text'));
+            },
+            function ($slug, $payload, $options) {
+                return array('content' => 'Generated text');
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_text('Test prompt');
+
+        $this->assertSame('Generated text', $result);
+    }
+
+    public function test_generate_json_falls_back_to_ability_when_ai_engine_unavailable() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array('aips_generate_json' => array('slug' => 'aips_generate_json'));
+            },
+            function ($slug, $payload, $options) {
+                return array('data' => array('title' => 'Generated title'));
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_json('Test prompt');
+
+        $this->assertIsArray($result);
+        $this->assertSame('Generated title', $result['title']);
+    }
+
+    public function test_generate_image_falls_back_to_ability_when_ai_engine_unavailable() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array('aips_generate_image' => array('slug' => 'aips_generate_image'));
+            },
+            function ($slug, $payload, $options) {
+                return array('url' => 'https://example.com/image.png');
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_image('Test image prompt');
+
+        $this->assertSame('https://example.com/image.png', $result);
+    }
+
+    public function test_generate_json_from_text_falls_back_to_ability_when_unavailable() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array('aips_generate_json' => array('slug' => 'aips_generate_json'));
+            },
+            function ($slug, $payload, $options) {
+                return array('data' => array('title' => 'From text fallback'));
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_json_from_text('Test prompt');
+
+        $this->assertIsArray($result);
+        $this->assertSame('From text fallback', $result['title']);
+    }
+
+    public function test_ai_unavailable_error_includes_ability_error_data() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array('aips_generate_text' => array('slug' => 'aips_generate_text'));
+            },
+            function ($slug, $payload, $options) {
+                return new WP_Error('ability_invocation_failed', 'Ability blew up');
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_text('Test prompt');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('ai_unavailable', $result->get_error_code());
+
+        $data = $result->get_error_data();
+        $this->assertArrayHasKey('ability_error', $data);
+        $this->assertInstanceOf('WP_Error', $data['ability_error']);
+        $this->assertEquals('ability_invocation_failed', $data['ability_error']->get_error_code());
+    }
+
+    public function test_generate_with_ability_respects_ability_slug_option_override() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array('my_custom_slug' => array('slug' => 'my_custom_slug'));
+            },
+            function ($slug, $payload, $options) {
+                if ('my_custom_slug' !== $slug) {
+                    return new WP_Error('unexpected_slug', 'Wrong slug invoked: ' . $slug);
+                }
+                return array('content' => 'Custom slug content');
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_text('Test prompt', array('ability_slug' => 'my_custom_slug'));
+
+        $this->assertSame('Custom slug content', $result);
+    }
+
+    public function test_generate_with_ability_skips_unavailable_slug_and_tries_next() {
+        // Only the second candidate slug for 'text' ('generate_text') is advertised;
+        // the first ('aips_generate_text') is absent from the list, so is_available()
+        // should be false for it and generate_with_ability() should move on.
+        $this->register_fake_ability_provider(
+            function () {
+                return array('generate_text' => array('slug' => 'generate_text'));
+            },
+            function ($slug, $payload, $options) {
+                return array('content' => 'Second candidate content');
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_text('Test prompt');
+
+        $this->assertSame('Second candidate content', $result);
+    }
+
+    /**
+     * Documents current behavior (not a bug fix): generate_with_ability()
+     * stops at the first candidate slug whose is_available() is true and
+     * returns whatever invoke() gives back, even a WP_Error — it does not
+     * fall through to try a later candidate slug for the same type just
+     * because invoke() itself failed. If this should instead try every
+     * available candidate before giving up, that is a behavior change that
+     * belongs on the codex/create-ability-service-adapter branch, not here.
+     */
+    public function test_generate_with_ability_stops_on_first_invoke_error() {
+        $this->register_fake_ability_provider(
+            function () {
+                return array(
+                    'aips_generate_text' => array('slug' => 'aips_generate_text'),
+                    'generate_text'      => array('slug' => 'generate_text'),
+                );
+            },
+            function ($slug, $payload, $options) {
+                // Both candidates are "available", but the first one invoked fails.
+                return new WP_Error('ability_invocation_failed', 'First candidate failed: ' . $slug);
+            }
+        );
+
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_text('Test prompt');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $data = $result->get_error_data();
+        $this->assertArrayHasKey('ability_error', $data);
+        $this->assertEquals('ability_invocation_failed', $data['ability_error']->get_error_code());
+    }
+
+    public function test_ai_unavailable_when_no_ability_provider_registered() {
+        // No aips_ability_provider filter registered — the existing implicit
+        // "no provider available at all" scenario, now asserted explicitly
+        // rather than incidentally.
+        $service = new AIPS_AI_Service(null, null, null, new AIPS_Ability_Service());
+        $this->force_ai_engine_unavailable($service);
+
+        $result = $service->generate_text('Test prompt');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('ai_unavailable', $result->get_error_code());
     }
 }

@@ -24,6 +24,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Internal links: `AIPS_Internal_Links_Controller`, services/repository, and the `aips_index_posts_batch` cron.
 - Notifications: registry, senders, templates, event handler, plus `AIPS_Notifications_Repository`.
 - Campaigns, post slices, AI assistance, operations insights, telemetry, taxonomy, onboarding, and diagnostics each have dedicated controllers, repositories, and services.
+- Ability Workflows: `AIPS_Ability_Service` (runtime provider adapter), `AIPS_Ability_Catalog_Service`, `AIPS_Ability_Workflow_Repository`, `AIPS_Ability_Workflow_Executor`, `AIPS_Ability_Workflow_Condition_Evaluator`, `AIPS_Ability_Workflow_Variable_Resolver`, `AIPS_Ability_Workflow_Document_Validator`, `AIPS_Ability_Workflows_Controller`, `AIPS_Ability_Workflow_Runs_Controller`, `AIPS_Ability_Catalog_Controller`.
 
 ## Admin/UI reference
 
@@ -31,14 +32,14 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Settings are split across `AIPS_Settings`, `AIPS_Settings_UI`, and `AIPS_Settings_Ajax`.
 - Dashboard is rendered by `AIPS_Dashboard_Controller`.
 - System status uses `AIPS_System_Status_Controller`, `AIPS_System_Diagnostics_Service`, and providers in `includes/diagnostics/`.
-- Hidden pages include `aips-author-topics`, `aips-campaign-wizard`, and `aips-campaign-detail`.
+- Hidden pages include `aips-author-topics`, `aips-campaign-wizard`, `aips-campaign-detail`, and `aips-ability-workflow-builder` (feature-flagged behind `aips_enable_ability_workflows`).
 
 ## Data and schema
 
 - Schema changes go through `AIPS_DB_Manager::get_schema()` and `AIPS_DB_Manager::install_tables()` using `dbDelta`.
 - `AIPS_DB_Migrations::check_and_run()` is the migration entry point; `class-aips-upgrades.php` is a compatibility alias.
 - There is no standalone migrations directory.
-- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, and bulk batch jobs.
+- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, bulk batch jobs, and Ability Workflows (workflows/steps/runs/step runs).
 
 ## Cron hooks
 
@@ -53,6 +54,7 @@ Recurring hooks:
 - `aips_fetch_sources`
 - `aips_cleanup_bulk_batch_jobs`
 - `aips_cache_monitor_maintenance`
+- `aips_dispatch_scheduled_ability_workflows`
 
 Single-event hooks:
 
@@ -64,3 +66,4 @@ Single-event hooks:
 - `aips_process_bulk_batch`
 - `aips_process_author_embeddings`
 - `aips_index_posts_batch`
+- `aips_run_ability_workflow`
