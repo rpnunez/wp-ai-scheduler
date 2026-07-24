@@ -191,8 +191,36 @@
 			this.populateDependsOnSelect(step.depends_on || [], index);
 			this.openInputMapRows(step.input_map || {});
 			this.openConditionRules(step.condition_tree || {});
+			this.warnIfStepHasUneditableStructure(step);
 
 			$('#aips-step-modal').css('display', 'flex');
+		},
+
+		/**
+		 * This builder's condition-rule editor only renders/collects flat
+		 * rules (nested AND/OR groups are skipped on load), and nested
+		 * input-map values get flattened into a JSON-string text field.
+		 * Saving a step without touching those fields would otherwise
+		 * silently simplify/discard that structure. Warn up front so an
+		 * admin editing an existing step built via direct API/import isn't
+		 * surprised by a silent change on save.
+		 *
+		 * @param {Object} step Step being opened for editing.
+		 */
+		warnIfStepHasUneditableStructure(step) {
+			var hasNestedCondition = !!(step.condition_tree && Array.isArray(step.condition_tree.rules) &&
+				step.condition_tree.rules.some(function(rule) { return !!rule.rules; }));
+
+			var hasNestedInputMap = !!(step.input_map && Object.keys(step.input_map).some(function(key) {
+				return step.input_map[key] !== null && typeof step.input_map[key] === 'object';
+			}));
+
+			if (hasNestedCondition || hasNestedInputMap) {
+				AIPS.Utilities.showToast(
+					'This step has advanced conditions or nested inputs that this editor cannot fully display. Saving this step will simplify them.',
+					'warning'
+				);
+			}
 		},
 
 		resetStepForm() {
