@@ -614,13 +614,23 @@ class AIPS_Ability_Workflow_Repository {
 
 		$total = (int) $this->wpdb->get_var( $this->wpdb->prepare( "SELECT COUNT(*) FROM {$this->runs_table} $where_sql", $where_args ) );
 
-		$per_page   = (int) $args['per_page'];
-		$page       = max( 1, (int) $args['page'] );
+		$limit_sql  = '';
 		$limit_args = $where_args;
-		$limit_args[] = $per_page;
-		$limit_args[] = ( $page - 1 ) * $per_page;
+		$per_page   = (int) $args['per_page'];
 
-		$sql  = "SELECT * FROM {$this->runs_table} $where_sql ORDER BY started_at DESC, id DESC LIMIT %d OFFSET %d";
+		// Consistent with list_workflows(): per_page <= 0 means "no limit",
+		// not "LIMIT 0" (which would silently return zero rows).
+		if ( $per_page > 0 ) {
+			$page         = max( 1, (int) $args['page'] );
+			$limit_sql    = 'LIMIT %d OFFSET %d';
+			$limit_args[] = $per_page;
+			$limit_args[] = ( $page - 1 ) * $per_page;
+		}
+
+		// $where_args always has at least the workflow_id filter, so this
+		// always needs prepare() — unlike list_workflows()'s fully optional
+		// WHERE clause.
+		$sql  = "SELECT * FROM {$this->runs_table} $where_sql ORDER BY started_at DESC, id DESC $limit_sql";
 		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $limit_args ) );
 
 		return array(
