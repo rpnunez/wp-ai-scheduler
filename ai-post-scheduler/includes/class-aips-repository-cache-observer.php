@@ -97,8 +97,12 @@ class AIPS_Repository_Cache_Observer {
 	private function record($event_type, array $event) {
 		try {
 			$context = $this->normalize_event($event_type, $event);
+			
 			$this->record_telemetry($context);
-			$this->record_log($context);
+			
+			if (AIPS_DEBUG_LEVEL > 1) {
+				$this->record_log($context);
+			}
 		} catch (Throwable $e) {
 			// Repository cache observability must never block cache reads/writes.
 		}
