@@ -35,7 +35,23 @@ class AIPS_Ability_Workflows_Controller {
 	 */
 	public function __construct( $repository = null, $validator = null ) {
 		$this->repository = $repository ?: AIPS_Ability_Workflow_Repository::instance();
-		$this->validator   = $validator ?: new AIPS_Ability_Workflow_Document_Validator();
+
+		// The validator must be given a catalog service so save-time
+		// validation actually checks that each step's ability_name refers to
+		// a real, available ability — without it, AIPS_Ability_Workflow_Document_Validator::validate()
+		// silently skips ability-existence checks regardless of the
+		// $skip_ability_check argument, since that check is gated on
+		// `$this->catalog instanceof AIPS_Ability_Catalog_Service`.
+		if ( $validator ) {
+			$this->validator = $validator;
+		} else {
+			$container = AIPS_Container::get_instance();
+			$catalog   = $container->has( AIPS_Ability_Catalog_Service::class )
+				? $container->make( AIPS_Ability_Catalog_Service::class )
+				: new AIPS_Ability_Catalog_Service();
+
+			$this->validator = new AIPS_Ability_Workflow_Document_Validator( null, null, $catalog );
+		}
 
 		add_action( 'wp_ajax_aips_save_ability_workflow', array( $this, 'ajax_save_workflow' ) );
 		add_action( 'wp_ajax_aips_get_ability_workflow', array( $this, 'ajax_get_workflow' ) );
