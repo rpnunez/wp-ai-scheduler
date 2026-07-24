@@ -47,6 +47,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_DIAGNOSTICS = 'aips-diagnostics';
 	private const PAGE_AUTOMATIONS = 'aips-automations';
 	private const PAGE_DEV_TOOLS = 'aips-dev-tools';
+	private const PAGE_CONTENT_ENHANCEMENTS = 'aips-content-enhancements';
 	private const PAGE_STATUS = 'aips-status';
 	private const PAGE_TAXONOMY = 'aips-taxonomy';
 	private const PAGE_SOURCES = 'aips-sources';
@@ -145,6 +146,10 @@ class AIPS_Admin_Assets {
 
 		if ((self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
 			$this->enqueue_dev_tools_assets();
+		}
+
+		if (self::PAGE_CONTENT_ENHANCEMENTS === $page || $this->hook_contains($hook, self::PAGE_CONTENT_ENHANCEMENTS) || $this->is_automations_tab($page, 'content-enhancements')) {
+			$this->enqueue_content_enhancements_assets();
 		}
 
 		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status')) {
@@ -1390,6 +1395,49 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+            wp_localize_script('aips-admin-dev-tools', 'aipsDevToolsL10n', array(
+                'enterTopic'     => __('Please enter a topic.', 'ai-post-scheduler'),
+                'errorOccurred'  => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'active'         => __('Active', 'ai-post-scheduler'),
+                'inactive'       => __('Inactive', 'ai-post-scheduler'),
+                'edit'           => __('Edit', 'ai-post-scheduler'),
+                'disable'        => __('Disable', 'ai-post-scheduler'),
+                'enable'         => __('Enable', 'ai-post-scheduler'),
+                'delete'         => __('Delete', 'ai-post-scheduler'),
+                'confirmDelete'  => __('Delete this enhancement?', 'ai-post-scheduler'),
+                'updateSuccess'  => __('Content enhancement updated.', 'ai-post-scheduler'),
+                'updateError'    => __('Unable to update content enhancement.', 'ai-post-scheduler'),
+            ));
+    }
+
+    /**
+     * Enqueue assets for the content-enhancements tab/page.
+     */
+    private function enqueue_content_enhancements_assets() {
+            wp_enqueue_script(
+                'aips-admin-content-enhancements',
+                AIPS_PLUGIN_URL . 'assets/js/content-enhancements.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-content-enhancements', 'aipsDevToolsL10n', array(
+                'enterTopic'         => __('Please enter a topic.', 'ai-post-scheduler'),
+                'errorOccurred'      => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'active'             => __('Active', 'ai-post-scheduler'),
+                'inactive'           => __('Inactive', 'ai-post-scheduler'),
+                'edit'               => __('Edit', 'ai-post-scheduler'),
+                'disable'            => __('Disable', 'ai-post-scheduler'),
+                'enable'             => __('Enable', 'ai-post-scheduler'),
+                'delete'             => __('Delete', 'ai-post-scheduler'),
+                'confirmDelete'      => __('Delete this enhancement?', 'ai-post-scheduler'),
+                'confirmDeleteTitle' => __('Delete Content Enhancement', 'ai-post-scheduler'),
+                'cancel'             => __('Cancel', 'ai-post-scheduler'),
+                'updateSuccess'      => __('Content enhancement updated.', 'ai-post-scheduler'),
+                'updateError'        => __('Unable to update content enhancement.', 'ai-post-scheduler'),
+            ));
     }
 
     /**

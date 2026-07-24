@@ -242,6 +242,10 @@ class AIPS_Ajax_Registry {
 
 		// Dev Tools
 		'aips_generate_scaffold'          => 'AIPS_Dev_Tools',
+		'aips_save_content_enhancement'   => 'AIPS_Content_Enhancements_Controller',
+		'aips_delete_content_enhancement' => 'AIPS_Content_Enhancements_Controller',
+		'aips_get_content_enhancement'    => 'AIPS_Content_Enhancements_Controller',
+		'aips_toggle_content_enhancement' => 'AIPS_Content_Enhancements_Controller',
 
 		// System Status
 		'aips_get_telemetry'              => 'AIPS_Telemetry_Controller',

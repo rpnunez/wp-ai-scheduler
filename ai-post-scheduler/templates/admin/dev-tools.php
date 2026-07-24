@@ -3,6 +3,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
+
+<?php
+$config = AIPS_Config::get_instance();
+?>
 <?php if (empty($embedded)) : ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
@@ -10,7 +14,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-page-header">
             <div class="aips-page-header-top">
                 <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Developer Tools', 'ai-post-scheduler'); ?></h1>
+                    <h1 class="aips-page-title"><?php esc_html_e('Dev Tools', 'ai-post-scheduler'); ?></h1>
                     <p class="aips-page-description"><?php esc_html_e('Generate test data and template scaffolds using AI to quickly prototype and test your workflow.', 'ai-post-scheduler'); ?></p>
                 </div>
             </div>
@@ -73,6 +77,7 @@ if (!defined('ABSPATH')) {
                 </form>
             </div>
         </div>
+
 
         <!-- Results Panel -->
         <div id="aips-dev-scaffold-results" class="aips-content-panel" style="margin-top: 20px; display: none;">

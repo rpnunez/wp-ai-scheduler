@@ -291,6 +291,15 @@ class AIPS_Admin_Menu {
                 array($this, 'render_dev_tools_page')
             );
         }
+
+        add_submenu_page(
+            null,
+            __('Content Enhancements', 'ai-post-scheduler'),
+            __('Content Enhancements', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-enhancements',
+            array($this, 'render_content_enhancements_page')
+        );
     }
 
     /**
@@ -370,6 +379,7 @@ class AIPS_Admin_Menu {
                 'aips-taxonomy',
                 'aips-internal-links',
                 'aips-author-topics',
+                'aips-content-enhancements',
                 AIPS_Campaigns_Controller::PAGE_SLUG,
                 AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
             ),
@@ -735,5 +745,26 @@ class AIPS_Admin_Menu {
         echo '<div class="notice notice-error"><p>' .
             esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
         '</p></div>';
+    }
+
+    /**
+     * Render the Content Enhancements page.
+     *
+     * Includes the content enhancements template file.
+     *
+     * @return void
+     */
+    public function render_content_enhancements_page() {
+        $config = AIPS_Config::get_instance();
+        $content_enhancements_repository = new AIPS_Content_Enhancement_Repository();
+        $content_enhancements = $content_enhancements_repository->all();
+        $content_enhancement_allowlist = $config->get_option('aips_content_enhancement_provider_allowlist', array());
+        if (!is_array($content_enhancement_allowlist)) {
+            $content_enhancement_allowlist = array();
+        }
+        $content_enhancement_default_disclosure = $config->get_option('aips_content_enhancement_default_disclosure_text');
+        $content_enhancement_default_cta = $config->get_option('aips_content_enhancement_default_cta_text');
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/content-enhancements.php';
     }
 }

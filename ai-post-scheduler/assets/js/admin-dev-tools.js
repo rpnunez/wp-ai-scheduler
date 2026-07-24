@@ -18,7 +18,7 @@
             // Validate
             var topic = $('#topic').val().trim();
             if (!topic) {
-                AIPS.Utilities.showToast('Please enter a topic.', 'warning');
+                AIPS.Utilities.showToast(aipsDevToolsL10n.enterTopic, 'warning');
                 return;
             }
 
@@ -45,7 +45,7 @@
                     $error.fadeIn();
                 }
             }).fail(function() {
-                $('#aips-dev-error-message').text('An error occurred. Please try again.');
+                $('#aips-dev-error-message').text(aipsDevToolsL10n.errorOccurred);
                 $error.fadeIn();
             }).always(function() {
                 $btn.prop('disabled', false);
@@ -55,3 +55,4 @@
     });
 
 })(jQuery);
+

@@ -865,6 +865,9 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+
+        $content_enhancement_renderer = new AIPS_Content_Enhancement_Renderer();
+        $content_enhancement_renderer->register();
     }
 }
 

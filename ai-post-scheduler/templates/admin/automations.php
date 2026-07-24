@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 			<div class="aips-page-header-top">
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('Automations', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Manage schedules, campaigns, templates, authors, sources, internal links, and taxonomy from one place.', 'ai-post-scheduler'); ?></p>
+					<p class="aips-page-description"><?php esc_html_e('Manage schedules, campaigns, templates, authors, sources, internal links, taxonomy, and content enhancements from one place.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<?php if (!empty($tab_actions)) : ?>
 					<div class="aips-page-actions">

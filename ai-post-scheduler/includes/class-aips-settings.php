@@ -83,6 +83,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_developer_mode'],
 			),
+			'aips_content_enhancement_disclosures_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_content_enhancement_disclosures_enabled'],
+			),
+			'aips_content_enhancement_default_disclosure_text' => array(
+				'sanitize_callback' => 'sanitize_textarea_field',
+				'default'           => $defaults['aips_content_enhancement_default_disclosure_text'],
+			),
+			'aips_content_enhancement_allowed_post_statuses' => array(
+				'sanitize_callback' => array($ui, 'sanitize_content_enhancement_post_statuses'),
+				'default'           => $defaults['aips_content_enhancement_allowed_post_statuses'],
+			),
 			'aips_enable_telemetry' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_telemetry'],
@@ -349,6 +361,37 @@ class AIPS_Settings {
                 )
             );
         }
+
+		add_settings_section(
+			'aips_content_enhancement_section',
+			__('Content Enhancement Compliance', 'ai-post-scheduler'),
+			array($this->ui, 'content_enhancement_section_callback'),
+			'aips-settings'
+		);
+
+		add_settings_field(
+			'aips_content_enhancement_disclosures_enabled',
+			__('Enable Disclosures', 'ai-post-scheduler'),
+			array($this->ui, 'content_enhancement_disclosures_enabled_field_callback'),
+			'aips-settings',
+			'aips_content_enhancement_section'
+		);
+
+		add_settings_field(
+			'aips_content_enhancement_default_disclosure_text',
+			__('Default Disclosure Copy', 'ai-post-scheduler'),
+			array($this->ui, 'content_enhancement_default_disclosure_text_field_callback'),
+			'aips-settings',
+			'aips_content_enhancement_section'
+		);
+
+		add_settings_field(
+			'aips_content_enhancement_allowed_post_statuses',
+			__('Allowed Post Statuses', 'ai-post-scheduler'),
+			array($this->ui, 'content_enhancement_allowed_post_statuses_field_callback'),
+			'aips-settings',
+			'aips_content_enhancement_section'
+		);
 
         // -----------------------------------------------------------------------
         // API Keys section: Unsplash Access Key
