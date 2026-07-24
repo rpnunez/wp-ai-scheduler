@@ -786,7 +786,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     private function get_ability_slugs_for_type($type, $options) {
         if (!empty($options['ability_slug'])) {
-            return array(sanitize_key($options['ability_slug']));
+            return array(sanitize_text_field($options['ability_slug']));
         }
 
         $map = array(
