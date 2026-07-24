@@ -62,7 +62,7 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 
 		$result = $this->builder->build($template, 'PHP', null, 'Article body.');
 
-		$this->assertStringContainsString('Generate a title for a blog post', $result);
+		$this->assertStringContainsString('Write a concise, engaging title', $result);
 		$this->assertStringContainsString('Write a definitive guide title about PHP.', $result);
 		$this->assertStringContainsString('Article body.', $result);
 	}
@@ -95,9 +95,9 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 
 		$result = $this->builder->build($template, 'SEO', null, 'Some content.');
 
-		$this->assertStringContainsString('Generate a title for a blog post', $result);
-		$this->assertStringContainsString('Here is the content:', $result);
-		$this->assertStringNotContainsString('Here are your instructions', $result);
+		$this->assertStringContainsString('Write a concise, engaging title', $result);
+		$this->assertStringContainsString('ARTICLE CONTENT:', $result);
+		$this->assertStringNotContainsString('WRITING INSTRUCTIONS', $result);
 	}
 
 	/**
@@ -110,7 +110,7 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 
 		$result = $this->builder->build($template, 'Topic', null, '');
 
-		$this->assertStringContainsString('Here is the content:', $result);
+		$this->assertStringContainsString('ARTICLE CONTENT:', $result);
 	}
 
 	/**
@@ -145,7 +145,7 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 
 		$result = $this->builder->build($context, null, null, 'Post body here.');
 
-		$this->assertStringContainsString('Generate a title for a blog post', $result);
+		$this->assertStringContainsString('Write a concise, engaging title', $result);
 		$this->assertStringContainsString('Authoritative guide title for Docker.', $result);
 		$this->assertStringContainsString('Post body here.', $result);
 	}
@@ -215,7 +215,7 @@ class Test_Prompt_Builder_Post_Title extends WP_UnitTestCase {
 
 		$result = $this->builder->build($context, null, null, 'Existing body.');
 
-		$this->assertStringContainsString('Generate a title for a blog post', $result);
+		$this->assertStringContainsString('Write a concise, engaging title', $result);
 		$this->assertStringContainsString('Existing body.', $result);
 	}
 

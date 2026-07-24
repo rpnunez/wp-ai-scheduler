@@ -94,6 +94,11 @@ class AIPS_Prompt_Builder {
         // Register the content prompt sources filter once.
         if (!self::$sources_filter_registered) {
             add_filter('aips_content_prompt', array($this, 'inject_sources_into_content_prompt'), 10, 3);
+
+            // Register generation instructions hooks once (run after most filters so this prepend stays at the top).
+            $generation_instructions = new AIPS_Prompt_Builder_Generation_Instructions();
+            $generation_instructions->register_hooks();
+
             self::$sources_filter_registered = true;
         }
 	}

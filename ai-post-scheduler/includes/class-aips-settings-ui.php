@@ -690,6 +690,36 @@ class AIPS_Settings_UI {
         <?php
     }
 
+    /**
+     * Render the Generation Instructions enabled toggle field.
+     *
+     * @return void
+     */
+    public function generation_instructions_enabled_field_callback() {
+        $enabled = (bool) AIPS_Config::get_instance()->get_option('aips_generation_instructions_enabled');
+        ?>
+		<label>
+			<input type="hidden" name="aips_generation_instructions_enabled" value="0" />
+			<input type="checkbox" name="aips_generation_instructions_enabled" value="1" <?php checked($enabled); ?> />
+			<?php esc_html_e('Enable custom generation instructions', 'ai-post-scheduler'); ?>
+		</label>
+        <p class="description"><?php esc_html_e('When enabled, the instructions below are prepended to every AI generation prompt (content, title, and excerpt).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Generation Instructions textarea field.
+     *
+     * @return void
+     */
+    public function generation_instructions_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_generation_instructions');
+        ?>
+        <textarea name="aips_generation_instructions" class="large-text" rows="6" placeholder="<?php esc_attr_e('e.g., Always write in an authoritative yet approachable tone. Include a real-world example in every article. Never use passive voice.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('A block of custom instructions always sent to the AI when generating content. Applies globally to all post generation prompts. Only active when the toggle above is enabled.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
     // -----------------------------------------------------------------------
     // Cache Settings fields
     // -----------------------------------------------------------------------

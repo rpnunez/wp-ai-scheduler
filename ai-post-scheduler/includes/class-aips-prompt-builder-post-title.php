@@ -104,13 +104,15 @@ class AIPS_Prompt_Builder_Post_Title {
 	 * @return string
 	 */
 	private function build_base_prompt($title_instructions, $content, $subject = null) {
-		$prompt = 'Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.';
+		$prompt = 'Write a concise, engaging title for the article below. Must be between 40 and 60 characters. Write naturally as a human would. Output only the title — no formatting, no Markdown, no special characters.';
 
 		if (!empty($title_instructions)) {
-			$prompt .= " Here are your instructions:\n\n" . $title_instructions;
+			$prompt .= "\n\n### WRITING INSTRUCTIONS:\n" . $title_instructions;
 		}
 
-		$prompt .= "\n\nHere is the content:\n\n" . $content;
+		$prompt .= "\n\n### ARTICLE CONTENT:\n" . $content;
+
+		$prompt .= "\n\nGenerate a title that accurately reflects the article's topic and tone.";
 
 		$diversity_block = $this->diversity_injector->build_avoid_titles_block($subject);
 		if (!empty($diversity_block)) {
