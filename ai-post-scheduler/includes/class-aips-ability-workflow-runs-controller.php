@@ -169,8 +169,8 @@ class AIPS_Ability_Workflow_Runs_Controller {
 
 		$run_id = isset( $_POST['run_id'] ) ? absint( $_POST['run_id'] ) : 0;
 
-		if ( $run_id <= 0 ) {
-			AIPS_Ajax_Response::invalid_request();
+		if ( $run_id <= 0 || ! $this->repository->get_run( $run_id ) ) {
+			AIPS_Ajax_Response::not_found( __( 'Run', 'ai-post-scheduler' ) );
 		}
 
 		$this->repository->update_run_status(
