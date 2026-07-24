@@ -183,11 +183,23 @@ class AIPS_Diagnostics_Controller {
 	/**
 	 * Render the Seeder tab.
 	 *
+	 * Reuses the globally-registered AIPS_Seeder_Admin instance (constructed in
+	 * boot_admin()) instead of instantiating a new one — see
+	 * AIPS_Admin_Menu::render_seeder_page() for why.
+	 *
 	 * @return void
 	 */
 	private function render_seeder_tab() {
-		$seeder_admin = new AIPS_Seeder_Admin();
-		$seeder_admin->render_page(true);
+		global $aips_seeder_admin;
+
+		if ($aips_seeder_admin instanceof AIPS_Seeder_Admin) {
+			$aips_seeder_admin->render_page(true);
+			return;
+		}
+
+		echo '<div class="notice notice-error"><p>' .
+			esc_html__('The Seeder is not available, so this tab could not be loaded.', 'ai-post-scheduler') .
+		'</p></div>';
 	}
 
 	/**

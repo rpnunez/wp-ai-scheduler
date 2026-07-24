@@ -654,11 +654,24 @@ class AIPS_Admin_Menu {
      *
      * Includes the seeder template file.
      *
+     * Reuses the globally-registered AIPS_Seeder_Admin instance (constructed in
+     * boot_admin()) instead of instantiating a new one, since re-instantiating
+     * here would re-register the same AJAX hooks and would be too late to
+     * register admin_enqueue_scripts for this request in any case.
+     *
      * @return void
      */
     public function render_seeder_page() {
-        $seeder_admin = new AIPS_Seeder_Admin();
-        $seeder_admin->render_page();
+        global $aips_seeder_admin;
+
+        if ($aips_seeder_admin instanceof AIPS_Seeder_Admin) {
+            $aips_seeder_admin->render_page();
+            return;
+        }
+
+        echo '<div class="notice notice-error"><p>' .
+            esc_html__('The Seeder is not available, so this page could not be loaded.', 'ai-post-scheduler') .
+        '</p></div>';
     }
 
     /**

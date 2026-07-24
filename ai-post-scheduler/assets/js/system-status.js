@@ -235,29 +235,19 @@
 			var $btn    = $(e.currentTarget);
 			var $result = $btn.siblings('.aips-reset-circuit-result');
 
-			$btn.prop('disabled', true);
-
-			$.post(
-				ajaxurl,
-				{
-					action: 'aips_reset_circuit_breaker',
-					nonce:  l10n.nonce || ''
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_reset_circuit_breaker',
+				nonce: l10n.nonce || '',
+				$button: $btn,
+				toastOnError: false,
+				errorFallback: l10n.resetFailed || 'Reset failed.',
+				onSuccess: function() {
+					$result.text(l10n.resetSuccess || 'Circuit reset. Reload the page to confirm.').show();
+					$btn.hide();
 				},
-				function(response) {
-					if (response && response.success) {
-						$result.text(l10n.resetSuccess || 'Circuit reset. Reload the page to confirm.').show();
-						$btn.hide();
-					} else {
-						var msg = (response && response.data && response.data.message)
-							? response.data.message
-							: (l10n.resetFailed || 'Reset failed.');
-						$result.text(msg).show();
-						$btn.prop('disabled', false);
-					}
+				onError: function(message) {
+					$result.text(message).show();
 				}
-			).fail(function() {
-				$result.text(l10n.requestFailed || 'Request failed. Please try again.').show();
-				$btn.prop('disabled', false);
 			});
 		},
 
@@ -287,17 +277,18 @@
 
 			var nonce = nonceMap[action] || '';
 
-			$btn.prop('disabled', true);
-			$.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
-				if (response && response.success) {
-					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
-				} else {
-					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
+			AIPS.Core.Http.ajaxRequest({
+				action: action,
+				nonce: nonce,
+				$button: $btn,
+				toastOnError: false,
+				errorFallback: l10n.requestFailed || 'Request failed.',
+				onSuccess: function(data) {
+					$result.text(data.message || 'Done.').show();
+				},
+				onError: function(message) {
+					$result.text(message).show();
 				}
-				$btn.prop('disabled', false);
-			}).fail(function() {
-				$result.text(l10n.requestFailed || 'Request failed.').show();
-				$btn.prop('disabled', false);
 			});
 		},
 
@@ -308,17 +299,20 @@
 			var $btn = $(e.currentTarget);
 			var subsystem = $('#aips-cache-subsystem').val() || 'all';
 			var $result = $('.aips-status-op-result');
-			$btn.prop('disabled', true);
-			$.post(ajaxurl, { action: 'aips_rebuild_caches', nonce: l10n.nonceRebuildCaches || '', subsystem: subsystem }, function(response) {
-				if (response && response.success) {
-					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
-				} else {
-					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
+
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_rebuild_caches',
+				nonce: l10n.nonceRebuildCaches || '',
+				data: { subsystem: subsystem },
+				$button: $btn,
+				toastOnError: false,
+				errorFallback: l10n.requestFailed || 'Request failed.',
+				onSuccess: function(data) {
+					$result.text(data.message || 'Done.').show();
+				},
+				onError: function(message) {
+					$result.text(message).show();
 				}
-				$btn.prop('disabled', false);
-			}).fail(function() {
-				$result.text(l10n.requestFailed || 'Request failed.').show();
-				$btn.prop('disabled', false);
 			});
 		},
 

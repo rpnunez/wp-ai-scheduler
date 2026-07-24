@@ -75,41 +75,39 @@
 		 * Load post components via AJAX
 		 */
 		loadAIEditComponents: function() {
-			$('.aips-ai-edit-loading').show();
-			$('.aips-ai-edit-content').hide();
-			
-			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
-				type: 'POST',
+			AIPS.Core.UI.setLoading({
+				$loading: $('.aips-ai-edit-loading'),
+				$content: $('.aips-ai-edit-content'),
+				isLoading: true
+			});
+
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_post_components',
 				data: {
-					action: 'aips_get_post_components',
 					post_id: aiEditState.postId,
-					history_id: aiEditState.historyId,
-					nonce: aipsAIEditL10n.nonce
+					history_id: aiEditState.historyId
 				},
-				success: window.AIPS.onAIEditComponentsLoaded,
-				error: window.AIPS.onAIEditLoadError
+				nonce: aipsAIEditL10n.nonce,
+				toastOnError: false,
+				errorFallback: aipsAIEditL10n.loadError,
+				onSuccess: window.AIPS.onAIEditComponentsLoaded,
+				onError: window.AIPS.onAIEditLoadError
 			});
 		},
-		
+
 		/**
 		 * Handle successful load of post components
 		 */
-		onAIEditComponentsLoaded: function(response) {
-			if (response.success) {
-				aiEditState.components = response.data.components;
-				window.AIPS.populateAIEditModal(response.data);
-			} else {
-				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.loadError, 'error');
-				window.AIPS.closeAIEditModal();
-			}
+		onAIEditComponentsLoaded: function(data) {
+			aiEditState.components = data.components;
+			window.AIPS.populateAIEditModal(data);
 		},
-		
+
 		/**
 		 * Handle load error
 		 */
-		onAIEditLoadError: function() {
-			window.AIPS.showAIEditNotice(aipsAIEditL10n.loadError, 'error');
+		onAIEditLoadError: function(message) {
+			window.AIPS.showAIEditNotice(message, 'error');
 			window.AIPS.closeAIEditModal();
 		},
 		
@@ -151,8 +149,11 @@
 			window.AIPS.updateAIEditCharCount('content');
 			
 			// Show content, hide loading
-			$('.aips-ai-edit-loading').hide();
-			$('.aips-ai-edit-content').show();
+			AIPS.Core.UI.setLoading({
+				$loading: $('.aips-ai-edit-loading'),
+				$content: $('.aips-ai-edit-content'),
+				isLoading: false
+			});
 		},
 		
 		/**
@@ -163,11 +164,9 @@
 			var $btn = $(e.currentTarget);
 			var component = $btn.data('component');
 			var requestData = {
-				action: 'aips_regenerate_component',
 				post_id: aiEditState.postId,
 				history_id: aiEditState.historyId,
-				component: component,
-				nonce: aipsAIEditL10n.nonce
+				component: component
 			};
 
 			if (window.AIPS.shouldCaptureManualRevision(component)) {
@@ -175,22 +174,28 @@
 				requestData.current_source = 'manual_edit';
 				requestData.current_reason = 'pre_regenerate_manual';
 			}
-			
+
 			// Disable button and show loading state
 			$btn.prop('disabled', true)
 				.addClass('regenerating')
 				.find('.button-text').text(aipsAIEditL10n.regenerating);
-			
-			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
-				type: 'POST',
+
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_regenerate_component',
 				data: requestData,
-				success: function(response) {
-					window.AIPS.onComponentRegenerated($btn, component, response);
+				nonce: aipsAIEditL10n.nonce,
+				toastOnError: false,
+				errorFallback: aipsAIEditL10n.regenerateError,
+				onSuccess: function(data) {
+					window.AIPS.onComponentRegenerated($btn, component, data);
 				},
-				error: function() {
-					window.AIPS.onRegenerateError($btn, component);
+				onError: function(message) {
+					window.AIPS.showComponentStatus(component, 'error', message);
 				}
+			}).always(function() {
+				$btn.prop('disabled', false)
+					.removeClass('regenerating')
+					.find('.button-text').text(aipsAIEditL10n.regenerate);
 			});
 		},
 
@@ -221,40 +226,35 @@
 			window.AIPS.Utilities.setButtonLoading($button, aipsAIEditL10n.regeneratingAll);
 			$('.aips-regenerate-btn').prop('disabled', true);
 
-			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_regenerate_all_components',
 				data: {
-					action: 'aips_regenerate_all_components',
 					post_id: aiEditState.postId,
 					history_id: aiEditState.historyId,
-					manual_snapshots: manualSnapshots,
-					nonce: aipsAIEditL10n.nonce
+					manual_snapshots: manualSnapshots
 				},
-				success: function(response) {
-					window.AIPS.onRegenerateAllSuccess($button, response);
+				nonce: aipsAIEditL10n.nonce,
+				toastOnError: false,
+				errorFallback: aipsAIEditL10n.regenerateAllError,
+				onSuccess: function(data) {
+					window.AIPS.onRegenerateAllSuccess(data);
 				},
-				error: function() {
-					window.AIPS.onRegenerateAllError($button);
+				onError: function(message) {
+					window.AIPS.showAIEditNotice(message, 'error');
 				}
+			}).always(function() {
+				window.AIPS.Utilities.resetButton($button);
+				$('.aips-regenerate-btn').prop('disabled', false);
 			});
 		},
 
 		/**
-		 * Handle Regenerate All success/error payload.
+		 * Handle Regenerate All success payload.
 		 */
-		onRegenerateAllSuccess: function($button, response) {
-			window.AIPS.Utilities.resetButton($button);
-			$('.aips-regenerate-btn').prop('disabled', false);
-
-			if (!response.success) {
-				window.AIPS.showAIEditNotice(response.data && response.data.message ? response.data.message : aipsAIEditL10n.regenerateAllError, 'error');
-				return;
-			}
-
-			var regenerated = response.data.regenerated || {};
-			var skipped = response.data.skipped || {};
-			var errors = response.data.errors || {};
+		onRegenerateAllSuccess: function(data) {
+			var regenerated = data.regenerated || {};
+			var skipped = data.skipped || {};
+			var errors = data.errors || {};
 			var regeneratedCount = 0;
 
 			Object.keys(regenerated).forEach(function(component) {
@@ -275,47 +275,29 @@
 			});
 
 			if (regeneratedCount > 0) {
-				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllSuccess, 'success');
+				window.AIPS.showAIEditNotice(data.message || aipsAIEditL10n.regenerateAllSuccess, 'success');
 				return;
 			}
 
-			window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllError, 'error');
-		},
-
-		/**
-		 * Handle Regenerate All network error.
-		 */
-		onRegenerateAllError: function($button) {
-			window.AIPS.Utilities.resetButton($button);
-			$('.aips-regenerate-btn').prop('disabled', false);
-			window.AIPS.showAIEditNotice(aipsAIEditL10n.regenerateAllError, 'error');
+			window.AIPS.showAIEditNotice(data.message || aipsAIEditL10n.regenerateAllError, 'error');
 		},
 		
 		/**
 		 * Handle successful component regeneration
 		 */
-		onComponentRegenerated: function($btn, component, response) {
-			// Re-enable button
-			$btn.prop('disabled', false)
-				.removeClass('regenerating')
-				.find('.button-text').text(aipsAIEditL10n.regenerate);
-			
-			if (response.success) {
-				// Update component value
-				window.AIPS.updateAIEditComponentValue(component, response.data.new_value, 'ai_generated');
-				aiEditState.changedComponents.add(component);
-				
-				// Mark section as changed
-				$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
-				
-				// Show success message
-				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+		onComponentRegenerated: function($btn, component, data) {
+			// Update component value
+			window.AIPS.updateAIEditComponentValue(component, data.new_value, 'ai_generated');
+			aiEditState.changedComponents.add(component);
 
-				// Ensure revision list reflects the new regeneration snapshot if panel is open.
-				window.AIPS.refreshComponentRevisions(component);
-			} else {
-				window.AIPS.showComponentStatus(component, 'error', response.data.message || aipsAIEditL10n.regenerateError);
-			}
+			// Mark section as changed
+			$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
+
+			// Show success message
+			window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+
+			// Ensure revision list reflects the new regeneration snapshot if panel is open.
+			window.AIPS.refreshComponentRevisions(component);
 		},
 
 		/**
@@ -388,18 +370,6 @@
 			if ($revisions.is(':visible')) {
 				window.AIPS.loadComponentRevisions(component, $section);
 			}
-		},
-		
-		/**
-		 * Handle regeneration error
-		 */
-		onRegenerateError: function($btn, component) {
-			// Re-enable button
-			$btn.prop('disabled', false)
-				.removeClass('regenerating')
-				.find('.button-text').text(aipsAIEditL10n.regenerate);
-			
-			window.AIPS.showComponentStatus(component, 'error', aipsAIEditL10n.regenerateError);
 		},
 		
 		/**
@@ -533,49 +503,54 @@
 			});
 			
 			// Disable save button
-			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), aipsAIEditL10n.saving);
-			
-			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
-				type: 'POST',
+			var $saveBtn = $('#aips-ai-edit-save');
+			window.AIPS.Utilities.setButtonLoading($saveBtn, aipsAIEditL10n.saving);
+
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_save_post_components',
 				data: {
-					action: 'aips_save_post_components',
 					post_id: aiEditState.postId,
-					components: components,
-					nonce: aipsAIEditL10n.nonce
+					components: components
 				},
-				success: window.AIPS.onAIEditSaveSuccess,
-				error: window.AIPS.onAIEditSaveError
+				nonce: aipsAIEditL10n.nonce,
+				toastOnError: false,
+				errorFallback: aipsAIEditL10n.saveError,
+				onSuccess: window.AIPS.onAIEditSaveSuccess,
+				onError: window.AIPS.onAIEditSaveError
+			}).always(function() {
+				window.AIPS.Utilities.resetButton($saveBtn);
 			});
 		},
-		
+
 		/**
 		 * Handle successful save
 		 */
-		onAIEditSaveSuccess: function(response) {
-			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
-			
-			if (response.success) {
-				window.AIPS.showAIEditNotice(response.data.message, 'success');
-				
-				// Close modal without unsaved-changes prompt
-				window.AIPS.closeAIEditModal(null, { skipConfirm: true });
-				
-				// Refresh page to show updated data
-				setTimeout(function() {
+		onAIEditSaveSuccess: function(data) {
+			window.AIPS.showAIEditNotice(data.message, 'success');
+
+			// Close modal without unsaved-changes prompt
+			window.AIPS.closeAIEditModal(null, { skipConfirm: true });
+
+			// Refresh the currently active tab's content panel to show the
+			// updated post data. The active tab's id is captured now (not
+			// re-derived from the freshly-fetched HTML, which always marks
+			// "Generated Posts" active by default) so the right one of the
+			// three tab panels on this page gets swapped.
+			var tabId = $('.aips-tab-content.active').attr('id');
+			setTimeout(function() {
+				if (tabId) {
+					window.AIPS.refreshPageSection('#' + tabId + ' .aips-content-panel');
+				} else {
 					location.reload();
-				}, 1000);
-			} else {
-				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.saveError, 'error');
-			}
+				}
+			}, 1000);
 		},
-		
+
 		/**
 		 * Handle save error
 		 */
-		onAIEditSaveError: function() {
-			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
-			window.AIPS.showAIEditNotice(aipsAIEditL10n.saveError, 'error');
+		onAIEditSaveError: function(message) {
+			window.AIPS.showAIEditNotice(message, 'error');
 		},
 		
 		/**
@@ -639,8 +614,11 @@
 			// Hide statuses
 			$('.aips-component-status').hide();
 			
-			$('.aips-ai-edit-loading').show();
-			$('.aips-ai-edit-content').hide();
+			AIPS.Core.UI.setLoading({
+				$loading: $('.aips-ai-edit-loading'),
+				$content: $('.aips-ai-edit-content'),
+				isLoading: true
+			});
 		},
 		
 		/**
@@ -723,23 +701,21 @@
 			$empty.hide();
 			
 			// Make AJAX request
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_component_revisions',
 				data: {
-					action: 'aips_get_component_revisions',
-					nonce: aipsAIEditL10n.nonce,
 					post_id: aiEditState.postId,
 					component: componentType,
 					history_id: aiEditState.historyId
 				},
-				success: function(response) {
-					$loading.hide();
+				nonce: aipsAIEditL10n.nonce,
+				toastOnError: false,
+				onSuccess: function(data) {
 					$revisions.data('loaded', true);
-					
-					if (response.success && response.data.revisions && response.data.revisions.length > 0) {
-						var revisions = response.data.revisions;
-						
+
+					if (data.revisions && data.revisions.length > 0) {
+						var revisions = data.revisions;
+
 						// Update count badge
 						var $count = $button.find('.revision-count');
 						if ($count.length === 0) {
@@ -747,23 +723,23 @@
 							$button.find('.button-text').after($count);
 						}
 						$count.text('(' + revisions.length + ')');
-						
+
 						// Render revisions
 						revisions.forEach(function(revision) {
 							var $item = window.AIPS.renderRevisionItem(revision, componentType);
 							$list.append($item);
 						});
-						
+
 						$list.show();
 					} else {
 						$empty.show();
 					}
 				},
-				error: function(xhr, status, error) {
-					$loading.hide();
-					console.error('Failed to load revisions:', error);
+				onError: function() {
 					$list.html('<div class="notice notice-error inline"><p>Failed to load revisions. Please try again.</p></div>').show();
 				}
+			}).always(function() {
+				$loading.hide();
 			});
 		},
 		
@@ -840,12 +816,9 @@
 			$item.addClass('restoring');
 			
 			// Make AJAX request
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_restore_component_revision',
 				data: {
-					action: 'aips_restore_component_revision',
-					nonce: aipsAIEditL10n.nonce,
 					post_id: aiEditState.postId,
 					revision_id: revisionId,
 					component: componentType,
@@ -853,30 +826,30 @@
 					current_source: window.AIPS.shouldCaptureManualRevision(componentType) ? 'manual_edit' : '',
 					current_reason: window.AIPS.shouldCaptureManualRevision(componentType) ? 'pre_restore_manual' : ''
 				},
-				success: function(response) {
-					$button.prop('disabled', false);
-					$item.removeClass('restoring');
-					
-					if (response.success && response.data.value) {
+				nonce: aipsAIEditL10n.nonce,
+				toastOnError: false,
+				errorFallback: (window.aipsAIEditL10n && aipsAIEditL10n.revisionRestoreFailed) || 'Failed to restore revision',
+				onSuccess: function(data) {
+					if (data.value) {
 						// Update the component input with restored value
-						window.AIPS.updateAIEditComponentValue(componentType, response.data.value, 'restored_revision');
+						window.AIPS.updateAIEditComponentValue(componentType, data.value, 'restored_revision');
 						aiEditState.changedComponents.add(componentType);
 						$item.closest('.aips-component-section').addClass('changed');
-						window.AIPS.showComponentStatus(componentType, 'success', response.data.message || 'Revision restored successfully!');
-						
+						window.AIPS.showComponentStatus(componentType, 'success', data.message || 'Revision restored successfully!');
+
 						// Close revision panel
 						var $section = $item.closest('.aips-component-section');
 						$section.find('.aips-view-revisions-btn').click();
 					} else {
-						window.AIPS.showComponentStatus(componentType, 'error', response.data && response.data.message ? response.data.message : 'Failed to restore revision');
+						window.AIPS.showComponentStatus(componentType, 'error', 'Failed to restore revision');
 					}
 				},
-				error: function(xhr, status, error) {
-					$button.prop('disabled', false);
-					$item.removeClass('restoring');
-					console.error('Failed to restore revision:', error);
-					window.AIPS.showComponentStatus(componentType, 'error', 'Failed to restore revision. Please try again.');
+				onError: function(message) {
+					window.AIPS.showComponentStatus(componentType, 'error', message);
 				}
+			}).always(function() {
+				$button.prop('disabled', false);
+				$item.removeClass('restoring');
 			});
 		},
 

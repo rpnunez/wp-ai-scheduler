@@ -13,12 +13,24 @@
         researchSelectedTopics: [],
 
         /**
+         * @type {Backbone.Collection|null}
+         */
+        topicsCollection: null,
+
+        /**
+         * @type {Backbone.View|null}
+         */
+        topicsView: null,
+
+        /**
          * Initialize the research admin module.
          *
          * Binds all delegated listeners and auto-loads topics when the page is
          * available.
          */
         initResearch: function() {
+            AIPS.topicsCollection = new AIPS.TopicCollection();
+            AIPS.topicsView = new AIPS.TopicsView({ collection: AIPS.topicsCollection });
             AIPS.bindResearchEvents();
 
             if ($('#load-topics').length) {
@@ -71,31 +83,22 @@
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_research_topics',
+                nonce: $('#aips_nonce').val(),
                 data: {
-                    action: 'aips_research_topics',
-                    nonce: $('#aips_nonce').val(),
                     niche: niche,
                     count: count,
                     keywords: keywords
                 },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.renderResearchResults(response.data);
-                        $('#load-topics').trigger('click');
-                    } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
-                },
-                complete: function() {
-                    $submit.prop('disabled', false).removeClass('is-loading');
-                    $spinner.removeClass('is-active');
+                errorFallback: aipsResearchL10n.researchError,
+                onSuccess: function(data) {
+                    AIPS.renderResearchResults(data);
+                    $('#load-topics').trigger('click');
                 }
+            }).always(function() {
+                $submit.prop('disabled', false).removeClass('is-loading');
+                $spinner.removeClass('is-active');
             });
         },
 
@@ -110,44 +113,32 @@
         submitResearchFromSourcesForm: function(e) {
             e.preventDefault();
 
-            var $form    = $(e.currentTarget);
             var $submit  = $('#source-research-submit');
             var $spinner = $('#source-research-spinner');
 
             var niche    = $('#source-research-niche').val();
             var count    = $('#source-research-count').val();
-            var termIds  = $form.find('input[name="term_ids[]"]:checked').map(function() {
-                return $(this).val();
-            }).get();
+            var termIds  = AIPS.Core.Table.getSelectedIds('#aips-research-from-sources-form input[name="term_ids[]"]');
 
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_research_from_sources',
+                nonce: $('#aips-source-research-nonce').val(),
                 data: {
-                    action: 'aips_research_from_sources',
-                    nonce: $('#aips-source-research-nonce').val(),
                     niche: niche,
                     count: count,
                     term_ids: termIds
                 },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.renderResearchResults(response.data);
-                        $('#load-topics').trigger('click');
-                    } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
-                },
-                complete: function() {
-                    $submit.prop('disabled', false).removeClass('is-loading');
-                    $spinner.removeClass('is-active');
+                errorFallback: aipsResearchL10n.researchError,
+                onSuccess: function(data) {
+                    AIPS.renderResearchResults(data);
+                    $('#load-topics').trigger('click');
                 }
+            }).always(function() {
+                $submit.prop('disabled', false).removeClass('is-loading');
+                $spinner.removeClass('is-active');
             });
         },
 
@@ -211,135 +202,20 @@
             var includeUsed = $('#filter-include-used').is(':checked');
             var status = includeUsed ? 'all' : 'new';
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
+            AIPS.researchSelectedTopics = [];
+            AIPS.updateSelectedTopics();
+
+            AIPS.topicsCollection.fetch({
                 data: {
-                    action: 'aips_get_trending_topics',
-                    nonce: $('#aips_nonce').val(),
                     niche: niche,
                     min_score: minScore,
                     fresh_only: freshOnly ? 'true' : 'false',
                     status: status,
                     limit: 50
                 },
-                success: function(response) {
-                    if (response.success && response.data && response.data.topics) {
-                        AIPS.renderTopicsTable(response.data.topics);
-                    } else {
-                        var errorMsg = response.data && response.data.message ? response.data.message : 'Unknown error';
-                        AIPS.Utilities.showToast('Error: ' + errorMsg, 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    AIPS.Utilities.showToast('Error loading topics: ' + error, 'error');
-                }
+                reset: true,
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.loadTopicsError) || 'Error loading topics.'
             });
-        },
-
-        /**
-         * Render the topics table or empty state.
-         *
-         * @param {Array<Object>} topics Topics returned from AJAX.
-         */
-        renderTopicsTable: function(topics) {
-            var html = '';
-            var niche = $('#filter-niche').val();
-            var minScore = $('#filter-score').val();
-            var freshOnly = $('#filter-fresh').is(':checked');
-            var includeUsed = $('#filter-include-used').is(':checked');
-            var isFiltered = niche || minScore !== '0' || freshOnly || includeUsed;
-            var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
-
-            AIPS.researchSelectedTopics = [];
-            AIPS.updateSelectedTopics();
-
-            if (!topics || topics.length === 0) {
-                if (AIPS.Templates) {
-                    html = AIPS.Templates.render('aips-tmpl-research-empty-state', {
-                        title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
-                        description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
-                        button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
-                        button_class: isFiltered ? 'aips-btn-secondary' : 'aips-btn-primary',
-                        button_label: isFiltered
-                            ? (aipsResearchL10n.clearFilters || aipsResearchL10n.clearSearch || 'Clear Filters')
-                            : (aipsResearchL10n.startResearch || 'Start Research')
-                    });
-                }
-
-                $('#topics-container').html(html);
-                $('#bulk-schedule-section').hide();
-                $('#topics-tablenav').hide();
-                return;
-            }
-
-            if (AIPS.Templates) {
-                var rowsHtml = topics.map(function(topic) {
-                    var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                    var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
-                    var keywordsHtml = keywords.map(function(kw) {
-                        return AIPS.Templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
-                    }).join('');
-
-                    var reasonHtml = topic.reason
-                        ? AIPS.Templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
-                        : '';
-                    
-                    var generatedPostCount = parseInt(topic.generated_post_count || 0, 10);
-                    var postCountBadgeHtml = generatedPostCount > 0
-                        ? AIPS.Templates.render('aips-tmpl-research-topic-post-count-badge', {
-                            topic_id: esc(topic.id),
-                            count: esc(generatedPostCount)
-                        })
-                        : '';
-
-                    var statusLabel = (topic.status || 'new').toLowerCase();
-                    var statusLabelText = {
-                        'new': aipsResearchL10n.statusNew || 'New',
-                        'scheduled': aipsResearchL10n.statusScheduled || 'Scheduled',
-                        'generated': aipsResearchL10n.statusGenerated || 'Generated'
-                    }[statusLabel] || statusLabel;
-                    var statusChipHtml = AIPS.Templates.render('aips-tmpl-research-topic-status-chip', {
-                        status: esc(statusLabel),
-                        status_label: esc(statusLabelText)
-                    });
-
-                    return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
-                        id: esc(topic.id),
-                        topic: esc(topic.topic),
-                        status_chip_html: statusChipHtml,
-                        post_count_badge_html: postCountBadgeHtml,
-                        reason_html: reasonHtml,
-                        score_class: esc(scoreClass),
-                        score: esc(topic.score),
-                        niche: esc(topic.niche),
-                        keywords_html: keywordsHtml,
-                        researched_at: esc(AIPS.DateTime.formatRelative(topic.researched_at)),
-                        delete_label: esc(aipsResearchL10n.delete)
-                    });
-                }).join('');
-
-                var searchEmptyHtml = AIPS.Templates.render('aips-tmpl-research-topics-search-empty', {
-                    title: aipsResearchL10n.noTopicsFoundTitle,
-                    description: aipsResearchL10n.noTopicsFound,
-                    clear_label: aipsResearchL10n.clearSearch
-                });
-
-                html = AIPS.Templates.renderRaw('aips-tmpl-research-topics-table', {
-                    rows_html: rowsHtml,
-                    search_empty_html: searchEmptyHtml
-                });
-            }
-
-            $('#topics-container').html(html);
-
-            $('#topics-count').text(topics.length + ' ' + (topics.length === 1 ? 'topic' : 'topics'));
-            $('#topics-tablenav').show();
-            $('#bulk-schedule-section').hide();
-
-            if ($('#filter-search').val()) {
-                AIPS.filterTopics();
-            }
         },
 
         /**
@@ -397,8 +273,10 @@
          * @param {Event} e Change event.
          */
         toggleAllTopics: function(e) {
-            var isChecked = $(e.currentTarget).is(':checked');
-            $('.topic-checkbox:visible').prop('checked', isChecked);
+            AIPS.Core.Table.toggleAllRows({
+                checked: $(e.currentTarget).is(':checked'),
+                rowCheckboxSelector: '.topic-checkbox:visible'
+            });
             AIPS.updateSelectedTopics();
         },
 
@@ -416,14 +294,12 @@
          * Refresh selected-topic state and related action-button availability.
          */
         updateSelectedTopics: function() {
-            AIPS.researchSelectedTopics = $('.topic-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
+            AIPS.researchSelectedTopics = AIPS.Core.Table.getSelectedIds('.topic-checkbox');
 
-            var hasSelected = AIPS.researchSelectedTopics.length > 0;
-            $('#aips-delete-selected-topics').prop('disabled', !hasSelected);
-            $('#aips-schedule-selected-topics').prop('disabled', !hasSelected);
-            $('#aips-generate-selected-topics').prop('disabled', !hasSelected);
+            AIPS.Core.Bulk.updateToolbarState({
+                count: AIPS.researchSelectedTopics.length,
+                $toolbarActions: $('#aips-delete-selected-topics, #aips-schedule-selected-topics, #aips-generate-selected-topics')
+            });
         },
 
         /**
@@ -443,20 +319,15 @@
                     label: 'Yes, delete',
                     className: 'aips-btn aips-btn-danger-solid',
                     action: function() {
-                        $.ajax({
-                            url: ajaxurl,
-                            type: 'POST',
-                            data: {
-                                action: 'aips_delete_trending_topic',
-                                nonce: $('#aips_nonce').val(),
-                                topic_id: topicId
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    $('#load-topics').trigger('click');
-                                } else {
-                                    AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                                }
+                        var model = AIPS.topicsCollection.get(topicId);
+                        if (!model) {
+                            return;
+                        }
+
+                        model.destroy({
+                            wait: true,
+                            success: function(destroyedModel, response) {
+                                AIPS.Utilities.showToast(response.message, 'success');
                             }
                         });
                     }
@@ -484,37 +355,28 @@
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_schedule_trending_topics',
+                nonce: $('#aips_nonce').val(),
                 data: {
-                    action: 'aips_schedule_trending_topics',
-                    nonce: $('#aips_nonce').val(),
                     topic_ids: AIPS.researchSelectedTopics,
                     template_id: $('#schedule-template').val(),
                     start_date: $('#schedule-start-date').val(),
                     frequency: $('#schedule-frequency').val()
                 },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        AIPS.researchSelectedTopics = [];
-                        $('.topic-checkbox').prop('checked', false);
-                        $('#select-all-topics').prop('checked', false);
-                        AIPS.updateSelectedTopics();
-                        $('#bulk-schedule-section').hide();
-                        $('#load-topics').trigger('click');
-                    } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsResearchL10n.schedulingError, 'error');
-                },
-                complete: function() {
-                    $submit.prop('disabled', false).removeClass('is-loading');
-                    $spinner.removeClass('is-active');
+                errorFallback: aipsResearchL10n.schedulingError,
+                onSuccess: function(data) {
+                    AIPS.Utilities.showToast(data.message, 'success');
+                    AIPS.researchSelectedTopics = [];
+                    $('.topic-checkbox').prop('checked', false);
+                    $('#select-all-topics').prop('checked', false);
+                    AIPS.updateSelectedTopics();
+                    $('#bulk-schedule-section').hide();
+                    $('#load-topics').trigger('click');
                 }
+            }).always(function() {
+                $submit.prop('disabled', false).removeClass('is-loading');
+                $spinner.removeClass('is-active');
             });
         },
 
@@ -575,28 +437,17 @@
             $btn.prop('disabled', true);
             $spinner.addClass('is-active');
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'aips_perform_gap_analysis',
-                    nonce: $('#aips_nonce').val(),
-                    niche: niche
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.renderGapResults(response.data.gaps);
-                    } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred during gap analysis.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $spinner.removeClass('is-active');
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_perform_gap_analysis',
+                nonce: $('#aips_nonce').val(),
+                data: { niche: niche },
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.gapAnalysisError) || 'An error occurred during gap analysis.',
+                onSuccess: function(data) {
+                    AIPS.renderGapResults(data.gaps);
                 }
+            }).always(function() {
+                $btn.prop('disabled', false);
+                $spinner.removeClass('is-active');
             });
         },
 
@@ -661,33 +512,19 @@
             var topic = $btn.data('topic');
             var niche = $('#gap-niche').val();
 
-            AIPS.Utilities.setButtonLoading($btn, aipsResearchL10n.generatingIdeas || 'Generating...');
-
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'aips_generate_topics_from_gap',
-                    nonce: $('#aips_nonce').val(),
-                    gap_topic: topic,
-                    niche: niche
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        $('.aips-tab-link[data-tab="trending"]').trigger('click');
-                        setTimeout(function() {
-                            $('#load-topics').trigger('click');
-                        }, 500);
-                    } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred while generating topics.', 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_generate_topics_from_gap',
+                nonce: $('#aips_nonce').val(),
+                data: { gap_topic: topic, niche: niche },
+                $button: $btn,
+                loadingLabel: aipsResearchL10n.generatingIdeas || 'Generating...',
+                errorFallback: (window.aipsResearchL10n && aipsResearchL10n.generateTopicsError) || 'An error occurred while generating topics.',
+                onSuccess: function(data) {
+                    AIPS.Utilities.showToast(data.message, 'success');
+                    $('.aips-tab-link[data-tab="trending"]').trigger('click');
+                    setTimeout(function() {
+                        $('#load-topics').trigger('click');
+                    }, 500);
                 }
             });
         },
@@ -719,33 +556,25 @@
          * @param {number} topicId Trending topic ID.
          */
         loadTrendingTopicPosts: function(topicId) {
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_trending_topic_posts',
-                    nonce: $('#aips_nonce').val(),
-                    topic_id: topicId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        var topicTitle = response.data.topic && response.data.topic.topic
-                            ? response.data.topic.topic
-                            : '';
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_get_trending_topic_posts',
+                nonce: $('#aips_nonce').val(),
+                data: { topic_id: topicId },
+                toastOnError: false,
+                errorFallback: aipsResearchL10n.errorLoadingPosts || 'Error loading posts.',
+                onSuccess: function(data) {
+                    var topicTitle = data.topic && data.topic.topic
+                        ? data.topic.topic
+                        : '';
 
-                        $('#aips-trending-topic-posts-modal').find('.aips-modal-title').text(
-                            (aipsResearchL10n.postsGeneratedFrom || 'Posts Generated from Topic') + ': ' + topicTitle
-                        );
+                    $('#aips-trending-topic-posts-modal').find('.aips-modal-title').text(
+                        (aipsResearchL10n.postsGeneratedFrom || 'Posts Generated from Topic') + ': ' + topicTitle
+                    );
 
-                        AIPS.renderTrendingTopicPosts(response.data.posts || []);
-                    } else {
-                        $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html(
-                            '<p>' + (response.data && response.data.message ? response.data.message : (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.')) + '</p>'
-                        );
-                    }
+                    AIPS.renderTrendingTopicPosts(data.posts || []);
                 },
-                error: function() {
-                    $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.') + '</p>');
+                onError: function(message) {
+                    $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + message + '</p>');
                 }
             });
         },
@@ -805,37 +634,27 @@
                 return;
             }
 
-            AIPS.Utilities.confirm(
-                (aipsResearchL10n.deleteTopicsConfirm || 'Delete ' + AIPS.researchSelectedTopics.length + ' selected topic(s)?'),
-                'Notice',
-                [
-                    { label: aipsResearchL10n.cancel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                    {
-                        label: aipsResearchL10n.confirmDelete || 'Yes, delete',
-                        className: 'aips-btn aips-btn-danger-solid',
-                        action: function() {
-                            $.ajax({
-                                url: ajaxurl,
-                                type: 'POST',
-                                data: {
-                                    action: 'aips_delete_trending_topic_bulk',
-                                    nonce: $('#aips_nonce').val(),
-                                    topic_ids: AIPS.researchSelectedTopics
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        AIPS.Utilities.showToast(response.data.message, 'success');
-                                        AIPS.researchSelectedTopics = [];
-                                        $('#load-topics').trigger('click');
-                                    } else {
-                                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                                    }
-                                }
-                            });
-                        }
-                    }
-                ]
-            );
+            AIPS.Core.Bulk.dispatch({
+                action: 'aips_delete_trending_topic_bulk',
+                ids: AIPS.researchSelectedTopics,
+                idsField: 'topic_ids',
+                nonce: $('#aips_nonce').val(),
+                confirmMessage: aipsResearchL10n.deleteTopicsConfirm || 'Delete ' + AIPS.researchSelectedTopics.length + ' selected topic(s)?',
+                confirmHeading: 'Notice',
+                confirmLabel: aipsResearchL10n.confirmDelete || 'Yes, delete',
+                cancelLabel: aipsResearchL10n.cancel || 'No, cancel',
+                onSuccess: function(data) {
+                    AIPS.Utilities.showToast(data.message, 'success');
+
+                    var modelsToRemove = AIPS.researchSelectedTopics
+                        .map(function(id) { return AIPS.topicsCollection.get(id); })
+                        .filter(Boolean);
+                    AIPS.topicsCollection.remove(modelsToRemove);
+
+                    AIPS.researchSelectedTopics = [];
+                    AIPS.updateSelectedTopics();
+                }
+            });
         },
 
         /**
@@ -932,28 +751,15 @@
         runResearchBulkGenerateWithProgress: function($button, ajaxData) {
             var DEFAULT_PER_POST_SECONDS = 30;
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_bulk_generate_estimate',
-                    nonce: $('#aips_nonce').val()
-                },
-                success: function(estimateResponse) {
-                    var perPost = DEFAULT_PER_POST_SECONDS;
-
-                    if (
-                        estimateResponse &&
-                        estimateResponse.success &&
-                        estimateResponse.data &&
-                        estimateResponse.data.per_post_seconds > 0
-                    ) {
-                        perPost = estimateResponse.data.per_post_seconds;
-                    }
-
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_get_bulk_generate_estimate',
+                nonce: $('#aips_nonce').val(),
+                toastOnError: false,
+                onSuccess: function(data) {
+                    var perPost = (data && data.per_post_seconds > 0) ? data.per_post_seconds : DEFAULT_PER_POST_SECONDS;
                     AIPS.launchResearchBulkGenerateProgress($button, ajaxData, perPost);
                 },
-                error: function() {
+                onError: function() {
                     AIPS.launchResearchBulkGenerateProgress($button, ajaxData, DEFAULT_PER_POST_SECONDS);
                 }
             });
@@ -980,38 +786,27 @@
                 totalSeconds: totalSeconds
             });
 
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: ajaxData,
-                success: function(response) {
-                    if (response.success) {
-                        progressBar.complete(response.data.message, 'success');
-                        AIPS.researchSelectedTopics = [];
-                        setTimeout(function() {
-                            $('#load-topics').trigger('click');
-                        }, 1400);
-                    } else {
-                        var errorMessage = response.data && response.data.message
-                            ? response.data.message
-                            : aipsResearchL10n.generateError;
-
-                        progressBar.complete(errorMessage, 'error');
-                        setTimeout(function() {
-                            AIPS.Utilities.showToast('Error: ' + errorMessage, 'error');
-                        }, 1400);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    var fallbackError = error ? error : aipsResearchL10n.generateError;
-                    progressBar.complete(fallbackError, 'error');
+            AIPS.Core.Http.ajaxRequest({
+                action: ajaxData.action,
+                nonce: ajaxData.nonce,
+                data: { topic_ids: ajaxData.topic_ids, template_id: ajaxData.template_id },
+                toastOnError: false,
+                errorFallback: aipsResearchL10n.generateError,
+                onSuccess: function(data) {
+                    progressBar.complete(data.message, 'success');
+                    AIPS.researchSelectedTopics = [];
                     setTimeout(function() {
-                        AIPS.Utilities.showToast('Error: ' + fallbackError, 'error');
+                        $('#load-topics').trigger('click');
                     }, 1400);
                 },
-                complete: function() {
-                    $button.prop('disabled', false).html(buttonDefaultText);
+                onError: function(message) {
+                    progressBar.complete(message, 'error');
+                    setTimeout(function() {
+                        AIPS.Utilities.showToast('Error: ' + message, 'error');
+                    }, 1400);
                 }
+            }).always(function() {
+                $button.prop('disabled', false).html(buttonDefaultText);
             });
         },
 
@@ -1023,6 +818,124 @@
         reloadTopics: function(e) {
             e.preventDefault();
             $('#load-topics').trigger('click');
+        }
+    });
+
+    AIPS.TopicModel = AIPS.Core.Model.extend({
+        idAttribute: 'id',
+        idParam: 'topic_id',
+        ajaxActions: { delete: 'aips_delete_trending_topic' },
+        ajaxNonces: { delete: function() { return $('#aips_nonce').val(); } }
+    });
+
+    AIPS.TopicCollection = AIPS.Core.Collection.extend({
+        model: AIPS.TopicModel,
+        resultsKey: 'topics',
+        ajaxActions: { read: 'aips_get_trending_topics' },
+        ajaxNonces: { read: function() { return $('#aips_nonce').val(); } }
+    });
+
+    AIPS.TopicsView = AIPS.Core.View.extend({
+        el: '#topics-container',
+        rawTemplate: true, // Composes keyword/reason/badge/status-chip sub-templates.
+
+        initialize: function() {
+            // 'sync' alone covers fetch() whether or not {reset: true} is
+            // passed (Backbone fires both 'reset' and 'sync' for a reset
+            // fetch) -- listening to both would double-render.
+            this.listenTo(this.collection, 'sync remove', this.render);
+        },
+
+        render: function() {
+            var esc = AIPS.Templates.escape;
+            var topics = this.collection.toJSON();
+
+            var niche = $('#filter-niche').val();
+            var minScore = $('#filter-score').val();
+            var freshOnly = $('#filter-fresh').is(':checked');
+            var includeUsed = $('#filter-include-used').is(':checked');
+            var isFiltered = niche || minScore !== '0' || freshOnly || includeUsed;
+
+            if (!topics || topics.length === 0) {
+                var emptyHtml = AIPS.Templates.render('aips-tmpl-research-empty-state', {
+                    title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                    description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                    button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
+                    button_class: isFiltered ? 'aips-btn-secondary' : 'aips-btn-primary',
+                    button_label: isFiltered
+                        ? (aipsResearchL10n.clearFilters || aipsResearchL10n.clearSearch || 'Clear Filters')
+                        : (aipsResearchL10n.startResearch || 'Start Research')
+                });
+
+                this.$el.html(emptyHtml);
+                $('#bulk-schedule-section').hide();
+                $('#topics-tablenav').hide();
+                return;
+            }
+
+            var rowsHtml = topics.map(function(topic) {
+                var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
+                var keywordsHtml = keywords.map(function(kw) {
+                    return AIPS.Templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
+                }).join('');
+
+                var reasonHtml = topic.reason
+                    ? AIPS.Templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
+                    : '';
+
+                var generatedPostCount = parseInt(topic.generated_post_count || 0, 10);
+                var postCountBadgeHtml = generatedPostCount > 0
+                    ? AIPS.Templates.render('aips-tmpl-research-topic-post-count-badge', {
+                        topic_id: esc(topic.id),
+                        count: esc(generatedPostCount)
+                    })
+                    : '';
+
+                var statusLabel = (topic.status || 'new').toLowerCase();
+                var statusLabelText = {
+                    'new': aipsResearchL10n.statusNew || 'New',
+                    'scheduled': aipsResearchL10n.statusScheduled || 'Scheduled',
+                    'generated': aipsResearchL10n.statusGenerated || 'Generated'
+                }[statusLabel] || statusLabel;
+                var statusChipHtml = AIPS.Templates.render('aips-tmpl-research-topic-status-chip', {
+                    status: esc(statusLabel),
+                    status_label: esc(statusLabelText)
+                });
+
+                return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
+                    id: esc(topic.id),
+                    topic: esc(topic.topic),
+                    status_chip_html: statusChipHtml,
+                    post_count_badge_html: postCountBadgeHtml,
+                    reason_html: reasonHtml,
+                    score_class: esc(scoreClass),
+                    score: esc(topic.score),
+                    niche: esc(topic.niche),
+                    keywords_html: keywordsHtml,
+                    researched_at: esc(AIPS.DateTime.formatRelative(topic.researched_at)),
+                    delete_label: esc(aipsResearchL10n.delete)
+                });
+            }).join('');
+
+            var searchEmptyHtml = AIPS.Templates.render('aips-tmpl-research-topics-search-empty', {
+                title: aipsResearchL10n.noTopicsFoundTitle,
+                description: aipsResearchL10n.noTopicsFound,
+                clear_label: aipsResearchL10n.clearSearch
+            });
+
+            this.$el.html(AIPS.Templates.renderRaw('aips-tmpl-research-topics-table', {
+                rows_html: rowsHtml,
+                search_empty_html: searchEmptyHtml
+            }));
+
+            $('#topics-count').text(topics.length + ' ' + (topics.length === 1 ? 'topic' : 'topics'));
+            $('#topics-tablenav').show();
+            $('#bulk-schedule-section').hide();
+
+            if ($('#filter-search').val()) {
+                AIPS.filterTopics();
+            }
         }
     });
 

@@ -20,7 +20,7 @@ if (strpos($hook, 'your-page-slug') !== false) {
     // Enqueue View Session module
     wp_enqueue_script(
         'aips-admin-view-session',
-        AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
+        AIPS_PLUGIN_URL . 'assets/js/view-session.js',
         array('aips-admin-script'),
         AIPS_VERSION,
         true

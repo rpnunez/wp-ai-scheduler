@@ -1,15 +1,18 @@
 ---
-applyTo: "assets/js/*.js,ai-post-scheduler/assets/js/*.js"
+applyTo: "assets/js/**/*.js,ai-post-scheduler/assets/js/**/*.js"
 ---
 
 Use this file for JavaScript changes in `assets/js/*.js`.
+
+Shared/foundational modules used across pages (`core.js`, `core-modal.js`, `core-table.js`, `core-bulk.js`, `core-ui.js`, `utilities.js`, `templates.js`, `datetime.js`) live in `assets/js/core/`. Everything else — a specific admin page's script — stays directly in `assets/js/`.
 
 Follow the `admin.js` module pattern for all plugin JavaScript files at a high level.
 
 - Wrap files in an IIFE that receives jQuery: `(function($) { ... })(jQuery);`.
 - Enable strict mode near the top: `'use strict';`.
 - Initialize and reuse a shared global namespace object: `window.AIPS = window.AIPS || {};` then `var AIPS = window.AIPS;`.
-- Define behavior as a named sub-module on `AIPS` using the module's name (for example, `AIPS.Utilities = { ... }` for `utilities.js`, `AIPS.SystemStatus = { ... }` for `admin-system-status.js`). Assign all methods directly on that sub-module object.
+- Define behavior as a named sub-module on `AIPS` using the module's name (for example, `AIPS.Utilities = { ... }` for `utilities.js`, `AIPS.SystemStatus = { ... }` for `system-status.js`). Assign all methods directly on that sub-module object.
+- Name new files after the page/feature they cover, without an `admin-` prefix (for example `system-status.js`, not `admin-system-status.js`) — every file in this directory is already admin-only, so the prefix is redundant. `admin.js` (the shared bootstrap) and `admin-bar.js` (wraps WordPress's own "admin bar" feature) are the only exceptions.
 - Include an `init()` method on the sub-module as the main bootstrap entry point (for example `AIPS.Utilities.init()`).
 - Include a `bindEvents()` method on the sub-module that registers UI event listeners (for example `AIPS.Utilities.bindEvents()`).
 - In `bindEvents()`, register listeners to named methods on the sub-module (for example `this.saveTemplate`) and do not use inline callbacks.

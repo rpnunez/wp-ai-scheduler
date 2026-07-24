@@ -367,36 +367,26 @@
 
 			self.showStandaloneModalLoading($modal);
 
-			$.ajax({
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_history_modal_html',
 				url: ajaxConfig.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_history_modal_html',
-					nonce: ajaxConfig.nonce,
-					history_id: historyId
-				},
-				success: function (response) {
-					if (!response || !response.success || !response.data) {
-						var message = response && response.data && response.data.message
-							? response.data.message
-							: (l10n.loadingFailed || 'Failed to load history modal.');
-						AIPS.Utilities.showToast(message, 'error');
-						$modal.fadeOut(200);
-						return;
-					}
-
-					self.updateModalHeader($modal, response.data.container || {}, {
+				nonce: ajaxConfig.nonce,
+				data: { history_id: historyId },
+				toastOnError: false,
+				errorFallback: l10n.loadingFailed || 'Failed to load history modal.',
+				onSuccess: function (data) {
+					self.updateModalHeader($modal, data.container || {}, {
 						titleSelector: '#aips-history-modal-title',
 						actionsSelector: '#aips-history-modal-actions',
 						statusSelector: '#aips-history-modal-status',
 						defaultTitle: l10n.historyDetailsTitle || 'History Details'
 					});
-					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
+					$modal.find('#aips-history-modal-content').html(data.modal_html || '');
 					self.bindStandaloneModalEvents($modal);
 					$modal.fadeIn(200);
 				},
-				error: function () {
-					AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 					$modal.fadeOut(200);
 				}
 			});
@@ -770,38 +760,23 @@
 			}));
 			$modal.fadeIn(200);
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_history_modal_html',
-					nonce: aipsAjax.nonce,
-					history_id: historyId
-				},
-				success: function (response) {
-					if (!response.success) {
-						$content.html(T.render('aips-tmpl-history-error-msg', {
-							message: response.data && response.data.message
-								? response.data.message
-								: (aipsHistoryL10n.errorLoading || 'Error loading logs.')
-						}));
-						return;
-					}
-
-					var container = response.data.container;
-					var modalHtml = response.data.modal_html || '';
-
-					AIPS.HistoryModalShared.updateModalHeader($modal, container, {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_history_modal_html',
+				data: { history_id: historyId },
+				toastOnError: false,
+				errorFallback: aipsHistoryL10n.errorLoading || 'Error loading logs.',
+				onSuccess: function (data) {
+					AIPS.HistoryModalShared.updateModalHeader($modal, data.container, {
 						titleSelector: '#aips-history-logs-modal-title',
 						actionsSelector: '#aips-history-logs-modal-actions',
 						statusSelector: '#aips-history-logs-modal-status',
 						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
 					});
-					$content.html(modalHtml);
+					$content.html(data.modal_html || '');
 				},
-				error: function () {
+				onError: function (message) {
 					$content.html(T.render('aips-tmpl-history-error-msg', {
-						message: aipsHistoryL10n.errorLoading || 'Error loading logs.'
+						message: message
 					}));
 				}
 			});
@@ -1100,8 +1075,10 @@
 		 * @param {Event} e
 		 */
 		toggleSelectAll: function (e) {
-			var checked = $(e.target).prop('checked');
-			$('.aips-history-cb').prop('checked', checked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.target).prop('checked'),
+				rowCheckboxSelector: '.aips-history-cb'
+			});
 			this.updateDeleteButton();
 		},
 
@@ -1110,17 +1087,20 @@
 		 */
 		onRowCheckboxChange: function () {
 			this.updateDeleteButton();
-			var allChecked = $('.aips-history-cb').length > 0
-				&& $('.aips-history-cb:not(:checked)').length === 0;
-			$('#aips-cb-select-all').prop('checked', allChecked);
+			AIPS.Core.Table.syncSelectAll({
+				$selectAll: $('#aips-cb-select-all'),
+				rowCheckboxSelector: '.aips-history-cb'
+			});
 		},
 
 		/**
 		 * Enable or disable the Delete Selected button based on current selections.
 		 */
 		updateDeleteButton: function () {
-			var count = $('.aips-history-cb:checked').length;
-			$('#aips-delete-selected-btn').prop('disabled', count === 0);
+			AIPS.Core.Bulk.updateToolbarState({
+				rowCheckboxSelector: '.aips-history-cb',
+				$toolbarActions: $('#aips-delete-selected-btn')
+			});
 		},
 
 		/**
@@ -1131,56 +1111,30 @@
 		deleteSelected: function (e) {
 			e.preventDefault();
 
-			var ids = [];
-			$('.aips-history-cb:checked').each(function () {
-				ids.push($(this).val());
-			});
+			var ids = AIPS.Core.Table.getSelectedIds('.aips-history-cb');
 
 			if (!ids.length) {
 				return;
 			}
 
-			var self     = this;
-			var $btn     = $(e.currentTarget);
-			var origHtml = $btn.html();
-			var msg      = aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.';
+			var self = this;
 
-			AIPS.Utilities.confirm(msg, 'Notice', [
-				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
-				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$btn.prop('disabled', true).html(
-						'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026')
-					);
-
-					$.ajax({
-						url: aipsAjax.ajaxUrl,
-						type: 'POST',
-						data: {
-							action: 'aips_bulk_delete_history',
-							nonce: aipsAjax.nonce,
-							ids: ids
-						},
-						success: function (response) {
-							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
-								self.reload();
-							} else {
-								AIPS.Utilities.showToast(
-									response.data && response.data.message
-										? response.data.message
-										: (aipsHistoryL10n.errorDeleting || 'Error deleting items.'),
-									'error'
-								);
-								$btn.prop('disabled', false).html(origHtml);
-							}
-						},
-						error: function () {
-							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
-							$btn.prop('disabled', false).html(origHtml);
-						}
-					});
-				}}
-			]);
+			AIPS.Core.Bulk.dispatch({
+				action: 'aips_bulk_delete_history',
+				ids: ids,
+				confirmMessage: aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.',
+				confirmHeading: 'Notice',
+				confirmLabel: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete',
+				cancelLabel: aipsHistoryL10n.cancelLabel || 'No, cancel',
+				$button: $(e.currentTarget),
+				loadingLabel: '<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026'),
+				loadingLabelIsHtml: true,
+				errorFallback: aipsHistoryL10n.errorDeleting || 'Error deleting items.',
+				onSuccess: function () {
+					AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+					self.reload();
+				}
+			});
 		},
 
 		/**
@@ -1203,29 +1157,13 @@
 			AIPS.Utilities.confirm(msg, 'Notice', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$.ajax({
-						url: aipsAjax.ajaxUrl,
-						type: 'POST',
-						data: {
-							action: 'aips_bulk_delete_history',
-							nonce: aipsAjax.nonce,
-							ids: [id]
-						},
-						success: function (response) {
-							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
-								self.reload();
-							} else {
-								AIPS.Utilities.showToast(
-									response.data && response.data.message
-										? response.data.message
-										: (aipsHistoryL10n.errorDeleting || 'Error deleting item.'),
-									'error'
-								);
-							}
-						},
-						error: function () {
-							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
+					AIPS.Core.Http.ajaxRequest({
+						action: 'aips_bulk_delete_history',
+						data: { ids: [id] },
+						errorFallback: aipsHistoryL10n.errorDeleting || 'Error deleting item.',
+						onSuccess: function () {
+							AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
+							self.reload();
 						}
 					});
 				}}
@@ -1256,25 +1194,16 @@
 				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026')
 			);
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_retry_generation',
-					nonce: aipsAjax.nonce,
-					history_id: id
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_retry_generation',
+				data: { history_id: id },
+				errorFallback: aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.',
+				onSuccess: function (data) {
+					AIPS.Utilities.showToast(data.message, 'success');
+					self.reload();
 				},
-				success: function (response) {
-					if (response.success) {
-						AIPS.Utilities.showToast(response.data.message, 'success');
-						self.reload();
-					} else {
-						AIPS.Utilities.showToast(response.data.message, 'error');
-						$btn.prop('disabled', false).html(origHtml);
-					}
-				},
-				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.', 'error');
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 					$btn.prop('disabled', false).html(origHtml);
 				}
 			});
@@ -1302,34 +1231,13 @@
 			AIPS.Utilities.confirm(msg, 'Notice', [
 				{ label: aipsHistoryL10n.cancelLabel    || 'No, cancel', className: 'aips-btn aips-btn-primary' },
 				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, clear', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$.ajax({
-						url: aipsAjax.ajaxUrl,
-						type: 'POST',
-						data: {
-							action: 'aips_clear_history',
-							nonce: aipsAjax.nonce,
-							status: status
-						},
-						success: function (response) {
-							if (response.success) {
-								AIPS.Utilities.showToast(
-									response.data && response.data.message
-										? response.data.message
-										: (aipsHistoryL10n.clearedSuccess || 'History cleared.'),
-									'success'
-								);
-								self.reload();
-							} else {
-								AIPS.Utilities.showToast(
-									response.data && response.data.message
-										? response.data.message
-										: (aipsHistoryL10n.errorClearing || 'Error clearing history.'),
-									'error'
-								);
-							}
-						},
-						error: function () {
-							AIPS.Utilities.showToast(aipsHistoryL10n.errorClearing || 'Error clearing history.', 'error');
+					AIPS.Core.Http.ajaxRequest({
+						action: 'aips_clear_history',
+						data: { status: status },
+						errorFallback: aipsHistoryL10n.errorClearing || 'Error clearing history.',
+						onSuccess: function (data) {
+							AIPS.Utilities.showToast(data.message || (aipsHistoryL10n.clearedSuccess || 'History cleared.'), 'success');
+							self.reload();
 						}
 					});
 				}}
@@ -1384,13 +1292,9 @@
 				);
 			}
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_reload_history',
 				data: {
-					action: 'aips_reload_history',
-					nonce: aipsAjax.nonce,
 					status: self.statusFilter,
 					search: self.searchQuery,
 					domain: self.domainFilter,
@@ -1400,20 +1304,10 @@
 					date_to: self.dateTo,
 					paged: paged
 				},
-				success: function (response) {
-					if (!response.success) {
-						if (!options.fromHeartbeat) {
-							AIPS.Utilities.showToast(
-								response.data && response.data.message
-									? response.data.message
-									: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
-								'error'
-							);
-						}
-						return;
-					}
-
-					var itemsHtml = response.data.items_html || '';
+				toastOnError: false,
+				errorFallback: aipsHistoryL10n.errorReloading || 'Failed to reload history.',
+				onSuccess: function (data) {
+					var itemsHtml = data.items_html || '';
 
 					if ($tbody.length) {
 						if (itemsHtml) {
@@ -1427,16 +1321,16 @@
 						}
 					}
 
-					if ($pagWrap.length && response.data.pagination_html !== undefined) {
-						$pagWrap.html(response.data.pagination_html);
+					if ($pagWrap.length && data.pagination_html !== undefined) {
+						$pagWrap.html(data.pagination_html);
 					}
 
-					if ($timeline.length && response.data.timeline_html !== undefined) {
-						$timeline.html(response.data.timeline_html);
+					if ($timeline.length && data.timeline_html !== undefined) {
+						$timeline.html(data.timeline_html);
 					}
 
 					// Refresh stat cards.
-					var stats = response.data.stats;
+					var stats = data.stats;
 					if (stats) {
 						$('#aips-stat-total').text(stats.total);
 						$('#aips-stat-completed').text(stats.completed);
@@ -1457,17 +1351,16 @@
 					$('#aips-cb-select-all').prop('checked', false);
 					self.updateDeleteButton();
 				},
-				error: function () {
+				onError: function (message) {
 					if (!options.fromHeartbeat) {
-						AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+						AIPS.Utilities.showToast(message, 'error');
 					}
-				},
-				complete: function () {
-					if (!options.fromHeartbeat) {
-						$reloadBtn.prop('disabled', false).html(origHtml);
-					}
-					self.isAutoRefreshing = false;
 				}
+			}).always(function () {
+				if (!options.fromHeartbeat) {
+					$reloadBtn.prop('disabled', false).html(origHtml);
+				}
+				self.isAutoRefreshing = false;
 			});
 		},
 

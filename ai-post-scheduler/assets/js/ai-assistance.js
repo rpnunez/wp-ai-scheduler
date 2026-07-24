@@ -224,11 +224,10 @@
 					: 'Suggesting\u2026'
 			);
 
-			$.post(
-				ajaxurl,
-				{
-					action:            'aips_ai_field_assist',
-					nonce:             (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.nonce : '',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_ai_field_assist',
+				nonce: (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.nonce : '',
+				data: {
 					form_context:      self.formContext,
 					field_key:         fieldId,
 					field_name:        fieldConfig.fieldName,
@@ -240,12 +239,11 @@
 					author_name:       authorName,
 					field_niche:       fieldNiche,
 				},
-				function (response) {
-					$btn.prop('disabled', false).removeClass('loading');
-					$label.text(originalLabel);
-
-					if (response.success && response.data && response.data.hasOwnProperty('response')) {
-						$field.val(response.data.response).trigger('change');
+				toastOnError: false,
+				errorFallback: (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.errorSuggesting : 'Could not get AI suggestion.',
+				onSuccess: function (data) {
+					if (data && data.hasOwnProperty('response')) {
+						$field.val(data.response).trigger('change');
 
 						// Show the history button for this field
 						$btn.closest('.aips-ai-assist-btn-group').find('.aips-ai-assist-history-btn[data-field-id="' + fieldId + '"]').show();
@@ -257,24 +255,21 @@
 							);
 						}
 					} else {
-						var errMsg = (response.data && response.data.message)
-							? response.data.message
-							: ((typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.errorSuggesting : 'Could not get AI suggestion.');
+						var errMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.errorSuggesting : 'Could not get AI suggestion.';
 
 						if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
 							AIPS.Utilities.showToast(errMsg, 'error');
 						}
 					}
+				},
+				onError: function (message) {
+					if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(message, 'error');
+					}
 				}
-			).fail(function () {
+			}).always(function () {
 				$btn.prop('disabled', false).removeClass('loading');
 				$label.text(originalLabel);
-				if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast(
-						(typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.errorSuggesting : 'Could not get AI suggestion.',
-						'error'
-					);
-				}
 			});
 		},
 
@@ -308,29 +303,32 @@
 			$('#aips-ai-assist-history-session-tab').show();
 			$('#aips-ai-assist-history-alltime-tab').hide();
 
-			$.post(
-				ajaxurl,
-				{
-					action:       'aips_get_field_assist_history',
-					nonce:        (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.nonce : '',
+			function showNoHistory() {
+				var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
+				$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
+				$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
+			}
+
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_field_assist_history',
+				nonce: (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.nonce : '',
+				data: {
 					form_context: self.formContext,
 					field_key:    fieldId,
 					session_id:   self.sessionId,
 				},
-				function (response) {
-					if (response.success && response.data) {
-						self.renderHistoryTab( '#aips-ai-assist-history-session-tab', response.data.session, fieldId );
-						self.renderHistoryTab( '#aips-ai-assist-history-alltime-tab', response.data.alltime, fieldId );
+				toastOnError: false,
+				onSuccess: function (data) {
+					if (data && (data.session !== undefined || data.alltime !== undefined)) {
+						self.renderHistoryTab( '#aips-ai-assist-history-session-tab', data.session, fieldId );
+						self.renderHistoryTab( '#aips-ai-assist-history-alltime-tab', data.alltime, fieldId );
 					} else {
-						var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
-						$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
-						$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
+						showNoHistory();
 					}
+				},
+				onError: function () {
+					showNoHistory();
 				}
-			).fail(function () {
-				var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
-				$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
-				$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 			});
 		},
 

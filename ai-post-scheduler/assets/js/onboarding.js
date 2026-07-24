@@ -6,36 +6,27 @@ jQuery(document).ready(function ($) {
 	}
 
 	function ajax(action, data, onDone) {
-		var payload;
+		var payload = data;
+
 		if (typeof data === 'string') {
-			payload = data + '&action=' + encodeURIComponent(action) + '&nonce=' + encodeURIComponent(aipsAjax.nonce);
-		} else {
-			payload = $.extend(
-				{
-					action: action,
-					nonce: aipsAjax.nonce,
-				},
-				data || {}
-			);
+			payload = {};
+			new URLSearchParams(data).forEach(function (value, key) {
+				payload[key] = value;
+			});
 		}
 
-		$.ajax({
-			url: aipsAjax.ajaxUrl,
-			method: 'POST',
-			dataType: 'json',
+		AIPS.Core.Http.ajaxRequest({
+			action: action,
 			data: payload,
-		})
-			.done(function (resp) {
-				if (resp && resp.success) {
-					onDone(null, resp.data || {});
-				} else {
-					var msg = resp && resp.data && resp.data.message ? resp.data.message : aipsAdminL10n.errorTryAgain || 'An error occurred.';
-					onDone(new Error(msg));
-				}
-			})
-			.fail(function () {
-				onDone(new Error(aipsAdminL10n.errorTryAgain || 'An error occurred.'));
-			});
+			toastOnError: false,
+			errorFallback: aipsAdminL10n.errorTryAgain || 'An error occurred.',
+			onSuccess: function (respData) {
+				onDone(null, respData);
+			},
+			onError: function (message) {
+				onDone(new Error(message));
+			}
+		});
 	}
 
 	$('#aips-onboarding-strategy-form').on('submit', function (e) {
@@ -47,7 +38,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Saved.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -60,7 +51,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Author created.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -73,7 +64,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Template created.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -104,7 +95,7 @@ jQuery(document).ready(function ($) {
 			}
 
 			showNotice('success', out.message || 'Topics generated.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -126,7 +117,7 @@ jQuery(document).ready(function ($) {
 			}
 
 			showNotice('success', out.message || 'Post generated.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 
@@ -170,7 +161,7 @@ jQuery(document).ready(function ($) {
 				return;
 			}
 			showNotice('success', out.message || 'Reset.');
-			window.location.reload();
+			AIPS.refreshPageSection('.aips-page-container');
 		});
 	});
 });

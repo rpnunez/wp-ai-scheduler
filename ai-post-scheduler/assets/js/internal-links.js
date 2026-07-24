@@ -419,41 +419,37 @@
 				message: aipsInternalLinksL10n.loading,
 			}));
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:   'aips_internal_links_get_suggestions',
-				nonce:    aipsInternalLinksL10n.nonce,
-				page:     self.currentPage,
-				per_page: self.perPage,
-				status:   self.currentStatus,
-				search:   self.currentSearch,
-			}, function (response) {
-				if (!response.success) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_get_suggestions',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data: {
+					page:     self.currentPage,
+					per_page: self.perPage,
+					status:   self.currentStatus,
+					search:   self.currentSearch,
+				},
+				toastOnError: false,
+				onError: function () {
 					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
 						message: aipsInternalLinksL10n.errorLoading,
 					}));
-					return;
+				},
+				onSuccess: function (data) {
+					if (!data.items || data.items.length === 0) {
+						$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
+							message: aipsInternalLinksL10n.noSuggestions,
+						}));
+						self.renderPagination(0, 0);
+						return;
+					}
+
+					$tbody.html('');
+					$.each(data.items, function (i, item) {
+						$tbody.append(self.renderRow(item));
+					});
+
+					self.renderPagination(data.total, data.total_pages);
 				}
-
-				var data = response.data;
-
-				if (!data.items || data.items.length === 0) {
-					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-						message: aipsInternalLinksL10n.noSuggestions,
-					}));
-					self.renderPagination(0, 0);
-					return;
-				}
-
-				$tbody.html('');
-				$.each(data.items, function (i, item) {
-					$tbody.append(self.renderRow(item));
-				});
-
-				self.renderPagination(data.total, data.total_pages);
-			}).fail(function () {
-				$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-					message: aipsInternalLinksL10n.errorLoading,
-				}));
 			});
 		},
 
@@ -586,24 +582,15 @@
 
 			$btn.prop('disabled', true).text(aipsInternalLinksL10n.loading);
 
-			$.post(aipsAjax.ajaxUrl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_internal_links_start_indexing',
 				nonce:  aipsInternalLinksL10n.nonce,
-			}, function (response) {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
-					label: self.originalIndexText,
-				}));
-
-				if (response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'success');
+				errorFallback: aipsInternalLinksL10n.indexingNotAvailable,
+				onSuccess: function (data) {
+					AIPS.Utilities.showToast(data.message, 'success');
 					setTimeout(function () { self.refreshStatus(); }, 2000);
-				} else {
-					AIPS.Utilities.showToast(
-					(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
-					'error'
-					);
 				}
-			}).fail(function () {
+			}).always(function () {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
 					label: self.originalIndexText,
 				}));
@@ -616,19 +603,13 @@
 		clearIndex: function () {
 			var self = this;
 
-			$.post(aipsAjax.ajaxUrl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_internal_links_clear_index',
 				nonce:  aipsInternalLinksL10n.nonce,
-			}, function (response) {
-				if (response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'success');
+				onSuccess: function (data) {
+					AIPS.Utilities.showToast(data.message, 'success');
 					self.loadSuggestions();
 					self.refreshStatus();
-				} else {
-					AIPS.Utilities.showToast(
-					(response.data && response.data.message) || 'Error.',
-					'error'
-					);
 				}
 			});
 		},
@@ -652,31 +633,27 @@
 			$btn.prop('disabled', true).text(aipsInternalLinksL10n.generating);
 			$feedback.hide();
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:          'aips_internal_links_generate_suggestions',
-				nonce:           aipsInternalLinksL10n.nonce,
-				post_id:         postId,
-				max_suggestions: maxSugg || 5,
-				threshold:       threshold || 0.70,
-			}, function (response) {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
-					label: self.originalGenerateText,
-				}));
-
-				if (response.success) {
-					self.showGenerateFeedback(response.data.message, 'success');
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_generate_suggestions',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data: {
+					post_id:         postId,
+					max_suggestions: maxSugg || 5,
+					threshold:       threshold || 0.70,
+				},
+				toastOnError: false,
+				errorFallback: aipsInternalLinksL10n.requestFailed,
+				onSuccess: function (data) {
+					self.showGenerateFeedback(data.message, 'success');
 					self.loadSuggestions();
-				} else {
-					self.showGenerateFeedback(
-					(response.data && response.data.message) || 'Error.',
-					'error'
-					);
+				},
+				onError: function (message) {
+					self.showGenerateFeedback(message, 'error');
 				}
-			}).fail(function () {
+			}).always(function () {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
 					label: self.originalGenerateText,
 				}));
-				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
 			});
 		},
 
@@ -697,26 +674,20 @@
 			$btn.prop('disabled', true).text(aipsInternalLinksL10n.reindexing);
 			$feedback.hide();
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:  'aips_internal_links_reindex_post',
-				nonce:   aipsInternalLinksL10n.nonce,
-				post_id: postId,
-			}, function (response) {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
-					label: self.originalReindexText,
-				}));
-
-				if (response.success) {
-					self.showGenerateFeedback(response.data.message, 'success');
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_reindex_post',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data:   { post_id: postId },
+				toastOnError: false,
+				onSuccess: function (data) {
+					self.showGenerateFeedback(data.message, 'success');
 					self.loadSuggestions();
 					self.refreshStatus();
-				} else {
-					self.showGenerateFeedback(
-					(response.data && response.data.message) || 'Error.',
-					'error'
-					);
+				},
+				onError: function (message) {
+					self.showGenerateFeedback(message, 'error');
 				}
-			}).fail(function () {
+			}).always(function () {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
 					label: self.originalReindexText,
 				}));
@@ -733,19 +704,16 @@
 		updateStatus: function (id, status, $row) {
 			var self = this;
 
-			$.post(aipsAjax.ajaxUrl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_internal_links_update_status',
 				nonce:  aipsInternalLinksL10n.nonce,
-				id:     id,
-				status: status,
-			}, function (response) {
-				if (response.success) {
+				data:   { id: id, status: status },
+				errorFallback: aipsInternalLinksL10n.statusUpdateFailed,
+				onSuccess: function () {
 					// Reload to reflect updated status and re-render actions
 					self.loadSuggestions();
 					self.refreshStatus();
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdated, 'success');
-				} else {
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdateFailed, 'error');
 				}
 			});
 		},
@@ -759,16 +727,14 @@
 		deleteSuggestion: function (id, $row) {
 			var self = this;
 
-			$.post(aipsAjax.ajaxUrl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_internal_links_delete',
 				nonce:  aipsInternalLinksL10n.nonce,
-				id:     id,
-			}, function (response) {
-				if (response.success) {
+				data:   { id: id },
+				errorFallback: aipsInternalLinksL10n.errorDeleting,
+				onSuccess: function () {
 					$row.fadeOut(200, function () { $(this).remove(); });
 					self.refreshStatus();
-				} else {
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.errorDeleting, 'error');
 				}
 			});
 		},
@@ -783,23 +749,20 @@
 
 			if (!id) { return; }
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:      'aips_internal_links_update_anchor',
-				nonce:       aipsInternalLinksL10n.nonce,
-				id:          id,
-				anchor_text: anchorText,
-			}, function (response) {
-				$('#aips-anchor-modal').hide();
-
-				if (response.success) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_update_anchor',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data:   { id: id, anchor_text: anchorText },
+				errorFallback: aipsInternalLinksL10n.anchorUpdateFailed,
+				onSuccess: function () {
 					// Update cell in table
 					$('tr[data-id="' + id + '"] .aips-il-anchor-cell').text(anchorText);
 					// Update data attribute on edit button
 					$('tr[data-id="' + id + '"] .aips-il-edit-anchor-btn').data('anchor', anchorText);
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
-				} else {
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdateFailed, 'error');
 				}
+			}).always(function () {
+				$('#aips-anchor-modal').hide();
 			});
 		},
 
@@ -811,27 +774,27 @@
 		 * Refresh the indexing / status stats without reloading the full table.
 		 */
 		refreshStatus: function () {
-			$.post(aipsAjax.ajaxUrl, {
+			AIPS.Core.Http.ajaxRequest({
 				action: 'aips_internal_links_get_status',
 				nonce:  aipsInternalLinksL10n.nonce,
-			}, function (response) {
-				if (!response.success) { return; }
+				toastOnError: false,
+				onSuccess: function (data) {
+					var idx    = data.indexing;
+					var counts = data.link_counts;
 
-				var idx    = response.data.indexing;
-				var counts = response.data.link_counts;
+					if (idx) {
+						$('#aips-stat-indexed').html(AIPS.Templates.render('aips-tmpl-il-indexed-stat', {
+							indexed: idx.indexed,
+							total:   idx.total_posts,
+						}));
+						$('#aips-index-progress-bar').css('width', idx.percent + '%');
+					}
 
-				if (idx) {
-					$('#aips-stat-indexed').html(AIPS.Templates.render('aips-tmpl-il-indexed-stat', {
-						indexed: idx.indexed,
-						total:   idx.total_posts,
-					}));
-					$('#aips-index-progress-bar').css('width', idx.percent + '%');
-				}
-
-				if (counts) {
-					$('#aips-stat-pending').text(counts.pending || 0);
-					$('#aips-stat-accepted').text(counts.accepted || 0);
-					$('#aips-stat-rejected').text(counts.rejected || 0);
+					if (counts) {
+						$('#aips-stat-pending').text(counts.pending || 0);
+						$('#aips-stat-accepted').text(counts.accepted || 0);
+						$('#aips-stat-rejected').text(counts.rejected || 0);
+					}
 				}
 			});
 		},
@@ -896,43 +859,35 @@
 			$('#aips-pending-count').text('');
 			$('#aips-insert-modal').show();
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:        'aips_internal_links_get_post_for_insertion',
-				nonce:         aipsInternalLinksL10n.nonce,
-				suggestion_id: suggestionId,
-			}, function (response) {
-				if (!response.success) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_get_post_for_insertion',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data:   { suggestion_id: suggestionId },
+				toastOnError: false,
+				errorFallback: aipsInternalLinksL10n.loadingFailed,
+				onError: function (message) {
 					$('#aips-insert-suggestions-list').html(
 						AIPS.Templates.render('aips-tmpl-il-notice-error', {
-							message: (response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed,
+							message: message,
 						})
 					);
 					$('#aips-insert-modal').find('.aips-modal-content-body').html('');
-					return;
+				},
+				onSuccess: function (data) {
+					self._previewPostId = data.post_id || 0;
+
+					// Store plain-text version for the preview renderer.
+					self._previewPlainText = $('<div>').html(data.post_content || '').text();
+
+					// Post title in sub-header.
+					$('#aips-insert-post-title').text(data.post_title || '');
+
+					// Render suggestions list (also populates _suggestionDataMap).
+					self.renderInsertSuggestions(data.suggestions || []);
+
+					// Render initial post content preview.
+					self.renderPreviewContent();
 				}
-
-				var data = response.data;
-
-				self._previewPostId = data.post_id || 0;
-
-				// Store plain-text version for the preview renderer.
-				self._previewPlainText = $('<div>').html(data.post_content || '').text();
-
-				// Post title in sub-header.
-				$('#aips-insert-post-title').text(data.post_title || '');
-
-				// Render suggestions list (also populates _suggestionDataMap).
-				self.renderInsertSuggestions(data.suggestions || []);
-
-				// Render initial post content preview.
-				self.renderPreviewContent();
-			}).fail(function () {
-				$('#aips-insert-suggestions-list').html(
-					AIPS.Templates.render('aips-tmpl-il-notice-error', {
-						message: aipsInternalLinksL10n.loadingFailed,
-					})
-				);
-				$('#aips-insert-modal').find('.aips-modal-content-body').html('');
 			});
 		},
 
@@ -1011,43 +966,37 @@
 			$spinner.addClass('is-active');
 			$button.prop('disabled', true);
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:        'aips_internal_links_find_insert_locations',
-				nonce:         aipsInternalLinksL10n.nonce,
-				suggestion_id: suggestionId,
-			}, function (response) {
-				$spinner.removeClass('is-active');
-				$button.prop('disabled', false);
-
-				if (!response.success) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_find_insert_locations',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data:   { suggestion_id: suggestionId },
+				toastOnError: false,
+				errorFallback: aipsInternalLinksL10n.locationsFailed,
+				onError: function (message) {
 					$list.html(AIPS.Templates.render('aips-tmpl-il-notice-error', {
-						message: (response.data && response.data.message) || aipsInternalLinksL10n.locationsFailed,
+						message: message,
 					}));
 					$count.text('');
-					return;
+				},
+				onSuccess: function (data) {
+					var locations = data.locations || [];
+					var requestedCount = parseInt(data.requested_count, 10) || locations.length;
+					var aiReturnedCount = parseInt(data.ai_returned_count, 10);
+					var validCount = parseInt(data.valid_count, 10);
+
+					if (isNaN(aiReturnedCount)) {
+						aiReturnedCount = locations.length;
+					}
+
+					if (isNaN(validCount)) {
+						validCount = locations.length;
+					}
+
+					self.renderInsertLocations(suggestionId, locations, requestedCount, aiReturnedCount, validCount);
 				}
-
-				var locations = response.data.locations || [];
-				var requestedCount = parseInt(response.data.requested_count, 10) || locations.length;
-				var aiReturnedCount = parseInt(response.data.ai_returned_count, 10);
-				var validCount = parseInt(response.data.valid_count, 10);
-
-				if (isNaN(aiReturnedCount)) {
-					aiReturnedCount = locations.length;
-				}
-
-				if (isNaN(validCount)) {
-					validCount = locations.length;
-				}
-
-				self.renderInsertLocations(suggestionId, locations, requestedCount, aiReturnedCount, validCount);
-			}).fail(function () {
+			}).always(function () {
 				$spinner.removeClass('is-active');
 				$button.prop('disabled', false);
-				$list.html(AIPS.Templates.render('aips-tmpl-il-notice-error', {
-					message: aipsInternalLinksL10n.locationsFailed,
-				}));
-				$count.text('');
 			});
 		},
 
@@ -1389,36 +1338,28 @@
 				});
 			}
 
-			$.post(aipsAjax.ajaxUrl, {
-				action:     'aips_internal_links_apply_bulk_insertions',
-				nonce:      aipsInternalLinksL10n.nonce,
-				insertions: JSON.stringify(insertions),
-			}, function (response) {
-				$btn.prop('disabled', false).html(originalBtnHtml);
-
-				if (response.success) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_internal_links_apply_bulk_insertions',
+				nonce:  aipsInternalLinksL10n.nonce,
+				data:   { insertions: JSON.stringify(insertions) },
+				errorFallback: aipsInternalLinksL10n.updateFailed,
+				onSuccess: function (data) {
 					self._pendingInsertions = [];
 					$('#aips-insert-modal').hide();
 					AIPS.Utilities.showToast(
-						response.data.message || aipsInternalLinksL10n.applied,
+						data.message || aipsInternalLinksL10n.applied,
 						'success'
 					);
 
-					if (response.data.errors && response.data.errors.length > 0) {
-						AIPS.Utilities.showToast(response.data.errors.join(' '), 'warning');
+					if (data.errors && data.errors.length > 0) {
+						AIPS.Utilities.showToast(data.errors.join(' '), 'warning');
 					}
 
 					self.loadSuggestions();
 					self.refreshStatus();
-				} else {
-					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || aipsInternalLinksL10n.updateFailed,
-						'error'
-					);
 				}
-			}).fail(function () {
+			}).always(function () {
 				$btn.prop('disabled', false).html(originalBtnHtml);
-				AIPS.Utilities.showToast(aipsInternalLinksL10n.updateFailed, 'error');
 			});
 		},
 	};

@@ -18,6 +18,18 @@
 		/** @type {Object.<string, Chart>} Active Chart.js instances keyed by canvas ID. */
 		charts: {},
 
+		/** @type {Backbone.Collection|null} */
+		postsCollection: null,
+
+		/** @type {Backbone.Collection|null} */
+		topicsCollection: null,
+
+		/** @type {Backbone.Collection|null} */
+		topicPostsCollection: null,
+
+		/** @type {Backbone.Collection|null} */
+		schedulesCollection: null,
+
 		/**
 		 * Initialise the dashboard page.
 		 *
@@ -34,6 +46,35 @@
 
 			// Render charts from embedded data.
 			this.renderCharts();
+
+			this.initListCollections();
+		},
+
+		/**
+		 * Set up the 4 list-tab Collections/Views (posts, topics, topic-posts,
+		 * schedules). These start empty -- the initial page load renders its
+		 * rows server-side in PHP, same as before. They only get populated via
+		 * `.reset()` from `aips_get_dashboard_data`'s response in
+		 * `updateDashboardData()`, replacing the old generic tabsConfig loop
+		 * with one View per tab.
+		 *
+		 * The 4 single-item action handlers below (`handlePublishPost` etc.)
+		 * are left as-is: each already patches the exact row it was clicked
+		 * from via `$btn.closest('tr')`, so there's no "which row is this"
+		 * problem for Backbone to solve here, and no client-side row template
+		 * would safely reconstruct `title_html`/`actions_html` for rows that
+		 * came from the initial PHP render.
+		 */
+		initListCollections: function() {
+			this.postsCollection = new AIPS.Core.Collection();
+			this.topicsCollection = new AIPS.Core.Collection();
+			this.topicPostsCollection = new AIPS.Core.Collection();
+			this.schedulesCollection = new AIPS.Core.Collection();
+
+			new AIPS.Dashboard.PostsView({ collection: this.postsCollection });
+			new AIPS.Dashboard.TopicsView({ collection: this.topicsCollection });
+			new AIPS.Dashboard.TopicPostsView({ collection: this.topicPostsCollection });
+			new AIPS.Dashboard.SchedulesView({ collection: this.schedulesCollection });
 		},
 
 		/**
@@ -125,27 +166,20 @@
 			$('.aips-dashboard-spinner-overlay').show();
 
 			var self = this;
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_dashboard_data',
-					nonce: l10n.nonce,
-					date_from: dateFromVal,
-					date_to: dateToVal
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_get_dashboard_data',
+				data: { date_from: dateFromVal, date_to: dateToVal },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.fetchDataFailed) || 'Failed to fetch dashboard data.',
+				onSuccess: function(data) {
+					self.updateDashboardData(data);
 				},
-				success: function(response) {
-					$('.aips-dashboard-spinner-overlay').hide();
-					if (response.success && response.data) {
-						self.updateDashboardData(response.data);
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to fetch dashboard data.', 'error');
-					}
-				},
-				error: function() {
-					$('.aips-dashboard-spinner-overlay').hide();
-					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
+			}).always(function() {
+				$('.aips-dashboard-spinner-overlay').hide();
 			});
 		},
 
@@ -187,29 +221,22 @@
 
 			$btn.text('Publishing...');
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_publish_post',
-					nonce: l10n.nonce,
-					post_id: postId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_publish_post',
+				data: { post_id: postId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.publishPostFailed) || 'Failed to publish post.',
+				onSuccess: function() {
+					var $tr = $btn.closest('tr');
+					$tr.find('.aips-badge')
+						.removeClass('aips-badge-warning aips-badge-neutral')
+						.addClass('aips-badge-success')
+						.text('Completed');
+					$btn.remove();
 				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.aips-badge')
-							.removeClass('aips-badge-warning aips-badge-neutral')
-							.addClass('aips-badge-success')
-							.text('Completed');
-						$btn.remove();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
-						$btn.text('Publish Now');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 					$btn.text('Publish Now');
 				}
 			});
@@ -227,28 +254,22 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_approve_topic',
-					nonce: l10n.nonce,
-					id: topicId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_approve_topic',
+				data: { id: topicId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.approveTopicFailed) || 'Failed to approve topic.',
+				onSuccess: function() {
+					var $tr = $btn.closest('tr');
+					$tr.find('.status-badge')
+						.removeClass('aips-badge-warning aips-badge-error')
+						.addClass('aips-badge-success')
+						.text('Approved');
+					$tr.find('.actions-container').empty();
 				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.status-badge')
-							.removeClass('aips-badge-warning aips-badge-error')
-							.addClass('aips-badge-success')
-							.text('Approved');
-						$tr.find('.actions-container').empty();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to approve topic.', 'error');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while approving the topic.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
 			});
 		},
@@ -265,28 +286,22 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_reject_topic',
-					nonce: l10n.nonce,
-					id: topicId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_reject_topic',
+				data: { id: topicId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.rejectTopicFailed) || 'Failed to reject topic.',
+				onSuccess: function() {
+					var $tr = $btn.closest('tr');
+					$tr.find('.status-badge')
+						.removeClass('aips-badge-warning aips-badge-success')
+						.addClass('aips-badge-error')
+						.text('Rejected');
+					$tr.find('.actions-container').empty();
 				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.status-badge')
-							.removeClass('aips-badge-warning aips-badge-success')
-							.addClass('aips-badge-error')
-							.text('Rejected');
-						$tr.find('.actions-container').empty();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to reject topic.', 'error');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while rejecting the topic.', 'error');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
 			});
 		},
@@ -305,27 +320,20 @@
 
 			$btn.text('Running...');
 
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_unified_run_now',
-					nonce: l10n.nonce,
-					id: scheduleId
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_unified_run_now',
+				data: { id: scheduleId },
+				nonce: l10n.nonce,
+				toastOnError: false,
+				errorFallback: (window.aipsDashboardL10n && aipsDashboardL10n.triggerScheduleFailed) || 'Failed to trigger schedule.',
+				onSuccess: function() {
+					AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
 				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
-						$btn.text('Run Now');
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to trigger schedule.', 'error');
-						$btn.text('Run Now');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while triggering the schedule.', 'error');
-					$btn.text('Run Now');
+				onError: function(message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
+			}).always(function() {
+				$btn.text('Run Now');
 			});
 		},
 
@@ -590,72 +598,100 @@
 				}
 			}
 
-			// 5. Render list tables using AIPS.Templates
-			if (window.AIPS && AIPS.Templates) {
-				var tabsConfig = [
-					{
-						panelId: '#tab-posts',
-						dataList: data.recent_posts,
-						templateId: 'aips-tmpl-dashboard-posts-row',
-						processItem: function(item) {
-							item.title_html = item.edit_url 
-								? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
-								: '<div class="cell-primary">' + item.generated_title + '</div>';
-							item.actions_html = (item.status === 'draft' || item.status === 'pending')
-								? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-publish-post" data-id="' + item.post_id + '">Publish Now</a></div>'
-								: '';
-						}
-					},
-					{
-						panelId: '#tab-topics',
-						dataList: data.recent_topics,
-						templateId: 'aips-tmpl-dashboard-topics-row',
-						processItem: function(item) {
-							item.actions_html = (item.status === 'pending')
-								? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-approve-topic" data-id="' + item.id + '">Approve</a> | <a href="#" class="aips-dashboard-reject-topic" style="color:#d63638;" data-id="' + item.id + '">Reject</a></div>'
-								: '';
-						}
-					},
-					{
-						panelId: '#tab-topic-posts',
-						dataList: data.posts_by_topic,
-						templateId: 'aips-tmpl-dashboard-topic-posts-row',
-						processItem: function(item) {
-							item.title_html = item.edit_url 
-								? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
-								: '<div class="cell-primary">' + item.generated_title + '</div>';
-						}
-					},
-					{
-						panelId: '#tab-schedules',
-						dataList: data.executed_schedules,
-						templateId: 'aips-tmpl-dashboard-schedules-row',
-						processItem: function(item) {
-							item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '">Run Now</a></div>';
-						}
-					}
-				];
-
-				$.each(tabsConfig, function(i, config) {
-					var $panel = $(config.panelId);
-					if (config.dataList && config.dataList.length > 0) {
-						var html = '';
-						$.each(config.dataList, function(idx, item) {
-							if (config.processItem) {
-								config.processItem(item);
-							}
-							html += AIPS.Templates.renderRaw(config.templateId, item);
-						});
-						$panel.find('.aips-table-wrap').show().find('tbody').html(html);
-						$panel.find('.aips-empty-state').hide();
-					} else {
-						$panel.find('.aips-table-wrap').hide();
-						$panel.find('.aips-empty-state').show();
-					}
-				});
+			// 5. Reset the 4 list Collections; each View's 'reset' listener
+			// re-renders its own tab (see AIPS.Dashboard.PostsView etc. below).
+			if (window.AIPS && AIPS.Templates && this.postsCollection) {
+				this.postsCollection.reset(data.recent_posts || []);
+				this.topicsCollection.reset(data.recent_topics || []);
+				this.topicPostsCollection.reset(data.posts_by_topic || []);
+				this.schedulesCollection.reset(data.executed_schedules || []);
 			}
 		}
 	};
+
+	/**
+	 * Shared render helper: build one tab's row HTML from its collection,
+	 * toggle the table/empty-state, and inject via templateId. `processItem`
+	 * mutates a shallow item copy with the same derived HTML fields the old
+	 * tabsConfig loop computed (title_html/actions_html) before rendering.
+	 *
+	 * @param {Backbone.View} view       The view instance (for `.collection`).
+	 * @param {string}        panelId    Tab panel selector (e.g. '#tab-posts').
+	 * @param {string}        templateId AIPS.Templates row template id.
+	 * @param {Function}      [processItem] Optional (item) => void mutator.
+	 */
+	function renderDashboardTab(view, panelId, templateId, processItem) {
+		var $panel = $(panelId);
+		var items = view.collection.toJSON();
+
+		if (items.length > 0) {
+			var html = items.map(function(item) {
+				item = $.extend({}, item);
+				if (processItem) {
+					processItem(item);
+				}
+				return AIPS.Templates.renderRaw(templateId, item);
+			}).join('');
+			$panel.find('.aips-table-wrap').show().find('tbody').html(html);
+			$panel.find('.aips-empty-state').hide();
+		} else {
+			$panel.find('.aips-table-wrap').hide();
+			$panel.find('.aips-empty-state').show();
+		}
+	}
+
+	AIPS.Dashboard.PostsView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-posts', 'aips-tmpl-dashboard-posts-row', function(item) {
+				item.title_html = item.edit_url
+					? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
+					: '<div class="cell-primary">' + item.generated_title + '</div>';
+				item.actions_html = (item.status === 'draft' || item.status === 'pending')
+					? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-publish-post" data-id="' + item.post_id + '">Publish Now</a></div>'
+					: '';
+			});
+		}
+	});
+
+	AIPS.Dashboard.TopicsView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-topics', 'aips-tmpl-dashboard-topics-row', function(item) {
+				item.actions_html = (item.status === 'pending')
+					? '<div class="aips-row-actions" style="visibility: visible; margin-top: 4px;"><a href="#" class="aips-dashboard-approve-topic" data-id="' + item.id + '">Approve</a> | <a href="#" class="aips-dashboard-reject-topic" style="color:#d63638;" data-id="' + item.id + '">Reject</a></div>'
+					: '';
+			});
+		}
+	});
+
+	AIPS.Dashboard.TopicPostsView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-topic-posts', 'aips-tmpl-dashboard-topic-posts-row', function(item) {
+				item.title_html = item.edit_url
+					? '<a href="' + item.edit_url + '" class="cell-primary">' + item.generated_title + '</a>'
+					: '<div class="cell-primary">' + item.generated_title + '</div>';
+			});
+		}
+	});
+
+	AIPS.Dashboard.SchedulesView = AIPS.Core.View.extend({
+		initialize: function() {
+			this.listenTo(this.collection, 'reset', this.render);
+		},
+		render: function() {
+			renderDashboardTab(this, '#tab-schedules', 'aips-tmpl-dashboard-schedules-row', function(item) {
+				item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '">Run Now</a></div>';
+			});
+		}
+	});
 
 	$(document).ready(function() {
 		AIPS.Dashboard.init();

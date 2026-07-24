@@ -18,10 +18,15 @@
 		currentTab: 'categories',
 		searchTimeout: null,
 
+		itemsCollection: null,
+		itemsView: null,
+
 		/**
 		 * Initialize the Taxonomy module.
 		 */
 		init: function() {
+			this.itemsCollection = new AIPS.Taxonomy.ItemCollection();
+			this.itemsView = new AIPS.Taxonomy.ItemsView({ collection: this.itemsCollection });
 			this.bindEvents();
 			this.loadTaxonomyItems('categories');
 		},
@@ -59,17 +64,19 @@
 			$('#aips-generate-taxonomy-form')[0].reset();
 			$('#base-post-search-results').empty();
 			$('#selected-posts-container').empty();
-			$('#aips-generate-taxonomy-modal').fadeIn();
+			AIPS.Core.Modal.open('#aips-generate-taxonomy-modal');
 		},
 
 		/**
 		 * Close the active modal.
 		 *
-		 * @param {Event} e Click event.
+		 * @param {Event} [e] Click event.
 		 */
 		closeModal: function(e) {
-			e.preventDefault();
-			$('.aips-modal').fadeOut();
+			if (e) {
+				e.preventDefault();
+			}
+			AIPS.Core.Modal.close('.aips-modal');
 		},
 
 		/**
@@ -88,17 +95,14 @@
 			var self = this;
 			clearTimeout(this.searchTimeout);
 			this.searchTimeout = setTimeout(function() {
-				$.ajax({
-					url: ajaxurl,
-					method: 'POST',
-					data: {
-						action: 'aips_search_posts',
-						nonce: aipsTaxonomyL10n.nonce,
-						search_term: searchTerm
-					},
-					success: function(response) {
-						if (response.success && response.data.posts) {
-							self.displayPostSearchResults(response.data.posts);
+				AIPS.Core.Http.ajaxRequest({
+					action: 'aips_search_posts',
+					nonce: aipsTaxonomyL10n.nonce,
+					data: { search_term: searchTerm },
+					toastOnError: false,
+					onSuccess: function(data) {
+						if (data.posts) {
+							self.displayPostSearchResults(data.posts);
 						}
 					}
 				});
@@ -198,40 +202,34 @@
 			var generationPrompt = $('#generation_prompt').val();
 
 			if (!taxonomyType) {
-				alert(aipsTaxonomyL10n.selectTaxonomyType);
+				AIPS.Utilities.showToast(aipsTaxonomyL10n.selectTaxonomyType, 'warning');
 				return;
 			}
 
 			if (this.selectedPostIds.length === 0) {
-				alert(aipsTaxonomyL10n.selectPost);
+				AIPS.Utilities.showToast(aipsTaxonomyL10n.selectPost, 'warning');
 				return;
 			}
 
 			var submitBtn = $('#generate-taxonomy-submit-btn');
-			submitBtn.prop('disabled', true).text(aipsTaxonomyL10n.generating);
+			var self = this;
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_generate_taxonomy',
+				nonce: aipsTaxonomyL10n.nonce,
 				data: {
-					action: 'aips_generate_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
 					taxonomy_type: taxonomyType,
 					generation_prompt: generationPrompt,
 					base_post_ids: this.selectedPostIds
 				},
-				success: function(response) {
-					if (response.success) {
-						alert(response.data.message);
-						this.updateStats(response.data.stats || null);
-						this.closeModal({ preventDefault: function() {} });
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.generationFailed);
-					}
-				}.bind(this),
-				complete: function() {
-					submitBtn.prop('disabled', false).text(aipsTaxonomyL10n.generate);
+				$button: submitBtn,
+				loadingLabel: aipsTaxonomyL10n.generating,
+				errorFallback: aipsTaxonomyL10n.generationFailed,
+				onSuccess: function(data) {
+					AIPS.Utilities.showToast(data.message, 'success');
+					self.updateStats(data.stats || null);
+					self.closeModal();
+					self.loadTaxonomyItems(self.currentTab);
 				}
 			});
 		},
@@ -260,72 +258,31 @@
 		loadTaxonomyItems: function(tab) {
 			var taxonomyType = tab === 'categories' ? 'category' : 'post_tag';
 			var activeSearchTerm = $('#aips-taxonomy-search').val();
+			var self = this;
 
-			$('#aips-taxonomy-loading').show();
-			$('#aips-taxonomy-content').hide();
+			AIPS.Core.UI.setLoading({
+				$loading: $('#aips-taxonomy-loading'),
+				$content: $('#aips-taxonomy-content'),
+				isLoading: true
+			});
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: 'aips_get_taxonomy_items',
-					nonce: aipsTaxonomyL10n.nonce,
-					taxonomy_type: taxonomyType
-				},
-				success: function(response) {
-					if (response.success) {
-						this.updateStats(response.data.stats || null);
-						this.renderTaxonomyItems(response.data.items);
-						if (activeSearchTerm) {
-							$('#aips-taxonomy-search').trigger('search');
-						}
+			this.itemsCollection.fetch({
+				data: { taxonomy_type: taxonomyType },
+				reset: true,
+				toastOnError: false,
+				success: function(collection, response) {
+					self.updateStats(response.stats || null);
+					if (activeSearchTerm) {
+						$('#aips-taxonomy-search').trigger('search');
 					}
-				}.bind(this),
-				complete: function() {
-					$('#aips-taxonomy-loading').hide();
-					$('#aips-taxonomy-content').show();
 				}
-			});
-		},
-
-		/**
-		 * Render taxonomy items into the content area.
-		 *
-		 * @param {Array} items Array of taxonomy item objects.
-		 */
-		renderTaxonomyItems: function(items) {
-			var rowsHtml = '';
-			var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
-
-			items.forEach(function(item) {
-				var actions = this.renderItemActions(item);
-
-				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-taxonomy-row', {
-					id: item.id,
-					name: esc(item.name),
-					taxonomy_type: item.taxonomy_type,
-					status: item.status,
-					status_label: esc(AIPS.Utilities.toTitleCase(item.status)),
-					generated_at: esc(item.created_at),
-					actions: actions
+			}).always(function() {
+				AIPS.Core.UI.setLoading({
+					$loading: $('#aips-taxonomy-loading'),
+					$content: $('#aips-taxonomy-content'),
+					isLoading: false
 				});
-			}.bind(this));
-
-			if (!rowsHtml) {
-				rowsHtml = '<tr><td colspan="5" style="text-align: center;">No items found.</td></tr>';
-			}
-
-			var tableHtml = AIPS.Templates.renderRaw('aips-tmpl-taxonomy-table', {
-				selectAllLabel: 'Select all taxonomy items',
-				nameLabel: 'Name',
-				statusLabel: 'Status',
-				generatedAtLabel: 'Generated',
-				actionsLabel: 'Actions',
-				rows: rowsHtml
 			});
-
-			$('#aips-taxonomy-content').html(tableHtml);
-			this.updateVisibleResultCount();
 		},
 
 		/**
@@ -372,18 +329,20 @@
 		 * @param {Event} e Change event.
 		 */
 		toggleSelectAll: function(e) {
-			var isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-taxonomy-checkbox').prop('checked', isChecked);
+			AIPS.Core.Table.toggleAllRows({
+				checked: $(e.currentTarget).prop('checked'),
+				rowCheckboxSelector: '.aips-taxonomy-checkbox'
+			});
 		},
 
 		/**
 		 * Sync the select-all checkbox state based on individual checkboxes.
 		 */
 		syncSelectAllState: function() {
-			var $checkboxes = $('.aips-taxonomy-checkbox');
-			var allChecked = $checkboxes.length > 0 && $checkboxes.length === $checkboxes.filter(':checked').length;
-
-			$('.aips-select-all-taxonomy').prop('checked', allChecked);
+			AIPS.Core.Table.syncSelectAll({
+				$selectAll: $('.aips-select-all-taxonomy'),
+				rowCheckboxSelector: '.aips-taxonomy-checkbox'
+			});
 		},
 
 		/**
@@ -396,45 +355,56 @@
 
 			var action = $('.aips-bulk-action-select').val();
 			if (!action) {
-				alert(aipsTaxonomyL10n.selectAction);
+				AIPS.Utilities.showToast(aipsTaxonomyL10n.selectAction, 'warning');
 				return;
 			}
 
-			var itemIds = [];
-			$('.aips-taxonomy-checkbox:checked').each(function() {
-				itemIds.push($(this).val());
-			});
+			var itemIds = AIPS.Core.Table.getSelectedIds('.aips-taxonomy-checkbox');
 
 			if (itemIds.length === 0) {
-				alert(aipsTaxonomyL10n.selectItem);
+				AIPS.Utilities.showToast(aipsTaxonomyL10n.selectItem, 'warning');
 				return;
 			}
 
 			var ajaxAction = action === 'generate_terms' ? 'aips_bulk_create_taxonomy_terms' : 'aips_bulk_' + action + '_taxonomy';
 			var actionLabel = action === 'generate_terms' ? 'generate terms for' : action;
 			var confirmMsg = aipsTaxonomyL10n.confirmBulkAction.replace('%s', actionLabel).replace('%d', itemIds.length);
+			var self = this;
 
-			if (!confirm(confirmMsg)) {
-				return;
-			}
+			AIPS.Core.Bulk.dispatch({
+				action: ajaxAction,
+				ids: itemIds,
+				idsField: 'item_ids',
+				nonce: aipsTaxonomyL10n.nonce,
+				confirmMessage: confirmMsg,
+				confirmHeading: 'Notice',
+				confirmLabel: 'Yes, confirm',
+				cancelLabel: 'Cancel',
+				errorFallback: aipsTaxonomyL10n.actionFailed,
+				onSuccess: function(data) {
+					AIPS.Utilities.showToast(data.message, 'success');
+					self.updateStats(data.stats || null);
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: ajaxAction,
-					nonce: aipsTaxonomyL10n.nonce,
-					item_ids: itemIds
-				},
-				success: function(response) {
-					if (response.success) {
-						alert(response.data.message);
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
+					// approve/reject/delete are simple, deterministic status
+					// writes -- patch the requested ids directly rather than
+					// re-fetching the whole list. generate_terms can fail
+					// per-item for reasons the response doesn't expose (already
+					// approved, term_exists edge cases, ...) with no way to tell
+					// which ids actually changed, so it keeps the full reload.
+					if (action === 'approve' || action === 'reject') {
+						var newStatus = action === 'approve' ? 'approved' : 'rejected';
+						itemIds.forEach(function(id) {
+							var model = self.itemsCollection.get(id);
+							if (model) { model.set('status', newStatus); }
+						});
+					} else if (action === 'delete') {
+						self.itemsCollection.remove(self.itemsCollection.filter(function(model) {
+							return itemIds.indexOf(model.id) !== -1;
+						}));
 					} else {
-						alert(response.data.message || aipsTaxonomyL10n.actionFailed);
+						self.loadTaxonomyItems(self.currentTab);
 					}
-				}.bind(this)
+				}
 			});
 		},
 
@@ -446,7 +416,7 @@
 		approveTaxonomy: function(e) {
 			e.preventDefault();
 			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_approve_taxonomy');
+			this.updateItemStatus(itemId, 'aips_approve_taxonomy', 'approved');
 		},
 
 		/**
@@ -457,7 +427,7 @@
 		rejectTaxonomy: function(e) {
 			e.preventDefault();
 			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_reject_taxonomy');
+			this.updateItemStatus(itemId, 'aips_reject_taxonomy', 'rejected');
 		},
 
 		/**
@@ -468,29 +438,31 @@
 		deleteTaxonomy: function(e) {
 			e.preventDefault();
 
-			if (!confirm(aipsTaxonomyL10n.confirmDelete)) {
-				return;
-			}
-
 			var itemId = $(e.currentTarget).data('id');
+			var self = this;
+			var model = this.itemsCollection.get(itemId);
+			if (!model) { return; }
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: 'aips_delete_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
-					item_id: itemId
-				},
-				success: function(response) {
-					if (response.success) {
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.deleteFailed);
+			AIPS.Utilities.confirm(aipsTaxonomyL10n.confirmDelete, 'Notice', [
+				{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, delete',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: function() {
+						model.destroy({
+							wait: true,
+							errorFallback: aipsTaxonomyL10n.deleteFailed,
+							// Backbone.Model#destroy calls success as (model, response, options).
+							success: function(destroyedModel, response) {
+								self.updateStats(response.stats || null);
+							}
+							// No manual re-render — Backbone removes the model on
+							// success, which fires 'remove' on the collection, which
+							// the view listens to and re-renders from.
+						});
 					}
-				}.bind(this)
-			});
+				}
+			]);
 		},
 
 		/**
@@ -501,55 +473,64 @@
 		createTerm: function(e) {
 			e.preventDefault();
 
-			if (!confirm(aipsTaxonomyL10n.confirmCreateTerm)) {
-				return;
-			}
-
 			var itemId = $(e.currentTarget).data('id');
+			var self = this;
+			var model = this.itemsCollection.get(itemId);
+			if (!model) { return; }
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: 'aips_create_taxonomy_term',
-					nonce: aipsTaxonomyL10n.nonce,
-					item_id: itemId
-				},
-				success: function(response) {
-					if (response.success) {
-						alert(response.data.message);
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.termCreationFailed);
+			AIPS.Utilities.confirm(aipsTaxonomyL10n.confirmCreateTerm, 'Notice', [
+				{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, create',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: function() {
+						// Not routed through Backbone.sync: this is a domain-specific
+						// transition (approved -> created), not a generic update/patch,
+						// and the response shape (message/term_id/item/stats) doesn't
+						// match what Model#save() expects back.
+						AIPS.Core.Http.ajaxRequest({
+							action: 'aips_create_taxonomy_term',
+							nonce: aipsTaxonomyL10n.nonce,
+							data: { item_id: itemId },
+							errorFallback: aipsTaxonomyL10n.termCreationFailed,
+							onSuccess: function(data) {
+								AIPS.Utilities.showToast(data.message, 'success');
+								self.updateStats(data.stats || null);
+								model.set(data.item);
+							}
+						});
 					}
-				}.bind(this)
-			});
+				}
+			]);
 		},
 
 		/**
 		 * Update a taxonomy item's status via AJAX.
 		 *
-		 * @param {number} itemId Taxonomy item ID.
-		 * @param {string} action AJAX action name.
+		 * Not routed through Backbone.sync for the same reason as createTerm()
+		 * above: approve/reject are named transitions with their own action
+		 * names, not a generic update/patch verb, and the response carries no
+		 * stats/item data to feed back into the model automatically. The new
+		 * status is known locally (we requested it), so it's set directly.
+		 *
+		 * @param {number} itemId    Taxonomy item ID.
+		 * @param {string} action    AJAX action name.
+		 * @param {string} newStatus Status to set on the model on success.
 		 */
-		updateItemStatus: function(itemId, action) {
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: action,
-					nonce: aipsTaxonomyL10n.nonce,
-					item_id: itemId
-				},
-				success: function(response) {
-					if (response.success) {
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.updateFailed);
-					}
-				}.bind(this)
+		updateItemStatus: function(itemId, action, newStatus) {
+			var self = this;
+			var model = this.itemsCollection.get(itemId);
+			if (!model) { return; }
+
+			AIPS.Core.Http.ajaxRequest({
+				action: action,
+				nonce: aipsTaxonomyL10n.nonce,
+				data: { item_id: itemId },
+				errorFallback: aipsTaxonomyL10n.updateFailed,
+				onSuccess: function(data) {
+					self.updateStats(data.stats || null);
+					model.set('status', newStatus);
+				}
 			});
 		},
 
@@ -559,22 +540,10 @@
 		 * @param {Event} e Keyup or search event.
 		 */
 		filterItems: function(e) {
-			var searchTerm = $(e.currentTarget).val().toLowerCase();
-			var clearBtn = $('#aips-taxonomy-search-clear');
-
-			if (searchTerm) {
-				clearBtn.show();
-			} else {
-				clearBtn.hide();
-			}
-
-			$('.aips-taxonomy-table tbody tr').each(function() {
-				var name = $(this).find('.column-name').text().toLowerCase();
-				if (name.indexOf(searchTerm) !== -1) {
-					$(this).show();
-				} else {
-					$(this).hide();
-				}
+			AIPS.Core.Table.filterRows({
+				term: $(e.currentTarget).val(),
+				$rows: $('.aips-taxonomy-table tbody tr'),
+				$clearButton: $('#aips-taxonomy-search-clear')
 			});
 
 			this.updateVisibleResultCount();
@@ -626,6 +595,78 @@
 			var label = normalizedCount === 1 ? aipsTaxonomyL10n.item : aipsTaxonomyL10n.items;
 
 			$('#aips-taxonomy-result-count').text(normalizedCount + ' ' + label);
+		}
+	});
+
+	// -----------------------------------------------------------------------
+	// Model/Collection/View (see assets/js/core/core-backbone.js for the sync
+	// adapter these build on). Approve/reject/create-term are named status
+	// transitions with their own action names and response shapes rather than
+	// a generic update/patch verb, so they stay plain AIPS.Core.Http.ajaxRequest
+	// calls (see updateItemStatus()/createTerm()), with the model patched
+	// afterward so the view still reacts to it. Delete is a real CRUD verb and
+	// goes through Backbone.sync via ItemModel.ajaxActions.
+	// -----------------------------------------------------------------------
+
+	AIPS.Taxonomy.ItemModel = AIPS.Core.Model.extend({
+		idAttribute: 'id',
+		idParam: 'item_id',
+		ajaxActions: { delete: 'aips_delete_taxonomy' },
+		ajaxNonces: { delete: function () { return aipsTaxonomyL10n.nonce; } }
+	});
+
+	AIPS.Taxonomy.ItemCollection = AIPS.Core.Collection.extend({
+		model: AIPS.Taxonomy.ItemModel,
+		resultsKey: 'items',
+		ajaxActions: { read: 'aips_get_taxonomy_items' },
+		ajaxNonces: { read: function () { return aipsTaxonomyL10n.nonce; } }
+	});
+
+	AIPS.Taxonomy.ItemsView = AIPS.Core.View.extend({
+		el: '#aips-taxonomy-content',
+		rawTemplate: true, // Composes the actions sub-template + status badge markup.
+
+		initialize: function () {
+			// 'sync' alone covers fetch() whether or not {reset: true} is
+			// passed (Backbone fires both 'reset' and 'sync' for a reset
+			// fetch) -- listening to both would double-render.
+			this.listenTo(this.collection, 'sync change remove', this.render);
+		},
+
+		render: function () {
+			var esc = AIPS.Templates.escape;
+			var rowsHtml = '';
+
+			this.collection.each(function (model) {
+				var item = model.toJSON();
+				var actions = AIPS.Taxonomy.renderItemActions(item);
+
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-taxonomy-row', {
+					id: item.id,
+					name: esc(item.name),
+					taxonomy_type: item.taxonomy_type,
+					status: item.status,
+					status_label: esc(AIPS.Utilities.toTitleCase(item.status)),
+					generated_at: esc(item.created_at),
+					actions: actions
+				});
+			});
+
+			if (!rowsHtml) {
+				rowsHtml = '<tr><td colspan="5" style="text-align: center;">No items found.</td></tr>';
+			}
+
+			this.$el.html(AIPS.Templates.renderRaw('aips-tmpl-taxonomy-table', {
+				selectAllLabel: 'Select all taxonomy items',
+				nameLabel: 'Name',
+				statusLabel: 'Status',
+				generatedAtLabel: 'Generated',
+				actionsLabel: 'Actions',
+				rows: rowsHtml
+			}));
+
+			AIPS.Taxonomy.updateVisibleResultCount();
+			return this;
 		}
 	});
 

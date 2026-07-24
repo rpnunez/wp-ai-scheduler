@@ -88,34 +88,20 @@
 				$submit.text(savingLabel);
 			}
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'aips_save_settings',
-					nonce: aipsAjax.nonce,
-					settings: settings
-				}
-			}).done(function(response) {
-				if (response && response.success) {
+			AIPS.Core.Http.ajaxRequest({
+				action: 'aips_save_settings',
+				data: { settings: settings },
+				toastOnError: false,
+				errorFallback: (window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.',
+				onSuccess: function (data) {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveSuccess) ? aipsSettingsL10n.saveSuccess : 'Settings saved successfully.'),
+						data.message || ((window.aipsSettingsL10n && aipsSettingsL10n.saveSuccess) ? aipsSettingsL10n.saveSuccess : 'Settings saved successfully.'),
 						'success'
 					);
-					return;
+				},
+				onError: function (message) {
+					AIPS.Utilities.showToast(message, 'error');
 				}
-
-				AIPS.Utilities.showToast(
-					(response && response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.'),
-					'error'
-				);
-			}).fail(function(xhr) {
-				var message = (window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.';
-				if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					message = xhr.responseJSON.data.message;
-				}
-				AIPS.Utilities.showToast(message, 'error');
 			}).always(function() {
 				$submit.prop('disabled', false);
 				if ($submit.is('input')) {

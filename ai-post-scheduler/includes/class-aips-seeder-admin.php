@@ -26,8 +26,8 @@ class AIPS_Seeder_Admin {
 
         wp_enqueue_script(
             'aips-admin-seeder',
-            AIPS_PLUGIN_URL . 'assets/js/admin-seeder.js',
-            array('jquery', 'aips-admin-script'), // Depends on core admin script
+            AIPS_PLUGIN_URL . 'assets/js/seeder.js',
+            array('jquery', 'aips-admin-script', 'aips-core-script', 'aips-templates-script'), // Depends on core admin script
             AIPS_VERSION,
             true
         );

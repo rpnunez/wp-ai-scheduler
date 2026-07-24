@@ -254,7 +254,7 @@ if (is_object($history)) {
 <?php include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php'; ?>
 
 <!-- =====================================================================
-     AIPS.Templates HTML blocks for admin-history.js
+     AIPS.Templates HTML blocks for history.js
      These <script type="text/html"> elements are read by AIPS.Templates.render()
      and AIPS.Templates.renderRaw(). They are never executed as JavaScript.
      ===================================================================== -->

@@ -306,7 +306,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
 			'aips-datetime-script',
-			AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+			AIPS_PLUGIN_URL . 'assets/js/core/datetime.js',
 			array('jquery'),
 			AIPS_VERSION,
 			true
@@ -314,7 +314,7 @@ class AIPS_Admin_Assets {
 
 		wp_enqueue_script(
 			'aips-utilities-script',
-			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+			AIPS_PLUGIN_URL . 'assets/js/core/utilities.js',
 			array('jquery', 'aips-datetime-script'),
 			AIPS_VERSION,
 			true
@@ -335,30 +335,32 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-templates-script',
-            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/templates.js',
             array('jquery'),
             AIPS_VERSION,
             true
         );
 
         wp_enqueue_script(
-            'aips-admin-script',
-            AIPS_PLUGIN_URL . 'assets/js/admin.js',
+            'aips-core-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core.js',
             array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
         );
 
-        wp_localize_script('aips-admin-script', 'aipsAjax', array(
+        // Localized directly onto aips-core-script (not aips-admin-script) so
+        // AIPS.Core.Http.ajaxRequest()'s default nonce/URL/error-message fallbacks
+        // work on any page that enqueues aips-core-script, without an implicit
+        // dependency on aips-admin-script also being loaded.
+        wp_localize_script('aips-core-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
         ));
 
-        $this->enqueue_history_modal_opener_script();
-
         // Shared strings needed on every plugin admin page.
-        wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
+        wp_localize_script('aips-core-script', 'aipsAdminL10n', array(
             // Generic error/status strings used across multiple pages
             'errorOccurred'       => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain'       => __('An error occurred. Please try again.', 'ai-post-scheduler'),
@@ -378,7 +380,69 @@ class AIPS_Admin_Assets {
             // "None" placeholder for the *template* wizard summary (schedule wizard uses
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
+            // errorFallback strings for AIPS.Core.Http.ajaxRequest() call sites that
+            // don't have a more specific page-level L10n object of their own.
+            'embeddingsQueueFailed'      => __('Failed to queue embeddings.', 'ai-post-scheduler'),
+            'schedulesUpdateFailed'      => __('Failed to update schedules.', 'ai-post-scheduler'),
+            'calendarEventsLoadFailed'   => __('Failed to load calendar events.', 'ai-post-scheduler'),
+            'dbHygieneFailed'            => __('An error occurred while running hygiene.', 'ai-post-scheduler'),
+            'dbFlushFailed'              => __('Flush failed.', 'ai-post-scheduler'),
         ));
+
+        wp_enqueue_script(
+            'aips-core-table-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-table.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-core-ui-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-ui.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-core-modal-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-modal.js',
+            array('jquery', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-core-bulk-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-bulk.js',
+            array('jquery', 'aips-core-script', 'aips-core-table-script', 'aips-core-modal-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        // admin.js is loaded on every admin page (not just Schedule), so its
+        // AIPS.Core.Model/Collection/View classes (Unified Schedule table)
+        // need this registered globally too, not per-page like the other
+        // aips-core-backbone-script registrations in this file. 'backbone' is
+        // WP core's own bundled handle -- see enqueue_cache_monitor_assets().
+        wp_enqueue_script(
+            'aips-core-backbone-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+            array('backbone', 'aips-core-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-admin-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin.js',
+            array('jquery', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        $this->enqueue_history_modal_opener_script();
     }
 
     /**
@@ -397,7 +461,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-datetime-script',
-            AIPS_PLUGIN_URL . 'assets/js/datetime.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/datetime.js',
             array('jquery'),
             AIPS_VERSION,
             true
@@ -405,7 +469,7 @@ class AIPS_Admin_Assets {
 
         wp_enqueue_script(
             'aips-utilities-script',
-            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+            AIPS_PLUGIN_URL . 'assets/js/core/utilities.js',
             array('jquery', 'aips-datetime-script'),
             AIPS_VERSION,
             true
@@ -432,10 +496,18 @@ class AIPS_Admin_Assets {
      * @return void
      */
     private function enqueue_history_modal_opener_script() {
+        // NOTE: this is the FIRST wp_enqueue_script() call for the 'aips-admin-history'
+        // handle on any admin page (enqueue_global_assets() always runs before the
+        // page-specific enqueue_history_assets(), which re-declares this same handle
+        // further below) -- WordPress does not update a handle's dependency array on
+        // a second registration, so THIS array is the one that actually takes effect
+        // everywhere, including on the full History page. Keep it in sync with what
+        // history.js actually uses (AIPS.Utilities, aipsAjax/AIPS.Templates via
+        // aips-admin-script, AIPS.Core.Http, AIPS.Core.Table, AIPS.Core.Bulk).
         wp_enqueue_script(
             'aips-admin-history',
-            AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-            array('jquery', 'aips-utilities-script', 'heartbeat'),
+            AIPS_PLUGIN_URL . 'assets/js/history.js',
+            array('jquery', 'aips-utilities-script', 'heartbeat', 'aips-admin-script', 'aips-templates-script', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script'),
             AIPS_VERSION,
             true
         );
@@ -522,10 +594,20 @@ class AIPS_Admin_Assets {
                         AIPS_VERSION
                     );
 
+          // 'backbone' is WP core's own bundled handle -- see the matching
+          // registration/comment in enqueue_cache_monitor_assets().
+          wp_enqueue_script(
+              'aips-core-backbone-script',
+              AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+              array('backbone', 'aips-core-script', 'aips-templates-script'),
+              AIPS_VERSION,
+              true
+          );
+
           wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
-            array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script', 'aips-admin-script'),
             AIPS_VERSION,
             true
           );
@@ -727,8 +809,8 @@ class AIPS_Admin_Assets {
           // Embeddings script — only relevant on Authors and Author Topics pages.
           wp_enqueue_script(
               'aips-admin-embeddings',
-              AIPS_PLUGIN_URL . 'assets/js/admin-embeddings.js',
-              array('jquery', 'aips-admin-script'),
+              AIPS_PLUGIN_URL . 'assets/js/embeddings.js',
+              array('jquery', 'aips-admin-script', 'aips-core-script'),
               AIPS_VERSION,
               true
           );
@@ -743,7 +825,7 @@ class AIPS_Admin_Assets {
           wp_enqueue_script(
               'aips-ai-assistance-script',
               AIPS_PLUGIN_URL . 'assets/js/ai-assistance.js',
-              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script'),
+              array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-authors-script', 'aips-core-script'),
               AIPS_VERSION,
               true
           );
@@ -773,10 +855,20 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION
             );
 
+            // 'backbone' is WP core's own bundled handle -- see the matching
+            // registration/comment in enqueue_cache_monitor_assets().
+            wp_enqueue_script(
+                'aips-core-backbone-script',
+                AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+                array('backbone', 'aips-core-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
             wp_enqueue_script(
                 'aips-admin-post-slices',
-                AIPS_PLUGIN_URL . 'assets/js/admin-post-slices.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_PLUGIN_URL . 'assets/js/post-slices.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-backbone-script'),
                 AIPS_VERSION,
                 true
             );
@@ -797,6 +889,7 @@ class AIPS_Admin_Assets {
                 'deactivate'    => __('Deactivate', 'ai-post-scheduler'),
                 'active'        => __('Active', 'ai-post-scheduler'),
                 'inactive'      => __('Inactive', 'ai-post-scheduler'),
+                'noDescription' => __('No description', 'ai-post-scheduler'),
             ));
     }
 
@@ -957,18 +1050,28 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
           );
 
+          // 'backbone' is WP core's own bundled handle -- see the matching
+          // registration/comment in enqueue_cache_monitor_assets().
+          wp_enqueue_script(
+              'aips-core-backbone-script',
+              AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+              array('backbone', 'aips-core-script', 'aips-templates-script'),
+              AIPS_VERSION,
+              true
+          );
+
           wp_enqueue_script(
               'aips-admin-research',
-              AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-              array('aips-admin-script', 'aips-templates-script'),
+              AIPS_PLUGIN_URL . 'assets/js/research.js',
+              array('aips-admin-script', 'aips-templates-script', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
               AIPS_VERSION,
               true
           );
 
           wp_enqueue_script(
               'aips-admin-planner',
-              AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
-              array('aips-admin-script'),
+              AIPS_PLUGIN_URL . 'assets/js/planner.js',
+              array('aips-admin-script', 'aips-core-script', 'aips-core-table-script'),
               AIPS_VERSION,
               true
           );
@@ -1014,6 +1117,9 @@ class AIPS_Admin_Assets {
               'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
               'generatingButton' => __('Generating...', 'ai-post-scheduler'),
               'selectTemplateRequired' => __('Please select a template before generating.', 'ai-post-scheduler'),
+              'loadTopicsError' => __('Error loading topics.', 'ai-post-scheduler'),
+              'gapAnalysisError' => __('An error occurred during gap analysis.', 'ai-post-scheduler'),
+              'generateTopicsError' => __('An error occurred while generating topics.', 'ai-post-scheduler'),
           ));
     }
 
@@ -1024,8 +1130,8 @@ class AIPS_Admin_Assets {
             // Enqueue View Session module (shared functionality)
             wp_enqueue_script(
                 'aips-admin-view-session',
-                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
-                array('aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/view-session.js',
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1040,15 +1146,15 @@ class AIPS_Admin_Assets {
 
             wp_enqueue_script(
                 'aips-admin-post-review',
-                AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                AIPS_PLUGIN_URL . 'assets/js/post-review.js',
+                array('aips-admin-script', 'aips-admin-view-session', 'aips-core-script', 'aips-core-table-script', 'aips-core-bulk-script'),
                 AIPS_VERSION,
                 true
             );
 
             wp_enqueue_script(
                 'aips-admin-generated-posts',
-                AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',
+                AIPS_PLUGIN_URL . 'assets/js/generated-posts.js',
                 array('aips-admin-script', 'aips-admin-view-session', 'aips-admin-post-review'),
                 AIPS_VERSION,
                 true
@@ -1094,13 +1200,16 @@ class AIPS_Admin_Assets {
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
+                'sessionLoadError' => __('Failed to load session data. Please try again.', 'ai-post-scheduler'),
+                'generateJsonError' => __('Failed to generate JSON.', 'ai-post-scheduler'),
+                'generateJsonDownloadError' => __('Failed to generate JSON for download.', 'ai-post-scheduler'),
             ));
 
             // AI Edit Modal (for Generated Posts page)
             wp_enqueue_script(
                 'aips-admin-ai-edit',
-                AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
-                array('jquery', 'aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/ai-edit.js',
+                array('jquery', 'aips-admin-script', 'aips-core-script', 'aips-core-ui-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1134,6 +1243,7 @@ class AIPS_Admin_Assets {
                 'revisionManualEdit' => __('Manual Edit', 'ai-post-scheduler'),
                 'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
                 'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
+                'revisionRestoreFailed' => __('Failed to restore revision', 'ai-post-scheduler'),
             ));
     }
 
@@ -1151,7 +1261,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-calendar-script',
                 AIPS_PLUGIN_URL . 'assets/js/calendar.js',
-                array('jquery', 'aips-admin-script'),
+                array('jquery', 'aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1163,20 +1273,17 @@ class AIPS_Admin_Assets {
     private function enqueue_history_assets() {
             wp_enqueue_script(
                 'aips-admin-view-session',
-                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
-                array('aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/view-session.js',
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
 
-            wp_enqueue_script(
-                'aips-admin-history',
-                AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-                array('jquery', 'aips-admin-script', 'aips-templates-script'),
-                AIPS_VERSION,
-                true
-            );
-
+            // 'aips-admin-history' is already registered and enqueued (with its real
+            // dependency array) by enqueue_history_modal_opener_script(), which
+            // enqueue_global_assets() always calls before this method runs -- see
+            // that method for the deps that actually apply. Only localization is
+            // needed here.
             wp_localize_script('aips-admin-history', 'aipsHistoryL10n', array(
                 'loading'              => __('Loading…', 'ai-post-scheduler'),
                 'reloading'            => __('Reloading…', 'ai-post-scheduler'),
@@ -1263,7 +1370,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-onboarding',
                 AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1361,7 +1468,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-campaigns',
                 AIPS_PLUGIN_URL . 'assets/js/campaigns.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-core-script', 'aips-core-modal-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1385,8 +1492,8 @@ class AIPS_Admin_Assets {
     private function enqueue_dev_tools_assets() {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
-                AIPS_PLUGIN_URL . 'assets/js/admin-dev-tools.js',
-                array('aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/dev-tools.js',
+                array('aips-admin-script', 'aips-core-script', 'aips-core-ui-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1398,8 +1505,8 @@ class AIPS_Admin_Assets {
     private function enqueue_status_1_assets() {
             wp_enqueue_script(
                 'aips-admin-db',
-                AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
-                array('aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/db.js',
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1416,10 +1523,20 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION
             );
 
+            // 'backbone' is WP core's own bundled handle -- see the matching
+            // registration/comment in enqueue_cache_monitor_assets().
+            wp_enqueue_script(
+                'aips-core-backbone-script',
+                AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+                array('backbone', 'aips-core-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
             wp_enqueue_script(
                 'aips-admin-taxonomy',
                 AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',
-                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script', 'aips-core-bulk-script', 'aips-core-ui-script', 'aips-core-backbone-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1451,8 +1568,8 @@ class AIPS_Admin_Assets {
     private function enqueue_sources_assets() {
             wp_enqueue_script(
                 'aips-admin-sources',
-                AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
-                array('jquery', 'aips-utilities-script'),
+                AIPS_PLUGIN_URL . 'assets/js/sources.js',
+                array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-core-script', 'aips-core-modal-script', 'aips-core-table-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1469,6 +1586,9 @@ class AIPS_Admin_Assets {
                 'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
+                'createGroupFailed' => __('Failed to create group.', 'ai-post-scheduler'),
+                'deleteGroupFailed' => __('Failed to delete group.', 'ai-post-scheduler'),
+                'fetchFailed'       => __('Fetch failed.', 'ai-post-scheduler'),
             ));
     }
 
@@ -1478,8 +1598,8 @@ class AIPS_Admin_Assets {
     private function enqueue_settings_assets() {
             wp_enqueue_script(
                 'aips-admin-settings',
-                AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
-                array('aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/settings.js',
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1498,8 +1618,8 @@ class AIPS_Admin_Assets {
     private function enqueue_status_2_assets() {
             wp_enqueue_script(
                 'aips-admin-system-status',
-                AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
-                array('aips-admin-script'),
+                AIPS_PLUGIN_URL . 'assets/js/system-status.js',
+                array('aips-admin-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1536,8 +1656,8 @@ class AIPS_Admin_Assets {
 
 		wp_enqueue_script(
 			'aips-dashboard-script',
-			AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
-			array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs', 'aips-templates-script'),
+			AIPS_PLUGIN_URL . 'assets/js/dashboard.js',
+			array('jquery', 'aips-utilities-script', 'aips-admin-script', 'aips-chartjs', 'aips-templates-script', 'aips-core-script', 'aips-core-backbone-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -1552,6 +1672,11 @@ class AIPS_Admin_Assets {
 			'chartTopicsLabel'     => __('Topics Generated', 'ai-post-scheduler'),
 			'chartErrorRateLabel'  => __('Error Rate (%)', 'ai-post-scheduler'),
 			'chartUnavailable'     => __('Chart library failed to load.', 'ai-post-scheduler'),
+			'fetchDataFailed'      => __('Failed to fetch dashboard data.', 'ai-post-scheduler'),
+			'publishPostFailed'    => __('Failed to publish post.', 'ai-post-scheduler'),
+			'approveTopicFailed'   => __('Failed to approve topic.', 'ai-post-scheduler'),
+			'rejectTopicFailed'    => __('Failed to reject topic.', 'ai-post-scheduler'),
+			'triggerScheduleFailed' => __('Failed to trigger schedule.', 'ai-post-scheduler'),
 		));
 	}
 
@@ -1580,7 +1705,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-telemetry-script',
                 AIPS_PLUGIN_URL . 'assets/js/telemetry.js',
-				array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs', 'aips-datetime-script'),
+				array('jquery', 'aips-admin-script', 'aips-templates-script', 'aips-chartjs', 'aips-datetime-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1661,8 +1786,8 @@ class AIPS_Admin_Assets {
     private function enqueue_internal_links_assets() {
             wp_enqueue_script(
                 'aips-admin-internal-links',
-                AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_PLUGIN_URL . 'assets/js/internal-links.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1734,10 +1859,22 @@ class AIPS_Admin_Assets {
      * @return void
      */
     private function enqueue_cache_monitor_assets() {
+        // 'backbone' is WP core's own bundled handle (available since WP 3.5;
+        // this plugin requires 5.8+), already declaring underscore + jquery as
+        // its own dependencies -- no vendor file or build step needed, unlike
+        // aips-chartjs which is vendored locally for pages needing charts.
+        wp_enqueue_script(
+            'aips-core-backbone-script',
+            AIPS_PLUGIN_URL . 'assets/js/core/core-backbone.js',
+            array('backbone', 'aips-core-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'aips-cache-monitor',
             AIPS_PLUGIN_URL . 'assets/js/cache-monitor.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-core-script', 'aips-core-bulk-script', 'aips-core-backbone-script'),
             AIPS_VERSION,
             true
         );

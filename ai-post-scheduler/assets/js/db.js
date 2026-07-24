@@ -12,7 +12,7 @@
          *
          * Shows a confirmation dialog, then sends the `aips_repair_db` AJAX
          * action which attempts to create any missing tables or columns.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-repair-db` element.
          */
@@ -22,28 +22,18 @@
             AIPS.Utilities.confirm('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.', 'Confirm', [
                 { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, repair', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Repairing...');
-
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_repair_db',
-                            nonce: aipsAjax.nonce
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_repair_db',
+                        $button: $btn,
+                        loadingLabel: 'Repairing...',
+                        toastOnError: false,
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
+                        onSuccess: function(data) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
-                        success: function(response) {
-                            if (response.success) {
-                                AIPS.Utilities.showToast(response.data.message, 'success');
-                                setTimeout(function() { location.reload(); }, 1500);
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Repair DB Tables');
+                        onError: function(message) {
+                            AIPS.Utilities.showToast(message, 'error');
                         }
                     });
                 }}
@@ -64,28 +54,18 @@
             AIPS.Utilities.confirm('Run the date/time repair routine? This will normalize legacy date/time storage and backfill missing next-run values for active schedules, authors, and sources.', 'Confirm', [
                 { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, fix values', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Fixing...');
-
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_fix_datetime_values',
-                            nonce: aipsAjax.nonce
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_fix_datetime_values',
+                        $button: $btn,
+                        loadingLabel: 'Fixing...',
+                        toastOnError: false,
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
+                        onSuccess: function(data) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
-                        success: function(response) {
-                            if (response.success) {
-                                AIPS.Utilities.showToast(response.data.message, 'success');
-                                setTimeout(function() { location.reload(); }, 1500);
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Fix Date/Time Values in DB');
+                        onError: function(message) {
+                            AIPS.Utilities.showToast(message, 'error');
                         }
                     });
                 }}
@@ -98,7 +78,7 @@
          * Reads the `#aips-backup-db` checkbox to decide whether to back up
          * existing data first. Shows a confirmation dialog with an appropriate
          * warning, then sends the `aips_reinstall_db` AJAX action.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-reinstall-db` element.
          */
@@ -116,29 +96,19 @@
             AIPS.Utilities.confirm(msg, 'Confirm', [
                 { label: 'No, cancel',    className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, reinstall', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Reinstalling...');
-
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_reinstall_db',
-                            nonce: aipsAjax.nonce,
-                            backup: backup
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_reinstall_db',
+                        data: { backup: backup },
+                        $button: $btn,
+                        loadingLabel: 'Reinstalling...',
+                        toastOnError: false,
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
+                        onSuccess: function(data) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
-                        success: function(response) {
-                            if (response.success) {
-                                AIPS.Utilities.showToast(response.data.message, 'success');
-                                setTimeout(function() { location.reload(); }, 1500);
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Reinstall DB Tables');
+                        onError: function(message) {
+                            AIPS.Utilities.showToast(message, 'error');
                         }
                     });
                 }}
@@ -150,7 +120,7 @@
          *
          * Shows a warning confirmation dialog (this action cannot be undone),
          * then sends the `aips_wipe_db` AJAX action.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-wipe-db` element.
          */
@@ -160,28 +130,18 @@
             AIPS.Utilities.confirm('Are you sure you want to WIPE ALL DATA? This cannot be undone.', 'Warning', [
                 { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, wipe all data', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Wiping...');
-
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_wipe_db',
-                            nonce: aipsAjax.nonce
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_wipe_db',
+                        $button: $btn,
+                        loadingLabel: 'Wiping...',
+                        toastOnError: false,
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorOccurred) || 'An error occurred.',
+                        onSuccess: function(data) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
                         },
-                        success: function(response) {
-                            if (response.success) {
-                                AIPS.Utilities.showToast(response.data.message, 'success');
-                                setTimeout(function() { location.reload(); }, 1500);
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Wipe Plugin Data');
+                        onError: function(message) {
+                            AIPS.Utilities.showToast(message, 'error');
                         }
                     });
                 }}
@@ -244,7 +204,7 @@
          * Validates that a file has been chosen via `#aips-import-file`, shows a
          * destructive-data-loss warning dialog, then sends a multipart AJAX
          * request to the `aips_import_data` action using `FormData`.
-         * Reloads the page after a short delay on success.
+         * Refreshes the status page section after a short delay on success.
          *
          * @param {Event} e - Click event from an `.aips-import-data` element.
          */
@@ -264,36 +224,29 @@
             AIPS.Utilities.confirm(confirmMsg, 'Warning', [
                 { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, import', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Importing...');
+                    var formData = new FormData();
+                    formData.append('format', format);
+                    formData.append('import_file', fileInput.files[0]);
 
-            var formData = new FormData();
-            formData.append('action', 'aips_import_data');
-            formData.append('nonce', aipsAjax.nonce);
-            formData.append('format', format);
-            formData.append('import_file', fileInput.files[0]);
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        setTimeout(function() { location.reload(); }, 1500);
-                    } else {
-                        AIPS.Utilities.showToast('Import failed: ' + response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred during import.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Import Data');
-                    fileInput.value = '';
-                }
-            });
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_import_data',
+                        data: formData,
+                        $button: $btn,
+                        loadingLabel: 'Importing...',
+                        toastOnError: false,
+                        onSuccess: function(data) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 1500);
+                        },
+                        onError: function(message, response, isTransportError) {
+                            AIPS.Utilities.showToast(
+                                isTransportError ? 'An error occurred during import.' : ('Import failed: ' + message),
+                                'error'
+                            );
+                        }
+                    }).always(function() {
+                        fileInput.value = '';
+                    });
                 }}
             ]);
         },
@@ -311,34 +264,25 @@
             AIPS.Utilities.confirm('Run notifications hygiene now? This cleans legacy notification options, unschedules deprecated hooks, and normalizes preferences.', 'Confirm', [
                 { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, run hygiene', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Running...');
                     $result.hide().empty();
 
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_notifications_data_hygiene',
-                            nonce: aipsAjax.nonce
+                    AIPS.Core.Http.ajaxRequest({
+                        action: 'aips_notifications_data_hygiene',
+                        $button: $btn,
+                        loadingLabel: 'Running...',
+                        toastOnError: false,
+                        errorFallback: (window.aipsAdminL10n && aipsAdminL10n.dbHygieneFailed) || 'An error occurred while running hygiene.',
+                        onSuccess: function(data) {
+                            var details = data && data.details ? data.details : {};
+                            var summary = 'Removed options: ' + (details.removed_options || 0)
+                                + ' | Unscheduled events: ' + (details.unscheduled_events || 0)
+                                + ' | Rollup scheduled: ' + ((details.rollup_scheduled || 0) ? 'yes' : 'no')
+                                + ' | Preferences normalized: ' + ((details.preferences_changed || 0) ? 'yes' : 'no');
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            $result.html('<p class="aips-status-message aips-status-success">' + summary + '</p>').show();
                         },
-                        success: function(response) {
-                            if (response.success) {
-                                var details = response.data && response.data.details ? response.data.details : {};
-                                var summary = 'Removed options: ' + (details.removed_options || 0)
-                                    + ' | Unscheduled events: ' + (details.unscheduled_events || 0)
-                                    + ' | Rollup scheduled: ' + ((details.rollup_scheduled || 0) ? 'yes' : 'no')
-                                    + ' | Preferences normalized: ' + ((details.preferences_changed || 0) ? 'yes' : 'no');
-                                AIPS.Utilities.showToast(response.data.message, 'success');
-                                $result.html('<p class="aips-status-message aips-status-success">' + summary + '</p>').show();
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message || 'Hygiene command failed.', 'error');
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast('An error occurred while running hygiene.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Run Notifications Hygiene');
+                        onError: function(message) {
+                            AIPS.Utilities.showToast(message, 'error');
                         }
                     });
                 }}
@@ -350,8 +294,8 @@
          *
          * Shows a confirmation dialog warning that active cron events will be
          * removed and re-scheduled, then sends the `aips_flush_cron_events` AJAX
-         * action. Reloads the page after a short delay on success so the updated
-         * cron diagnostics are visible.
+         * action. Refreshes the status page section after a short delay on success
+         * so the updated cron diagnostics are visible.
          *
          * @param {Event} e - Click event from an `.aips-flush-cron` element.
          */
@@ -367,38 +311,28 @@
                 [
                     { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                     { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                        $btn.prop('disabled', true).text('Flushing...');
                         $result.hide().empty();
 
-                        $.ajax({
-                            url: aipsAjax.ajaxUrl,
-                            type: 'POST',
-                            data: {
-                                action: 'aips_flush_cron_events',
-                                nonce: aipsAjax.nonce
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    var details = response.data && response.data.details ? response.data.details : {};
-                                    var rescheduled = details.rescheduled ? details.rescheduled.join(', ') : '';
-                                    var summary = response.data.message;
-                                    if (rescheduled) {
-                                        summary += ' Rescheduled: ' + rescheduled + '.';
-                                    }
-                                    AIPS.Utilities.showToast(response.data.message, 'success');
-                                    $result.html('<p class="aips-status-message aips-status-success">' + $('<span>').text(summary).html() + '</p>').show();
-                                    setTimeout(function() { location.reload(); }, 2000);
-                                } else {
-                                    var errMsg = response.data && response.data.message ? response.data.message : 'Flush failed.';
-                                    AIPS.Utilities.showToast(errMsg, 'error');
-                                    $result.html('<p class="aips-status-message aips-status-error">' + $('<span>').text(errMsg).html() + '</p>').show();
+                        AIPS.Core.Http.ajaxRequest({
+                            action: 'aips_flush_cron_events',
+                            $button: $btn,
+                            loadingLabel: 'Flushing...',
+                            toastOnError: false,
+                            errorFallback: (window.aipsAdminL10n && aipsAdminL10n.dbFlushFailed) || 'Flush failed.',
+                            onSuccess: function(data) {
+                                var details = data && data.details ? data.details : {};
+                                var rescheduled = details.rescheduled ? details.rescheduled.join(', ') : '';
+                                var summary = data.message;
+                                if (rescheduled) {
+                                    summary += ' Rescheduled: ' + rescheduled + '.';
                                 }
+                                AIPS.Utilities.showToast(data.message, 'success');
+                                $result.html('<p class="aips-status-message aips-status-success">' + $('<span>').text(summary).html() + '</p>').show();
+                                setTimeout(function() { AIPS.refreshPageSection('.aips-status-page'); }, 2000);
                             },
-                            error: function() {
-                                AIPS.Utilities.showToast('An error occurred while flushing cron events.', 'error');
-                            },
-                            complete: function() {
-                                $btn.prop('disabled', false).text('Flush WP-Cron Events');
+                            onError: function(message) {
+                                AIPS.Utilities.showToast(message, 'error');
+                                $result.html('<p class="aips-status-message aips-status-error">' + $('<span>').text(message).html() + '</p>').show();
                             }
                         });
                     } }

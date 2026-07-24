@@ -424,7 +424,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         </div>
     </div>
 
-    <!-- Client-side HTML templates (used by assets/js/admin-research.js) -->
+    <!-- Client-side HTML templates (used by assets/js/research.js) -->
     <script type="text/html" id="aips-tmpl-research-results-summary">
         <p><strong>{{saved_count}} {{topics_saved}} "{{niche}}"</strong></p>
         {{top_topics_block_html}}

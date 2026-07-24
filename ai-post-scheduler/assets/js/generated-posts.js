@@ -2,7 +2,7 @@
  * Generated Posts Admin JavaScript
  *
  * Handles the Generated Posts page.
- * View Session functionality is now in admin-view-session.js (reusable module).
+ * View Session functionality is now in view-session.js (reusable module).
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -11,7 +11,7 @@
 
   // Initialize on document ready
   $(document).ready(function() {
-      // View Session functionality is automatically initialized by admin-view-session.js
+      // View Session functionality is automatically initialized by view-session.js
 
       // Post Preview Modal - Hover functionality
       var previewModal = $('#aips-post-preview-modal');

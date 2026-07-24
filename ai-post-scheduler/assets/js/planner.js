@@ -28,33 +28,20 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
-            $btn.next('.spinner').addClass('is-active');
+            var $spinner = $btn.next('.spinner');
+            $spinner.addClass('is-active');
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_generate_topics',
-                    nonce: aipsAjax.nonce,
-                    niche: niche,
-                    count: count
-                },
-                success: function(response) {
-                    if (response.success) {
-                        window.AIPS.renderTopics(response.data.topics);
-                        $('#planner-results').addClass('active');
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $btn.next('.spinner').removeClass('is-active');
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_generate_topics',
+                data: { niche: niche, count: count },
+                $button: $btn,
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
+                onSuccess: function(data) {
+                    window.AIPS.renderTopics(data.topics);
+                    $('#planner-results').addClass('active');
                 }
+            }).always(function() {
+                $spinner.removeClass('is-active');
             });
         },
 
@@ -144,8 +131,10 @@
          * Bound to the `change` event on `#check-all-topics`.
          */
         toggleAllTopics: function() {
-            var isChecked = $(this).is(':checked');
-            $('.topic-checkbox:visible').prop('checked', isChecked);
+            AIPS.Core.Table.toggleAllRows({
+                checked: $(this).is(':checked'),
+                rowCheckboxSelector: '.topic-checkbox:visible'
+            });
             window.AIPS.updateSelectionCount();
         },
 
@@ -368,57 +357,42 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
-            $btn.nextAll('.spinner').first().addClass('is-active');
+            var $spinner = $btn.nextAll('.spinner').first();
+            $spinner.addClass('is-active');
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_bulk_generate_now',
-                    nonce: aipsAjax.nonce,
-                    topics: topics,
-                    template_id: templateId
-                },
-                success: function(response) {
-                    if (response && response.success) {
-                        var data = response.data || {};
-                        var failedTopics = data.failed_topics || data.errors || [];
-                        var hasFailedTopics = $.isArray(failedTopics) ? failedTopics.length > 0 : false;
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_bulk_generate_now',
+                data: { topics: topics, template_id: templateId },
+                $button: $btn,
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
+                onSuccess: function(data) {
+                    var failedTopics = data.failed_topics || data.errors || [];
+                    var hasFailedTopics = $.isArray(failedTopics) ? failedTopics.length > 0 : false;
 
-                        if (hasFailedTopics) {
-                            // Partial success: keep topics so user can review/retry failed ones.
-                            var partialMsg = data.message || 'Some topics could not be generated. Please review and try again.';
-                            AIPS.Utilities.showToast(partialMsg, 'warning');
-                        } else {
-                            // Full success: remove processed topics and reset if empty.
-                            var successMsg = data.message || 'Posts generated successfully.';
-                            AIPS.Utilities.showToast(successMsg, 'success');
-
-                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
-                                $(this).remove();
-                                window.AIPS.updateSelectionCount();
-
-                                if ($('#topics-list .topic-item').length === 0) {
-                                    $('#planner-results').removeClass('active');
-                                    $('#planner-niche').val('');
-                                    $('#planner-manual-topics').val('');
-                                    $('#planner-topic-search').val('');
-                                }
-                            });
-                        }
+                    if (hasFailedTopics) {
+                        // Partial success: keep topics so user can review/retry failed ones.
+                        var partialMsg = data.message || 'Some topics could not be generated. Please review and try again.';
+                        AIPS.Utilities.showToast(partialMsg, 'warning');
                     } else {
-                        var errorMsg = (response && response.data && response.data.message) ? response.data.message : 'An error occurred. Please try again.';
-                        AIPS.Utilities.showToast(errorMsg, 'error');
+                        // Full success: remove processed topics and reset if empty.
+                        var successMsg = data.message || 'Posts generated successfully.';
+                        AIPS.Utilities.showToast(successMsg, 'success');
+
+                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                            $(this).remove();
+                            window.AIPS.updateSelectionCount();
+
+                            if ($('#topics-list .topic-item').length === 0) {
+                                $('#planner-results').removeClass('active');
+                                $('#planner-niche').val('');
+                                $('#planner-manual-topics').val('');
+                                $('#planner-topic-search').val('');
+                            }
+                        });
                     }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
+            }).always(function() {
+                $spinner.removeClass('is-active');
             });
         },
 
@@ -462,46 +436,36 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
-            $btn.nextAll('.spinner').first().addClass('is-active');
+            var $spinner = $btn.nextAll('.spinner').first();
+            $spinner.addClass('is-active');
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_bulk_schedule',
                 data: {
-                    action: 'aips_bulk_schedule',
-                    nonce: aipsAjax.nonce,
                     topics: topics,
                     template_id: templateId,
                     start_date: startDate,
                     frequency: $('#bulk-frequency').val()
                 },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
+                $button: $btn,
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
+                onSuccess: function(data) {
+                    AIPS.Utilities.showToast(data.message, 'success');
 
-                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
-                            $(this).remove();
-                            window.AIPS.updateSelectionCount();
+                    $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                        $(this).remove();
+                        window.AIPS.updateSelectionCount();
 
-                            if ($('#topics-list .topic-item').length === 0) {
-                                $('#planner-results').removeClass('active');
-                                $('#planner-niche').val('');
-                                $('#planner-manual-topics').val('');
-                                $('#planner-topic-search').val('');
-                            }
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $btn.nextAll('.spinner').first().removeClass('is-active');
+                        if ($('#topics-list .topic-item').length === 0) {
+                            $('#planner-results').removeClass('active');
+                            $('#planner-niche').val('');
+                            $('#planner-manual-topics').val('');
+                            $('#planner-topic-search').val('');
+                        }
+                    });
                 }
+            }).always(function() {
+                $spinner.removeClass('is-active');
             });
         }
     });

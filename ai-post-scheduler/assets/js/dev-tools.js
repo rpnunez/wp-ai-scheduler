@@ -22,34 +22,37 @@
                 return;
             }
 
-            $btn.prop('disabled', true);
-            $spinner.addClass('is-active');
+            AIPS.Core.UI.toggleSpinner($spinner, true);
 
-            var formData = $form.serialize();
-            formData += '&action=aips_generate_scaffold&nonce=' + aipsAjax.nonce;
+            var formData = {};
+            $.each($form.serializeArray(), function (i, field) {
+                formData[field.name] = field.value;
+            });
 
-            $.post(aipsAjax.ajaxUrl, formData, function(response) {
-                if (response.success) {
-                    $('#aips-dev-output-message').text(response.data.message);
+            AIPS.Core.Http.ajaxRequest({
+                action: 'aips_generate_scaffold',
+                data: formData,
+                $button: $btn,
+                toastOnError: false,
+                errorFallback: (window.aipsAdminL10n && aipsAdminL10n.errorTryAgain) || 'An error occurred. Please try again.',
+                onSuccess: function (data) {
+                    $('#aips-dev-output-message').text(data.message);
 
                     var listHtml = '';
-                    if (response.data.items && response.data.items.length) {
-                        $.each(response.data.items, function(i, item) {
+                    if (data.items && data.items.length) {
+                        $.each(data.items, function(i, item) {
                             listHtml += '<li>' + item + '</li>';
                         });
                     }
                     $('#aips-dev-output-list').html(listHtml);
                     $output.fadeIn();
-                } else {
-                    $('#aips-dev-error-message').text(response.data.message);
+                },
+                onError: function (message) {
+                    $('#aips-dev-error-message').text(message);
                     $error.fadeIn();
                 }
-            }).fail(function() {
-                $('#aips-dev-error-message').text('An error occurred. Please try again.');
-                $error.fadeIn();
-            }).always(function() {
-                $btn.prop('disabled', false);
-                $spinner.removeClass('is-active');
+            }).always(function () {
+                AIPS.Core.UI.toggleSpinner($spinner, false);
             });
         });
     });

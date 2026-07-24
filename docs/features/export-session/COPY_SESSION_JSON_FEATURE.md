@@ -229,7 +229,7 @@ Method: `ajax_get_session_json()`
 
 ### JavaScript
 
-Location: `assets/js/admin-generated-posts.js`
+Location: `assets/js/generated-posts.js`
 
 **Key Functions:**
 - `handleCopySessionJSON()` - Fetches and copies JSON to clipboard
@@ -321,7 +321,7 @@ Potential improvements for future versions:
 
 - `includes/class-aips-session-to-json.php` - Main converter class
 - `includes/class-aips-generated-posts-controller.php` - Controller with AJAX handler
-- `assets/js/admin-generated-posts.js` - Frontend JavaScript
+- `assets/js/generated-posts.js` - Frontend JavaScript
 - `assets/css/admin.css` - Styling
 - `templates/admin/generated-posts.php` - UI template
 - `tests/test-session-to-json.php` - Unit tests
