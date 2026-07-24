@@ -66,6 +66,14 @@ if (!defined('AIPS_AI_DEBUG_LOG_PROMPTS')) {
     define('AIPS_AI_DEBUG_LOG_PROMPTS', defined('WP_DEBUG') && WP_DEBUG);
 }
 
+if (!defined('AIPS_DEBUG')) {
+    define('AIPS_DEBUG', defined('WP_DEBUG') && WP_DEBUG);
+}
+
+if (!defined('AIPS_DEBUG_LEVEL')) {
+    define('AIPS_DEBUG_LEVEL', defined('WP_DEBUG') && WP_DEBUG ? 1 : 0);
+}
+
 final class AI_Post_Scheduler {
     
     /**

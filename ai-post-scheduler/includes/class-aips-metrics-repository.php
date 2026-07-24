@@ -469,10 +469,14 @@ class AIPS_Metrics_Repository {
 		// relying on ROW_NUMBER() / NTILE() which require MySQL 8+.
 		$rows = $this->wpdb->get_col(
 			$this->wpdb->prepare(
+				// completed_at is NOT NULL DEFAULT 0, so `IS NOT NULL` never filters
+				// anything. Guard on completed_at >= created_at instead: it keeps the
+				// unsigned subtraction from underflowing (error 1690) and drops rows
+				// with a missing or clock-skewed completion time from the percentiles.
 				"SELECT (completed_at - created_at) AS duration
 				FROM {$this->table_history}
 				WHERE status = 'completed'
-				  AND completed_at IS NOT NULL
+				  AND completed_at >= created_at
 				  AND created_at >= %d
 				ORDER BY duration ASC",
 				$cutoff
@@ -664,8 +668,16 @@ class AIPS_Metrics_Repository {
 		$limit = max( 1, (int) $limit );
 		$rows  = $this->wpdb->get_results(
 			$this->wpdb->prepare(
+				// created_at and completed_at are UNSIGNED BIGINT timestamps that
+				// default to 0. Incomplete rows (failed, in-progress, partial) keep
+				// completed_at = 0, so a bare `completed_at - created_at` underflows
+				// into a negative value the unsigned type cannot hold, which MySQL
+				// rejects with error 1690. This query has no status filter, so those
+				// rows reach it. Compute the duration only when completed_at actually
+				// follows created_at, and report NULL otherwise (the PHP below and
+				// the UI already treat a null duration as "not finished").
 				"SELECT id, status, creation_method, created_at,
-				        (completed_at - created_at) AS duration_seconds,
+				        CASE WHEN completed_at >= created_at THEN completed_at - created_at ELSE NULL END AS duration_seconds,
 				        error_message
 				FROM {$this->table_history}
 				ORDER BY created_at DESC
