@@ -594,28 +594,17 @@ $site_ctx = AIPS_Site_Context::get();
                 <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author.', 'ai-post-scheduler'); ?></p>
             </div>
 
-            <div id="author-source-groups-selector" style="display:none;">
+            <div id="author-source-groups-selector" class="is-hidden">
                 <div class="form-group">
                     <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
-                    <?php if (!empty($author_source_groups)): ?>
-                        <div class="aips-checkbox-group">
-                            <?php foreach ($author_source_groups as $asg): ?>
-                                <label style="display:block; margin-bottom:4px;">
-                                    <input type="checkbox"
-                                        name="source_group_ids[]"
-                                        class="aips-author-source-group-cb"
-                                        value="<?php echo esc_attr($asg->term_id); ?>">
-                                    <?php echo esc_html($asg->name); ?>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the topic generation prompt.', 'ai-post-scheduler'); ?></p>
-                    <?php else: ?>
-                        <p class="description">
-                            <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
-                        </p>
-                    <?php endif; ?>
+                    <?php
+                    $source_groups = $author_source_groups;
+                    $checkbox_name = 'source_group_ids[]';
+                    $checkbox_class = 'aips-author-source-group-cb';
+                    $label_class = 'aips-checkbox-label aips-checkbox-label-block';
+                    $description_text = __('Select one or more Source Groups whose active sources will be included in the topic generation prompt.', 'ai-post-scheduler');
+                    include AIPS_PLUGIN_DIR . 'templates/partials/source-group-checkboxes.php';
+                    ?>
                 </div>
             </div>
 
@@ -629,7 +618,7 @@ $site_ctx = AIPS_Site_Context::get();
 </div>
 
 <!-- Author Suggestions Modal -->
-<div id="aips-suggest-authors-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true">
+<div id="aips-suggest-authors-modal" class="aips-modal is-hidden" role="dialog" aria-modal="true">
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
             <h2 class="aips-modal-title"><?php esc_html_e('Suggest Authors with AI', 'ai-post-scheduler'); ?></h2>

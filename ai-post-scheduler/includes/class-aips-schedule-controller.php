@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_Schedule_Controller {
+class AIPS_Schedule_Controller implements AIPS_Admin_Controller_Interface {
 
     private $scheduler;
 
@@ -47,6 +47,268 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_unified_bulk_delete', array($this, 'ajax_unified_bulk_delete'));
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
         add_action('wp_ajax_aips_get_schedule_status_read_model', array($this, 'ajax_get_schedule_status_read_model'));
+    }
+
+    /**
+     * Render the unified schedules admin page.
+     *
+     * @param bool $embedded Whether to render in embedded mode.
+     * @return void
+     */
+    public function render_page($embedded = false) {
+        $type_filter = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
+        $preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
+        $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
+
+        $templates_handler = new AIPS_Templates();
+        $templates = $templates_handler->get_all(true);
+        $structure_manager = new AIPS_Article_Structure_Manager();
+        $article_structures = $structure_manager->get_active_structures();
+        $template_type_selector = new AIPS_Template_Type_Selector();
+        $rotation_patterns = $template_type_selector->get_rotation_patterns();
+
+        $campaign_options = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
+        $campaign_map = array();
+        foreach ($campaign_options as $campaign_option) {
+            $campaign_map[(int) $campaign_option->id] = $campaign_option;
+        }
+
+        $cron_schedules = wp_get_schedules();
+        uasort($cron_schedules, function($a, $b) {
+            return $a['interval'] - $b['interval'];
+        });
+
+        $cron_schedule_options = array();
+        foreach ($cron_schedules as $schedule_key => $schedule_data) {
+            $cron_schedule_options[] = array(
+                'value' => (string) $schedule_key,
+                'label' => isset($schedule_data['display']) ? (string) $schedule_data['display'] : (string) $schedule_key,
+            );
+        }
+
+        $unified_service = new AIPS_Unified_Schedule_Service();
+        $raw_schedules = $unified_service->get_all($type_filter);
+        $all_schedules = $this->build_schedule_rows_view_model($raw_schedules);
+
+        AIPS_Template_Renderer::render(
+            'templates/admin/schedule.php',
+            array(
+                'embedded' => (bool) $embedded,
+                'is_embedded_schedule_view' => !empty($embedded),
+                'type_filter' => $type_filter,
+                'all_schedules' => $all_schedules,
+                'templates' => $templates,
+                'article_structures' => $article_structures,
+                'rotation_patterns' => $rotation_patterns,
+                'campaign_map' => $campaign_map,
+                'preselect_template_id' => $preselect_template_id,
+                'preselect_structure_id' => $preselect_structure_id,
+                'cron_schedule_options' => $cron_schedule_options,
+            )
+        );
+    }
+
+    /**
+     * Build display-ready schedule rows for the unified schedules template.
+     *
+     * @param array $raw_schedules Raw schedules from unified service.
+     * @return array
+     */
+    private function build_schedule_rows_view_model($raw_schedules) {
+        $date_format = get_option('date_format') . ' ' . get_option('time_format');
+        $rows = array();
+
+        foreach ($raw_schedules as $schedule) {
+            $next_run_dt = $this->datetime_from_db_value(isset($schedule['next_run']) ? $schedule['next_run'] : null);
+            $last_run_dt = $this->datetime_from_db_value(isset($schedule['last_run']) ? $schedule['last_run'] : null);
+            $next_run_ts = $next_run_dt ? $next_run_dt->timestamp() : 0;
+            $last_run_ts = $last_run_dt ? $last_run_dt->timestamp() : 0;
+            $is_active = !empty($schedule['is_active']) ? 1 : 0;
+            $status_meta = $this->get_status_badge_meta(isset($schedule['status']) ? (string) $schedule['status'] : '');
+
+            $schedule['row_key'] = (string) (isset($schedule['type']) ? $schedule['type'] : '') . ':' . (string) (isset($schedule['id']) ? $schedule['id'] : '');
+            $schedule['type_badge_html'] = $this->get_type_badge_html(isset($schedule['type']) ? (string) $schedule['type'] : '');
+            $schedule['frequency_label'] = $this->get_frequency_label(isset($schedule['frequency']) ? (string) $schedule['frequency'] : '');
+            $schedule['last_run_ts'] = $last_run_ts;
+            $schedule['next_run_ts'] = $next_run_ts;
+            $schedule['last_run_display'] = $last_run_ts ? date_i18n($date_format, $last_run_ts) : '';
+            $schedule['next_run_display'] = $next_run_ts ? date_i18n($date_format, $next_run_ts) : '';
+            $schedule['next_run_relative'] = $next_run_ts ? $this->get_next_run_relative_text($next_run_ts) : '';
+            $schedule['is_due'] = $next_run_ts > 0 && $next_run_ts < time();
+            $schedule['status_badge_class'] = $status_meta['badge_class'];
+            $schedule['status_icon_class'] = $status_meta['icon_class'];
+            $schedule['status_label'] = $status_meta['label'];
+            $schedule['run_output_label'] = $this->get_run_output_label(isset($schedule['type']) ? (string) $schedule['type'] : '');
+
+            $rows[] = $schedule;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Resolve a display label for schedule frequency.
+     *
+     * @param string $frequency Frequency key.
+     * @return string
+     */
+    private function get_frequency_label($frequency) {
+        if (empty($frequency)) {
+            return __('—', 'ai-post-scheduler');
+        }
+
+        $schedules = wp_get_schedules();
+        if (isset($schedules[$frequency]['display'])) {
+            return $schedules[$frequency]['display'];
+        }
+
+        return ucfirst(str_replace('_', ' ', $frequency));
+    }
+
+    /**
+     * Resolve schedule type badge HTML.
+     *
+     * @param string $type Unified schedule type.
+     * @return string
+     */
+    private function get_type_badge_html($type) {
+        switch ($type) {
+            case AIPS_Unified_Schedule_Service::TYPE_TEMPLATE:
+                return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
+            case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC:
+                return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
+            case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
+                return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Resolve status badge metadata for schedule state.
+     *
+     * @param string $status Raw status.
+     * @return array<string,string>
+     */
+    private function get_status_badge_meta($status) {
+        switch ($status) {
+            case 'failed':
+                return array(
+                    'badge_class' => 'aips-badge-error',
+                    'icon_class'  => 'dashicons-warning',
+                    'label'       => __('Failed', 'ai-post-scheduler'),
+                );
+            case 'inactive':
+                return array(
+                    'badge_class' => 'aips-badge-neutral',
+                    'icon_class'  => 'dashicons-minus',
+                    'label'       => __('Paused', 'ai-post-scheduler'),
+                );
+            default:
+                return array(
+                    'badge_class' => 'aips-badge-success',
+                    'icon_class'  => 'dashicons-yes-alt',
+                    'label'       => __('Active', 'ai-post-scheduler'),
+                );
+        }
+    }
+
+    /**
+     * Resolve last-run output label.
+     *
+     * @param string $type Unified schedule type.
+     * @return string
+     */
+    private function get_run_output_label($type) {
+        if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
+            return __('Generated topics for author queue', 'ai-post-scheduler');
+        }
+        if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+            return __('Generated approved-topic post', 'ai-post-scheduler');
+        }
+
+        return __('Generated post from template', 'ai-post-scheduler');
+    }
+
+    /**
+     * Convert a DB date value to AIPS_DateTime or null.
+     *
+     * @param mixed $value Source value.
+     * @return AIPS_DateTime|null
+     */
+    private function datetime_from_db_value($value) {
+        if (empty($value) || '0000-00-00 00:00:00' === $value) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            $timestamp = (int) $value;
+            if ($timestamp > 0 && $timestamp < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP) {
+                return null;
+            }
+            return AIPS_DateTime::fromTimestampOrNull($timestamp);
+        }
+
+        return AIPS_DateTime::fromMysqlOrNull((string) $value);
+    }
+
+    /**
+     * Build a human-readable relative next-run string.
+     *
+     * @param int $timestamp Timestamp.
+     * @return string
+     */
+    private function get_next_run_relative_text($timestamp) {
+        $diff = (int) $timestamp - time();
+        if ($diff <= 0) {
+            return __('Past due', 'ai-post-scheduler');
+        }
+
+        $units = array(
+            array(
+                'seconds' => DAY_IN_SECONDS,
+                'singular' => '%s day',
+                'plural' => '%s days',
+            ),
+            array(
+                'seconds' => HOUR_IN_SECONDS,
+                'singular' => '%s hour',
+                'plural' => '%s hours',
+            ),
+            array(
+                'seconds' => MINUTE_IN_SECONDS,
+                'singular' => '%s minute',
+                'plural' => '%s minutes',
+            ),
+        );
+        $parts = array();
+
+        foreach ($units as $unit) {
+            if ($diff < $unit['seconds']) {
+                continue;
+            }
+
+            $value = (int) floor($diff / $unit['seconds']);
+            if ($value <= 0) {
+                continue;
+            }
+
+            $parts[] = sprintf(
+                _n($unit['singular'], $unit['plural'], $value, 'ai-post-scheduler'),
+                number_format_i18n($value)
+            );
+            $diff -= $value * $unit['seconds'];
+
+            if (count($parts) === 2) {
+                break;
+            }
+        }
+
+        if (empty($parts)) {
+            $parts[] = sprintf(_n('%s minute', '%s minutes', 1, 'ai-post-scheduler'), '1');
+        }
+
+        return sprintf(__('In %s', 'ai-post-scheduler'), implode(' ', $parts));
     }
 
     public function ajax_get_schedule_status_read_model() {
