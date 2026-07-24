@@ -225,6 +225,7 @@ class AIPS_Admin_Assets {
 				'options'               => __('Options', 'ai-post-scheduler'),
 				'content'               => __('Content', 'ai-post-scheduler'),
 				'error'                 => __('Error', 'ai-post-scheduler'),
+				'showContext'           => __('Show system instruction', 'ai-post-scheduler'),
 				'allPassed'             => __('All tests passed', 'ai-post-scheduler'),
 				'someFailed'            => __('Some tests failed', 'ai-post-scheduler'),
 				'passedIn'              => __('passed in', 'ai-post-scheduler'),

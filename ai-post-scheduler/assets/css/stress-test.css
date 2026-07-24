@@ -251,12 +251,27 @@
 .aips-stress-table .aips-stress-col-time   { width: 90px; text-align: right; }
 .aips-stress-table .aips-stress-col-actions { width: 90px; text-align: right; }
 
-.aips-stress-row td {
-	vertical-align: top;
+.aips-stress-row {
+	cursor: pointer;
 }
 
-.aips-stress-row.is-expanded td {
+.aips-stress-row td {
+	vertical-align: top;
+	transition: background-color 120ms ease;
+}
+
+.aips-stress-row:hover td {
+	background: var(--aips-gray-50);
+}
+
+.aips-stress-row.is-expanded td,
+.aips-stress-row.is-expanded:hover td {
 	background: var(--aips-primary-light);
+}
+
+/* The Run button is inside the clickable row; keep its own cursor. */
+.aips-stress-row .aips-stress-run-one {
+	cursor: pointer;
 }
 
 /* Status indicator */
@@ -425,6 +440,135 @@
 .aips-stress-call-time {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);
+}
+
+/* Request / Response panels -- visually separated halves of one call. */
+
+/* No overflow:hidden here -- it would clip the help tooltip that overflows the
+ * request panel. The head rounds its own top corners instead. */
+.aips-stress-side {
+	border: 1px solid var(--aips-gray-100);
+	border-radius: var(--aips-radius-sm);
+}
+
+.aips-stress-side + .aips-stress-side {
+	margin-top: var(--aips-space-3);
+}
+
+.aips-stress-side-head {
+	padding: var(--aips-space-2) var(--aips-space-3);
+	font-size: var(--aips-text-2xs);
+	font-weight: var(--aips-font-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	border-left: 3px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-sm) var(--aips-radius-sm) 0 0;
+}
+
+.aips-stress-side-request .aips-stress-side-head {
+	background: var(--aips-info-light);
+	color: var(--aips-info-dark);
+	border-left-color: var(--aips-info);
+}
+
+.aips-stress-side-response .aips-stress-side-head {
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-700);
+	border-left-color: var(--aips-gray-400);
+}
+
+.aips-stress-side-body {
+	padding: var(--aips-space-3);
+}
+
+/* "?" help affordance revealing the system instruction on hover/focus. */
+
+.aips-stress-help {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 15px;
+	height: 15px;
+	margin-left: var(--aips-space-2);
+	border-radius: 50%;
+	background: var(--aips-gray-200);
+	color: var(--aips-gray-700);
+	font-size: 10px;
+	font-weight: var(--aips-font-bold);
+	line-height: 1;
+	cursor: help;
+	vertical-align: middle;
+}
+
+.aips-stress-help:hover,
+.aips-stress-help:focus-visible {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+	outline: none;
+}
+
+.aips-stress-tooltip {
+	position: absolute;
+	left: 0;
+	top: calc(100% + 6px);
+	z-index: 20;
+	display: none;
+	width: max-content;
+	max-width: 460px;
+	max-height: 320px;
+	overflow: auto;
+	padding: var(--aips-space-3);
+	border-radius: var(--aips-radius-sm);
+	background: var(--aips-gray-900);
+	color: var(--aips-white);
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-normal);
+	text-transform: none;
+	letter-spacing: 0;
+	line-height: var(--aips-leading-normal);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+	text-align: left;
+	cursor: text;
+}
+
+.aips-stress-help:hover .aips-stress-tooltip,
+.aips-stress-help:focus .aips-stress-tooltip,
+.aips-stress-help:focus-within .aips-stress-tooltip {
+	display: block;
+}
+
+/* Condensed options as inline key/value pills. */
+
+.aips-stress-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+}
+
+.aips-stress-pill {
+	display: inline-flex;
+	align-items: stretch;
+	border-radius: var(--aips-radius-sm);
+	overflow: hidden;
+	font-size: var(--aips-text-xs);
+	border: 1px solid var(--aips-gray-100);
+}
+
+.aips-stress-pill-key {
+	padding: 2px var(--aips-space-2);
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-600);
+	font-weight: var(--aips-font-medium);
+}
+
+.aips-stress-pill-val {
+	padding: 2px var(--aips-space-2);
+	background: var(--aips-white);
+	color: var(--aips-gray-900);
+	font-variant-numeric: tabular-nums;
 }
 
 /* Labelled sub-blocks within a request/response section. */

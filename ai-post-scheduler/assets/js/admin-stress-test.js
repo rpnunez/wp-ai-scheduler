@@ -59,7 +59,10 @@
 				.on('click', '#aips-stress-reset', this.handleReset.bind(this))
 				.on('click', '#aips-stress-cleanup', this.handleCleanup.bind(this))
 				.on('click', '.aips-stress-run-one', this.handleRunOne.bind(this))
-				.on('click', '.aips-stress-toggle', this.handleToggle.bind(this));
+				.on('click', '.aips-stress-row', this.handleRowToggle.bind(this))
+				// Keyboard parity for the row: the toggle button carries the
+				// aria state, so Enter/Space on it drives the same toggle.
+				.on('keydown', '.aips-stress-toggle', this.handleToggleKeydown.bind(this));
 		},
 
 		// -------------------------------------------------------------------
@@ -283,6 +286,29 @@
 				);
 			}
 
+			// AI calls first: the raw request/response traffic is the primary
+			// diagnostic, and the compared values below are derived from it.
+			var calls = Array.isArray(result.ai_calls) ? result.ai_calls : [];
+
+			var $callsSection = $('<div class="aips-stress-calls"></div>');
+			$callsSection.append(
+				$('<h4></h4>').text(t('aiCalls', 'AI calls') + ' (' + calls.length + ')')
+			);
+
+			if (!calls.length) {
+				$callsSection.append(
+					$('<p class="aips-no-data"></p>').text(t('noCalls', 'No AI calls were recorded for this case.'))
+				);
+			} else {
+				calls.forEach(function (call, index) {
+					$callsSection.append(this.buildCallBlock(call, index));
+				}.bind(this));
+			}
+
+			$wrap.append($callsSection);
+
+			// The AI-vs-plugin comparison sits below, as the summary of what those
+			// calls ultimately produced.
 			var $columns = $('<div class="aips-stress-compare"></div>');
 
 			$columns.append(this.buildValueBlock(
@@ -306,25 +332,6 @@
 					)
 				);
 			}
-
-			var calls = Array.isArray(result.ai_calls) ? result.ai_calls : [];
-
-			var $callsSection = $('<div class="aips-stress-calls"></div>');
-			$callsSection.append(
-				$('<h4></h4>').text(t('aiCalls', 'AI calls') + ' (' + calls.length + ')')
-			);
-
-			if (!calls.length) {
-				$callsSection.append(
-					$('<p class="aips-no-data"></p>').text(t('noCalls', 'No AI calls were recorded for this case.'))
-				);
-			} else {
-				calls.forEach(function (call, index) {
-					$callsSection.append(this.buildCallBlock(call, index));
-				}.bind(this));
-			}
-
-			$wrap.append($callsSection);
 
 			return $wrap;
 		},
@@ -374,29 +381,42 @@
 
 			var request = call.request || {};
 			var response = call.response || {};
+			var options = request.options || {};
 
-			// Prompts are mostly newlines. Rendering them through JSON.stringify
-			// collapses the whole thing onto one line of literal \n escapes, which
-			// is the opposite of readable — so long text fields are shown as text
-			// and only the structured leftovers go through the JSON viewer.
-			var $request = $('<div class="aips-ai-section"></div>');
-			$request.append($('<h5></h5>').text(t('request', 'Request')));
-			$request.append(this.textBlock(t('prompt', 'Prompt'), request.prompt));
+			// The system instruction (context/instructions) is stable boilerplate
+			// that dwarfs the prompt. It moves into a hover tooltip on the Prompt
+			// label so it stays inspectable without burying the actual prompt.
+			var tooltip = [options.context, options.instructions]
+				.filter(function (v) { return typeof v === 'string' && v !== ''; })
+				.join('\n\n');
 
-			if (request.options && Object.keys(request.options).length) {
-				$request.append(this.structuredBlock(t('options', 'Options'), request.options, ['context', 'instructions']));
+			// Request and Response are wrapped in distinct panels so the boundary
+			// between what was sent and what came back is obvious at a glance.
+			var $request = $('<div class="aips-stress-side aips-stress-side-request"></div>');
+			$request.append($('<div class="aips-stress-side-head"></div>').text(t('request', 'Request')));
+
+			var $requestBody = $('<div class="aips-stress-side-body"></div>');
+			$requestBody.append(this.textBlock(t('prompt', 'Prompt'), request.prompt, tooltip));
+
+			var $condensed = this.optionsBlock(options, ['context', 'instructions']);
+			if ($condensed) {
+				$requestBody.append($condensed);
 			}
 
+			$request.append($requestBody);
 			$block.append($request);
 
-			var $response = $('<div class="aips-ai-section"></div>');
-			$response.append($('<h5></h5>').text(t('response', 'Response')));
+			var $response = $('<div class="aips-stress-side aips-stress-side-response"></div>');
+			$response.append($('<div class="aips-stress-side-head"></div>').text(t('response', 'Response')));
+
+			var $responseBody = $('<div class="aips-stress-side-body"></div>');
 
 			if (response.error) {
-				$response.append(this.textBlock(t('error', 'Error'), response.error));
+				$responseBody.append(this.textBlock(t('error', 'Error'), response.error));
 			}
 
-			$response.append(this.textBlock(t('content', 'Content'), response.content));
+			$responseBody.append(this.textBlock(t('content', 'Content'), response.content));
+			$response.append($responseBody);
 			$block.append($response);
 
 			return $block;
@@ -405,14 +425,20 @@
 		/**
 		 * Render a labelled multi-line string with its newlines intact.
 		 *
-		 * @param {string} label
-		 * @param {*}      text
+		 * @param {string}  label
+		 * @param {*}       text
+		 * @param {string} [tooltip] Optional help text shown from a "?" beside the label.
 		 * @returns {jQuery}
 		 */
-		textBlock: function (label, text) {
+		textBlock: function (label, text, tooltip) {
 			var $block = $('<div class="aips-stress-field"></div>');
+			var $label = $('<h6></h6>').text(label);
 
-			$block.append($('<h6></h6>').text(label));
+			if (tooltip) {
+				$label.append(this.helpTip(tooltip));
+			}
+
+			$block.append($label);
 
 			if (text === null || typeof text === 'undefined' || text === '') {
 				$block.append($('<p class="aips-no-data"></p>').text(t('noValue', 'No value returned.')));
@@ -429,36 +455,74 @@
 		},
 
 		/**
-		 * Render an object as JSON, pulling named long-text keys out into their
-		 * own text blocks so their newlines survive.
+		 * Build a "?" affordance that reveals help text on hover or focus.
 		 *
-		 * @param {string}   label
-		 * @param {Object}   value
-		 * @param {string[]} textKeys Keys to render as text rather than JSON.
+		 * Keyboard-reachable via tabindex, and the text is set with .text() since
+		 * it originates from provider-facing prompt content.
+		 *
+		 * @param {string} text
 		 * @returns {jQuery}
 		 */
-		structuredBlock: function (label, value, textKeys) {
-			var $wrap = $('<div class="aips-stress-field-group"></div>');
-			var rest = {};
-			var self = this;
+		helpTip: function (text) {
+			return $('<span class="aips-stress-help" tabindex="0" role="button"></span>')
+				.attr('aria-label', t('showContext', 'Show system instruction'))
+				.text('?')
+				.append($('<span class="aips-stress-tooltip" role="tooltip"></span>').text(text));
+		},
 
-			Object.keys(value).forEach(function (key) {
-				if (textKeys.indexOf(key) !== -1 && typeof value[key] === 'string') {
-					$wrap.append(self.textBlock(key, value[key]));
+		/**
+		 * Render request options condensed: scalars as inline pills, and any
+		 * object/array values (a JSON schema, say) in a compact JSON block below.
+		 *
+		 * @param {Object}   options
+		 * @param {string[]} exclude Keys to omit (shown elsewhere).
+		 * @returns {jQuery|null} Null when nothing is left to show.
+		 */
+		optionsBlock: function (options, exclude) {
+			var $pills = $('<div class="aips-stress-pills"></div>');
+			var complex = {};
+			var pillCount = 0;
+			var complexCount = 0;
+
+			Object.keys(options).forEach(function (key) {
+				if (exclude.indexOf(key) !== -1) {
 					return;
 				}
 
-				rest[key] = value[key];
+				var value = options[key];
+
+				if (value === null || typeof value === 'object') {
+					if (value !== null) {
+						complex[key] = value;
+						complexCount++;
+					}
+					return;
+				}
+
+				$pills.append(
+					$('<span class="aips-stress-pill"></span>')
+						.append($('<span class="aips-stress-pill-key"></span>').text(key))
+						.append($('<span class="aips-stress-pill-val"></span>').text(String(value)))
+				);
+				pillCount++;
 			});
 
-			if (Object.keys(rest).length) {
-				var $block = $('<div class="aips-stress-field"></div>');
-				$block.append($('<h6></h6>').text(label));
-				$block.append(this.jsonViewer(rest));
-				$wrap.append($block);
+			if (!pillCount && !complexCount) {
+				return null;
 			}
 
-			return $wrap;
+			var $block = $('<div class="aips-stress-field"></div>');
+			$block.append($('<h6></h6>').text(t('options', 'Options')));
+
+			if (pillCount) {
+				$block.append($pills);
+			}
+
+			if (complexCount) {
+				$block.append(this.jsonViewer(complex));
+			}
+
+			return $block;
 		},
 
 		/**
@@ -492,21 +556,58 @@
 		// -------------------------------------------------------------------
 
 		/**
-		 * Toggle a case's detail row.
+		 * Toggle a case's detail row from a click anywhere on the row.
+		 *
+		 * The Run button lives inside the row; its own handler owns those clicks,
+		 * so they are ignored here. An active text selection is also left alone so
+		 * a user highlighting the description does not collapse the row.
 		 *
 		 * @param {Event} e
 		 */
-		handleToggle: function (e) {
-			e.preventDefault();
+		handleRowToggle: function (e) {
+			if ($(e.target).closest('.aips-stress-run-one').length) {
+				return;
+			}
 
-			var $button = $(e.currentTarget);
-			var $row = $button.closest('.aips-stress-row');
+			var selection = window.getSelection && window.getSelection().toString();
+			if (selection) {
+				return;
+			}
+
+			this.toggleRow($(e.currentTarget));
+		},
+
+		/**
+		 * Toggle when the visible caret button is activated via keyboard.
+		 *
+		 * @param {Event} e
+		 */
+		handleToggleKeydown: function (e) {
+			if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') {
+				return;
+			}
+
+			e.preventDefault();
+			this.toggleRow($(e.currentTarget).closest('.aips-stress-row'));
+		},
+
+		/**
+		 * Expand or collapse a case's detail row.
+		 *
+		 * @param {jQuery} $row
+		 */
+		toggleRow: function ($row) {
+			if (!$row.length) {
+				return;
+			}
+
 			var $details = $('#aips-stress-details-' + $row.data('case'));
-			var expanded = $button.attr('aria-expanded') === 'true';
+			var $toggle = $row.find('.aips-stress-toggle');
+			var expanded = $row.hasClass('is-expanded');
 
 			if (expanded) {
 				$details.attr('hidden', true);
-				$button.attr('aria-expanded', 'false');
+				$toggle.attr('aria-expanded', 'false');
 				$row.removeClass('is-expanded');
 
 				return;
@@ -519,7 +620,7 @@
 			}
 
 			$details.removeAttr('hidden');
-			$button.attr('aria-expanded', 'true');
+			$toggle.attr('aria-expanded', 'true');
 			$row.addClass('is-expanded');
 		},
 
