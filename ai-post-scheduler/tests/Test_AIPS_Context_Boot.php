@@ -40,6 +40,8 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 		$GLOBALS['aips_test_doing_cron']  = false;
 		$GLOBALS['aips_test_doing_ajax']  = false;
 		$GLOBALS['aips_test_is_admin']    = false;
+		unset( $GLOBALS['pagenow'] );
+		unset( $_REQUEST['action'] );
 	}
 
 	/**
@@ -285,6 +287,32 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 			0,
 			$this->count_action_callbacks( 'aips_generate_scheduled_posts' ),
 			'boot_admin() must not register aips_generate_scheduled_posts'
+		);
+	}
+
+	/**
+	 * On admin-post export requests, the Operations Insights export hook must be registered.
+	 *
+	 * Export submits to admin-post.php?action=aips_operations_insights_export, which is
+	 * a separate request from page rendering. boot_admin() must instantiate the controller
+	 * early in that request so the admin_post_* callback exists.
+	 */
+	public function test_admin_post_operations_insights_export_registers_handler() {
+		if ( ! isset( $GLOBALS['aips_test_hooks'] ) ) {
+			$this->markTestSkipped( 'Limited-mode environment required.' );
+		}
+
+		$GLOBALS['aips_test_is_admin'] = true;
+		$GLOBALS['pagenow']            = 'admin-post.php';
+		$_REQUEST['action']            = 'aips_operations_insights_export';
+
+		$plugin = AI_Post_Scheduler::get_instance();
+		$plugin->init();
+
+		$this->assertGreaterThan(
+			0,
+			$this->count_action_callbacks( 'admin_post_aips_operations_insights_export' ),
+			'boot_admin() must register admin_post_aips_operations_insights_export on admin-post export requests'
 		);
 	}
 
