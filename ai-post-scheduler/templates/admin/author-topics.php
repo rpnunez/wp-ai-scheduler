@@ -279,7 +279,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <table class="aips-table aips-topics-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-topics" aria-label="{{selectAllTopicsLabel}}"></th>
 			<th class="column-topic">{{topicDetails}}</th>
 			<th class="column-date">{{generatedAtLabel}}</th>
 			{{secondaryDateHeader}}
@@ -389,7 +389,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <table class="aips-table aips-feedback-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback" aria-label="{{selectAllFeedbackLabel}}"></th>
 			<th class="column-topic">{{topicLabel}}</th>
 			<th class="column-action">{{actionLabel}}</th>
 			<th class="column-reason">{{reasonLabel}}</th>
