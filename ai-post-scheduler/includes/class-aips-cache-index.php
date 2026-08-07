@@ -34,6 +34,27 @@ class AIPS_Cache_Index {
 	private $max_entries;
 
 	/**
+	 * Deduped buffer of key hashes accessed during this request.
+	 *
+	 * @var array<string, true>
+	 */
+	private static $pending_access = array();
+
+	/**
+	 * Whether any index row was written this request (max-entries check needed).
+	 *
+	 * @var bool
+	 */
+	private static $needs_enforcement = false;
+
+	/**
+	 * Whether the shutdown flush hook has been registered.
+	 *
+	 * @var bool
+	 */
+	private static $flush_hooked = false;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -42,9 +63,21 @@ class AIPS_Cache_Index {
 		// always calls config_cache->set() after reading from the DB, which would
 		// trigger the index on the config cache (record_set() -> upsert_index_row()),
 		// which previously called back into AIPS_Config::get_option() and recursed.
-		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
-		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
+		$monitor_enabled   = get_option( 'aips_cache_monitor_enabled', '0' );
+		$index_enabled     = get_option( 'aips_cache_monitor_index_enabled', '1' );
+		$this->enabled     = ( $monitor_enabled !== '0' && $monitor_enabled !== 0 && $monitor_enabled !== false && $monitor_enabled !== '' )
+			&& ( $index_enabled !== '0' && $index_enabled !== 0 && $index_enabled !== false );
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
+	}
+
+	/**
+	 * Whether the Cache Monitor master switch is on (direct option read).
+	 *
+	 * @return bool
+	 */
+	public static function is_monitor_enabled(): bool {
+		$value = get_option( 'aips_cache_monitor_enabled', '0' );
+		return ( $value !== '0' && $value !== 0 && $value !== false && $value !== '' );
 	}
 
 	// -----------------------------------------------------------------------
@@ -68,7 +101,8 @@ class AIPS_Cache_Index {
 
 		try {
 			$this->upsert_index_row( $key, $value, $ttl, $group, $context );
-			$this->enforce_max_entries();
+			self::$needs_enforcement = true;
+			self::schedule_flush();
 		} catch ( Throwable $e ) {
 			// Index errors must never break cache writes.
 		}
@@ -128,16 +162,57 @@ class AIPS_Cache_Index {
 		if (!$this->enabled) {
 			return;
 		}
+		$key_hash = hash( 'sha256', $group . ':' . $key );
+		self::$pending_access[ $key_hash ] = true;
+		self::schedule_flush();
+	}
 
-		try {
-			global $wpdb;
-			$table    = $wpdb->prefix . 'aips_cache_index';
-			$key_hash = hash( 'sha256', $group . ':' . $key );
-			$now      = AIPS_DateTime::now()->timestamp();
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->update( $table, array( 'last_accessed_at' => $now ), array( 'key_hash' => $key_hash ), array( '%d' ), array( '%s' ) );
-		} catch ( Throwable $e ) {
-			// Swallow.
+	/**
+	 * Register the shutdown flush hook, once per request.
+	 *
+	 * @return void
+	 */
+	private static function schedule_flush(): void {
+		if (self::$flush_hooked) {
+			return;
+		}
+		self::$flush_hooked = true;
+		add_action( 'shutdown', array( __CLASS__, 'flush_pending' ), 100 );
+	}
+
+	/**
+	 * Persist buffered access timestamps and run max-entries enforcement once.
+	 * Idempotent; safe to call directly in tests.
+	 *
+	 * @return void
+	 */
+	public static function flush_pending(): void {
+		if (!empty( self::$pending_access )) {
+			try {
+				global $wpdb;
+				$table  = $wpdb->prefix . 'aips_cache_index';
+				$hashes = array_keys( self::$pending_access );
+				self::$pending_access = array();
+				$now          = AIPS_DateTime::now()->timestamp();
+				$placeholders = implode( ',', array_fill( 0, count( $hashes ), '%s' ) );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( $wpdb->prepare(
+					"UPDATE `{$table}` SET `last_accessed_at` = %d WHERE `key_hash` IN ({$placeholders})",
+					array_merge( array( $now ), $hashes )
+				) );
+			} catch ( Throwable $e ) {
+				self::$pending_access = array();
+			}
+		}
+
+		if (self::$needs_enforcement) {
+			self::$needs_enforcement = false;
+			try {
+				$index = new self();
+				$index->enforce_max_entries();
+			} catch ( Throwable $e ) {
+				// Swallow — enforcement retries on the next request.
+			}
 		}
 	}
 
@@ -169,6 +244,19 @@ class AIPS_Cache_Index {
 	 * Only runs when the configured driver is 'db' since other drivers cannot
 	 * be cross-checked safely.
 	 *
+	 * Two-phase: phase 1 finds candidates via the same join-based heuristic
+	 * used previously (exact match or a raw-key LIKE suffix match against
+	 * aips_cache.cache_key). That heuristic cannot see AIPS_Cache_Db_Driver's
+	 * internal per-instance prefix or its decision to hash
+	 * "{prefix}:{rawkey}" down to a sha256 digest when it exceeds
+	 * MAX_KEY_LENGTH (see namespace_key()) — so for repository-cache rows
+	 * (tier !== '') phase 2 reconstructs the exact driver prefix via
+	 * AIPS_Repository_Cache_Config::build_cache_name() and re-checks both the
+	 * raw and hashed forms before confirming a candidate is truly orphaned.
+	 * Phase 2 can only remove candidates from the delete set, never add any,
+	 * so this can never delete more rows than the original heuristic would
+	 * have — only fewer (the false positives on hashed keys).
+	 *
 	 * @return int Number of rows deleted.
 	 */
 	public function prune_orphans(): int {
@@ -185,10 +273,36 @@ class AIPS_Cache_Index {
 			$cache_table = $wpdb->prefix . 'aips_cache';
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$candidates = $wpdb->get_results(
+				"SELECT ci.id, ci.cache_key, ci.cache_group, ci.tier
+				 FROM `{$index_table}` ci
+				 LEFT JOIN `{$cache_table}` c ON c.cache_group = ci.cache_group AND (c.cache_key = ci.cache_key OR c.cache_key LIKE CONCAT('%:', REPLACE(REPLACE(REPLACE(ci.cache_key, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_')) ESCAPE '\\\\')
+				 WHERE c.cache_key IS NULL",
+				ARRAY_A
+			);
+
+			if (empty( $candidates ) || !is_array( $candidates )) {
+				return 0;
+			}
+
+			$confirmed_orphan_ids = array();
+			foreach ($candidates as $row) {
+				if ($this->is_row_confirmed_orphan( $row )) {
+					$confirmed_orphan_ids[] = (int) $row['id'];
+				}
+			}
+
+			if (empty( $confirmed_orphan_ids )) {
+				return 0;
+			}
+
+			$placeholders = implode( ',', array_fill( 0, count( $confirmed_orphan_ids ), '%d' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$deleted = $wpdb->query(
-				"DELETE ci FROM `{$index_table}` ci
-				 LEFT JOIN `{$cache_table}` c ON c.cache_group = ci.cache_group AND (c.cache_key = ci.cache_key OR c.cache_key LIKE CONCAT('%:', REPLACE(REPLACE(REPLACE(ci.cache_key, '\\\\', '\\\\\\\\'), '%', '\\\\%'), '_', '\\\\_')) ESCAPE '\\')
-				 WHERE c.cache_key IS NULL"
+				$wpdb->prepare(
+					"DELETE FROM `{$index_table}` WHERE id IN ({$placeholders})",
+					$confirmed_orphan_ids
+				)
 			);
 
 			return (int) $deleted;
@@ -198,9 +312,99 @@ class AIPS_Cache_Index {
 	}
 
 	/**
+	 * Decide whether a phase-1 candidate row is a true orphan.
+	 *
+	 * Rows with no tier (non-repository-trait cache instances, whose driver
+	 * prefix cannot be deterministically reconstructed) are trusted as-is —
+	 * phase 1's exact/LIKE-suffix match already correctly identifies orphans
+	 * for that path. Repository-cache rows (tier set) are re-verified against
+	 * both the raw-namespaced and hashed forms of the key before being
+	 * confirmed as orphaned.
+	 *
+	 * @param array $row Candidate row: id, cache_key, cache_group, tier.
+	 * @return bool True when confirmed orphaned (safe to delete).
+	 */
+	private function is_row_confirmed_orphan( array $row ): bool {
+		$raw_key = (string) $row['cache_key'];
+		$group   = (string) $row['cache_group'];
+		$tier    = (string) $row['tier'];
+
+		if ('' === $tier) {
+			return true;
+		}
+
+		$hashed_key = $this->reconstruct_hashed_cache_key( $raw_key, $tier, $group );
+		if (null !== $hashed_key && $this->cache_row_exists( $hashed_key, $group )) {
+			return false;
+		}
+
+		$prefix         = AIPS_Repository_Cache_Config::build_cache_name( $group, $tier );
+		$raw_namespaced = $prefix . ':' . $raw_key;
+		if ($this->cache_row_exists( $raw_namespaced, $group )) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Reconstruct the hashed form AIPS_Cache_Db_Driver::namespace_key() would
+	 * have produced for a repository cache row, if the namespaced key would
+	 * have exceeded MAX_KEY_LENGTH.
+	 *
+	 * @param string $raw_key Raw (un-namespaced) cache key from the index.
+	 * @param string $tier    Repository cache tier.
+	 * @param string $group   Repository cache group.
+	 * @return string|null The sha256 digest, or null if the key would not have been hashed.
+	 */
+	private function reconstruct_hashed_cache_key( string $raw_key, string $tier, string $group ): ?string {
+		$prefix     = AIPS_Repository_Cache_Config::build_cache_name( $group, $tier );
+		$namespaced = $prefix . ':' . $raw_key;
+
+		if (strlen( $namespaced ) <= AIPS_Cache_Db_Driver::MAX_KEY_LENGTH) {
+			return null;
+		}
+
+		return hash( 'sha256', $namespaced );
+	}
+
+	/**
+	 * Check whether a live row exists in the aips_cache table for an exact
+	 * key/group pair.
+	 *
+	 * @param string $cache_key   Cache key as stored in aips_cache.
+	 * @param string $cache_group Cache group.
+	 * @return bool
+	 */
+	private function cache_row_exists( string $cache_key, string $cache_group ): bool {
+		global $wpdb;
+		$cache_table = $wpdb->prefix . 'aips_cache';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$exists = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT 1 FROM `{$cache_table}` WHERE cache_key = %s AND cache_group = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$cache_key,
+				$cache_group
+			)
+		);
+
+		return null !== $exists;
+	}
+
+	/**
 	 * Rebuild the index from the DB cache table.
 	 *
 	 * Only safe when driver is 'db'. For other drivers this is a no-op.
+	 *
+	 * Note: when aips_cache.cache_key is a sha256 digest (see
+	 * AIPS_Cache_Db_Driver::namespace_key()), the original human-readable key
+	 * is not recoverable — hashing is one-way. Rebuilt index rows for such
+	 * entries will show the opaque hash as cache_key (tier/repository_class/
+	 * operation_id metadata is also lost, since aips_cache carries no such
+	 * columns). This is a pre-existing, accepted limitation of rebuilding
+	 * from the cache table alone, not something prune_orphans()'s
+	 * hashed-key reconciliation introduces or needs to resolve.
 	 *
 	 * @return int Number of rows inserted/updated.
 	 */
@@ -413,7 +617,7 @@ class AIPS_Cache_Index {
 	 *
 	 * @return void
 	 */
-	private function enforce_max_entries(): void {
+	public function enforce_max_entries(): void {
 		if ($this->max_entries <= 0) {
 			return;
 		}

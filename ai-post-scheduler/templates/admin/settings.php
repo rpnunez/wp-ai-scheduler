@@ -112,6 +112,13 @@ if (!defined('ABSPATH')) {
 						<table class="form-table" role="presentation" id="aips-cache-settings-table">
 							<?php do_settings_fields('aips-settings', 'aips_cache_section'); ?>
 						</table>
+
+						<h2><?php esc_html_e('Cache Monitor', 'ai-post-scheduler'); ?></h2>
+						<p class="description"><?php esc_html_e('Developer tooling for inspecting the cache layer. Leave disabled unless you are debugging cache behavior.', 'ai-post-scheduler'); ?></p>
+						<table class="form-table" role="presentation" id="aips-cache-monitor-settings-table">
+							<?php do_settings_fields('aips-settings', 'aips_cache_monitor_section'); ?>
+						</table>
+
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 						</p>

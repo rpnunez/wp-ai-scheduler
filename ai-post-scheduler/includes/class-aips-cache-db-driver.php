@@ -460,15 +460,36 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_
 	// -----------------------------------------------------------------------
 
 	/**
+	 * Maximum length the `cache_key` column accepts (varchar(191)).
+	 *
+	 * Repository cache keys embed the prefix/namespace plus one or more
+	 * sha256 hashes (see AIPS_Repository_Cache_Key_Builder::build_key()) and
+	 * can regularly exceed this width. When that happens, digest the
+	 * namespaced key down to a fixed-length hash so writes never silently
+	 * fail a NOT NULL/length constraint (root cause of the write-back bug:
+	 * $wpdb->replace() was rejecting oversized keys, set() correctly
+	 * reported failure via $wpdb->last_error, but the caller never surfaced
+	 * that failure, so misses never warmed the persistent cache).
+	 */
+	const MAX_KEY_LENGTH = 191;
+
+	/**
 	 * Optionally prepend the configured prefix to a cache key.
 	 *
+	 * Namespaced keys longer than the `cache_key` column width are digested
+	 * to a fixed-length sha256 hash so long repository cache keys never
+	 * silently fail to persist.
+	 *
 	 * @param string $key Raw cache key.
-	 * @return string Namespaced key.
+	 * @return string Namespaced key, hashed down if it would otherwise overflow.
 	 */
 	private function namespace_key( $key ) {
-		if (!empty( $this->prefix )) {
-			return $this->prefix . ':' . $key;
+		$namespaced = !empty( $this->prefix ) ? $this->prefix . ':' . $key : $key;
+
+		if (strlen( $namespaced ) > self::MAX_KEY_LENGTH) {
+			return hash( 'sha256', $namespaced );
 		}
-		return $key;
+
+		return $namespaced;
 	}
 }

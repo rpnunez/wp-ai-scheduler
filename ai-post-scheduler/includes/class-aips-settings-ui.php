@@ -743,6 +743,62 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render a Yes/No radio pair for a boolean option (same pattern as
+     * enable_cache_system_field_callback).
+     *
+     * @param string $option_name Full option name.
+     * @param string $description Escaped-ready description text.
+     * @return void
+     */
+    public function render_yes_no_radio( $option_name, $description ) {
+        $value   = AIPS_Config::get_instance()->get_option( $option_name );
+        $enabled = ($value !== '0' && $value !== 0 && $value !== false && $value !== '' && $value !== null);
+        ?>
+        <fieldset>
+            <label>
+                <input type="radio" name="<?php echo esc_attr( $option_name ); ?>" value="1" <?php checked( $enabled, true ); ?>>
+                <?php esc_html_e( 'Yes', 'ai-post-scheduler' ); ?>
+            </label>
+            &nbsp;&nbsp;
+            <label>
+                <input type="radio" name="<?php echo esc_attr( $option_name ); ?>" value="0" <?php checked( $enabled, false ); ?>>
+                <?php esc_html_e( 'No', 'ai-post-scheduler' ); ?>
+            </label>
+        </fieldset>
+        <p class="description"><?php echo esc_html( $description ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render a bounded number input for an integer option.
+     *
+     * @param string $option_name Full option name.
+     * @param int    $min         Minimum allowed value.
+     * @param int    $max         Maximum allowed value.
+     * @param string $description Description text.
+     * @return void
+     */
+    public function render_number_field( $option_name, $min, $max, $description ) {
+        $value = (int) AIPS_Config::get_instance()->get_option( $option_name );
+        ?>
+        <input type="number" name="<?php echo esc_attr( $option_name ); ?>"
+               value="<?php echo esc_attr( $value ); ?>"
+               min="<?php echo esc_attr( $min ); ?>" max="<?php echo esc_attr( $max ); ?>" step="1">
+        <p class="description"><?php echo esc_html( $description ); ?></p>
+        <?php
+    }
+
+    /**
+     * Sanitize a Yes/No radio value to '1'/'0'.
+     *
+     * @param mixed $value Raw input.
+     * @return string
+     */
+    public function sanitize_yes_no( $value ) {
+        return ($value === '1' || $value === 1 || $value === true) ? '1' : '0';
+    }
+
+    /**
      * Render the Cache Driver selector.
      *
      * @return void
