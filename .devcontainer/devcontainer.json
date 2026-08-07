@@ -11,8 +11,7 @@
         "search.exclude": {
           "**/vendor": true,
           "**/node_modules": true,
-          "**/.git": true,
-          "**/.aips-agent": true
+          "**/.git": true
         },
         "editor.formatOnSave": true,
         "[php]": {

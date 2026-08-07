@@ -1,8 +1,10 @@
 # Hunter's Journal — Bug Patterns & Domain Learnings
 
-This file merges two complementary journals:
-- **Part 1 — Domain & Testing Patterns** (originally `.jules/hunter.md`): WordPress domain quirks, PHPUnit gotchas, and testing best practices discovered while hunting bugs.
-- **Part 2 — Security & Error-Handling Patterns** (originally `.build/bug-hunter.md`): Vulnerability fixes, silent failure elimination, and defensive programming patterns.
+This is the canonical Bug Hunter journal. It absorbs two earlier journals that no longer exist:
+- **Part 1 — Domain & Testing Patterns**: WordPress domain quirks, PHPUnit gotchas, and testing best practices discovered while hunting bugs.
+- **Part 2 — Security & Error-Handling Patterns**: Vulnerability fixes, silent failure elimination, and defensive programming patterns.
+
+All agent journals live in `.build/` at the repository root. Do not create journals elsewhere.
 
 ---
 
@@ -75,3 +77,7 @@ This file merges two complementary journals:
 ## 2026-04-21 - [Standardized Error Logging via AIPS_Logger]
 **Learning:** Raw `error_log()` calls scatter error visibility and bypass the centralized structured logging (AIPS_Logger), making debugging in production harder.
 **Action:** Always use `AIPS_Logger::instance()->error()` (or warning/info) instead of native `error_log()` across all components (Data Management, Redis Cache Driver, AI Edit Controller) to ensure consistent error capturing, structured context, and UI visibility.
+
+## 2026-04-27 - Handle Template Data Object Type Error
+**Learning:** Legacy template variables might receive class instances instead of expected associative arrays, causing fatal `Cannot use object of type class as array` errors in PHP 8+.
+**Action:** Always check `is_object($data)` before accessing elements via `$data['key']` in templates. If it is an object, use getter methods (e.g. `$handler->get_data()`) to retrieve an array context.

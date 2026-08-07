@@ -49,6 +49,11 @@ Thumbs.db
 node_modules/
 scripts/__pycache__/
 
+# Agent scratch state — machine-generated, never committed
+.aips-agent/
+# Agent journals live only in the repo-root .build/; no nested copies
+ai-post-scheduler/.build/
+
 # Docker
 .env
 docker-compose.override.yml

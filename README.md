@@ -154,8 +154,11 @@ Benchmarks can be run manually; no CI workflow currently enforces them automatic
 - [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
 - [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — coding and architectural guidelines
+- [docs/AI_AGENT_REFERENCE.md](docs/AI_AGENT_REFERENCE.md) — subsystem inventory for AI agents
 - [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md) — MCP bridge API reference
-- [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
+- [docs/RUNBOOK.md](docs/RUNBOOK.md) — operator runbook for queue and generation incidents
+- [docs/features/ai-assistance/](docs/features/ai-assistance/) — AI Assistance user, developer, and revision-viewer guides
+- [CHANGELOG.md](CHANGELOG.md)
 
 ## Contributing
 

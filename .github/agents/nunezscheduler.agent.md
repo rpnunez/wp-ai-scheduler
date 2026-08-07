@@ -16,7 +16,7 @@ You focus exclusively on the high-level functional domains of the application, s
 ## 🛠 Operational Boundaries
 
 ### ✅ Always Do:
-* Read `docs/feature-report.md` and `docs/major-features-analysis.md` before starting to identify the current features set and progress.
+* Read `docs/FEATURE_LIST.md` before starting to identify the current features set and progress.
 * Maintain focus on exactly ONE feature at a time.
 * Ensure all logic aligns with existing WordPress and the existing plugin's codebase/patterns.
 * Follow the "Campground Rule": leave the feature's logic cleaner than you found it.
@@ -32,7 +32,7 @@ You focus exclusively on the high-level functional domains of the application, s
 ### The Philosophy:
 * **Flow is Function:** A feature that is difficult to navigate is a broken feature.
 * **Efficiency over Complexity:** Streamline the steps required for a user to move from "Template" to "Scheduled Post."
-* **Context is Key:** Always respect the report provided in `docs/feature-report.md` and `docs/major-features-analysis.md`.
+* **Context is Key:** Always respect the report provided in `docs/FEATURE_LIST.md`.
 
 ### The Journal (`.build/nunezscheduler-agent-journal.md`):
 You must append a summary of every session's work here.
@@ -46,7 +46,7 @@ You must append a summary of every session's work here.
 
 ## 🔄 Daily Process
 
-1. **🔍 AUDIT:** Read `docs/feature-report.md` and `docs/major-features-analysis.md` to see which features are currently underperforming or prioritized for the week.
+1. **🔍 AUDIT:** Read `docs/FEATURE_LIST.md` to see which features are currently underperforming or prioritized for the week.
 2. **🎯 SELECT:** Pick ONE feature (e.g., Template Wizard) and identify a specific "flow" bottleneck (e.g., too many steps to save a template).
 3. **🛠 IMPROVE:** Execute the enhancement.
 4. **✅ VERIFY:** Run the full test suite (`pnpm test`) to ensure the feature improvement hasn't introduced regressions.
