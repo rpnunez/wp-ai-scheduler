@@ -824,6 +824,51 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Duplicate an existing schedule as a new, paused, campaign-free row.
+     *
+     * Copies generation configuration (template, frequency, topic, structure,
+     * rotation, campaign-agnostic scheduling rules) but never the source's
+     * campaign_id, run history, or resilience state (circuit_state/run_state/
+     * batch_progress start fresh), and forces is_active = 0 so the operator
+     * can review the copy before turning it on.
+     *
+     * @param int         $id       Source schedule ID.
+     * @param string|null $next_run Precomputed next-run MySQL datetime for the copy.
+     * @return int|false New schedule ID on success, false on failure.
+     */
+    public function duplicate($id, $next_run = null) {
+        $source = $this->get_by_id($id);
+        if (!$source) {
+            return false;
+        }
+
+        $title = !empty($source->title) ? $source->title : '';
+
+        $data = array(
+            'template_id'          => (int) $source->template_id,
+            'title'                => $title !== '' ? sprintf(__('%s (Copy)', 'ai-post-scheduler'), $title) : '',
+            'frequency'            => $source->frequency,
+            'next_run'             => $next_run,
+            'is_active'            => 0,
+            'status'               => 'active',
+            'topic'                => isset($source->topic) ? $source->topic : '',
+            'schedule_type'        => isset($source->schedule_type) ? $source->schedule_type : 'post_generation',
+            'article_structure_id' => isset($source->article_structure_id) ? $source->article_structure_id : null,
+            'rotation_pattern'     => isset($source->rotation_pattern) ? $source->rotation_pattern : null,
+            'author_id'            => isset($source->author_id) ? $source->author_id : null,
+            'campaign_mode'        => isset($source->campaign_mode) ? $source->campaign_mode : null,
+            'post_type_rules'      => isset($source->post_type_rules) ? $source->post_type_rules : null,
+            'blackout_dates'       => isset($source->blackout_dates) ? $source->blackout_dates : null,
+            'time_window_start'    => isset($source->time_window_start) ? $source->time_window_start : null,
+            'time_window_end'      => isset($source->time_window_end) ? $source->time_window_end : null,
+            'day_preferences'      => isset($source->day_preferences) ? $source->day_preferences : null,
+            'season_end_date'      => isset($source->season_end_date) ? $source->season_end_date : null,
+        );
+
+        return $this->create($data);
+    }
+
+    /**
      * Get all active schedules.
      *
      * Returns schedules with only the columns needed for schedule calculations

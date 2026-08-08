@@ -149,4 +149,13 @@ interface AIPS_Schedule_Repository_Interface {
 	 * @return int
 	 */
 	public function get_post_count_for_schedules(array $ids);
+
+	/**
+	 * Duplicate an existing schedule as a new, paused, campaign-free row.
+	 *
+	 * @param int         $id       Source schedule ID.
+	 * @param string|null $next_run Precomputed next-run MySQL datetime for the copy.
+	 * @return int|false New schedule ID on success, false on failure.
+	 */
+	public function duplicate($id, $next_run = null);
 }

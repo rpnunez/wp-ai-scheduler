@@ -79,4 +79,12 @@ interface AIPS_Notifications_Repository_Interface {
 	 * @return array
 	 */
 	public function get_type_counts_for_window($seconds, array $types = array());
+
+	/**
+	 * Fetch unread `scheduler_error` notifications, keyed by the
+	 * `schedule_id` recorded in each notification's `meta` payload.
+	 *
+	 * @return array<int,object> Map of schedule_id => notification row.
+	 */
+	public function get_unread_scheduler_errors_by_schedule();
 }
