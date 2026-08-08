@@ -15,7 +15,8 @@ services:
       - ./mariadb-conf/my.cnf:/etc/mysql/conf.d/my_custom.cnf:ro
     ports:
       # Expose MySQL port for external database tools (e.g., MySQL Workbench, TablePlus)
-      - "3307:3306"
+      # Overridable via MYSQL_PORT so QA build stacks can run alongside this one.
+      - "${MYSQL_PORT:-3307}:3306"
     healthcheck:
       test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot" ]
       interval: 10s
@@ -31,8 +32,8 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8080:80"      # WordPress site
-      - "9003:9003"    # Xdebug
+      - "${WP_PORT:-8080}:80"          # WordPress site
+      - "${XDEBUG_PORT:-9003}:9003"    # Xdebug
     environment:
       # WordPress DB settings used by entrypoint WP-CLI commands
       WORDPRESS_DB_HOST: db:3306
@@ -47,7 +48,7 @@ services:
       WP_ADMIN_PASSWORD: admin
       WP_ADMIN_EMAIL: admin@example.com
       WP_SITE_TITLE: "WP AI Scheduler Dev"
-      WP_SITE_URL: http://localhost:8080
+      WP_SITE_URL: http://localhost:${WP_PORT:-8080}
 
       # Enable entrypoint debug output
       ENTRYPOINT_DEBUG: "1"
@@ -91,7 +92,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8082:80"
+      - "${PHPMYADMIN_PORT:-8082}:80"
     environment:
       PMA_HOST: db
       PMA_PORT: 3306

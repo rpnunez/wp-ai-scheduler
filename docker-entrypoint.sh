@@ -63,10 +63,22 @@ echo "[entrypoint] MySQL is up."
 #============================================================
 # Check if wp-config.php exists. If not, perform a fresh WordPress installation.
 if [ ! -f /var/www/html/wp-config.php ]; then
-  echo "[entrypoint] WordPress not found in /var/www/html — downloading..."
-
-  # Download WordPress core files. --allow-root is needed because we are running as root in Docker.
-  wp core download --path=/var/www/html --allow-root
+  # Prefer the core bundled in the base image over a network download. The
+  # image tag pins a WordPress version, so downloading would fetch *latest*
+  # and silently disagree with that pin. It is also faster, and lets the
+  # container boot without outbound network access.
+  if [ ! -f /var/www/html/wp-settings.php ]; then
+    if [ -d /usr/src/wordpress ]; then
+      echo "[entrypoint] Installing WordPress core bundled in the image (/usr/src/wordpress)..."
+      cp -a /usr/src/wordpress/. /var/www/html/
+    else
+      echo "[entrypoint] WordPress not found in /var/www/html — downloading..."
+      # --allow-root is needed because we are running as root in Docker.
+      wp core download --path=/var/www/html --allow-root
+    fi
+  else
+    echo "[entrypoint] WordPress core files already present; skipping download."
+  fi
 
   echo "[entrypoint] Creating wp-config.php..."
   # Generate wp-config.php with database credentials.

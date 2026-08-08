@@ -64,6 +64,22 @@ make urls               # Print all service URLs
 
 Local URLs (Docker): WordPress `http://localhost:8080` · Admin `http://localhost:8080/wp-admin` (admin/admin) · phpMyAdmin `http://localhost:8082`
 
+QA builds — bundle N open PRs onto one branch and run it on a copy of production data:
+
+```bash
+make qa-seed PRS=1887,1888 FILE=dump.sql UPLOADS=uploads.zip   # cache prod DB + media (once)
+make qa-build PRS=1887,1888                # branch off main, merge the PRs
+make qa-build PRS=1887,1888 PR=1           # ...and open a draft PR for the bundle
+make qa-up PRS=1887,1888                   # isolated stack on its own ports
+make qa-list                               # every build, its ports and state
+make qa-down PRS=1887,1888 PURGE=1         # stop and delete
+```
+
+Each build runs in its own compose project on a random free port (WordPress 8100-8299,
+pinnable with `PORT=`), so QA builds coexist with `make up` on 8080 and with each other.
+A PR that conflicts is skipped and reported rather than failing the bundle.
+See `docs/QA_BUILDS.md`.
+
 Performance benchmarks:
 
 ```bash
