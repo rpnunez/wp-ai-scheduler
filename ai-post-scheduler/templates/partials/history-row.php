@@ -38,6 +38,16 @@ if (!defined('ABSPATH')) {
         <div class="aips-error-message" style="font-size: 12px; color: #dc3232; margin-top: 4px;"><?php echo esc_html($item->error_message); ?></div>
         <?php endif; ?>
     </td>
+    <td class="column-post-type">
+        <?php if (!empty($item->post_type)): ?>
+        <?php $post_type_obj = get_post_type_object($item->post_type); ?>
+        <span class="aips-badge aips-badge-neutral">
+            <?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $item->post_type); ?>
+        </span>
+        <?php else: ?>
+        <span class="aips-meta-text">&mdash;</span>
+        <?php endif; ?>
+    </td>
     <td class="column-status">
         <?php
         $status_class = 'aips-badge ';

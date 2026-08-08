@@ -241,6 +241,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'campaign_id' => 0,
             'author_id' => 0,
             'correlation_id' => '',
+            'post_type' => '',
             'domain' => '',
             'actor' => '',
             'date_from' => '',
@@ -286,14 +287,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
                 t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
@@ -337,6 +338,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['correlation_id'])) {
             $where_clauses[] = "h.correlation_id = %s";
             $where_args[] = sanitize_text_field($args['correlation_id']);
+        }
+
+        if (!empty($args['post_type'])) {
+            $where_clauses[] = "h.post_type = %s";
+            $where_args[] = sanitize_key($args['post_type']);
         }
 
         if (!empty($args['domain'])) {
@@ -463,6 +469,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'template_id' => 0,
             'campaign_id' => 0,
             'author_id' => 0,
+            'post_type' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
         );
@@ -484,6 +491,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['template_id'])) {
             $where_clauses[] = 'h.template_id = %d';
             $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['post_type'])) {
+            $where_clauses[] = 'h.post_type = %s';
+            $where_args[] = sanitize_key($args['post_type']);
         }
 
         if (!empty($args['campaign_id'])) {
@@ -1098,10 +1110,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
+            'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : null,
             'created_at' => absint($data['created_at']),
         );
-        
-        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
+
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -1132,7 +1145,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $update_data['post_id'] = absint($data['post_id']);
             $format[] = '%d';
         }
-        
+
+        if (isset($data['post_type'])) {
+            $update_data['post_type'] = sanitize_key($data['post_type']);
+            $format[] = '%s';
+        }
+
         if (isset($data['generated_title'])) {
             $update_data['generated_title'] = sanitize_text_field($data['generated_title']);
             $format[] = '%s';

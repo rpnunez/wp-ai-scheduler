@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.1.0
+ * Version: 3.5.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.1.0');
+    define('AIPS_VERSION', '3.5.1');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -529,6 +529,21 @@ final class AI_Post_Scheduler {
                 'query_var'         => false,
             )
         );
+
+        // Integration bridge: listens for 'aips_post_generated' and
+        // 'aips_template_changed' in every request context (cron and AJAX
+        // both trigger generation). Registered as lazy closures rather than
+        // an eagerly-constructed object — AIPS_Integration_Manager resolves
+        // AIPS_AI_Service (and, through it, AIPS_Resilience_Service, whose
+        // constructor reads a transient) via the container, which is not
+        // lazy, so constructing it here would do real work on every request
+        // even when no post is ever generated.
+        add_action('aips_post_generated', function ($post_id, $template_or_context, $history_id, $context) {
+            (new AIPS_Integration_Manager())->handle_post_generated($post_id, $template_or_context, $history_id, $context);
+        }, 10, 4);
+        add_action('aips_template_changed', function ($args) {
+            (new AIPS_Integration_Manager())->handle_template_deleted($args);
+        });
     }
 
     /**

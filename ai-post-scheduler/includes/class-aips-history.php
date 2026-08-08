@@ -163,6 +163,7 @@ class AIPS_History {
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
         $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
         $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
@@ -179,6 +180,7 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
             'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
@@ -1241,6 +1243,7 @@ class AIPS_History {
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
         $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
         $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
@@ -1252,6 +1255,7 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
             'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
@@ -1434,6 +1438,7 @@ class AIPS_History {
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
         $domain_filter = isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '';
         $actor_filter = isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '';
+        $post_type_filter = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
         $correlation_id = isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '';
         $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
         $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
@@ -1444,6 +1449,7 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
             'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
@@ -1454,6 +1460,7 @@ class AIPS_History {
 
         // Pass handler to template for helper methods
         $history_handler = $this;
+        $selectable_post_types = AIPS_Utilities::get_selectable_post_types();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }

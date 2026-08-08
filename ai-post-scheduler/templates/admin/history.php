@@ -10,6 +10,8 @@ $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 $domain_filter = isset($domain_filter) ? $domain_filter : (isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '');
 $actor_filter = isset($actor_filter) ? $actor_filter : (isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '');
+$post_type_filter = isset($post_type_filter) ? $post_type_filter : (isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '');
+$selectable_post_types = isset($selectable_post_types) ? $selectable_post_types : AIPS_Utilities::get_selectable_post_types();
 $correlation_filter = isset($correlation_id) ? $correlation_id : (isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '');
 $date_from = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '');
 $date_to = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '');
@@ -86,6 +88,14 @@ if (is_object($history)) {
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
+                    <select id="aips-filter-post-type" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+                        <option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
+                            <?php echo esc_html($post_type_info['label']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
                         <span class="dashicons dashicons-filter"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
@@ -144,6 +154,7 @@ if (is_object($history)) {
                                         <input id="aips-cb-select-all" type="checkbox">
                                     </td>
                                     <th class="column-title"><?php esc_html_e('Title / Topic', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-post-type"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
                                     <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
                                     <th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
                                     <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>

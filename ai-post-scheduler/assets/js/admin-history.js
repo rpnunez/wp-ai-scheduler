@@ -509,6 +509,9 @@
 		/** @type {string} Actor filter value (cron, manual, etc.) */
 		actorFilter: '',
 
+		/** @type {string} Post type filter value (post, page, or a custom post type slug) */
+		postTypeFilter: '',
+
 		/** @type {string} Correlation ID filter for request tracing */
 		correlationId: '',
 
@@ -549,6 +552,7 @@
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.postTypeFilter = $('#aips-filter-post-type').val() || '';
 			this.correlationId = $('#aips-filter-correlation').val() || '';
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
@@ -1395,6 +1399,7 @@
 					search: self.searchQuery,
 					domain: self.domainFilter,
 					actor: self.actorFilter,
+					post_type: self.postTypeFilter,
 					correlation_id: self.correlationId,
 					date_from: self.dateFrom,
 					date_to: self.dateTo,
@@ -1501,13 +1506,14 @@
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.postTypeFilter = $('#aips-filter-post-type').val() || '';
 			this.correlationId = $('#aips-filter-correlation').val() || '';
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
 
 			// Reflect change in the URL without reloading.
 			var url = new URL(window.location.href);
-			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['correlation_id', this.correlationId], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
+			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['post_type', this.postTypeFilter], ['correlation_id', this.correlationId], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
 				if (entry[1]) {
 					url.searchParams.set(entry[0], entry[1]);
 				} else {
@@ -1614,6 +1620,7 @@
 			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
 			form.append($('<input type="hidden" name="domain">').val(this.domainFilter));
 			form.append($('<input type="hidden" name="actor">').val(this.actorFilter));
+			form.append($('<input type="hidden" name="post_type">').val(this.postTypeFilter));
 			form.append($('<input type="hidden" name="correlation_id">').val(this.correlationId));
 			form.append($('<input type="hidden" name="date_from">').val(this.dateFrom));
 			form.append($('<input type="hidden" name="date_to">').val(this.dateTo));

@@ -1,3 +1,31 @@
+## [3.5.1] - 2026-07-25
+
+### Changed
+- **Advanced Custom Meta Fields toggle for native WordPress Custom Fields**: protected/internal meta keys (`_`-prefixed) are no longer hard-rejected by the "WordPress Custom Fields" integration. They stay hidden from the fields dropdown by default, but a new "Show Advanced Custom Meta Fields" radio in the Template editor's Integrations panel lets an admin opt in to see and map them, and they can now be saved and written like any other field once selected.
+
+## [3.5.0] - 2026-07-25
+
+### Added
+- **Native WordPress Custom Field support**: a new "WordPress Custom Fields" integration lets a Template generate content directly into plain post meta on any post type — native (`post`/`page`) or custom — with no ACF (or any other plugin) required. Fields registered via `register_post_meta()` are auto-discovered; the Template editor's Integrations panel also lets an admin hand-add any other meta key via a growable "+ Add Another Field" repeater, with protected/internal meta keys (`_`-prefixed) rejected both in the picker and on save.
+
+## [3.4.0] - 2026-07-25
+
+### Added
+- **Post Type Awareness in History & Content**: `aips_history` now records the post type of every post it generates (backfilled for existing rows via a one-time migration). The History page and the Content page (Generated Posts / Partial Generations / Pending Review tabs) all gained a "Type" column and a post type filter, so a mixed library of `post` and custom-post-type content stays fully navigable.
+
+### Fixed
+- **History link hidden on custom post types**: The "View AI History" link/row-action was incorrectly hidden on any post type other than `post`, even when AIPS generated that post. It now shows correctly for any post type.
+
+## [3.3.0] - 2026-07-25
+
+### Added
+- **Per-Template Post Type**: Templates can now target any public WordPress post type (native or custom, including CPTs registered by other plugins) via a new "Post Type" selector in the Template editor. The choice is locked once the template is saved — it can't be changed on an existing template — since changing it later would orphan already-generated posts and any Integrations field mappings scoped to the old type. The Categories/Tags fields now hide themselves for post types that don't support those taxonomies, and the Integrations panel's ACF field-group picker is now scoped to the template's actual post type instead of showing every field group on the site.
+
+## [3.2.0] - 2026-07-24
+
+### Added
+- **Third-Party Plugin Bridge**: New `AIPS_Integration_Interface` contract, `AIPS_Integration_Registry`, and `AIPS_Integration_Manager` let AIPS generate content directly into fields owned by other plugins. Ships with an Advanced Custom Fields (ACF) adapter — map a template's fields to an ACF field group (with per-field custom prompts) in the Template editor's new "Third-Party Plugin Integrations" panel, and generated posts get those ACF fields populated automatically. Other plugins can register their own adapter via the `aips_integrations_registry` filter without any AIPS core changes.
+
 ## [3.0.1] - 2026-07-07
 
 ### Added
