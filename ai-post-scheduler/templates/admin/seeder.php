@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 				<form id="aips-seeder-form">
 					<div class="aips-form-section">
 						<h3 class="aips-form-section-title">
-							<span class="dashicons dashicons-admin-generic"></span>
+							<span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
 							<?php esc_html_e('Seed Configuration', 'ai-post-scheduler'); ?>
 						</h3>
 
@@ -61,7 +61,7 @@ if (!defined('ABSPATH')) {
 
 <div class="aips-form-actions">
 <button type="submit" id="aips-seeder-submit" class="aips-btn aips-btn-primary aips-btn-lg">
-<span class="dashicons dashicons-database-add"></span>
+<span class="dashicons dashicons-database-add" aria-hidden="true"></span>
 <?php esc_html_e('Run Seeder', 'ai-post-scheduler'); ?>
 </button>
 <span class="spinner" style="float: none; margin-top: 4px;"></span>

@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-content-panel aips-telemetry-records-panel">
 					<div class="aips-panel-header aips-telemetry-records-header">
 						<h2>
-							<span class="dashicons dashicons-list-view"></span>
+							<span class="dashicons dashicons-list-view" aria-hidden="true"></span>
 							<?php esc_html_e('Records', 'ai-post-scheduler'); ?>
 						</h2>
 						<div class="aips-telemetry-header-actions">
@@ -41,7 +41,7 @@ if (!defined('ABSPATH')) {
 								</select>
 							</label>
 							<button type="button" class="aips-btn aips-btn-secondary aips-telemetry-refresh">
-								<span class="dashicons dashicons-update"></span>
+								<span class="dashicons dashicons-update" aria-hidden="true"></span>
 								<?php esc_html_e('Refresh', 'ai-post-scheduler'); ?>
 							</button>
 						</div>
@@ -96,11 +96,11 @@ if (!defined('ABSPATH')) {
 							<div class="aips-telemetry-filter-actions">
 								<div class="aips-telemetry-filter-buttons">
 									<button type="button" class="aips-btn aips-btn-primary" id="aips-telemetry-apply-filters">
-										<span class="dashicons dashicons-filter"></span>
+										<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 										<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 									</button>
 									<button type="button" class="aips-btn aips-btn-secondary" id="aips-telemetry-reset-filters">
-										<span class="dashicons dashicons-update"></span>
+										<span class="dashicons dashicons-update" aria-hidden="true"></span>
 										<?php esc_html_e('Reset Filters', 'ai-post-scheduler'); ?>
 									</button>
 								</div>
@@ -136,11 +136,11 @@ if (!defined('ABSPATH')) {
 							</div>
 							<div class="aips-toolbar-right aips-btn-group">
 								<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-telemetry-prev" disabled>
-									<span class="dashicons dashicons-arrow-left-alt2"></span>
+									<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 									<span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
 								</button>
 								<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-telemetry-next" disabled>
-									<span class="dashicons dashicons-arrow-right-alt2"></span>
+									<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
 									<span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
 								</button>
 							</div>
@@ -152,7 +152,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-content-panel aips-telemetry-charts-panel">
 					<div class="aips-panel-header">
 						<h2>
-							<span class="dashicons dashicons-chart-area"></span>
+							<span class="dashicons dashicons-chart-area" aria-hidden="true"></span>
 							<?php esc_html_e('Charts', 'ai-post-scheduler'); ?>
 						</h2>
 					</div>
@@ -207,7 +207,7 @@ if (!defined('ABSPATH')) {
 </script>
 
 <script type="text/html" id="aips-tmpl-telemetry-refresh-button-content">
-	<span class="dashicons dashicons-update"></span>
+	<span class="dashicons dashicons-update" aria-hidden="true"></span>
 	{{label}}
 </script>
 
@@ -222,7 +222,7 @@ if (!defined('ABSPATH')) {
 		<td>{{inserted_at}}</td>
 		<td>
 			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-telemetry-view-details" data-telemetry-id="{{raw_id}}" aria-label="{{view_details_label}}">
-				<span class="dashicons dashicons-visibility"></span>
+				<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
 			</button>
 		</td>
 	</tr>

@@ -161,7 +161,8 @@
 
 			var html = AIPS.Templates.renderRaw('aips-tmpl-selected-post', {
 				id: postId,
-				title: AIPS.Templates.escape(postTitle)
+				title: AIPS.Templates.escape(postTitle),
+				closeLabel: AIPS.Templates.escape(aipsTaxonomyL10n.closeLabel || 'Remove post')
 			});
 
 			$('#selected-posts-container').append(html);

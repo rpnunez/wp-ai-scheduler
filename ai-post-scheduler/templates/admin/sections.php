@@ -18,7 +18,7 @@ if (!isset($sections) || !is_array($sections)) {
 				</div>
 				<div class="aips-page-actions">
 					<button class="aips-btn aips-btn-primary aips-add-section-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
+						<span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
 						<?php esc_html_e('Add Section', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -57,7 +57,7 @@ if (!isset($sections) || !is_array($sections)) {
 								<div class="aips-variable-code-cell">
 									<code><?php echo esc_html($section->section_key); ?></code>
 									<button type="button" class="aips-copy-btn" data-clipboard-text="{{section:<?php echo esc_attr($section->section_key); ?>}}" aria-label="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>">
-										<span class="dashicons dashicons-admin-page"></span>
+										<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
 									</button>
 								</div>
 							</td>
@@ -65,22 +65,22 @@ if (!isset($sections) || !is_array($sections)) {
 							<td class="column-active">
 								<?php if ($section->is_active) : ?>
 									<span class="aips-badge aips-badge-success">
-										<span class="dashicons dashicons-yes-alt"></span>
+										<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 										<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
 									</span>
 								<?php else : ?>
 									<span class="aips-badge aips-badge-neutral">
-										<span class="dashicons dashicons-minus"></span>
+										<span class="dashicons dashicons-minus" aria-hidden="true"></span>
 										<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
 									</span>
 								<?php endif; ?>
 							</td>
 							<td class="column-actions">
 								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-edit"></span>
+									<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 								</button>
 								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-trash"></span>
+									<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 								</button>
 							</td>
 						</tr>
@@ -96,7 +96,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<p class="aips-empty-state-description"><?php esc_html_e('No prompt sections match your search criteria.', 'ai-post-scheduler'); ?></p>
 				<div class="aips-empty-state-actions">
 					<button type="button" class="aips-btn aips-btn-primary aips-clear-section-search-btn">
-						<span class="dashicons dashicons-dismiss"></span>
+						<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -109,7 +109,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<p class="aips-empty-state-description"><?php esc_html_e('Create reusable prompt sections that can be inserted into your article structures using placeholders like {{section:key}}.', 'ai-post-scheduler'); ?></p>
 				<div class="aips-empty-state-actions">
 					<button class="aips-btn aips-btn-primary aips-add-section-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
+						<span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
 						<?php esc_html_e('Create First Section', 'ai-post-scheduler'); ?>
 					</button>
 				</div>

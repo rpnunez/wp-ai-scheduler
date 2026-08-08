@@ -27,15 +27,15 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 				</div>
 				<div class="aips-btn-group" style="gap: 8px;">
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-onboarding-skip">
-						<span class="dashicons dashicons-dismiss"></span>
+						<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 						<?php esc_html_e('Skip Onboarding', 'ai-post-scheduler'); ?>
 					</button>
 					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings') . '#content-strategy'); ?>">
-						<span class="dashicons dashicons-admin-settings"></span>
+						<span class="dashicons dashicons-admin-settings" aria-hidden="true"></span>
 						<?php esc_html_e('Open Settings', 'ai-post-scheduler'); ?>
 					</a>
 					<button type="button" class="aips-btn aips-btn-danger" id="aips-onboarding-reset">
-						<span class="dashicons dashicons-update"></span>
+						<span class="dashicons dashicons-update" aria-hidden="true"></span>
 						<?php esc_html_e('Restart Wizard', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -135,7 +135,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 					</table>
 					<p>
 						<button type="submit" class="aips-btn aips-btn-primary" id="aips-onboarding-save-strategy">
-							<span class="dashicons dashicons-yes-alt"></span>
+							<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 							<?php esc_html_e('Save Content Strategy', 'ai-post-scheduler'); ?>
 						</button>
 					</p>
@@ -200,7 +200,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						</table>
 						<p>
 							<button type="submit" class="aips-btn aips-btn-primary" id="aips-onboarding-create-author" <?php disabled(!$strategy_complete); ?>>
-								<span class="dashicons dashicons-admin-users"></span>
+								<span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
 								<?php esc_html_e('Create Author', 'ai-post-scheduler'); ?>
 							</button>
 						</p>
@@ -253,7 +253,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						</table>
 						<p>
 							<button type="submit" class="aips-btn aips-btn-primary" id="aips-onboarding-create-template" <?php disabled(!$author_complete); ?>>
-								<span class="dashicons dashicons-media-text"></span>
+								<span class="dashicons dashicons-media-text" aria-hidden="true"></span>
 								<?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
 							</button>
 						</p>
@@ -283,7 +283,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 					<p class="description"><?php esc_html_e('This will generate topic ideas for your onboarding author.', 'ai-post-scheduler'); ?></p>
 					<p>
 						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-topics" <?php disabled(!$template_complete || !$ai_engine_active); ?>>
-							<span class="dashicons dashicons-lightbulb"></span>
+							<span class="dashicons dashicons-lightbulb" aria-hidden="true"></span>
 							<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 						</button>
 						<span class="spinner" id="aips-onboarding-topics-spinner" style="float:none;"></span>
@@ -317,7 +317,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 					</p>
 					<p>
 						<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-generate-post" <?php disabled(!$topics_complete || !$ai_engine_active); ?>>
-							<span class="dashicons dashicons-edit"></span>
+							<span class="dashicons dashicons-edit" aria-hidden="true"></span>
 							<?php esc_html_e('Generate Post', 'ai-post-scheduler'); ?>
 						</button>
 						<span class="spinner" id="aips-onboarding-post-spinner" style="float:none;"></span>
@@ -335,11 +335,11 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 				<p class="description"><?php esc_html_e('Mark onboarding as completed. You can still run this wizard later from System Status.', 'ai-post-scheduler'); ?></p>
 				<p>
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-onboarding-complete" <?php disabled(!$post_complete); ?>>
-						<span class="dashicons dashicons-yes"></span>
+						<span class="dashicons dashicons-yes" aria-hidden="true"></span>
 						<?php esc_html_e('Finish Onboarding', 'ai-post-scheduler'); ?>
 					</button>
 					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('dashboard')); ?>" style="margin-left: 8px;">
-						<span class="dashicons dashicons-admin-home"></span>
+						<span class="dashicons dashicons-admin-home" aria-hidden="true"></span>
 						<?php esc_html_e('Go to Dashboard', 'ai-post-scheduler'); ?>
 					</a>
 				</p>

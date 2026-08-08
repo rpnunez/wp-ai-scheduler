@@ -82,7 +82,7 @@ $render_campaign_rows = static function($campaigns, $archived = false) {
 				</div>
 				<div class="aips-page-actions">
 					<a href="<?php echo esc_url($campaign_wizard_url); ?>" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-plus-alt"></span>
+						<span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
 						<?php esc_html_e('Add New Campaign', 'ai-post-scheduler'); ?>
 					</a>
 				</div>
