@@ -74,6 +74,9 @@ class AIPS_Automations_Controller {
 			'taxonomy' => array(
 				'label' => __('Taxonomy', 'ai-post-scheduler'),
 			),
+			'content-enhancements' => array(
+				'label' => __('Content Enhancements', 'ai-post-scheduler'),
+			),
 		);
 
 		if (self::TAB_AUTHOR_TOPICS === $active_tab) {
@@ -290,7 +293,7 @@ class AIPS_Automations_Controller {
 
 		return in_array(
 			$tab,
-			array('schedules', 'campaigns', 'templates', 'authors', 'sources', 'internal-links', 'taxonomy'),
+			array('schedules', 'campaigns', 'templates', 'authors', 'sources', 'internal-links', 'taxonomy', 'content-enhancements'),
 			true
 		);
 	}
@@ -345,6 +348,9 @@ class AIPS_Automations_Controller {
 				break;
 			case 'taxonomy':
 				$this->render_taxonomy_tab();
+				break;
+			case 'content-enhancements':
+				$this->render_content_enhancements_tab();
 				break;
 			case 'schedules':
 			default:
@@ -485,5 +491,25 @@ class AIPS_Automations_Controller {
 		}
 
 		return absint($author_id);
+	}
+
+	/**
+	 * Render content enhancements tab content.
+	 *
+	 * @return void
+	 */
+	private function render_content_enhancements_tab() {
+		$config = AIPS_Config::get_instance();
+		$content_enhancements_repository = new AIPS_Content_Enhancement_Repository();
+		$content_enhancements = $content_enhancements_repository->all();
+		$content_enhancement_allowlist = $config->get_option('aips_content_enhancement_provider_allowlist', array());
+		if (!is_array($content_enhancement_allowlist)) {
+			$content_enhancement_allowlist = array();
+		}
+		$content_enhancement_default_disclosure = $config->get_option('aips_content_enhancement_default_disclosure_text');
+		$content_enhancement_default_cta = $config->get_option('aips_content_enhancement_default_cta_text');
+
+		$embedded = true;
+		include AIPS_PLUGIN_DIR . 'templates/admin/content-enhancements.php';
 	}
 }

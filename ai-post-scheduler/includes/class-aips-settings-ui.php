@@ -13,6 +13,19 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Settings_UI {
 
+	/**
+	 * Sanitize content enhancement post statuses.
+	 *
+	 * @param mixed $statuses Raw statuses.
+	 * @return array<int, string>
+	 */
+	public function sanitize_content_enhancement_post_statuses($statuses) {
+		$statuses = is_array($statuses) ? $statuses : array();
+		$allowed = array('draft', 'future', 'publish');
+
+		return array_values(array_intersect(array_map('sanitize_key', $statuses), $allowed));
+	}
+
     /**
      * Render the description for the general settings section.
      *
@@ -57,6 +70,39 @@ class AIPS_Settings_UI {
     public function developers_section_callback() {
         echo '<p>' . esc_html__('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler') . '</p>';
     }
+
+	public function content_enhancement_section_callback() {
+		echo '<p>' . esc_html__('Configure affiliate disclosure defaults and where content enhancement tools may be inserted.', 'ai-post-scheduler') . '</p>';
+	}
+
+	public function content_enhancement_disclosures_enabled_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_content_enhancement_disclosures_enabled', true);
+		?>
+		<label><input type="checkbox" name="aips_content_enhancement_disclosures_enabled" value="1" <?php checked($value, 1); ?>> <?php esc_html_e('Show disclosure copy near each rendered content enhancement.', 'ai-post-scheduler'); ?></label>
+		<?php
+	}
+
+	public function content_enhancement_default_disclosure_text_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_content_enhancement_default_disclosure_text');
+		?>
+		<textarea name="aips_content_enhancement_default_disclosure_text" class="large-text" rows="3"><?php echo esc_textarea($value); ?></textarea>
+		<?php
+	}
+
+	public function content_enhancement_allowed_post_statuses_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_content_enhancement_allowed_post_statuses', array('draft', 'future'));
+		$value = is_array($value) ? $value : array();
+		$statuses = array(
+			'draft' => __('Draft-only posts', 'ai-post-scheduler'),
+			'future' => __('Scheduled posts', 'ai-post-scheduler'),
+			'publish' => __('Published posts', 'ai-post-scheduler'),
+		);
+		foreach ($statuses as $status => $label) {
+			?>
+			<label style="display:block;"><input type="checkbox" name="aips_content_enhancement_allowed_post_statuses[]" value="<?php echo esc_attr($status); ?>" <?php checked(in_array($status, $value, true)); ?>> <?php echo esc_html($label); ?></label>
+			<?php
+		}
+	}
 
     /**
      * Render the default post status setting field.
