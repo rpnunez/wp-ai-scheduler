@@ -85,7 +85,49 @@ class AIPS_Ajax_Response {
 			$response = array_merge($response, $data);
 		}
 
+		/**
+		 * Filters the AJAX error response array before it is sent to the client.
+		 *
+		 * Allows middleware (e.g. AIPS_Ajax_Middleware) to enrich error payloads
+		 * with extra fields such as `retry_after` without touching individual
+		 * controllers.
+		 *
+		 * @since 2.7.0
+		 *
+		 * @param array  $response The outgoing response array (has 'message' and 'code' keys at minimum).
+		 * @param string $code     The error code passed to this method.
+		 */
+		$response = apply_filters('aips_ajax_error_response', $response, $code);
+
 		wp_send_json_error($response, $http_status);
+	}
+
+	/**
+	 * Send a WP_Error as an AJAX error response.
+	 *
+	 * Extracts the error code, message, and any additional data from the
+	 * WP_Error object and routes them through the standard error() method so
+	 * the 'aips_ajax_error_response' filter fires automatically.
+	 *
+	 * Controllers that receive a WP_Error from an AI or resilience service
+	 * should call this instead of error(array('message' => ...)) so that
+	 * codes like 'rate_limit_exceeded' are enriched centrally.
+	 *
+	 * @param WP_Error $wp_error   The error object to forward.
+	 * @param int      $http_status Optional HTTP status code. Default 200.
+	 * @return void Exits execution after sending JSON response.
+	 */
+	public static function wp_error( WP_Error $wp_error, $http_status = 200 ) {
+		$code    = $wp_error->get_error_code();
+		$message = $wp_error->get_error_message();
+		$data    = $wp_error->get_error_data();
+		$extra   = is_array( $data ) ? $data : array();
+
+		self::error(
+			array_merge( array( 'message' => $message, 'code' => $code ), $extra ),
+			$code,
+			$http_status
+		);
 	}
 
 	/**

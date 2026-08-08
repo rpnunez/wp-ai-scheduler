@@ -174,9 +174,15 @@
 
 						Promise.allSettled(requests).then((results) => {
 							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
+							const rateLimited = results.find((r) => r.status === 'fulfilled' && r.value && !r.value.success && r.value.data && r.value.data.code === 'rate_limit_exceeded');
 							if (successCount > 0) {
 								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
-								setTimeout(() => location.reload(), 800);
+								if (rateLimited) {
+									setTimeout(() => AIPS.Utilities.showToast(rateLimited.value.data.message || AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning'), 1200);
+								}
+								setTimeout(() => location.reload(), rateLimited ? 4000 : 800);
+							} else if (rateLimited) {
+								AIPS.Utilities.showToast(rateLimited.value.data.message || AIPS.Utilities.buildRateLimitMessage(rateLimited.value.data.retry_after), 'warning');
 							} else {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 							}
@@ -478,10 +484,7 @@
 									AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
 									setTimeout(() => location.reload(), 1000);
 								} else {
-									AIPS.Utilities.showToast(
-										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating,
-										'error'
-									);
+									AIPS.Utilities.showAjaxError(response, aipsAuthorsL10n.errorGenerating);
 								}
 							},
 							error: () => {
@@ -2504,9 +2507,10 @@
 					AIPS.Utilities.resetButton($btn);
 				}
 			});
-		}
+		},
+
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		queueTopics: [],

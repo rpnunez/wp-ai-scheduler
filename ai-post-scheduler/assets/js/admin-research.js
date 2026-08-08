@@ -86,7 +86,7 @@
                         AIPS.renderResearchResults(response.data);
                         $('#load-topics').trigger('click');
                     } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -138,7 +138,7 @@
                         AIPS.renderResearchResults(response.data);
                         $('#load-topics').trigger('click');
                     } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -455,7 +455,7 @@
                                 if (response.success) {
                                     $('#load-topics').trigger('click');
                                 } else {
-                                    AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                                    AIPS.Utilities.showAjaxError(response);
                                 }
                             }
                         });
@@ -505,7 +505,7 @@
                         $('#bulk-schedule-section').hide();
                         $('#load-topics').trigger('click');
                     } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -587,7 +587,7 @@
                     if (response.success) {
                         AIPS.renderGapResults(response.data.gaps);
                     } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -680,7 +680,7 @@
                             $('#load-topics').trigger('click');
                         }, 500);
                     } else {
-                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -828,7 +828,7 @@
                                         AIPS.researchSelectedTopics = [];
                                         $('#load-topics').trigger('click');
                                     } else {
-                                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                                        AIPS.Utilities.showAjaxError(response);
                                     }
                                 }
                             });

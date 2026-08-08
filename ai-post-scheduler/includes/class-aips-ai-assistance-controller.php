@@ -94,7 +94,7 @@ class AIPS_AI_Assistance_Controller {
 		$result = $this->service->get_field_suggestion( $field_config, $session_id, $user_id );
 
 		if ( is_wp_error( $result ) ) {
-			AIPS_Ajax_Response::error( $result->get_error_message() );
+			AIPS_Ajax_Response::wp_error( $result );
 			return;
 		}
 

@@ -127,9 +127,9 @@ class AIPS_Research_Controller {
         $topics = $this->research_service->research_trending_topics($niche, $count, $keywords);
         
         if (is_wp_error($topics)) {
-            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::wp_error($topics);
         }
-        
+
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
         
@@ -802,7 +802,7 @@ class AIPS_Research_Controller {
         $gaps = $this->content_auditor->perform_gap_analysis($niche);
 
         if (is_wp_error($gaps)) {
-            AIPS_Ajax_Response::error(array('message' => $gaps->get_error_message()));
+            AIPS_Ajax_Response::wp_error($gaps);
         }
 
         AIPS_Ajax_Response::success(array(
@@ -836,7 +836,7 @@ class AIPS_Research_Controller {
         $topics = $this->research_service->research_trending_topics($niche, 5, array($gap_topic));
 
         if (is_wp_error($topics)) {
-            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::wp_error($topics);
         }
 
         // Save to database
@@ -884,7 +884,7 @@ class AIPS_Research_Controller {
         $topics = $this->research_service->research_from_sources($term_ids, $niche, $count, $keywords);
 
         if (is_wp_error($topics)) {
-            AIPS_Ajax_Response::error(array('message' => $topics->get_error_message()));
+            AIPS_Ajax_Response::wp_error($topics);
         }
 
         $saved_count = $this->repository->save_research_batch($topics, $niche);

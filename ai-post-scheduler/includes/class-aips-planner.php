@@ -49,7 +49,7 @@ class AIPS_Planner {
         $result = $generator->generate_content($prompt, array('temperature' => 0.7), 'planner_topics');
 
         if (is_wp_error($result)) {
-            AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+            AIPS_Ajax_Response::wp_error($result);
         }
 
         // Normalize the raw AI response and guard against empty output. Coerce to

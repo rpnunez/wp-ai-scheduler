@@ -45,7 +45,7 @@
                         window.AIPS.renderTopics(response.data.topics);
                         $('#planner-results').addClass('active');
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {
@@ -492,7 +492,7 @@
                             }
                         });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showAjaxError(response);
                     }
                 },
                 error: function() {

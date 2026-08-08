@@ -383,7 +383,7 @@ class AIPS_Author_Topics_Controller {
 				$result
 			);
 			$history->complete_failure($result->get_error_message(), array('topic_id' => $topic_id));
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		$history->record('activity', __('Post generated successfully from topic', 'ai-post-scheduler'), null, null, array(
@@ -625,7 +625,7 @@ class AIPS_Author_Topics_Controller {
 				$result
 			);
 			$history->complete_failure($result->get_error_message(), array('post_id' => $post_id, 'topic_id' => $topic_id));
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+			AIPS_Ajax_Response::wp_error($result);
 		}
 
 		$history->record('activity', __('Post regenerated successfully', 'ai-post-scheduler'), null, null, array(
