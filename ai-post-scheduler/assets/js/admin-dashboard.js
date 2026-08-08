@@ -47,6 +47,7 @@
 			$(document).on('click', '#aips-date-popover-cancel', this.handlePopoverCancel.bind(this));
 			$(document).on('click', this.handleDocumentClick.bind(this));
 			$(document).on('submit', '#aips-dashboard-date-form', this.handleDateFormSubmit.bind(this));
+			$(document).on('click', '.aips-date-preset', this.handleDatePreset.bind(this));
 			$(document).on('click', '.aips-tab-btn', this.handleTabSwitch.bind(this));
 			$(document).on('click', '.aips-dashboard-publish-post', this.handlePublishPost.bind(this));
 			$(document).on('click', '.aips-dashboard-approve-topic', this.handleApproveTopic.bind(this));
@@ -60,6 +61,37 @@
 		 * @param {Event} e The click event.
 		 * @return {void}
 		 */
+		/**
+		 * Handle preset date range buttons (Last 7 days, Last 30 days, This month).
+		 *
+		 * @param {Event} e The click event.
+		 * @return {void}
+		 */
+		handleDatePreset: function(e) {
+			e.stopPropagation();
+			var $btn = $(e.currentTarget);
+			var today = new Date();
+			var pad = function(n) { return String(n).padStart(2, '0'); };
+			var fmt = function(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+
+			var toDate = fmt(today);
+			var fromDate;
+
+			if ($btn.data('preset') === 'month') {
+				var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+				fromDate = fmt(firstDay);
+			} else {
+				var days = parseInt($btn.data('days'), 10) || 30;
+				var past = new Date(today);
+				past.setDate(today.getDate() - days + 1);
+				fromDate = fmt(past);
+			}
+
+			$('#aips-input-date-from').val(fromDate);
+			$('#aips-input-date-to').val(toDate);
+			$('#aips-dashboard-date-form').trigger('submit');
+		},
+
 		handleDateFilterTrigger: function(e) {
 			e.stopPropagation();
 			$('#aips-date-popover-panel').toggle();
@@ -121,6 +153,9 @@
 			// Hide popover
 			$('#aips-date-popover-panel').hide();
 
+			// Show skeleton loading state on all tab panels
+			$('.aips-tab-panel').addClass('is-loading');
+
 			// Show spinner overlay
 			$('.aips-dashboard-spinner-overlay').show();
 
@@ -135,7 +170,6 @@
 					date_to: dateToVal
 				},
 				success: function(response) {
-					$('.aips-dashboard-spinner-overlay').hide();
 					if (response.success && response.data) {
 						self.updateDashboardData(response.data);
 					} else {
@@ -143,8 +177,11 @@
 					}
 				},
 				error: function() {
-					$('.aips-dashboard-spinner-overlay').hide();
 					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
+				},
+				complete: function() {
+					$('.aips-dashboard-spinner-overlay').hide();
+					$('.aips-tab-panel').removeClass('is-loading');
 				}
 			});
 		},
@@ -555,6 +592,25 @@
 			$('.aips-stat-warning .aips-stat-value').text(data.topics_created_in_period);
 			$('.aips-stat-warning .aips-stat-sub-meta').text(data.topics_pending_in_period + ' Pending Review');
 
+			// 3b. Update trend indicators
+			if (data.trend_data) {
+				$.each(data.trend_data, function(key, trend) {
+					var $el = $('[data-trend="' + key + '"]');
+					if (!$el.length || !trend.has_baseline) {
+						$el.text('').removeClass('aips-trend-up aips-trend-down');
+						return;
+					}
+					if (trend.direction === 'flat') {
+						$el.text('No change vs prev').removeClass('aips-trend-up aips-trend-down');
+						return;
+					}
+					var arrow = trend.direction === 'up' ? '↑' : '↓';
+					$el.text(arrow + ' ' + trend.pct + '% vs prev')
+					   .removeClass('aips-trend-up aips-trend-down')
+					   .addClass('aips-trend-' + trend.direction);
+				});
+			}
+
 			// 4. Update Chart.js datasets
 			if (typeof Chart !== 'undefined') {
 				var cd = data.chart_data;
@@ -638,7 +694,13 @@
 
 				$.each(tabsConfig, function(i, config) {
 					var $panel = $(config.panelId);
-					if (config.dataList && config.dataList.length > 0) {
+					var count = config.dataList ? config.dataList.length : 0;
+
+					// Update live tab count badge
+					var tabKey = config.panelId.replace('#tab-', '');
+					$('[data-count-tab="' + tabKey + '"]').text(count);
+
+					if (count > 0) {
 						var html = '';
 						$.each(config.dataList, function(idx, item) {
 							if (config.processItem) {

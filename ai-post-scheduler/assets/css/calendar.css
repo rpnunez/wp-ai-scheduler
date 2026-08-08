@@ -1,9 +1,9 @@
 /* Calendar Container */
 .aips-calendar-container {
-	background: #fff;
+	background: var(--aips-white);
 	padding: 20px;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
+	border: 1px solid var(--aips-gray-300);
+	border-radius: var(--aips-radius-sm);
 	margin-top: 20px;
 }
 
@@ -27,7 +27,7 @@
 	margin: 0;
 	font-size: 24px;
 	font-weight: 600;
-	color: #1d2327;
+	color: var(--aips-gray-900);
 	min-width: 200px;
 	text-align: center;
 }
@@ -55,9 +55,9 @@
 }
 
 .aips-calendar-view-btn.active {
-	background: #2271b1;
-	border-color: #2271b1;
-	color: #fff;
+	background: var(--aips-primary);
+	border-color: var(--aips-primary);
+	color: var(--aips-white);
 }
 
 .aips-calendar-today-btn {
@@ -68,15 +68,15 @@
 .aips-calendar-legend {
 	margin-bottom: 20px;
 	padding: 15px;
-	background: #f6f7f7;
-	border-radius: 4px;
+	background: var(--aips-gray-50);
+	border-radius: var(--aips-radius-sm);
 }
 
 .aips-calendar-legend h3 {
 	margin: 0 0 10px 0;
 	font-size: 14px;
 	font-weight: 600;
-	color: #1d2327;
+	color: var(--aips-gray-900);
 }
 
 .aips-calendar-legend-items {
@@ -118,17 +118,17 @@
 	display: grid;
 	grid-template-columns: repeat(7, 1fr);
 	gap: 1px;
-	background: #dcdcde;
-	border: 1px solid #dcdcde;
+	background: var(--aips-gray-200);
+	border: 1px solid var(--aips-gray-200);
 	margin-bottom: 1px;
 }
 
 .aips-calendar-day-header {
-	background: #f6f7f7;
+	background: var(--aips-gray-50);
 	padding: 10px;
 	text-align: center;
 	font-weight: 600;
-	color: #50575e;
+	color: var(--aips-gray-600);
 	font-size: 12px;
 	text-transform: uppercase;
 }
@@ -137,13 +137,13 @@
 	display: grid;
 	grid-template-columns: repeat(7, 1fr);
 	gap: 1px;
-	background: #dcdcde;
-	border: 1px solid #dcdcde;
+	background: var(--aips-gray-200);
+	border: 1px solid var(--aips-gray-200);
 	min-height: 500px;
 }
 
 .aips-calendar-day {
-	background: #fff;
+	background: var(--aips-white);
 	padding: 8px;
 	min-height: 100px;
 	position: relative;
@@ -151,24 +151,24 @@
 }
 
 .aips-calendar-day.other-month {
-	background: #f6f7f7;
-	color: #a7aaad;
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-400);
 }
 
 .aips-calendar-day.today {
 	background: #f0f6fc;
-	border: 2px solid #2271b1;
+	border: 2px solid var(--aips-primary);
 }
 
 .aips-calendar-day-number {
 	font-weight: 600;
 	font-size: 14px;
-	color: #1d2327;
+	color: var(--aips-gray-900);
 	margin-bottom: 5px;
 }
 
 .aips-calendar-day.other-month .aips-calendar-day-number {
-	color: #a7aaad;
+	color: var(--aips-gray-400);
 }
 
 .aips-calendar-events {
@@ -183,7 +183,7 @@
 	padding: 4px 6px;
 	border-radius: 3px;
 	font-size: 11px;
-	color: #fff;
+	color: var(--aips-white);
 	cursor: pointer;
 	white-space: nowrap;
 	overflow: hidden;
@@ -209,21 +209,21 @@
 	display: grid;
 	grid-template-columns: 80px repeat(7, 1fr);
 	gap: 1px;
-	background: #dcdcde;
-	border: 1px solid #dcdcde;
+	background: var(--aips-gray-200);
+	border: 1px solid var(--aips-gray-200);
 }
 
 .aips-calendar-week-time {
-	background: #f6f7f7;
+	background: var(--aips-gray-50);
 	padding: 10px;
 	text-align: center;
 	font-size: 12px;
 	font-weight: 600;
-	color: #50575e;
+	color: var(--aips-gray-600);
 }
 
 .aips-calendar-week-day {
-	background: #fff;
+	background: var(--aips-white);
 	padding: 10px;
 	min-height: 60px;
 	position: relative;
@@ -238,28 +238,28 @@
 	display: flex;
 	flex-direction: column;
 	gap: 1px;
-	background: #dcdcde;
-	border: 1px solid #dcdcde;
+	background: var(--aips-gray-200);
+	border: 1px solid var(--aips-gray-200);
 }
 
 .aips-calendar-day-hour {
 	display: grid;
 	grid-template-columns: 80px 1fr;
 	gap: 1px;
-	background: #dcdcde;
+	background: var(--aips-gray-200);
 }
 
 .aips-calendar-day-hour-label {
-	background: #f6f7f7;
+	background: var(--aips-gray-50);
 	padding: 10px;
 	text-align: center;
 	font-size: 12px;
 	font-weight: 600;
-	color: #50575e;
+	color: var(--aips-gray-600);
 }
 
 .aips-calendar-day-hour-content {
-	background: #fff;
+	background: var(--aips-white);
 	padding: 10px;
 	min-height: 60px;
 }
@@ -267,21 +267,21 @@
 /* Event Colors - Template-based */
 .aips-calendar-event[data-template-id="1"],
 .aips-calendar-event.color-1 {
-	background-color: #2271b1;
+	background-color: var(--aips-primary);
 }
 
 .aips-calendar-event[data-template-id="2"],
 .aips-calendar-event.color-2 {
-	background-color: #d63638;
+	background-color: var(--aips-error);
 }
 
 .aips-calendar-event[data-template-id="3"],
 .aips-calendar-event.color-3 {
-	background-color: #00a32a;
+	background-color: var(--aips-success);
 }
 
 .aips-calendar-event.color-default {
-	background-color: #dba617;
+	background-color: var(--aips-warning);
 }
 
 /* Event Modal */
@@ -308,9 +308,9 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	background: #fff;
-	border-radius: 4px;
-	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+	background: var(--aips-white);
+	border-radius: var(--aips-radius-sm);
+	box-shadow: var(--aips-shadow-lg);
 	width: 90%;
 	max-width: 600px;
 	max-height: 90vh;
@@ -322,7 +322,7 @@
 	justify-content: space-between;
 	align-items: center;
 	padding: 20px;
-	border-bottom: 1px solid #dcdcde;
+	border-bottom: 1px solid var(--aips-gray-200);
 }
 
 .aips-calendar-modal-header h2 {
@@ -335,12 +335,12 @@
 	border: none;
 	cursor: pointer;
 	padding: 5px;
-	color: #50575e;
+	color: var(--aips-gray-600);
 	transition: color 0.2s;
 }
 
 .aips-calendar-modal-close:hover {
-	color: #d63638;
+	color: var(--aips-error);
 }
 
 .aips-calendar-modal-close .dashicons {
@@ -361,12 +361,12 @@
 .aips-calendar-event-detail strong {
 	display: inline-block;
 	min-width: 120px;
-	color: #1d2327;
+	color: var(--aips-gray-900);
 }
 
 .aips-calendar-modal-footer {
 	padding: 20px;
-	border-top: 1px solid #dcdcde;
+	border-top: 1px solid var(--aips-gray-200);
 	text-align: right;
 	display: flex;
 	gap: 10px;
@@ -379,23 +379,23 @@
 		flex-direction: column;
 		align-items: stretch;
 	}
-	
+
 	.aips-calendar-nav,
 	.aips-calendar-view-switcher,
 	.aips-calendar-today {
 		justify-content: center;
 	}
-	
+
 	.aips-calendar-day {
 		min-height: 80px;
 		font-size: 12px;
 	}
-	
+
 	.aips-calendar-event {
 		font-size: 10px;
 		padding: 2px 4px;
 	}
-	
+
 	.aips-calendar-legend-items {
 		flex-direction: column;
 		gap: 8px;
@@ -406,7 +406,7 @@
 .aips-calendar-more-events {
 	margin-top: 3px;
 	font-size: 10px;
-	color: #2271b1;
+	color: var(--aips-primary);
 	text-align: center;
 	cursor: pointer;
 	padding: 2px;

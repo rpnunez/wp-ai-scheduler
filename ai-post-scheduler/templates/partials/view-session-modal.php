@@ -40,10 +40,10 @@ if (!defined('ABSPATH')) {
 			</div>
 			
 			<div class="aips-tabs">
-				<ul class="aips-tab-nav">
-					<li><a href="#aips-tab-logs" class="active"><?php esc_html_e('Logs', 'ai-post-scheduler'); ?></a></li>
-					<li><a href="#aips-tab-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></a></li>
-				</ul>
+				<div class="aips-tab-nav">
+					<a href="#aips-tab-logs" class="active"><?php esc_html_e('Logs', 'ai-post-scheduler'); ?></a>
+					<a href="#aips-tab-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></a>
+				</div>
 				
 				<div id="aips-tab-logs" class="aips-tab-content active">
 					<div id="aips-logs-list"></div>

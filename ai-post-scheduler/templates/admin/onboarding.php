@@ -34,7 +34,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 						<span class="dashicons dashicons-admin-settings"></span>
 						<?php esc_html_e('Open Settings', 'ai-post-scheduler'); ?>
 					</a>
-					<button type="button" class="aips-btn aips-btn-danger" id="aips-onboarding-reset">
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-onboarding-reset">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Restart Wizard', 'ai-post-scheduler'); ?>
 					</button>
@@ -43,7 +43,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 		</div>
 
 		<?php if (!$ai_engine_active) : ?>
-			<div class="notice notice-error" style="margin: 16px 0;">
+			<div class="notice notice-error aips-mt-4">
 				<p><?php esc_html_e('AI Engine is not installed or activated. You can complete the setup steps, but topic/post generation requires AI Engine to be active.', 'ai-post-scheduler'); ?></p>
 			</div>
 		<?php endif; ?>
