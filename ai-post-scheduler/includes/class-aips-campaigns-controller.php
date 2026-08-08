@@ -51,6 +51,11 @@ class AIPS_Campaigns_Controller {
 	private $ai_service;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Campaign
+	 */
+	private $prompt_builder;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct(
@@ -58,7 +63,8 @@ class AIPS_Campaigns_Controller {
 		?AIPS_Template_Repository $template_repository = null,
 		?AIPS_Unified_Schedule_Service $unified_schedule_service = null,
 		?AIPS_Config $config = null,
-		?AIPS_AI_Service_Interface $ai_service = null
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Prompt_Builder_Campaign $prompt_builder = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -75,6 +81,7 @@ class AIPS_Campaigns_Controller {
 			return AIPS_Config::get_instance();
 		});
 		$this->ai_service = $this->resolve_ai_service($ai_service);
+		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Campaign();
 
 		add_action('wp_ajax_aips_get_campaigns', array($this, 'ajax_get_campaigns'));
 		add_action('wp_ajax_aips_get_campaign_metrics', array($this, 'ajax_get_campaign_metrics'));
@@ -590,7 +597,7 @@ class AIPS_Campaigns_Controller {
 		}
 
 		$intake = $this->get_ai_intake_payload();
-		$prompt = $this->build_ai_campaign_prompt($intake);
+		$prompt = $this->prompt_builder->build_guided_setup_prompt($this->build_ai_campaign_context($intake));
 		$response = $this->ai_service->generate_json($prompt);
 
 		if (is_wp_error($response)) {
@@ -720,13 +727,13 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
-	 * Build AI prompt for campaign wizard generation.
+	 * Build AI campaign context for prompt generation.
 	 *
 	 * @param array $intake Sanitized intake values.
-	 * @return string
+	 * @return array
 	 */
-	private function build_ai_campaign_prompt($intake) {
-		$context = array(
+	private function build_ai_campaign_context($intake) {
+		return array(
 			'intake' => $intake,
 			'available_frequencies' => array_keys((new AIPS_Interval_Calculator())->get_intervals()),
 			'available_post_types' => array_keys($this->get_supported_post_types()),
@@ -734,30 +741,6 @@ class AIPS_Campaigns_Controller {
 			'review_policy_allowed' => array('draft', 'approval', 'auto_publish'),
 			'campaign_mode_allowed' => array('template', 'author'),
 		);
-
-		return
-			"You are helping a WordPress user configure an AI content campaign.\n" .
-			"Return only a single JSON object with the exact keys below.\n" .
-			"Do not wrap the JSON in markdown and do not include any extra keys.\n\n" .
-			"Required keys:\n" .
-			"- campaign_name (string)\n" .
-			"- content_goal (string)\n" .
-			"- post_type (string)\n" .
-			"- prompt_template (string; use {{topic}} — lowercase, double curly braces — as the sole placeholder for the article subject; never use [TOPIC] or any other format)\n" .
-			"- title_prompt (string; must instruct the AI to generate exactly 1 title (never more); do NOT use {{topic}} here because {{topic}} maps to the final title in this system; this prompt must be self-contained and not rely on template variables; example: 'Generate exactly one concise, SEO-friendly article title aligned with the campaign goal and audience.')\n" .
-			"- author_persona (string)\n" .
-			"- campaign_mode (string: template|author)\n" .
-			"- review_policy (string: draft|approval|auto_publish)\n" .
-			"- frequency (string)\n" .
-			"- time_window_start (string HH:MM or empty)\n" .
-			"- time_window_end (string HH:MM or empty)\n" .
-			"- post_tags (string)\n" .
-			"- post_category (number, use 0 when unknown)\n" .
-			"- template_style (string from available_output_styles)\n" .
-			"- sample_article_ideas (array of 3 to 5 strings)\n" .
-			"- risks_assumptions (array of 2 to 4 strings)\n\n" .
-			"Use realistic, user-friendly values suitable for immediate editing and publishing.\n\n" .
-			"Context:\n" . wp_json_encode($context);
 	}
 
 	/**
