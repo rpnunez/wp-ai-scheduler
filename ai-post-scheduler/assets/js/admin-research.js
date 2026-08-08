@@ -612,7 +612,7 @@
 
             if (!gaps || gaps.length === 0) {
                 if (AIPS.Templates) {
-                    $grid.html(AIPS.Templates.renderRaw('aips-tmpl-research-gap-empty', {}));
+                    $grid.html(AIPS.Templates.render('aips-tmpl-research-gap-empty', {}));
                 } else {
                     $grid.html('<p>No gaps found.</p>');
                 }

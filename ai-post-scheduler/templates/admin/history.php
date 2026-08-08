@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// This template is included by AIPS_History::render_page() which passes
+// This template is included by AIPS_History_Controller::render_page() (legacy: AIPS_History::render_page()) which passes
 // $history_handler, $history, and $stats. Ensure default variables are set.
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
