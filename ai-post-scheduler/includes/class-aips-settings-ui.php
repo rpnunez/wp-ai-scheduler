@@ -369,6 +369,26 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the enable Ability Workflows setting field.
+     *
+     * Displays a checkbox to enable or disable the Ability Workflows admin
+     * pages and AJAX endpoints.
+     *
+     * @return void
+     */
+    public function enable_ability_workflows_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows');
+        ?>
+        <input type="hidden" name="aips_enable_ability_workflows" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_ability_workflows" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable Ability Workflows', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Adds an admin page for building multi-step automation workflows out of installed WordPress Abilities.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.

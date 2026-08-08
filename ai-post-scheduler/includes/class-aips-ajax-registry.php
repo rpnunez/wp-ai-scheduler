@@ -290,6 +290,24 @@ class AIPS_Ajax_Registry {
 
 		// Dashboard Controller
 		'aips_get_dashboard_data'              => 'AIPS_Dashboard_Controller',
+
+		// Ability Workflows Controller
+		'aips_save_ability_workflow'           => 'AIPS_Ability_Workflows_Controller',
+		'aips_get_ability_workflow'            => 'AIPS_Ability_Workflows_Controller',
+		'aips_list_ability_workflows'          => 'AIPS_Ability_Workflows_Controller',
+		'aips_delete_ability_workflow'         => 'AIPS_Ability_Workflows_Controller',
+		'aips_duplicate_ability_workflow'      => 'AIPS_Ability_Workflows_Controller',
+		'aips_archive_ability_workflow'        => 'AIPS_Ability_Workflows_Controller',
+		'aips_save_ability_workflow_steps'     => 'AIPS_Ability_Workflows_Controller',
+
+		// Ability Workflow Runs Controller
+		'aips_run_ability_workflow_now'        => 'AIPS_Ability_Workflow_Runs_Controller',
+		'aips_list_ability_workflow_runs'      => 'AIPS_Ability_Workflow_Runs_Controller',
+		'aips_get_ability_workflow_run'        => 'AIPS_Ability_Workflow_Runs_Controller',
+		'aips_cancel_ability_workflow_run'     => 'AIPS_Ability_Workflow_Runs_Controller',
+
+		// Ability Catalog Controller
+		'aips_list_abilities'                  => 'AIPS_Ability_Catalog_Controller',
 	);
 
 	/**

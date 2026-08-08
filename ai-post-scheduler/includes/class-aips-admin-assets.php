@@ -54,6 +54,8 @@ class AIPS_Admin_Assets {
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
+	private const PAGE_ABILITY_WORKFLOWS = 'aips-ability-workflows';
+	private const PAGE_ABILITY_WORKFLOW_BUILDER = 'aips-ability-workflow-builder';
 
     /**
      * Initialize the class.
@@ -174,6 +176,14 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
 			$this->enqueue_cache_monitor_assets();
+		}
+
+		if ((self::PAGE_ABILITY_WORKFLOWS === $page || $this->hook_contains($hook, self::PAGE_ABILITY_WORKFLOWS)) && AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows')) {
+			$this->enqueue_ability_workflows_assets();
+		}
+
+		if ((self::PAGE_ABILITY_WORKFLOW_BUILDER === $page || $this->hook_contains($hook, self::PAGE_ABILITY_WORKFLOW_BUILDER)) && AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows')) {
+			$this->enqueue_ability_workflow_builder_assets();
 		}
 
 	}
@@ -1469,6 +1479,61 @@ class AIPS_Admin_Assets {
                 'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
+            ));
+    }
+
+    /**
+     * Enqueue assets for the Ability Workflows list page.
+     */
+    private function enqueue_ability_workflows_assets() {
+            wp_enqueue_script(
+                'aips-admin-ability-workflows',
+                AIPS_PLUGIN_URL . 'assets/js/admin-ability-workflows.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-ability-workflows', 'aipsAbilityWorkflowsL10n', array(
+                'addNewWorkflow'   => __('Create Workflow', 'ai-post-scheduler'),
+                'editWorkflow'     => __('Edit Workflow', 'ai-post-scheduler'),
+                'saveWorkflow'     => __('Save Workflow', 'ai-post-scheduler'),
+                'saving'           => __('Saving…', 'ai-post-scheduler'),
+                'deleteConfirm'    => __('Are you sure you want to delete this workflow?', 'ai-post-scheduler'),
+                'saveFailed'       => __('Failed to save workflow.', 'ai-post-scheduler'),
+                'deleteFailed'     => __('Failed to delete workflow.', 'ai-post-scheduler'),
+                'duplicateFailed'  => __('Failed to duplicate workflow.', 'ai-post-scheduler'),
+                'archiveFailed'    => __('Failed to archive workflow.', 'ai-post-scheduler'),
+                'runFailed'        => __('Failed to start workflow run.', 'ai-post-scheduler'),
+                'runStarted'       => __('Workflow run started.', 'ai-post-scheduler'),
+                'nameRequired'     => __('Workflow name is required.', 'ai-post-scheduler'),
+            ));
+    }
+
+    /**
+     * Enqueue assets for the Ability Workflow Builder page.
+     */
+    private function enqueue_ability_workflow_builder_assets() {
+            wp_enqueue_script(
+                'aips-admin-ability-workflow-builder',
+                AIPS_PLUGIN_URL . 'assets/js/admin-ability-workflow-builder.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-ability-workflow-builder', 'aipsAbilityWorkflowBuilderL10n', array(
+                'addStep'            => __('Add Step', 'ai-post-scheduler'),
+                'editStep'           => __('Edit Step', 'ai-post-scheduler'),
+                'saveStep'           => __('Save Step', 'ai-post-scheduler'),
+                'saveSteps'          => __('Save Steps', 'ai-post-scheduler'),
+                'saving'             => __('Saving…', 'ai-post-scheduler'),
+                'removeStepConfirm'  => __('Remove this step from the workflow?', 'ai-post-scheduler'),
+                'saveFailed'         => __('Failed to save workflow steps.', 'ai-post-scheduler'),
+                'loadAbilitiesFailed' => __('Failed to load available abilities.', 'ai-post-scheduler'),
+                'loadRunsFailed'     => __('Failed to load workflow runs.', 'ai-post-scheduler'),
+                'stepKeyRequired'    => __('Each step needs a unique key.', 'ai-post-scheduler'),
+                'abilityRequired'    => __('Please choose an ability for this step.', 'ai-post-scheduler'),
             ));
     }
 

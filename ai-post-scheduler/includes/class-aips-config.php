@@ -187,6 +187,8 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Ability Workflows
+            'aips_enable_ability_workflows' => false,
             // Cache Monitor
             'aips_cache_monitor_enabled'               => true,
             'aips_cache_monitor_index_enabled'         => true,
