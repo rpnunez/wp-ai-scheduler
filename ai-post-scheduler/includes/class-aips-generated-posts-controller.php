@@ -75,7 +75,8 @@ class AIPS_Generated_Posts_Controller {
 		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$template_id   = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$review_status = isset($_GET['review_status']) ? sanitize_key($_GET['review_status']) : '';
 		$campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
 
 		// Get completed history entries with post IDs (for Generated Posts tab)
@@ -135,9 +136,10 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Get draft posts for Post Review tab
 		$draft_posts = $this->post_review_repository->get_draft_posts(array(
-			'page' => $review_page,
-			'search' => $search_query,
-			'template_id' => $template_id,
+			'page'          => $review_page,
+			'search'        => $search_query,
+			'template_id'   => $template_id,
+			'review_status' => $review_status,
 		));
 
 		// Pre-format dates for draft posts
