@@ -49,9 +49,9 @@ class Test_Prompt_Builder_Post_Excerpt extends WP_UnitTestCase {
 
 		$result = $this->builder->build($title, $content, null, null);
 
-		$this->assertStringContainsString('ARTICLE TITLE:', $result);
-		$this->assertStringContainsString($title, $result);
-		$this->assertStringContainsString('ARTICLE BODY:', $result);
+		$this->assertStringContainsString('### ARTICLE TITLE:', $result);
+		$this->assertStringContainsString('"' . $title . '"', $result);
+		$this->assertStringContainsString('### ARTICLE BODY:', $result);
 		$this->assertStringContainsString($content, $result);
 	}
 
@@ -79,7 +79,7 @@ class Test_Prompt_Builder_Post_Excerpt extends WP_UnitTestCase {
 		$result = $this->builder->build('My Title', 'Body text.', $voice, 'DI Patterns');
 
 		$this->assertStringContainsString('Write in a conversational style about DI Patterns.', $result);
-		$this->assertStringContainsString('ARTICLE TITLE:', $result);
+		$this->assertStringContainsString('### ARTICLE TITLE:', $result);
 	}
 
 	/**
@@ -130,8 +130,8 @@ class Test_Prompt_Builder_Post_Excerpt extends WP_UnitTestCase {
 	public function test_build_empty_title_and_content() {
 		$result = $this->builder->build('', '', null, null);
 
-		$this->assertStringContainsString('ARTICLE TITLE:', $result);
-		$this->assertStringContainsString('ARTICLE BODY:', $result);
+		$this->assertStringContainsString('### ARTICLE TITLE:', $result);
+		$this->assertStringContainsString('### ARTICLE BODY:', $result);
 		$this->assertIsString($result);
 	}
 
