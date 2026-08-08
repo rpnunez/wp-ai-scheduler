@@ -133,19 +133,19 @@ if (!defined('ABSPATH')) {
 			<div class="aips-content-panel detail-tabs-panel glass-morphic">
 				<!-- Tab Headers -->
 				<div class="aips-tab-headers" role="tablist">
-					<button class="aips-tab-btn active" role="tab" aria-selected="true" aria-controls="tab-posts" id="btn-tab-posts">
+					<button type="button" class="aips-tab-btn active" role="tab" aria-selected="true" aria-controls="tab-posts" id="btn-tab-posts">
 						<span class="dashicons dashicons-edit"></span>
 						<?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-topics" id="btn-tab-topics">
+					<button type="button" class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-topics" id="btn-tab-topics">
 						<span class="dashicons dashicons-welcome-write-blog"></span>
 						<?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-topic-posts" id="btn-tab-topic-posts">
+					<button type="button" class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-topic-posts" id="btn-tab-topic-posts">
 						<span class="dashicons dashicons-admin-links"></span>
 						<?php esc_html_e('Posts by Topic', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-schedules" id="btn-tab-schedules">
+					<button type="button" class="aips-tab-btn" role="tab" aria-selected="false" aria-controls="tab-schedules" id="btn-tab-schedules">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Schedules Executed', 'ai-post-scheduler'); ?>
 					</button>

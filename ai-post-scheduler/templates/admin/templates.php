@@ -15,7 +15,7 @@ $is_embedded_templates_view = !empty($embedded);
                     <p class="aips-page-description"><?php esc_html_e('Create and manage AI post generation templates with custom prompts and settings.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-template-btn">
+                    <button type="button" class="aips-btn aips-btn-primary aips-add-template-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Template', 'ai-post-scheduler'); ?>
                     </button>
@@ -140,11 +140,11 @@ $is_embedded_templates_view = !empty($embedded);
                             </td>
                             <td>
                                 <div class="cell-actions">
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-edit"></span>
                                         <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
@@ -152,11 +152,11 @@ $is_embedded_templates_view = !empty($embedded);
                                         <span class="dashicons dashicons-calendar-alt"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>" <?php disabled(!empty($template->campaign_id)); ?>>
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>" <?php disabled(!empty($template->campaign_id)); ?>>
                                         <span class="dashicons dashicons-trash"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
                                     </button>
@@ -209,7 +209,7 @@ $is_embedded_templates_view = !empty($embedded);
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Yet', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('Templates define how your AI-generated posts are structured. Create your first template to start generating content automatically.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <button class="aips-btn aips-btn-primary aips-add-template-btn">
+                        <button type="button" class="aips-btn aips-btn-primary aips-add-template-btn">
                             <span class="dashicons dashicons-plus-alt"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </button>
