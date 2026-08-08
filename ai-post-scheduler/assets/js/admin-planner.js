@@ -400,10 +400,7 @@
                                 window.AIPS.updateSelectionCount();
 
                                 if ($('#topics-list .topic-item').length === 0) {
-                                    $('#planner-results').removeClass('active');
-                                    $('#planner-niche').val('');
-                                    $('#planner-manual-topics').val('');
-                                    $('#planner-topic-search').val('');
+                                    window.location.href = '?page=aips-generated-posts';
                                 }
                             });
                         }
@@ -485,10 +482,7 @@
                             window.AIPS.updateSelectionCount();
 
                             if ($('#topics-list .topic-item').length === 0) {
-                                $('#planner-results').removeClass('active');
-                                $('#planner-niche').val('');
-                                $('#planner-manual-topics').val('');
-                                $('#planner-topic-search').val('');
+                                window.location.href = '?page=aips-schedule';
                             }
                         });
                     } else {

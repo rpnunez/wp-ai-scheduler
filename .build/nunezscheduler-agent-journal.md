@@ -275,3 +275,8 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Replaced hard `window.location.reload()` calls in the Sources admin UI with dynamic AJAX content panel refreshing (`AIPS.refreshContentPanel`) to preserve UI context.
 **Files Modified:** ai-post-scheduler/assets/js/admin-sources.js
 **Outcome:** Faster, smoother transitions when creating, editing, deleting, or fetching sources without losing scroll position or tab context.
+## 2026-07-05 - Planner Flow Optimization
+**Target Feature:** Planner
+**Improvement:** Optimized Planner bulk schedule and generate flows by redirecting the user to the Schedules or Generated Posts table upon success, rather than just clearing the view, to streamline the steps between topic generation and viewing the results.
+**Files Modified:** `ai-post-scheduler/assets/js/admin-planner.js`
+**Outcome:** Reduces clicks and confusion by immediately landing the user on the next logical workflow step after successfully bulk scheduling or generating topics.
