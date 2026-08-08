@@ -41,11 +41,11 @@ $is_embedded_internal_links_view = !empty($embedded);
 				</div>
 				<div class="aips-page-actions">
 					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-database-import"></span>
+						<span class="dashicons dashicons-database-import" aria-hidden="true"></span>
 						<?php esc_html_e('Index Posts', 'ai-post-scheduler'); ?>
 					</button>
 					<button type="button" id="aips-clear-index-btn" class="aips-btn aips-btn-ghost aips-btn-danger">
-						<span class="dashicons dashicons-trash"></span>
+						<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 						<?php esc_html_e('Clear Index', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -189,11 +189,11 @@ $is_embedded_internal_links_view = !empty($embedded);
 					<div id="aips-gen-feedback" class="aips-notice" style="display:none;margin:16px 0;"></div>
 
 					<button type="button" id="aips-generate-for-post-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-search"></span>
+						<span class="dashicons dashicons-search" aria-hidden="true"></span>
 						<?php esc_html_e('Generate Suggestions', 'ai-post-scheduler'); ?>
 					</button>
 					<button type="button" id="aips-reindex-post-btn" class="aips-btn aips-btn-secondary" style="margin-left:8px;">
-						<span class="dashicons dashicons-update"></span>
+						<span class="dashicons dashicons-update" aria-hidden="true"></span>
 						<?php esc_html_e('Re-index Post', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -211,7 +211,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 		<div class="aips-modal-header">
 			<h2 class="aips-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-no-alt"></span>
+				<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 			</button>
 		</div>
 		<div class="aips-modal-body" style="padding:0;">
@@ -426,7 +426,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 		<div class="aips-modal-header">
 			<h2 class="aips-modal-title"><?php esc_html_e('Edit Anchor Text', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-no-alt"></span>
+				<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 			</button>
 		</div>
 		<div class="aips-modal-body">

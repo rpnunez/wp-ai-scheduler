@@ -35,14 +35,14 @@ if (!defined('ABSPATH')) {
 							<?php if ('link' === $action_type && !empty($tab_action['url'])) : ?>
 								<a href="<?php echo esc_url($tab_action['url']); ?>" class="<?php echo esc_attr($action_class); ?>"<?php echo $action_id ? ' id="' . esc_attr($action_id) . '"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $data_attr_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 									<?php if ($action_icon) : ?>
-										<span class="dashicons <?php echo esc_attr($action_icon); ?>"></span>
+										<span class="dashicons <?php echo esc_attr($action_icon); ?>" aria-hidden="true"></span>
 									<?php endif; ?>
 									<?php echo esc_html($action_label); ?>
 								</a>
 							<?php else : ?>
 								<button type="button" class="<?php echo esc_attr($action_class); ?>"<?php echo $action_id ? ' id="' . esc_attr($action_id) . '"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $data_attr_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 									<?php if ($action_icon) : ?>
-										<span class="dashicons <?php echo esc_attr($action_icon); ?>"></span>
+										<span class="dashicons <?php echo esc_attr($action_icon); ?>" aria-hidden="true"></span>
 									<?php endif; ?>
 									<?php echo esc_html($action_label); ?>
 								</button>

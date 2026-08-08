@@ -19,7 +19,7 @@ $authors = get_users(array(
 					<p class="aips-page-description"><?php esc_html_e('Build a campaign template, publishing defaults, review policy, and schedule in one flow.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>">
-					<span class="dashicons dashicons-calendar-alt"></span>
+					<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
 					<?php esc_html_e('Schedules', 'ai-post-scheduler'); ?>
 				</a>
 			</div>
