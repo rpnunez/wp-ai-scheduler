@@ -176,12 +176,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		$base_time = strtotime($start_date);
 		foreach ($schedules as $i => $schedule) {
+			$expected_time = date('Y-m-d H:i:s', $base_time + ($i * 600));
 			$this->assertEquals(
-				$start_date,
+				$expected_time,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_time, $schedule['next_run'])
 			);
 		}
 	}
