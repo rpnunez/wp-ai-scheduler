@@ -72,123 +72,171 @@ class AIPS_Admin_Assets {
      * @param string $hook The current admin page hook.
 	 * @return void
 	 */
-	public function enqueue_admin_assets($hook) {
-        $page = $this->get_current_page_slug();
+	/**
+	 * Returns the mapping of conditions to enqueue methods.
+	 *
+	 * @param string $hook The current admin page hook.
+	 * @param string $page The current page slug.
+	 * @return array Array of configuration for routing.
+	 */
+	protected function get_asset_routes($hook, $page) {
+		return array(
+			array(
+				'condition' => $this->hook_contains($hook, self::HOOK_DASHBOARD) || self::PAGE_DASHBOARD === $page,
+				'method'    => 'enqueue_dashboard_assets',
+			),
+			array(
+				'condition' => self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS),
+				'method'    => 'enqueue_authors_assets',
+			),
+			array(
+				'condition' => self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES),
+				'method'    => 'enqueue_post_slices_assets',
+			),
+			array(
+				'condition' => self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates'),
+				'method'    => 'enqueue_templates_assets',
+			),
+			array(
+				'condition' => self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES),
+				'method'    => 'enqueue_voices_assets',
+			),
+			array(
+				'condition' => self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES),
+				'method'    => 'enqueue_structures_assets',
+			),
+			array(
+				'condition' => (self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR),
+				'method'    => 'enqueue_schedule_assets',
+			),
+			array(
+				'condition' => self::PAGE_CAMPAIGNS === $page || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGNS) || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG) || $this->is_automations_tab($page, 'campaigns'),
+				'method'    => 'enqueue_campaigns_assets',
+			),
+			array(
+				'condition' => self::PAGE_CAMPAIGN_WIZARD === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGN_WIZARD),
+				'method'    => 'enqueue_campaign_wizard_assets',
+			),
+			array(
+				'condition' => self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH),
+				'method'    => 'enqueue_research_assets',
+			),
+			array(
+				'condition' => self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS),
+				'method'    => 'enqueue_generated_posts_assets',
+			),
+			array(
+				'condition' => self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR),
+				'method'    => 'enqueue_schedule_calendar_assets',
+			),
+			array(
+				'condition' => self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY),
+				'method'    => 'enqueue_history_assets',
+			),
+			array(
+				'condition' => self::PAGE_ONBOARDING === $page || $this->hook_contains($hook, self::PAGE_ONBOARDING),
+				'method'    => 'enqueue_onboarding_assets',
+			),
+			array(
+				'condition' => (self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode'),
+				'method'    => 'enqueue_dev_tools_assets',
+			),
+			array(
+				'condition' => self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status'),
+				'methods'   => array('enqueue_status_1_assets', 'enqueue_status_2_assets'),
+			),
+			array(
+				'condition' => self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY) || $this->is_automations_tab($page, 'taxonomy'),
+				'method'    => 'enqueue_taxonomy_assets',
+			),
+			array(
+				'condition' => self::PAGE_SOURCES === $page || self::PAGE_SOURCE_DATA === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->hook_contains($hook, self::PAGE_SOURCE_DATA) || $this->is_automations_tab($page, 'sources'),
+				'method'    => 'enqueue_sources_assets',
+			),
+			array(
+				'condition' => self::PAGE_SETTINGS === $page || $this->hook_contains($hook, self::PAGE_SETTINGS),
+				'method'    => 'enqueue_settings_assets',
+			),
+			array(
+				'condition' => (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry'),
+				'method'    => 'enqueue_telemetry_assets',
+			),
+			array(
+				'condition' => self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links'),
+				'method'    => 'enqueue_internal_links_assets',
+			),
+			array(
+				'condition' => self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor'),
+				'method'    => 'enqueue_cache_monitor_assets',
+			),
+			array(
+				'condition' => self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test'),
+				'method'    => 'enqueue_stress_test_assets',
+			),
+		);
+	}
 
-        if (!$this->is_plugin_admin_page($hook, $page)) {
-            if ($this->is_native_post_admin_page($hook)) {
-                $this->enqueue_history_modal_opener_assets();
-            }
+	/**
+	 * Dispatches enqueue calls based on the defined routes.
+	 *
+	 * @param string $hook The current admin page hook.
+	 * @param string $page The current page slug.
+	 */
+	protected function dispatch_asset_routes($hook, $page) {
+		$routes = $this->get_asset_routes($hook, $page);
+
+		foreach ($routes as $route) {
+			if ($route['condition']) {
+				if (isset($route['methods']) && is_array($route['methods'])) {
+					foreach ($route['methods'] as $method) {
+						if (method_exists($this, $method)) {
+							// If the method signature requires $hook, pass it.
+							try {
+								$reflection = new ReflectionMethod($this, $method);
+								if ($reflection->getNumberOfParameters() > 0) {
+									$this->$method($hook);
+								} else {
+									$this->$method();
+								}
+							} catch (ReflectionException $e) {
+								$this->$method();
+							}
+						}
+					}
+				} elseif (isset($route['method']) && method_exists($this, $route['method'])) {
+					try {
+						$reflection = new ReflectionMethod($this, $route['method']);
+						if ($reflection->getNumberOfParameters() > 0) {
+							$this->{$route['method']}($hook);
+						} else {
+							$this->{$route['method']}();
+						}
+					} catch (ReflectionException $e) {
+						$this->{$route['method']}();
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Enqueue admin assets.
+	 *
+	 * @param string $hook The current admin page hook.
+	 */
+	public function enqueue_admin_assets($hook) {
+		$page = $this->get_current_page_slug();
+
+		if (!$this->is_plugin_admin_page($hook, $page)) {
+			if ($this->is_native_post_admin_page($hook)) {
+				$this->enqueue_history_modal_opener_assets();
+			}
 			return;
 		}
 
 		$this->enqueue_global_assets();
-
-        if ($this->hook_contains($hook, self::HOOK_DASHBOARD) || self::PAGE_DASHBOARD === $page) {
-			$this->enqueue_dashboard_assets();
-		}
-
-        if (self::PAGE_AUTHORS === $page || self::PAGE_AUTHOR_TOPICS === $page || $this->hook_contains($hook, self::PAGE_AUTHORS) || $this->hook_contains($hook, self::PAGE_AUTHOR_TOPICS) || $this->is_automations_tab($page, 'authors') || $this->is_automations_tab($page, AIPS_Automations_Controller::TAB_AUTHOR_TOPICS)) {
-			$this->enqueue_authors_assets($hook);
-		}
-
-        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
-			$this->enqueue_post_slices_assets();
-		}
-
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates')) {
-			$this->enqueue_templates_assets();
-		}
-
-        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
-			$this->enqueue_voices_assets();
-		}
-
-        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
-			$this->enqueue_structures_assets();
-		}
-
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
-			$this->enqueue_schedule_assets($hook);
-		}
-
-        if (
-            self::PAGE_CAMPAIGNS === $page
-            || AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG === $page
-            || $this->hook_contains($hook, self::PAGE_CAMPAIGNS)
-            || $this->hook_contains($hook, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG)
-            || $this->is_automations_tab($page, 'campaigns')
-        ) {
-			$this->enqueue_campaigns_assets();
-		}
-
-        if (self::PAGE_CAMPAIGN_WIZARD === $page || $this->hook_contains($hook, self::PAGE_CAMPAIGN_WIZARD)) {
-			$this->enqueue_campaign_wizard_assets();
-		}
-        if (self::PAGE_RESEARCH === $page || $this->hook_contains($hook, self::PAGE_RESEARCH)) {
-			$this->enqueue_research_assets();
-		}
-
-        if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
-			$this->enqueue_generated_posts_assets();
-		}
-
-        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
-			$this->enqueue_schedule_calendar_assets();
-		}
-
-        if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
-			$this->enqueue_history_assets();
-		}
-
-        if (self::PAGE_ONBOARDING === $page || $this->hook_contains($hook, self::PAGE_ONBOARDING)) {
-			$this->enqueue_onboarding_assets();
-		}
-
-		if ((self::PAGE_DEV_TOOLS === $page || $this->hook_contains($hook, self::PAGE_DEV_TOOLS) || $this->is_diagnostics_tab($page, 'dev-tools')) && AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-			$this->enqueue_dev_tools_assets();
-		}
-
-		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status')) {
-			$this->enqueue_status_1_assets();
-			$this->enqueue_status_2_assets();
-		}
-
-        if (self::PAGE_TAXONOMY === $page || $this->hook_contains($hook, self::PAGE_TAXONOMY) || $this->is_automations_tab($page, 'taxonomy')) {
-			$this->enqueue_taxonomy_assets();
-		}
-
-        if (self::PAGE_SOURCES === $page || self::PAGE_SOURCE_DATA === $page || $this->hook_contains($hook, self::PAGE_SOURCES) || $this->hook_contains($hook, self::PAGE_SOURCE_DATA) || $this->is_automations_tab($page, 'sources')) {
-			$this->enqueue_sources_assets();
-		}
-
-        if (self::PAGE_SETTINGS === $page || $this->hook_contains($hook, self::PAGE_SETTINGS)) {
-			$this->enqueue_settings_assets();
-		}
-
-		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
-			$this->enqueue_telemetry_assets();
-		}
-
-        if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
-			$this->enqueue_internal_links_assets();
-		}
-
-        if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
-			$this->enqueue_cache_monitor_assets();
-		}
-
-		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
-			$this->enqueue_stress_test_assets();
-		}
-
+		$this->dispatch_asset_routes($hook, $page);
 	}
-
-	/**
-	 * Enqueue assets for the Stress Test page.
-	 *
-	 * @return void
-	 */
 	private function enqueue_stress_test_assets() {
 		wp_enqueue_style(
 			'aips-stress-test-style',
