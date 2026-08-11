@@ -45,17 +45,17 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 * @return string
 	 */
 	public function build($title, $content, $voice = null, $topic = null, $subject = null) {
-		$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+		$excerpt_prompt = 'Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.';
 
 		$voice_instructions = $this->build_instructions($voice, $topic);
 		if (!empty($voice_instructions)) {
-			$excerpt_prompt .= $voice_instructions . "\n\n";
+			$excerpt_prompt .= "\n\n### WRITING INSTRUCTIONS:\n" . $voice_instructions;
 		}
 
-		$excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-		$excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+		$excerpt_prompt .= "\n\n### ARTICLE TITLE:\n\"" . $title . "\"";
+		$excerpt_prompt .= "\n\n### ARTICLE BODY:\n" . $content;
 
-		$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
+		$excerpt_prompt .= "\n\nCreate a compelling excerpt that captures the essence of the article while considering the context.";
 
 		return apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);
 	}
