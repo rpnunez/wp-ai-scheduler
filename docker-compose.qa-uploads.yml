@@ -1,0 +1,23 @@
+# =============================================================================
+# docker-compose.qa-uploads.yml — third overlay, applied only for QA builds
+# running in 'mount' uploads mode.
+#
+# Replaces the build's own uploads volume with a bind mount onto the shared
+# cached production media at .qa-builds/_seed/uploads (compose merges service
+# volumes by container path). Every build in mount mode therefore reads the one
+# copy on disk instead of duplicating a media library that is routinely tens of
+# gigabytes.
+#
+# The trade-off, and why this is not the default: the mount is read-write, so
+# anything a QA build uploads or generates lands in the shared cache and is
+# visible to every other build in mount mode. Use 'copy' when you need each
+# build's media to stay isolated.
+#
+# scripts/qa-lib.sh adds this file automatically based on the build's persisted
+# QA_UPLOADS_MODE — do not pass it by hand.
+# =============================================================================
+
+services:
+  web:
+    volumes:
+      - ${QA_UPLOADS_SRC}:/var/www/html/wp-content/uploads:rw

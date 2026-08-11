@@ -1,0 +1,40 @@
+# =============================================================================
+# docker-compose.qa.yml — overlay that turns the dev stack into an isolated,
+# per-QA-build stack.
+#
+# Never used on its own. scripts/qa-lib.sh invokes it as:
+#
+#   docker compose -p "$QA_PROJECT" -f docker-compose.yml -f docker-compose.qa.yml ...
+#
+# The compose project name namespaces the networks and named volumes, so each
+# QA build already gets its own database and WordPress core without touching
+# the dev stack on 8080. This file supplies what the project name does not:
+# unique container names and a plugin bind mount pointed at the build's git
+# worktree instead of the repo's own ai-post-scheduler/ directory.
+#
+# Ports are NOT set here. Compose *appends* to a service's `ports` list rather
+# than replacing it, so an override would publish 8080 and 8100 at once and
+# collide with the dev stack. Instead the base file reads WP_PORT / MYSQL_PORT /
+# PHPMYADMIN_PORT / XDEBUG_PORT (defaulting to today's values), and qa_compose()
+# exports this build's allocated ports into those variables.
+# =============================================================================
+
+services:
+  db:
+    container_name: ${QA_PROJECT}-db
+
+  web:
+    container_name: ${QA_PROJECT}-web
+    # Every QA build reuses one image; only the bind-mounted plugin source and
+    # the database differ between builds, so rebuilding per build is waste.
+    image: wp-ai-scheduler-qa:latest
+    environment:
+      WP_SITE_TITLE: "QA build ${QA_PROJECT}"
+    volumes:
+      # Replaces the base file's ./ai-post-scheduler mount (compose merges
+      # service volumes by container path) so this stack runs the merged QA
+      # build branch checked out in .qa-builds/<key>/src.
+      - ${QA_SRC}/ai-post-scheduler:/var/www/html/wp-content/plugins/ai-post-scheduler:rw
+
+  phpmyadmin:
+    container_name: ${QA_PROJECT}-phpmyadmin

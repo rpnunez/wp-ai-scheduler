@@ -61,3 +61,7 @@ wordpress/
 # IDE path-mapping mirror — populated by `make sync-wp-core`, never committed
 .docker/wp-html/*
 !.docker/wp-html/.gitkeep
+
+# QA builds — per-build git worktrees, port allocations and the cached
+# production dump. Disposable; recreate with `make qa-build PRS=...`.
+.qa-builds/

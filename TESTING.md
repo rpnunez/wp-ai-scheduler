@@ -153,6 +153,20 @@ docker compose up -d db
 bash scripts/run-wp-tests-docker.sh
 ```
 
+## Manual QA against production data
+
+PHPUnit covers the plugin in isolation. To exercise several in-flight pull requests
+*together* against real templates, schedules and history, use a QA build:
+
+```bash
+make qa-build PRS=1887,1888
+make qa-up    PRS=1887,1888
+```
+
+That merges the PRs onto a fresh branch off `main` and runs it in its own Docker stack,
+seeded from a cached production dump, on ports that do not collide with `make up`.
+Full documentation: `docs/QA_BUILDS.md`.
+
 ## Notes
 
 - The test database is disposable and recreated for each Docker-backed run.
