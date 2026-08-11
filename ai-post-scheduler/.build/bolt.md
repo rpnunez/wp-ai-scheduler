@@ -16,3 +16,10 @@
 **PR:** ⚡ Bolt: Fix N+1 post queries by pre-fetching bulk caches
 **Learning:** Loops calling `get_post()` sequentially trigger excessive database lookups.
 **Action:** Pre-fetch post IDs into arrays and use `_prime_post_caches()` before loops.
+
+## 2026-08-10 - Fix N+1 Post Queries
+**Area:** AIPS_History, AIPS_Post_Review, AIPS_Schedule_Controller
+**Status:** opened PR
+**PR:** ⚡ Bolt: Fix N+1 post queries in UI list controllers
+**Learning:** Loops rendering lists often trigger N+1 queries when fetching post data.
+**Action:** Pre-fetch post caches for lists to improve performance.

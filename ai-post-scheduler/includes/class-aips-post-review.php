@@ -865,6 +865,17 @@ class AIPS_Post_Review {
 		$success_count = 0;
 		$failed_count = 0;
 		
+		$post_ids_to_fetch = array();
+		foreach ($items as $item) {
+			if (is_array($item) && !empty($item['post_id'])) {
+				$post_ids_to_fetch[] = absint($item['post_id']);
+			}
+		}
+
+		if (!empty($post_ids_to_fetch) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids_to_fetch), false, true);
+		}
+
 		foreach ($items as $item) {
 			if (!is_array($item)) {
 				$failed_count++;

@@ -1543,6 +1543,17 @@ class AIPS_History {
         $time_format = get_option('time_format');
         $format      = $date_format . ' ' . $time_format;
 
+        // Pre-fetch post caches for UI display to avoid N+1 queries in the loop
+        $post_ids = array();
+        foreach ($items as $item) {
+            if (!empty($item->post_id)) {
+                $post_ids[] = absint($item->post_id);
+            }
+        }
+        if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+            _prime_post_caches(array_unique($post_ids), false, true);
+        }
+
         foreach ($items as $item) {
             $created_at = isset( $item->created_at ) ? $item->created_at : 0;
             $date_time  = is_numeric( $created_at )

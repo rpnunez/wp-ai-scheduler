@@ -176,7 +176,7 @@ class Test_History_Template extends WP_UnitTestCase {
         $this->assertSame($expected, $items[0]->formatted_date);
     }
 
-    public function test_ajax_reload_history_response_includes_timeline_html() {
+    public function test_ajax_reload_history_response_includes_items_html() {
         $admin_user_id = $this->factory->user->create(array('role' => 'administrator'));
         wp_set_current_user($admin_user_id);
 
@@ -210,8 +210,8 @@ class Test_History_Template extends WP_UnitTestCase {
 
         $this->assertIsArray($response);
         $this->assertTrue($response['success']);
-        $this->assertArrayHasKey('timeline_html', $response['data']);
-        $this->assertIsString($response['data']['timeline_html']);
+        $this->assertArrayHasKey('items_html', $response['data']);
+        $this->assertIsString($response['data']['items_html']);
     }
 
     public function test_get_timeline_group_label_uses_site_timezone_day_boundaries() {
