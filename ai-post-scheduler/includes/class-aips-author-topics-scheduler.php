@@ -76,6 +76,11 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	private $batch_queue_service;
 
 	/**
+	 * @var AIPS_Generation_Claims_Repository Atomic generation claims.
+	 */
+	private $claims_repository;
+
+	/**
 	 * Initialize the scheduler.
 	 */
 	public function __construct() {
@@ -86,6 +91,7 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
 		$this->job_scheduler = new AIPS_Job_Scheduler();
+		$this->claims_repository = new AIPS_Generation_Claims_Repository();
 	}
 
 	/**
@@ -252,10 +258,36 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 */
 	public function generate_topics_for_author($author) {
 		$this->logger->log("Generating topics for author: {$author->name} (ID: {$author->id})", 'info');
-		
+
+		// Acquire an atomic, expiring claim so two workers cannot generate
+		// topics for the same author concurrently. Released in finally below.
+		$claim_token = $this->claims_repository->claim_author_topic_generation((int) $author->id);
+		if (false === $claim_token) {
+			$this->logger->log("Topic generation for author {$author->id} skipped — already running.", 'warning');
+			return false;
+		}
+
+		try {
+			return $this->run_topic_generation($author);
+		} finally {
+			$this->claims_repository->release_claim(
+				AIPS_Generation_Claims_Repository::TYPE_AUTHOR_TOPIC_GENERATION,
+				(int) $author->id,
+				$claim_token
+			);
+		}
+	}
+
+	/**
+	 * Execute topic generation for an author (claim already held).
+	 *
+	 * @param object $author Author object from database.
+	 * @return bool True on success, false on failure.
+	 */
+	private function run_topic_generation($author) {
 		// Generate topics using the generator
 		$result = $this->topics_generator->generate_topics($author);
-		
+
 		if (is_wp_error($result)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $result->get_error_message(), 'error');
 			
@@ -353,20 +385,35 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 */
 	public function generate_now($author_id, $advance_schedule = true) {
 		$author = $this->authors_repository->get_by_id($author_id);
-		
+
 		if (!$author) {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 
-		$result = $this->topics_generator->generate_topics($author);
-
-		// Keep manual "Run Now" behavior aligned with cron runs by advancing
-		// schedule timestamps regardless of success/failure to avoid re-running
-		// immediately on the next cron tick.
-		if ($advance_schedule) {
-			$this->update_author_schedule($author);
+		// Acquire an atomic, expiring claim so a manual run cannot overlap with a
+		// scheduled/cron run or another manual run for the same author.
+		$claim_token = $this->claims_repository->claim_author_topic_generation((int) $author->id);
+		if (false === $claim_token) {
+			return new WP_Error('already_running', __('A topic generation run for this author is already in progress.', 'ai-post-scheduler'));
 		}
 
-		return $result;
+		try {
+			$result = $this->topics_generator->generate_topics($author);
+
+			// Keep manual "Run Now" behavior aligned with cron runs by advancing
+			// schedule timestamps regardless of success/failure to avoid re-running
+			// immediately on the next cron tick.
+			if ($advance_schedule) {
+				$this->update_author_schedule($author);
+			}
+
+			return $result;
+		} finally {
+			$this->claims_repository->release_claim(
+				AIPS_Generation_Claims_Repository::TYPE_AUTHOR_TOPIC_GENERATION,
+				(int) $author->id,
+				$claim_token
+			);
+		}
 	}
 }

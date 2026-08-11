@@ -67,6 +67,26 @@ Current tables managed by the plugin:
 - `aips_article_structures` - Article structure definitions
 - `aips_prompt_sections` - Reusable prompt sections
 - `aips_trending_topics` - Trending topic research
+- `aips_author_topics` - AI-generated author topics (carries `generation_run_id` since 3.2.0)
+- `aips_generation_claims` - Atomic, expiring generation claims (added 3.2.0)
+
+## Versioned Migrations
+
+Structural changes that `dbDelta()` cannot perform live in `AIPS_DB_Migrations`
+(see the class docblock). Notable recent migrations:
+
+### 3.2.0 — Author generation integrity
+
+- Adds `generation_run_id varchar(64)` (plus index) to `aips_author_topics` so a
+  topic-generation batch is identified by the exact AI invocation that created
+  it, instead of being reconstructed from the "latest N rows" for an author
+  (unsafe under concurrent inserts). Handled by `migrate_to_3_2_0()`, guarded by
+  `SHOW COLUMNS` / `SHOW INDEX`.
+- Adds the `aips_generation_claims` table (created by `dbDelta` via
+  `install_tables()`), which backs `AIPS_Generation_Claims_Repository` — atomic,
+  expiring claims that prevent two workers from running the same author/topic
+  generation flow concurrently. Claim lifetime is filterable via
+  `aips_generation_claim_ttl`.
 
 ## Troubleshooting
 

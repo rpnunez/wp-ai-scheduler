@@ -162,6 +162,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_1_0();
 		}
 
+		if ( version_compare( $from_version, '3.2.0', '<' ) ) {
+			$this->migrate_to_3_2_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -967,6 +971,54 @@ class AIPS_DB_Migrations {
 
 		$this->logger->log(
 			"migrate_to_3_1_0: backfilled {$updated} rows, dropped log_type column from {$table}",
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.2.0.
+	 *
+	 * Adds the `generation_run_id` column (plus its index) to
+	 * `aips_author_topics` so a topic-generation batch can be identified by the
+	 * exact AI invocation that created it, rather than reconstructed from the
+	 * "latest N rows" for an author (which is unsafe under concurrent inserts).
+	 *
+	 * The new `aips_generation_claims` table is created by dbDelta via
+	 * install_tables(); only the additive column/index on the existing
+	 * author-topics table is handled explicitly here. Each ALTER is guarded with
+	 * SHOW COLUMNS / SHOW INDEX so it is a no-op on fresh installs where dbDelta
+	 * has already applied the target schema.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_2_0() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_author_topics';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$has_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'generation_run_id'
+		) );
+		if ( ! $has_column ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN generation_run_id varchar(64) DEFAULT NULL AFTER metadata" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
+
+		$has_index = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'generation_run_id'
+		) );
+		if ( ! $has_index ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY generation_run_id (generation_run_id)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
+
+		$this->logger->log(
+			"migrate_to_3_2_0: ensured generation_run_id column/index on {$table}",
 			'info'
 		);
 	}

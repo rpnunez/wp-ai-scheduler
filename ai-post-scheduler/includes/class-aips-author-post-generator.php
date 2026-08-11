@@ -104,6 +104,11 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	private $runner;
 
 	/**
+	 * @var AIPS_Generation_Claims_Repository Atomic generation claims.
+	 */
+	private $claims_repository;
+
+	/**
 	 * Initialize the generator.
 	 */
 	public function __construct() {
@@ -117,6 +122,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		$this->history_service = new AIPS_History_Service();
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
 		$this->job_scheduler = new AIPS_Job_Scheduler();
+		$this->claims_repository = new AIPS_Generation_Claims_Repository();
 	}
 
 	/**
@@ -277,87 +283,132 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 *
 	 * SCHEDULE-ADVANCEMENT STRATEGY — advance after execution:
 	 * `post_generation_next_run` is updated *after* the generation attempt
-	 * (success or failure) rather than before it.  This is intentional and
-	 * differs from the claim-first locking used by AIPS_Schedule_Processor.
+	 * (success or failure) rather than before it. Advancing after execution
+	 * ensures the schedule timestamp reflects when work actually completed,
+	 * giving a more accurate "next run" window and avoiding the edge case where
+	 * a crashed pre-execution advance could silently delay the author's next
+	 * post by a full interval.
 	 *
-	 * Rationale: per-author post-generation frequency is coarser (typically
-	 * daily or weekly), so the risk of two cron workers overlapping is low.
-	 * Advancing after execution ensures the schedule timestamp reflects when
-	 * work actually completed, giving a more accurate "next run" window and
-	 * avoiding the edge case where a crashed pre-execution advance could
-	 * silently delay the author's next post by a full interval.
-	 *
-	 * If concurrent-worker safety ever becomes a concern (e.g. Action
-	 * Scheduler with multiple workers), consider adding a claim-first lock
-	 * here as well.
+	 * CONCURRENCY: overlap between manual, scheduled and queued workers is now
+	 * prevented by the atomic, expiring claims acquired in
+	 * generate_posts_for_author() (author-run claim + per-topic claim), so two
+	 * workers cannot generate the same author/topic at once.
 	 *
 	 * @param object $author Author object from database.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
 	public function generate_post_for_author($author) {
-		$results = $this->generate_posts_for_author($author, 1, 'scheduled', true);
+		$legacy = $this->generate_posts_for_author($author, 1, 'scheduled', true)->to_legacy_return();
 
-		if (is_wp_error($results)) {
-			return $results;
+		if (is_wp_error($legacy)) {
+			return $legacy;
 		}
 
-		return !empty($results) ? (int) $results[0] : new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+		return !empty($legacy) ? (int) $legacy[0] : new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
 	}
 
 	/**
 	 * Generate one or more posts for a specific author from approved topics.
 	 *
-	 * @param object      $author          Author object from database.
-	 * @param int|null    $count           Optional explicit post count. When null,
-	 *                                     the author-level setting for the creation
-	 *                                     method is used.
-	 * @param string      $creation_method Optional creation method.
+	 * Returns a structured AIPS_Author_Post_Generation_Result capturing every
+	 * success, failure and skip so multi-post runs are reported accurately
+	 * (finding 9) rather than collapsing to the final error. Concurrency is
+	 * protected by two layers of atomic, expiring claims (finding 2):
+	 *   1. an author-run claim so two "generate N posts" runs cannot compete, and
+	 *   2. a per-topic claim so a topic is never generated twice concurrently.
+	 *
+	 * Topic eligibility honours the author's max_posts_per_topic limit (finding 1).
+	 *
+	 * @param object      $author           Author object from database.
+	 * @param int|null    $count            Optional explicit post count. When null,
+	 *                                      the author-level setting for the creation
+	 *                                      method is used.
+	 * @param string      $creation_method  Optional creation method.
 	 * @param bool        $advance_schedule Whether to update the author schedule.
-	 * @return int[]|WP_Error Generated post IDs on success, WP_Error when no posts were generated.
+	 * @return AIPS_Author_Post_Generation_Result Structured generation result.
 	 */
-	public function generate_posts_for_author($author, ?int $count = null, string $creation_method = 'scheduled', bool $advance_schedule = true) {
+	public function generate_posts_for_author($author, ?int $count = null, string $creation_method = 'scheduled', bool $advance_schedule = true): AIPS_Author_Post_Generation_Result {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
 
 		$post_count = $this->resolve_post_generation_quantity($author, $creation_method, $count);
+		$result     = new AIPS_Author_Post_Generation_Result((int) $author->id, $post_count, (string) AIPS_Correlation_ID::get());
 
-		// Get the next approved topics for this author.
-		$topics = $this->topics_repository->get_approved_for_generation($author->id, $post_count);
-		
-		if (empty($topics)) {
-			$this->logger->log("No approved topics available for author {$author->id}", 'warning');
-			
-			// Still update the schedule to avoid getting stuck
+		// Author-run claim: prevent two post-generation runs competing for the
+		// same author. Failure means another run is already in progress.
+		$author_claim = $this->claims_repository->claim_author_post_generation((int) $author->id);
+		if (false === $author_claim) {
+			$this->logger->log("Post generation for author {$author->id} skipped — already running.", 'warning');
+			$result->mark_already_running();
+			return $result;
+		}
+
+		try {
+			$max_posts_per_topic = isset($author->max_posts_per_topic) ? max(1, (int) $author->max_posts_per_topic) : 1;
+
+			// Get the next eligible approved topics for this author, honouring the
+			// per-topic post limit.
+			$topics = $this->topics_repository->get_approved_for_generation($author->id, $post_count, 0, $max_posts_per_topic);
+
+			$result->set_attempted_topic_ids(array_map(function ($t) {
+				return isset($t->id) ? (int) $t->id : 0;
+			}, $topics));
+
+			if (empty($topics)) {
+				$this->logger->log("No approved topics available for author {$author->id}", 'warning');
+				$result->mark_no_work();
+
+				// Still update the schedule to avoid getting stuck.
+				if ($advance_schedule) {
+					$this->update_author_schedule($author);
+				}
+				return $result;
+			}
+
+			foreach ($topics as $topic) {
+				// Per-topic claim protects direct/queue/regeneration/scheduled
+				// generation from producing duplicate posts for one topic.
+				$topic_claim = $this->claims_repository->claim_topic_post_generation((int) $topic->id);
+				if (false === $topic_claim) {
+					$this->logger->log("Topic {$topic->id} skipped — already being generated.", 'warning');
+					$result->add_skipped((int) $topic->id, (string) $topic->topic_title, 'already_running');
+					continue;
+				}
+
+				try {
+					$post_result = $this->generate_post_from_topic($topic, $author, $creation_method);
+
+					if (is_wp_error($post_result)) {
+						$result->add_failure(
+							(int) $topic->id,
+							(string) $topic->topic_title,
+							(string) $post_result->get_error_code(),
+							(string) $post_result->get_error_message()
+						);
+						continue;
+					}
+
+					$result->add_success((int) $post_result);
+				} finally {
+					$this->claims_repository->release_claim(
+						AIPS_Generation_Claims_Repository::TYPE_TOPIC_POST_GENERATION,
+						(int) $topic->id,
+						$topic_claim
+					);
+				}
+			}
+
 			if ($advance_schedule) {
 				$this->update_author_schedule($author);
 			}
-			return new WP_Error('no_topics', __('No approved topics available', 'ai-post-scheduler'));
+
+			return $result->finalize();
+		} finally {
+			$this->claims_repository->release_claim(
+				AIPS_Generation_Claims_Repository::TYPE_AUTHOR_POST_GENERATION,
+				(int) $author->id,
+				$author_claim
+			);
 		}
-
-		$post_ids = array();
-		$last_error = null;
-
-		foreach ($topics as $topic) {
-			$result = $this->generate_post_from_topic($topic, $author, $creation_method);
-
-			if (is_wp_error($result)) {
-				$last_error = $result;
-				continue;
-			}
-
-			$post_ids[] = (int) $result;
-		}
-
-		if ($advance_schedule) {
-			$this->update_author_schedule($author);
-		}
-
-		if (!empty($post_ids)) {
-			return $post_ids;
-		}
-
-		return $last_error instanceof WP_Error
-			? $last_error
-			: new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
 	}
 
 	/**
@@ -621,20 +672,35 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 		
-		// Track wall-clock start time so we can record the total generation
-		// duration (including resilience/retry delays) for future estimates.
-		$start_time = microtime(true);
-		
-		// Manual generation
-		$result = $this->generate_post_from_topic($topic, $author, 'manual');
-		
-		// Store elapsed time in post meta for future progress-bar estimation.
-		if (!is_wp_error($result) && $result > 0) {
-			$elapsed = round(microtime(true) - $start_time, 2);
-			update_post_meta($result, AIPS_Post_Manager::META_POST_GENERATION_TOTAL_TIME, $elapsed);
+		// Per-topic claim protects this direct/manual generation from overlapping
+		// with scheduled, queued or regeneration runs for the same topic.
+		$topic_claim = $this->claims_repository->claim_topic_post_generation((int) $topic->id);
+		if (false === $topic_claim) {
+			return new WP_Error('already_running', __('This topic is already being generated.', 'ai-post-scheduler'));
 		}
-		
-		return $result;
+
+		try {
+			// Track wall-clock start time so we can record the total generation
+			// duration (including resilience/retry delays) for future estimates.
+			$start_time = microtime(true);
+
+			// Manual generation
+			$result = $this->generate_post_from_topic($topic, $author, 'manual');
+
+			// Store elapsed time in post meta for future progress-bar estimation.
+			if (!is_wp_error($result) && $result > 0) {
+				$elapsed = round(microtime(true) - $start_time, 2);
+				update_post_meta($result, AIPS_Post_Manager::META_POST_GENERATION_TOTAL_TIME, $elapsed);
+			}
+
+			return $result;
+		} finally {
+			$this->claims_repository->release_claim(
+				AIPS_Generation_Claims_Repository::TYPE_TOPIC_POST_GENERATION,
+				(int) $topic->id,
+				$topic_claim
+			);
+		}
 	}
 	
 	/**

@@ -83,80 +83,154 @@ class AIPS_Author_Topics_Generator {
 	/**
 	 * Generate topics for an author.
 	 *
+	 * Backward-compatible wrapper that returns the legacy `array|WP_Error`
+	 * shape. Internally delegates to generate_topics_with_result() which builds
+	 * a structured AIPS_Author_Topic_Generation_Result.
+	 *
 	 * @param object $author Author object from database.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
 	public function generate_topics($author) {
+		return $this->generate_topics_with_result($author)->to_legacy_return();
+	}
+
+	/**
+	 * Generate topics for an author and return a structured result object.
+	 *
+	 * Every inserted row is stamped with a unique generation_run_id so the exact
+	 * records created by this run are retrieved unambiguously, rather than
+	 * reconstructed from the "latest N rows" for the author (which can capture
+	 * rows inserted by a concurrent request).
+	 *
+	 * @param object $author Author object from database.
+	 * @return AIPS_Author_Topic_Generation_Result
+	 */
+	public function generate_topics_with_result($author): AIPS_Author_Topic_Generation_Result {
+		$requested      = is_object($author) && isset($author->topic_generation_quantity) ? (int) $author->topic_generation_quantity : 0;
+		$run_id         = $this->generate_run_id();
+		$correlation_id = (string) AIPS_Correlation_ID::get();
+		$result         = new AIPS_Author_Topic_Generation_Result(
+			is_object($author) && isset($author->id) ? (int) $author->id : 0,
+			$requested,
+			$run_id,
+			$correlation_id
+		);
+
 		if (!$author || !isset($author->id)) {
-			return new WP_Error('invalid_author', 'Invalid author object provided');
+			$result->mark_failed(new WP_Error('invalid_author', 'Invalid author object provided'));
+			return $result;
 		}
-		
+
 		$this->logger->log("Starting topic generation for author: {$author->name} (ID: {$author->id})", 'info', array(
 			'author_id' => $author->id,
-			'quantity' => $author->topic_generation_quantity
+			'quantity'  => $author->topic_generation_quantity,
+			'run_id'    => $run_id,
 		));
-		
+
 		// Build the prompt via the dedicated prompt builder
 		$approved_topics   = $this->topics_repository->get_approved_summary($author->id, 10);
 		$rejected_topics   = $this->topics_repository->get_rejected_summary($author->id, 10);
 		$feedback_guidance = $this->build_feedback_guidance_section($author);
 
 		$prompt = $this->prompt_builder->build($author, $approved_topics, $rejected_topics, $feedback_guidance);
-		
+
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
 			'temperature' => 0.7,
 			'json_schema' => $this->get_topic_json_schema(),
 		));
-		
+
 		if (is_wp_error($response)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $response->get_error_message(), 'error');
-			return $response;
+			$result->mark_failed($response);
+			return $result;
 		}
-		
+
+		$candidate_count = is_array($response) ? count($response) : 0;
+
 		// Parse the JSON response into database-ready topics
 		$topics = $this->parse_json_topics($response, $author);
-		
+
 		if (empty($topics)) {
 			$this->logger->log("No topics parsed from AI response for author {$author->id}", 'warning');
-			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
+			$result->set_candidate_counts(0, $candidate_count, 0);
+			$result->mark_failed(new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response'));
+			return $result;
 		}
-		
+
 		// Flag semantically similar candidates before they reach editorial review.
 		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
-		
-		// Save topics to database
-		$saved_topics = array();
 
-		// Bolt Optimization: Use bulk insert to reduce database round-trips
-		if ($this->topics_repository->create_bulk($topics)) {
-			// Retrieve created topics to get IDs (fetch latest N topics for author)
-			$created_topics = $this->topics_repository->get_latest_by_author($author->id, count($topics));
+		$duplicate_count = $this->count_potential_duplicates($topics);
+		$result->set_candidate_counts(count($topics), max(0, $candidate_count - count($topics)), $duplicate_count);
 
-			// Reverse to match original order (oldest to newest ID)
-			$created_topics = array_reverse($created_topics);
+		// Bulk insert stamped with the run ID, then fetch the EXACT inserted rows.
+		$inserted_ids = $this->topics_repository->create_bulk($topics, $run_id);
 
-			foreach ($created_topics as $topic_obj) {
-				$topic_arr = (array) $topic_obj;
-				$saved_topics[] = $topic_arr;
-
-				$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
-					'topic_id' => $topic_arr['id'],
-					'author_id' => $author->id
-				));
-			}
-		} else {
+		if (empty($inserted_ids)) {
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
-			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');
+			$result->mark_failed(new WP_Error('db_insert_error', 'Failed to save generated topics to database'));
+			return $result;
 		}
-		
+
+		$created_topics = $this->topics_repository->get_by_run_id($run_id, $author->id);
+
+		$saved_topics = array();
+		foreach ($created_topics as $topic_obj) {
+			$topic_arr      = (array) $topic_obj;
+			$saved_topics[] = $topic_arr;
+
+			$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
+				'topic_id'  => $topic_arr['id'],
+				'author_id' => $author->id,
+				'run_id'    => $run_id,
+			));
+		}
+
+		$result->set_persisted_topics($saved_topics);
+		$result->finalize();
+
 		$count = count($saved_topics);
 		$this->logger->log("Successfully generated {$count} topics for author {$author->id}", 'info', array(
-			'author_id' => $author->id,
-			'topic_count' => $count
+			'author_id'   => $author->id,
+			'topic_count' => $count,
+			'run_id'      => $run_id,
+			'status'      => $result->get_status(),
 		));
-		
-		return $saved_topics;
+
+		return $result;
+	}
+
+	/**
+	 * Count topics flagged as potential duplicates by fuzzy matching.
+	 *
+	 * @param array $topics Topic data arrays.
+	 * @return int
+	 */
+	private function count_potential_duplicates($topics): int {
+		$count = 0;
+		foreach ($topics as $topic) {
+			if (empty($topic['metadata'])) {
+				continue;
+			}
+			$metadata = json_decode((string) $topic['metadata'], true);
+			if (is_array($metadata) && !empty($metadata['potential_duplicate'])) {
+				$count++;
+			}
+		}
+		return $count;
+	}
+
+	/**
+	 * Generate a unique generation run identifier.
+	 *
+	 * @return string
+	 */
+	private function generate_run_id(): string {
+		if (function_exists('wp_generate_uuid4')) {
+			return wp_generate_uuid4();
+		}
+		return md5(uniqid((string) wp_rand(), true));
 	}
 	
 	/**

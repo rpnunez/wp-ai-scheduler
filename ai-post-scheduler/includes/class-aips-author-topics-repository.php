@@ -132,13 +132,23 @@ class AIPS_Author_Topics_Repository {
 	/**
 	 * Create multiple topics at once.
 	 *
-	 * @param array $topics Array of topic data arrays.
-	 * @return bool True on success, false on failure.
+	 * When a $run_id is supplied it is stamped on every inserted row so the
+	 * exact records created by this batch can be retrieved unambiguously, even
+	 * under concurrent inserts for the same author. The method returns the exact
+	 * inserted topic IDs (selected by generation_run_id) instead of forcing
+	 * callers to reconstruct the batch from the "latest N rows".
+	 *
+	 * @param array       $topics Array of topic data arrays.
+	 * @param string|null $run_id Optional generation run identifier stamped on
+	 *                            every inserted row.
+	 * @return int[] Array of inserted topic IDs (empty on failure).
 	 */
-	public function create_bulk($topics) {
+	public function create_bulk($topics, $run_id = null) {
 		if (empty($topics)) {
-			return false;
+			return array();
 		}
+
+		$run_id = (null !== $run_id && '' !== $run_id) ? (string) $run_id : null;
 
 		$values = array();
 		$placeholders = array();
@@ -164,41 +174,88 @@ class AIPS_Author_Topics_Repository {
 				isset($topic['status']) ? $topic['status'] : 'pending',
 				isset($topic['score']) ? (int) $topic['score'] : 50,
 				isset($topic['metadata']) ? $topic['metadata'] : '',
+				$run_id,
 				isset($topic['generated_at']) ? absint($topic['generated_at']) : AIPS_DateTime::now()->timestamp()
 			);
-			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %d)";
+			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %s, %d)";
 		}
 
 		// If no valid topics remain after validation, do not attempt the insert.
 		if (empty($placeholders)) {
-			return false;
+			return array();
 		}
-		$sql = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata, generated_at) VALUES ";
+		$sql = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata, generation_run_id, generated_at) VALUES ";
 		$sql .= implode(', ', $placeholders);
 
 		$query = $this->wpdb->prepare($sql, $values);
 
 		$result = $this->wpdb->query($query) !== false;
-		if ( $result ) {
-			$author_ids = array();
-			foreach ( $topics as $topic ) {
-				if (isset( $topic['author_id'] ) && absint( $topic['author_id'] ) > 0) {
-					$author_ids[] = absint( $topic['author_id'] );
-				}
-			}
+		if ( ! $result ) {
+			return array();
+		}
 
-			foreach ( array_unique( $author_ids ) as $author_id ) {
-				$this->invalidate_cache_domain(
-					'author_topic',
-					array(
-						'author_id' => $author_id,
-					),
-					'author_topic_bulk_created'
-				);
+		$author_ids = array();
+		foreach ( $topics as $topic ) {
+			if (isset( $topic['author_id'] ) && absint( $topic['author_id'] ) > 0) {
+				$author_ids[] = absint( $topic['author_id'] );
 			}
 		}
 
-		return $result;
+		foreach ( array_unique( $author_ids ) as $author_id ) {
+			$this->invalidate_cache_domain(
+				'author_topic',
+				array(
+					'author_id' => $author_id,
+				),
+				'author_topic_bulk_created'
+			);
+		}
+
+		// Return the exact inserted IDs. When a run ID is available, select by
+		// it for an unambiguous result. Otherwise fall back to the contiguous
+		// auto-increment block produced by this single multi-row INSERT.
+		if (null !== $run_id) {
+			$ids = $this->wpdb->get_col($this->wpdb->prepare(
+				"SELECT id FROM {$this->table_name} WHERE generation_run_id = %s ORDER BY id ASC",
+				$run_id
+			));
+			return array_map('intval', (array) $ids);
+		}
+
+		$first_id = (int) $this->wpdb->insert_id;
+		$count    = count($placeholders);
+		if ($first_id <= 0) {
+			return array();
+		}
+
+		return range($first_id, $first_id + $count - 1);
+	}
+
+	/**
+	 * Retrieve the exact topics created by a given generation run.
+	 *
+	 * @param string   $run_id    Generation run identifier.
+	 * @param int|null $author_id Optional author ID to scope the query.
+	 * @return array Array of topic objects ordered by insertion (id ASC).
+	 */
+	public function get_by_run_id($run_id, $author_id = null) {
+		$run_id = (string) $run_id;
+		if ('' === $run_id) {
+			return array();
+		}
+
+		if (null !== $author_id && absint($author_id) > 0) {
+			return $this->wpdb->get_results($this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE generation_run_id = %s AND author_id = %d ORDER BY id ASC",
+				$run_id,
+				absint($author_id)
+			));
+		}
+
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name} WHERE generation_run_id = %s ORDER BY id ASC",
+			$run_id
+		));
 	}
 
 	/**
@@ -334,15 +391,25 @@ class AIPS_Author_Topics_Repository {
 	}
 
 	/**
-	 * Get approved topics for an author (for post generation).
+	 * Get approved topics eligible for post generation.
 	 *
-	 * @param int $author_id Author ID.
-	 * @param int $limit     Optional. Maximum number of topics to return. Default 1.
-	 * @param int $after_id  Optional. Return topics with ID greater than this value. Default 0.
+	 * A topic is eligible while the number of successfully generated posts that
+	 * still reference an existing WordPress post is below the author's
+	 * `max_posts_per_topic` limit. This replaces the previous "no generated post
+	 * log exists" rule (l.id IS NULL), which made a topic ineligible after its
+	 * very first post regardless of the author setting. Logs whose referenced
+	 * post has been deleted no longer consume the limit (post-existence join).
+	 *
+	 * @param int $author_id           Author ID.
+	 * @param int $limit               Optional. Maximum number of topics to return. Default 1.
+	 * @param int $after_id            Optional. Return topics with ID greater than this value. Default 0.
+	 * @param int $max_posts_per_topic Optional. Per-topic generated-post limit. Default 1.
 	 * @return array Array of approved topic objects.
 	 */
-	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0, $max_posts_per_topic = 1) {
+		$logs_table  = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$posts_table = $this->wpdb->posts;
+		$max_posts   = max(1, (int) $max_posts_per_topic);
 
 		return $this->cache_read(
 			'author_topics.get_approved_for_generation',
@@ -350,22 +417,28 @@ class AIPS_Author_Topics_Repository {
 				'author_id' => absint( $author_id ),
 				'limit'     => (int) $limit,
 				'after_id'  => (int) $after_id,
+				'max_posts' => $max_posts,
 			),
-			function() use ( $author_id, $limit, $after_id, $logs_table ) {
+			function() use ( $author_id, $limit, $after_id, $logs_table, $posts_table, $max_posts ) {
 				if ($after_id > 0) {
 					return $this->wpdb->get_results($this->wpdb->prepare(
 						"SELECT t.* FROM {$this->table_name} t
-						LEFT JOIN {$logs_table} l
-							ON l.author_topic_id = t.id
-							AND l.action = 'post_generated'
+						LEFT JOIN (
+							SELECT l.author_topic_id, COUNT(*) AS generated_count
+							FROM {$logs_table} l
+							INNER JOIN {$posts_table} p ON p.ID = l.post_id
+							WHERE l.action = 'post_generated'
 							AND l.post_id IS NOT NULL
+							GROUP BY l.author_topic_id
+						) g ON g.author_topic_id = t.id
 						WHERE t.author_id = %d
 						AND t.status = 'approved'
-						AND l.id IS NULL
+						AND COALESCE(g.generated_count, 0) < %d
 						AND t.id > %d
 						ORDER BY t.id ASC
 						LIMIT %d",
 						$author_id,
+						$max_posts,
 						$after_id,
 						$limit
 					));
@@ -373,16 +446,21 @@ class AIPS_Author_Topics_Repository {
 
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT t.* FROM {$this->table_name} t
-					LEFT JOIN {$logs_table} l
-						ON l.author_topic_id = t.id
-						AND l.action = 'post_generated'
+					LEFT JOIN (
+						SELECT l.author_topic_id, COUNT(*) AS generated_count
+						FROM {$logs_table} l
+						INNER JOIN {$posts_table} p ON p.ID = l.post_id
+						WHERE l.action = 'post_generated'
 						AND l.post_id IS NOT NULL
+						GROUP BY l.author_topic_id
+					) g ON g.author_topic_id = t.id
 					WHERE t.author_id = %d
 					AND t.status = 'approved'
-					AND l.id IS NULL
+					AND COALESCE(g.generated_count, 0) < %d
 					ORDER BY t.id ASC
 					LIMIT %d",
 					$author_id,
+					$max_posts,
 					$limit
 				));
 			},
@@ -467,27 +545,40 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Associative array of bucket => count.
 	 */
 	public function get_status_counts($author_id) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$logs_table    = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$authors_table = $this->wpdb->prefix . 'aips_authors';
+		$posts_table   = $this->wpdb->posts;
 
 		return $this->cache_read(
 			'author_topics.get_status_counts',
 			array(
 				'author_id' => absint( $author_id ),
 			),
-			function() use ( $author_id, $logs_table ) {
+			function() use ( $author_id, $logs_table, $authors_table, $posts_table ) {
+				// A topic falls into the 'posts_generated' bucket only once it has
+				// reached the author's max_posts_per_topic limit (i.e. is no longer
+				// eligible). Below that, it remains in the 'approved' bucket so the
+				// count reflects true generation eligibility.
 				$results = $this->wpdb->get_results(
 					$this->wpdb->prepare(
 						"SELECT
 							CASE
-								WHEN t.status = 'approved' AND l.id IS NOT NULL THEN 'posts_generated'
+								WHEN t.status = 'approved'
+									AND COALESCE(g.generated_count, 0) >= GREATEST(1, COALESCE(a.max_posts_per_topic, 1))
+									THEN 'posts_generated'
 								ELSE t.status
 							END AS bucket,
 							COUNT(DISTINCT t.id) AS count
 						FROM {$this->table_name} t
-						LEFT JOIN {$logs_table} l
-							ON l.author_topic_id = t.id
-							AND l.action = 'post_generated'
+						LEFT JOIN {$authors_table} a ON a.id = t.author_id
+						LEFT JOIN (
+							SELECT l.author_topic_id, COUNT(*) AS generated_count
+							FROM {$logs_table} l
+							INNER JOIN {$posts_table} p ON p.ID = l.post_id
+							WHERE l.action = 'post_generated'
 							AND l.post_id IS NOT NULL
+							GROUP BY l.author_topic_id
+						) g ON g.author_topic_id = t.id
 						WHERE t.author_id = %d
 						GROUP BY bucket",
 						$author_id
@@ -552,17 +643,31 @@ class AIPS_Author_Topics_Repository {
 	 */
 	public function get_all_approved_for_queue() {
 		$authors_table = $this->wpdb->prefix . 'aips_authors';
-		
+		$logs_table    = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$posts_table   = $this->wpdb->posts;
+
 		return $this->cache_read(
 			'author_topics.get_all_approved_for_queue',
 			array(),
-			function() use ( $authors_table ) {
+			function() use ( $authors_table, $logs_table, $posts_table ) {
+				// Apply the same max_posts_per_topic eligibility rule used by
+				// scheduled per-author generation so the global queue never
+				// surfaces topics that have already hit their post limit.
 				return $this->wpdb->get_results(
 					$this->wpdb->prepare(
 						"SELECT t.*, a.name as author_name, a.field_niche
 						FROM {$this->table_name} t
 						INNER JOIN {$authors_table} a ON t.author_id = a.id
+						LEFT JOIN (
+							SELECT l.author_topic_id, COUNT(*) AS generated_count
+							FROM {$logs_table} l
+							INNER JOIN {$posts_table} p ON p.ID = l.post_id
+							WHERE l.action = 'post_generated'
+							AND l.post_id IS NOT NULL
+							GROUP BY l.author_topic_id
+						) g ON g.author_topic_id = t.id
 						WHERE t.status = %s
+						AND COALESCE(g.generated_count, 0) < GREATEST(1, COALESCE(a.max_posts_per_topic, 1))
 						ORDER BY t.score DESC, t.reviewed_at ASC",
 						'approved'
 					)

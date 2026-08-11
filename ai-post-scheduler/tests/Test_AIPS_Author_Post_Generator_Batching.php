@@ -72,7 +72,9 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 
 		$result = $post_generator->generate_posts_for_author($author, null, 'manual', false);
 
-		$this->assertSame(array(1011, 1012), $result);
+		$this->assertInstanceOf('AIPS_Author_Post_Generation_Result', $result);
+		$this->assertSame(array(1011, 1012), $result->get_post_ids());
+		$this->assertSame('success', $result->get_status());
 		$this->assertSame(2, $topics_repository->last_limit);
 		$this->assertCount(2, $post_generator->generated);
 		$this->assertSame('manual', $post_generator->generated[0]['creation_method']);
@@ -118,7 +120,9 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 
 		$result = $post_generator->generate_posts_for_author($author, null, 'scheduled', false);
 
-		$this->assertSame(array(2021, 2022, 2023), $result);
+		$this->assertInstanceOf('AIPS_Author_Post_Generation_Result', $result);
+		$this->assertSame(array(2021, 2022, 2023), $result->get_post_ids());
+		$this->assertSame('success', $result->get_status());
 		$this->assertSame(3, $topics_repository->last_limit);
 		$this->assertCount(3, $post_generator->generated);
 	}

@@ -76,9 +76,13 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 				return $this->existing;
 			}
 
-			public function create_bulk( $topics ) {
+			public function create_bulk( $topics, $run_id = null ) {
 				$this->bulk_inserted = $topics;
-				return true;
+				return range( 1, max( 1, count( $topics ) ) );
+			}
+
+			public function get_by_run_id( $run_id, $author_id = null ) {
+				return $this->bulk;
 			}
 
 			public function get_latest_by_author( $author_id, $limit, $after = null, $titles = null ) {

@@ -34,6 +34,7 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
+        'aips_generation_claims',
     );
 
     public function __construct() {
@@ -96,6 +97,7 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
+        $table_generation_claims    = $tables['aips_generation_claims'];
 
         $sql = array();
 
@@ -355,6 +357,7 @@ class AIPS_DB_Manager {
             status varchar(20) DEFAULT 'pending',
             score int DEFAULT 50,
             metadata longtext,
+            generation_run_id varchar(64) DEFAULT NULL,
             generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
@@ -362,6 +365,7 @@ class AIPS_DB_Manager {
             KEY author_id (author_id),
             KEY status (status),
             KEY generated_at (generated_at),
+            KEY generation_run_id (generation_run_id),
             KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
@@ -661,6 +665,20 @@ class AIPS_DB_Manager {
             KEY event_type (event_type),
             KEY created_at (created_at),
             KEY user_id (user_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_generation_claims (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            claim_type varchar(50) NOT NULL,
+            resource_id bigint(20) NOT NULL,
+            claim_token varchar(64) NOT NULL,
+            correlation_id varchar(64) DEFAULT NULL,
+            claimed_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY claim_resource (claim_type, resource_id),
+            KEY expires_at (expires_at),
+            KEY claim_token (claim_token)
         ) $charset_collate;";
 
         return $sql;
