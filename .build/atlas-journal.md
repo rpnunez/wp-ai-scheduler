@@ -1438,3 +1438,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2026-06-25 - [Extract Operations Insights Repository]
+**Context:** The `AIPS_History_Repository` class was a "God Object" acting as a generic repository for the history table, violating Separation of Concerns by including analytical queries specifically built for the Operations Insights dashboard (`get_daily_success_failure_trend`, `get_average_duration_by_flow`, `get_retry_counts_by_service`, `get_top_failure_reasons`).
+**Decision:** Extracted the operations insights specific methods to a new dedicated `AIPS_Operations_Insights_Repository` class.
+**Consequence:** Improved separation of concerns. `AIPS_History_Repository` now focuses solely on History CRUD operations. `AIPS_Operations_Insights_Controller` uses the new repository for dashboard analytics. Trade-off: Added one more file and one more database instantiation, but improved maintainability.
+**Tests:** Created `Test_Operations_Insights_Repository.php` to handle extracted tests. Ensured full test suite passes with `phpunit` (environment failures excluded).
