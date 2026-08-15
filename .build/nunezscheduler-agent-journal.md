@@ -280,3 +280,8 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Stagger scheduled topics with frequency 'once' to improve queue management
 **Files Modified:** ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
 **Outcome:** Reduced concurrent background queue spike by staggering 'once' schedules
+## 2026-03-23 - Author Topics Search Optimization
+Target Feature: Author Topics
+Improvement: Added empty state for topic search to improve UX when no results are found.
+Files Modified: ./ai-post-scheduler/templates/admin/author-topics.php, ./ai-post-scheduler/assets/js/authors.js
+Outcome: Users now see a clear empty state with a "Clear Search" button when filtering topics yields no results, improving workflow efficiency.

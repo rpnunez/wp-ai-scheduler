@@ -87,6 +87,7 @@
 			// Topic search (author-topics page)
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
 			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
+			$(document).on('click', '.aips-clear-topic-search-btn', this.clearTopicSearch.bind(this));
 
 			// Authors list bulk actions
 			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
@@ -1109,6 +1110,9 @@
 			var term = $('#aips-topic-search').val().toLowerCase().trim();
 			var $rows = $('.aips-topics-table tbody tr');
 			var $clearBtn = $('#aips-topic-search-clear');
+			var $noResults = $('#aips-topic-search-no-results');
+			var $tableContainer = $('#aips-topics-content');
+			var hasVisible = false;
 
 			if (term.length > 0) {
 				$clearBtn.show();
@@ -1121,10 +1125,19 @@
 				var title = $row.find('.topic-title').text().toLowerCase();
 				if (title.indexOf(term) > -1) {
 					$row.show();
+					hasVisible = true;
 				} else {
 					$row.hide();
 				}
 			});
+
+			if (!hasVisible && term.length > 0) {
+				$tableContainer.hide();
+				$noResults.show();
+			} else {
+				$tableContainer.show();
+				$noResults.hide();
+			}
 		},
 
 		/**
