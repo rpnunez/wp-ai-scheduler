@@ -45,6 +45,9 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 * @return string
 	 */
 	public function build($title, $content, $voice = null, $topic = null, $subject = null) {
+		$title   = AIPS_Utilities::clean_html_for_prompt($title);
+		$content = AIPS_Utilities::clean_html_for_prompt($content);
+
 		$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
 
 		$voice_instructions = $this->build_instructions($voice, $topic);

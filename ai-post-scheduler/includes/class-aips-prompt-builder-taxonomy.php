@@ -50,8 +50,8 @@ class AIPS_Prompt_Builder_Taxonomy {
 		$prompt .= "Posts:\n";
 
 		foreach ($post_contents as $content) {
-			$title   = isset($content['title']) ? sanitize_text_field($content['title']) : '';
-			$excerpt = isset($content['excerpt']) ? sanitize_textarea_field($content['excerpt']) : '';
+			$title   = isset($content['title']) ? AIPS_Utilities::clean_html_for_prompt($content['title']) : '';
+			$excerpt = isset($content['excerpt']) ? AIPS_Utilities::clean_html_for_prompt($content['excerpt']) : '';
 
 			if ($title === '') {
 				continue;

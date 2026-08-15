@@ -306,11 +306,8 @@ class AIPS_Internal_Link_Inserter_Service {
 	 * @return string Sanitized plain text.
 	 */
 	private function normalize_content($post_content) {
-		$text = wp_strip_all_tags($post_content);
-		$text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$text = AIPS_Utilities::clean_html_for_prompt($post_content);
 		$text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
-		$text = str_replace("\r\n", "\n", $text);
-		$text = preg_replace('/\n{3,}/', "\n\n", $text);
 
 		return trim($text);
 	}

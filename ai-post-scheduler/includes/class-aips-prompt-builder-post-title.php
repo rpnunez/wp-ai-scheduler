@@ -58,6 +58,7 @@ class AIPS_Prompt_Builder_Post_Title {
 	 */
 	public function build($template_or_context, $topic = null, $voice = null, $content = '') {
 		$title_instructions = '';
+		$content = AIPS_Utilities::clean_html_for_prompt($content);
 
 		if ($template_or_context instanceof AIPS_Generation_Context) {
 			$context = $template_or_context;

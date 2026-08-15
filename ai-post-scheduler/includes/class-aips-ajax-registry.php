@@ -300,6 +300,12 @@ class AIPS_Ajax_Registry {
 		// Dashboard Controller
 		'aips_get_dashboard_data'              => 'AIPS_Dashboard_Controller',
 
+		// Integrations Controller
+		'aips_get_available_integrations'      => 'AIPS_Integrations_Controller',
+		'aips_get_integration_schema'          => 'AIPS_Integrations_Controller',
+		'aips_get_field_mappings'              => 'AIPS_Integrations_Controller',
+		'aips_save_field_mappings'             => 'AIPS_Integrations_Controller',
+		'aips_delete_field_mapping'            => 'AIPS_Integrations_Controller',
 		// Affiliate Links Controller
 		'aips_affiliate_links_list'          => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_get'           => 'AIPS_Affiliate_Links_Controller',

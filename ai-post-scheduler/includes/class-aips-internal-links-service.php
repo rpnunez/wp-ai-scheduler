@@ -375,7 +375,7 @@ class AIPS_Internal_Links_Service {
 		$parts = array(
 			$post->post_title,
 			$post->post_excerpt,
-			wp_strip_all_tags($post->post_content),
+			AIPS_Utilities::clean_html_for_prompt($post->post_content),
 		);
 
 		return trim(implode(' ', array_filter($parts)));

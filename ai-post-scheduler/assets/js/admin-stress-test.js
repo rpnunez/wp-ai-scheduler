@@ -57,6 +57,7 @@
 			$(document)
 				.on('click', '#aips-stress-run-all', this.handleRunAll.bind(this))
 				.on('click', '#aips-stress-reset', this.handleReset.bind(this))
+				.on('click', '#aips-stress-export', this.handleExport.bind(this))
 				.on('click', '#aips-stress-cleanup', this.handleCleanup.bind(this))
 				.on('click', '.aips-stress-run-one', this.handleRunOne.bind(this))
 				.on('click', '.aips-stress-row', this.handleRowToggle.bind(this))
@@ -241,6 +242,9 @@
 
 			this.setRowState($row, result.status, result.summary || '', duration);
 			$row.data('result', result);
+
+			// A rendered result means there is something to export.
+			$('#aips-stress-export').prop('disabled', false);
 
 			var $details = $('#aips-stress-details-' + result['case']).find('.aips-stress-details');
 			$details.empty().append(this.buildDetails(result));
@@ -750,6 +754,98 @@
 			});
 
 			$('.aips-stress-details-row').attr('hidden', true).find('.aips-stress-details').empty();
+			$('#aips-stress-export').prop('disabled', true);
+		},
+
+		// -------------------------------------------------------------------
+		// Export
+		// -------------------------------------------------------------------
+
+		/**
+		 * Read the environment/version snapshot embedded in the page.
+		 *
+		 * @returns {Object}
+		 */
+		readExportMeta: function () {
+			var raw = $('#aips-stress-export-meta').text();
+
+			if (!raw) {
+				return {};
+			}
+
+			try {
+				return JSON.parse(raw) || {};
+			} catch (err) {
+				return {};
+			}
+		},
+
+		/**
+		 * Download every rendered result as a single JSON file.
+		 *
+		 * The file bundles the provider/model/version snapshot with each case's
+		 * status, timing, compared values, and full AI request/response log, so
+		 * one run can be shared verbatim for analysis.
+		 *
+		 * @param {Event} e
+		 */
+		handleExport: function (e) {
+			e.preventDefault();
+
+			var results = [];
+
+			$('.aips-stress-row').each(function () {
+				var result = $(this).data('result');
+
+				if (result) {
+					results.push(result);
+				}
+			});
+
+			if (!results.length) {
+				AIPS.Utilities.showToast(t('nothingToExport', 'Run at least one test case before exporting.'), 'info');
+				return;
+			}
+
+			var meta = this.readExportMeta();
+			var passed = results.filter(function (r) { return r.status === 'passed'; }).length;
+
+			var payload = {
+				exported_at: new Date().toISOString(),
+				plugin_version: meta.plugin_version || '',
+				environment: meta.environment || {},
+				totals: {
+					cases: results.length,
+					passed: passed,
+					failed: results.length - passed,
+					duration_ms: results.reduce(function (sum, r) { return sum + (r.duration_ms || 0); }, 0)
+				},
+				results: results
+			};
+
+			var stamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+			this.downloadJson('aips-stress-test-results-' + stamp + '.json', payload);
+		},
+
+		/**
+		 * Trigger a client-side download of a pretty-printed JSON object.
+		 *
+		 * @param {string} filename
+		 * @param {Object} data
+		 */
+		downloadJson: function (filename, data) {
+			var json = JSON.stringify(data, null, 2);
+			var blob = new Blob([json], { type: 'application/json' });
+			var url = window.URL.createObjectURL(blob);
+			var $link = $('<a></a>')
+				.attr('href', url)
+				.attr('download', filename)
+				.css('display', 'none')
+				.appendTo('body');
+
+			$link[0].click();
+			$link.remove();
+			window.URL.revokeObjectURL(url);
 		},
 
 		/**

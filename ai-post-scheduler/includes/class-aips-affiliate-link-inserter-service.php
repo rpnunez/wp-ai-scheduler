@@ -279,7 +279,7 @@ class AIPS_Affiliate_Link_Inserter_Service {
 			"- If no suitable sentence exists, return {\"match\":\"\",\"replacement\":\"\"}\n\n" .
 			"Post content:\n%s",
 			esc_html( $tag ),
-			wp_strip_all_tags( $content )
+			AIPS_Utilities::clean_html_for_prompt( $content )
 		);
 
 		$response = $this->ai_service->generate_json( $prompt, array( 'maxTokens' => 500 ) );

@@ -47,6 +47,16 @@ foreach ($cases as $case) {
 
 		<div class="aips-content-panel aips-stress-test" id="aips-stress-test">
 
+			<?php
+			// Structured snapshot the Export Results button folds into its download,
+			// so shared output identifies the exact provider/model/version it ran on.
+			$export_meta = array(
+				'plugin_version' => defined('AIPS_VERSION') ? AIPS_VERSION : '',
+				'environment'    => $environment,
+			);
+			?>
+			<script type="application/json" id="aips-stress-export-meta"><?php echo wp_json_encode($export_meta, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
+
 			<div class="aips-panel-header">
 				<h2><?php esc_html_e('Stress Test', 'ai-post-scheduler'); ?></h2>
 				<div class="aips-btn-group">
@@ -57,6 +67,10 @@ foreach ($cases as $case) {
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-reset">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Reset', 'ai-post-scheduler'); ?>
+					</button>
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-export" disabled>
+						<span class="dashicons dashicons-download"></span>
+						<?php esc_html_e('Export Results', 'ai-post-scheduler'); ?>
 					</button>
 					<?php if ($creates_data) : ?>
 						<button type="button" class="aips-btn aips-btn-danger" id="aips-stress-cleanup">
