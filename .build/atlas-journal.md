@@ -1439,7 +1439,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
 
-## 2026-05-29 - [Refactor AIPS_Generator God Method]
+## 2026-08-17 - [Refactor AIPS_Generator God Method]
 **Context:** `AIPS_Generator::generate_post_from_context()` was a massive 400+ line God method, handling everything from history initialization and content generation to metadata processing, post creation, and status fallbacks.
 **Decision:** Extracted the logic into three private helper methods: `setup_generation_history`, `generate_post_metadata`, and `finalize_post_creation` to enforce the Single Responsibility Principle within the same class.
 **Consequence:** Greatly improved readability and maintainability. Maintains 100% backward compatibility for existing data and hooks, while introducing slight additional method call overhead.
