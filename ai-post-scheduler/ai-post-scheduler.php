@@ -370,6 +370,17 @@ final class AI_Post_Scheduler {
             return AIPS_History_Repository::instance();
         });
 
+		$container->singleton(AIPS_Post_Feedback_Repository::class, function() {
+			return new AIPS_Post_Feedback_Repository();
+		});
+
+		$container->singleton(AIPS_Post_Feedback_Service::class, function($container) {
+			return new AIPS_Post_Feedback_Service(
+				$container->make(AIPS_Post_Feedback_Repository::class),
+				$container->make(AIPS_History_Repository::class)
+			);
+		});
+
 		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
 			return $container->make(AIPS_History_Repository::class);
 		});
@@ -565,8 +576,16 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_cron() {
-		$feedback_service = new AIPS_Post_Feedback_Service();
-		add_action('aips_index_post_feedback_event', array($feedback_service, 'process_index_event'), 10, 2);
+		add_action('aips_index_post_feedback_event', function($event_id, $attempt = 0) {
+			// The global switch is authoritative and is checked before feedback dependencies are resolved.
+			if (!AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) {
+				return;
+			}
+
+			AIPS_Container::get_instance()
+				->make(AIPS_Post_Feedback_Service::class)
+				->process_index_event($event_id, $attempt);
+		}, 10, 2);
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();

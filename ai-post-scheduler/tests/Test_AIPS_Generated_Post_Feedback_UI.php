@@ -7,6 +7,11 @@ class Test_AIPS_Generated_Post_Feedback_UI extends WP_UnitTestCase {
 		$this->assertStringContainsString('data-post-id="42"', $html);
 		$this->assertStringContainsString('data-reaction="liked"', $html);
 		$this->assertStringContainsString('aria-pressed="true"', $html);
+		$this->assertSame(2, substr_count($html, 'aria-hidden="true"'));
+		$this->assertStringContainsString('role="group"', $html);
+		$this->assertStringContainsString('Generated post feedback', $html);
+		$this->assertStringContainsString('Like', $html);
+		$this->assertStringContainsString('Dislike', $html);
 		$this->assertStringNotContainsString('Approve', $html);
 		$this->assertStringNotContainsString('Reject', $html);
 	}

@@ -24,7 +24,8 @@ class AIPS_Post_Feedback_Service {
 	public function __construct($repository = null, $history_repository = null, $embeddings_service = null) {
 		$this->repository         = $repository ?: new AIPS_Post_Feedback_Repository();
 		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
-		$this->embeddings_service  = $embeddings_service ?: new AIPS_Embeddings_Service();
+		// Embeddings are intentionally unresolved until a valid event needs indexing.
+		$this->embeddings_service  = $embeddings_service;
 	}
 
 	public function record($post_id, $reaction, $reason_category = null, $comment = null, $user_id = 0) {
@@ -73,15 +74,35 @@ class AIPS_Post_Feedback_Service {
 	}
 
 	public function process_index_event($event_id, $attempt = 0) {
-		if (!AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) { return; }
+		if (!AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) {
+			return;
+		}
 		$event = $this->repository->get_by_id($event_id);
-		if (!$event || empty($event->embedding_text) || 'cleared' === $event->reaction) { return; }
-		$embedding = $this->embeddings_service->generate_embedding($event->embedding_text);
-		if (!is_wp_error($embedding)) { $this->repository->update_embedding($event_id, $embedding); return; }
+		if (!$event || empty($event->embedding_text) || 'cleared' === $event->reaction) {
+			return;
+		}
+		$embedding = $this->get_embeddings_service()->generate_embedding($event->embedding_text);
+		if (!is_wp_error($embedding)) {
+			$this->repository->update_embedding($event_id, $embedding);
+			return;
+		}
 		$attempt = absint($attempt);
 		if ($attempt < 2) {
 			wp_schedule_single_event(time() + (MINUTE_IN_SECONDS * pow(5, $attempt + 1)), 'aips_index_post_feedback_event', array(absint($event_id), $attempt + 1));
 		}
+	}
+
+	/**
+	 * Resolve the embedding client only after event validation succeeds.
+	 *
+	 * @return AIPS_Embeddings_Service
+	 */
+	private function get_embeddings_service() {
+		if (null === $this->embeddings_service) {
+			$this->embeddings_service = new AIPS_Embeddings_Service();
+		}
+
+		return $this->embeddings_service;
 	}
 
 	private function build_embedding_snapshot($post) {
