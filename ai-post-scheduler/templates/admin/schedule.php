@@ -530,7 +530,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
 						<button type="button" class="aips-btn aips-btn-primary aips-clear-unified-search-btn">
-							<span class="dashicons dashicons-dismiss"></span>
+							<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 						</button>
 					</div>

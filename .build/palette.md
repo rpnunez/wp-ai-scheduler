@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Generated Posts
 **Learning:** Decorative icons in history interfaces must be explicitly hidden from screen readers.
 **Action:** When adding or auditing generated posts Dashicons, include aria-hidden="true".
+## 2024-05-30 - Add aria-hidden to empty state clear search Dashicons
+**Area:** Empty states across various admin templates (authors, history, schedule, etc.)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to empty state Clear Search Dashicons
+**Learning:** Decorative icons inside action buttons must be explicitly hidden from screen readers.
+**Action:** When adding Dashicons to buttons like 'Clear Search', include aria-hidden="true".

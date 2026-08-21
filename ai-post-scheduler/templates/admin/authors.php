@@ -291,7 +291,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <p class="aips-empty-state-description"><?php esc_html_e('No authors match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
                             <button type="button" class="aips-btn aips-btn-primary aips-clear-author-search-btn">
-                                <span class="dashicons dashicons-dismiss"></span>
+                                <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                 <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                             </button>
                         </div>

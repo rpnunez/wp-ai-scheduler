@@ -174,7 +174,7 @@ $is_embedded_templates_view = !empty($embedded);
                     <p class="aips-empty-state-description"><?php esc_html_e('No templates match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
                         <button type="button" class="aips-btn aips-btn-primary aips-clear-search-btn">
-                            <span class="dashicons dashicons-dismiss"></span>
+                            <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                             <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                         </button>
                     </div>
@@ -598,7 +598,7 @@ $is_embedded_templates_view = !empty($embedded);
                                     <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                 </button>
                                 <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
-                                    <span class="dashicons dashicons-dismiss"></span>
+                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                     <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
                                 </button>
                             </div>

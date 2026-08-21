@@ -105,7 +105,7 @@ if (!defined('ABSPATH')) {
                     <p class="aips-empty-state-description"><?php esc_html_e('No voices match your search criteria.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
                         <button type="button" class="aips-btn aips-btn-primary aips-clear-voice-search-btn">
-                            <span class="dashicons dashicons-dismiss"></span>
+                            <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                             <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                         </button>
                     </div>

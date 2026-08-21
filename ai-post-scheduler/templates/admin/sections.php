@@ -96,7 +96,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<p class="aips-empty-state-description"><?php esc_html_e('No prompt sections match your search criteria.', 'ai-post-scheduler'); ?></p>
 				<div class="aips-empty-state-actions">
 					<button type="button" class="aips-btn aips-btn-primary aips-clear-section-search-btn">
-						<span class="dashicons dashicons-dismiss"></span>
+						<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 					</button>
 				</div>

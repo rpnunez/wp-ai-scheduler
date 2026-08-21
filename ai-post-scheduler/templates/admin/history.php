@@ -176,7 +176,7 @@ if (is_object($history)) {
                                             <?php if ($has_active_filter): ?>
                                                 <br><br>
                                                 <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
-                                                    <span class="dashicons dashicons-dismiss"></span>
+                                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                                     <?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
                                                 </button>
                                             <?php endif; ?>
@@ -194,7 +194,7 @@ if (is_object($history)) {
                             <p class="aips-empty-state-description"><?php esc_html_e('No history containers match your search criteria. Try a different search term or filter.', 'ai-post-scheduler'); ?></p>
                             <div class="aips-empty-state-actions">
                                 <button type="button" class="aips-btn aips-btn-primary aips-clear-history-search-btn">
-                                    <span class="dashicons dashicons-dismiss"></span>
+                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                                     <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                                 </button>
                             </div>
