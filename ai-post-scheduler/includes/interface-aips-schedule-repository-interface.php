@@ -126,6 +126,24 @@ interface AIPS_Schedule_Repository_Interface {
 	public function update_run_state($id, array $state);
 
 	/**
+	 * Atomically update the circuit-breaker state column and run_state together.
+	 *
+	 * @param int    $id            Schedule ID.
+	 * @param string $circuit_state One of 'open', 'half_open', 'closed'.
+	 * @param array  $state         Run-state payload.
+	 * @return bool
+	 */
+	public function update_circuit_and_run_state($id, $circuit_state, array $state);
+
+	/**
+	 * Reset the circuit breaker to the closed state and clear circuit bookkeeping.
+	 *
+	 * @param int $id Schedule ID.
+	 * @return bool
+	 */
+	public function reset_circuit($id);
+
+	/**
 	 * Bulk delete schedules.
 	 *
 	 * @param array $ids Schedule IDs.

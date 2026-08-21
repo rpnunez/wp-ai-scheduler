@@ -678,6 +678,56 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Atomically update both the circuit-breaker state column and the run_state
+     * JSON in a single write.
+     *
+     * Used by the circuit-breaker transitions (trip / probe / close) so the
+     * per-schedule circuit_state column and the run_state bookkeeping
+     * (consecutive_failures, circuit_opened_at) never drift apart.
+     *
+     * @param int    $id            Schedule ID.
+     * @param string $circuit_state One of 'open', 'half_open', 'closed'.
+     * @param array  $state         Run-state array to serialise as JSON.
+     * @return bool True on success, false on failure.
+     */
+    public function update_circuit_and_run_state($id, $circuit_state, array $state) {
+        return $this->update($id, array(
+            'circuit_state' => $circuit_state,
+            'run_state'     => wp_json_encode($state),
+        ));
+    }
+
+    /**
+     * Reset a schedule's circuit breaker back to the closed state.
+     *
+     * Sets circuit_state to 'closed' and clears the circuit bookkeeping fields
+     * (consecutive_failures, circuit_opened_at) from run_state while preserving
+     * the rest of the last-run outcome. Goes through the repository so cache
+     * invalidation is handled consistently — callers must not write this column
+     * directly.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function reset_circuit($id) {
+        $id = absint($id);
+        $schedule = $this->get_by_id($id);
+
+        $run_state = array();
+        if ($schedule && !empty($schedule->run_state)) {
+            $decoded = json_decode($schedule->run_state, true);
+            if (is_array($decoded)) {
+                $run_state = $decoded;
+            }
+        }
+
+        $run_state['consecutive_failures'] = 0;
+        $run_state['circuit_opened_at']    = 0;
+
+        return $this->update_circuit_and_run_state($id, 'closed', $run_state);
+    }
+
+    /**
      * Create multiple schedules in a single query.
      *
      * @param array $schedules Array of schedule data arrays.

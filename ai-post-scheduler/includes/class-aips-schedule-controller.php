@@ -156,16 +156,6 @@ class AIPS_Schedule_Controller {
         $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
         $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
 
-        $last_success = array();
-        foreach ($families as $family => $hook) {
-            $runs = $this->history_repository->get_history(array(
-                'creation_method' => $family,
-                'status' => 'completed',
-                'per_page' => 1,
-            ));
-            $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
-        }
-
         // Get rate limiter status
         $rate_limiter_status = array(
             'enabled' => false,
@@ -190,7 +180,6 @@ class AIPS_Schedule_Controller {
                 'upcoming_24h' => count($timeline),
                 'overdue' => $overdue_schedules,
             ),
-            'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
             'last_error' => $bulk_counts['failed'] > 0,
             'rate_limiter' => $rate_limiter_status,
@@ -336,6 +325,7 @@ class AIPS_Schedule_Controller {
         $id = $this->scheduler->save_schedule($data);
 
         if ($id) {
+            $this->invalidate_status_strip_cache();
             AIPS_Ajax_Response::success(array(
                 'message' => __('Schedule saved successfully.', 'ai-post-scheduler'),
                 'schedule_id' => $id
@@ -366,6 +356,7 @@ class AIPS_Schedule_Controller {
         }
 
         if ($this->schedule_repository->delete($id)) {
+            $this->invalidate_status_strip_cache();
             AIPS_Ajax_Response::success(array(), __('Schedule deleted successfully.', 'ai-post-scheduler'));
         } else {
             AIPS_Ajax_Response::error(__('Failed to delete schedule.', 'ai-post-scheduler'));
@@ -391,6 +382,7 @@ class AIPS_Schedule_Controller {
         $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
+            $this->invalidate_status_strip_cache();
             AIPS_Ajax_Response::success(array(), __('Schedule updated.', 'ai-post-scheduler'));
         } else {
             AIPS_Ajax_Response::error(__('Failed to update schedule.', 'ai-post-scheduler'));
@@ -790,6 +782,8 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         }
 
+        $this->invalidate_status_strip_cache();
+
         // Format the success message based on type.
         if ($type === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
             $post_ids = is_array($result) ? $result : array($result);
@@ -859,6 +853,7 @@ class AIPS_Schedule_Controller {
         $result  = $service->toggle($id, $type, $is_active);
 
         if ($result !== false) {
+            $this->invalidate_status_strip_cache();
             $label = $is_active
                 ? __('Schedule activated.', 'ai-post-scheduler')
                 : __('Schedule paused.', 'ai-post-scheduler');
@@ -910,6 +905,8 @@ class AIPS_Schedule_Controller {
         $action_label = $is_active
             ? __('activated', 'ai-post-scheduler')
             : __('paused', 'ai-post-scheduler');
+
+        $this->invalidate_status_strip_cache();
 
         AIPS_Ajax_Response::success(array(
             'message' => sprintf(
@@ -1015,6 +1012,8 @@ class AIPS_Schedule_Controller {
             );
         }
 
+        $this->invalidate_status_strip_cache();
+
         AIPS_Ajax_Response::success(array(
             'message' => $message,
             'success' => $success,
@@ -1093,6 +1092,8 @@ class AIPS_Schedule_Controller {
             );
         }
 
+        $this->invalidate_status_strip_cache();
+
         AIPS_Ajax_Response::success(array(
             'message'      => $message,
             'deleted'      => $deleted_count,
@@ -1155,25 +1156,40 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Circuit reset is only available for template schedules.', 'ai-post-scheduler'));
         }
 
-        // Reset the circuit state to 'closed' for this schedule
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
+        // Verify the schedule exists before resetting: a bare UPDATE on a missing
+        // row still "succeeds" (0 rows affected), so without this check the
+        // endpoint would falsely report success for a non-existent schedule.
+        if (!$this->schedule_repository->get_by_id($id)) {
+            AIPS_Ajax_Response::error(__('Schedule not found.', 'ai-post-scheduler'));
+        }
 
-        $result = $wpdb->update(
-            $table_name,
-            array('circuit_state' => 'closed'),
-            array('id' => $id),
-            array('%s'),
-            array('%d')
-        );
+        // Reset the circuit state via the repository so cache invalidation is
+        // handled consistently (never write the schedule table from the controller).
+        $result = $this->schedule_repository->reset_circuit($id);
 
         if ($result !== false) {
+            $this->invalidate_status_strip_cache();
             AIPS_Ajax_Response::success(array(
                 'message' => __('Circuit breaker reset successfully. The schedule will attempt to run on its next trigger.', 'ai-post-scheduler'),
                 'circuit_state' => 'closed',
             ));
         } else {
             AIPS_Ajax_Response::error(__('Failed to reset circuit breaker.', 'ai-post-scheduler'));
+        }
+    }
+
+    /**
+     * Invalidate the cached Schedules status-strip read model.
+     *
+     * The status strip is cached for a short TTL under a fixed key. Mutations
+     * (save/delete/toggle/run/reset/resume) call this so operators see fresh
+     * counts and timelines immediately rather than waiting for the TTL.
+     *
+     * @return void
+     */
+    private function invalidate_status_strip_cache() {
+        if (class_exists('AIPS_Cache_Factory')) {
+            AIPS_Cache_Factory::make()->delete('aips_schedule_status_strip_v2');
         }
     }
 
@@ -1235,6 +1251,8 @@ class AIPS_Schedule_Controller {
             _n('Batch resumed — %d post generated successfully!', 'Batch resumed — %d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
             count($post_ids)
         );
+
+        $this->invalidate_status_strip_cache();
 
         AIPS_Ajax_Response::success(array(
             'message' => $msg,

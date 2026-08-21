@@ -1557,13 +1557,11 @@
             $('#sw_schedule_is_active').prop('checked', isActive == 1);
 
             if (nextRun) {
-                var dt = AIPS.DateTime.parse(nextRun);
-                if (dt) {
-                    var pad = function(n) { return n < 10 ? '0' + n : n; };
-                    var localValue = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
-                        'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-                    $('#sw_schedule_start_time').val(localValue);
-                }
+                // Render the datetime-local field in the WordPress site timezone
+                // (matching how "Start Time" is displayed elsewhere) rather than
+                // the admin's own browser timezone, so edits round-trip correctly.
+                var offsetSeconds = (typeof aipsScheduleL10n !== 'undefined') ? aipsScheduleL10n.gmtOffsetSeconds : 0;
+                $('#sw_schedule_start_time').val(AIPS.DateTime.toLocalInputValue(nextRun, offsetSeconds));
             }
 
             $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsScheduleL10n.editSchedule || 'Edit Schedule');
@@ -1678,8 +1676,8 @@
                         $('#aips-schedule-modal').hide();
 
                         // Dynamically update the schedules table
-                        AIPS.refreshContentPanel('.aips-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
-                            AIPS.updateScheduleBulkActions();
+                        AIPS.refreshContentPanel('.aips-unified-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
+                            AIPS.updateUnifiedBulkActions();
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
@@ -1742,8 +1740,8 @@
                         $wizardModal.hide();
 
                         // Dynamically update the schedules table
-                        AIPS.refreshContentPanel('.aips-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
-                            AIPS.updateScheduleBulkActions();
+                        AIPS.refreshContentPanel('.aips-unified-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
+                            AIPS.updateUnifiedBulkActions();
                         });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
@@ -2421,42 +2419,56 @@
             var id = $btn.data('id');
             var type = $btn.data('type');
 
-            if (!confirm('Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.')) {
-                return;
-            }
+            AIPS.Utilities.confirm(
+                aipsScheduleL10n.resetCircuitConfirm || 'Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.',
+                aipsScheduleL10n.resetCircuit || 'Reset Circuit',
+                [
+                    { label: aipsScheduleL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    { label: aipsScheduleL10n.resetCircuit || 'Reset Circuit', className: 'aips-btn aips-btn-primary', action: function() {
+                        AIPS.executeResetScheduleCircuit($btn, id, type);
+                    }}
+                ]
+            );
+        },
 
+        /** Perform the circuit-breaker reset AJAX call for a schedule. */
+        executeResetScheduleCircuit: function($btn, id, type) {
             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
             $.post(ajaxurl, {
                 action: 'aips_reset_schedule_circuit',
-                nonce: aipsData.nonce,
+                nonce: aipsAjax.nonce,
                 id: id,
                 type: type
             })
             .done(function(response) {
                 if (response.success) {
-                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Circuit breaker reset successfully.', 'success');
 
                     // Update the row's circuit state
                     var $row = $btn.closest('.aips-unified-row');
-                    $row.attr('data-circuit-state', 'closed');
+                    $row.attr('data-circuit-state', 'closed').data('circuit-state', 'closed');
 
-                    // Update health indicator badge
-                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
-                        '<div style="display:flex;align-items:center;gap:8px;">' +
-                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
-                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
-                    );
+                    // Update the health badge in place WITHOUT touching the status
+                    // badge or the active/paused toggle in the same wrapper.
+                    var $healthBadge = $row.find('.aips-schedule-status-wrapper .aips-badge').first();
+                    if ($healthBadge.length) {
+                        $healthBadge.removeClass('aips-badge-error aips-badge-warning aips-badge-success').addClass('aips-badge-success');
+                        $healthBadge.contents().filter(function() { return this.nodeType === 3; }).remove();
+                        var $healthIcon = $healthBadge.find('.dashicons');
+                        $healthIcon.removeClass('dashicons-dismiss dashicons-warning dashicons-yes').addClass('dashicons-yes');
+                        $healthIcon.after(' ' + (aipsScheduleL10n.healthyLabel || 'Healthy'));
+                    }
 
                     // Remove the reset button
                     $btn.remove();
                 } else {
-                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Failed to reset circuit breaker.', 'error');
                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                 }
             })
             .fail(function() {
-                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                AIPS.Utilities.showToast('An error occurred while resetting the circuit breaker.', 'error');
                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
             });
         },
@@ -2473,33 +2485,44 @@
             var id = $btn.data('id');
             var type = $btn.data('type');
 
-            if (!confirm('Resume the incomplete batch for this schedule? This will continue generation from where it left off.')) {
-                return;
-            }
+            AIPS.Utilities.confirm(
+                aipsScheduleL10n.resumeBatchConfirm || 'Resume the incomplete batch for this schedule? This will continue generation from where it left off.',
+                aipsScheduleL10n.resumeBatch || 'Resume Batch',
+                [
+                    { label: aipsScheduleL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    { label: aipsScheduleL10n.resumeBatch || 'Resume Batch', className: 'aips-btn aips-btn-primary', action: function() {
+                        AIPS.executeResumeScheduleBatch($btn, id, type);
+                    }}
+                ]
+            );
+        },
 
+        /** Perform the batch-resume AJAX call for a schedule. */
+        executeResumeScheduleBatch: function($btn, id, type) {
             $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
             $.post(ajaxurl, {
                 action: 'aips_resume_schedule_batch',
-                nonce: aipsData.nonce,
+                nonce: aipsAjax.nonce,
                 id: id,
                 type: type
             })
             .done(function(response) {
                 if (response.success) {
-                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
+                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Batch resumed successfully.', 'success');
 
-                    // Optionally reload the page or update the UI
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1500);
+                    // Re-render the schedules table so the batch/health state reflects
+                    // the resumed run without a full page reload.
+                    AIPS.refreshContentPanel('.aips-unified-schedule-table', '.aips-content-panel:has(.aips-empty-state)', function() {
+                        AIPS.updateUnifiedBulkActions();
+                    });
                 } else {
-                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                    AIPS.Utilities.showToast((response.data && response.data.message) || 'Failed to resume batch.', 'error');
                     $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
                 }
             })
             .fail(function() {
-                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                AIPS.Utilities.showToast('An error occurred while resuming the batch.', 'error');
                 $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
             });
         },
@@ -2891,17 +2914,20 @@
          */
         updateUnifiedRowStatus: function($row, isActive) {
             var $toggle  = $row.find('.aips-unified-toggle-schedule');
-            var $wrapper = $row.find('.aips-schedule-status-wrapper');
-            var $badge   = $wrapper.find('.aips-badge');
+            // The status wrapper holds TWO badges: the circuit/health badge and
+            // the active/paused status badge. Scope to the status badge only —
+            // it lives in the same container as the toggle — so we never clobber
+            // the health badge.
+            var $badge   = $toggle.closest('div').find('.aips-badge');
             var $icon    = $badge.find('.dashicons');
 
             $toggle.prop('checked', isActive === 1);
-            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
+            $badge.removeClass('aips-badge-info aips-badge-success aips-badge-neutral aips-badge-error');
             $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
             $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
 
             if (isActive) {
-                $badge.addClass('aips-badge-success');
+                $badge.addClass('aips-badge-info');
                 $icon.addClass('dashicons-yes-alt');
                 $icon.after(' Active');
             } else {

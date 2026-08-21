@@ -123,26 +123,30 @@ class AIPS_Schedule_Result_Handler {
             'schedule_id' => $schedule->schedule_id
         ));
 
-        // Update the history record
-        $history->record(
-            'activity',
-            sprintf(
-                $is_manual ? __('Manual execution of schedule "%s" failed: %s', 'ai-post-scheduler') : __('Schedule "%s" failed to generate post: %s', 'ai-post-scheduler'),
-                $schedule->name,
-                $error_msg
-            ),
-            array(
-                'event_type' => $is_manual ? 'manual_schedule_failed' : 'schedule_failed',
-                'event_status' => 'failed',
-            ),
-            null,
-            array(
-                'schedule_id' => $schedule->schedule_id,
-                'template_id' => $schedule->template_id,
-                'error' => $error_msg,
-                'frequency' => $schedule->frequency,
-            )
-        );
+        // Update the history record. $history may be null when the lifecycle
+        // container could not be created/loaded (execute_schedule_logic tolerates
+        // this and logs a warning), so guard the record call to avoid a fatal.
+        if (is_object($history) && method_exists($history, 'record')) {
+            $history->record(
+                'activity',
+                sprintf(
+                    $is_manual ? __('Manual execution of schedule "%s" failed: %s', 'ai-post-scheduler') : __('Schedule "%s" failed to generate post: %s', 'ai-post-scheduler'),
+                    $schedule->name,
+                    $error_msg
+                ),
+                array(
+                    'event_type' => $is_manual ? 'manual_schedule_failed' : 'schedule_failed',
+                    'event_status' => 'failed',
+                ),
+                null,
+                array(
+                    'schedule_id' => $schedule->schedule_id,
+                    'template_id' => $schedule->template_id,
+                    'error' => $error_msg,
+                    'frequency' => $schedule->frequency,
+                )
+            );
+        }
 
         if (!$is_manual) {
             do_action('aips_scheduler_error', array(
@@ -186,7 +190,9 @@ class AIPS_Schedule_Result_Handler {
         $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
         $post = get_post($first_post_id);
 
-        if ($post) {
+        // $history may be null when the lifecycle container could not be
+        // created/loaded; guard the record call below to avoid a fatal.
+        if ($post && is_object($history) && method_exists($history, 'record')) {
             $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
             $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
 

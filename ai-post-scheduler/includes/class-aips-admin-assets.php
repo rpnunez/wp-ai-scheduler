@@ -953,6 +953,12 @@ class AIPS_Admin_Assets {
                 'runNowChoice'                   => __('How should this manual run affect the schedule?', 'ai-post-scheduler'),
                 'runNowIndependent'              => __('Run now, independently from schedule', 'ai-post-scheduler'),
                 'runNowAndAdvance'               => __('Run next scheduled run now and advance', 'ai-post-scheduler'),
+                // Circuit breaker / batch resume
+                'resetCircuit'                   => __('Reset Circuit', 'ai-post-scheduler'),
+                'resetCircuitConfirm'            => __('Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.', 'ai-post-scheduler'),
+                'resumeBatch'                    => __('Resume Batch', 'ai-post-scheduler'),
+                'resumeBatchConfirm'             => __('Resume the incomplete batch for this schedule? This will continue generation from where it left off.', 'ai-post-scheduler'),
+                'healthyLabel'                   => __('Healthy', 'ai-post-scheduler'),
                 // Single schedule delete
                 'deleteScheduleConfirm'          => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
                 // Bulk schedule selection/delete
