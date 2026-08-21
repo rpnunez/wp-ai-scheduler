@@ -322,3 +322,18 @@ Filters the maximum number of similar approved topics used as expanded context w
 *   **Default:** `5`
 *   **Arguments:**
     *   `int $limit` Maximum context topics.
+
+---
+
+### `aips_ability_workflow_execution_user_id`
+
+Filters the service user for an Ability Workflow run that was dispatched
+without an initiating user, such as a system trigger. The selected user is
+revalidated for `manage_options` before every cron invocation; each invoked
+WordPress ability still performs its own input-specific permission check.
+
+*   **Type:** `filter`
+*   **Default:** `0` (no implicit service user; the run fails closed)
+*   **Arguments:**
+    *   `int $user_id` Service user ID.
+    *   `AIPS_Ability_Workflow_Run $run` The persisted workflow run.

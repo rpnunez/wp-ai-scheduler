@@ -139,8 +139,22 @@ class AIPS_Ability_Catalog_Service {
 		$known_keys = array(
 			'slug', 'name', 'label', 'description', 'provider', 'category',
 			'input_schema', 'output_schema', 'permission_callback',
-			'is_destructive', 'destructive', 'is_available',
+			'is_destructive', 'destructive', 'destructive_state', 'annotations',
+			'is_available',
 		);
+
+		$annotations = isset( $raw_ability['annotations'] ) && is_array( $raw_ability['annotations'] )
+			? $raw_ability['annotations']
+			: array();
+		$destructive_state = null;
+
+		if ( array_key_exists( 'destructive', $annotations ) && null !== $annotations['destructive'] ) {
+			$destructive_state = (bool) $annotations['destructive'];
+		} elseif ( array_key_exists( 'is_destructive', $raw_ability ) ) {
+			$destructive_state = (bool) $raw_ability['is_destructive'];
+		} elseif ( array_key_exists( 'destructive', $raw_ability ) ) {
+			$destructive_state = (bool) $raw_ability['destructive'];
+		}
 
 		return array(
 			'name'                 => $slug,
@@ -151,7 +165,9 @@ class AIPS_Ability_Catalog_Service {
 			'input_schema'         => isset( $raw_ability['input_schema'] ) && is_array( $raw_ability['input_schema'] ) ? $raw_ability['input_schema'] : array(),
 			'output_schema'        => isset( $raw_ability['output_schema'] ) && is_array( $raw_ability['output_schema'] ) ? $raw_ability['output_schema'] : array(),
 			'permission_callback'  => isset( $raw_ability['permission_callback'] ) ? $raw_ability['permission_callback'] : null,
-			'is_destructive'       => ! empty( $raw_ability['is_destructive'] ) || ! empty( $raw_ability['destructive'] ),
+			'annotations'          => $annotations,
+			'destructive_state'    => $destructive_state,
+			'is_destructive'       => true === $destructive_state,
 			'is_available'         => array_key_exists( 'is_available', $raw_ability ) ? (bool) $raw_ability['is_available'] : true,
 			'metadata'             => array_diff_key( $raw_ability, array_flip( $known_keys ) ),
 		);

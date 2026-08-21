@@ -31,6 +31,8 @@ class Test_AIPS_Ability_Workflow_Executor extends WP_UnitTestCase {
 		}
 
 		$this->created_workflow_ids = array();
+		delete_option( 'aips_ability_workflow_lock_987654' );
+		wp_set_current_user( 0 );
 
 		parent::tearDown();
 	}
@@ -191,5 +193,59 @@ class Test_AIPS_Ability_Workflow_Executor extends WP_UnitTestCase {
 		$runs = $repository->list_runs( $workflow_id );
 		$this->assertCount( 1, $runs['items'] );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $runs['items'][0]->status );
+	}
+
+	public function test_execution_principal_restores_authorized_dispatching_user() {
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
+		$repository = AIPS_Ability_Workflow_Repository::instance();
+		$workflow_id = $repository->create_workflow( array( 'name' => 'Principal Workflow' ) );
+		$this->created_workflow_ids[] = $workflow_id;
+		$run_id = $repository->create_run( $workflow_id, 1 );
+		wp_set_current_user( 0 );
+
+		$method = ( new ReflectionClass( $this->executor ) )->getMethod( 'establish_execution_principal' );
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->executor, $run_id );
+
+		$this->assertSame( $user_id, $result );
+		$this->assertSame( $user_id, get_current_user_id() );
+	}
+
+	public function test_execution_principal_rechecks_manage_options_at_execution_time() {
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $user_id );
+
+		$repository = AIPS_Ability_Workflow_Repository::instance();
+		$workflow_id = $repository->create_workflow( array( 'name' => 'Revoked Principal Workflow' ) );
+		$this->created_workflow_ids[] = $workflow_id;
+		$run_id = $repository->create_run( $workflow_id, 1 );
+		get_userdata( $user_id )->set_role( 'subscriber' );
+		wp_set_current_user( 0 );
+
+		$method = ( new ReflectionClass( $this->executor ) )->getMethod( 'establish_execution_principal' );
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->executor, $run_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_workflow_principal_forbidden', $result->get_error_code() );
+		$this->assertSame( 0, get_current_user_id() );
+	}
+
+	public function test_run_lock_allows_only_one_worker_until_release() {
+		$reflection = new ReflectionClass( $this->executor );
+		$acquire = $reflection->getMethod( 'acquire_run_lock' );
+		$release = $reflection->getMethod( 'release_run_lock' );
+		$acquire->setAccessible( true );
+		$release->setAccessible( true );
+
+		$this->assertTrue( $acquire->invoke( $this->executor, 987654 ) );
+		$this->assertFalse( $acquire->invoke( new AIPS_Ability_Workflow_Executor(), 987654 ) );
+
+		$release->invoke( $this->executor, 987654 );
+
+		$this->assertTrue( $acquire->invoke( $this->executor, 987654 ) );
+		$release->invoke( $this->executor, 987654 );
 	}
 }

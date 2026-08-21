@@ -28,6 +28,13 @@ class AIPS_Ability_Service {
 	private $provider = null;
 
 	/**
+	 * Request-local normalized ability catalog.
+	 *
+	 * @var array|null
+	 */
+	private $abilities = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Logger_Interface|null $logger Logger.
@@ -50,6 +57,10 @@ class AIPS_Ability_Service {
 	 * @return array|WP_Error Normalized ability arrays keyed by slug, or WP_Error.
 	 */
 	public function list_available() {
+		if (null !== $this->abilities) {
+			return $this->abilities;
+		}
+
 		$provider = $this->get_provider();
 
 		if (is_wp_error($provider)) {
@@ -75,6 +86,7 @@ class AIPS_Ability_Service {
 		}
 
 		$this->log_response('list', '', array(), $abilities);
+		$this->abilities = $abilities;
 		return $abilities;
 	}
 
@@ -119,6 +131,10 @@ class AIPS_Ability_Service {
 			return new WP_Error('ability_payload_invalid', __('Ability payload must be an array.', 'ai-post-scheduler'));
 		}
 
+		if (!is_array($options)) {
+			return new WP_Error('ability_options_invalid', __('Ability invocation options must be an array.', 'ai-post-scheduler'));
+		}
+
 		$provider = $this->get_provider();
 
 		if (is_wp_error($provider)) {
@@ -126,7 +142,18 @@ class AIPS_Ability_Service {
 			return $provider;
 		}
 
-		$available = $this->is_available($slug);
+		if ('wordpress_abilities' === $provider['name'] && !empty($options)) {
+			return new WP_Error('ability_options_unsupported', __('WordPress abilities do not support invocation options.', 'ai-post-scheduler'));
+		}
+
+		// WordPress has a direct registry lookup. Avoid listing the complete
+		// registry immediately before executing, which is both wasteful and can
+		// race with a dynamic provider whose list changes between calls.
+		if ('wordpress_abilities' === $provider['name']) {
+			$available = wp_get_ability($slug);
+		} else {
+			$available = $this->is_available($slug);
+		}
 
 		if (is_wp_error($available)) {
 			return $available;
@@ -257,6 +284,7 @@ class AIPS_Ability_Service {
 	 */
 	private function wp_ability_to_array($ability) {
 		$meta = method_exists($ability, 'get_meta') ? (array) $ability->get_meta() : array();
+		$annotations = isset($meta['annotations']) && is_array($meta['annotations']) ? $meta['annotations'] : array();
 
 		return array(
 			'slug'          => (string) $ability->get_name(),
@@ -264,8 +292,9 @@ class AIPS_Ability_Service {
 			'description'   => method_exists($ability, 'get_description') ? (string) $ability->get_description() : '',
 			'input_schema'  => method_exists($ability, 'get_input_schema') ? (array) $ability->get_input_schema() : array(),
 			'output_schema' => method_exists($ability, 'get_output_schema') ? (array) $ability->get_output_schema() : array(),
-			'category'      => isset($meta['category']) ? (string) $meta['category'] : '',
+			'category'      => method_exists($ability, 'get_category') ? (string) $ability->get_category() : '',
 			'provider'      => 'wordpress',
+			'annotations'   => $annotations,
 			'metadata'      => $meta,
 		);
 	}

@@ -47,6 +47,12 @@ class AIPS_Ability_Workflow_Executor {
 	const CONTINUATION_DELAY_SECONDS = 2;
 
 	/**
+	 * Maximum time a worker may hold a run lock before another worker can
+	 * recover it after a crash.
+	 */
+	const RUN_LOCK_TTL_SECONDS = 180;
+
+	/**
 	 * Step-run statuses that mean "already resolved, do not re-attempt".
 	 */
 	const RESOLVED_STEP_STATUSES = array( 'completed', 'failed', 'skipped' );
@@ -90,6 +96,13 @@ class AIPS_Ability_Workflow_Executor {
 	 * @var AIPS_Logger_Interface
 	 */
 	private $logger;
+
+	/**
+	 * Lock ownership tokens keyed by run ID.
+	 *
+	 * @var array<int,string>
+	 */
+	private $run_locks = array();
 
 	/**
 	 * Constructor. Every dependency is optional and resolved from the
@@ -201,12 +214,35 @@ class AIPS_Ability_Workflow_Executor {
 			$correlation_id = AIPS_Correlation_ID::generate();
 		}
 
-		$history = $this->history_service->create(
-			'ability_workflow_run',
-			array( 'run_id' => $run_id, 'creation_method' => 'ability_workflow_run' )
-		);
+		if ( !$this->acquire_run_lock( $run_id ) ) {
+			AIPS_Correlation_ID::reset();
+			return;
+		}
+
+		$history          = false;
+		$previous_user_id = get_current_user_id();
 
 		try {
+			$history = $this->history_service->create(
+				'ability_workflow_run',
+				array( 'run_id' => $run_id, 'creation_method' => 'ability_workflow_run' )
+			);
+
+			$principal = $this->establish_execution_principal( $run_id );
+
+			if ( is_wp_error( $principal ) ) {
+				if ( $history ) {
+					$history->complete_failure( $principal->get_error_message(), array( 'error_code' => $principal->get_error_code() ) );
+				}
+
+				$this->repository->update_run_status(
+					$run_id,
+					AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED,
+					array( 'finished_at' => time() )
+				);
+				return;
+			}
+
 			$this->run_internal( $run_id, $correlation_id, $history );
 		} catch ( \Throwable $e ) {
 			$this->logger->log(
@@ -228,8 +264,115 @@ class AIPS_Ability_Workflow_Executor {
 				array( 'finished_at' => time() )
 			);
 		} finally {
+			wp_set_current_user( $previous_user_id );
+			$this->release_run_lock( $run_id );
 			AIPS_Correlation_ID::reset();
 		}
+	}
+
+	/**
+	 * Acquire an atomic, expiring lock for a workflow run.
+	 *
+	 * add_option() is backed by the options table's unique option_name key, so
+	 * two cron workers cannot both win the claim. Expiry permits recovery when
+	 * PHP terminates before the finally block releases the lock.
+	 *
+	 * @param int $run_id Workflow run ID.
+	 * @return bool
+	 */
+	private function acquire_run_lock( int $run_id ): bool {
+		$key        = 'aips_ability_workflow_lock_' . $run_id;
+		$token      = wp_generate_uuid4();
+		$expires_at = time() + self::RUN_LOCK_TTL_SECONDS;
+		$value      = $token . '|' . $expires_at;
+
+		if ( add_option( $key, $value, '', false ) ) {
+			$this->run_locks[ $run_id ] = $token;
+			return true;
+		}
+
+		$existing        = (string) get_option( $key, '' );
+		$existing_parts  = explode( '|', $existing );
+		$existing_expiry = isset( $existing_parts[1] ) ? (int) $existing_parts[1] : 0;
+
+		if ( $existing_expiry > time() ) {
+			return false;
+		}
+
+		delete_option( $key );
+
+		if ( ! add_option( $key, $value, '', false ) ) {
+			return false;
+		}
+
+		$this->run_locks[ $run_id ] = $token;
+
+		return true;
+	}
+
+	/**
+	 * Release a workflow run lock.
+	 *
+	 * @param int $run_id Workflow run ID.
+	 * @return void
+	 */
+	private function release_run_lock( int $run_id ): void {
+		$key   = 'aips_ability_workflow_lock_' . $run_id;
+		$value = (string) get_option( $key, '' );
+		$parts = explode( '|', $value );
+
+		if ( isset( $this->run_locks[ $run_id ], $parts[0] ) && hash_equals( $this->run_locks[ $run_id ], $parts[0] ) ) {
+			delete_option( $key );
+		}
+
+		unset( $this->run_locks[ $run_id ] );
+	}
+
+	/**
+	 * Restore and re-authorize the user who dispatched a queued run.
+	 *
+	 * Ability permission callbacks execute in the current WordPress user
+	 * context. Cron starts as user 0, so failing to restore the immutable run
+	 * principal makes permission-aware abilities fail and leaves the security
+	 * boundary undefined. The filter supports an explicitly configured service
+	 * user for system-triggered runs; it must never silently elevate to an
+	 * administrator.
+	 *
+	 * @param int $run_id Workflow run ID.
+	 * @return int|WP_Error Effective user ID, or an authorization error.
+	 */
+	private function establish_execution_principal( int $run_id ) {
+		$run = $this->repository->get_run( $run_id );
+
+		if ( !$run ) {
+			return new WP_Error( 'ability_workflow_run_not_found', __( 'Workflow run not found.', 'ai-post-scheduler' ) );
+		}
+
+		$user_id = (int) $run->created_by;
+
+		if ( $user_id <= 0 ) {
+			/**
+			 * Filters the service user used for a system-triggered workflow run.
+			 *
+			 * @param int                       $user_id Service user ID. Default 0.
+			 * @param AIPS_Ability_Workflow_Run $run     Workflow run.
+			 */
+			$user_id = (int) apply_filters( 'aips_ability_workflow_execution_user_id', 0, $run );
+		}
+
+		$user = $user_id > 0 ? get_userdata( $user_id ) : false;
+
+		if ( !$user ) {
+			return new WP_Error( 'ability_workflow_principal_missing', __( 'No valid execution user is configured for this workflow run.', 'ai-post-scheduler' ) );
+		}
+
+		if ( !user_can( $user, 'manage_options' ) ) {
+			return new WP_Error( 'ability_workflow_principal_forbidden', __( 'The workflow execution user is no longer allowed to manage workflows.', 'ai-post-scheduler' ) );
+		}
+
+		wp_set_current_user( $user_id );
+
+		return $user_id;
 	}
 
 	// -----------------------------------------------------------------------
@@ -425,31 +568,40 @@ class AIPS_Ability_Workflow_Executor {
 		$ability = $this->catalog->get_ability( $step->ability_name );
 
 		if ( is_wp_error( $ability ) ) {
-			return $this->fail_step( $run_id, $step, $step_run_id, $ability->get_error_message(), $attempt, $history, $correlation_id );
+			return $this->fail_step( $run_id, $step, $step_run_id, $ability, $attempt, $history, $correlation_id );
 		}
 
 		if ( ! empty( $ability['is_destructive'] ) && ! $allow_destructive ) {
-			return $this->fail_step( $run_id, $step, $step_run_id, __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' ), $attempt, $history, $correlation_id );
+			return $this->fail_step( $run_id, $step, $step_run_id, new WP_Error( 'ability_workflow_destructive_forbidden', __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' ) ), $attempt, $history, $correlation_id );
 		}
 
 		if ( $history ) {
 			/* translators: 1: ability name, 2: step key */
-			$history->record( 'ai_request', sprintf( __( 'Invoking ability "%1$s" for step "%2$s"', 'ai-post-scheduler' ), $step->ability_name, $step->step_key ), $resolved_input );
+			$history->record(
+				'ai_request',
+				sprintf( __( 'Invoking ability "%1$s" for step "%2$s"', 'ai-post-scheduler' ), $step->ability_name, $step->step_key ),
+				array( 'input_keys' => array_keys( $resolved_input ) )
+			);
 		}
 
 		$response = $this->ability_service->invoke( $step->ability_name, $resolved_input );
 
 		if ( is_wp_error( $response ) ) {
 			if ( $history ) {
-				$history->record( 'error', $response->get_error_message(), $resolved_input );
+				$history->record( 'error', $response->get_error_message(), array( 'error_code' => $response->get_error_code() ) );
 			}
 
-			return $this->fail_step( $run_id, $step, $step_run_id, $response->get_error_message(), $attempt, $history, $correlation_id );
+			return $this->fail_step( $run_id, $step, $step_run_id, $response, $attempt, $history, $correlation_id );
 		}
 
 		if ( $history ) {
 			/* translators: 1: ability name, 2: step key */
-			$history->record( 'ai_response', sprintf( __( 'Ability "%1$s" completed for step "%2$s"', 'ai-post-scheduler' ), $step->ability_name, $step->step_key ), null, $response );
+			$history->record(
+				'ai_response',
+				sprintf( __( 'Ability "%1$s" completed for step "%2$s"', 'ai-post-scheduler' ), $step->ability_name, $step->step_key ),
+				null,
+				array( 'output_keys' => array_keys( $response ) )
+			);
 		}
 
 		$this->repository->update_step_run_status( $step_run_id, 'completed', array( 'output_snapshot' => $response, 'finished_at' => time() ) );
@@ -464,22 +616,37 @@ class AIPS_Ability_Workflow_Executor {
 	 * @param int                        $run_id      Run ID.
 	 * @param AIPS_Ability_Workflow_Step $step        Step that failed.
 	 * @param int                        $step_run_id Step-run row ID.
-	 * @param string                     $message     Failure message.
+	 * @param string|WP_Error            $failure     Failure message or structured error.
 	 * @param int                        $attempt     Attempt number just made.
 	 * @param AIPS_History_Container|false $history   History container.
 	 * @param string                     $correlation_id Correlation ID for this run.
 	 * @return array { status: string, output: array, retry_scheduled: bool }
 	 */
-	private function fail_step( int $run_id, AIPS_Ability_Workflow_Step $step, int $step_run_id, string $message, int $attempt, $history, string $correlation_id ): array {
+	private function fail_step( int $run_id, AIPS_Ability_Workflow_Step $step, int $step_run_id, $failure, int $attempt, $history, string $correlation_id ): array {
+		$error_code     = is_wp_error( $failure ) ? $failure->get_error_code() : 'ability_workflow_step_failed';
+		$message        = is_wp_error( $failure ) ? $failure->get_error_message() : (string) $failure;
+		$raw_error_data = is_wp_error( $failure ) ? $failure->get_error_data() : null;
+		$error_data     = is_array( $raw_error_data ) && isset( $raw_error_data['status'] )
+			? array( 'status' => (int) $raw_error_data['status'] )
+			: null;
 		$max_attempts    = isset( $step->retry_policy['attempts'] ) ? (int) $step->retry_policy['attempts'] : 0;
 		$backoff_seconds = isset( $step->retry_policy['backoff_seconds'] ) ? max( 1, (int) $step->retry_policy['backoff_seconds'] ) : 5;
+		$permanent_error_codes = array(
+			'ability_invalid_input',
+			'ability_invalid_permissions',
+			'ability_workflow_destructive_forbidden',
+			'content_not_provided',
+			'insufficient_capabilities',
+			'post_not_found',
+		);
+		$is_permanent = in_array( $error_code, $permanent_error_codes, true );
 
-		if ( $attempt <= $max_attempts ) {
+		if ( !$is_permanent && $attempt <= $max_attempts ) {
 			$this->repository->update_step_run_status(
 				$step_run_id,
 				'pending',
 				array(
-					'error'       => array( 'message' => $message, 'attempts' => $attempt, 'next_retry_at' => time() + $backoff_seconds ),
+					'error'       => array( 'code' => $error_code, 'message' => $message, 'data' => $error_data, 'attempts' => $attempt, 'next_retry_at' => time() + $backoff_seconds ),
 					'finished_at' => 0,
 				)
 			);
@@ -504,7 +671,7 @@ class AIPS_Ability_Workflow_Executor {
 			$step_run_id,
 			'failed',
 			array(
-				'error'       => array( 'message' => $message, 'attempts' => $attempt ),
+				'error'       => array( 'code' => $error_code, 'message' => $message, 'data' => $error_data, 'attempts' => $attempt ),
 				'finished_at' => time(),
 			)
 		);
