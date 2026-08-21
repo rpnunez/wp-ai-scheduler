@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Generated Posts
 **Learning:** Decorative icons in history interfaces must be explicitly hidden from screen readers.
 **Action:** When adding or auditing generated posts Dashicons, include aria-hidden="true".
+## 2026-08-19 - Add aria-labels to Author table checkboxes
+**Area:** Authors templates (templates/admin/authors.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add accessible labels to author table checkboxes
+**Learning:** Checkboxes in data tables (like select all, or row selection) often lack accessible labels when placed in Handlebars JS templates or standard WP tables without explicitly rendering a label.
+**Action:** Always add `aria-label` to table selection checkboxes in WP Admin interfaces.

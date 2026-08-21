@@ -727,7 +727,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-topics-table">
     <thead>
         <tr>
-            <th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+            <th class="check-column"><input type="checkbox" class="aips-select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
             <th class="column-topic">{{topicDetails}}</th>
             <th class="column-generated">{{generatedAtLabel}}</th>
             <th class="column-actions">{{actionsLabel}}</th>
@@ -741,7 +741,7 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-topic-row">
 <tr data-topic-id="{{id}}">
-    <th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+    <th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></th>
     <td class="topic-title-cell column-topic">
         <div class="aips-topic-row">
             {{expandBtn}}
@@ -812,7 +812,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-feedback-table">
     <thead>
         <tr>
-            <th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+            <th class="check-column"><input type="checkbox" class="aips-select-all-feedback" aria-label="<?php esc_attr_e('Select all feedback', 'ai-post-scheduler'); ?>"></th>
             <th class="column-topic">{{topicLabel}}</th>
             <th class="column-action">{{actionLabel}}</th>
             <th class="column-reason">{{reasonLabel}}</th>
@@ -828,7 +828,7 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-feedback-row">
 <tr>
-    <th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}"></th>
+    <th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select feedback item', 'ai-post-scheduler'); ?>"></th>
     <td>{{topicTitle}}</td>
     <td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
     <td>{{reason}}</td>
@@ -896,7 +896,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-queue-table">
     <thead>
         <tr>
-            <th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>
+            <th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all" aria-label="<?php esc_attr_e('Select all queue items', 'ai-post-scheduler'); ?>"></th>
             <th scope="col">{{titleLabel}}</th>
             <th scope="col">{{authorLabel}}</th>
             <th scope="col">{{fieldLabel}}</th>
@@ -911,7 +911,7 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-queue-row">
 <tr>
-    <td><input type="checkbox" class="aips-queue-topic-checkbox" value="{{id}}"></td>
+    <td><input type="checkbox" class="aips-queue-topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select queue item', 'ai-post-scheduler'); ?>"></td>
     <td><span class="cell-primary">{{title}}</span></td>
     <td>{{author}}</td>
     <td>{{field}}</td>
