@@ -10,3 +10,10 @@
 **PR:** 🎨 Palette: Add aria-label to remove post button in taxonomy
 **Learning:** Missing aria-labels on icon-only buttons (like `&times;`) degrades screen reader accessibility.
 **Action:** Always ensure icon-only buttons have an `aria-label` attribute describing their function for assistive technologies.
+
+## 2026-08-15 - Accessibility Fix for Dashicons
+**Area:** Partial Generations Template (`templates/admin/tab-partial-generations.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative dashicons in partial generations
+**Learning:** Decorative dashicons (like filter, search) without `aria-hidden="true"` can be unnecessarily announced by screen readers, creating noise.
+**Action:** Always ensure decorative dashicons have the `aria-hidden="true"` attribute.
