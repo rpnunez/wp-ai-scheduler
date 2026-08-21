@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Generated Posts
 **Learning:** Decorative icons in history interfaces must be explicitly hidden from screen readers.
 **Action:** When adding or auditing generated posts Dashicons, include aria-hidden="true".
+## 2026-08-12 - Add aria-hidden to Templates and Voices Dashicons
+**Area:** Templates empty state and actions (templates/admin/templates.php), Voices empty state and actions (templates/admin/voices.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Templates and Voices
+**Learning:** Decorative icons in interfaces like tables and buttons must be explicitly hidden from screen readers.
+**Action:** When adding or auditing Dashicons in settings/templates views, include aria-hidden="true".
