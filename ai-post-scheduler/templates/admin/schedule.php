@@ -169,7 +169,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				</div>
 				<div class="aips-page-actions">
 					<?php if (!empty($templates)): ?>
-					<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
+					<button type="button" class="aips-btn aips-btn-primary aips-add-schedule-btn">
 						<span class="dashicons dashicons-plus-alt"></span>
 						<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
 					</button>
@@ -454,7 +454,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<div class="cell-actions">
 								<!-- Edit (template schedules only) -->
 								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
 									aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
 									data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
@@ -471,7 +471,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 								<?php endif; ?>
 
 								<!-- Run Now (all types) -->
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-run-now"
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-run-now"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>"
@@ -481,7 +481,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 
 								<!-- Reset Circuit (template schedules only, when circuit is open) -->
 								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $circuit_state === 'open'): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-warning aips-reset-circuit"
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-warning aips-reset-circuit"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Reset circuit breaker', 'ai-post-scheduler'); ?>"
@@ -492,7 +492,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 
 								<!-- Resume Batch (template schedules only, when batch is incomplete) -->
 								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $has_incomplete_batch): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-info aips-resume-batch"
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-info aips-resume-batch"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Resume incomplete batch', 'ai-post-scheduler'); ?>"
@@ -503,14 +503,14 @@ if (!function_exists('aips_datetime_from_db_value')) {
 
 								<!-- Delete (template schedules only) -->
 								<?php if ($sched['can_delete']): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 								</button>
 								<?php elseif (!empty($sched['campaign_id'])): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-danger" disabled
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-danger" disabled
 									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('This schedule cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
@@ -550,7 +550,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					</p>
 					<?php if (!empty($templates)): ?>
 					<div class="aips-empty-state-actions">
-						<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
+						<button type="button" class="aips-btn aips-btn-primary aips-add-schedule-btn">
 							<span class="dashicons dashicons-plus-alt"></span>
 							<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
 						</button>

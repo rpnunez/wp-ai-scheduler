@@ -90,7 +90,7 @@ if (is_object($history)) {
                         <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
                     </div>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-history-more-filters" aria-expanded="false" aria-controls="aips-history-advanced-filters"><?php esc_html_e('More filters', 'ai-post-scheduler'); ?></button>
-                    <button class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
                 </div>
                 <div id="aips-history-advanced-filters" class="aips-history-advanced-filters" hidden>
                     <select id="aips-filter-domain" class="aips-form-select">
@@ -122,15 +122,15 @@ if (is_object($history)) {
             <!-- Toolbar (bulk actions) -->
             <div class="aips-panel-toolbar">
                 <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
                         <span class="dashicons dashicons-update"></span>
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-export-history-btn">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-export-history-btn">
                         <span class="dashicons dashicons-download"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
