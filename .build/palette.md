@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Generated Posts
 **Learning:** Decorative icons in history interfaces must be explicitly hidden from screen readers.
 **Action:** When adding or auditing generated posts Dashicons, include aria-hidden="true".
+## 2024-05-30 - Add aria-label to hidden topic edit inputs
+**Area:** Authors and Author Topics JS templates
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to inline edit inputs in Authors and Author Topics
+**Learning:** Hidden inputs used for inline editing within JS templates (Handlebars) require `aria-label` attributes so that when they become visible, screen readers announce their purpose.
+**Action:** When creating inline editing fields, always attach an explicit `aria-label` to the input element.

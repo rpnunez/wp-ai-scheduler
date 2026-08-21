@@ -750,7 +750,7 @@ $site_ctx = AIPS_Site_Context::get();
             {{postCountBadge}}
             {{duplicateBadge}}
             {{feedbackBadge}}
-            <input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}">
+            <input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}" aria-label="<?php esc_attr_e('Edit topic title', 'ai-post-scheduler'); ?>">
         </div>
         {{detailContent}}
     </td>

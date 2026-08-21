@@ -303,7 +303,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			{{postCountBadge}}
 			{{duplicateBadge}}
 			{{feedbackBadge}}
-			<input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}">
+			<input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}" aria-label="<?php esc_attr_e('Edit topic title', 'ai-post-scheduler'); ?>">
 		</div>
 		{{detailContent}}
 	</td>
