@@ -10,3 +10,9 @@
 **PR:** 🎨 Palette: Add aria-label to remove post button in taxonomy
 **Learning:** Missing aria-labels on icon-only buttons (like `&times;`) degrades screen reader accessibility.
 **Action:** Always ensure icon-only buttons have an `aria-label` attribute describing their function for assistive technologies.
+## 2024-08-17 - Add aria-hidden to decorative dashicons
+**Area:** Article Structures Template (`templates/admin/structures.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative icons in structures template
+**Learning:** Decorative icons (like dashicons) inside interactive elements should be hidden from screen readers using `aria-hidden="true"` to prevent redundant or confusing announcements, especially when adjacent text or `.screen-reader-text` provides the accessible name.
+**Action:** Always add `aria-hidden="true"` to decorative `<span class="dashicons...">` elements used for purely visual purposes.
