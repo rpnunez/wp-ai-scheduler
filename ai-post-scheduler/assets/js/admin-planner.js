@@ -386,15 +386,9 @@
                         var failedTopics = data.failed_topics || data.errors || [];
                         var hasFailedTopics = $.isArray(failedTopics) ? failedTopics.length > 0 : false;
 
-                        if (hasFailedTopics) {
-                            // Partial success: keep topics so user can review/retry failed ones.
-                            var partialMsg = data.message || 'Some topics could not be generated. Please review and try again.';
-                            AIPS.Utilities.showToast(partialMsg, 'warning');
-                        } else {
-                            // Full success: remove processed topics and reset if empty.
-                            var successMsg = data.message || 'Posts generated successfully.';
-                            AIPS.Utilities.showToast(successMsg, 'success');
-
+                        if (data.queued) {
+                            AIPS.Utilities.showToast(data.message, 'success');
+                            // Clear generated items from the UI
                             $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
                                 $(this).remove();
                                 window.AIPS.updateSelectionCount();
@@ -406,6 +400,34 @@
                                     $('#planner-topic-search').val('');
                                 }
                             });
+                            return;
+                        }
+
+                        if (hasFailedTopics) {
+                            // Partial success: keep topics so user can review/retry failed ones.
+                            var partialMsg = data.message || 'Some topics could not be generated. Please review and try again.';
+                            AIPS.Utilities.showToast(partialMsg, 'warning');
+                        } else {
+                            // Full success: remove processed topics and reset if empty.
+                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                                $(this).remove();
+                                window.AIPS.updateSelectionCount();
+
+                                if ($('#topics-list .topic-item').length === 0) {
+                                    $('#planner-results').removeClass('active');
+                                    $('#planner-niche').val('');
+                                    $('#planner-manual-topics').val('');
+                                    $('#planner-topic-search').val('');
+                                }
+                            });
+                        }
+
+                        // Open unified generated posts modal
+                        if (typeof AIPS.showGeneratedPostsModal === 'function') {
+                            AIPS.showGeneratedPostsModal(data);
+                        } else {
+                            var fallbackMsg = data.message || 'Posts generated successfully.';
+                            AIPS.Utilities.showToast(fallbackMsg, 'success');
                         }
                     } else {
                         var errorMsg = (response && response.data && response.data.message) ? response.data.message : 'An error occurred. Please try again.';

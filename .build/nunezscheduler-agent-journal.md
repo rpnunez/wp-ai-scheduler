@@ -280,3 +280,8 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Stagger scheduled topics with frequency 'once' to improve queue management
 **Files Modified:** ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
 **Outcome:** Reduced concurrent background queue spike by staggering 'once' schedules
+## 2026-08-12 - Planner Bulk Generation UX Optimization
+**Target Feature:** Planner
+**Improvement:** Optimized Planner bulk generation flow to open the unified `showGeneratedPostsModal` on success instead of a basic toast notification, providing immediate visual feedback, post counts, and links to edit or view the newly generated posts.
+**Files Modified:** ai-post-scheduler/assets/js/admin-planner.js
+**Outcome:** Reduced friction between brainstorming and post refinement by directly presenting the generated content in the unified modal experience.
