@@ -393,6 +393,7 @@ $is_embedded_sources_view = !empty($embedded);
 
 			<!-- Add new group inline -->
 			<div style="display:flex; gap:8px; align-items:center;">
+				<label for="aips-new-group-name" class="screen-reader-text"><?php esc_html_e('New group name', 'ai-post-scheduler'); ?></label>
 				<input type="text" id="aips-new-group-name" class="regular-text"
 					placeholder="<?php esc_attr_e('New group name…', 'ai-post-scheduler'); ?>" style="flex:1;">
 				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-group-btn">

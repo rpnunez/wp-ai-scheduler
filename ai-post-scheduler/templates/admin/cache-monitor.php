@@ -322,6 +322,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 					<!-- Filter Bar -->
 					<div class="aips-filter-bar" id="aips-cache-entries-filters">
 						<div class="aips-filter-row">
+							<label for="aips-cache-search" class="screen-reader-text"><?php esc_html_e('Search cache', 'ai-post-scheduler'); ?></label>
 							<input type="text" id="aips-cache-search" class="aips-form-input aips-input-sm"
 								placeholder="<?php esc_attr_e('Search key hash, group, or operation…', 'ai-post-scheduler'); ?>" />
 							<select id="aips-cache-filter-group" class="aips-form-select aips-input-sm">
@@ -518,6 +519,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 						<p class="aips-panel-description"><?php esc_html_e('Aggregated stats for each cache operation ID from the index.', 'ai-post-scheduler'); ?></p>
 					</div>
 					<div class="aips-filter-bar">
+						<label for="aips-ops-filter-repo" class="screen-reader-text"><?php esc_html_e('Filter repository', 'ai-post-scheduler'); ?></label>
 						<input type="text" id="aips-ops-filter-repo" class="aips-form-input aips-input-sm"
 							placeholder="<?php esc_attr_e('Filter by repository class…', 'ai-post-scheduler'); ?>" />
 						<select id="aips-ops-filter-tier" class="aips-form-select aips-input-sm">

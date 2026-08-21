@@ -344,6 +344,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <p class="description"><?php esc_html_e('Analyze your existing content against your target niche to identify missing sub-topics and opportunities.', 'ai-post-scheduler'); ?></p>
 
                 <div class="aips-gap-analysis-controls">
+                    <label for="gap-niche" class="screen-reader-text"><?php esc_html_e('Target Niche', 'ai-post-scheduler'); ?></label>
                     <input type="text" id="gap-niche" class="regular-text" placeholder="<?php esc_attr_e('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
                     <button type="button" class="aips-btn aips-btn-primary" id="analyze-gaps-btn">
                         <span class="dashicons dashicons-chart-area"></span>

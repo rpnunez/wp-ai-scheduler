@@ -10,3 +10,9 @@
 **PR:** 🎨 Palette: Add aria-label to remove post button in taxonomy
 **Learning:** Missing aria-labels on icon-only buttons (like `&times;`) degrades screen reader accessibility.
 **Action:** Always ensure icon-only buttons have an `aria-label` attribute describing their function for assistive technologies.
+## 2026-08-08 - Fix missing screen-reader labels on form inputs
+**Area:** Admin Templates (`templates/admin/*.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add missing screen reader labels to inputs
+**Learning:** Missing label association on inputs degrades screen reader accessibility, particularly when controls rely only on visual `placeholder` context.
+**Action:** Always ensure inputs have an explicit `<label for="...">` or use `aria-label`/`aria-labelledby`, hiding labels using `screen-reader-text` if necessary to match design.
