@@ -213,6 +213,16 @@ class AIPS_Config {
             'aips_cache_monitor_full_value_debug_only' => true,
             'aips_cache_monitor_live_refresh_enabled'  => false,
             'aips_cache_monitor_live_refresh_interval' => 30,
+            // Autonomous Post Refresher (Post Audit & staging revisions).
+            'aips_post_refresher_enabled'            => false,
+            'aips_post_refresher_frequency'          => 'daily',
+            'aips_post_refresher_stale_days'         => 180,
+            'aips_post_refresher_batch_limit'        => 5,
+            'aips_post_refresher_max_batch_limit'    => 20,
+            'aips_post_refresher_post_types'         => array( 'post' ),
+            'aips_post_refresher_auto_approve'       => false,
+            'aips_post_refresher_audit_log_limit'    => 20,
+            'aips_post_refresher_default_immutable'  => false,
         );
     }
     
@@ -435,6 +445,50 @@ class AIPS_Config {
         );
     }
     
+    /**
+     * Get the Autonomous Post Refresher configuration.
+     *
+     * All values are clamped to safe ranges so that a corrupted option row can
+     * never produce an unbounded scan or a zero-day staleness window (which
+     * would treat every published post as stale).
+     *
+     * @return array{
+     *     enabled:bool,
+     *     frequency:string,
+     *     stale_days:int,
+     *     batch_limit:int,
+     *     max_batch_limit:int,
+     *     post_types:string[],
+     *     auto_approve:bool,
+     *     audit_log_limit:int,
+     *     default_immutable:bool
+     * }
+     */
+    public function get_post_refresher_config() {
+        $max_batch_limit = max(1, min(100, (int) $this->get_option('aips_post_refresher_max_batch_limit')));
+
+        $post_types = $this->get_option('aips_post_refresher_post_types');
+        if (!is_array($post_types)) {
+            $post_types = array($post_types);
+        }
+        $post_types = array_values(array_filter(array_map('sanitize_key', $post_types)));
+        if (empty($post_types)) {
+            $post_types = array('post');
+        }
+
+        return array(
+            'enabled'           => (bool) $this->get_option('aips_post_refresher_enabled'),
+            'frequency'         => (string) $this->get_option('aips_post_refresher_frequency'),
+            'stale_days'        => max(1, min(3650, (int) $this->get_option('aips_post_refresher_stale_days'))),
+            'batch_limit'       => max(1, min($max_batch_limit, (int) $this->get_option('aips_post_refresher_batch_limit'))),
+            'max_batch_limit'   => $max_batch_limit,
+            'post_types'        => $post_types,
+            'auto_approve'      => (bool) $this->get_option('aips_post_refresher_auto_approve'),
+            'audit_log_limit'   => max(1, min(200, (int) $this->get_option('aips_post_refresher_audit_log_limit'))),
+            'default_immutable' => (bool) $this->get_option('aips_post_refresher_default_immutable'),
+        );
+    }
+
     /**
      * Get rate limiting configuration.
      *

@@ -321,6 +321,8 @@ class AIPS_Ajax_Registry {
 		'aips_get_pending_revisions'         => 'AIPS_Post_Audit_Controller',
 		'aips_approve_revision'              => 'AIPS_Post_Audit_Controller',
 		'aips_reject_revision'               => 'AIPS_Post_Audit_Controller',
+		'aips_set_post_immutable'            => 'AIPS_Post_Audit_Controller',
+		'aips_get_post_audit_log'            => 'AIPS_Post_Audit_Controller',
 	);
 
 

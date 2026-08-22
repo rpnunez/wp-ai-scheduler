@@ -124,6 +124,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
+            AIPS_Post_Audit_Service::CRON_HOOK => array(
+                'schedule' => AIPS_Post_Audit_Service::get_schedule_slug(),
+                'label'   => __( 'Autonomous Post Refresher', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -789,6 +793,13 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Autonomous Post Refresher: scans stale published posts and stages
+        // AI-drafted revisions. The service itself no-ops when the feature is
+        // disabled in Settings, so the hook stays registered either way.
+        add_action(AIPS_Post_Audit_Service::CRON_HOOK, function() {
+            AIPS_Container::get_instance()->make(AIPS_Post_Audit_Service::class)->run_scheduled_scan();
+        });
+
         // Lazy-resolve the embeddings worker only when its hook fires.
         add_action('aips_process_author_embeddings', function($args) {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
@@ -886,6 +897,9 @@ final class AI_Post_Scheduler {
 
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
+
+        // Content Refresher meta box: Immutable toggle + per-post audit log.
+        new AIPS_Post_Refresh_Admin();
 
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
