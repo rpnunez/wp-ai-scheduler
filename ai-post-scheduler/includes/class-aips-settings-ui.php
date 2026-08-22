@@ -1066,4 +1066,282 @@ class AIPS_Settings_UI {
 		return array_values(array_unique($connector_ids));
 	}
 
+
+	// -------------------------------------------------------------------------
+	// Content Refresher (Autonomous Post Refresher)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Allowed scan frequencies for the Autonomous Post Refresher.
+	 *
+	 * @return array<string, string> Frequency key => label.
+	 */
+	public function get_post_refresher_frequencies() {
+		return array(
+			'hourly'     => __('Hourly', 'ai-post-scheduler'),
+			'twicedaily' => __('Twice Daily', 'ai-post-scheduler'),
+			'daily'      => __('Daily', 'ai-post-scheduler'),
+			'weekly'     => __('Weekly', 'ai-post-scheduler'),
+		);
+	}
+
+	/**
+	 * Post types an admin may choose for the refresher.
+	 *
+	 * @return array<string, string> Post type name => label.
+	 */
+	public function get_post_refresher_post_type_choices() {
+		$choices    = array();
+		$post_types = get_post_types(array('public' => true), 'objects');
+
+		foreach ($post_types as $post_type) {
+			if ($post_type->name === 'attachment') {
+				continue;
+			}
+
+			$choices[$post_type->name] = $post_type->labels->singular_name ?: $post_type->name;
+		}
+
+		if (empty($choices)) {
+			$choices['post'] = __('Post', 'ai-post-scheduler');
+		}
+
+		return $choices;
+	}
+
+	/**
+	 * Sanitize the refresher scan frequency.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return string
+	 */
+	public function sanitize_post_refresher_frequency($value) {
+		$value = sanitize_key((string) $value);
+
+		return array_key_exists($value, $this->get_post_refresher_frequencies())
+			? $value
+			: AIPS_Config::get_instance()->get_default_options()['aips_post_refresher_frequency'];
+	}
+
+	/**
+	 * Sanitize the staleness threshold in days.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return int
+	 */
+	public function sanitize_post_refresher_stale_days($value) {
+		$value = absint($value);
+
+		return max(1, min(3650, $value ?: 180));
+	}
+
+	/**
+	 * Sanitize the per-scan batch limit.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return int
+	 */
+	public function sanitize_post_refresher_batch_limit($value) {
+		$max = AIPS_Config::get_instance()->get_post_refresher_config()['max_batch_limit'];
+
+		return max(1, min($max, absint($value) ?: 1));
+	}
+
+	/**
+	 * Sanitize the per-post audit log entry cap.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return int
+	 */
+	public function sanitize_post_refresher_audit_log_limit($value) {
+		return max(1, min(200, absint($value) ?: 20));
+	}
+
+	/**
+	 * Sanitize the selected refresher post types.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return string[]
+	 */
+	public function sanitize_post_refresher_post_types($value) {
+		if (!is_array($value)) {
+			$value = array($value);
+		}
+
+		$allowed  = array_keys($this->get_post_refresher_post_type_choices());
+		$selected = array();
+
+		foreach ($value as $post_type) {
+			if (!is_scalar($post_type)) {
+				continue;
+			}
+
+			$post_type = sanitize_key((string) $post_type);
+
+			if ($post_type !== '' && in_array($post_type, $allowed, true)) {
+				$selected[] = $post_type;
+			}
+		}
+
+		$selected = array_values(array_unique($selected));
+
+		return empty($selected) ? array('post') : $selected;
+	}
+
+	/**
+	 * Render the Content Refresher section description.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_section_callback() {
+		echo '<p>' . esc_html__('The Autonomous Post Refresher periodically scans published posts that have not been updated in a long time, drafts an AI-refreshed version, and stages it as a draft revision for editorial approval. Individual posts can be excluded by marking them Immutable in the post editor.', 'ai-post-scheduler') . '</p>';
+
+		if (class_exists('AIPS_Post_Audit_Service')) {
+			$next_run = wp_next_scheduled(AIPS_Post_Audit_Service::CRON_HOOK);
+
+			if ($next_run) {
+				echo '<p class="description">' . esc_html(sprintf(
+					/* translators: %s: formatted date/time of the next scheduled scan. */
+					__('Next scheduled scan: %s', 'ai-post-scheduler'),
+					wp_date(get_option('date_format') . ' ' . get_option('time_format'), $next_run)
+				)) . '</p>';
+			}
+		}
+	}
+
+	/**
+	 * Render the Enable Autonomous Refresher field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_enabled_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_post_refresher_enabled');
+		?>
+		<input type="hidden" name="aips_post_refresher_enabled" value="0">
+		<label>
+			<input type="checkbox" name="aips_post_refresher_enabled" value="1" <?php checked($value, 1); ?>>
+			<?php esc_html_e('Run the refresher automatically on a schedule', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('When disabled, scans only run when triggered manually. Nothing is ever published without approval unless auto-approve is enabled below.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the scan frequency field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_frequency_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_post_refresher_frequency');
+		?>
+		<select name="aips_post_refresher_frequency">
+			<?php foreach ($this->get_post_refresher_frequencies() as $key => $label) : ?>
+				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('How often the refresher scans for stale posts. Each scan generates content, so avoid running it more often than needed.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the staleness threshold field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_stale_days_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_post_refresher_stale_days');
+		?>
+		<input type="number" name="aips_post_refresher_stale_days" value="<?php echo esc_attr($value); ?>" min="1" max="3650" step="1" class="small-text">
+		<p class="description"><?php esc_html_e('A published post is considered stale once it has not been modified for this many days. Default: 180.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the per-scan batch limit field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_batch_limit_field_callback() {
+		$config = AIPS_Config::get_instance()->get_post_refresher_config();
+		?>
+		<input type="number" name="aips_post_refresher_batch_limit" value="<?php echo esc_attr($config['batch_limit']); ?>" min="1" max="<?php echo esc_attr($config['max_batch_limit']); ?>" step="1" class="small-text">
+		<p class="description">
+			<?php echo esc_html(sprintf(
+				/* translators: %d: maximum posts allowed per scan. */
+				__('Maximum posts refreshed in a single scan. Hard ceiling: %d. Each post consumes AI credits.', 'ai-post-scheduler'),
+				$config['max_batch_limit']
+			)); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the post types selector.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_post_types_field_callback() {
+		$selected = AIPS_Config::get_instance()->get_post_refresher_config()['post_types'];
+		?>
+		<fieldset>
+			<?php // Empty marker so clearing every box still submits the field. ?>
+			<input type="hidden" name="aips_post_refresher_post_types[]" value="">
+			<?php foreach ($this->get_post_refresher_post_type_choices() as $post_type => $label) : ?>
+				<label style="display:block;">
+					<input type="checkbox" name="aips_post_refresher_post_types[]" value="<?php echo esc_attr($post_type); ?>" <?php checked(in_array($post_type, $selected, true), true); ?>>
+					<?php echo esc_html($label); ?>
+				</label>
+			<?php endforeach; ?>
+		</fieldset>
+		<p class="description"><?php esc_html_e('Only published entries of the selected post types are scanned. Defaults to Posts.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the auto-approve field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_auto_approve_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_post_refresher_auto_approve');
+		?>
+		<input type="hidden" name="aips_post_refresher_auto_approve" value="0">
+		<label>
+			<input type="checkbox" name="aips_post_refresher_auto_approve" value="1" <?php checked($value, 1); ?>>
+			<?php esc_html_e('Merge staged revisions into live posts without review', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Not recommended. When enabled, AI-refreshed content replaces live published content immediately.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the default immutability field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_default_immutable_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_post_refresher_default_immutable');
+		?>
+		<input type="hidden" name="aips_post_refresher_default_immutable" value="0">
+		<label>
+			<input type="checkbox" name="aips_post_refresher_default_immutable" value="1" <?php checked($value, 1); ?>>
+			<?php esc_html_e('Treat posts as Immutable unless explicitly opted in', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Flips the default: instead of every stale post being eligible, only posts explicitly un-marked in the editor are refreshed.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the audit log retention field.
+	 *
+	 * @return void
+	 */
+	public function post_refresher_audit_log_limit_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_post_refresher_audit_log_limit');
+		?>
+		<input type="number" name="aips_post_refresher_audit_log_limit" value="<?php echo esc_attr($value); ?>" min="1" max="200" step="1" class="small-text">
+		<p class="description"><?php esc_html_e('How many refresher check entries to retain in each post audit log meta. Oldest entries are dropped first.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
 }

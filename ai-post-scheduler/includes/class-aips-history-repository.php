@@ -209,6 +209,16 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $limit
         ), ARRAY_A);
     }
+
+    /**
+     * Fetch summary KPI metrics for generated posts.
+     *
+     * @return array
+     */
+    public function get_generated_posts_kpis() {
+        return AIPS_Generated_Content_Repository::instance()->get_content_kpis();
+    }
+
     
     /**
      * Get paginated history with optional filtering.

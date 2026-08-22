@@ -124,6 +124,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
+            AIPS_Post_Audit_Service::CRON_HOOK => array(
+                'schedule' => AIPS_Post_Audit_Service::get_schedule_slug(),
+                'label'   => __( 'Autonomous Post Refresher', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -400,6 +404,52 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Logger::class);
         });
 
+        $container->singleton(AIPS_AI_Connector_Registry::class, function( $container ) {
+            return new AIPS_AI_Connector_Registry(
+                config: $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_AI_Connector_Health_Store::class, function( $container ) {
+            return new AIPS_AI_Connector_Health_Store(
+                registry: $container->make(AIPS_AI_Connector_Registry::class)
+            );
+        });
+
+        $container->singleton(AIPS_AI_Failover_Policy::class, function( $container ) {
+            return new AIPS_AI_Failover_Policy();
+        });
+
+        $container->singleton(AIPS_AI_Connector_Router::class, function( $container ) {
+            return new AIPS_AI_Connector_Router(
+                registry: $container->make(AIPS_AI_Connector_Registry::class),
+                health_store: $container->make(AIPS_AI_Connector_Health_Store::class),
+                config: $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_WP_AI_Error_Mapper::class, function( $container ) {
+            return new AIPS_WP_AI_Error_Mapper();
+        });
+
+        $container->singleton(AIPS_WP_AI_Prompt_Adapter::class, function( $container ) {
+            return new AIPS_WP_AI_Prompt_Adapter(
+                error_mapper: $container->make(AIPS_WP_AI_Error_Mapper::class)
+            );
+        });
+
+        $container->singleton(AIPS_WP_AI_Client_Provider::class, function( $container ) {
+            return new AIPS_WP_AI_Client_Provider(
+                registry: $container->make(AIPS_AI_Connector_Registry::class),
+                router: $container->make(AIPS_AI_Connector_Router::class),
+                health_store: $container->make(AIPS_AI_Connector_Health_Store::class),
+                failover_policy: $container->make(AIPS_AI_Failover_Policy::class),
+                prompt_adapter: $container->make(AIPS_WP_AI_Prompt_Adapter::class),
+                error_mapper: $container->make(AIPS_WP_AI_Error_Mapper::class),
+                config: $container->make(AIPS_Config::class)
+            );
+        });
+
         $container->singleton(AIPS_AI_Provider_Interface::class, function( $container ) {
             return AIPS_AI_Provider_Factory::create();
         });
@@ -426,9 +476,25 @@ final class AI_Post_Scheduler {
             return AIPS_Telemetry_Repository::instance();
         });
 
-        // Register AIPS_Template_Repository
-        $container->singleton(AIPS_Template_Repository::class, function( $container ) {
-            return AIPS_Template_Repository::instance();
+        // Register AIPS_Generated_Content_Repository
+        $container->singleton(AIPS_Generated_Content_Repository::class, function( $container ) {
+            return AIPS_Generated_Content_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Generated_Content_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Generated_Content_Repository::class);
+        });
+
+        // Register AIPS_Generation_Pipeline
+        $container->singleton(AIPS_Generation_Pipeline::class, function( $container ) {
+            return new AIPS_Generation_Pipeline();
+        });
+
+        // Register AIPS_Post_Audit_Service
+        $container->singleton(AIPS_Post_Audit_Service::class, function( $container ) {
+            return new AIPS_Post_Audit_Service(
+                pipeline: $container->make(AIPS_Generation_Pipeline::class)
+            );
         });
 
         // Register AIPS_System_Diagnostics_Service
@@ -773,6 +839,13 @@ final class AI_Post_Scheduler {
             );
         });
 
+        // Autonomous Post Refresher: scans stale published posts and stages
+        // AI-drafted revisions. The service itself no-ops when the feature is
+        // disabled in Settings, so the hook stays registered either way.
+        add_action(AIPS_Post_Audit_Service::CRON_HOOK, function() {
+            AIPS_Container::get_instance()->make(AIPS_Post_Audit_Service::class)->run_scheduled_scan();
+        });
+
         // Lazy-resolve the embeddings worker only when its hook fires.
         add_action('aips_process_author_embeddings', function($args) {
             AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
@@ -870,6 +943,9 @@ final class AI_Post_Scheduler {
 
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
+
+        // Content Refresher meta box: Immutable toggle + per-post audit log.
+        new AIPS_Post_Refresh_Admin();
 
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing

@@ -34,7 +34,22 @@ class AIPS_AI_Provider_Factory {
     private const REGISTRY = array(
         'meow'         => 'AIPS_Meow_AI_Provider',
         'wp_ai_client' => 'AIPS_WP_AI_Client_Provider',
+        'mock'         => 'AIPS_Mock_AI_Provider',
     );
+
+    /**
+     * Get the active provider registry.
+     *
+     * @return array<string,string>
+     */
+    public static function get_registry(): array {
+        /**
+         * Filter registered AI providers.
+         *
+         * @param array<string,string> $registry Map of provider ID to class name.
+         */
+        return (array) apply_filters('aips_ai_provider_registry', self::REGISTRY);
+    }
 
     /**
      * Create the active provider.
@@ -67,7 +82,7 @@ class AIPS_AI_Provider_Factory {
         }
 
         // 3. Auto-detect the first available provider.
-        foreach (array_keys(self::REGISTRY) as $registered_id) {
+        foreach (array_keys(self::get_registry()) as $registered_id) {
             $provider = self::instantiate($registered_id);
 
             if ($provider !== null && $provider->is_available()) {
@@ -87,7 +102,7 @@ class AIPS_AI_Provider_Factory {
     public static function available_providers(): array {
         $available = array();
 
-        foreach (array_keys(self::REGISTRY) as $id) {
+        foreach (array_keys(self::get_registry()) as $id) {
             $provider = self::instantiate($id);
 
             if ($provider !== null && $provider->is_available()) {
@@ -131,7 +146,7 @@ class AIPS_AI_Provider_Factory {
     public static function all_providers(): array {
         $all = array();
 
-        foreach (array_keys(self::REGISTRY) as $id) {
+        foreach (array_keys(self::get_registry()) as $id) {
             $provider = self::instantiate($id);
 
             if ($provider !== null) {
@@ -151,7 +166,7 @@ class AIPS_AI_Provider_Factory {
     public static function unavailable_reasons(): array {
         $reasons = array();
 
-        foreach (array_keys(self::REGISTRY) as $id) {
+        foreach (array_keys(self::get_registry()) as $id) {
             $provider = self::instantiate($id);
 
             if ($provider === null || $provider->is_available()) {
@@ -199,12 +214,14 @@ class AIPS_AI_Provider_Factory {
             return $instances[$id];
         }
 
-        if (!isset(self::REGISTRY[$id])) {
+        $registry = self::get_registry();
+
+        if (!isset($registry[$id])) {
             $instances[$id] = null;
             return null;
         }
 
-        $class = self::REGISTRY[$id];
+        $class = $registry[$id];
 
         if (!class_exists($class)) {
             $instances[$id] = null;

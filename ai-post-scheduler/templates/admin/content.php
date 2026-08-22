@@ -2,11 +2,8 @@
 /**
  * Content Admin Template
  *
- * Container for the Content admin page with three tab panels:
- *
- * Tab 1: Generated Posts  - @see templates/admin/tab-generated-posts.php
- * Tab 2: Partial Generations - @see templates/admin/tab-partial-generations.php
- * Tab 3: Pending Review      - @see templates/admin/tab-pending-review.php
+ * Unified Content Hub for managing all AI-generated content (Published articles,
+ * scheduled queue, pending review drafts, and incomplete/partial generations).
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -25,38 +22,15 @@ if (!defined('ABSPATH')) {
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
 				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('View and manage all AI-generated posts including published articles and drafts pending review.', 'ai-post-scheduler'); ?></p>
+					<h1 class="aips-page-title"><?php esc_html_e('Content Hub', 'ai-post-scheduler'); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e('Monitor, review, and manage all AI-generated posts across your scheduled queues, review pipelines, and published library.', 'ai-post-scheduler'); ?></p>
 				</div>
 			</div>
 		</div>
 
-		<!-- Tabs navigation -->
-		<div class="aips-tab-nav">
-			<a href="#aips-generated-posts" class="aips-tab-link active" data-tab="aips-generated-posts"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-partial-generations" class="aips-tab-link" data-tab="aips-partial-generations"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
-		</div>
-
-		<!-- Tab 1: Generated Posts -->
-		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
-			<div class="aips-content-panel">
-				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-generated-posts.php'; ?>
-			</div>
-		</div>
-
-		<!-- Tab 2: Partial Generations -->
-		<div id="aips-partial-generations-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
-			<div class="aips-content-panel">
-				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-partial-generations.php'; ?>
-			</div>
-		</div>
-
-		<!-- Tab 3: Pending Review -->
-		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
-			<div class="aips-content-panel">
-				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-pending-review.php'; ?>
-			</div>
+		<!-- Main Unified Content View -->
+		<div id="aips-generated-posts-container" class="aips-content-hub-wrap">
+			<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-generated-posts.php'; ?>
 		</div>
 	</div>
 </div>

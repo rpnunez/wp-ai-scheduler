@@ -629,4 +629,51 @@ class AIPS_Sources_Fetcher {
 
 		return implode( "\n", $parts );
 	}
+
+	/**
+	 * Ingest uploaded or direct document text (Markdown, TXT, parsed PDF) into sources data.
+	 *
+	 * @param int    $source_id Source ID in aips_sources table.
+	 * @param string $title     Document or snippet title.
+	 * @param string $raw_text  Document body text.
+	 * @param string $format    Format slug ('markdown', 'text', 'pdf').
+	 * @return array{success: bool, char_count: int, error: string}
+	 */
+	public function ingest_document( int $source_id, string $title, string $raw_text, string $format = 'markdown' ): array {
+		if ( ! $source_id || empty( $raw_text ) ) {
+			return array( 'success' => false, 'char_count' => 0, 'error' => 'Invalid source ID or empty text.' );
+		}
+
+		$clean_text = 'markdown' === $format ? trim( $raw_text ) : $this->clean_html_text( $raw_text );
+
+		$max_chars = absint( get_option( 'aips_source_fetch_max_chars', self::DEFAULT_MAX_CHARS ) );
+		if ( $max_chars < 500 ) {
+			$max_chars = self::DEFAULT_MAX_CHARS;
+		}
+		if ( mb_strlen( $clean_text ) > $max_chars ) {
+			$clean_text = mb_substr( $clean_text, 0, $max_chars );
+		}
+
+		$char_count = mb_strlen( $clean_text );
+
+		$insert_ok = $this->data_repo->insert_if_new( $source_id, array(
+			'url'              => 'document://' . sanitize_title( $title ),
+			'page_title'       => sanitize_text_field( $title ),
+			'meta_description' => mb_substr( $clean_text, 0, 160 ),
+			'extracted_text'   => $clean_text,
+			'raw_html'         => '',
+			'char_count'       => $char_count,
+			'fetch_status'     => 'success',
+			'http_status'      => 200,
+			'error_message'    => '',
+		) );
+
+		if ( ! $insert_ok ) {
+			return array( 'success' => false, 'char_count' => 0, 'error' => 'Failed to persist document in database.' );
+		}
+
+		$this->sources_repo->update_after_fetch( $source_id, true );
+
+		return array( 'success' => true, 'char_count' => $char_count, 'error' => '' );
+	}
 }

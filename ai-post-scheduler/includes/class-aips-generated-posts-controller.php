@@ -36,6 +36,11 @@ class AIPS_Generated_Posts_Controller {
 	private $post_review_repository;
 	
 	/**
+	 * @var array Cache for campaign objects to avoid N+1 queries
+	 */
+	private $campaign_cache = array();
+
+	/**
 	 * @var array Cache for template names to avoid N+1 queries
 	 */
 	private $template_cache = array();
@@ -43,51 +48,107 @@ class AIPS_Generated_Posts_Controller {
 	/**
 	 * @var array Cache for author names to avoid N+1 queries
 	 */
+	/**
+	 * @var AIPS_Generated_Content_Repository
+	 */
+	private $generated_content_repository;
+
+	/**
+	 * @var array Cache for author objects to avoid N+1 queries
+	 */
 	private $author_cache = array();
 	
 	/**
 	 * @var array Cache for topic titles to avoid N+1 queries
 	 */
 	private $topic_cache = array();
+
+	/**
+	 * @var array Active filter and pagination state for Generated Posts
+	 */
+	private $active_state = array();
 	
 	/**
 	 * Initialize the controller
 	 */
-	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
-		$this->post_review_repository = new AIPS_Post_Review_Repository();
+	public function __construct(
+		?AIPS_Generated_Content_Repository_Interface $generated_content_repository = null,
+		?AIPS_History_Repository_Interface $history_repository = null,
+		?AIPS_Schedule_Repository_Interface $schedule_repository = null,
+		?AIPS_Post_Review_Repository $post_review_repository = null
+	) {
+		$container = AIPS_Container::get_instance();
+		$this->generated_content_repository = $generated_content_repository ?: (
+			$container->has(AIPS_Generated_Content_Repository_Interface::class)
+				? $container->make(AIPS_Generated_Content_Repository_Interface::class)
+				: AIPS_Generated_Content_Repository::instance()
+		);
+		$this->history_repository = $history_repository ?: (
+			$container->has(AIPS_History_Repository_Interface::class)
+				? $container->make(AIPS_History_Repository_Interface::class)
+				: AIPS_History_Repository::instance()
+		);
+		$this->schedule_repository = $schedule_repository ?: (
+			$container->has(AIPS_Schedule_Repository_Interface::class)
+				? $container->make(AIPS_Schedule_Repository_Interface::class)
+				: AIPS_Schedule_Repository::instance()
+		);
+		$this->post_review_repository = $post_review_repository ?: new AIPS_Post_Review_Repository();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
 		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
-		// AJAX endpoint to download the session JSON as a file
 		add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
+		add_action('wp_ajax_aips_update_post_status', array($this, 'ajax_update_post_status'));
+		add_action('wp_ajax_aips_bulk_generated_posts_action', array($this, 'ajax_bulk_generated_posts_action'));
 	}
 	
 	/**
 	 * Render the Generated Posts admin page
 	 */
 	public function render_page() {
-		// Use separate pagination parameters for each tab
+		// Use pagination and filter parameters
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
-		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
-		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
+		$per_page = isset($_GET['per_page']) ? max(10, min(100, absint($_GET['per_page']))) : 20;
 		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 		$campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
+		$post_status = isset($_GET['post_status']) ? sanitize_key($_GET['post_status']) : '';
+		$group_by = isset($_GET['group_by']) ? sanitize_key($_GET['group_by']) : 'campaign';
+		$view_mode = isset($_GET['view_mode']) ? sanitize_key($_GET['view_mode']) : 'grouped';
 
-		// Get completed history entries with post IDs (for Generated Posts tab)
-		$history = $this->history_repository->get_history(array(
-			'page' => $generated_page,
-			'per_page' => 20,
-			'status' => 'completed',
-			'search' => $search_query,
-			'author_id' => $author_id,
+		// Validate group_by and view_mode
+		if (!in_array($group_by, array('status', 'campaign', 'template', 'author', 'date', 'none'), true)) {
+			$group_by = 'campaign';
+		}
+		if (!in_array($view_mode, array('grouped', 'table', 'cards'), true)) {
+			$view_mode = 'grouped';
+		}
+
+		$this->active_state = array(
+			'author_id'   => $author_id,
 			'template_id' => $template_id,
 			'campaign_id' => $campaign_id,
-			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
+			'post_status' => $post_status,
+			'group_by'    => $group_by,
+			'view_mode'   => $view_mode,
+			'per_page'    => $per_page,
+			's'           => $search_query,
+		);
+
+		// Fetch KPI summary statistics across all content states
+		$kpis = $this->generated_content_repository->get_content_kpis();
+
+		// Get unified content entries (completed, draft review, partials)
+		$content_result = $this->generated_content_repository->get_unified_content(array(
+			'page'        => $generated_page,
+			'per_page'    => $per_page,
+			'search'      => $search_query,
+			'author_id'   => $author_id,
+			'template_id' => $template_id,
+			'campaign_id' => $campaign_id,
+			'status'      => $post_status,
 		));
 		
 		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
@@ -95,95 +156,230 @@ class AIPS_Generated_Posts_Controller {
 		$time_format = get_option('time_format');
 		$datetime_format = $date_format . ' ' . $time_format;
 
-		// Get schedule data for each post
+		// Get rich post and schedule data for each post
 		$posts_data = array();
-		foreach ($history['items'] as $item) {
-			if (!$item->post_id) {
-				continue;
-			}
+		$grouped_posts = array();
+
+		foreach ($content_result['items'] as $item) {
+			$post_id = !empty($item->post_id) ? (int) $item->post_id : (!empty($item->wp_post_id) ? (int) $item->wp_post_id : 0);
+			$post = $post_id ? get_post($post_id) : null;
+
+			// Incomplete check
+			$is_incomplete = (!empty($item->is_currently_incomplete) || (isset($item->history_status) && $item->history_status === 'failed'));
+			$missing_components = $this->get_missing_components(isset($item->component_statuses) ? $item->component_statuses : null);
+
+			// Timestamps & dates
+			$created_at = !empty($item->created_at) ? (int) $item->created_at : 0;
+			$date_generated = AIPS_DateTime::formatRelativeOrAbsolute($created_at, $datetime_format);
 			
-			$post = get_post($item->post_id);
-			if (!$post) {
-				continue;
-			}
-			
-			// Get most recent schedule for this template (if exists)
-			$schedule = null;
-			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
-			}
-			
-			// Format source information
+			$raw_status = $post ? $post->post_status : (!empty($item->post_status) ? $item->post_status : ($is_incomplete ? 'incomplete' : 'draft'));
+			$is_pending_review = ($raw_status === 'draft' || $raw_status === 'pending') && !$is_incomplete;
+
+			// Source format
 			$source = $this->format_source($item);
 
-			// Use a GMT timestamp to avoid timezone skew when formatting relative time.
-			$published_timestamp = (int) get_post_time('U', true, $post);
-			
-			$posts_data[] = array(
-				'history_id' => $item->id,
-				'post_id' => $item->post_id,
-				'title' => $post->post_title,
-				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
-				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, $datetime_format),
-				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, $datetime_format),
-				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
-				'source' => $source,
+			// Featured image thumbnail
+			$thumb_url = '';
+			$thumb_medium_url = '';
+			if ($post) {
+				$thumb_id = get_post_thumbnail_id($post->ID);
+				$thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
+				$thumb_medium_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'medium') : '';
+			}
+
+			// Word count and reading time
+			$clean_content = $post ? wp_strip_all_tags($post->post_content) : (!empty($item->post_content) ? wp_strip_all_tags($item->post_content) : '');
+			$word_count = str_word_count($clean_content);
+			$reading_time = max(1, (int) ceil($word_count / 200));
+
+			// Author info
+			$item_author_name = '';
+			$item_author_avatar = '';
+			if (!empty($item->author_id)) {
+				if (!isset($this->author_cache[$item->author_id])) {
+					$authors_repo = new AIPS_Authors_Repository();
+					$this->author_cache[$item->author_id] = $authors_repo->get_by_id($item->author_id);
+				}
+				$author_obj = $this->author_cache[$item->author_id];
+				if ($author_obj) {
+					$item_author_name = $author_obj->name;
+					$item_author_avatar = !empty($author_obj->avatar_url) ? $author_obj->avatar_url : '';
+				}
+			}
+			if (empty($item_author_name) && $post) {
+				$wp_author = get_userdata($post->post_author);
+				$item_author_name = $wp_author ? $wp_author->display_name : __('AI Scheduler', 'ai-post-scheduler');
+				$item_author_avatar = get_avatar_url($post->post_author, array('size' => 48));
+			}
+
+			// Campaign info
+			$item_campaign_id = !empty($item->campaign_id) ? (int) $item->campaign_id : 0;
+			$item_campaign_name = '';
+			if ($item_campaign_id > 0) {
+				if (!isset($this->campaign_cache[$item_campaign_id])) {
+					$campaigns_found = AIPS_Campaigns_Repository::instance()->get_campaigns(null, $item_campaign_id);
+					$this->campaign_cache[$item_campaign_id] = !empty($campaigns_found) ? $campaigns_found[0] : null;
+				}
+				$campaign_obj = $this->campaign_cache[$item_campaign_id];
+				if ($campaign_obj && isset($campaign_obj->name)) {
+					$item_campaign_name = $campaign_obj->name;
+				}
+			}
+
+			// Template info
+			$item_template_id = !empty($item->template_id) ? (int) $item->template_id : 0;
+			$item_template_name = '';
+			if ($item_template_id > 0) {
+				if (!isset($this->template_cache[$item_template_id])) {
+					$template_repo = new AIPS_Template_Repository();
+					$this->template_cache[$item_template_id] = $template_repo->get_by_id($item_template_id);
+				}
+				$template_obj = $this->template_cache[$item_template_id];
+				if ($template_obj && isset($template_obj->name)) {
+					$item_template_name = $template_obj->name;
+				}
+			}
+
+			// Topic info
+			$item_topic_id = !empty($item->topic_id) ? (int) $item->topic_id : 0;
+			$item_topic_title = '';
+			if ($item_topic_id > 0) {
+				if (!isset($this->topic_cache[$item_topic_id])) {
+					$topics_repo = new AIPS_Author_Topics_Repository();
+					$this->topic_cache[$item_topic_id] = $topics_repo->get_by_id($item_topic_id);
+				}
+				$topic_obj = $this->topic_cache[$item_topic_id];
+				if ($topic_obj && isset($topic_obj->topic_title)) {
+					$item_topic_title = $topic_obj->topic_title;
+				}
+			}
+
+			// AI telemetry
+			$duration_seconds = (!empty($item->completed_at) && !empty($item->created_at) && $item->completed_at >= $item->created_at)
+				? round((float) ($item->completed_at - $item->created_at), 1)
+				: null;
+
+			$post_title = $post ? ($post->post_title ? $post->post_title : __('(No Title)', 'ai-post-scheduler')) : (!empty($item->generated_title) ? $item->generated_title : __('(Incomplete Post)', 'ai-post-scheduler'));
+
+			$post_item = array(
+				'history_id'          => $item->history_id,
+				'post_id'             => $post_id,
+				'title'               => $post_title,
+				'post_status'         => $raw_status,
+				'post_status_label'   => $is_incomplete ? __('Incomplete', 'ai-post-scheduler') : $this->format_post_status($raw_status),
+				'is_incomplete'       => $is_incomplete,
+				'is_pending_review'   => $is_pending_review,
+				'missing_components'  => $missing_components,
+				'permalink'           => $post_id ? get_permalink($post_id) : '',
+				'edit_link'           => $post_id ? esc_url_raw(get_edit_post_link($post_id)) : '',
+				'thumb_url'           => $thumb_url,
+				'thumb_medium_url'    => $thumb_medium_url,
+				'word_count'          => $word_count,
+				'reading_time'        => $reading_time,
+				'author_name'         => $item_author_name,
+				'author_avatar'       => $item_author_avatar,
+				'campaign_id'         => $item_campaign_id,
+				'campaign_name'       => $item_campaign_name,
+				'template_id'         => $item_template_id,
+				'template_name'       => $item_template_name,
+				'topic_id'            => $item_topic_id,
+				'topic_title'         => $item_topic_title,
+				'duration_seconds'    => $duration_seconds,
+				'ai_call_count'       => 0,
+				'date_generated'      => $date_generated,
+				'date_published'      => ($post && $post->post_status === 'publish') ? AIPS_DateTime::formatRelativeOrAbsolute((int) get_post_time('U', true, $post), $datetime_format) : '',
+				'created_at_raw'      => $created_at,
+				'source'              => $source,
 			);
-		}
-		
-		// Get draft posts for Post Review tab
-		$draft_posts = $this->post_review_repository->get_draft_posts(array(
-			'page' => $review_page,
-			'search' => $search_query,
-			'template_id' => $template_id,
-		));
 
-		// Pre-format dates for draft posts
-		if (!empty($draft_posts['items'])) {
-			foreach ($draft_posts['items'] as $item) {
-				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
+			$posts_data[] = $post_item;
+
+			// Determine group key and label
+			$group_key = 'all';
+			$group_title = __('All Posts', 'ai-post-scheduler');
+			$group_icon = 'dashicons-admin-post';
+			$group_meta = '';
+
+			if ($group_by === 'status') {
+				if ($is_incomplete) {
+					$group_key = 'status_incomplete';
+					$group_title = __('Incomplete / Missing Components', 'ai-post-scheduler');
+					$group_icon = 'dashicons-warning';
+				} elseif ($is_pending_review) {
+					$group_key = 'status_review';
+					$group_title = __('Pending Review', 'ai-post-scheduler');
+					$group_icon = 'dashicons-edit-page';
+				} elseif ($raw_status === 'future') {
+					$group_key = 'status_future';
+					$group_title = __('Scheduled / Queued', 'ai-post-scheduler');
+					$group_icon = 'dashicons-calendar-alt';
+				} elseif ($raw_status === 'publish') {
+					$group_key = 'status_publish';
+					$group_title = __('Published', 'ai-post-scheduler');
+					$group_icon = 'dashicons-yes-alt';
+				} else {
+					$group_key = 'status_' . sanitize_key($raw_status);
+					$group_title = $this->format_post_status($raw_status);
+					$group_icon = 'dashicons-admin-post';
+				}
+			} elseif ($group_by === 'campaign') {
+				if ($item_campaign_id > 0 && !empty($item_campaign_name)) {
+					$group_key = 'campaign_' . $item_campaign_id;
+					$group_title = $item_campaign_name;
+					$group_icon = 'dashicons-megaphone';
+				} else {
+					$group_key = 'campaign_standalone';
+					$group_title = __('Standalone / No Campaign', 'ai-post-scheduler');
+					$group_icon = 'dashicons-tag';
+				}
+			} elseif ($group_by === 'template') {
+				if ($item_template_id > 0 && !empty($item_template_name)) {
+					$group_key = 'template_' . $item_template_id;
+					$group_title = $item_template_name;
+					$group_icon = 'dashicons-layout';
+				} else {
+					$group_key = 'template_none';
+					$group_title = __('No Template', 'ai-post-scheduler');
+					$group_icon = 'dashicons-media-document';
+				}
+			} elseif ($group_by === 'author') {
+				$group_key = 'author_' . sanitize_title($item_author_name);
+				$group_title = $item_author_name;
+				$group_icon = 'dashicons-admin-users';
+			} elseif ($group_by === 'date') {
+				$date_label = $this->get_date_group_label($created_at);
+				$group_key = 'date_' . sanitize_title($date_label);
+				$group_title = $date_label;
+				$group_icon = 'dashicons-calendar-alt';
 			}
-		}
 
-		$partial_generations = $this->history_repository->get_partial_generations(array(
-			'page' => $partial_page,
-			'per_page' => 20,
-			'search' => $search_query,
-			'author_id' => $author_id,
-			'template_id' => $template_id,
-		));
-
-		$partial_posts_data = array();
-		foreach ($partial_generations['items'] as $item) {
-			if (!$item->post_id) {
-				continue;
+			if (!isset($grouped_posts[$group_key])) {
+				$grouped_posts[$group_key] = array(
+					'key'   => $group_key,
+					'title' => $group_title,
+					'icon'  => $group_icon,
+					'meta'  => $group_meta,
+					'posts' => array(),
+				);
 			}
 
-			$post = get_post($item->post_id);
-			if (!$post) {
-				continue;
-			}
-
-			$partial_posts_data[] = array(
-				'history_id' => $item->id,
-				'post_id' => $item->post_id,
-				'title' => $post->post_title,
-			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
-			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, $datetime_format),
-				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
-				'post_status' => $item->post_status,
-				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
-				'source' => $this->format_source($item),
-				'missing_components' => $this->get_missing_components($item->component_statuses),
-			);
+			$grouped_posts[$group_key]['posts'][] = $post_item;
 		}
-		
-		// Pass separate page variables for each tab
-		$current_page = $generated_page; // For Generated Posts tab
-		$review_current_page = $review_page; // For Pending Review tab
-		$partial_current_page = $partial_page; // For Partial Generations tab
+
+		$current_page = $generated_page;
+		$active_status = $post_status;
+		$current_group_by = $group_by;
+		$current_view_mode = $view_mode;
+		$current_per_page = $per_page;
+
+		// Calculate pagination bounds for unified content view
+		$pagination = array(
+			'current' => (int) $generated_page,
+			'pages'   => (int) (isset($content_result['pages']) ? $content_result['pages'] : 1),
+			'start'   => max(1, (int) $generated_page - 3),
+			'end'     => min((int) (isset($content_result['pages']) ? $content_result['pages'] : 1), (int) $generated_page + 3),
+			'total'   => (int) (isset($content_result['total']) ? $content_result['total'] : 0),
+		);
 		
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
@@ -203,6 +399,63 @@ class AIPS_Generated_Posts_Controller {
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
 	}
+
+	/**
+	 * Build a paginated URL for the Generated Posts tab preserving all active filters with optional overrides.
+	 *
+	 * @param int   $page_number Target page number.
+	 * @param array $overrides   Optional argument overrides.
+	 * @return string
+	 */
+	public function build_generated_posts_page_url($page_number, $overrides = array()) {
+		$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$state = array_merge($this->active_state, $overrides);
+
+		return add_query_arg(array_filter(array(
+			'generated_paged' => absint($page_number),
+			'author_id'       => !empty($state['author_id']) ? $state['author_id'] : false,
+			'template_id'     => !empty($state['template_id']) ? $state['template_id'] : false,
+			'campaign_id'     => !empty($state['campaign_id']) ? $state['campaign_id'] : false,
+			'post_status'     => !empty($state['post_status']) ? $state['post_status'] : false,
+			'group_by'        => (!empty($state['group_by']) && $state['group_by'] !== 'campaign') ? $state['group_by'] : false,
+			'view_mode'       => (!empty($state['view_mode']) && $state['view_mode'] !== 'grouped') ? $state['view_mode'] : false,
+			'per_page'        => (!empty($state['per_page']) && (int) $state['per_page'] !== 20) ? $state['per_page'] : false,
+			's'               => !empty($state['s']) ? $state['s'] : false,
+		)), $base_url);
+	}
+
+
+	/**
+	 * Helper to group dates into clean readable buckets
+
+	 *
+	 * @param int $timestamp Unix timestamp.
+	 * @return string
+	 */
+	public function get_date_group_label($timestamp) {
+		if (!$timestamp) {
+			return __('Unknown Date', 'ai-post-scheduler');
+		}
+
+		$now = current_time('timestamp');
+		$diff = $now - (int) $timestamp;
+		$post_date_str = date_i18n('Y-m-d', $timestamp);
+		$today_str = date_i18n('Y-m-d', $now);
+		$yesterday_str = date_i18n('Y-m-d', $now - DAY_IN_SECONDS);
+
+		if ($post_date_str === $today_str) {
+			return __('Today', 'ai-post-scheduler');
+		} elseif ($post_date_str === $yesterday_str) {
+			return __('Yesterday', 'ai-post-scheduler');
+		} elseif ($diff > 0 && $diff < 7 * DAY_IN_SECONDS) {
+			return __('This Week', 'ai-post-scheduler');
+		} elseif ($diff > 0 && $diff < 30 * DAY_IN_SECONDS) {
+			return __('This Month', 'ai-post-scheduler');
+		} else {
+			return date_i18n('F Y', $timestamp);
+		}
+	}
+
 
 	/**
 	 * Convert stored component status JSON into a list of failed component labels.
@@ -395,7 +648,7 @@ class AIPS_Generated_Posts_Controller {
 		if ($log_count >= $TEMPFILE_LOG_THRESHOLD) {
 			$temp = $converter->generate_json_to_tempfile($history_id, true);
 			if (is_wp_error($temp)) {
-				AIPS_Ajax_Response::error(array('message' => $temp->get_error_message()));
+				AIPS_Ajax_Response::error($temp->get_error_message());
 			}
 			
 			// Read the file and send it directly instead of redirecting
@@ -432,7 +685,7 @@ class AIPS_Generated_Posts_Controller {
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
-			AIPS_Ajax_Response::error(array('message' => $json_string->get_error_message()));
+			AIPS_Ajax_Response::error($json_string->get_error_message());
 		}
 		
 		// Build a safe filename including history id and timestamp
@@ -479,7 +732,7 @@ class AIPS_Generated_Posts_Controller {
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
-			AIPS_Ajax_Response::error(array('message' => $json_string->get_error_message()));
+			AIPS_Ajax_Response::error($json_string->get_error_message());
 		}
 		
 		AIPS_Ajax_Response::success(array(
@@ -550,4 +803,112 @@ class AIPS_Generated_Posts_Controller {
 		
 		return $source;
 	}
+
+	/**
+	 * AJAX handler to quickly update the post status (Draft, Publish, Trash, etc.)
+	 */
+	public function ajax_update_post_status() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+		
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$new_status = isset($_POST['new_status']) ? sanitize_key($_POST['new_status']) : '';
+		
+		$allowed_statuses = array('publish', 'draft', 'trash', 'pending', 'future', 'private');
+		if (!$post_id || !in_array($new_status, $allowed_statuses, true)) {
+			AIPS_Ajax_Response::error(__('Invalid post ID or status.', 'ai-post-scheduler'));
+		}
+		
+		$post = get_post($post_id);
+		if (!$post) {
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'));
+		}
+		
+		if ($new_status === 'trash') {
+			$result = wp_trash_post($post_id);
+		} else {
+			$result = wp_update_post(array(
+				'ID'          => $post_id,
+				'post_status' => $new_status,
+			), true);
+		}
+		
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message());
+		}
+		
+		$status_label = $this->format_post_status($new_status);
+		
+		AIPS_Ajax_Response::success(array(
+			'post_id'      => $post_id,
+			'new_status'   => $new_status,
+			'status_label' => $status_label,
+			'message'      => sprintf(__('Post status updated to %s.', 'ai-post-scheduler'), $status_label),
+		));
+	}
+
+	/**
+	 * AJAX handler for bulk actions on generated posts
+	 */
+	public function ajax_bulk_generated_posts_action() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+		
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+		
+		$post_ids = isset($_POST['post_ids']) ? array_filter(array_map('absint', (array) $_POST['post_ids'])) : array();
+		$bulk_action = isset($_POST['bulk_action']) ? sanitize_key($_POST['bulk_action']) : '';
+		
+		if (empty($post_ids)) {
+			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
+		}
+		
+		$affected = 0;
+		switch ($bulk_action) {
+			case 'trash':
+				foreach ($post_ids as $pid) {
+					if (wp_trash_post($pid)) {
+						$affected++;
+					}
+				}
+				$message = sprintf(__('%d post(s) moved to trash.', 'ai-post-scheduler'), $affected);
+				break;
+				
+			case 'publish':
+				foreach ($post_ids as $pid) {
+					if (wp_publish_post($pid) || wp_update_post(array('ID' => $pid, 'post_status' => 'publish'))) {
+						$affected++;
+					}
+				}
+				$message = sprintf(__('%d post(s) published.', 'ai-post-scheduler'), $affected);
+				break;
+				
+			case 'draft':
+				foreach ($post_ids as $pid) {
+					if (wp_update_post(array('ID' => $pid, 'post_status' => 'draft'))) {
+						$affected++;
+					}
+				}
+				$message = sprintf(__('%d post(s) set to draft.', 'ai-post-scheduler'), $affected);
+				break;
+				
+			default:
+				AIPS_Ajax_Response::error(__('Invalid bulk action.', 'ai-post-scheduler'));
+				return;
+		}
+		
+		AIPS_Ajax_Response::success(array(
+			'affected' => $affected,
+			'message'  => $message,
+		));
+	}
 }
+
