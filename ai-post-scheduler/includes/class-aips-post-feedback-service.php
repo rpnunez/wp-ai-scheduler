@@ -55,7 +55,7 @@ class AIPS_Post_Feedback_Service {
 			'reaction'        => $reaction,
 			'reason_category' => $reason_category,
 			'comment'         => $comment,
-			'content_hash'    => $this->calculate_content_hash($post),
+			'content_hash'    => self::calculate_content_hash($post),
 			'author_id'       => $history && !empty($history->author_id) ? (int) $history->author_id : null,
 			'template_id'     => $history && !empty($history->template_id) ? (int) $history->template_id : null,
 			'embedding_text'  => $this->build_embedding_snapshot($post),
@@ -138,7 +138,13 @@ class AIPS_Post_Feedback_Service {
 		return array_filter($rows, static function($row) { return 'cleared' !== $row->reaction; });
 	}
 
-	public function calculate_content_hash($post) {
+	/**
+	 * Canonical content hash used to detect post edits after feedback was
+	 * recorded. Static so retrieval-time integrity checks compare bytes-for-
+	 * bytes against the value stored at record time — any divergence would
+	 * silently apply the edited_content_weight penalty to unmodified posts.
+	 */
+	public static function calculate_content_hash($post) {
 		if (is_numeric($post)) {
 			$post = get_post(absint($post));
 		}

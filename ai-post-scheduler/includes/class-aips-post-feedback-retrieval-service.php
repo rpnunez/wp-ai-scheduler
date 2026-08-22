@@ -68,7 +68,10 @@ class AIPS_Post_Feedback_Retrieval_Service {
 		$created = is_numeric($created_raw) ? (int) $created_raw : (strtotime((string) $created_raw) ?: time());
 		$age_days = max(0, (time() - $created) / DAY_IN_SECONDS);
 		$recency_factor = 1 / (1 + ($policy->get('recency_weight', .35) * $age_days / 365));
-		$current_hash = hash('sha256', trim(preg_replace('/\s+/u', ' ', wp_strip_all_tags($post->post_title . "\n" . $post->post_excerpt . "\n" . $post->post_content))));
+		// Must use the same canonical hash the service wrote at record time.
+		// The previous inline hash stripped tags from title/excerpt too, so any
+		// markup there made unmodified posts look edited and be penalised.
+		$current_hash = AIPS_Post_Feedback_Service::calculate_content_hash($post);
 		$stored_hash = (string) $this->value($candidate, 'content_hash');
 		$integrity_factor = (!$stored_hash || hash_equals($stored_hash, $current_hash)) ? 1.0 : $policy->get('edited_content_weight', .35);
 		$score = $similarity * $policy->get('similarity_weight', 1) * $scope_factor * $reaction_factor * $recency_factor * $integrity_factor;

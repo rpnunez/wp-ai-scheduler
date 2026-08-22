@@ -469,10 +469,35 @@ class AIPS_Post_Review {
 		if ($predecessor_post_id) {
 			AIPS_Bulk_Generator_Service::record_regeneration_lineage($result, $predecessor_post_id);
 			if (!wp_delete_post($predecessor_post_id, true)) {
-				AIPS_Ajax_Response::error(__('The replacement was generated, but the predecessor could not be removed.', 'ai-post-scheduler'));
+				// The replacement post exists but the predecessor is still around.
+				// Log the orphan on the predecessor's history row so an operator
+				// can find both IDs, then surface both to the client — the plain
+				// error variant hides the replacement ID and the admin ends up
+				// with two live posts and no pointer to either.
+				$orphan_history = $this->history_service->create('post_review_action', array('post_id' => $predecessor_post_id));
+				$orphan_history->record(
+					'warning',
+					__('Regeneration produced a replacement but the predecessor could not be deleted.', 'ai-post-scheduler'),
+					array('event_type' => 'post_regenerated', 'event_status' => 'partial'),
+					null,
+					array(
+						'post_id' => $result,
+						'predecessor_post_id' => $predecessor_post_id,
+					)
+				);
+				AIPS_Ajax_Response::error(array(
+					'message' => __('The replacement was generated, but the predecessor could not be removed.', 'ai-post-scheduler'),
+					'post_id' => $result,
+					'predecessor_post_id' => $predecessor_post_id,
+				));
 			}
+
+			// Predecessor is gone; detach the old history row from the dead post
+			// so the Generated Posts listing does not point at a missing post ID.
+			// Lineage lives on the replacement via META_PREDECESSOR_POST_ID.
+			$this->history_service->update_history_record($history_id, array('post_id' => null));
 		}
-		
+
 		// Log the regeneration success
 		$history = $this->history_service->create('post_review_action', array('post_id' => $result));
 		$history->record(
@@ -648,13 +673,23 @@ class AIPS_Post_Review {
 					return new WP_Error(
 						'delete_failed',
 						sprintf(
-							/* translators: %d: post ID */
+							/* translators: 1: replacement post ID, 2: predecessor post ID */
 							__('Replacement post %1$d was generated, but predecessor post %2$d could not be removed', 'ai-post-scheduler'),
 							$regen_result,
 							$post_id
+						),
+						array(
+							'post_id' => $regen_result,
+							'predecessor_post_id' => $post_id,
 						)
 					);
 				}
+
+				// Predecessor is gone; detach the old history row from the dead
+				// post so the Generated Posts listing does not point at a
+				// missing post ID. Lineage lives on the replacement via
+				// META_PREDECESSOR_POST_ID.
+				$history_service->update_history_record($history_id, array('post_id' => null));
 
 				/**
 				 * Fires after a post is regenerated from the review queue.
