@@ -159,6 +159,13 @@ class AIPS_Post_Review_Repository {
 	/** Paginate completed generated posts across every WordPress post status. */
 	public function get_generated_posts($args = array()) {
 		$args = wp_parse_args($args, array('page' => 1, 'per_page' => 20, 'feedback' => '', 'search' => '', 'author_id' => 0, 'template_id' => 0, 'campaign_id' => 0));
+		// If the feedback table has not been installed yet (schema migration
+		// pending), fall back to an empty listing rather than joining a missing
+		// table. The caller renders the unfiltered list instead when this returns.
+		$feedback_table = $this->wpdb->prefix . 'aips_post_feedback';
+		if ($this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $feedback_table)) !== $feedback_table) {
+			return array('items' => array(), 'total' => 0, 'pages' => 0, 'current_page' => absint($args['page']));
+		}
 		$where = array("h.status = 'completed'", 'h.post_id IS NOT NULL');
 		$values = array();
 		if ($args['search']) { $where[] = '(h.generated_title LIKE %s OR p.post_title LIKE %s)'; $like = '%' . $this->wpdb->esc_like($args['search']) . '%'; $values[] = $like; $values[] = $like; }

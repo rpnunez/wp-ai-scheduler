@@ -14,13 +14,36 @@ class AIPS_Post_Feedback_Repository {
 	private $wpdb;
 	private $table;
 
+	/**
+	 * Memoized result of the aips_post_feedback table-existence check. Null
+	 * until first resolved. Guards every DB operation so an install that has
+	 * upgraded plugin code but not yet run the schema migration no-ops
+	 * silently instead of emitting "table doesn't exist" errors on every
+	 * Generated Posts render.
+	 *
+	 * @var bool|null
+	 */
+	private $table_exists = null;
+
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
 		$this->table = $wpdb->prefix . 'aips_post_feedback';
 	}
 
+	private function table_ready() {
+		if (null !== $this->table_exists) {
+			return $this->table_exists;
+		}
+		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
+		$this->table_exists = ($found === $this->table);
+		return $this->table_exists;
+	}
+
 	public function append_event(array $event) {
+		if (!$this->table_ready()) {
+			return new WP_Error('feedback_table_missing', __('Post feedback storage is not yet available. Please try again after the plugin upgrade completes.', 'ai-post-scheduler'));
+		}
 		$data = array(
 			'post_id'         => absint($event['post_id'] ?? 0),
 			'history_id'      => !empty($event['history_id']) ? absint($event['history_id']) : null,
@@ -51,14 +74,23 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function get_by_id($event_id) {
+		if (!$this->table_ready()) {
+			return null;
+		}
 		return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table} WHERE id = %d", absint($event_id)));
 	}
 
 	public function update_embedding($event_id, array $embedding) {
+		if (!$this->table_ready()) {
+			return false;
+		}
 		return false !== $this->wpdb->update($this->table, array('embedding' => wp_json_encode($embedding)), array('id' => absint($event_id)), array('%s'), array('%d'));
 	}
 
 	public function get_current_for_post($post_id) {
+		if (!$this->table_ready()) {
+			return null;
+		}
 		return $this->wpdb->get_row($this->wpdb->prepare(
 			"SELECT * FROM {$this->table} WHERE post_id = %d ORDER BY id DESC LIMIT 1",
 			absint($post_id)
@@ -66,6 +98,9 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function get_current_for_posts(array $post_ids) {
+		if (!$this->table_ready()) {
+			return array();
+		}
 		$post_ids = array_values(array_filter(array_unique(array_map('absint', $post_ids))));
 		if (empty($post_ids)) {
 			return array();
@@ -86,6 +121,9 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function get_history_for_post($post_id, $limit = 100) {
+		if (!$this->table_ready()) {
+			return array();
+		}
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table} WHERE post_id = %d ORDER BY id DESC LIMIT %d",
 			absint($post_id),
@@ -97,6 +135,9 @@ class AIPS_Post_Feedback_Repository {
 	 * Return latest active events with their current WordPress post content.
 	 */
 	public function get_active_candidates($scope = array(), $template_id = 0, $limit = 100) {
+		if (!$this->table_ready()) {
+			return array();
+		}
 		if (is_array($scope)) {
 			$limit       = $template_id ?: $limit;
 			$template_id = absint($scope['template_id'] ?? 0);
@@ -127,6 +168,9 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function delete_all() {
+		if (!$this->table_ready()) {
+			return 0;
+		}
 		return $this->wpdb->query("DELETE FROM {$this->table}");
 	}
 }
