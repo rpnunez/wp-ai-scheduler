@@ -3935,9 +3935,16 @@
 .aips-confirm-footer {
     padding: var(--aips-space-4) var(--aips-space-6) var(--aips-space-6);
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--aips-space-3);
     border-top: 1px solid var(--aips-gray-100);
+}
+
+.aips-confirm-footer .aips-btn {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
 }
 
 /* ==========================================================================
