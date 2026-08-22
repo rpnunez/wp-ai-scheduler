@@ -426,9 +426,25 @@ final class AI_Post_Scheduler {
             return AIPS_Telemetry_Repository::instance();
         });
 
-        // Register AIPS_Template_Repository
-        $container->singleton(AIPS_Template_Repository::class, function( $container ) {
-            return AIPS_Template_Repository::instance();
+        // Register AIPS_Generated_Content_Repository
+        $container->singleton(AIPS_Generated_Content_Repository::class, function( $container ) {
+            return AIPS_Generated_Content_Repository::instance();
+        });
+
+        $container->singleton(AIPS_Generated_Content_Repository_Interface::class, function( $container ) {
+            return $container->make(AIPS_Generated_Content_Repository::class);
+        });
+
+        // Register AIPS_Generation_Pipeline
+        $container->singleton(AIPS_Generation_Pipeline::class, function( $container ) {
+            return new AIPS_Generation_Pipeline();
+        });
+
+        // Register AIPS_Post_Audit_Service
+        $container->singleton(AIPS_Post_Audit_Service::class, function( $container ) {
+            return new AIPS_Post_Audit_Service(
+                pipeline: $container->make(AIPS_Generation_Pipeline::class)
+            );
         });
 
         // Register AIPS_System_Diagnostics_Service

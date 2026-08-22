@@ -149,4 +149,12 @@ interface AIPS_Schedule_Repository_Interface {
 	 * @return int
 	 */
 	public function get_post_count_for_schedules(array $ids);
+
+	/**
+	 * Reset the circuit breaker state to 'closed' for a schedule.
+	 *
+	 * @param int $id Schedule ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function reset_circuit_state($id);
 }

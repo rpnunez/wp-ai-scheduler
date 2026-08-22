@@ -71,11 +71,29 @@ class AIPS_Generated_Posts_Controller {
 	/**
 	 * Initialize the controller
 	 */
-	public function __construct() {
-		$this->generated_content_repository = new AIPS_Generated_Content_Repository();
-		$this->history_repository = new AIPS_History_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
-		$this->post_review_repository = new AIPS_Post_Review_Repository();
+	public function __construct(
+		?AIPS_Generated_Content_Repository_Interface $generated_content_repository = null,
+		?AIPS_History_Repository_Interface $history_repository = null,
+		?AIPS_Schedule_Repository_Interface $schedule_repository = null,
+		?AIPS_Post_Review_Repository $post_review_repository = null
+	) {
+		$container = AIPS_Container::get_instance();
+		$this->generated_content_repository = $generated_content_repository ?: (
+			$container->has(AIPS_Generated_Content_Repository_Interface::class)
+				? $container->make(AIPS_Generated_Content_Repository_Interface::class)
+				: AIPS_Generated_Content_Repository::instance()
+		);
+		$this->history_repository = $history_repository ?: (
+			$container->has(AIPS_History_Repository_Interface::class)
+				? $container->make(AIPS_History_Repository_Interface::class)
+				: AIPS_History_Repository::instance()
+		);
+		$this->schedule_repository = $schedule_repository ?: (
+			$container->has(AIPS_Schedule_Repository_Interface::class)
+				? $container->make(AIPS_Schedule_Repository_Interface::class)
+				: AIPS_Schedule_Repository::instance()
+		);
+		$this->post_review_repository = $post_review_repository ?: new AIPS_Post_Review_Repository();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
@@ -630,7 +648,7 @@ class AIPS_Generated_Posts_Controller {
 		if ($log_count >= $TEMPFILE_LOG_THRESHOLD) {
 			$temp = $converter->generate_json_to_tempfile($history_id, true);
 			if (is_wp_error($temp)) {
-				AIPS_Ajax_Response::error(array('message' => $temp->get_error_message()));
+				AIPS_Ajax_Response::error($temp->get_error_message());
 			}
 			
 			// Read the file and send it directly instead of redirecting
@@ -667,7 +685,7 @@ class AIPS_Generated_Posts_Controller {
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
-			AIPS_Ajax_Response::error(array('message' => $json_string->get_error_message()));
+			AIPS_Ajax_Response::error($json_string->get_error_message());
 		}
 		
 		// Build a safe filename including history id and timestamp
@@ -714,7 +732,7 @@ class AIPS_Generated_Posts_Controller {
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
-			AIPS_Ajax_Response::error(array('message' => $json_string->get_error_message()));
+			AIPS_Ajax_Response::error($json_string->get_error_message());
 		}
 		
 		AIPS_Ajax_Response::success(array(

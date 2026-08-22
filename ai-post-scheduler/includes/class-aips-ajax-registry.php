@@ -315,6 +315,12 @@ class AIPS_Ajax_Registry {
 		'aips_download_session_json'         => 'AIPS_Generated_Posts_Controller',
 		'aips_update_post_status'            => 'AIPS_Generated_Posts_Controller',
 		'aips_bulk_generated_posts_action'   => 'AIPS_Generated_Posts_Controller',
+
+		// Post Audit Controller
+		'aips_run_audit_scan'                => 'AIPS_Post_Audit_Controller',
+		'aips_get_pending_revisions'         => 'AIPS_Post_Audit_Controller',
+		'aips_approve_revision'              => 'AIPS_Post_Audit_Controller',
+		'aips_reject_revision'               => 'AIPS_Post_Audit_Controller',
 	);
 
 
