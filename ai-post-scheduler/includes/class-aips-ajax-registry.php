@@ -308,7 +308,23 @@ class AIPS_Ajax_Registry {
 		'aips_affiliate_links_delete'        => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_toggle'        => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_inject_post'   => 'AIPS_Affiliate_Links_Controller',
+
+		// Generated Posts Controller
+		'aips_get_post_session'              => 'AIPS_Generated_Posts_Controller',
+		'aips_get_session_json'              => 'AIPS_Generated_Posts_Controller',
+		'aips_download_session_json'         => 'AIPS_Generated_Posts_Controller',
+		'aips_update_post_status'            => 'AIPS_Generated_Posts_Controller',
+		'aips_bulk_generated_posts_action'   => 'AIPS_Generated_Posts_Controller',
+
+		// Post Audit Controller
+		'aips_run_audit_scan'                => 'AIPS_Post_Audit_Controller',
+		'aips_get_pending_revisions'         => 'AIPS_Post_Audit_Controller',
+		'aips_approve_revision'              => 'AIPS_Post_Audit_Controller',
+		'aips_reject_revision'               => 'AIPS_Post_Audit_Controller',
+		'aips_set_post_immutable'            => 'AIPS_Post_Audit_Controller',
+		'aips_get_post_audit_log'            => 'AIPS_Post_Audit_Controller',
 	);
+
 
 	/**
 	 * Get the controller class name for a given AJAX action.

@@ -46,6 +46,9 @@ class AIPS_Autoloader {
             AIPS_PLUGIN_DIR . 'includes/providers/',
             AIPS_PLUGIN_DIR . 'includes/diagnostics/',
             AIPS_PLUGIN_DIR . 'includes/job/',
+            AIPS_PLUGIN_DIR . 'includes/pipeline/',
+            AIPS_PLUGIN_DIR . 'includes/pipeline/stages/',
+            AIPS_PLUGIN_DIR . 'includes/audit/',
         );
 
         foreach ($paths as $path) {

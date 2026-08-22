@@ -30,6 +30,7 @@ if (!defined('ABSPATH')) {
 					<button type="button" class="aips-tab-link" data-tab="settings-notifications"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-resilience"><?php esc_html_e('Resilience &amp; Limits', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-content-strategy"><?php esc_html_e('Content Strategy', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-refresher"><?php esc_html_e('Content Refresher', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-cache"><?php esc_html_e('Performance', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-api-keys"><?php esc_html_e('API Keys', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-developers"><?php esc_html_e('Developers', 'ai-post-scheduler'); ?></button>
@@ -98,6 +99,17 @@ if (!defined('ABSPATH')) {
 						<p class="description"><?php esc_html_e('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler'); ?></p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_content_strategy_section'); ?>
+						</table>
+						<p class="submit">
+							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+						</p>
+					</div>
+
+					<!-- Content Refresher Tab -->
+					<div id="settings-refresher-tab" class="aips-tab-content" style="display:none;">
+						<p class="description"><?php esc_html_e('Control the Autonomous Post Refresher: how often it scans, how old a post must be before it is considered stale, how many posts each scan may refresh, and whether staged revisions require approval.', 'ai-post-scheduler'); ?></p>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_post_refresher_section'); ?>
 						</table>
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">

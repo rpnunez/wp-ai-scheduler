@@ -54,6 +54,20 @@ class AIPS_Settings {
 
 		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
 		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
+
+		// Keep the refresher's WP-Cron event aligned with the configured frequency.
+		// Queued rather than applied inline: these hooks fire before the option
+		// cache is invalidated, and one save can change several of these options.
+		$sync_refresher_schedule = function() {
+			if (class_exists('AIPS_Post_Audit_Service')) {
+				AIPS_Post_Audit_Service::queue_schedule_sync();
+			}
+		};
+
+		foreach (array('aips_post_refresher_frequency', 'aips_post_refresher_enabled') as $refresher_option) {
+			add_action('update_option_' . $refresher_option, $sync_refresher_schedule);
+			add_action('add_option_' . $refresher_option, $sync_refresher_schedule);
+		}
 	}
 
 	/**
@@ -90,6 +104,38 @@ class AIPS_Settings {
 			'aips_cache_monitor_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_monitor_enabled'],
+			),
+			'aips_post_refresher_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_post_refresher_enabled'],
+			),
+			'aips_post_refresher_frequency' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_refresher_frequency'),
+				'default'           => $defaults['aips_post_refresher_frequency'],
+			),
+			'aips_post_refresher_stale_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_refresher_stale_days'),
+				'default'           => $defaults['aips_post_refresher_stale_days'],
+			),
+			'aips_post_refresher_batch_limit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_refresher_batch_limit'),
+				'default'           => $defaults['aips_post_refresher_batch_limit'],
+			),
+			'aips_post_refresher_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_refresher_post_types'),
+				'default'           => $defaults['aips_post_refresher_post_types'],
+			),
+			'aips_post_refresher_auto_approve' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_post_refresher_auto_approve'],
+			),
+			'aips_post_refresher_audit_log_limit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_refresher_audit_log_limit'),
+				'default'           => $defaults['aips_post_refresher_audit_log_limit'],
+			),
+			'aips_post_refresher_default_immutable' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_post_refresher_default_immutable'],
 			),
 			'aips_enable_retry' => array(
 				'sanitize_callback' => 'absint',
@@ -468,6 +514,80 @@ class AIPS_Settings {
             array($this->ui, 'cache_monitor_enabled_field_callback'),
             'aips-settings',
             'aips_developers_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Content Refresher section: Autonomous Post Refresher & staging revisions
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_post_refresher_section',
+            __('Content Refresher', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_enabled',
+            __('Enable Autonomous Refresher', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_enabled_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_frequency',
+            __('Scan Frequency', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_frequency_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_stale_days',
+            __('Stale After (Days)', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_stale_days_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_batch_limit',
+            __('Posts Per Scan', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_batch_limit_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_post_types',
+            __('Post Types To Refresh', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_post_types_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_auto_approve',
+            __('Auto-Approve Revisions', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_auto_approve_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_default_immutable',
+            __('Protect Posts By Default', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_default_immutable_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
+        );
+
+        add_settings_field(
+            'aips_post_refresher_audit_log_limit',
+            __('Audit Log Entries Per Post', 'ai-post-scheduler'),
+            array($this->ui, 'post_refresher_audit_log_limit_field_callback'),
+            'aips-settings',
+            'aips_post_refresher_section'
         );
 
         add_settings_section(

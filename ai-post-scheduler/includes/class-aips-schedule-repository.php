@@ -948,4 +948,14 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             ),
         );
     }
+
+    /**
+     * Reset the circuit breaker state to 'closed' for a schedule.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function reset_circuit_state($id) {
+        return $this->update(absint($id), array('circuit_state' => 'closed'));
+    }
 }
