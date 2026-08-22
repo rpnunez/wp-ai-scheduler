@@ -203,4 +203,65 @@ class Test_AIPS_Post_Audit extends WP_UnitTestCase {
 		$this->assertSame(1, $result['scanned']);
 		$this->assertSame(1, $result['created']);
 	}
+
+	public function test_pending_flag_is_released_when_staging_draft_disappears() {
+		$post_id     = $this->create_stale_post();
+		$revision_id = $this->service->create_staging_revision($post_id);
+		$this->assertNotWPError($revision_id);
+
+		// Simulate the draft being removed outside approve/reject, without the
+		// admin deletion hook running (e.g. a cleanup plugin, or a direct query).
+		wp_delete_post($revision_id, true);
+		$this->assertSame('1', get_post_meta($post_id, AIPS_Post_Audit_Service::META_HAS_PENDING, true));
+
+		// The next scan reconciles the dangling flag instead of excluding the
+		// post from every future scan forever.
+		$this->assertContains($post_id, wp_list_pluck($this->service->find_stale_posts(180, 10), 'ID'));
+		$this->assertSame('0', get_post_meta($post_id, AIPS_Post_Audit_Service::META_HAS_PENDING, true));
+		$this->assertSame('', get_post_meta($post_id, AIPS_Post_Audit_Service::META_PENDING_ID, true));
+
+		$log  = $this->service->get_audit_log($post_id);
+		$last = end($log);
+		$this->assertSame(AIPS_Post_Audit_Service::RESULT_REVISION_LOST, $last['result']);
+	}
+
+	public function test_release_target_of_revision_only_acts_on_real_revisions() {
+		$post_id     = $this->create_stale_post();
+		$revision_id = $this->service->create_staging_revision($post_id);
+		$this->assertNotWPError($revision_id);
+
+		// An unrelated post must not clear anything.
+		$unrelated_id = (int) wp_insert_post(array('post_title' => 'Unrelated', 'post_status' => 'draft'));
+		$this->service->release_target_of_revision($unrelated_id);
+		$this->assertSame('1', get_post_meta($post_id, AIPS_Post_Audit_Service::META_HAS_PENDING, true));
+
+		// The real staging revision releases its target.
+		$this->service->release_target_of_revision((int) $revision_id);
+		$this->assertSame('0', get_post_meta($post_id, AIPS_Post_Audit_Service::META_HAS_PENDING, true));
+		$this->assertSame('', get_post_meta($post_id, AIPS_Post_Audit_Service::META_PENDING_ID, true));
+	}
+
+	public function test_approve_preserves_backslashes_in_content() {
+		$post_id     = $this->create_stale_post();
+		$revision_id = $this->service->create_staging_revision($post_id);
+		$this->assertNotWPError($revision_id);
+
+		$content = 'Path C:\\Users\\test and regex \\d+ plus LaTeX \\alpha';
+		$title   = 'Escaping \\d+ in titles';
+
+		wp_update_post(wp_slash(array(
+			'ID'           => $revision_id,
+			'post_title'   => $title,
+			'post_content' => $content,
+		)));
+
+		$this->assertSame($content, get_post($revision_id)->post_content);
+
+		$this->assertTrue($this->service->approve_revision($revision_id));
+
+		$merged = get_post($post_id);
+		$this->assertSame($content, $merged->post_content);
+		$this->assertSame($title, $merged->post_title);
+	}
+
 }

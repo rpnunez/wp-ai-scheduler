@@ -82,6 +82,7 @@ class AIPS_Post_Audit_Service {
 	const RESULT_FAILED            = 'failed';
 	const RESULT_APPROVED          = 'approved';
 	const RESULT_REJECTED          = 'rejected';
+	const RESULT_REVISION_LOST     = 'revision_lost';
 
 	/**
 	 * @var AIPS_Generation_Pipeline
@@ -253,6 +254,119 @@ class AIPS_Post_Audit_Service {
 	// ---------------------------------------------------------------------
 
 	/**
+	 * Clear pending-revision flags whose staging draft no longer exists.
+	 *
+	 * `_aips_has_pending_revision` is normally cleared by approve/reject, but a
+	 * staging draft can also disappear another way — trashed or deleted from the
+	 * post list, removed by a cleanup plugin, lost with its author. Without this
+	 * reconciliation the live post keeps a pending flag forever and is excluded
+	 * from every future scan with no way to clear it from the UI.
+	 *
+	 * @return int Number of posts whose flags were cleared.
+	 */
+	public function reconcile_pending_flags(): int {
+		$flagged = get_posts(array(
+			'post_type'           => 'any',
+			'post_status'         => 'any',
+			'posts_per_page'      => 200,
+			'no_found_rows'       => true,
+			'ignore_sticky_posts' => true,
+			'fields'              => 'ids',
+			'meta_query'          => array(
+				array(
+					'key'   => self::META_HAS_PENDING,
+					'value' => '1',
+				),
+			),
+		));
+
+		$cleared = 0;
+
+		foreach ($flagged as $post_id) {
+			$post_id    = (int) $post_id;
+			$pending_id = (int) get_post_meta($post_id, self::META_PENDING_ID, true);
+
+			if ($this->is_live_staging_revision($pending_id)) {
+				continue;
+			}
+
+			$this->clear_pending_flags($post_id);
+
+			$this->record_audit_check($post_id, self::RESULT_REVISION_LOST, array(
+				'message'     => __('Pending staging revision no longer exists; the post is eligible for refresh again.', 'ai-post-scheduler'),
+				'revision_id' => $pending_id,
+			));
+
+			$cleared++;
+		}
+
+		return $cleared;
+	}
+
+	/**
+	 * Clear the pending-revision flags on a live post.
+	 *
+	 * @param int $post_id Live post ID.
+	 * @return void
+	 */
+	public function clear_pending_flags(int $post_id): void {
+		update_post_meta($post_id, self::META_HAS_PENDING, '0');
+		delete_post_meta($post_id, self::META_PENDING_ID);
+	}
+
+	/**
+	 * Release the live post attached to a staging draft that is going away.
+	 *
+	 * Wired to post deletion/trashing so the target becomes eligible again the
+	 * moment its staging draft is removed outside approve/reject.
+	 *
+	 * @param int $revision_post_id Staging revision being removed.
+	 * @return void
+	 */
+	public function release_target_of_revision(int $revision_post_id): void {
+		if (get_post_meta($revision_post_id, self::META_IS_STAGING, true) !== '1') {
+			return;
+		}
+
+		$target_id = (int) get_post_meta($revision_post_id, self::META_TARGET_POST_ID, true);
+
+		if ($target_id <= 0 || !get_post($target_id)) {
+			return;
+		}
+
+		if ((int) get_post_meta($target_id, self::META_PENDING_ID, true) !== $revision_post_id) {
+			return;
+		}
+
+		$this->clear_pending_flags($target_id);
+
+		$this->record_audit_check($target_id, self::RESULT_REVISION_LOST, array(
+			'message'     => __('Staging revision was removed outside the review flow.', 'ai-post-scheduler'),
+			'revision_id' => $revision_post_id,
+		));
+	}
+
+	/**
+	 * Whether an ID resolves to an existing, non-trashed staging revision.
+	 *
+	 * @param int $revision_post_id Candidate revision ID.
+	 * @return bool
+	 */
+	private function is_live_staging_revision(int $revision_post_id): bool {
+		if ($revision_post_id <= 0) {
+			return false;
+		}
+
+		$revision = get_post($revision_post_id);
+
+		if (!$revision || $revision->post_status === 'trash') {
+			return false;
+		}
+
+		return get_post_meta($revision_post_id, self::META_IS_STAGING, true) === '1';
+	}
+
+	/**
 	 * Find candidate posts that have not been updated for a given number of days.
 	 *
 	 * Immutable posts and posts that already have a pending staging revision are
@@ -263,6 +377,9 @@ class AIPS_Post_Audit_Service {
 	 * @return array<WP_Post>
 	 */
 	public function find_stale_posts(?int $days_old = null, ?int $limit = null): array {
+		// Release posts whose staging draft vanished, so they can be scanned again.
+		$this->reconcile_pending_flags();
+
 		$config = $this->get_config();
 
 		$days_old = ($days_old === null) ? $config['stale_days'] : max(1, min(3650, $days_old));
@@ -484,26 +601,32 @@ class AIPS_Post_Audit_Service {
 		$revision_post_id = (int) $payload->post_id;
 
 		if ($revision_post_id > 0 && get_post($revision_post_id)) {
-			$updated = wp_update_post(array(
+			// wp_update_post() unslashes what it is given, so pre-slash values
+			// read back from the database or produced by the AI provider.
+			$updated = wp_update_post(wp_slash(array(
 				'ID'           => $revision_post_id,
 				'post_title'   => $payload->title ?: $post->post_title,
 				'post_excerpt' => $payload->excerpt ?: $post->post_excerpt,
 				'post_status'  => 'draft',
-			), true);
+			)), true);
 
 			if (is_wp_error($updated)) {
+				// The draft exists but carries no staging meta yet; drop it so a
+				// failed run never leaves an unattached AI draft behind.
+				$this->discard_orphan_draft($revision_post_id);
 				$this->record_audit_check($post_id, self::RESULT_FAILED, array('message' => $updated->get_error_message()));
+
 				return $updated;
 			}
 		} else {
-			$revision_post_id = wp_insert_post(array(
+			$revision_post_id = wp_insert_post(wp_slash(array(
 				'post_title'   => $payload->title ?: $post->post_title,
 				'post_content' => $new_content,
 				'post_excerpt' => $payload->excerpt ?: $post->post_excerpt,
 				'post_status'  => 'draft',
 				'post_type'    => $post->post_type,
 				'post_author'  => $post->post_author,
-			), true);
+			)), true);
 
 			if (is_wp_error($revision_post_id) || !$revision_post_id) {
 				$error = is_wp_error($revision_post_id)
@@ -559,20 +682,21 @@ class AIPS_Post_Audit_Service {
 			return new WP_Error('immutable_post', __('Target post is marked immutable and cannot be updated.', 'ai-post-scheduler'));
 		}
 
-		$update_result = wp_update_post(array(
+		// $revision holds unslashed database values; wp_update_post() unslashes
+		// again, so re-slash to keep backslashes (paths, regex, LaTeX) intact.
+		$update_result = wp_update_post(wp_slash(array(
 			'ID'           => $target_id,
 			'post_title'   => $revision->post_title,
 			'post_content' => $revision->post_content,
 			'post_excerpt' => $revision->post_excerpt,
-		), true);
+		)), true);
 
 		if (is_wp_error($update_result)) {
 			return $update_result;
 		}
 
 		// Mark target post updated and clear pending flags.
-		update_post_meta($target_id, self::META_HAS_PENDING, '0');
-		delete_post_meta($target_id, self::META_PENDING_ID);
+		$this->clear_pending_flags($target_id);
 		update_post_meta($target_id, self::META_LAST_REFRESHED_AT, current_time('mysql'));
 
 		$this->record_audit_check($target_id, self::RESULT_APPROVED, array(
@@ -611,8 +735,7 @@ class AIPS_Post_Audit_Service {
 		$target_id = (int) get_post_meta($revision_post_id, self::META_TARGET_POST_ID, true);
 
 		if ($target_id > 0 && get_post($target_id)) {
-			update_post_meta($target_id, self::META_HAS_PENDING, '0');
-			delete_post_meta($target_id, self::META_PENDING_ID);
+			$this->clear_pending_flags($target_id);
 
 			$this->record_audit_check($target_id, self::RESULT_REJECTED, array(
 				'message'     => __('Staging revision dismissed by an editor.', 'ai-post-scheduler'),
@@ -676,6 +799,34 @@ class AIPS_Post_Audit_Service {
 	 * @return void
 	 */
 	/**
+	 * Request a reschedule once the current request has finished writing options.
+	 *
+	 * Settings saves fire `update_option_{$option}` before the per-request option
+	 * cache is invalidated on `updated_option`, and a single save can change both
+	 * the enabled flag and the frequency. Deferring to `shutdown` means the
+	 * reschedule happens exactly once, after every write, reading final values.
+	 *
+	 * @return void
+	 */
+	public static function queue_schedule_sync(): void {
+		static $queued = false;
+
+		if ($queued) {
+			return;
+		}
+
+		$queued = true;
+
+		if (function_exists('add_action') && did_action('shutdown') === 0) {
+			add_action('shutdown', array(__CLASS__, 'sync_schedule'));
+			return;
+		}
+
+		// No shutdown hook left to ride on (CLI, tests): apply immediately.
+		self::sync_schedule();
+	}
+
+	/**
 	 * Resolve the configured scan frequency to a valid WP-Cron schedule slug.
 	 *
 	 * Falls back to 'daily' when the stored value is not a registered schedule
@@ -691,6 +842,9 @@ class AIPS_Post_Audit_Service {
 	}
 
 	public static function sync_schedule(): void {
+		// Drop any option values cached before this request's writes landed.
+		AIPS_Config::get_instance()->flush_option_cache();
+
 		$frequency = self::get_schedule_slug();
 		$next      = wp_next_scheduled(self::CRON_HOOK);
 

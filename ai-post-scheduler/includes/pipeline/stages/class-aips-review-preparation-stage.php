@@ -46,7 +46,9 @@ class AIPS_Review_Preparation_Stage implements AIPS_Generation_Stage_Interface {
 				'post_author'   => (int) ($context->get_post_author() ?: get_current_user_id()),
 			);
 
-			$inserted_id = wp_insert_post($post_arr, true);
+			// wp_insert_post() unslashes its input, so slash the generated values
+			// first or backslashes in the content are silently stripped.
+			$inserted_id = wp_insert_post(wp_slash($post_arr), true);
 
 			if (is_wp_error($inserted_id)) {
 				$payload->add_error($inserted_id->get_error_message());

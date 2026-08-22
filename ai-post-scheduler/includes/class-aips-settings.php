@@ -56,16 +56,18 @@ class AIPS_Settings {
 		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
 
 		// Keep the refresher's WP-Cron event aligned with the configured frequency.
+		// Queued rather than applied inline: these hooks fire before the option
+		// cache is invalidated, and one save can change several of these options.
 		$sync_refresher_schedule = function() {
 			if (class_exists('AIPS_Post_Audit_Service')) {
-				AIPS_Post_Audit_Service::sync_schedule();
+				AIPS_Post_Audit_Service::queue_schedule_sync();
 			}
 		};
 
-		add_action('update_option_aips_post_refresher_frequency', $sync_refresher_schedule);
-		add_action('add_option_aips_post_refresher_frequency', $sync_refresher_schedule);
-		add_action('update_option_aips_post_refresher_enabled', $sync_refresher_schedule);
-		add_action('add_option_aips_post_refresher_enabled', $sync_refresher_schedule);
+		foreach (array('aips_post_refresher_frequency', 'aips_post_refresher_enabled') as $refresher_option) {
+			add_action('update_option_' . $refresher_option, $sync_refresher_schedule);
+			add_action('add_option_' . $refresher_option, $sync_refresher_schedule);
+		}
 	}
 
 	/**

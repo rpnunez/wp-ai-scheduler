@@ -26,6 +26,14 @@ class AIPS_Post_Refresh_Admin {
 	const NONCE_NAME   = 'aips_post_refresh_nonce';
 
 	/**
+	 * Query args and nonce action used by the review row actions.
+	 */
+	const ACTION_ARG   = 'aips_refresh_action';
+	const REVISION_ARG = 'aips_revision_id';
+	const NOTICE_ARG   = 'aips_refresh_notice';
+	const ACTION_NONCE = 'aips_refresh_review_';
+
+	/**
 	 * @var AIPS_Post_Audit_Service
 	 */
 	private $audit_service;
@@ -49,6 +57,16 @@ class AIPS_Post_Refresh_Admin {
 		add_action('save_post', array($this, 'save_meta_box'), 10, 2);
 		add_action('pre_get_posts', array($this, 'hide_staging_revisions_from_list'));
 		add_filter('display_post_states', array($this, 'add_post_states'), 10, 2);
+
+		// Review surface for staged revisions.
+		add_filter('post_row_actions', array($this, 'add_revision_row_actions'), 10, 2);
+		add_filter('page_row_actions', array($this, 'add_revision_row_actions'), 10, 2);
+		add_action('admin_init', array($this, 'handle_revision_action'));
+		add_action('admin_notices', array($this, 'render_action_notice'));
+
+		// Release the live post when its staging draft is removed another way.
+		add_action('before_delete_post', array($this, 'on_revision_removed'));
+		add_action('wp_trash_post', array($this, 'on_revision_removed'));
 	}
 
 	/**
@@ -226,8 +244,17 @@ class AIPS_Post_Refresh_Admin {
 			$states['aips_staging_revision'] = __('AI Staging Revision', 'ai-post-scheduler');
 		}
 
-		if ($this->audit_service->is_immutable((int) $post->ID)) {
+		// Label from the explicitly stored value, never the effective default:
+		// with "Protect Posts By Default" on, is_immutable() is true for every
+		// post and would badge the entire list.
+		$stored_immutable = get_post_meta($post->ID, AIPS_Post_Audit_Service::META_IMMUTABLE, true);
+
+		if ($stored_immutable === '1') {
 			$states['aips_immutable'] = __('Immutable', 'ai-post-scheduler');
+		} elseif ($stored_immutable === '0' && $this->audit_service->get_config()['default_immutable']) {
+			// Only meaningful while the site default protects everything: this
+			// marks the posts an admin has deliberately opted back in.
+			$states['aips_refreshable'] = __('Refreshable', 'ai-post-scheduler');
 		}
 
 		if (get_post_meta($post->ID, AIPS_Post_Audit_Service::META_HAS_PENDING, true) === '1') {
@@ -236,4 +263,176 @@ class AIPS_Post_Refresh_Admin {
 
 		return $states;
 	}
+
+	// -------------------------------------------------------------------------
+	// Review surface
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Add Review / Approve / Discard row actions to a post with a staged revision.
+	 *
+	 * Staging drafts are hidden from the post list, so without these the staged
+	 * content has no reachable review path in the admin at all.
+	 *
+	 * @param string[] $actions Existing row actions.
+	 * @param WP_Post  $post    Post being listed.
+	 * @return string[]
+	 */
+	public function add_revision_row_actions($actions, $post) {
+		if (!is_array($actions)) {
+			$actions = array();
+		}
+
+		if (get_post_meta($post->ID, AIPS_Post_Audit_Service::META_HAS_PENDING, true) !== '1') {
+			return $actions;
+		}
+
+		$revision_id = (int) get_post_meta($post->ID, AIPS_Post_Audit_Service::META_PENDING_ID, true);
+
+		if ($revision_id <= 0 || !get_post($revision_id)) {
+			return $actions;
+		}
+
+		if (!current_user_can('edit_post', $post->ID)) {
+			return $actions;
+		}
+
+		$review_url = get_edit_post_link($revision_id);
+
+		if ($review_url) {
+			$actions['aips_review_refresh'] = sprintf(
+				'<a href="%s">%s</a>',
+				esc_url($review_url),
+				esc_html__('Review AI Refresh', 'ai-post-scheduler')
+			);
+		}
+
+		$actions['aips_approve_refresh'] = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url($this->build_action_url('approve', $revision_id)),
+			esc_html__('Approve AI Refresh', 'ai-post-scheduler')
+		);
+
+		$actions['aips_discard_refresh'] = sprintf(
+			'<a href="%s" class="submitdelete">%s</a>',
+			esc_url($this->build_action_url('reject', $revision_id)),
+			esc_html__('Discard AI Refresh', 'ai-post-scheduler')
+		);
+
+		return $actions;
+	}
+
+	/**
+	 * Build a nonce-protected row-action URL that returns to the current list.
+	 *
+	 * @param string $action      Either 'approve' or 'reject'.
+	 * @param int    $revision_id Staging revision ID.
+	 * @return string
+	 */
+	private function build_action_url(string $action, int $revision_id): string {
+		$base = remove_query_arg(array(self::ACTION_ARG, self::REVISION_ARG, '_wpnonce', self::NOTICE_ARG));
+
+		$url = add_query_arg(
+			array(
+				self::ACTION_ARG   => $action,
+				self::REVISION_ARG => $revision_id,
+			),
+			$base
+		);
+
+		return wp_nonce_url($url, self::ACTION_NONCE . $revision_id);
+	}
+
+	/**
+	 * Handle an approve/discard row action.
+	 *
+	 * Capability is checked against the live target post, and the service
+	 * re-validates that the ID really is a staging revision.
+	 *
+	 * @return void
+	 */
+	public function handle_revision_action(): void {
+		if (!isset($_GET[self::ACTION_ARG], $_GET[self::REVISION_ARG])) {
+			return;
+		}
+
+		$action = sanitize_key(wp_unslash($_GET[self::ACTION_ARG]));
+
+		if (!in_array($action, array('approve', 'reject'), true)) {
+			return;
+		}
+
+		$revision_id = absint(wp_unslash($_GET[self::REVISION_ARG]));
+
+		if ($revision_id <= 0) {
+			return;
+		}
+
+		check_admin_referer(self::ACTION_NONCE . $revision_id);
+
+		$target_id = (int) get_post_meta($revision_id, AIPS_Post_Audit_Service::META_TARGET_POST_ID, true);
+
+		if ($target_id <= 0 || !current_user_can('edit_post', $target_id)) {
+			wp_die(esc_html__('You are not allowed to review this refresh.', 'ai-post-scheduler'), '', array('response' => 403));
+		}
+
+		$result = ($action === 'approve')
+			? $this->audit_service->approve_revision($revision_id)
+			: $this->audit_service->reject_revision($revision_id);
+
+		if (is_wp_error($result)) {
+			$notice = 'error';
+		} else {
+			$notice = ($action === 'approve') ? 'approved' : 'discarded';
+		}
+
+		$redirect = add_query_arg(
+			self::NOTICE_ARG,
+			$notice,
+			remove_query_arg(array(self::ACTION_ARG, self::REVISION_ARG, '_wpnonce'))
+		);
+
+		wp_safe_redirect($redirect);
+		exit;
+	}
+
+	/**
+	 * Render the result notice after a row action.
+	 *
+	 * @return void
+	 */
+	public function render_action_notice(): void {
+		if (!isset($_GET[self::NOTICE_ARG])) {
+			return;
+		}
+
+		$notice = sanitize_key(wp_unslash($_GET[self::NOTICE_ARG]));
+
+		$messages = array(
+			'approved'  => array('success', __('AI refresh applied to the live post.', 'ai-post-scheduler')),
+			'discarded' => array('success', __('AI refresh discarded.', 'ai-post-scheduler')),
+			'error'     => array('error', __('That AI refresh could not be applied. It may have already been reviewed.', 'ai-post-scheduler')),
+		);
+
+		if (!isset($messages[$notice])) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+			esc_attr($messages[$notice][0]),
+			esc_html($messages[$notice][1])
+		);
+	}
+
+	/**
+	 * Release a live post when its staging draft is trashed or deleted.
+	 *
+	 * @param int $post_id Post being removed.
+	 * @return void
+	 */
+	public function on_revision_removed($post_id): void {
+		$this->audit_service->release_target_of_revision((int) $post_id);
+	}
+
 }
