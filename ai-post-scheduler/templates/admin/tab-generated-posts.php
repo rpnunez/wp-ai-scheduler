@@ -96,7 +96,7 @@ if (!defined('ABSPATH')) {
 				<!-- Generated posts table -->
 				<div class="aips-panel-body no-padding">
 					<?php if (!empty($post_feedback_enabled) && !empty($posts_data)): ?>
-					<div class="tablenav top">
+					<div class="tablenav top aips-post-feedback-bulk">
 						<select id="aips-post-feedback-bulk-action"><option value=""><?php esc_html_e('Feedback bulk action', 'ai-post-scheduler'); ?></option><option value="liked"><?php esc_html_e('Like', 'ai-post-scheduler'); ?></option><option value="disliked"><?php esc_html_e('Dislike', 'ai-post-scheduler'); ?></option><option value="cleared"><?php esc_html_e('Clear Feedback', 'ai-post-scheduler'); ?></option></select>
 						<span class="aips-post-feedback-bulk-details" hidden>
 							<label class="screen-reader-text" for="aips-post-feedback-bulk-reason"><?php esc_html_e('Feedback reason', 'ai-post-scheduler'); ?></label>

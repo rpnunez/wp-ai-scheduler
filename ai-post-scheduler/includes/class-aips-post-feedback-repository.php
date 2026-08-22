@@ -147,8 +147,27 @@ class AIPS_Post_Feedback_Repository {
 			$template_id = absint($template_id);
 		}
 		$limit = max(1, min(500, absint($limit)));
+
+		// Bound the inner aggregation so an install with tens of thousands of
+		// feedback rows does not full-scan the table on every generation run.
+		// Two bounds are applied to the derived table: a recency floor
+		// (filterable) and the same scope predicate the outer ranking uses,
+		// so the GROUP BY only aggregates rows that could actually rank.
+		$recency_seconds = (int) apply_filters('aips_post_feedback_candidate_max_age_seconds', 18 * 30 * DAY_IN_SECONDS);
+		$recency_floor = AIPS_DateTime::now()->timestamp() - max(DAY_IN_SECONDS, $recency_seconds);
+
+		$inner_where = array('created_at >= %d');
+		$inner_args  = array($recency_floor);
+		if ($template_id || $author_id) {
+			$scope_clauses = array('(template_id IS NULL AND author_id IS NULL)');
+			if ($template_id) { $scope_clauses[] = 'template_id = %d'; $inner_args[] = $template_id; }
+			if ($author_id)   { $scope_clauses[] = 'author_id = %d';   $inner_args[] = $author_id; }
+			$inner_where[] = '(' . implode(' OR ', $scope_clauses) . ')';
+		}
+		$inner_where_sql = implode(' AND ', $inner_where);
+
 		$where = array("f.reaction IN ('liked','disliked')", "p.post_status NOT IN ('trash','auto-draft')");
-		$args  = array();
+		$args  = $inner_args;
 		$order = 'f.id DESC';
 		if ($template_id || $author_id) {
 			$order_parts = array();
@@ -161,7 +180,12 @@ class AIPS_Post_Feedback_Repository {
 		$args[] = $limit;
 		$sql = "SELECT f.*, p.post_title, p.post_excerpt, p.post_content, p.post_status
 			FROM {$this->table} f
-			INNER JOIN (SELECT post_id, MAX(id) latest_id FROM {$this->table} GROUP BY post_id) latest ON latest.latest_id = f.id
+			INNER JOIN (
+				SELECT post_id, MAX(id) latest_id
+				FROM {$this->table}
+				WHERE $inner_where_sql
+				GROUP BY post_id
+			) latest ON latest.latest_id = f.id
 			INNER JOIN {$this->wpdb->posts} p ON p.ID = f.post_id
 			WHERE " . implode(' AND ', $where) . " ORDER BY {$order} LIMIT %d";
 		return $this->wpdb->get_results($this->wpdb->prepare($sql, ...$args));
