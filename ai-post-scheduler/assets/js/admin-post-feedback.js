@@ -187,6 +187,14 @@
 				this.notice(this.config.selectPosts || '', 'warning');
 				return;
 			}
+			// Guard against a second click landing while the first request is
+			// still in flight; setLoading only disables controls when it finds
+			// the wrapper element, so a class rename would silently re-open a
+			// concurrency window that duplicates every feedback row.
+			if (this.bulkInFlight) {
+				return;
+			}
+			this.bulkInFlight = true;
 			this.setLoading($scope, true);
 			this.request({ action: 'aips_post_feedback_bulk', post_ids: ids, reaction: reaction, reason_category: reason, comment: comment })
 				.done(function (response) {
@@ -205,6 +213,7 @@
 					module.notice(module.config.error || '', 'error');
 				})
 				.always(function () {
+					module.bulkInFlight = false;
 					module.setLoading($scope, false);
 				});
 		},

@@ -194,7 +194,11 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%s');
+        // Format order must match $insert_data key order above. The feedback
+        // columns sit between is_active and created_at, not at the end — the
+        // previous ordering silently bound feedback_config (JSON) as %d and
+        // updated_at as %s, so template-level overrides were dropped on create.
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 

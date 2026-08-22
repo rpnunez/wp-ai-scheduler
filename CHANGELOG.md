@@ -1,4 +1,4 @@
-## [Unreleased]
+## [3.5.0] - 2026-08-22
 
 ### Added
 - **Generated Post Feedback**: Added opt-in Like/Dislike feedback for generated posts with optional reasons/comments, global → Author → Template configuration and weight overrides, semantic prompt guidance for every generation path, editor and Generated Posts controls, append-only audit history, JSON/MySQL portability, and regeneration predecessor lineage without copied reactions.

@@ -443,7 +443,14 @@ class AIPS_Admin_Assets {
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
         ));
-		$this->enqueue_post_feedback_assets();
+
+        // Only enqueue feedback assets and expose the nonce when the master
+        // switch is on. The native-post branch above already gates on this;
+        // without the same gate every plugin admin page loads unused JS/CSS
+        // and localizes a live nonce for endpoints that will always reject.
+        if (AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) {
+            $this->enqueue_post_feedback_assets();
+        }
     }
 
 	/**

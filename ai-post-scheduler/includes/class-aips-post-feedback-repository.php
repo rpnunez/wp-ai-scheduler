@@ -14,13 +14,36 @@ class AIPS_Post_Feedback_Repository {
 	private $wpdb;
 	private $table;
 
+	/**
+	 * Memoized result of the aips_post_feedback table-existence check. Null
+	 * until first resolved. Guards every DB operation so an install that has
+	 * upgraded plugin code but not yet run the schema migration no-ops
+	 * silently instead of emitting "table doesn't exist" errors on every
+	 * Generated Posts render.
+	 *
+	 * @var bool|null
+	 */
+	private $table_exists = null;
+
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
 		$this->table = $wpdb->prefix . 'aips_post_feedback';
 	}
 
+	private function table_ready() {
+		if (null !== $this->table_exists) {
+			return $this->table_exists;
+		}
+		$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
+		$this->table_exists = ($found === $this->table);
+		return $this->table_exists;
+	}
+
 	public function append_event(array $event) {
+		if (!$this->table_ready()) {
+			return new WP_Error('feedback_table_missing', __('Post feedback storage is not yet available. Please try again after the plugin upgrade completes.', 'ai-post-scheduler'));
+		}
 		$data = array(
 			'post_id'         => absint($event['post_id'] ?? 0),
 			'history_id'      => !empty($event['history_id']) ? absint($event['history_id']) : null,
@@ -51,14 +74,23 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function get_by_id($event_id) {
+		if (!$this->table_ready()) {
+			return null;
+		}
 		return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$this->table} WHERE id = %d", absint($event_id)));
 	}
 
 	public function update_embedding($event_id, array $embedding) {
+		if (!$this->table_ready()) {
+			return false;
+		}
 		return false !== $this->wpdb->update($this->table, array('embedding' => wp_json_encode($embedding)), array('id' => absint($event_id)), array('%s'), array('%d'));
 	}
 
 	public function get_current_for_post($post_id) {
+		if (!$this->table_ready()) {
+			return null;
+		}
 		return $this->wpdb->get_row($this->wpdb->prepare(
 			"SELECT * FROM {$this->table} WHERE post_id = %d ORDER BY id DESC LIMIT 1",
 			absint($post_id)
@@ -66,6 +98,9 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function get_current_for_posts(array $post_ids) {
+		if (!$this->table_ready()) {
+			return array();
+		}
 		$post_ids = array_values(array_filter(array_unique(array_map('absint', $post_ids))));
 		if (empty($post_ids)) {
 			return array();
@@ -86,6 +121,9 @@ class AIPS_Post_Feedback_Repository {
 	}
 
 	public function get_history_for_post($post_id, $limit = 100) {
+		if (!$this->table_ready()) {
+			return array();
+		}
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table} WHERE post_id = %d ORDER BY id DESC LIMIT %d",
 			absint($post_id),
@@ -97,6 +135,9 @@ class AIPS_Post_Feedback_Repository {
 	 * Return latest active events with their current WordPress post content.
 	 */
 	public function get_active_candidates($scope = array(), $template_id = 0, $limit = 100) {
+		if (!$this->table_ready()) {
+			return array();
+		}
 		if (is_array($scope)) {
 			$limit       = $template_id ?: $limit;
 			$template_id = absint($scope['template_id'] ?? 0);
@@ -106,8 +147,27 @@ class AIPS_Post_Feedback_Repository {
 			$template_id = absint($template_id);
 		}
 		$limit = max(1, min(500, absint($limit)));
+
+		// Bound the inner aggregation so an install with tens of thousands of
+		// feedback rows does not full-scan the table on every generation run.
+		// Two bounds are applied to the derived table: a recency floor
+		// (filterable) and the same scope predicate the outer ranking uses,
+		// so the GROUP BY only aggregates rows that could actually rank.
+		$recency_seconds = (int) apply_filters('aips_post_feedback_candidate_max_age_seconds', 18 * 30 * DAY_IN_SECONDS);
+		$recency_floor = AIPS_DateTime::now()->timestamp() - max(DAY_IN_SECONDS, $recency_seconds);
+
+		$inner_where = array('created_at >= %d');
+		$inner_args  = array($recency_floor);
+		if ($template_id || $author_id) {
+			$scope_clauses = array('(template_id IS NULL AND author_id IS NULL)');
+			if ($template_id) { $scope_clauses[] = 'template_id = %d'; $inner_args[] = $template_id; }
+			if ($author_id)   { $scope_clauses[] = 'author_id = %d';   $inner_args[] = $author_id; }
+			$inner_where[] = '(' . implode(' OR ', $scope_clauses) . ')';
+		}
+		$inner_where_sql = implode(' AND ', $inner_where);
+
 		$where = array("f.reaction IN ('liked','disliked')", "p.post_status NOT IN ('trash','auto-draft')");
-		$args  = array();
+		$args  = $inner_args;
 		$order = 'f.id DESC';
 		if ($template_id || $author_id) {
 			$order_parts = array();
@@ -120,13 +180,21 @@ class AIPS_Post_Feedback_Repository {
 		$args[] = $limit;
 		$sql = "SELECT f.*, p.post_title, p.post_excerpt, p.post_content, p.post_status
 			FROM {$this->table} f
-			INNER JOIN (SELECT post_id, MAX(id) latest_id FROM {$this->table} GROUP BY post_id) latest ON latest.latest_id = f.id
+			INNER JOIN (
+				SELECT post_id, MAX(id) latest_id
+				FROM {$this->table}
+				WHERE $inner_where_sql
+				GROUP BY post_id
+			) latest ON latest.latest_id = f.id
 			INNER JOIN {$this->wpdb->posts} p ON p.ID = f.post_id
 			WHERE " . implode(' AND ', $where) . " ORDER BY {$order} LIMIT %d";
 		return $this->wpdb->get_results($this->wpdb->prepare($sql, ...$args));
 	}
 
 	public function delete_all() {
+		if (!$this->table_ready()) {
+			return 0;
+		}
 		return $this->wpdb->query("DELETE FROM {$this->table}");
 	}
 }
