@@ -370,15 +370,14 @@ if (!function_exists('aips_datetime_from_db_value')) {
 								</a>
 							</div>
 							<?php endif; ?>
-							<div class="aips-row-actions">
-								<a href="#"
-									class="aips-view-unified-history"
+							<div class="aips-history-btn-wrap" style="margin-top:6px;">
+								<button type="button"
+									class="aips-btn aips-btn-xs aips-btn-secondary aips-view-unified-history"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
-									data-name="<?php echo esc_attr($sched['title']); ?>"
-									data-limit="5">
-									<?php esc_html_e('History', 'ai-post-scheduler'); ?>
-								</a>
+									data-name="<?php echo esc_attr($sched['title']); ?>">
+									<span class="dashicons dashicons-backup" aria-hidden="true" style="font-size:13px;width:13px;height:13px;line-height:13px;vertical-align:-2px;margin-right:4px;"></span><?php esc_html_e('History', 'ai-post-scheduler'); ?>
+								</button>
 							</div>
 						</td>
 						<td class="column-type">
@@ -732,22 +731,132 @@ if (!function_exists('aips_datetime_from_db_value')) {
 <!-- ============================================================ -->
 <div id="aips-schedule-history-modal" class="aips-modal" style="display:none;"
 	role="dialog" aria-modal="true">
-	<div class="aips-modal-content aips-modal-large">
+	<div class="aips-modal-content aips-modal-large aips-schedule-history-modal-content">
 		<div class="aips-modal-header">
-			<h2 class="aips-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
+			<h2 id="aips-schedule-history-modal-title" class="aips-modal-title"><?php esc_html_e('Schedule History', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<div id="aips-schedule-history-loading" style="text-align:center;padding:20px;">
+			<!-- Top Schedule Statistics Cards -->
+			<div id="aips-schedule-history-stats" class="aips-modal-stats-grid" style="display:none;"></div>
+
+			<!-- Filters Toolbar -->
+			<div id="aips-schedule-history-toolbar" class="aips-modal-toolbar" style="display:none;">
+				<div class="aips-toolbar-left">
+					<div class="aips-search-box">
+						<span class="dashicons dashicons-search" aria-hidden="true"></span>
+						<input type="search" id="aips-history-search-input" placeholder="<?php esc_attr_e('Search post title or event…', 'ai-post-scheduler'); ?>" />
+					</div>
+					<select id="aips-history-event-filter" class="aips-select-sm">
+						<option value="all"><?php esc_html_e('All Events', 'ai-post-scheduler'); ?></option>
+						<option value="posts"><?php esc_html_e('Posts Created', 'ai-post-scheduler'); ?></option>
+						<option value="manual"><?php esc_html_e('Manual Executions', 'ai-post-scheduler'); ?></option>
+						<option value="system"><?php esc_html_e('System Events', 'ai-post-scheduler'); ?></option>
+					</select>
+				</div>
+				<div class="aips-toolbar-right">
+					<select id="aips-history-date-range" class="aips-select-sm">
+						<option value="all"><?php esc_html_e('All Time', 'ai-post-scheduler'); ?></option>
+						<option value="week"><?php esc_html_e('This Week', 'ai-post-scheduler'); ?></option>
+						<option value="month"><?php esc_html_e('This Month', 'ai-post-scheduler'); ?></option>
+						<option value="30days"><?php esc_html_e('Last 30 Days', 'ai-post-scheduler'); ?></option>
+						<option value="custom"><?php esc_html_e('Custom Date Range', 'ai-post-scheduler'); ?></option>
+					</select>
+					<div id="aips-history-custom-dates" class="aips-custom-dates-bar" style="display:none;">
+						<input type="date" id="aips-history-date-from" class="aips-date-input" />
+						<span class="aips-date-sep">&ndash;</span>
+						<input type="date" id="aips-history-date-to" class="aips-date-input" />
+						<button type="button" id="aips-history-apply-dates" class="aips-btn aips-btn-xs aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Loading State -->
+			<div id="aips-schedule-history-loading" style="text-align:center;padding:30px 20px;">
 				<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
 				<span class="screen-reader-text"><?php esc_html_e('Loading history…', 'ai-post-scheduler'); ?></span>
 			</div>
+
+			<!-- Empty State -->
 			<div id="aips-schedule-history-empty" class="aips-empty-state" style="display:none;padding:40px 20px;">
 				<div class="dashicons dashicons-backup aips-empty-state-icon" aria-hidden="true"></div>
-				<h3 class="aips-empty-state-title"><?php esc_html_e('No History Yet', 'ai-post-scheduler'); ?></h3>
-				<p class="aips-empty-state-description"><?php esc_html_e('No history events have been recorded for this schedule yet.', 'ai-post-scheduler'); ?></p>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No History Records Found', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('No history events match the selected filters for this schedule.', 'ai-post-scheduler'); ?></p>
 			</div>
-			<ul id="aips-schedule-history-list" class="aips-history-timeline" style="display:none;margin:0;padding:0;list-style:none;"></ul>
+
+			<!-- Tabular Data Table -->
+			<div id="aips-schedule-history-table-wrapper" style="display:none;">
+				<table class="aips-table aips-modal-data-table">
+					<thead>
+						<tr>
+							<th class="col-name"><?php esc_html_e('Name / Activity', 'ai-post-scheduler'); ?></th>
+							<th class="col-date"><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
+							<th class="col-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr>
+					</thead>
+					<tbody id="aips-schedule-history-tbody"></tbody>
+				</table>
+			</div>
+
+			<!-- Pagination Controls -->
+			<div id="aips-schedule-history-pagination" class="aips-modal-pagination" style="display:none;"></div>
 		</div>
 	</div>
 </div>
+
+<!-- =====================================================================
+     AIPS.Templates HTML blocks for Schedule History Modal
+     These <script type="text/html"> elements are read by AIPS.Templates.render()
+     and AIPS.Templates.renderRaw().
+     ===================================================================== -->
+
+<script type="text/html" id="aips-tmpl-schedule-history-row">
+	<tr>
+		<td class="col-name">
+			<div class="aips-history-item-title-wrap">
+				<span class="dashicons {{iconClass}} aips-history-type-icon" aria-hidden="true"></span>
+				<strong class="aips-history-item-name">{{name}}</strong>
+			</div>
+			{{badgeHtml}}
+		</td>
+		<td class="col-date">{{formattedDate}}</td>
+		<td class="col-actions">{{actionsHtml}}</td>
+	</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-history-badge">
+	<span class="aips-badge {{badgeClass}} style-badge">{{badgeText}}</span>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-history-action-view">
+	<a href="{{url}}" target="_blank" class="aips-btn aips-btn-xs aips-btn-secondary" title="View post in new tab">
+		<span class="dashicons dashicons-external" aria-hidden="true"></span> View Post
+	</a>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-history-action-edit">
+	<a href="{{url}}" target="_blank" class="aips-btn aips-btn-xs aips-btn-ghost" style="margin-left:4px;" title="Edit post">
+		<span class="dashicons dashicons-edit" aria-hidden="true"></span> Edit
+	</a>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-history-stat-card">
+	<div class="aips-stat-card">
+		<div class="aips-stat-icon">
+			<span class="dashicons {{icon}}"></span>
+		</div>
+		<div class="aips-stat-info">
+			<div class="aips-stat-value">{{value}}</div>
+			<div class="aips-stat-label">{{label}}</div>
+		</div>
+	</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-schedule-history-pagination">
+	<div class="aips-pagination-info">{{infoText}}</div>
+	<div class="aips-pagination-controls">
+		<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-modal-pagination-btn" data-page="{{prevPage}}" {{prevDisabled}}>Previous</button>
+		<span class="aips-pagination-current-text">{{pageText}}</span>
+		<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-modal-pagination-btn" data-page="{{nextPage}}" {{nextDisabled}}>Next</button>
+	</div>
+</script>

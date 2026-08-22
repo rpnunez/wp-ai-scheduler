@@ -248,7 +248,7 @@ class AIPS_Unified_Schedule_Service {
 					array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
 					$limit
 				);
-				return $this->format_history_logs($logs);
+				return $this->expand_and_format_logs($logs);
 
 			case self::TYPE_AUTHOR_TOPIC:
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
@@ -256,7 +256,7 @@ class AIPS_Unified_Schedule_Service {
 					array('author_topic_generation'),
 					$limit > 0 ? $limit : 100
 				);
-				return $this->format_history_logs($logs);
+				return $this->expand_and_format_logs($logs);
 
 			case self::TYPE_AUTHOR_POST:
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
@@ -264,91 +264,272 @@ class AIPS_Unified_Schedule_Service {
 					array('topic_post_generation'),
 					$limit > 0 ? $limit : 100
 				);
-				return $this->format_history_logs($logs);
+				return $this->expand_and_format_logs($logs);
 
 			default:
 				return array();
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Private helpers
-	// -------------------------------------------------------------------------
-
 	/**
-	 * Normalise template-based schedules.
+	 * Get detailed, paginated, filtered run-history log entries and statistics for a schedule.
 	 *
-	 * @param bool $include_stats Whether to run the aggregate stats query.
-	 * @return array
+	 * @param int    $id   Numeric ID.
+	 * @param string $type One of the TYPE_* constants.
+	 * @param array  $args Filter & pagination parameters.
+	 * @return array Payload containing entries, stats, and pagination metadata.
 	 */
-	private function get_template_schedules($include_stats = true) {
-		$raw    = $this->schedule_repository->get_all();
-		$result = array();
+	public function get_history_data($id, $type, $args = array()) {
+		$id           = absint($id);
+		$page         = isset($args['page']) ? max(1, absint($args['page'])) : 1;
+		$per_page     = isset($args['per_page']) ? max(1, absint($args['per_page'])) : 10;
+		$search       = isset($args['search']) ? sanitize_text_field(wp_unslash($args['search'])) : '';
+		$event_filter = isset($args['event_filter']) ? sanitize_key($args['event_filter']) : 'all';
+		$date_range   = isset($args['date_range']) ? sanitize_key($args['date_range']) : 'all';
+		$date_from    = isset($args['date_from']) ? sanitize_text_field($args['date_from']) : '';
+		$date_to      = isset($args['date_to']) ? sanitize_text_field($args['date_to']) : '';
 
-		// Batch-fetch generated-post counts by schedule history container.
-		$schedule_stats = array();
-		if ($include_stats) {
-			$history_ids = array();
-			foreach ($raw as $schedule) {
-				if (!empty($schedule->schedule_history_id)) {
-					$history_ids[] = absint($schedule->schedule_history_id);
+		$logs = array();
+
+		switch ($type) {
+			case self::TYPE_TEMPLATE:
+				$schedule = $this->schedule_repository->get_by_id($id);
+				if ($schedule && !empty($schedule->schedule_history_id)) {
+					$logs = $this->history_repository->get_logs_by_history_id(
+						absint($schedule->schedule_history_id),
+						array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
+						0
+					);
 				}
-			}
-			$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($history_ids);
+				break;
+
+			case self::TYPE_AUTHOR_TOPIC:
+				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
+					$id,
+					array('author_topic_generation'),
+					500
+				);
+				break;
+
+			case self::TYPE_AUTHOR_POST:
+				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
+					$id,
+					array('topic_post_generation'),
+					500
+				);
+				break;
 		}
 
-		foreach ($raw as $schedule) {
-			$schedule_history_id = !empty($schedule->schedule_history_id) ? (int) $schedule->schedule_history_id : 0;
-			$stats  = isset($schedule_stats[$schedule_history_id]) ? (int) $schedule_stats[$schedule_history_id] : 0;
-			$status = !empty($schedule->is_active) ? 'active' : 'inactive';
-			if (isset($schedule->status) && $schedule->status === 'failed') {
-				$status = 'failed';
-			}
+		$all_entries = $this->expand_and_format_logs($logs);
 
-			$title = !empty($schedule->title) ? $schedule->title
-				: ($schedule->template_name ?: sprintf(__('Schedule #%d', 'ai-post-scheduler'), $schedule->id));
+		// Calculate Statistics (All Time, Week, Month, Execution count)
+		$now       = current_time('timestamp');
+		$week_ago  = $now - (7 * DAY_IN_SECONDS);
+		$month_ago = $now - (30 * DAY_IN_SECONDS);
 
-			// Parse batch_progress to detect incomplete batches
-			$batch_progress_data = null;
-			$has_incomplete_batch = false;
-			if (!empty($schedule->batch_progress)) {
-				$batch_progress_data = json_decode($schedule->batch_progress, true);
-				if (is_array($batch_progress_data) && isset($batch_progress_data['completed'], $batch_progress_data['total'])) {
-					$has_incomplete_batch = $batch_progress_data['completed'] < $batch_progress_data['total'];
+		$posts_this_week  = 0;
+		$posts_this_month = 0;
+		$posts_all_time   = 0;
+		$total_runs       = 0;
+		$successful_runs  = 0;
+
+		foreach ($all_entries as $entry) {
+			if (!empty($entry['is_post'])) {
+				$posts_all_time++;
+				if ($entry['timestamp'] >= $week_ago) {
+					$posts_this_week++;
+				}
+				if ($entry['timestamp'] >= $month_ago) {
+					$posts_this_month++;
 				}
 			}
 
-			$result[] = array(
-				'id'                   => absint($schedule->id),
-				'type'                 => self::TYPE_TEMPLATE,
-				'title'                => $title,
-				'subtitle'             => $schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler'),
-				'campaign_id'          => !empty($schedule->campaign_id) ? (int) $schedule->campaign_id : 0,
-				'cron_hook'            => 'aips_generate_scheduled_posts',
-				'frequency'            => $schedule->frequency,
-				'topic'                => isset($schedule->topic) ? $schedule->topic : '',
-				'article_structure_id' => isset($schedule->article_structure_id) ? $schedule->article_structure_id : '',
-				'rotation_pattern'     => isset($schedule->rotation_pattern) ? $schedule->rotation_pattern : '',
-				'last_run'             => $schedule->last_run,
-				'next_run'             => $schedule->next_run,
-				'is_active'            => (int) $schedule->is_active,
-				'status'               => $status,
-				'stats_count'          => $stats,
-				'stats_label'          => _n('post generated', 'posts generated', $stats, 'ai-post-scheduler'),
-				'can_delete'           => empty($schedule->campaign_id),
-				'history_id'           => $schedule_history_id ? $schedule_history_id : null,
-				'template_id'          => (int) $schedule->template_id,
-				'circuit_state'        => isset($schedule->circuit_state) ? $schedule->circuit_state : 'closed',
-				'batch_progress'       => $batch_progress_data,
-				'has_incomplete_batch' => $has_incomplete_batch,
-			);
+			if (in_array($entry['event_type'], array('schedule_executed', 'manual_schedule_started', 'manual_schedule_completed', 'manual_schedule_failed', 'schedule_failed'), true)) {
+				$total_runs++;
+				if ($entry['event_status'] !== 'failed') {
+					$successful_runs++;
+				}
+			}
 		}
 
-		return $result;
+		$stats = array(
+			'posts_this_week'  => $posts_this_week,
+			'posts_this_month' => $posts_this_month,
+			'posts_all_time'   => $posts_all_time,
+			'total_runs'       => $total_runs,
+			'success_rate'     => $total_runs > 0 ? round(($successful_runs / $total_runs) * 100) . '%' : '100%',
+		);
+
+		// Filter entries
+		$filtered_entries = array();
+		foreach ($all_entries as $entry) {
+			// Date Range Filter
+			if ($date_range === 'week' && $entry['timestamp'] < $week_ago) {
+				continue;
+			}
+			if (($date_range === 'month' || $date_range === '30days') && $entry['timestamp'] < $month_ago) {
+				continue;
+			}
+			if ($date_range === 'custom') {
+				if (!empty($date_from) && $entry['timestamp'] < strtotime($date_from . ' 00:00:00')) {
+					continue;
+				}
+				if (!empty($date_to) && $entry['timestamp'] > strtotime($date_to . ' 23:59:59')) {
+					continue;
+				}
+			}
+
+			// Event Filter
+			if ($event_filter === 'posts' && empty($entry['is_post'])) {
+				continue;
+			}
+			if ($event_filter === 'manual' && strpos($entry['event_type'], 'manual_') === false) {
+				continue;
+			}
+			if ($event_filter === 'system' && (!empty($entry['is_post']) || strpos($entry['event_type'], 'manual_') !== false)) {
+				continue;
+			}
+
+			// Text Search Filter
+			if (!empty($search)) {
+				$needle   = mb_strtolower($search);
+				$haystack = mb_strtolower($entry['name'] . ' ' . $entry['message'] . ' ' . $entry['event_type']);
+				if (mb_strpos($haystack, $needle) === false) {
+					continue;
+				}
+			}
+
+			$filtered_entries[] = $entry;
+		}
+
+		// Pagination
+		$total_entries = count($filtered_entries);
+		$total_pages   = max(1, (int) ceil($total_entries / $per_page));
+		$page          = min($page, $total_pages);
+		$offset        = ($page - 1) * $per_page;
+
+		$paged_entries = array_slice($filtered_entries, $offset, $per_page);
+
+		return array(
+			'entries'    => $paged_entries,
+			'stats'      => $stats,
+			'pagination' => array(
+				'current_page'  => $page,
+				'per_page'      => $per_page,
+				'total_entries' => $total_entries,
+				'total_pages'   => $total_pages,
+			),
+		);
 	}
 
 	/**
-	 * Normalise author topic-generation schedules.
+	 * Expand multi-post execution logs into discrete individual post entries.
+	 * Decodes HTML entities and formats timestamps.
+	 *
+	 * @param array $logs Raw log objects.
+	 * @return array Formatted entries.
+	 */
+	private function expand_and_format_logs($logs) {
+		$entries = array();
+
+		foreach ($logs as $log) {
+			$details = array();
+			if (!empty($log->details)) {
+				$decoded = json_decode($log->details, true);
+				if (is_array($decoded)) {
+					$details = $decoded;
+				}
+			}
+
+			$input     = isset($details['input']) && is_array($details['input']) ? $details['input'] : array();
+			$context   = isset($details['context']) && is_array($details['context']) ? $details['context'] : array();
+			$raw_msg   = isset($details['message']) ? $details['message'] : '';
+			$clean_msg = html_entity_decode($raw_msg, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+			$event_type   = isset($input['event_type']) ? esc_html($input['event_type']) : '';
+			$event_status = isset($input['event_status']) ? esc_html($input['event_status']) : '';
+			$ts           = (int) $log->timestamp;
+			$date_fmt     = wp_date(get_option('date_format') . ' ' . get_option('time_format'), $ts);
+
+			// Extract post ID or post IDs array from context or details
+			$post_ids = array();
+			if (isset($context['post_id'])) {
+				if (is_array($context['post_id'])) {
+					$post_ids = array_map('absint', $context['post_id']);
+				} elseif (is_numeric($context['post_id']) && (int) $context['post_id'] > 0) {
+					$post_ids = array((int) $context['post_id']);
+				}
+			} elseif (isset($details['post_id'])) {
+				if (is_array($details['post_id'])) {
+					$post_ids = array_map('absint', $details['post_id']);
+				} elseif (is_numeric($details['post_id']) && (int) $details['post_id'] > 0) {
+					$post_ids = array((int) $details['post_id']);
+				}
+			}
+
+			// Filter out invalid IDs
+			$post_ids = array_filter($post_ids);
+
+			if (!empty($post_ids)) {
+				foreach ($post_ids as $post_id) {
+					$post = get_post($post_id);
+					if ($post) {
+						$post_title  = html_entity_decode(get_the_title($post), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+						$post_status = $post->post_status;
+						$view_url    = get_permalink($post_id);
+						$edit_url    = get_edit_post_link($post_id, '');
+
+						$entries[] = array(
+							'id'             => absint($log->id) . '_' . absint($post_id),
+							'raw_id'         => absint($log->id),
+							'timestamp'      => $ts,
+							'formatted_date' => $date_fmt,
+							'name'           => $post_title ? $post_title : sprintf(__('Post #%d', 'ai-post-scheduler'), $post_id),
+							'event_type'     => ($post_status === 'draft') ? 'post_draft' : 'post_published',
+							'event_status'   => ($post_status === 'draft') ? 'draft' : 'success',
+							'log_type'       => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : 'post_created',
+							'post_id'        => $post_id,
+							'post_title'     => $post_title,
+							'post_status'    => $post_status,
+							'view_url'       => $view_url ? $view_url : '',
+							'edit_url'       => $edit_url ? $edit_url : '',
+							'is_post'        => true,
+							'message'        => sprintf(__('Post created: %s', 'ai-post-scheduler'), $post_title),
+						);
+					}
+				}
+			} else {
+				// Non-post entry or post not found
+				// Remove "(and X more)" if present in legacy text
+				$clean_msg = preg_replace('/\s*\([^)]*and \d+ more\)/i', '', $clean_msg);
+
+				$entries[] = array(
+					'id'             => absint($log->id),
+					'raw_id'         => absint($log->id),
+					'timestamp'      => $ts,
+					'formatted_date' => $date_fmt,
+					'name'           => $clean_msg ? $clean_msg : __('Schedule event', 'ai-post-scheduler'),
+					'event_type'     => $event_type ? $event_type : 'system_event',
+					'event_status'   => $event_status ? $event_status : 'info',
+					'log_type'       => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
+					'post_id'        => null,
+					'view_url'       => null,
+					'edit_url'       => null,
+					'is_post'        => false,
+					'message'        => $clean_msg,
+				);
+			}
+		}
+
+		// Sort by timestamp DESC
+		usort($entries, static function($a, $b) {
+			return $b['timestamp'] <=> $a['timestamp'];
+		});
+
+		return $entries;
+	}
+
+	/**
 	 *
 	 * Each active author with `topic_generation_next_run` set appears as one row.
 	 *

@@ -297,7 +297,12 @@
             $(document).on('click', '#aips-unified-bulk-apply', this.applyUnifiedBulkAction);
             $(document).on('change', '.aips-unified-toggle-schedule', this.toggleUnifiedSchedule);
             $(document).on('click', '.aips-unified-run-now', this.runNowUnified);
-            $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory);
+            $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory.bind(this));
+            $(document).on('keyup search', '#aips-history-search-input', AIPS.Utilities.debounce(this.onScheduleHistorySearch.bind(this), 300));
+            $(document).on('change', '#aips-history-event-filter', this.onScheduleHistoryEventFilter.bind(this));
+            $(document).on('change', '#aips-history-date-range', this.onScheduleHistoryDateRange.bind(this));
+            $(document).on('click', '#aips-history-apply-dates', this.onScheduleHistoryApplyCustomDates.bind(this));
+            $(document).on('click', '.aips-modal-pagination-btn', this.onScheduleHistoryPaginationClick.bind(this));
             $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
@@ -2985,28 +2990,84 @@
          *
          * @param {Event} e - Click event from `.aips-view-unified-history`.
          */
-        viewUnifiedScheduleHistory: function(e) {
-            e.preventDefault();
+        _scheduleHistoryState: {
+            id: 0,
+            type: '',
+            name: '',
+            page: 1,
+            perPage: 10,
+            search: '',
+            eventFilter: 'all',
+            dateRange: 'all',
+            dateFrom: '',
+            dateTo: ''
+        },
 
-            var $btn  = $(this);
-            var id    = $btn.data('id');
-            var type  = $btn.data('type');
-            var name  = $btn.data('name') || id;
-            var limit = $btn.data('limit') || 0;
+        /**
+         * Open the Schedule History modal and load entries for any schedule type.
+         *
+         * @param {Event} e - Click event from `.aips-view-unified-history`.
+         */
+        viewUnifiedScheduleHistory: function(e) {
+            if (e && e.preventDefault) { e.preventDefault(); }
+
+            var $btn = $(e.currentTarget || this);
+            var id   = $btn.data('id');
+            var type = $btn.data('type');
+            var name = $btn.data('name') || id;
 
             if (!id || !type) { return; }
 
-            var $modal   = $('#aips-schedule-history-modal');
-            var $title   = $modal.find('#aips-schedule-history-modal-title');
-            var $loading = $modal.find('#aips-schedule-history-loading');
-            var $empty   = $modal.find('#aips-schedule-history-empty');
-            var $list    = $modal.find('#aips-schedule-history-list');
+            this._scheduleHistoryState = {
+                id: id,
+                type: type,
+                name: name,
+                page: 1,
+                perPage: 10,
+                search: '',
+                eventFilter: 'all',
+                dateRange: 'all',
+                dateFrom: '',
+                dateTo: ''
+            };
 
-            $title.text('Recent History: ' + name);
+            var $modal = $('#aips-schedule-history-modal');
+            var $title = $modal.find('#aips-schedule-history-modal-title');
+
+            $title.text(name + ' History');
+
+            // Reset control elements
+            $('#aips-history-search-input').val('');
+            $('#aips-history-event-filter').val('all');
+            $('#aips-history-date-range').val('all');
+            $('#aips-history-custom-dates').hide();
+            $('#aips-history-date-from').val('');
+            $('#aips-history-date-to').val('');
+
+            $modal.show();
+            this.fetchScheduleHistory();
+        },
+
+        /**
+         * Fetch schedule history data via AJAX with current state parameters.
+         */
+        fetchScheduleHistory: function() {
+            var self   = this;
+            var state  = this._scheduleHistoryState;
+            var $modal = $('#aips-schedule-history-modal');
+
+            var $loading    = $modal.find('#aips-schedule-history-loading');
+            var $empty      = $modal.find('#aips-schedule-history-empty');
+            var $tableWrap  = $modal.find('#aips-schedule-history-table-wrapper');
+            var $tbody      = $modal.find('#aips-schedule-history-tbody');
+            var $stats      = $modal.find('#aips-schedule-history-stats');
+            var $toolbar    = $modal.find('#aips-schedule-history-toolbar');
+            var $pagination = $modal.find('#aips-schedule-history-pagination');
+
             $loading.show();
             $empty.hide();
-            $list.hide().empty();
-            $modal.show();
+            $tableWrap.hide();
+            $pagination.hide();
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -3014,71 +3075,213 @@
                 data: {
                     action: 'aips_get_unified_schedule_history',
                     nonce: aipsAjax.nonce,
-                    id: id,
-                    type: type,
-                    limit: limit
+                    id: state.id,
+                    type: state.type,
+                    page: state.page,
+                    per_page: state.perPage,
+                    search: state.search,
+                    event_filter: state.eventFilter,
+                    date_range: state.dateRange,
+                    date_from: state.dateFrom,
+                    date_to: state.dateTo
                 },
                 success: function(response) {
                     $loading.hide();
 
                     if (!response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
-                        $modal.hide();
+                        AIPS.Utilities.showToast(response.data ? response.data.message : (aipsAdminL10n.errorOccurred || 'Error occurred'), 'error');
                         return;
                     }
 
-                    var entries = response.data.entries;
+                    var data    = response.data || {};
+                    var entries = data.entries || [];
+                    var stats   = data.stats || {};
+                    var pag     = data.pagination || {};
+
+                    // Render Stats Cards
+                    self.renderScheduleHistoryStats($stats, stats);
+                    $stats.show();
+                    $toolbar.show();
+
                     if (!entries || entries.length === 0) {
                         $empty.show();
+                        $tbody.empty();
                         return;
                     }
 
-                    var iconMap = {
-                        'schedule_created':          { icon: 'dashicons-plus-alt',      cls: 'aips-timeline-created'  },
-                        'schedule_updated':          { icon: 'dashicons-edit',           cls: 'aips-timeline-updated'  },
-                        'schedule_enabled':          { icon: 'dashicons-yes-alt',        cls: 'aips-timeline-enabled'  },
-                        'schedule_disabled':         { icon: 'dashicons-minus',          cls: 'aips-timeline-disabled' },
-                        'schedule_executed':         { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
-                        'manual_schedule_started':   { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
-                        'manual_schedule_completed': { icon: 'dashicons-yes',            cls: 'aips-timeline-success'  },
-                        'manual_schedule_failed':    { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
-                        'schedule_failed':           { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
-                        'post_published':            { icon: 'dashicons-media-document', cls: 'aips-timeline-success'  },
-                        'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
-                        'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
-                        'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
-                        'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
-                    };
-                    var defaultIcon = { icon: 'dashicons-info', cls: '' };
-
+                    // Render Table Rows
+                    $tbody.empty();
                     entries.forEach(function(entry) {
-                        var info    = iconMap[entry.event_type] || defaultIcon;
-                        var isError = (entry.history_type_id === 2 || entry.event_status === 'failed');
-                        if (isError && !info.cls) {
-                            info = { icon: 'dashicons-warning', cls: 'aips-timeline-error' };
-                        }
-
-                        var $item    = $('<li>', { 'class': 'aips-timeline-item ' + info.cls });
-                        var $icon    = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
-                                           .append($('<span>', { 'class': 'dashicons ' + info.icon }));
-                        var $content = $('<div>', { 'class': 'aips-timeline-content' });
-                        var $msg     = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
-                        var $time    = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
-                                           .text(entry.timestamp);
-
-                        $content.append($msg).append($time);
-                        $item.append($icon).append($content);
-                        $list.append($item);
+                        var $row = self.buildScheduleHistoryRow(entry);
+                        $tbody.append($row);
                     });
 
-                    $list.show();
+                    $tableWrap.show();
+
+                    // Render Pagination
+                    self.renderScheduleHistoryPagination($pagination, pag);
+                    $pagination.show();
                 },
                 error: function() {
                     $loading.hide();
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                    $modal.hide();
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain || 'Error, please try again.', 'error');
                 }
             });
+        },
+
+        /**
+         * Render top statistics cards for the schedule modal using AIPS.Templates.
+         */
+        renderScheduleHistoryStats: function($container, stats) {
+            $container.empty();
+
+            var cards = [
+                { label: 'Posts This Week', value: stats.posts_this_week || 0, icon: 'dashicons-calendar-alt' },
+                { label: 'Posts This Month', value: stats.posts_this_month || 0, icon: 'dashicons-calendar' },
+                { label: 'Posts All Time', value: stats.posts_all_time || 0, icon: 'dashicons-admin-post' },
+                { label: 'Total Executions', value: (stats.total_runs || 0) + ' (' + (stats.success_rate || '100%') + ')', icon: 'dashicons-performance' }
+            ];
+
+            cards.forEach(function(card) {
+                var html = AIPS.Templates.render('aips-tmpl-schedule-history-stat-card', card);
+                $container.append(html);
+            });
+        },
+
+        /**
+         * Build a single table row DOM element for a history entry using AIPS.Templates.
+         */
+        buildScheduleHistoryRow: function(entry) {
+            var iconClass = 'dashicons-info';
+            if (entry.is_post) {
+                iconClass = 'dashicons-media-document';
+            } else if (entry.event_type && entry.event_type.indexOf('manual_') === 0) {
+                iconClass = 'dashicons-controls-play';
+            } else if (entry.event_status === 'failed') {
+                iconClass = 'dashicons-warning';
+            }
+
+            var badgeHtml = '';
+            if (entry.is_post) {
+                var isDraft = (entry.post_status === 'draft');
+                badgeHtml = AIPS.Templates.render('aips-tmpl-schedule-history-badge', {
+                    badgeClass: isDraft ? 'aips-badge-warning' : 'aips-badge-success',
+                    badgeText: isDraft ? 'Draft' : 'Published'
+                });
+            } else if (entry.event_type && entry.event_type.indexOf('manual_') === 0) {
+                badgeHtml = AIPS.Templates.render('aips-tmpl-schedule-history-badge', { badgeClass: 'aips-badge-info', badgeText: 'Manual Run' });
+            } else if (entry.event_status === 'failed') {
+                badgeHtml = AIPS.Templates.render('aips-tmpl-schedule-history-badge', { badgeClass: 'aips-badge-danger', badgeText: 'Failed' });
+            }
+
+            var actionsHtml = '';
+            if (entry.view_url) {
+                actionsHtml += AIPS.Templates.render('aips-tmpl-schedule-history-action-view', { url: entry.view_url });
+            }
+            if (entry.edit_url) {
+                actionsHtml += AIPS.Templates.render('aips-tmpl-schedule-history-action-edit', { url: entry.edit_url });
+            }
+
+            var nameText = entry.name || entry.message || 'Schedule event';
+
+            var rowHtml = AIPS.Templates.renderRaw('aips-tmpl-schedule-history-row', {
+                iconClass: iconClass,
+                name: AIPS.Templates.escape(nameText),
+                badgeHtml: badgeHtml,
+                formattedDate: AIPS.Templates.escape(entry.formatted_date || entry.timestamp),
+                actionsHtml: actionsHtml
+            });
+
+            return $(rowHtml);
+        },
+
+        /**
+         * Render pagination controls using AIPS.Templates.
+         */
+        renderScheduleHistoryPagination: function($container, pag) {
+            $container.empty();
+
+            var current = pag.current_page || 1;
+            var total   = pag.total_pages || 1;
+            var totalEntries = pag.total_entries || 0;
+            var perPage = pag.per_page || 10;
+
+            var start = totalEntries > 0 ? ((current - 1) * perPage) + 1 : 0;
+            var end   = Math.min(current * perPage, totalEntries);
+
+            var html = AIPS.Templates.renderRaw('aips-tmpl-schedule-history-pagination', {
+                infoText: AIPS.Templates.escape('Showing ' + start + '-' + end + ' of ' + totalEntries + ' entries'),
+                prevPage: current - 1,
+                prevDisabled: current <= 1 ? 'disabled' : '',
+                pageText: AIPS.Templates.escape('Page ' + current + ' of ' + total),
+                nextPage: current + 1,
+                nextDisabled: current >= total ? 'disabled' : ''
+            });
+
+            $container.html(html);
+        },
+
+        /**
+         * Event handler for search input.
+         */
+        onScheduleHistorySearch: function(e) {
+            var val = $(e.target).val();
+            this._scheduleHistoryState.search = val;
+            this._scheduleHistoryState.page = 1;
+            this.fetchScheduleHistory();
+        },
+
+        /**
+         * Event handler for event filter dropdown.
+         */
+        onScheduleHistoryEventFilter: function(e) {
+            var val = $(e.target).val();
+            this._scheduleHistoryState.eventFilter = val;
+            this._scheduleHistoryState.page = 1;
+            this.fetchScheduleHistory();
+        },
+
+        /**
+         * Event handler for date range filter dropdown.
+         */
+        onScheduleHistoryDateRange: function(e) {
+            var val = $(e.target).val();
+            this._scheduleHistoryState.dateRange = val;
+            this._scheduleHistoryState.page = 1;
+
+            if (val === 'custom') {
+                $('#aips-history-custom-dates').show();
+            } else {
+                $('#aips-history-custom-dates').hide();
+                this._scheduleHistoryState.dateFrom = '';
+                this._scheduleHistoryState.dateTo = '';
+                this.fetchScheduleHistory();
+            }
+        },
+
+        /**
+         * Event handler for applying custom date range.
+         */
+        onScheduleHistoryApplyCustomDates: function() {
+            var from = $('#aips-history-date-from').val();
+            var to   = $('#aips-history-date-to').val();
+
+            this._scheduleHistoryState.dateFrom = from;
+            this._scheduleHistoryState.dateTo   = to;
+            this._scheduleHistoryState.page     = 1;
+            this.fetchScheduleHistory();
+        },
+
+        /**
+         * Event handler for pagination clicks.
+         */
+        onScheduleHistoryPaginationClick: function(e) {
+            e.preventDefault();
+            var page = parseInt($(e.currentTarget).data('page'), 10);
+            if (page && page > 0 && page !== this._scheduleHistoryState.page) {
+                this._scheduleHistoryState.page = page;
+                this.fetchScheduleHistory();
+            }
         },
 
         /**

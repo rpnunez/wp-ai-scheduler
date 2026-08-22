@@ -1115,18 +1115,41 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::permission_denied();
         }
 
-        $id    = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type  = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
-        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 0;
+        $id           = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $type         = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+        $page         = isset($_POST['page']) ? absint($_POST['page']) : 1;
+        $per_page     = isset($_POST['per_page']) ? absint($_POST['per_page']) : 10;
+        $search       = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+        $event_filter = isset($_POST['event_filter']) ? sanitize_key(wp_unslash($_POST['event_filter'])) : 'all';
+        $date_range   = isset($_POST['date_range']) ? sanitize_key(wp_unslash($_POST['date_range'])) : 'all';
+        $date_from    = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
+        $date_to      = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
 
         if (!$id || empty($type)) {
             AIPS_Ajax_Response::error(__('Invalid parameters.', 'ai-post-scheduler'));
         }
 
         $service = new AIPS_Unified_Schedule_Service();
-        $entries = $service->get_history($id, $type, $limit);
 
-        AIPS_Ajax_Response::success(array('entries' => $entries));
+        // If legacy caller only requested entries with limit, stay compatible
+        if (isset($_POST['limit']) && !isset($_POST['page']) && !isset($_POST['event_filter'])) {
+            $limit   = absint($_POST['limit']);
+            $entries = $service->get_history($id, $type, $limit);
+            AIPS_Ajax_Response::success(array('entries' => $entries));
+            return;
+        }
+
+        $data = $service->get_history_data($id, $type, array(
+            'page'         => $page,
+            'per_page'     => $per_page,
+            'search'       => $search,
+            'event_filter' => $event_filter,
+            'date_range'   => $date_range,
+            'date_from'    => $date_from,
+            'date_to'      => $date_to,
+        ));
+
+        AIPS_Ajax_Response::success($data);
     }
 
     /**
