@@ -55,12 +55,25 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertTrue($this->container->has(AIPS_Notifications_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Logger::class));
 		$this->assertTrue($this->container->has(AIPS_Logger_Interface::class));
+		$this->assertTrue($this->container->has(AIPS_AI_Connector_Registry::class));
+		$this->assertTrue($this->container->has(AIPS_AI_Connector_Health_Store::class));
+		$this->assertTrue($this->container->has(AIPS_AI_Failover_Policy::class));
+		$this->assertTrue($this->container->has(AIPS_AI_Connector_Router::class));
+		$this->assertTrue($this->container->has(AIPS_WP_AI_Error_Mapper::class));
+		$this->assertTrue($this->container->has(AIPS_WP_AI_Prompt_Adapter::class));
+		$this->assertTrue($this->container->has(AIPS_WP_AI_Client_Provider::class));
+		$this->assertTrue($this->container->has(AIPS_AI_Provider_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_AI_Service::class));
 		$this->assertTrue($this->container->has(AIPS_AI_Service_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository::class));
 		$this->assertTrue($this->container->has(AIPS_Schedule_Repository_Interface::class));
 		$this->assertTrue($this->container->has(AIPS_Telemetry_Repository::class));
-		$this->assertTrue($this->container->has(AIPS_Template_Repository::class));
+		$this->assertTrue($this->container->has(AIPS_Generated_Content_Repository::class));
+		$this->assertTrue($this->container->has(AIPS_Generated_Content_Repository_Interface::class));
+		$this->assertTrue($this->container->has(AIPS_Generation_Pipeline::class));
+		$this->assertTrue($this->container->has(AIPS_Post_Audit_Service::class));
+		$this->assertTrue($this->container->has(AIPS_System_Diagnostics_Service::class));
+		$this->assertTrue($this->container->has(AIPS_System_Status_Diagnostics_Service::class));
 	}
 
 	/**
@@ -98,12 +111,6 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$notif_b = $this->container->make(AIPS_Notifications_Repository::class);
 		$this->assertSame($notif_a, $notif_b);
 
-		// Test AIPS_Template_Repository
-		$template_a = $this->container->make(AIPS_Template_Repository::class);
-		$template_b = $this->container->make(AIPS_Template_Repository::class);
-		$this->assertSame($template_a, $template_b);
-		$this->assertSame(AIPS_Template_Repository::instance(), $template_a);
-
 		// Test AIPS_Telemetry_Repository
 		$telemetry_a = $this->container->make(AIPS_Telemetry_Repository::class);
 		$telemetry_b = $this->container->make(AIPS_Telemetry_Repository::class);
@@ -135,12 +142,25 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 		$this->assertEquals('singleton', $registered[AIPS_Notifications_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Logger::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Logger_Interface::class]);
+		$this->assertEquals('singleton', $registered[AIPS_AI_Connector_Registry::class]);
+		$this->assertEquals('singleton', $registered[AIPS_AI_Connector_Health_Store::class]);
+		$this->assertEquals('singleton', $registered[AIPS_AI_Failover_Policy::class]);
+		$this->assertEquals('singleton', $registered[AIPS_AI_Connector_Router::class]);
+		$this->assertEquals('singleton', $registered[AIPS_WP_AI_Error_Mapper::class]);
+		$this->assertEquals('singleton', $registered[AIPS_WP_AI_Prompt_Adapter::class]);
+		$this->assertEquals('singleton', $registered[AIPS_WP_AI_Client_Provider::class]);
+		$this->assertEquals('singleton', $registered[AIPS_AI_Provider_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_AI_Service::class]);
 		$this->assertEquals('singleton', $registered[AIPS_AI_Service_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Schedule_Repository_Interface::class]);
 		$this->assertEquals('singleton', $registered[AIPS_Telemetry_Repository::class]);
-		$this->assertEquals('singleton', $registered[AIPS_Template_Repository::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Generated_Content_Repository::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Generated_Content_Repository_Interface::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Generation_Pipeline::class]);
+		$this->assertEquals('singleton', $registered[AIPS_Post_Audit_Service::class]);
+		$this->assertEquals('singleton', $registered[AIPS_System_Diagnostics_Service::class]);
+		$this->assertEquals('singleton', $registered[AIPS_System_Status_Diagnostics_Service::class]);
 	}
 
 	/**
@@ -157,9 +177,8 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 
 		$counts = $this->container->get_binding_counts();
 
-		// Should have 15 singleton bindings and no transient bindings
 		$this->assertEquals(0, $counts['transient']);
-		$this->assertEquals(15, $counts['singleton']);
-		$this->assertEquals(15, $counts['total']);
+		$this->assertEquals(28, $counts['singleton']);
+		$this->assertEquals(28, $counts['total']);
 	}
 }

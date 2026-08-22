@@ -404,6 +404,52 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Logger::class);
         });
 
+        $container->singleton(AIPS_AI_Connector_Registry::class, function( $container ) {
+            return new AIPS_AI_Connector_Registry(
+                config: $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_AI_Connector_Health_Store::class, function( $container ) {
+            return new AIPS_AI_Connector_Health_Store(
+                registry: $container->make(AIPS_AI_Connector_Registry::class)
+            );
+        });
+
+        $container->singleton(AIPS_AI_Failover_Policy::class, function( $container ) {
+            return new AIPS_AI_Failover_Policy();
+        });
+
+        $container->singleton(AIPS_AI_Connector_Router::class, function( $container ) {
+            return new AIPS_AI_Connector_Router(
+                registry: $container->make(AIPS_AI_Connector_Registry::class),
+                health_store: $container->make(AIPS_AI_Connector_Health_Store::class),
+                config: $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_WP_AI_Error_Mapper::class, function( $container ) {
+            return new AIPS_WP_AI_Error_Mapper();
+        });
+
+        $container->singleton(AIPS_WP_AI_Prompt_Adapter::class, function( $container ) {
+            return new AIPS_WP_AI_Prompt_Adapter(
+                error_mapper: $container->make(AIPS_WP_AI_Error_Mapper::class)
+            );
+        });
+
+        $container->singleton(AIPS_WP_AI_Client_Provider::class, function( $container ) {
+            return new AIPS_WP_AI_Client_Provider(
+                registry: $container->make(AIPS_AI_Connector_Registry::class),
+                router: $container->make(AIPS_AI_Connector_Router::class),
+                health_store: $container->make(AIPS_AI_Connector_Health_Store::class),
+                failover_policy: $container->make(AIPS_AI_Failover_Policy::class),
+                prompt_adapter: $container->make(AIPS_WP_AI_Prompt_Adapter::class),
+                error_mapper: $container->make(AIPS_WP_AI_Error_Mapper::class),
+                config: $container->make(AIPS_Config::class)
+            );
+        });
+
         $container->singleton(AIPS_AI_Provider_Interface::class, function( $container ) {
             return AIPS_AI_Provider_Factory::create();
         });
