@@ -4,13 +4,18 @@ if (!defined('ABSPATH')) { exit; }
 /** Semantic retrieval and deterministic ranking for current post feedback. */
 class AIPS_Post_Feedback_Retrieval_Service {
 	private $repository;
-	private $embedding_repository;
 	private $embeddings;
 	private $logger;
 
+	/**
+	 * The $embedding_repository positional slot is retained for backward
+	 * compatibility with call sites/tests that pass it, but the service does
+	 * not use post embeddings — feedback rows carry their own inline embedding
+	 * on the aips_post_feedback table.
+	 */
 	public function __construct($repository = null, $embedding_repository = null, $embeddings = null, $logger = null) {
+		unset($embedding_repository);
 		$this->repository = $repository ?: new AIPS_Post_Feedback_Repository();
-		$this->embedding_repository = $embedding_repository ?: new AIPS_Post_Embeddings_Repository();
 		$this->embeddings = $embeddings ?: new AIPS_Embeddings_Service();
 		$this->logger = $logger ?: new AIPS_Logger();
 	}

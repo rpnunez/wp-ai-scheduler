@@ -55,7 +55,11 @@ class AIPS_Post_Feedback_Controller {
 		$this->authorize();
 		$post_ids = isset($_POST['post_ids']) && is_array($_POST['post_ids']) ? array_values(array_unique(array_map('absint', $_POST['post_ids']))) : array();
 		if (empty($post_ids) || count($post_ids) > self::MAX_BULK) {
-			AIPS_Ajax_Response::invalid_request(__('Select between 1 and 100 posts.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::invalid_request(sprintf(
+				/* translators: %d: maximum bulk feedback batch size */
+				__('Select between 1 and %d posts.', 'ai-post-scheduler'),
+				self::MAX_BULK
+			));
 		}
 		$reaction = sanitize_key(wp_unslash($_POST['reaction'] ?? ''));
 		$succeeded = array();

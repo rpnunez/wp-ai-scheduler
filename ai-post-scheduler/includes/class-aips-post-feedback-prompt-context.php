@@ -120,25 +120,49 @@ final class AIPS_Post_Feedback_Prompt_Context {
 			return self::empty($ranked['diagnostics'] ?? array());
 		}
 
-		$budget   = (int) $policy->get('prompt_budget_chars', 4000);
-		$rendered = array();
-		foreach ($sections as $component => $component_sections) {
-			$rendered[$component] = self::serialize($component_sections, $budget);
-		}
-
-		$metadata_sections = array();
-		$labels            = array(
+		// prompt_budget_chars is a run-wide ceiling on injected guidance. The
+		// four consumer components in AIPS_Generator are content, title,
+		// excerpt, and metadata_turn (the reassembled metadata prompt) — each
+		// is a separate model turn. Split the total budget across whichever of
+		// those actually have content so a configured 4000 stays around 4000
+		// per run instead of ballooning to ~4x when every component fires.
+		$budget = (int) $policy->get('prompt_budget_chars', 4000);
+		$metadata_labels = array(
 			'title'    => 'Title guidance',
 			'excerpt'  => 'Excerpt guidance',
 			'metadata' => 'SEO metadata guidance',
 		);
-		foreach ($labels as $component => $label) {
-			$body = self::serialize_sections($sections[$component]);
-			if ($body) {
-				$metadata_sections[] = $label . ":\n" . $body;
-			}
+
+		$has_content = array(
+			'content'       => !empty($sections['content']),
+			'title'         => !empty($sections['title']),
+			'excerpt'       => !empty($sections['excerpt']),
+			'metadata_turn' => (bool) array_filter($metadata_labels, static function($_label, $key) use ($sections) {
+				return !empty($sections[$key]);
+			}, ARRAY_FILTER_USE_BOTH),
+		);
+		$active = array_keys(array_filter($has_content));
+		$per_component_budget = empty($active) ? $budget : (int) floor($budget / count($active));
+
+		$rendered = array();
+		foreach (array('content', 'title', 'excerpt') as $component) {
+			$rendered[$component] = $has_content[$component]
+				? self::serialize($sections[$component], $per_component_budget)
+				: '';
 		}
-		$rendered['metadata_turn'] = self::serialize_combined($metadata_sections, $budget);
+
+		if ($has_content['metadata_turn']) {
+			$metadata_sections = array();
+			foreach ($metadata_labels as $component => $label) {
+				$body = self::serialize_sections($sections[$component]);
+				if ($body) {
+					$metadata_sections[] = $label . ":\n" . $body;
+				}
+			}
+			$rendered['metadata_turn'] = self::serialize_combined($metadata_sections, $per_component_budget);
+		} else {
+			$rendered['metadata_turn'] = '';
+		}
 
 		return new self($rendered, array_values(array_unique($ids)), $ranked['diagnostics'] ?? array());
 	}
