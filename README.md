@@ -63,12 +63,16 @@ ai-post-scheduler/
 ./start-dev.sh
 ```
 
-This provisions WordPress, database services, plugin activation, and debugging support.
+This provisions WordPress, database services, the official WordPress **AI plugin**, the **Google AI Connector**, API key credentials from `.env`, and AI Post Scheduler activation.
+
+On first run, `start-dev.sh` automatically creates a `.env` file from `.env.example`. You can edit `.env` to update your `GOOGLE_API_KEY` or select a different default connector.
 
 Local URLs:
 - WordPress: http://localhost:8080
 - Admin: http://localhost:8080/wp-admin (admin/admin)
 - phpMyAdmin: http://localhost:8082
+- AI Connectors: http://localhost:8080/wp-admin/options-general.php?page=connectors
+
 
 See [docs/SETUP.md](docs/SETUP.md) for full setup details.
 

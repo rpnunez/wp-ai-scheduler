@@ -111,6 +111,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_5_0();
 		}
 
+		if ( version_compare( $from_version, '3.4.2', '<' ) ) {
+			$this->migrate_to_3_4_2();
+		}
+
 		// Apply Layer-1 schema changes (new tables / new columns) so that plugin
 		// updates delivered via WordPress auto-update — which skip activate() —
 		// still get a complete, up-to-date schema.
@@ -994,15 +998,15 @@ class AIPS_DB_Migrations {
 	 * @return void
 	 */
 	private function migrate_to_3_5_0() {
-		global $wpdb;
+    global $wpdb;
 		$table = $wpdb->prefix . 'aips_history_log';
 
 		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
 		if ( $table_exists !== $table ) {
 			return;
 		}
-
-		// No-op unless both target columns exist (dbDelta must have run first).
+    
+    // No-op unless both target columns exist (dbDelta must have run first).
 		$has_type = $wpdb->get_var(
 			$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'event_type' ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
@@ -1066,6 +1070,43 @@ class AIPS_DB_Migrations {
 			"migrate_to_3_5_0: backfilled event_type/event_status on {$updated} history log rows",
 			'info'
 		);
+  
+  }
+  /*
+	 * Migration for version 3.4.2.
+	 *
+	 * Restores the composite index on aips_history_log. The schema previously
+	 * declared this index over a non-existent `log_type` column — a leftover
+	 * from migrate_to_3_1_0(), which dropped the `log_type` column (and, with
+	 * it, MySQL implicitly dropped this index). The stale definition made
+	 * dbDelta fail on fresh installs ("Key column 'log_type' doesn't exist"),
+	 * aborting creation of every table defined after aips_history_log. The
+	 * schema now correctly targets `history_type_id`; this migration adds the
+	 * corrected index to sites that upgraded through 3.1.0 and therefore lost it.
+	 *
+	 * Guarded by SHOW TABLES / SHOW INDEX so it is a no-op on fresh installs
+	 * (where dbDelta has already created the corrected index) and on any site
+	 * that already has it.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_4_2() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'history_id_log_type'
+		) );
+
+		if ( ! $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_id_log_type (history_id, history_type_id)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
 	}
 
 	/**
