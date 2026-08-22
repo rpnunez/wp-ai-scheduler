@@ -1438,3 +1438,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted post-execution cleanup, failure logging, success logging, and history container logic into a dedicated `AIPS_Schedule_Result_Handler` class.
 **Consequence:** `AIPS_Schedule_Processor` is now strictly focused on the execution logic. Reduced the class size significantly and decoupled the specific handling of success and error states.
 **Tests:** Created `test-schedule-result-handler.php` to verify result handling. Test execution skipped per user request.
+
+## 2026-08-21 - [Extract get_history query building logic]
+**Context:** The `AIPS_History_Repository::get_history` method was a "God Method" (229 lines) that mixed query parameter parsing, dynamic SQL SELECT building, dynamic CASE statement building, dynamic WHERE clause construction, and database execution. This violated the Single Responsibility Principle and made the method extremely difficult to read, test, or modify safely.
+**Decision:** Applied "Separation of Concerns". Extracted the query building logic into three cohesive private methods: `build_history_query_case_statements`, `build_history_query_select`, and `build_history_query_where`. The main `get_history` method now strictly orchestrates these builders and executes the final queries.
+**Consequence:**
+* `AIPS_History_Repository::get_history` is reduced to roughly a quarter of its size, delegating query construction to focused helper methods.
+* The individual query components (SELECT fields, WHERE clauses, CASE statements) are cleanly separated, improving maintainability.
+* Backward compatibility is 100% maintained; the exact same SQL logic and fallback parameters are preserved.
+**Tests:** Verified syntax via `php -l`. Executed the PHPUnit test suite to ensure no regressions were introduced to the repository functionality.
