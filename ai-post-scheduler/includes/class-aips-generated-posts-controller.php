@@ -103,6 +103,18 @@ class AIPS_Generated_Posts_Controller {
 		$time_format = get_option('time_format');
 		$datetime_format = $date_format . ' ' . $time_format;
 
+		$history_post_ids = array();
+		if (!empty($history['items'])) {
+			foreach ($history['items'] as $item) {
+				if ($item->post_id) {
+					$history_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+		if (!empty($history_post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($history_post_ids), false, true);
+		}
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -171,6 +183,18 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 		));
+
+		$partial_post_ids = array();
+		if (!empty($partial_generations['items'])) {
+			foreach ($partial_generations['items'] as $item) {
+				if ($item->post_id) {
+					$partial_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+		if (!empty($partial_post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($partial_post_ids), false, true);
+		}
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
