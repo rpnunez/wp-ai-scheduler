@@ -280,3 +280,13 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Stagger scheduled topics with frequency 'once' to improve queue management
 **Files Modified:** ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
 **Outcome:** Reduced concurrent background queue spike by staggering 'once' schedules
+## 2024-05-18 - [Post Generator] Optimization
+Target Feature: Post Generator
+Improvement: Added 1-click Publish button to the Template Run Now results modal, reducing steps to publish.
+Files Modified: ai-post-scheduler/templates/admin/templates.php, ai-post-scheduler/assets/js/admin.js
+Outcome: Users can now publish generated drafts immediately from the Run Now results modal without navigating to the edit screen.
+## 2024-05-18 - [Navigation] Optimization
+Target Feature: UI/UX Navigation
+Improvement: Elevated Templates, Authors, and Schedule pages to the main WordPress submenu, reducing buried tabs.
+Files Modified: ai-post-scheduler/includes/class-aips-admin-menu.php
+Outcome: Users can now access primary features directly from the sidebar without clicking through internal tabs.

@@ -64,7 +64,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Templates', 'ai-post-scheduler'),
             __('Templates', 'ai-post-scheduler'),
             'manage_options',
@@ -91,7 +91,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Authors', 'ai-post-scheduler'),
             __('Authors', 'ai-post-scheduler'),
             'manage_options',
@@ -128,7 +128,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
