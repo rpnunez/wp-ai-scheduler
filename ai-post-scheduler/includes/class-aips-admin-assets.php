@@ -178,7 +178,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_cache_monitor_assets();
 		}
 
-		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
+		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test') || $this->is_diagnostics_tab($page, 'stress-test-history')) {
 			$this->enqueue_stress_test_assets();
 		}
 
@@ -200,7 +200,7 @@ class AIPS_Admin_Assets {
 		wp_enqueue_script(
 			'aips-admin-stress-test',
 			AIPS_PLUGIN_URL . 'assets/js/admin-stress-test.js',
-			array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);

@@ -296,6 +296,10 @@ class AIPS_Ajax_Registry {
 		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_cleanup'             => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_status'              => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_save_run'            => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_get_history'         => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_get_run'             => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_diff_runs'           => 'AIPS_Stress_Test_Controller',
 
 		// Dashboard Controller
 		'aips_get_dashboard_data'              => 'AIPS_Dashboard_Controller',

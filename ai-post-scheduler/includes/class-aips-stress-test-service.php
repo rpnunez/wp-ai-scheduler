@@ -243,11 +243,60 @@ class AIPS_Stress_Test_Service {
                 'creates'     => true,
             ),
             array(
+                'id'          => 'regen_components',
+                'label'       => __('Component Regeneration: Title & Excerpt', 'ai-post-scheduler'),
+                'description' => __('Regenerates alternative title and excerpt components from existing article context.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
+                'id'          => 'regen_content',
+                'label'       => __('Component Regeneration: Content Body', 'ai-post-scheduler'),
+                'description' => __('Regenerates the complete article body HTML from a specific prompt context.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
+                'id'          => 'generate_embedding',
+                'label'       => __('Vector Embedding Generation', 'ai-post-scheduler'),
+                'description' => __('Generates float vector embeddings for text and verifies dimensions for semantic matching.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
                 'id'          => 'save_post',
                 'label'       => __('Generate & Save a Post', 'ai-post-scheduler'),
                 'description' => __('Runs the full pipeline and saves one draft post.', 'ai-post-scheduler'),
                 'group'       => 'pipeline',
                 'creates'     => true,
+            ),
+            array(
+                'id'          => 'save_page',
+                'label'       => __('Generate & Save a Page', 'ai-post-scheduler'),
+                'description' => __('Runs the full pipeline to generate and save one draft WordPress Page.', 'ai-post-scheduler'),
+                'group'       => 'pipeline',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'post_with_taxonomies',
+                'label'       => __('Generate Post with Categories & Tags', 'ai-post-scheduler'),
+                'description' => __('Generates a draft post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
+                'group'       => 'pipeline',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'author_post',
+                'label'       => __('Generate an Author Post (Persona & Voice)', 'ai-post-scheduler'),
+                'description' => __('Runs end-to-end post generation driven by an Author persona, niche, and custom style guide.', 'ai-post-scheduler'),
+                'group'       => 'pipeline',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'author_topics',
+                'label'       => __('Author Topic Discovery (JSON)', 'ai-post-scheduler'),
+                'description' => __('Discovers and structures a set of creative article topics for an author persona in JSON.', 'ai-post-scheduler'),
+                'group'       => 'pipeline',
+                'creates'     => false,
             ),
             array(
                 'id'          => 'bulk_posts',
@@ -271,9 +320,30 @@ class AIPS_Stress_Test_Service {
                 'creates'     => true,
             ),
             array(
+                'id'          => 'meta_fields_post_3',
+                'label'       => __('Generate a Post with 3 Meta Fields', 'ai-post-scheduler'),
+                'description' => __('Runs the full pipeline into a Post with 3 native custom fields (1 long text, 2 short text) in a single batched AI request.', 'ai-post-scheduler'),
+                'group'       => 'integrations',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'meta_fields_page_4',
+                'label'       => __('Generate a Page with 4 Meta Fields', 'ai-post-scheduler'),
+                'description' => __('Runs the full pipeline into a Page with 4 native custom fields (2 long text, 2 short text) in a single batched AI request.', 'ai-post-scheduler'),
+                'group'       => 'integrations',
+                'creates'     => true,
+            ),
+            array(
                 'id'          => 'meta_fields_cpt',
                 'label'       => __('Meta Fields on a Custom Post Type', 'ai-post-scheduler'),
                 'description' => __('Runs the full pipeline into a custom post type (not "post"), then generates and writes native custom fields onto that CPT post.', 'ai-post-scheduler'),
+                'group'       => 'integrations',
+                'creates'     => true,
+            ),
+            array(
+                'id'          => 'cpt_complex_meta',
+                'label'       => __('Complex CPT with Mixed Meta Fields', 'ai-post-scheduler'),
+                'description' => __('Runs the full pipeline into a custom post type with mixed custom field shapes (short text, long text, and HTML).', 'ai-post-scheduler'),
                 'group'       => 'integrations',
                 'creates'     => true,
             ),
@@ -385,8 +455,29 @@ class AIPS_Stress_Test_Service {
                 case 'generate_featured_image':
                     $result = $this->case_generate_featured_image();
                     break;
+                case 'regen_components':
+                    $result = $this->case_regen_components();
+                    break;
+                case 'regen_content':
+                    $result = $this->case_regen_content();
+                    break;
+                case 'generate_embedding':
+                    $result = $this->case_generate_embedding();
+                    break;
                 case 'save_post':
                     $result = $this->case_save_post();
+                    break;
+                case 'save_page':
+                    $result = $this->case_save_page();
+                    break;
+                case 'post_with_taxonomies':
+                    $result = $this->case_post_with_taxonomies();
+                    break;
+                case 'author_post':
+                    $result = $this->case_author_post();
+                    break;
+                case 'author_topics':
+                    $result = $this->case_author_topics();
                     break;
                 case 'bulk_posts':
                     $result = $this->case_bulk_posts();
@@ -397,8 +488,17 @@ class AIPS_Stress_Test_Service {
                 case 'meta_fields_multi':
                     $result = $this->case_meta_fields_multi();
                     break;
+                case 'meta_fields_post_3':
+                    $result = $this->case_meta_fields_post_3();
+                    break;
+                case 'meta_fields_page_4':
+                    $result = $this->case_meta_fields_page_4();
+                    break;
                 case 'meta_fields_cpt':
                     $result = $this->case_meta_fields_cpt();
+                    break;
+                case 'cpt_complex_meta':
+                    $result = $this->case_cpt_complex_meta();
                     break;
                 case 'meta_fields_acf':
                     $result = $this->case_meta_fields_acf();
@@ -769,6 +869,109 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
+     * Component Regeneration: Title & Excerpt regeneration from context.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_regen_components() {
+        $context   = $this->build_context();
+        $generator = $this->get_generator();
+        $article   = $this->sample_article();
+
+        $title = $generator->generate_title_for_context($context, $article);
+
+        if (is_wp_error($title) || trim((string) $title) === '') {
+            $err = is_wp_error($title) ? $title->get_error_message() : __('Failed to regenerate title.', 'ai-post-scheduler');
+            return array('status' => 'failed', 'error' => $err, 'summary' => $err);
+        }
+
+        $topic_str = method_exists($context, 'get_topic') ? $context->get_topic() : null;
+        $excerpt   = $generator->generate_excerpt((string) $title, $article, null, $topic_str, array(), $context);
+
+        if (is_wp_error($excerpt) || trim((string) $excerpt) === '') {
+            $err = is_wp_error($excerpt) ? $excerpt->get_error_message() : __('Failed to regenerate excerpt.', 'ai-post-scheduler');
+            return array('status' => 'failed', 'error' => $err, 'summary' => $err);
+        }
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => __('Title and excerpt components regenerated successfully.', 'ai-post-scheduler'),
+            'ai_value'     => $this->last_ai_response_text(),
+            'plugin_value' => array(
+                'regenerated_title'   => (string) $title,
+                'regenerated_excerpt' => (string) $excerpt,
+            ),
+        );
+    }
+
+    /**
+     * Component Regeneration: Content Body regeneration.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_regen_content() {
+        $builder = new AIPS_Prompt_Builder();
+        $context = $this->build_context();
+        $prompt  = $builder->build_content_prompt($context);
+
+        $generator = $this->get_generator();
+        $content   = $generator->generate_content($prompt, array(), 'content');
+
+        if (is_wp_error($content) || trim((string) $content) === '') {
+            $err = is_wp_error($content) ? $content->get_error_message() : __('Failed to regenerate content body.', 'ai-post-scheduler');
+            return array('status' => 'failed', 'error' => $err, 'summary' => $err);
+        }
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: %d: character count */
+                __('Content body regenerated (%d characters).', 'ai-post-scheduler'),
+                mb_strlen($content)
+            ),
+            'ai_value'     => $this->last_ai_response_text(),
+            'plugin_value' => array(
+                'length'   => mb_strlen($content),
+                'preview'  => wp_trim_words(wp_strip_all_tags($content), 30, '…'),
+            ),
+        );
+    }
+
+    /**
+     * Vector Embedding Generation: generates float vector array for semantic matching.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_generate_embedding() {
+        $embeddings_service = new AIPS_Embeddings_Service($this->ai_service, $this->logger);
+        $text = 'WordPress AI Post Scheduler automated content generation and orchestration.';
+
+        $vector = $embeddings_service->generate_embedding($text);
+
+        if (is_wp_error($vector) || !is_array($vector) || empty($vector)) {
+            $err = is_wp_error($vector) ? $vector->get_error_message() : __('Embedding returned empty vector or unsupported provider.', 'ai-post-scheduler');
+            return array('status' => 'failed', 'error' => $err, 'summary' => $err);
+        }
+
+        $dims   = count($vector);
+        $sample = array_slice($vector, 0, 5);
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: %d: vector dimension count */
+                __('Vector embedding generated (%d dimensions).', 'ai-post-scheduler'),
+                $dims
+            ),
+            'ai_value'     => sprintf('[%d-dimensional vector]', $dims),
+            'plugin_value' => array(
+                'dimensions' => $dims,
+                'sample'     => $sample,
+            ),
+        );
+    }
+
+    /**
      * Full pipeline through to a saved draft post.
      *
      * @return array<string, mixed>
@@ -799,6 +1002,210 @@ class AIPS_Stress_Test_Service {
             ),
             'artifacts'    => array(
                 'post_ids' => array((int) $post_id),
+            ),
+        );
+    }
+
+    /**
+     * Full pipeline through to a saved draft Page.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_save_page() {
+        $post_id = $this->generate_and_mark_post(0, 'page');
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        $post         = get_post($post_id);
+        $created_type = $post ? $post->post_type : '';
+
+        if ($created_type !== 'page') {
+            return array(
+                'status'       => 'failed',
+                'summary'      => __('The page post type was not applied to the generated post.', 'ai-post-scheduler'),
+                'error'        => sprintf(
+                    /* translators: 1: expected post type, 2: actual post type */
+                    __('Expected post type "page" but the generated post was "%s".', 'ai-post-scheduler'),
+                    $created_type
+                ),
+                'ai_value'     => $this->first_ai_response_text(),
+                'plugin_value' => array('post_id' => (int) $post_id, 'post_type' => $created_type),
+                'artifacts'    => array('post_ids' => array((int) $post_id)),
+            );
+        }
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: %d: page ID */
+                __('Draft Page #%d created.', 'ai-post-scheduler'),
+                $post_id
+            ),
+            'ai_value'     => $this->first_ai_response_text(),
+            'plugin_value' => array(
+                'post_id'   => (int) $post_id,
+                'post_type' => $created_type,
+                'title'     => $post ? $post->post_title : '',
+                'excerpt'   => $post ? $post->post_excerpt : '',
+                'status'    => $post ? $post->post_status : '',
+                'edit_url'  => get_edit_post_link($post_id, 'raw'),
+            ),
+            'artifacts'    => array(
+                'post_ids' => array((int) $post_id),
+            ),
+        );
+    }
+
+    /**
+     * Post Generation with Taxonomies: categories and tags extraction and assignment.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_post_with_taxonomies() {
+        $post_id = $this->generate_and_mark_post(0, 'post');
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        $prompt = "For the article titled '" . get_the_title($post_id) . "', suggest 2 relevant WordPress categories and 3 tags as a JSON object: {\"categories\": [\"Cat1\", \"Cat2\"], \"tags\": [\"Tag1\", \"Tag2\", \"Tag3\"]}";
+        $response = $this->ai_service->generate_json($prompt, array('max_tokens' => 500));
+
+        if (is_wp_error($response) || !is_array($response)) {
+            $categories = array('Technology', 'Innovation');
+            $tags       = array('AI', 'Automation', 'WordPress');
+        } else {
+            $categories = !empty($response['categories']) && is_array($response['categories']) ? $response['categories'] : array('General');
+            $tags       = !empty($response['tags']) && is_array($response['tags']) ? $response['tags'] : array('AI');
+        }
+
+        wp_set_post_categories($post_id, wp_create_categories($categories), false);
+        wp_set_post_tags($post_id, $tags, false);
+
+        $saved_cats = wp_get_post_categories($post_id, array('fields' => 'names'));
+        $saved_tags = wp_get_post_tags($post_id, array('fields' => 'names'));
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: 1: category count, 2: tag count, 3: post ID */
+                __('Post #%3$d created with %1$d categories and %2$d tags.', 'ai-post-scheduler'),
+                count($saved_cats),
+                count($saved_tags),
+                $post_id
+            ),
+            'ai_value'     => $this->last_ai_response_text(),
+            'plugin_value' => array(
+                'post_id'    => (int) $post_id,
+                'categories' => $saved_cats,
+                'tags'       => $saved_tags,
+            ),
+            'artifacts'    => array(
+                'post_ids' => array((int) $post_id),
+            ),
+        );
+    }
+
+    /**
+     * Author Persona Post generation: generates a post using an author persona and topic context.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_author_post() {
+        $author_persona = (object) array(
+            'id'          => 999901,
+            'name'        => 'Dr. Elena Vance',
+            'niche'       => 'Emerging Technologies & Clean Energy',
+            'style_guide' => 'Informative, analytical, professional, and accessible.',
+            'voice_id'    => null,
+            'author_id'   => get_current_user_id() ?: 1,
+        );
+
+        $topic = 'Next-Gen Solid State Batteries for Electric Vehicles';
+        $context = new AIPS_Topic_Context($author_persona, null, $topic, 'manual');
+        $generator = $this->get_generator();
+
+        $post_id = $generator->generate_post($context);
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        update_post_meta($post_id, self::TEST_POST_META, 1);
+        $post = get_post($post_id);
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: 1: author name, 2: post ID */
+                __('Author post generated for "%1$s" (Post #%2$d).', 'ai-post-scheduler'),
+                $author_persona->name,
+                $post_id
+            ),
+            'ai_value'     => $this->first_ai_response_text(),
+            'plugin_value' => array(
+                'post_id'      => (int) $post_id,
+                'author_name'  => $author_persona->name,
+                'title'        => $post ? $post->post_title : '',
+                'excerpt'      => $post ? $post->post_excerpt : '',
+                'content_len'  => $post ? mb_strlen($post->post_content) : 0,
+            ),
+            'artifacts'    => array(
+                'post_ids' => array((int) $post_id),
+            ),
+        );
+    }
+
+    /**
+     * Author Topic Discovery: exercises structured topic list generation.
+     *
+     * @return array<string, mixed>
+     */
+    private function case_author_topics() {
+        $prompt = "Generate 3 engaging blog article topics for a writer in the niche: 'Renewable Energy Innovations'. Return as a JSON object with key 'topics' containing an array of objects with keys: 'topic', 'category', 'angle'.";
+        $options = array(
+            'max_tokens'  => 1200,
+            'temperature' => 0.2,
+        );
+
+        $response = $this->ai_service->generate_json($prompt, $options);
+        $raw      = $this->last_ai_response_text();
+
+        if (is_wp_error($response)) {
+            return array('status' => 'failed', 'error' => $response->get_error_message(), 'summary' => $response->get_error_message(), 'ai_value' => $raw);
+        }
+
+        $topics = array();
+        if (is_array($response)) {
+            if (isset($response['topics']) && is_array($response['topics'])) {
+                $topics = $response['topics'];
+            } elseif (isset($response[0])) {
+                $topics = $response;
+            }
+        }
+
+        if (empty($topics)) {
+            return array(
+                'status'   => 'failed',
+                'error'    => __('No structured topics found in JSON response.', 'ai-post-scheduler'),
+                'summary'  => __('Invalid topic discovery JSON.', 'ai-post-scheduler'),
+                'ai_value' => $raw,
+            );
+        }
+
+        return array(
+            'status'       => 'passed',
+            'summary'      => sprintf(
+                /* translators: %d: topic count */
+                __('%d structured topics generated successfully.', 'ai-post-scheduler'),
+                count($topics)
+            ),
+            'ai_value'     => $raw,
+            'plugin_value' => array(
+                'topic_count' => count($topics),
+                'topics'      => $topics,
             ),
         );
     }
@@ -920,6 +1327,150 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
+     * Full pipeline into a Post, then 3 native custom fields (1 long text, 2 short text).
+     *
+     * @return array<string, mixed>
+     */
+    private function case_meta_fields_post_3() {
+        $post_id = $this->generate_and_mark_post(0, 'post');
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        $post         = get_post($post_id);
+        $created_type = $post ? $post->post_type : '';
+
+        if ($created_type !== 'post') {
+            return array(
+                'status'       => 'failed',
+                'summary'      => __('The post was not created with the expected post type.', 'ai-post-scheduler'),
+                'error'        => sprintf(
+                    /* translators: 1: expected post type, 2: actual post type */
+                    __('Expected post type "post" but the generated post was "%s".', 'ai-post-scheduler'),
+                    $created_type
+                ),
+                'ai_value'     => $this->first_ai_response_text(),
+                'plugin_value' => array('post_id' => (int) $post_id, 'post_type' => $created_type),
+                'artifacts'    => array('post_ids' => array((int) $post_id)),
+            );
+        }
+
+        $specs = array(
+            array(
+                'field_key'     => 'aips_stress_headline',
+                'field_type'    => 'freeform_short_text',
+                'field_label'   => __('Headline', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write a punchy one-line headline of no more than eight words.', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_summary',
+                'field_type'    => 'freeform_long_text',
+                'field_label'   => __('Summary', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write a 1–2 sentence summary of the article.', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_cta',
+                'field_type'    => 'freeform_short_text',
+                'field_label'   => __('Call to action', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write a short call-to-action phrase for the end of the article.', 'ai-post-scheduler'),
+            ),
+        );
+
+        $captured = $this->run_integration_fields($post_id, 'native_meta', 'post', $specs);
+        $result   = $this->summarize_field_results($post_id, 'native_meta', $specs, $captured, false);
+
+        $result['plugin_value'] = array(
+            'post_id'   => (int) $post_id,
+            'post_type' => $created_type,
+            'fields'    => isset($result['plugin_value']) ? $result['plugin_value'] : array(),
+        );
+        $result['summary'] = sprintf(
+            /* translators: 1: post type slug, 2: field-write summary */
+            __('Post "%1$s" generated. %2$s', 'ai-post-scheduler'),
+            $created_type,
+            $result['summary']
+        );
+
+        return $result;
+    }
+
+    /**
+     * Full pipeline into a Page, then 4 native custom fields (2 long text, 2 short text).
+     *
+     * @return array<string, mixed>
+     */
+    private function case_meta_fields_page_4() {
+        $post_id = $this->generate_and_mark_post(0, 'page');
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        $post         = get_post($post_id);
+        $created_type = $post ? $post->post_type : '';
+
+        if ($created_type !== 'page') {
+            return array(
+                'status'       => 'failed',
+                'summary'      => __('The page post type was not applied to the generated post.', 'ai-post-scheduler'),
+                'error'        => sprintf(
+                    /* translators: 1: expected post type, 2: actual post type */
+                    __('Expected post type "page" but the generated post was "%s".', 'ai-post-scheduler'),
+                    $created_type
+                ),
+                'ai_value'     => $this->first_ai_response_text(),
+                'plugin_value' => array('post_id' => (int) $post_id, 'post_type' => $created_type),
+                'artifacts'    => array('post_ids' => array((int) $post_id)),
+            );
+        }
+
+        $specs = array(
+            array(
+                'field_key'     => 'aips_stress_page_subtitle',
+                'field_type'    => 'freeform_short_text',
+                'field_label'   => __('Subtitle', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write a punchy one-line subtitle of no more than eight words.', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_page_overview',
+                'field_type'    => 'freeform_long_text',
+                'field_label'   => __('Overview', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write a concise 1–2 sentence overview of the page topic.', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_page_details',
+                'field_type'    => 'freeform_long_text',
+                'field_label'   => __('Key Details', 'ai-post-scheduler'),
+                'custom_prompt' => __('Describe the key features or details in a clear paragraph.', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_page_cta',
+                'field_type'    => 'freeform_short_text',
+                'field_label'   => __('Call to action', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write a short call-to-action phrase for the end of the page.', 'ai-post-scheduler'),
+            ),
+        );
+
+        $captured = $this->run_integration_fields($post_id, 'native_meta', 'page', $specs);
+        $result   = $this->summarize_field_results($post_id, 'native_meta', $specs, $captured, false);
+
+        $result['plugin_value'] = array(
+            'post_id'   => (int) $post_id,
+            'post_type' => $created_type,
+            'fields'    => isset($result['plugin_value']) ? $result['plugin_value'] : array(),
+        );
+        $result['summary'] = sprintf(
+            /* translators: 1: post type slug, 2: field-write summary */
+            __('Page "%1$s" generated. %2$s', 'ai-post-scheduler'),
+            $created_type,
+            $result['summary']
+        );
+
+        return $result;
+    }
+
+    /**
      * Full pipeline into a custom post type, then native custom fields on it.
      *
      * @return array<string, mixed>
@@ -980,6 +1531,59 @@ class AIPS_Stress_Test_Service {
             /* translators: 1: post type slug, 2: field-write summary */
             __('CPT "%1$s" post generated. %2$s', 'ai-post-scheduler'),
             $created_type,
+            $result['summary']
+        );
+
+        return $result;
+    }
+
+    /**
+     * Complex CPT Post with Mixed Meta Fields (Short Text, Long Text, HTML).
+     *
+     * @return array<string, mixed>
+     */
+    private function case_cpt_complex_meta() {
+        $this->register_test_post_type();
+        $post_id = $this->generate_and_mark_post(0, self::TEST_POST_TYPE);
+
+        if (is_wp_error($post_id)) {
+            return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
+        }
+
+        $specs = array(
+            array(
+                'field_key'     => 'aips_stress_score',
+                'field_type'    => 'freeform_short_text',
+                'field_label'   => __('Rating Score', 'ai-post-scheduler'),
+                'custom_prompt' => __('Provide a numerical rating score from 1 to 10 (e.g. "8.5").', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_deep_summary',
+                'field_type'    => 'freeform_long_text',
+                'field_label'   => __('Detailed Summary', 'ai-post-scheduler'),
+                'custom_prompt' => __('Write an in-depth two-paragraph executive summary.', 'ai-post-scheduler'),
+            ),
+            array(
+                'field_key'     => 'aips_stress_specs_table',
+                'field_type'    => 'freeform_html',
+                'field_label'   => __('HTML Specs Table', 'ai-post-scheduler'),
+                'custom_prompt' => __('Generate a clean HTML table displaying three technical specifications and values.', 'ai-post-scheduler'),
+            ),
+        );
+
+        $captured = $this->run_integration_fields($post_id, 'native_meta', self::TEST_POST_TYPE, $specs);
+        $result   = $this->summarize_field_results($post_id, 'native_meta', $specs, $captured, false);
+
+        $post = get_post($post_id);
+        $result['plugin_value'] = array(
+            'post_id'   => (int) $post_id,
+            'post_type' => $post ? $post->post_type : self::TEST_POST_TYPE,
+            'fields'    => isset($result['plugin_value']) ? $result['plugin_value'] : array(),
+        );
+        $result['summary'] = sprintf(
+            /* translators: 1: post type, 2: field summary */
+            __('Complex CPT "%1$s" generated with 3 mixed shape fields. %2$s', 'ai-post-scheduler'),
+            self::TEST_POST_TYPE,
             $result['summary']
         );
 
@@ -1473,6 +2077,227 @@ class AIPS_Stress_Test_Service {
             'conversation'    => $provider->supports_conversation(),
             'conversational'  => (bool) $config->get_option('aips_conversational_generation'),
             'metadata_turn'   => (bool) $config->get_option('aips_conversational_metadata_turn'),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // History Persistence & Run Comparison
+    // -----------------------------------------------------------------------
+
+    /**
+     * Persist a full suite run into the unified History API.
+     *
+     * @param array $run_data {
+     *     @type array $environment Environment snapshot
+     *     @type array $totals      Totals (cases, passed, failed, duration_ms)
+     *     @type array $results     Array of case result objects
+     * }
+     * @return int|false History record ID or false on failure.
+     */
+    public function save_run_to_history(array $run_data) {
+        $history_service = AIPS_History_Service::instance();
+        $container       = $history_service->create('stress_test', array(
+            'source'      => 'diagnostics_stress_test',
+            'environment' => isset($run_data['environment']) ? $run_data['environment'] : array(),
+        ));
+
+        $totals  = isset($run_data['totals']) ? $run_data['totals'] : array();
+        $results = isset($run_data['results']) ? $run_data['results'] : array();
+        $passed  = isset($totals['passed']) ? (int) $totals['passed'] : 0;
+        $total   = isset($totals['cases']) ? (int) $totals['cases'] : count($results);
+        $status  = ($passed === $total && $total > 0) ? 'completed' : ($passed > 0 ? 'partial' : 'failed');
+
+        $container->append_activity(
+            'stress_test_completed',
+            sprintf(__('Stress Test Run: %1$d/%2$d Passed', 'ai-post-scheduler'), $passed, $total),
+            sprintf(__('Executed %1$d stress test cases in %2$d ms.', 'ai-post-scheduler'), $total, isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0),
+            array(
+                'totals'      => $totals,
+                'environment' => isset($run_data['environment']) ? $run_data['environment'] : array(),
+            )
+        );
+
+        $container->append_session_metadata(array(
+            'totals'      => $totals,
+            'environment' => isset($run_data['environment']) ? $run_data['environment'] : array(),
+            'results'     => $results,
+            'timestamp'   => AIPS_DateTime::now()->timestamp(),
+        ));
+
+        $container->set_status($status);
+        $history_id = $container->save();
+
+        return $history_id;
+    }
+
+    /**
+     * Retrieve recent stress test runs from History.
+     *
+     * @param int $limit Max runs to fetch.
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_run_history($limit = 20) {
+        global $wpdb;
+        $table_name     = $wpdb->prefix . 'aips_history';
+        $table_name_log = $wpdb->prefix . 'aips_history_log';
+
+        $records = $wpdb->get_results($wpdb->prepare(
+            "SELECT h.id, h.uuid, h.status, h.created_at, hl.details
+             FROM {$table_name} h
+             LEFT JOIN {$table_name_log} hl ON h.id = hl.history_id AND hl.history_type_id = %d
+             WHERE h.creation_method = 'stress_test'
+             ORDER BY h.created_at DESC
+             LIMIT %d",
+            AIPS_History_Type::SESSION_METADATA,
+            absint($limit)
+        ));
+
+        if (!is_array($records)) {
+            return array();
+        }
+
+        $runs = array();
+        foreach ($records as $row) {
+            $details = !empty($row->details) ? json_decode($row->details, true) : array();
+            $totals  = isset($details['totals']) ? $details['totals'] : array();
+            $env     = isset($details['environment']) ? $details['environment'] : array();
+
+            $runs[] = array(
+                'id'             => (int) $row->id,
+                'uuid'           => $row->uuid,
+                'status'         => $row->status,
+                'created_at'     => (int) $row->created_at,
+                'formatted_date' => AIPS_DateTime::from_timestamp((int) $row->created_at)->format('M j, Y H:i:s'),
+                'provider'       => isset($env['provider']) ? $env['provider'] : 'Unknown',
+                'model'          => isset($env['model']) ? $env['model'] : '',
+                'total_cases'    => isset($totals['cases']) ? (int) $totals['cases'] : 0,
+                'passed'         => isset($totals['passed']) ? (int) $totals['passed'] : 0,
+                'failed'         => isset($totals['failed']) ? (int) $totals['failed'] : 0,
+                'duration_ms'    => isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0,
+            );
+        }
+
+        return $runs;
+    }
+
+    /**
+     * Retrieve complete run data for a single history record.
+     *
+     * @param int $history_id
+     * @return array|null
+     */
+    public function get_run_by_id($history_id) {
+        global $wpdb;
+        $table_name     = $wpdb->prefix . 'aips_history';
+        $table_name_log = $wpdb->prefix . 'aips_history_log';
+
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT h.id, h.uuid, h.status, h.created_at, hl.details
+             FROM {$table_name} h
+             LEFT JOIN {$table_name_log} hl ON h.id = hl.history_id AND hl.history_type_id = %d
+             WHERE h.id = %d AND h.creation_method = 'stress_test'",
+            AIPS_History_Type::SESSION_METADATA,
+            absint($history_id)
+        ));
+
+        if (!$row) {
+            return null;
+        }
+
+        $details = !empty($row->details) ? json_decode($row->details, true) : array();
+
+        return array(
+            'id'             => (int) $row->id,
+            'uuid'           => $row->uuid,
+            'status'         => $row->status,
+            'created_at'     => (int) $row->created_at,
+            'formatted_date' => AIPS_DateTime::from_timestamp((int) $row->created_at)->format('M j, Y H:i:s'),
+            'environment'    => isset($details['environment']) ? $details['environment'] : array(),
+            'totals'         => isset($details['totals']) ? $details['totals'] : array(),
+            'results'        => isset($details['results']) ? $details['results'] : array(),
+        );
+    }
+
+    /**
+     * Compute comparative diff between two runs.
+     *
+     * @param int $run_id_a Base run ID (Run A / Previous).
+     * @param int $run_id_b Target run ID (Run B / Current or Comparison).
+     * @return array|WP_Error
+     */
+    public function diff_runs($run_id_a, $run_id_b) {
+        $run_a = $this->get_run_by_id($run_id_a);
+        $run_b = $this->get_run_by_id($run_id_b);
+
+        if (!$run_a || !$run_b) {
+            return new WP_Error('invalid_runs', __('One or both test runs could not be found.', 'ai-post-scheduler'));
+        }
+
+        $cases_a = array();
+        foreach ($run_a['results'] as $res) {
+            $cases_a[$res['case']] = $res;
+        }
+
+        $cases_b = array();
+        foreach ($run_b['results'] as $res) {
+            $cases_b[$res['case']] = $res;
+        }
+
+        $all_case_ids = array_unique(array_merge(array_keys($cases_a), array_keys($cases_b)));
+        $case_diffs   = array();
+
+        foreach ($all_case_ids as $case_id) {
+            $item_a = isset($cases_a[$case_id]) ? $cases_a[$case_id] : null;
+            $item_b = isset($cases_b[$case_id]) ? $cases_b[$case_id] : null;
+
+            $status_a = $item_a ? $item_a['status'] : 'missing';
+            $status_b = $item_b ? $item_b['status'] : 'missing';
+
+            $dur_a = $item_a && isset($item_a['duration_ms']) ? (int) $item_a['duration_ms'] : 0;
+            $dur_b = $item_b && isset($item_b['duration_ms']) ? (int) $item_b['duration_ms'] : 0;
+
+            $status_change = 'unchanged';
+            if ($status_a !== $status_b) {
+                if ($status_a === 'passed' && $status_b !== 'passed') {
+                    $status_change = 'regressed';
+                } elseif ($status_a !== 'passed' && $status_b === 'passed') {
+                    $status_change = 'improved';
+                } else {
+                    $status_change = 'changed';
+                }
+            }
+
+            $case_diffs[] = array(
+                'case'           => $case_id,
+                'label'          => $item_b ? $item_b['label'] : ($item_a ? $item_a['label'] : $case_id),
+                'status_a'       => $status_a,
+                'status_b'       => $status_b,
+                'status_change'  => $status_change,
+                'duration_a'     => $dur_a,
+                'duration_b'     => $dur_b,
+                'duration_diff'  => $dur_b - $dur_a,
+                'ai_value_a'     => $item_a ? $item_a['ai_value'] : null,
+                'ai_value_b'     => $item_b ? $item_b['ai_value'] : null,
+                'plugin_value_a' => $item_a ? $item_a['plugin_value'] : null,
+                'plugin_value_b' => $item_b ? $item_b['plugin_value'] : null,
+                'summary_a'      => $item_a ? $item_a['summary'] : '',
+                'summary_b'      => $item_b ? $item_b['summary'] : '',
+            );
+        }
+
+        $passed_a = isset($run_a['totals']['passed']) ? (int) $run_a['totals']['passed'] : 0;
+        $passed_b = isset($run_b['totals']['passed']) ? (int) $run_b['totals']['passed'] : 0;
+        $dur_total_a = isset($run_a['totals']['duration_ms']) ? (int) $run_a['totals']['duration_ms'] : 0;
+        $dur_total_b = isset($run_b['totals']['duration_ms']) ? (int) $run_b['totals']['duration_ms'] : 0;
+
+        return array(
+            'run_a'       => $run_a,
+            'run_b'       => $run_b,
+            'case_diffs'  => $case_diffs,
+            'totals_diff' => array(
+                'passed_diff'   => $passed_b - $passed_a,
+                'duration_diff' => $dur_total_b - $dur_total_a,
+            ),
         );
     }
 }

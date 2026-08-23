@@ -59,7 +59,17 @@ foreach ($cases as $case) {
 
 			<div class="aips-panel-header">
 				<h2><?php esc_html_e('Stress Test', 'ai-post-scheduler'); ?></h2>
-				<div class="aips-btn-group">
+				<div class="aips-btn-group" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+					<div class="aips-stress-history-picker" style="display:inline-flex;align-items:center;gap:6px;margin-right:4px;">
+						<label for="aips-stress-history-select" class="screen-reader-text"><?php esc_html_e('Prior Runs', 'ai-post-scheduler'); ?></label>
+						<select id="aips-stress-history-select" class="aips-select aips-select-sm" style="max-width:210px;height:32px;font-size:12px;">
+							<option value=""><?php esc_html_e('— History / Prior Runs —', 'ai-post-scheduler'); ?></option>
+						</select>
+						<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" id="aips-stress-compare-btn" title="<?php esc_attr_e('Compare selected run against current results', 'ai-post-scheduler'); ?>" disabled>
+							<span class="dashicons dashicons-forms"></span>
+							<?php esc_html_e('Compare', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-stress-run-all">
 						<span class="dashicons dashicons-controls-play"></span>
 						<?php esc_html_e('Run All', 'ai-post-scheduler'); ?>
@@ -197,6 +207,129 @@ foreach ($cases as $case) {
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+
+			<!-- Side-by-Side Diff Modal -->
+			<div class="aips-modal" id="aips-stress-diff-modal" hidden>
+				<div class="aips-modal-backdrop"></div>
+				<div class="aips-modal-dialog aips-modal-lg" style="max-width:980px;width:95vw;max-height:90vh;display:flex;flex-direction:column;">
+					<div class="aips-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+						<h3 class="aips-modal-title" style="margin:0;display:flex;align-items:center;gap:6px;">
+							<span class="dashicons dashicons-forms"></span>
+							<?php esc_html_e('Stress Test Comparison & Diff', 'ai-post-scheduler'); ?>
+						</h3>
+						<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>" style="background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+					</div>
+					<div class="aips-modal-body" id="aips-stress-diff-body" style="overflow-y:auto;flex:1;padding:16px;">
+						<div class="aips-spinner"></div>
+					</div>
+					<div class="aips-modal-footer" style="padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;">
+						<button type="button" class="aips-btn aips-btn-secondary aips-modal-close-btn"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Client-Side Templates for AIPS.Templates Engine -->
+			<script type="text/html" id="aips-tmpl-stress-summary-item">
+				<li data-status="{{status}}">
+					<span class="aips-stress-summary-dot"></span>
+					<span class="aips-stress-summary-label">{{label}}</span>
+					<span class="aips-stress-summary-detail">{{detail}}</span>
+					<span class="aips-stress-summary-time">{{time}}</span>
+				</li>
+			</script>
+
+			<script type="text/html" id="aips-tmpl-stress-spinner">
+				<div class="aips-spinner" style="text-align:center;padding:32px;">
+					<span class="dashicons dashicons-update" style="animation:spin 1s infinite linear;font-size:28px;"></span>
+				</div>
+			</script>
+
+			<script type="text/html" id="aips-tmpl-stress-notice">
+				<div class="aips-stress-notice aips-stress-notice-{{type}}">
+					<p>{{message}}</p>
+				</div>
+			</script>
+
+			<script type="text/html" id="aips-tmpl-stress-diff-modal">
+				<div class="aips-stress-diff-meta-grid">
+					<div class="aips-stress-diff-card">
+						<h4>Base Run (#{{runAId}}) <span class="aips-badge {{runABadgeClass}}">{{runAStatus}}</span></h4>
+						<div class="aips-stress-diff-meta-list">
+							<div><strong>Date:</strong> {{runADate}}</div>
+							<div><strong>Provider:</strong> {{runAProvider}} ({{runAModel}})</div>
+							<div><strong>Passed:</strong> {{runAPassed}} / {{runATotal}} cases</div>
+							<div><strong>Total Duration:</strong> {{runADuration}}</div>
+						</div>
+					</div>
+					<div class="aips-stress-diff-card">
+						<h4>Target / Comparison Run (#{{runBId}}) <span class="aips-badge {{runBBadgeClass}}">{{runBStatus}}</span></h4>
+						<div class="aips-stress-diff-meta-list">
+							<div><strong>Date:</strong> {{runBDate}}</div>
+							<div><strong>Provider:</strong> {{runBProvider}} ({{runBModel}})</div>
+							<div><strong>Passed:</strong> {{runBPassed}} / {{runBTotal}} cases</div>
+							<div><strong>Total Duration:</strong> {{runBDuration}} {{durBadgeHtml}}</div>
+						</div>
+					</div>
+				</div>
+				<table class="aips-stress-diff-table">
+					<thead>
+						<tr>
+							<th>Test Case</th>
+							<th>Base Run Status</th>
+							<th>Target Run Status</th>
+							<th>Duration Diff</th>
+							<th>Outcome Delta</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{rowsHtml}}
+					</tbody>
+				</table>
+			</script>
+
+			<script type="text/html" id="aips-tmpl-stress-diff-row">
+				<tr class="{{changeClass}}">
+					<td><strong>{{label}}</strong><div style="font-size:11px;color:#64748b;">{{summary}}</div></td>
+					<td><span class="aips-badge {{statusABadgeClass}}">{{statusA}}</span> ({{durationA}} ms)</td>
+					<td><span class="aips-badge {{statusBBadgeClass}}">{{statusB}}</span> ({{durationB}} ms)</td>
+					<td>{{deltaBadgeHtml}}</td>
+					<td>{{changeBadgeHtml}}</td>
+				</tr>
+			</script>
+
+			<script type="text/html" id="aips-tmpl-stress-single-run">
+				<div class="aips-stress-diff-card" style="margin-bottom:16px;">
+					<h4>Stress Test Run #{{id}} <span class="aips-badge {{badgeClass}}">{{status}}</span></h4>
+					<div class="aips-stress-diff-meta-list">
+						<div><strong>Timestamp:</strong> {{date}}</div>
+						<div><strong>Provider:</strong> {{provider}} | <strong>Model:</strong> {{model}}</div>
+						<div><strong>Results:</strong> {{passed}} passed, {{failed}} failed across {{total}} cases</div>
+						<div><strong>Total Execution Time:</strong> {{duration}}</div>
+					</div>
+				</div>
+				<table class="aips-table" style="width:100%;">
+					<thead>
+						<tr>
+							<th>Case</th>
+							<th>Status</th>
+							<th>Duration</th>
+							<th>Summary</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{rowsHtml}}
+					</tbody>
+				</table>
+			</script>
+
+			<script type="text/html" id="aips-tmpl-stress-single-run-row">
+				<tr>
+					<td><strong>{{label}}</strong></td>
+					<td><span class="aips-badge {{badgeClass}}">{{status}}</span></td>
+					<td>{{duration}} ms</td>
+					<td>{{summary}}</td>
+				</tr>
+			</script>
 
 		</div>
 
