@@ -6,6 +6,8 @@ tools: [read]
 
 > **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds feature-slicing-specific guidance only.
 
+> Note: The project uses a provider abstraction for AI backends. When slicing features that touch AI behavior, prefer provider-agnostic slices and document any adapter-specific assumptions in AGENTS.md.
+
 ## Workflow
 
 ### 1. Define outcomes first

@@ -4,6 +4,8 @@ applyTo: "includes/*.php,ai-post-scheduler/includes/*.php"
 
 Use this file for PHP changes in `includes/*.php`.
 
+Note: This repository uses a provider abstraction for AI backends. Prefer provider-agnostic wording in instructions and link to [AGENTS.md](../../AGENTS.md) for the canonical provider and adapter details.
+
 - This is a WordPress plugin. Always follow WordPress best practices and recommended patterns.
 - Use native WordPress functionality for extensibility and security: Actions, Filters, capabilities checks, nonces, and core sanitization/escaping helpers.
 

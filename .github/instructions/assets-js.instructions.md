@@ -4,6 +4,8 @@ applyTo: "assets/js/*.js,ai-post-scheduler/assets/js/*.js"
 
 Use this file for JavaScript changes in `assets/js/*.js`.
 
+Note: This repository uses a provider abstraction for AI backends. Prefer provider-agnostic wording and avoid hard-coding provider-specific assumptions in JS; reference [AGENTS.md](../../AGENTS.md) for canonical provider details.
+
 Follow the `admin.js` module pattern for all plugin JavaScript files at a high level.
 
 - Wrap files in an IIFE that receives jQuery: `(function($) { ... })(jQuery);`.

@@ -6,6 +6,8 @@ tools: [read]
 
 > **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds generation-pipeline-specific review criteria only.
 
+> Note: The project uses a provider abstraction for AI backends. Generation-pipeline reviews should validate provider-agnostic prompt assembly and ensure adapters (Meow, WP AI Client) are treated as interchangeable transports where possible.
+
 ## Review Checklist
 
 For every generation pipeline change, verify the following before approving.

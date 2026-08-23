@@ -6,6 +6,8 @@ tools: [read]
 
 > **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds AJAX-controller-specific review criteria only.
 
+> Note: The project uses a provider abstraction for AI backends. AJAX controller reviews should avoid assuming a specific AI provider (Meow) and prefer provider-agnostic checks; consult `AGENTS.md` for adapter details.
+
 ## Review Checklist
 
 For every AJAX controller change, verify the following before approving.

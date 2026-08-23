@@ -6,6 +6,8 @@ tools: [read]
 
 > **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) first. This file adds DB-migration-specific review criteria only.
 
+> Note: The project uses a provider abstraction for AI backends. DB migration reviewers should consider whether new schemas interact with AI provider metadata or connector-specific tables and prefer adapter-agnostic schemas where possible.
+
 ## Review Checklist
 
 For every schema or migration change, verify the following before approving.
