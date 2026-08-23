@@ -1150,12 +1150,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        $insert_id = $result ? (int) $this->wpdb->insert_id : false;
         
         if ($result) {
             $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $insert_id;
     }
     
     /**

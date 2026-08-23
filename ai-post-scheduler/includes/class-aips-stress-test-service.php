@@ -256,97 +256,106 @@ class AIPS_Stress_Test_Service {
                 'group'       => 'components',
                 'creates'     => false,
             ),
-            array(
+        );
+
+        if (method_exists($this->ai_service, 'supports_embeddings') && $this->ai_service->supports_embeddings()) {
+            $cases[] = array(
                 'id'          => 'generate_embedding',
                 'label'       => __('Vector Embedding Generation', 'ai-post-scheduler'),
                 'description' => __('Generates float vector embeddings for text and verifies dimensions for semantic matching.', 'ai-post-scheduler'),
                 'group'       => 'components',
                 'creates'     => false,
-            ),
+            );
+        }
+
+        $cases = array_merge(
+            $cases,
             array(
-                'id'          => 'save_post',
-                'label'       => __('Generate & Save a Post', 'ai-post-scheduler'),
-                'description' => __('Runs the full pipeline and saves one draft post.', 'ai-post-scheduler'),
-                'group'       => 'pipeline',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'save_page',
-                'label'       => __('Generate & Save a Page', 'ai-post-scheduler'),
-                'description' => __('Runs the full pipeline to generate and save one draft WordPress Page.', 'ai-post-scheduler'),
-                'group'       => 'pipeline',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'post_with_taxonomies',
-                'label'       => __('Generate Post with Categories & Tags', 'ai-post-scheduler'),
-                'description' => __('Generates a draft post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
-                'group'       => 'pipeline',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'author_post',
-                'label'       => __('Generate an Author Post (Persona & Voice)', 'ai-post-scheduler'),
-                'description' => __('Runs end-to-end post generation driven by an Author persona, niche, and custom style guide.', 'ai-post-scheduler'),
-                'group'       => 'pipeline',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'author_topics',
-                'label'       => __('Author Topic Discovery (JSON)', 'ai-post-scheduler'),
-                'description' => __('Discovers and structures a set of creative article topics for an author persona in JSON.', 'ai-post-scheduler'),
-                'group'       => 'pipeline',
-                'creates'     => false,
-            ),
-            array(
-                'id'          => 'bulk_posts',
-                'label'       => sprintf(__('Generate & Save %d Posts', 'ai-post-scheduler'), self::BULK_POST_COUNT),
-                'description' => __('Repeats the full pipeline to surface rate limits and circuit-breaker trips.', 'ai-post-scheduler'),
-                'group'       => 'pipeline',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'meta_fields_single',
-                'label'       => __('Meta Field: Single Field', 'ai-post-scheduler'),
-                'description' => __('Generates one native WordPress custom-field value through the Integration engine and writes it to a draft post, then reads it back.', 'ai-post-scheduler'),
-                'group'       => 'integrations',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'meta_fields_multi',
-                'label'       => __('Meta Fields: Batched Multi-Field', 'ai-post-scheduler'),
-                'description' => __('Generates three native custom-field values in a single batched request (the N-fields-to-one-call path) and verifies every field was written.', 'ai-post-scheduler'),
-                'group'       => 'integrations',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'meta_fields_post_3',
-                'label'       => __('Generate a Post with 3 Meta Fields', 'ai-post-scheduler'),
-                'description' => __('Runs the full pipeline into a Post with 3 native custom fields (1 long text, 2 short text) in a single batched AI request.', 'ai-post-scheduler'),
-                'group'       => 'integrations',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'meta_fields_page_4',
-                'label'       => __('Generate a Page with 4 Meta Fields', 'ai-post-scheduler'),
-                'description' => __('Runs the full pipeline into a Page with 4 native custom fields (2 long text, 2 short text) in a single batched AI request.', 'ai-post-scheduler'),
-                'group'       => 'integrations',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'meta_fields_cpt',
-                'label'       => __('Meta Fields on a Custom Post Type', 'ai-post-scheduler'),
-                'description' => __('Runs the full pipeline into a custom post type (not "post"), then generates and writes native custom fields onto that CPT post.', 'ai-post-scheduler'),
-                'group'       => 'integrations',
-                'creates'     => true,
-            ),
-            array(
-                'id'          => 'cpt_complex_meta',
-                'label'       => __('Complex CPT with Mixed Meta Fields', 'ai-post-scheduler'),
-                'description' => __('Runs the full pipeline into a custom post type with mixed custom field shapes (short text, long text, and HTML).', 'ai-post-scheduler'),
-                'group'       => 'integrations',
-                'creates'     => true,
-            ),
+                array(
+                    'id'          => 'save_post',
+                    'label'       => __('Generate & Save a Post', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline and saves one draft post.', 'ai-post-scheduler'),
+                    'group'       => 'pipeline',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'save_page',
+                    'label'       => __('Generate & Save a Page', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline to generate and save one draft WordPress Page.', 'ai-post-scheduler'),
+                    'group'       => 'pipeline',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'post_with_taxonomies',
+                    'label'       => __('Generate Post with Categories & Tags', 'ai-post-scheduler'),
+                    'description' => __('Generates a draft post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
+                    'group'       => 'pipeline',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'author_post',
+                    'label'       => __('Generate an Author Post (Persona & Voice)', 'ai-post-scheduler'),
+                    'description' => __('Runs end-to-end post generation driven by an Author persona, niche, and custom style guide.', 'ai-post-scheduler'),
+                    'group'       => 'pipeline',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'author_topics',
+                    'label'       => __('Author Topic Discovery (JSON)', 'ai-post-scheduler'),
+                    'description' => __('Discovers and structures a set of creative article topics for an author persona in JSON.', 'ai-post-scheduler'),
+                    'group'       => 'pipeline',
+                    'creates'     => false,
+                ),
+                array(
+                    'id'          => 'bulk_posts',
+                    'label'       => sprintf(__('Generate & Save %d Posts', 'ai-post-scheduler'), self::BULK_POST_COUNT),
+                    'description' => __('Repeats the full pipeline to surface rate limits and circuit-breaker trips.', 'ai-post-scheduler'),
+                    'group'       => 'pipeline',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'meta_fields_single',
+                    'label'       => __('Meta Field: Single Field', 'ai-post-scheduler'),
+                    'description' => __('Generates one native WordPress custom-field value through the Integration engine and writes it to a draft post, then reads it back.', 'ai-post-scheduler'),
+                    'group'       => 'integrations',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'meta_fields_multi',
+                    'label'       => __('Meta Fields: Batched Multi-Field', 'ai-post-scheduler'),
+                    'description' => __('Generates three native custom-field values in a single batched request (the N-fields-to-one-call path) and verifies every field was written.', 'ai-post-scheduler'),
+                    'group'       => 'integrations',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'meta_fields_post_3',
+                    'label'       => __('Generate a Post with 3 Meta Fields', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline into a Post with 3 native custom fields (1 long text, 2 short text) in a single batched AI request.', 'ai-post-scheduler'),
+                    'group'       => 'integrations',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'meta_fields_page_4',
+                    'label'       => __('Generate a Page with 4 Meta Fields', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline into a Page with 4 native custom fields (2 long text, 2 short text) in a single batched AI request.', 'ai-post-scheduler'),
+                    'group'       => 'integrations',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'meta_fields_cpt',
+                    'label'       => __('Meta Fields on a Custom Post Type', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline into a custom post type (not "post"), then generates and writes native custom fields onto that CPT post.', 'ai-post-scheduler'),
+                    'group'       => 'integrations',
+                    'creates'     => true,
+                ),
+                array(
+                    'id'          => 'cpt_complex_meta',
+                    'label'       => __('Complex CPT with Mixed Meta Fields', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline into a custom post type with mixed custom field shapes (short text, long text, and HTML).', 'ai-post-scheduler'),
+                    'group'       => 'integrations',
+                    'creates'     => true,
+                ),
+            )
         );
 
         if ($this->acf_available()) {
@@ -1081,7 +1090,26 @@ class AIPS_Stress_Test_Service {
             $tags       = !empty($response['tags']) && is_array($response['tags']) ? $response['tags'] : array('AI');
         }
 
-        wp_set_post_categories($post_id, wp_create_categories($categories), false);
+        $cat_ids = array();
+        foreach ($categories as $cat_name) {
+            $cat_id = 0;
+            $term = term_exists($cat_name, 'category');
+            if ($term) {
+                $cat_id = is_array($term) ? $term['term_id'] : $term;
+            } else {
+                $created_term = wp_insert_term($cat_name, 'category');
+                if (!is_wp_error($created_term) && isset($created_term['term_id'])) {
+                    $cat_id = $created_term['term_id'];
+                }
+            }
+            if ($cat_id) {
+                $cat_ids[] = (int) $cat_id;
+            }
+        }
+
+        if (!empty($cat_ids)) {
+            wp_set_post_categories($post_id, $cat_ids, false);
+        }
         wp_set_post_tags($post_id, $tags, false);
 
         $saved_cats = wp_get_post_categories($post_id, array('fields' => 'names'));
@@ -1115,16 +1143,22 @@ class AIPS_Stress_Test_Service {
      */
     private function case_author_post() {
         $author_persona = (object) array(
-            'id'          => 999901,
-            'name'        => 'Dr. Elena Vance',
-            'niche'       => 'Emerging Technologies & Clean Energy',
-            'style_guide' => 'Informative, analytical, professional, and accessible.',
-            'voice_id'    => null,
-            'author_id'   => get_current_user_id() ?: 1,
+            'id'            => 999901,
+            'name'          => 'Dr. Elena Vance',
+            'field_niche'   => 'Emerging Technologies & Clean Energy',
+            'writing_style' => 'Informative, analytical, professional, and accessible.',
+            'voice_tone'    => 'Authoritative yet engaging',
+            'voice_id'      => null,
+            'author_id'     => get_current_user_id() ?: 1,
         );
 
-        $topic = 'Next-Gen Solid State Batteries for Electric Vehicles';
-        $context = new AIPS_Topic_Context($author_persona, null, $topic, 'manual');
+        $topic_obj = (object) array(
+            'id'          => 999901,
+            'topic_title' => 'Next-Gen Solid State Batteries for Electric Vehicles',
+            'status'      => 'approved',
+        );
+
+        $context   = new AIPS_Topic_Context($author_persona, $topic_obj, '', 'manual');
         $generator = $this->get_generator();
 
         $post_id = $generator->generate_post($context);
@@ -2107,27 +2141,29 @@ class AIPS_Stress_Test_Service {
         $total   = isset($totals['cases']) ? (int) $totals['cases'] : count($results);
         $status  = ($passed === $total && $total > 0) ? 'completed' : ($passed > 0 ? 'partial' : 'failed');
 
-        $container->append_activity(
-            'stress_test_completed',
+        $container->record(
+            'activity',
             sprintf(__('Stress Test Run: %1$d/%2$d Passed', 'ai-post-scheduler'), $passed, $total),
-            sprintf(__('Executed %1$d stress test cases in %2$d ms.', 'ai-post-scheduler'), $total, isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0),
+            null,
+            null,
             array(
                 'totals'      => $totals,
                 'environment' => isset($run_data['environment']) ? $run_data['environment'] : array(),
             )
         );
 
-        $container->append_session_metadata(array(
+        $details_payload = array(
             'totals'      => $totals,
             'environment' => isset($run_data['environment']) ? $run_data['environment'] : array(),
             'results'     => $results,
             'timestamp'   => AIPS_DateTime::now()->timestamp(),
-        ));
+        );
 
-        $container->set_status($status);
-        $history_id = $container->save();
+        $container->record('session_metadata', 'Stress Test Suite Execution Results', null, $details_payload, $details_payload);
 
-        return $history_id;
+        $container->complete_success(array('status' => $status));
+
+        return $container->get_id();
     }
 
     /**
@@ -2159,15 +2195,28 @@ class AIPS_Stress_Test_Service {
         $runs = array();
         foreach ($records as $row) {
             $details = !empty($row->details) ? json_decode($row->details, true) : array();
-            $totals  = isset($details['totals']) ? $details['totals'] : array();
-            $env     = isset($details['environment']) ? $details['environment'] : array();
+            $payload = isset($details['output']) && is_array($details['output'])
+                ? $details['output']
+                : (isset($details['context']) && is_array($details['context']) ? $details['context'] : $details);
+            $totals  = isset($payload['totals']) ? $payload['totals'] : array();
+            $env     = isset($payload['environment']) ? $payload['environment'] : array();
+
+            $formatted_date = '';
+            if (!empty($row->created_at)) {
+                if (is_numeric($row->created_at)) {
+                    $formatted_date = AIPS_DateTime::fromTimestamp((int) $row->created_at)->format('M j, Y H:i:s');
+                } else {
+                    $dt = AIPS_DateTime::fromMysqlOrNull((string) $row->created_at);
+                    $formatted_date = $dt ? $dt->format('M j, Y H:i:s') : (string) $row->created_at;
+                }
+            }
 
             $runs[] = array(
                 'id'             => (int) $row->id,
                 'uuid'           => $row->uuid,
                 'status'         => $row->status,
-                'created_at'     => (int) $row->created_at,
-                'formatted_date' => AIPS_DateTime::from_timestamp((int) $row->created_at)->format('M j, Y H:i:s'),
+                'created_at'     => $row->created_at,
+                'formatted_date' => $formatted_date,
                 'provider'       => isset($env['provider']) ? $env['provider'] : 'Unknown',
                 'model'          => isset($env['model']) ? $env['model'] : '',
                 'total_cases'    => isset($totals['cases']) ? (int) $totals['cases'] : 0,
@@ -2205,16 +2254,29 @@ class AIPS_Stress_Test_Service {
         }
 
         $details = !empty($row->details) ? json_decode($row->details, true) : array();
+        $payload = isset($details['output']) && is_array($details['output'])
+            ? $details['output']
+            : (isset($details['context']) && is_array($details['context']) ? $details['context'] : $details);
+
+        $formatted_date = '';
+        if (!empty($row->created_at)) {
+            if (is_numeric($row->created_at)) {
+                $formatted_date = AIPS_DateTime::fromTimestamp((int) $row->created_at)->format('M j, Y H:i:s');
+            } else {
+                $dt = AIPS_DateTime::fromMysqlOrNull((string) $row->created_at);
+                $formatted_date = $dt ? $dt->format('M j, Y H:i:s') : (string) $row->created_at;
+            }
+        }
 
         return array(
             'id'             => (int) $row->id,
             'uuid'           => $row->uuid,
             'status'         => $row->status,
-            'created_at'     => (int) $row->created_at,
-            'formatted_date' => AIPS_DateTime::from_timestamp((int) $row->created_at)->format('M j, Y H:i:s'),
-            'environment'    => isset($details['environment']) ? $details['environment'] : array(),
-            'totals'         => isset($details['totals']) ? $details['totals'] : array(),
-            'results'        => isset($details['results']) ? $details['results'] : array(),
+            'created_at'     => $row->created_at,
+            'formatted_date' => $formatted_date,
+            'environment'    => isset($payload['environment']) ? $payload['environment'] : array(),
+            'totals'         => isset($payload['totals']) ? $payload['totals'] : array(),
+            'results'        => isset($payload['results']) ? $payload['results'] : array(),
         );
     }
 
@@ -2269,19 +2331,19 @@ class AIPS_Stress_Test_Service {
 
             $case_diffs[] = array(
                 'case'           => $case_id,
-                'label'          => $item_b ? $item_b['label'] : ($item_a ? $item_a['label'] : $case_id),
+                'label'          => $item_b && isset($item_b['label']) ? $item_b['label'] : ($item_a && isset($item_a['label']) ? $item_a['label'] : $case_id),
                 'status_a'       => $status_a,
                 'status_b'       => $status_b,
                 'status_change'  => $status_change,
                 'duration_a'     => $dur_a,
                 'duration_b'     => $dur_b,
                 'duration_diff'  => $dur_b - $dur_a,
-                'ai_value_a'     => $item_a ? $item_a['ai_value'] : null,
-                'ai_value_b'     => $item_b ? $item_b['ai_value'] : null,
-                'plugin_value_a' => $item_a ? $item_a['plugin_value'] : null,
-                'plugin_value_b' => $item_b ? $item_b['plugin_value'] : null,
-                'summary_a'      => $item_a ? $item_a['summary'] : '',
-                'summary_b'      => $item_b ? $item_b['summary'] : '',
+                'ai_value_a'     => $item_a && isset($item_a['ai_value']) ? $item_a['ai_value'] : null,
+                'ai_value_b'     => $item_b && isset($item_b['ai_value']) ? $item_b['ai_value'] : null,
+                'plugin_value_a' => $item_a && isset($item_a['plugin_value']) ? $item_a['plugin_value'] : null,
+                'plugin_value_b' => $item_b && isset($item_b['plugin_value']) ? $item_b['plugin_value'] : null,
+                'summary_a'      => $item_a && isset($item_a['summary']) ? $item_a['summary'] : '',
+                'summary_b'      => $item_b && isset($item_b['summary']) ? $item_b['summary'] : '',
             );
         }
 
