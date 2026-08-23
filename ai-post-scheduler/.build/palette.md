@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-label to data table checkboxes in Authors templates
 **Learning:** Checkboxes in JS-rendered templates (like Handlebars `{{}}`) require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element.
 **Action:** Always ensure that dynamically generated checkboxes in data tables have an `aria-label` attached for assistive technologies.
+## 2024-11-23 - Decorative Dashicon Accessibility
+**Area:** History Template (`templates/admin/history.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in History template
+**Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons), confusing users.
+**Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
