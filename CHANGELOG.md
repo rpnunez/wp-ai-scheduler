@@ -2,8 +2,13 @@
 ### Changed
 - **UX:** Embedded the Schedule Modal directly into the Templates page. Clicking "Schedule This Template" after creating a template now opens the modal inline, eliminating a disruptive page reload and context switch.
 
+- **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
+
+### Changed
+- **Cache Read Refactor**: Refactored `AIPS_Cacheable_Repository::cache_read` God method into smaller components to enforce Separation of Concerns.
+
 
 ### Fixed
 - **Short-form AI Responses**: Reserve at least 1200 output tokens for title and excerpt requests so reasoning-capable connector models do not cut off visible responses after spending the smaller configured budget on internal reasoning. The global Max Tokens Limit remains authoritative.
