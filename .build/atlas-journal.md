@@ -1443,3 +1443,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting cache resolution, cache hit handling, and cache miss handling into distinct private helper methods. The main `cache_read` function was reduced to roughly 20 lines serving strictly as the entry point and orchestrator.
 **Consequence:** Increased the number of private methods on the trait, but vastly improved readability and maintainability. Backwards compatibility for the cache behavior remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-06-25 - [Extract History AJAX Handlers]
+**Context:** `AIPS_History` was a "God Object" (~1575 lines), handling data logic, modal/view preparation, and complex AJAX routing and handlers.
+**Decision:** Extracted all `ajax_*` methods and `wp_ajax_*` hooks into a new `AIPS_History_Ajax_Controller`. `AIPS_History` retains the view logic and acts as a dependency to the controller.
+**Consequence:** Single Responsibility Principle applied. `AIPS_History` size is significantly reduced. Controller cleanly handles request routing. Methods shared between view and AJAX have been made public.
+**Tests:** Checked syntax with `php -l`. Ran full PHPUnit test suite to ensure backwards compatibility and no regressions.
