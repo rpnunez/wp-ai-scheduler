@@ -31,6 +31,22 @@ interface AIPS_Schedule_Repository_Interface {
 	public function get_by_id($id);
 
 	/**
+	 * Get schedules by template ID.
+	 *
+	 * @param int $template_id Template ID.
+	 * @return array Array of schedule objects for this template.
+	 */
+	public function get_by_template($template_id);
+
+	/**
+	 * Get schedules by an array of template IDs.
+	 *
+	 * @param array $template_ids Array of template IDs.
+	 * @return array Array of schedule objects.
+	 */
+	public function get_by_template_ids(array $template_ids);
+
+	/**
 	 * Fetch due schedules.
 	 *
 	 * @param string|null $current_time Current time in MySQL format.
