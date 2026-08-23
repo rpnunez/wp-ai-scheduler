@@ -3903,6 +3903,28 @@
 
             if (!templateId) return;
 
+            var $scheduleModal = $('#aips-schedule-modal');
+            if ($scheduleModal.length) {
+                var $form = $('#aips-schedule-form');
+                if ($form.length) {
+                    $form[0].reset();
+                }
+                $('#schedule_id').val('');
+                $('#schedule_template').val(templateId);
+
+                if (typeof AIPS !== 'undefined' && typeof AIPS.resetScheduleDayPicker === 'function') {
+                    AIPS.resetScheduleDayPicker();
+                }
+
+                var titleText = (typeof aipsScheduleL10n !== 'undefined' && aipsScheduleL10n.addNewSchedule) ? aipsScheduleL10n.addNewSchedule : 'Add New Schedule';
+                $scheduleModal.find('.aips-modal-title').text(titleText);
+
+                // Hide template modal and show schedule modal
+                $('#aips-template-modal').hide();
+                $scheduleModal.show();
+                return;
+            }
+
             // Use the aipsAjax.schedulePageUrl if available or fallback
             var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
                 ? aipsAjax.schedulePageUrl

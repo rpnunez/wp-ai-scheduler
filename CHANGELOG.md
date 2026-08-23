@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Changed
+- **UX:** Embedded the Schedule Modal directly into the Templates page. Clicking "Schedule This Template" after creating a template now opens the modal inline, eliminating a disruptive page reload and context switch.
 
 ### Added
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
