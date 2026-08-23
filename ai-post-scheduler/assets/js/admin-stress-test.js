@@ -1200,12 +1200,12 @@
 		},
 
 		openDiffModal: function () {
-			$('#aips-stress-diff-modal').removeAttr('hidden');
+			$('#aips-stress-diff-modal').removeAttr('hidden').css('display', 'flex');
 			$('body').addClass('modal-open');
 		},
 
 		closeDiffModal: function () {
-			$('#aips-stress-diff-modal').attr('hidden', true);
+			$('#aips-stress-diff-modal').attr('hidden', true).css('display', 'none');
 			$('body').removeClass('modal-open');
 		},
 

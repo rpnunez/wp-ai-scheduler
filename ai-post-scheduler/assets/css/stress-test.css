@@ -672,6 +672,41 @@
  * Diff Modal & History Comparison Styles
  * -------------------------------------------------------------------- */
 
+#aips-stress-diff-modal[hidden],
+.aips-modal[hidden] {
+	display: none !important;
+}
+
+#aips-stress-diff-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#aips-stress-diff-modal .aips-modal-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 1;
+}
+
+#aips-stress-diff-modal .aips-modal-dialog {
+	position: relative;
+	z-index: 2;
+	background: #ffffff;
+	border-radius: var(--aips-radius-md, 8px);
+	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
 .aips-stress-diff-meta-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;

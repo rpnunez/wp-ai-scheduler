@@ -211,7 +211,7 @@ foreach ($cases as $case) {
 			</table>
 
 			<!-- Side-by-Side Diff Modal -->
-			<div class="aips-modal" id="aips-stress-diff-modal" hidden>
+			<div class="aips-modal" id="aips-stress-diff-modal" hidden style="display:none;">
 				<div class="aips-modal-backdrop"></div>
 				<div class="aips-modal-dialog aips-modal-lg" style="max-width:980px;width:95vw;max-height:90vh;display:flex;flex-direction:column;">
 					<div class="aips-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
