@@ -10,3 +10,9 @@
 **PR:** 🎨 Palette: Add aria-label to remove post button in taxonomy
 **Learning:** Missing aria-labels on icon-only buttons (like `&times;`) degrades screen reader accessibility.
 **Action:** Always ensure icon-only buttons have an `aria-label` attribute describing their function for assistive technologies.
+## 2024-11-22 - Data Table Checkboxes Accessibility
+**Area:** Authors and Author Topics Admin Templates (`templates/admin/authors.php`, `templates/admin/author-topics.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to data table checkboxes in Authors templates
+**Learning:** Checkboxes in JS-rendered templates (like Handlebars `{{}}`) require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element.
+**Action:** Always ensure that dynamically generated checkboxes in data tables have an `aria-label` attached for assistive technologies.
