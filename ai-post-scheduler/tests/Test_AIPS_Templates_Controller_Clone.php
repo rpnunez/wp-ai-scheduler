@@ -93,4 +93,63 @@ class Test_AIPS_Templates_Controller_Clone extends WP_UnitTestCase {
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame('product_review', $this->templates_stub->saved_data['post_type']);
 	}
+
+	public function test_clone_duplicates_integration_field_mappings() {
+		$source = new stdClass();
+		$source->name = 'Recipe Template';
+		$source->description = '';
+		$source->prompt_template = 'Write a recipe';
+		$source->title_prompt = '';
+		$source->voice_id = null;
+		$source->post_quantity = 1;
+		$source->image_prompt = '';
+		$source->generate_featured_image = 0;
+		$source->featured_image_source = 'ai_prompt';
+		$source->featured_image_unsplash_keywords = '';
+		$source->featured_image_media_ids = '';
+		$source->post_status = 'draft';
+		$source->post_type = 'recipe';
+		$source->post_category = array();
+		$source->post_tags = '';
+		$source->post_author = 1;
+		$source->include_sources = 0;
+		$source->source_group_ids = '[]';
+		$source->is_active = 1;
+
+		$this->templates_stub->source_template = $source;
+
+		$mapping_repo = new AIPS_Integration_Mappings_Repository();
+		$mapping_repo->save_mapping(array(
+			'template_id'    => 9,
+			'integration_id' => 'native_meta',
+			'source_key'     => 'recipe',
+			'field_key'      => 'cooking_time',
+			'field_label'    => 'Cooking Time',
+			'field_type'     => 'freeform_short_text',
+			'custom_prompt'  => 'Specify cooking time in minutes.',
+			'is_active'      => 1,
+		));
+
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['template_id'] = '9';
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_clone_template();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected.
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertTrue($response['success']);
+		$cloned_id = $response['data']['template_id'];
+		$cloned_mappings = $mapping_repo->get_by_template($cloned_id, false);
+
+		$this->assertCount(1, $cloned_mappings);
+		$this->assertSame('cooking_time', $cloned_mappings[0]->field_key);
+		$this->assertSame('recipe', $cloned_mappings[0]->source_key);
+	}
 }

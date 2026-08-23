@@ -177,4 +177,87 @@ class AIPS_Integration_Mappings_Repository {
 			sanitize_text_field($source_key)
 		)) !== false;
 	}
+
+	/**
+	 * Synchronize all field mappings for a specific (template_id, integration_id, source_key) group.
+	 *
+	 * Deletes all existing mappings for this template + integration, then saves
+	 * the provided mapping rows in a single clean pass.
+	 *
+	 * @param int               $template_id    Template ID.
+	 * @param string            $integration_id Integration identifier.
+	 * @param string            $source_key     Schema group identifier (e.g. ACF group key or post type).
+	 * @param array<int, array> $mappings       Array of mapping data arrays.
+	 * @return bool True on success, false on failure.
+	 */
+	public function sync_group_mappings($template_id, $integration_id, $source_key, array $mappings) {
+		$template_id = absint($template_id);
+		$integration_id = sanitize_key($integration_id);
+		$source_key = sanitize_text_field($source_key);
+
+		if (!$template_id || empty($integration_id)) {
+			return false;
+		}
+
+		// Delete all existing mappings for this template + integration.
+		$this->wpdb->delete(
+			$this->table_name,
+			array(
+				'template_id'    => $template_id,
+				'integration_id' => $integration_id,
+			),
+			array('%d', '%s')
+		);
+
+		foreach ($mappings as $mapping) {
+			if (empty($mapping['field_key'])) {
+				continue;
+			}
+
+			$mapping['template_id']    = $template_id;
+			$mapping['integration_id'] = $integration_id;
+			$mapping['source_key']     = $source_key;
+			$this->save_mapping($mapping);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Duplicate all field mappings from a source template to a destination template.
+	 *
+	 * @param int $source_template_id      Source template ID.
+	 * @param int $destination_template_id Destination template ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function clone_template_mappings($source_template_id, $destination_template_id) {
+		$source_template_id = absint($source_template_id);
+		$destination_template_id = absint($destination_template_id);
+
+		if (!$source_template_id || !$destination_template_id) {
+			return false;
+		}
+
+		$existing = $this->get_by_template($source_template_id, false);
+
+		if (empty($existing)) {
+			return true;
+		}
+
+		foreach ($existing as $mapping) {
+			$this->save_mapping(array(
+				'template_id'    => $destination_template_id,
+				'integration_id' => $mapping->integration_id,
+				'source_key'     => $mapping->source_key,
+				'field_key'      => $mapping->field_key,
+				'field_label'    => $mapping->field_label,
+				'field_type'     => $mapping->field_type,
+				'custom_prompt'  => $mapping->custom_prompt,
+				'is_active'      => (int) $mapping->is_active,
+			));
+		}
+
+		return true;
+	}
 }
+

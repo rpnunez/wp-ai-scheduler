@@ -71,7 +71,7 @@ class AIPS_Integrations_Controller {
 		$integration_id = isset($_POST['integration_id']) ? sanitize_key(wp_unslash($_POST['integration_id'])) : '';
 		$post_type = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : null;
 		$group_id = isset($_POST['group_id']) ? sanitize_text_field(wp_unslash($_POST['group_id'])) : '';
-		$include_protected = !empty($_POST['include_protected']);
+		$include_protected = !empty($_POST['include_protected']) && filter_var(wp_unslash($_POST['include_protected']), FILTER_VALIDATE_BOOLEAN);
 
 		$adapter = AIPS_Integration_Registry::get($integration_id);
 
@@ -122,6 +122,8 @@ class AIPS_Integrations_Controller {
 
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 		$raw_mappings = isset($_POST['mappings']) ? wp_unslash($_POST['mappings']) : '';
+		$integration_id = isset($_POST['integration_id']) ? sanitize_key(wp_unslash($_POST['integration_id'])) : '';
+		$source_key = isset($_POST['source_key']) ? sanitize_text_field(wp_unslash($_POST['source_key'])) : '';
 
 		if (!$template_id) {
 			AIPS_Ajax_Response::invalid_request(__('A template_id is required.', 'ai-post-scheduler'));
@@ -148,21 +150,21 @@ class AIPS_Integrations_Controller {
 				continue;
 			}
 
-			$integration_id = $mapping['integration_id'];
+			$row_integration_id = $mapping['integration_id'];
 
-			if (!array_key_exists($integration_id, $adapters)) {
-				$resolved = AIPS_Integration_Registry::get($integration_id);
-				$adapters[$integration_id] = $resolved instanceof AIPS_Integration_Interface ? $resolved : null;
+			if (!array_key_exists($row_integration_id, $adapters)) {
+				$resolved = AIPS_Integration_Registry::get($row_integration_id);
+				$adapters[$row_integration_id] = $resolved instanceof AIPS_Integration_Interface ? $resolved : null;
 			}
 
-			$adapter = $adapters[$integration_id];
+			$adapter = $adapters[$row_integration_id];
 
 			if (!$adapter instanceof AIPS_Integration_Interface) {
 				AIPS_Ajax_Response::error(
 					sprintf(
 						/* translators: %s: integration identifier. */
 						__('Unknown or unavailable integration: %s', 'ai-post-scheduler'),
-						sanitize_key($integration_id)
+						sanitize_key($row_integration_id)
 					),
 					'integration_unavailable'
 				);
@@ -177,42 +179,31 @@ class AIPS_Integrations_Controller {
 			}
 		}
 
-		// A template's mappings for one integration should reflect exactly one
-		// selected group at a time. Retire mappings left over from a
-		// previously-selected group, once per distinct (integration, group)
-		// present in this save, so switching groups doesn't leave both active.
-		$pruned = array();
-
+		// Group mappings by integration_id and source_key for atomic sync.
+		$grouped = array();
 		foreach ($mappings as $mapping) {
 			if (empty($mapping['integration_id']) || !isset($mapping['source_key'])) {
 				continue;
 			}
 
-			$prune_key = $mapping['integration_id'] . '|' . $mapping['source_key'];
-
-			if (isset($pruned[$prune_key])) {
-				continue;
-			}
-
-			$pruned[$prune_key] = true;
-			$this->repo->delete_stale_group_mappings($template_id, $mapping['integration_id'], $mapping['source_key']);
+			$group_key = $mapping['integration_id'] . '|' . $mapping['source_key'];
+			$grouped[$group_key][] = array(
+				'field_key'     => $mapping['field_key'],
+				'field_label'   => isset($mapping['field_label']) ? $mapping['field_label'] : '',
+				'field_type'    => isset($mapping['field_type']) ? $mapping['field_type'] : '',
+				'custom_prompt' => isset($mapping['custom_prompt']) ? $mapping['custom_prompt'] : '',
+				'is_active'     => !empty($mapping['is_active']),
+			);
 		}
 
-		foreach ($mappings as $mapping) {
-			if (empty($mapping['integration_id']) || empty($mapping['field_key'])) {
-				continue;
+		if (empty($grouped) && !empty($integration_id) && !empty($source_key)) {
+			// Cleared all mappings for a specific integration/group.
+			$this->repo->sync_group_mappings($template_id, $integration_id, $source_key, array());
+		} else {
+			foreach ($grouped as $group_key => $group_mappings) {
+				list($row_integration_id, $row_source_key) = explode('|', $group_key, 2);
+				$this->repo->sync_group_mappings($template_id, $row_integration_id, $row_source_key, $group_mappings);
 			}
-
-			$this->repo->save_mapping(array(
-				'template_id'    => $template_id,
-				'integration_id' => $mapping['integration_id'],
-				'source_key'     => isset($mapping['source_key']) ? $mapping['source_key'] : '',
-				'field_key'      => $mapping['field_key'],
-				'field_label'    => isset($mapping['field_label']) ? $mapping['field_label'] : '',
-				'field_type'     => isset($mapping['field_type']) ? $mapping['field_type'] : '',
-				'custom_prompt'  => isset($mapping['custom_prompt']) ? $mapping['custom_prompt'] : '',
-				'is_active'      => !empty($mapping['is_active']),
-			));
 		}
 
 		AIPS_Ajax_Response::success(array('mappings' => $this->repo->get_by_template($template_id, false)), __('Field mappings saved.', 'ai-post-scheduler'));

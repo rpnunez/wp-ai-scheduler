@@ -28,7 +28,7 @@
 
 	// Shapes AIPS_Integration_Manager currently knows how to generate for.
 	// Keep in sync with AIPS_Integration_Manager::$generatable_shapes.
-	var GENERATABLE_SHAPES = ['short_text', 'long_text', 'html', 'choice'];
+	var GENERATABLE_SHAPES = ['short_text', 'long_text', 'html'];
 
 	// A hand-typed field key must look like a real meta key. Client-side
 	// mirror of AIPS_Integration_Native_Meta::is_valid_field_key() — the
@@ -78,8 +78,10 @@
 			$panel.find('.aips-integrations-unsaved-notice').hide();
 			$panel.find('.aips-integrations-config').show();
 
-			this.loadIntegrations();
-			this.loadSavedMappings(templateId);
+			var self = this;
+			this.loadSavedMappings(templateId, function () {
+				self.loadIntegrations();
+			});
 		},
 
 		loadIntegrations: function () {
@@ -121,7 +123,7 @@
 			});
 		},
 
-		loadSavedMappings: function (templateId) {
+		loadSavedMappings: function (templateId, callback) {
 			var self = this;
 
 			$.post(aipsAjax.ajaxUrl, {
@@ -131,13 +133,19 @@
 			}, function (response) {
 				self._savedMappings = {};
 
-				if (!response.success) {
-					return;
+				if (response.success && response.data.mappings) {
+					response.data.mappings.forEach(function (mapping) {
+						self._savedMappings[mapping.field_key] = mapping;
+					});
 				}
 
-				(response.data.mappings || []).forEach(function (mapping) {
-					self._savedMappings[mapping.field_key] = mapping;
-				});
+				if (typeof callback === 'function') {
+					callback();
+				}
+			}).fail(function () {
+				if (typeof callback === 'function') {
+					callback();
+				}
 			});
 		},
 
@@ -442,6 +450,8 @@
 				action: 'aips_save_field_mappings',
 				nonce: aipsAjax.nonce,
 				template_id: templateId,
+				integration_id: integrationId,
+				source_key: groupId,
 				mappings: JSON.stringify(mappings)
 			}, function (response) {
 				if (!response.success) {

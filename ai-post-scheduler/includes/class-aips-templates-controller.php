@@ -273,6 +273,9 @@ class AIPS_Templates_Controller {
         $new_id = $this->templates->save($new_data);
 
         if ($new_id) {
+            $mappings_repo = new AIPS_Integration_Mappings_Repository();
+            $mappings_repo->clone_template_mappings($id, $new_id);
+
             do_action('aips_template_changed', array(
                 'action'        => 'cloned',
                 'template_id'   => absint($new_id),

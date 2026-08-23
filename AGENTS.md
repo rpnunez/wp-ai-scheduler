@@ -31,6 +31,8 @@
 - Register every AJAX action in `AIPS_Ajax_Registry::$map` with its controller.
 - Controllers register `wp_ajax_*` hooks in constructors and own nonce checks, capability checks, sanitization, and JSON responses.
 - Keep SQL/persistence in repositories; avoid direct `$wpdb` in controllers or services when a repository exists.
+- Repositories managing collections/repeaters must provide atomic group sync to purge removed records.
+- Entity clone actions (e.g. cloning Templates) must duplicate all child/relational mappings to the new entity.
 - Prefer `AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`, and `AIPS_Generation_Context_Factory` for generation flows.
 - Use shared/specialized prompt builders rather than ad hoc prompt assembly.
 - Use `AIPS_History_Service`, `AIPS_History_Container`, `AIPS_Generation_Logger`, `AIPS_Logger`, and `AIPS_Correlation_Id` for lifecycle logging and tracing.
@@ -42,6 +44,7 @@
 - Verify nonces for state-changing actions.
 - Check `current_user_can('manage_options')` for admin/AJAX actions.
 - Sanitize request data with WordPress helpers.
+- Parse AJAX boolean parameters using `filter_var($val, FILTER_VALIDATE_BOOLEAN)` (jQuery transmits `"false"` as a string).
 - Use `AIPS_Ajax_Response` for consistent AJAX JSON responses.
 - Handle missing Meow Apps AI Engine dependency gracefully.
 

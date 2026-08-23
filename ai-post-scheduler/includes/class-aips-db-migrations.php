@@ -1022,10 +1022,10 @@ class AIPS_DB_Migrations {
 
 		if ( $updated ) {
 			$this->logger->log( "migrate_to_3_4_0: backfilled post_type for {$updated} aips_history rows", 'info' );
-    }
-  }
-  
-  /*
+		}
+	}
+
+	/**
 	 * Migration for version 3.4.2.
 	 *
 	 * Restores the composite index on aips_history_log. The schema previously

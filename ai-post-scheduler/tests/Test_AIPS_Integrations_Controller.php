@@ -276,4 +276,128 @@ class Test_AIPS_Integrations_Controller extends WP_UnitTestCase {
 		$this->assertArrayHasKey('integrations', $response['data']);
 		$this->assertIsArray($response['data']['integrations']);
 	}
+
+	public function test_get_integration_schema_handles_boolean_include_protected() {
+		$controller = new AIPS_Integrations_Controller($this->repo);
+
+		// Register a protected meta key
+		register_post_meta('post', '_test_secret_key', array(
+			'type'         => 'string',
+			'description'  => 'Secret Key',
+			'show_in_rest' => true,
+			'single'       => true,
+			'auth_callback' => '__return_true',
+		));
+
+		// Test include_protected='false' as sent by jQuery $.post
+		$_POST = array(
+			'action'            => 'aips_get_integration_schema',
+			'nonce'             => wp_create_nonce('aips_ajax_nonce'),
+			'integration_id'    => 'native_meta',
+			'group_id'          => 'post',
+			'include_protected' => 'false',
+		);
+		$this->sync_request_from_post();
+
+		$response = $this->run_ajax(array($controller, 'ajax_get_integration_schema'));
+		$this->assertTrue($response['success']);
+		$keys = wp_list_pluck($response['data']['fields'], 'key');
+		$this->assertNotContains('_test_secret_key', $keys, 'Protected key must not be returned when include_protected is string "false".');
+
+		// Test include_protected='true'
+		$_POST['include_protected'] = 'true';
+		$this->sync_request_from_post();
+
+		$response_adv = $this->run_ajax(array($controller, 'ajax_get_integration_schema'));
+		$this->assertTrue($response_adv['success']);
+		$keys_adv = wp_list_pluck($response_adv['data']['fields'], 'key');
+		$this->assertContains('_test_secret_key', $keys_adv, 'Protected key must be returned when include_protected is string "true".');
+	}
+
+	public function test_save_field_mappings_removes_deleted_fields_within_same_group() {
+		$controller = new AIPS_Integrations_Controller($this->repo);
+
+		// Initially save 2 fields in native_meta / post group
+		$mappings = array(
+			array(
+				'integration_id' => 'native_meta',
+				'source_key'     => 'post',
+				'field_key'      => 'field_one',
+				'field_type'     => 'freeform_short_text',
+				'is_active'      => true,
+			),
+			array(
+				'integration_id' => 'native_meta',
+				'source_key'     => 'post',
+				'field_key'      => 'field_two',
+				'field_type'     => 'freeform_short_text',
+				'is_active'      => true,
+			),
+		);
+
+		$_POST = array(
+			'action'         => 'aips_save_field_mappings',
+			'nonce'          => wp_create_nonce('aips_ajax_nonce'),
+			'template_id'    => 33,
+			'integration_id' => 'native_meta',
+			'source_key'     => 'post',
+			'mappings'       => wp_json_encode($mappings),
+		);
+		$this->sync_request_from_post();
+		$this->run_ajax(array($controller, 'ajax_save_field_mappings'));
+
+		$saved = $this->repo->get_by_template(33, false);
+		$this->assertCount(2, $saved);
+
+		// Now remove field_two in the UI and re-save with only field_one
+		$mappings_updated = array(
+			array(
+				'integration_id' => 'native_meta',
+				'source_key'     => 'post',
+				'field_key'      => 'field_one',
+				'field_type'     => 'freeform_short_text',
+				'is_active'      => true,
+			),
+		);
+
+		$_POST['mappings'] = wp_json_encode($mappings_updated);
+		$this->sync_request_from_post();
+		$res = $this->run_ajax(array($controller, 'ajax_save_field_mappings'));
+
+		$this->assertTrue($res['success']);
+		$saved_after = $this->repo->get_by_template(33, false);
+		$this->assertCount(1, $saved_after, 'field_two should have been removed by group sync.');
+		$this->assertSame('field_one', $saved_after[0]->field_key);
+	}
+
+	public function test_save_field_mappings_clears_all_when_empty_mappings_sent() {
+		$controller = new AIPS_Integrations_Controller($this->repo);
+
+		// Pre-populate a mapping
+		$this->repo->save_mapping(array(
+			'template_id'    => 44,
+			'integration_id' => 'native_meta',
+			'source_key'     => 'post',
+			'field_key'      => 'field_to_clear',
+			'field_type'     => 'freeform_short_text',
+			'is_active'      => true,
+		));
+
+		$this->assertCount(1, $this->repo->get_by_template(44, false));
+
+		// Send empty mappings with integration_id and source_key
+		$_POST = array(
+			'action'         => 'aips_save_field_mappings',
+			'nonce'          => wp_create_nonce('aips_ajax_nonce'),
+			'template_id'    => 44,
+			'integration_id' => 'native_meta',
+			'source_key'     => 'post',
+			'mappings'       => wp_json_encode(array()),
+		);
+		$this->sync_request_from_post();
+
+		$res = $this->run_ajax(array($controller, 'ajax_save_field_mappings'));
+		$this->assertTrue($res['success']);
+		$this->assertCount(0, $this->repo->get_by_template(44, false), 'All mappings should be cleared when empty array submitted.');
+	}
 }
