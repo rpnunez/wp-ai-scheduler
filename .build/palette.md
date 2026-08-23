@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Generated Posts
 **Learning:** Decorative icons in history interfaces must be explicitly hidden from screen readers.
 **Action:** When adding or auditing generated posts Dashicons, include aria-hidden="true".
+## 2024-08-21 - Add aria-label to toggle checkboxes
+**Area:** Affiliate Links (`templates/admin/affiliate-links.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to toggle checkboxes in affiliate links
+**Learning:** Toggle slider checkboxes in admin UIs often lack native labels on the `<input>` element itself.
+**Action:** Always ensure toggle `<input type="checkbox">` elements have an explicit `aria-label` or are wrapped with a text-inclusive `<label>` to remain accessible to screen readers.
