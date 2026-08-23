@@ -60,12 +60,12 @@ foreach ($cases as $case) {
 			<div class="aips-panel-header">
 				<h2><?php esc_html_e('Stress Test', 'ai-post-scheduler'); ?></h2>
 				<div class="aips-btn-group" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
-					<div class="aips-stress-history-picker" style="display:inline-flex;align-items:center;gap:6px;margin-right:4px;">
+					<div class="aips-stress-history-picker" style="display:inline-flex;align-items:center;gap:6px;">
 						<label for="aips-stress-history-select" class="screen-reader-text"><?php esc_html_e('Prior Runs', 'ai-post-scheduler'); ?></label>
-						<select id="aips-stress-history-select" class="aips-select aips-select-sm" style="max-width:210px;height:32px;font-size:12px;">
+						<select id="aips-stress-history-select" class="aips-select" style="max-width:210px;height:36px;font-size:13px;padding:0 8px;">
 							<option value=""><?php esc_html_e('— History / Prior Runs —', 'ai-post-scheduler'); ?></option>
 						</select>
-						<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" id="aips-stress-compare-btn" title="<?php esc_attr_e('Compare selected run against current results', 'ai-post-scheduler'); ?>" disabled>
+						<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-compare-btn" title="<?php esc_attr_e('Compare selected run against current results', 'ai-post-scheduler'); ?>" disabled>
 							<span class="dashicons dashicons-forms"></span>
 							<?php esc_html_e('Compare', 'ai-post-scheduler'); ?>
 						</button>
@@ -78,14 +78,10 @@ foreach ($cases as $case) {
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Reset', 'ai-post-scheduler'); ?>
 					</button>
-					<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-export" disabled>
-						<span class="dashicons dashicons-download"></span>
-						<?php esc_html_e('Export Results', 'ai-post-scheduler'); ?>
-					</button>
 					<?php if ($creates_data) : ?>
 						<button type="button" class="aips-btn aips-btn-danger" id="aips-stress-cleanup">
 							<span class="dashicons dashicons-trash"></span>
-							<?php esc_html_e('Delete Test Data', 'ai-post-scheduler'); ?>
+							<?php esc_html_e('Delete Data', 'ai-post-scheduler'); ?>
 							<span class="aips-stress-testdata-count"<?php echo ($test_data['posts'] + $test_data['attachments']) > 0 ? '' : ' hidden'; ?>>
 								<?php echo esc_html((string) ($test_data['posts'] + $test_data['attachments'])); ?>
 							</span>
@@ -153,6 +149,12 @@ foreach ($cases as $case) {
 					<div class="aips-stress-summary-text">
 						<h3></h3>
 						<p></p>
+					</div>
+					<div class="aips-stress-summary-actions" style="margin-left:auto;">
+						<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-export">
+							<span class="dashicons dashicons-download"></span>
+							<?php esc_html_e('Export Results', 'ai-post-scheduler'); ?>
+						</button>
 					</div>
 				</div>
 				<ul class="aips-stress-summary-list"></ul>

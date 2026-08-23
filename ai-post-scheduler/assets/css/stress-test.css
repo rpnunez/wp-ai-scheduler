@@ -159,6 +159,35 @@
 	font-size: var(--aips-text-sm);
 }
 
+.aips-stress-summary-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-stress-history-picker {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-2, 6px);
+}
+
+.aips-stress-history-picker .aips-select {
+	height: 36px;
+	padding: 0 var(--aips-space-2, 8px);
+	font-size: 13px;
+	border: 1px solid var(--aips-gray-300, #cbd5e1);
+	border-radius: var(--aips-radius-sm, 4px);
+	background-color: var(--aips-white, #ffffff);
+}
+
+.aips-stress-history-picker .aips-btn {
+	height: 36px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
 /* Banner entrance. Replayed by toggling .is-animating so a second run with the
  * same outcome still animates. */
 .aips-stress-summary.is-animating .aips-stress-summary-banner {
