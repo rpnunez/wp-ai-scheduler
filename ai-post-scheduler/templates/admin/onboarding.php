@@ -44,7 +44,7 @@ $default_title_prompt = __('Create a concise, SEO-friendly title for this articl
 
 		<?php if (!$ai_provider_available) : ?>
 			<div class="notice notice-error" style="margin: 16px 0;">
-				<p><?php esc_html_e('No AI provider is available. You can complete the setup steps, but topic/post generation requires the Meow Apps AI Engine plugin or a configured WordPress AI Client connector.', 'ai-post-scheduler'); ?></p>
+				<p><?php esc_html_e('No AI provider is available. You can complete the setup steps, but topic/post generation requires a configured AI provider (for example, a WordPress AI Client connector or Meow Apps AI Engine).', 'ai-post-scheduler'); ?></p>
 			</div>
 		<?php endif; ?>
 

@@ -162,7 +162,7 @@ final class AI_Post_Scheduler {
             if (class_exists('AIPS_AI_Provider_Factory') && !AIPS_AI_Provider_Factory::has_available_provider()) {
                 add_action('admin_notices', function() {
                     echo '<div class="notice notice-error"><p>';
-                    echo esc_html__('AI Post Scheduler requires a configured AI provider. Activate Meow Apps AI Engine, or configure credentials for an active WordPress AI Client connector (WordPress 7.0+).', 'ai-post-scheduler');
+                    echo esc_html__('AI Post Scheduler requires a configured AI provider. Activate or configure a supported AI connector (for example, a WordPress AI Client connector or Meow Apps AI Engine).', 'ai-post-scheduler');
                     echo '</p></div>';
                 });
             }
