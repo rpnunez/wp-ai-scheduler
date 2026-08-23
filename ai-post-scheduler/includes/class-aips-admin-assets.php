@@ -1071,6 +1071,10 @@ class AIPS_Admin_Assets {
               true
           );
 
+          wp_localize_script('aips-admin-planner', 'aipsPlannerL10n', array(
+              'confirmClear' => __('Are you sure you want to clear all topics?', 'ai-post-scheduler')
+          ));
+
           wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
               'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
               'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
