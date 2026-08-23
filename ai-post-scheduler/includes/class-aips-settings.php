@@ -87,6 +87,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_telemetry'],
 			),
+			'aips_enable_ability_workflows' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_ability_workflows'],
+      ),
 			'aips_cache_monitor_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_monitor_enabled'],
@@ -462,6 +466,14 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        add_settings_field(
+            'aips_enable_ability_workflows',
+            __('Enable Ability Workflows', 'ai-post-scheduler'),
+            array($this->ui, 'enable_ability_workflows_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+    
         add_settings_field(
             'aips_cache_monitor_enabled',
             __('Enable Cache Monitor', 'ai-post-scheduler'),
