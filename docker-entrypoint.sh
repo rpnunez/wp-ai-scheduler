@@ -23,7 +23,7 @@ set -e
 : "${WP_ADMIN_EMAIL:=admin@example.com}" # WordPress admin email
 : "${WP_SITE_TITLE:=WP Site}"           # WordPress site title
 : "${WP_SITE_URL:=http://localhost:8080}" # WordPress site URL
-: "${AIPS_AI_PROVIDER:=wp_ai_client}"    # Active AI Provider for AIPS (wp_ai_client or meow)
+: "${AIPS_AI_PROVIDER:=wp_ai_client}"    # Active AI Provider for AIPS (e.g., wp_ai_client or meow)
 : "${DEFAULT_AI_CONNECTOR_PLUGIN:=ai-provider-for-google}" # Default AI connector plugin
 : "${ENTRYPOINT_DEBUG:=1}"              # Enable/disable debug output from the entrypoint script
 
@@ -192,7 +192,7 @@ if wp plugin is-installed ai-provider-for-anthropic --path=/var/www/html --allow
   fi
 fi
 
-# Step 4: Configure active AI provider for AIPS (wp_ai_client vs meow)
+# Step 4: Configure active AI provider for AIPS (auto-detect or set via AIPS_AI_PROVIDER; supports wp_ai_client and Meow adapters)
 NORMALIZED_PROVIDER="$(echo "${AIPS_AI_PROVIDER}" | tr '[:upper:]' '[:lower:]')"
 if [[ "${NORMALIZED_PROVIDER}" == *"meow"* ]]; then
   TARGET_AIPS_PROVIDER="meow"
@@ -201,7 +201,7 @@ else
 fi
 
 if [ "${TARGET_AIPS_PROVIDER}" = "meow" ]; then
-  echo "[entrypoint] AIPS_AI_PROVIDER is set to meow. Checking for Meow Apps AI Engine plugin..."
+  echo "[entrypoint] AIPS_AI_PROVIDER indicates the Meow adapter. Checking for Meow Apps AI Engine plugin..."
   if ! wp plugin is-installed ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
     echo "[entrypoint] Installing Meow Apps AI Engine plugin..."
     wp plugin install ai-engine --activate --path=/var/www/html --allow-root || {
