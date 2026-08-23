@@ -235,6 +235,35 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that autoloader handles trait and base classes
+	 */
+	public function test_autoloader_handles_traits_and_base_classes() {
+		$traits = array(
+			'AIPS_Ajax_Guard',
+			'AIPS_Cacheable_Repository',
+		);
+
+		foreach ($traits as $trait_name) {
+			$this->assertTrue(
+				trait_exists($trait_name),
+				"Trait {$trait_name} should be loaded"
+			);
+		}
+
+		$base_classes = array(
+			'AIPS_Ajax_Controller_Base',
+			'AIPS_Author_Slice_Scheduler_Base',
+		);
+
+		foreach ($base_classes as $class_name) {
+			$this->assertTrue(
+				class_exists($class_name),
+				"Base class {$class_name} should be loaded"
+			);
+		}
+	}
+
+	/**
 	 * Test that file paths are constructed correctly
 	 */
 	public function test_autoloader_file_paths() {

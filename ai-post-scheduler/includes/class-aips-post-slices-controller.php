@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Post_Slices_Controller
  */
-class AIPS_Post_Slices_Controller {
+class AIPS_Post_Slices_Controller extends AIPS_Ajax_Controller_Base {
 
 	/**
 	 * @var AIPS_Post_Slices_Repository
@@ -23,31 +23,30 @@ class AIPS_Post_Slices_Controller {
 	private $repository;
 
 	/**
-	 * Initialize controller.
+	 * @var array<string, string>
 	 */
-	public function __construct() {
-		$this->repository = AIPS_Post_Slices_Repository::instance();
-
-		add_action('wp_ajax_aips_get_post_slices', array($this, 'ajax_get_post_slices'));
-		add_action('wp_ajax_aips_get_post_slice', array($this, 'ajax_get_post_slice'));
-		add_action('wp_ajax_aips_save_post_slice', array($this, 'ajax_save_post_slice'));
-		add_action('wp_ajax_aips_delete_post_slice', array($this, 'ajax_delete_post_slice'));
-		add_action('wp_ajax_aips_toggle_post_slice_active', array($this, 'ajax_toggle_post_slice_active'));
-		add_action('wp_ajax_aips_bulk_toggle_post_slices', array($this, 'ajax_bulk_toggle_post_slices'));
-		add_action('wp_ajax_aips_bulk_delete_post_slices', array($this, 'ajax_bulk_delete_post_slices'));
-	}
+	protected array $actions = array(
+		'aips_get_post_slices'          => 'ajax_get_post_slices',
+		'aips_get_post_slice'           => 'ajax_get_post_slice',
+		'aips_save_post_slice'          => 'ajax_save_post_slice',
+		'aips_delete_post_slice'        => 'ajax_delete_post_slice',
+		'aips_toggle_post_slice_active' => 'ajax_toggle_post_slice_active',
+		'aips_bulk_toggle_post_slices'  => 'ajax_bulk_toggle_post_slices',
+		'aips_bulk_delete_post_slices'  => 'ajax_bulk_delete_post_slices',
+	);
 
 	/**
-	 * @return void
+	 * Initialize controller.
+	 *
+	 * @param AIPS_Post_Slices_Repository|null $repository Optional repository instance.
 	 */
-	private function authorize() {
-		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
+	public function __construct(?AIPS_Post_Slices_Repository $repository = null) {
+		$container = AIPS_Container::get_instance();
+		$this->repository = $repository ?: $container->makeIfExists(AIPS_Post_Slices_Repository::class, function() {
+			return AIPS_Post_Slices_Repository::instance();
+		});
 
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		parent::__construct();
 	}
 
 	/**
@@ -56,7 +55,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_get_post_slices() {
-		$this->authorize();
+		$this->verify_request();
 
 		AIPS_Ajax_Response::success(
 			array(
@@ -72,7 +71,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_get_post_slice() {
-		$this->authorize();
+		$this->verify_request();
 
 		$id = isset($_POST['slice_id']) ? absint($_POST['slice_id']) : 0;
 		if ($id < 1) {
@@ -93,7 +92,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_save_post_slice() {
-		$this->authorize();
+		$this->verify_request();
 
 		$id = isset($_POST['slice_id']) ? absint($_POST['slice_id']) : 0;
 		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
@@ -157,7 +156,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_delete_post_slice() {
-		$this->authorize();
+		$this->verify_request();
 
 		$id = isset($_POST['slice_id']) ? absint($_POST['slice_id']) : 0;
 		if ($id < 1) {
@@ -182,7 +181,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_toggle_post_slice_active() {
-		$this->authorize();
+		$this->verify_request();
 
 		$id = isset($_POST['slice_id']) ? absint($_POST['slice_id']) : 0;
 		$is_active = isset($_POST['is_active']) ? (int) $_POST['is_active'] : 0;
@@ -208,7 +207,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_bulk_toggle_post_slices() {
-		$this->authorize();
+		$this->verify_request();
 
 		$ids = isset($_POST['slice_ids']) ? array_map('absint', (array) $_POST['slice_ids']) : array();
 		$is_active = isset($_POST['is_active']) ? (int) $_POST['is_active'] : 0;
@@ -235,7 +234,7 @@ class AIPS_Post_Slices_Controller {
 	 * @return void
 	 */
 	public function ajax_bulk_delete_post_slices() {
-		$this->authorize();
+		$this->verify_request();
 
 		$ids = isset($_POST['slice_ids']) ? array_map('absint', (array) $_POST['slice_ids']) : array();
 		$ids = array_values(array_filter($ids));

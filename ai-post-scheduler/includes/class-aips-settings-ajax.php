@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
  *
  * @package AI_Post_Scheduler
  */
-class AIPS_Settings_AJAX {
+class AIPS_Settings_AJAX extends AIPS_Ajax_Controller_Base {
 
 	/**
 	 * @var AIPS_AI_Service_Interface
@@ -23,9 +23,15 @@ class AIPS_Settings_AJAX {
 	private $history_service;
 
 	/**
+	 * @var array<string, string>
+	 */
+	protected array $actions = array(
+		'aips_save_settings'   => 'ajax_save_settings',
+		'aips_test_connection' => 'ajax_test_connection',
+	);
+
+	/**
 	 * Initialize the AJAX handler.
-	 *
-	 * Hooks into wp_ajax.
 	 *
 	 * @param AIPS_AI_Service_Interface|null      $ai_service AI service dependency.
 	 * @param AIPS_History_Service_Interface|null $history_service History service dependency.
@@ -33,11 +39,14 @@ class AIPS_Settings_AJAX {
 	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_History_Service_Interface $history_service = null) {
 		$container = AIPS_Container::get_instance();
 
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->ai_service = $ai_service ?: $container->makeIfExists(AIPS_AI_Service_Interface::class, function() {
+			return new AIPS_AI_Service();
+		});
+		$this->history_service = $history_service ?: $container->makeIfExists(AIPS_History_Service_Interface::class, function() {
+			return new AIPS_History_Service();
+		});
 
-		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
-		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
+		parent::__construct();
 	}
 
 	/**
@@ -157,18 +166,4 @@ class AIPS_Settings_AJAX {
 		AIPS_Ajax_Response::success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
 	}
 
-	/**
-	 * Validate AJAX nonce and permissions.
-	 *
-	 * @return void
-	 */
-	private function verify_request() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-	}
 }

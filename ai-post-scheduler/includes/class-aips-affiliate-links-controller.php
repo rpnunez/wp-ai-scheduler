@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class AIPS_Affiliate_Links_Controller {
+class AIPS_Affiliate_Links_Controller extends AIPS_Ajax_Controller_Base {
 
 	/**
 	 * @var AIPS_Affiliate_Links_Repository
@@ -29,18 +29,32 @@ class AIPS_Affiliate_Links_Controller {
 	 */
 	private $logger;
 
-	public function __construct( $repo = null, $service = null, $logger = null ) {
-		$this->repo    = $repo    ?: new AIPS_Affiliate_Links_Repository();
-		$this->service = $service ?: new AIPS_Affiliate_Links_Service( $this->repo );
-		$this->logger  = $logger  ?: new AIPS_Logger();
+	/**
+	 * @var array<string, string>
+	 */
+	protected array $actions = array(
+		'aips_affiliate_links_list'        => 'ajax_list',
+		'aips_affiliate_links_get'         => 'ajax_get',
+		'aips_affiliate_links_create'      => 'ajax_create',
+		'aips_affiliate_links_update'      => 'ajax_update',
+		'aips_affiliate_links_delete'      => 'ajax_delete',
+		'aips_affiliate_links_toggle'      => 'ajax_toggle',
+		'aips_affiliate_links_inject_post' => 'ajax_inject_post',
+	);
 
-		add_action( 'wp_ajax_aips_affiliate_links_list',          array( $this, 'ajax_list' ) );
-		add_action( 'wp_ajax_aips_affiliate_links_get',           array( $this, 'ajax_get' ) );
-		add_action( 'wp_ajax_aips_affiliate_links_create',        array( $this, 'ajax_create' ) );
-		add_action( 'wp_ajax_aips_affiliate_links_update',        array( $this, 'ajax_update' ) );
-		add_action( 'wp_ajax_aips_affiliate_links_delete',        array( $this, 'ajax_delete' ) );
-		add_action( 'wp_ajax_aips_affiliate_links_toggle',        array( $this, 'ajax_toggle' ) );
-		add_action( 'wp_ajax_aips_affiliate_links_inject_post',   array( $this, 'ajax_inject_post' ) );
+	public function __construct( $repo = null, $service = null, $logger = null ) {
+		$container = AIPS_Container::get_instance();
+		$this->repo    = $repo    ?: $container->makeIfExists( AIPS_Affiliate_Links_Repository::class, function() {
+			return new AIPS_Affiliate_Links_Repository();
+		} );
+		$this->service = $service ?: $container->makeIfExists( AIPS_Affiliate_Links_Service::class, function() {
+			return new AIPS_Affiliate_Links_Service( $this->repo );
+		} );
+		$this->logger  = $logger  ?: $container->makeIfExists( AIPS_Logger::class, function() {
+			return new AIPS_Logger();
+		} );
+
+		parent::__construct();
 	}
 
 	/**
@@ -207,18 +221,7 @@ class AIPS_Affiliate_Links_Controller {
 	// Helpers
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Verify nonce and capability. Dies on failure.
-	 */
-	private function verify_request() {
-		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
-			AIPS_Ajax_Response::error( __( 'Invalid nonce.', 'ai-post-scheduler' ) );
-		}
 
-		if ( ! current_user_can( 'manage_options' ) ) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-	}
 
 	/**
 	 * Extract and sanitize mapping data from $_POST.

@@ -40,6 +40,7 @@ class AIPS_Autoloader {
         $class_file = self::convert_class_name_to_filename($class_name);
         $base_name = self::convert_class_name_to_base($class_name);
         $interface_file = 'interface-' . $base_name . '.php';
+        $trait_file = 'trait-' . $base_name . '.php';
 
         $paths = array(
             AIPS_PLUGIN_DIR . 'includes/',
@@ -56,6 +57,11 @@ class AIPS_Autoloader {
 
             if (file_exists($path . $interface_file)) {
                 require_once $path . $interface_file;
+                return;
+            }
+
+            if (file_exists($path . $trait_file)) {
+                require_once $path . $trait_file;
                 return;
             }
         }

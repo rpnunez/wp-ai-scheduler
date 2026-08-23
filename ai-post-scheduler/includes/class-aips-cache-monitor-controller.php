@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since   2.9.0
  */
-class AIPS_Cache_Monitor_Controller {
+class AIPS_Cache_Monitor_Controller extends AIPS_Ajax_Controller_Base {
 
 	/**
 	 * Admin page slug.
@@ -39,26 +39,38 @@ class AIPS_Cache_Monitor_Controller {
 	private $service;
 
 	/**
-	 * Resolve dependencies and register AJAX hooks.
+	 * @var array<string, string>
 	 */
-	public function __construct() {
-		$repository  = new AIPS_Cache_Monitor_Repository();
-		$cache_index = new AIPS_Cache_Index();
-		$this->service = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+	protected array $actions = array(
+		'aips_cache_monitor_summary'           => 'ajax_summary',
+		'aips_cache_monitor_entries'           => 'ajax_entries',
+		'aips_cache_monitor_inspect'           => 'ajax_inspect',
+		'aips_cache_monitor_delete_entry'      => 'ajax_delete_entry',
+		'aips_cache_monitor_delete_bulk'       => 'ajax_delete_bulk',
+		'aips_cache_monitor_flush_group'       => 'ajax_flush_group',
+		'aips_cache_monitor_flush_expired'     => 'ajax_flush_expired',
+		'aips_cache_monitor_flush_all'         => 'ajax_flush_all',
+		'aips_cache_monitor_invalidate_tag'    => 'ajax_invalidate_tag',
+		'aips_cache_monitor_invalidate_domain' => 'ajax_invalidate_domain',
+		'aips_cache_monitor_operations'        => 'ajax_operations',
+		'aips_cache_monitor_events'            => 'ajax_events',
+		'aips_cache_monitor_maintenance'       => 'ajax_maintenance',
+	);
 
-		add_action('wp_ajax_aips_cache_monitor_summary',          array($this, 'ajax_summary'));
-		add_action('wp_ajax_aips_cache_monitor_entries',          array($this, 'ajax_entries'));
-		add_action('wp_ajax_aips_cache_monitor_inspect',          array($this, 'ajax_inspect'));
-		add_action('wp_ajax_aips_cache_monitor_delete_entry',     array($this, 'ajax_delete_entry'));
-		add_action('wp_ajax_aips_cache_monitor_delete_bulk',      array($this, 'ajax_delete_bulk'));
-		add_action('wp_ajax_aips_cache_monitor_flush_group',      array($this, 'ajax_flush_group'));
-		add_action('wp_ajax_aips_cache_monitor_flush_expired',    array($this, 'ajax_flush_expired'));
-		add_action('wp_ajax_aips_cache_monitor_flush_all',        array($this, 'ajax_flush_all'));
-		add_action('wp_ajax_aips_cache_monitor_invalidate_tag',   array($this, 'ajax_invalidate_tag'));
-		add_action('wp_ajax_aips_cache_monitor_invalidate_domain', array($this, 'ajax_invalidate_domain'));
-		add_action('wp_ajax_aips_cache_monitor_operations',       array($this, 'ajax_operations'));
-		add_action('wp_ajax_aips_cache_monitor_events',           array($this, 'ajax_events'));
-		add_action('wp_ajax_aips_cache_monitor_maintenance',      array($this, 'ajax_maintenance'));
+	/**
+	 * Resolve dependencies and register AJAX hooks.
+	 *
+	 * @param AIPS_Cache_Monitor_Service|null $service Optional service override.
+	 */
+	public function __construct(?AIPS_Cache_Monitor_Service $service = null) {
+		$container = AIPS_Container::get_instance();
+		$this->service = $service ?: $container->makeIfExists(AIPS_Cache_Monitor_Service::class, function() {
+			$repository  = new AIPS_Cache_Monitor_Repository();
+			$cache_index = new AIPS_Cache_Index();
+			return new AIPS_Cache_Monitor_Service($repository, $cache_index);
+		});
+
+		parent::__construct();
 	}
 
 	// -----------------------------------------------------------------------
@@ -407,13 +419,7 @@ class AIPS_Cache_Monitor_Controller {
 	 * @return void
 	 */
 	private function verify_nonce_and_cap( string $nonce_action ): void {
-		if (!check_ajax_referer($nonce_action, 'nonce', false)) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'), 'invalid_nonce', 403);
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request($nonce_action);
 
 		if (!AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled')) {
 			AIPS_Ajax_Response::error(__('Cache Monitor is disabled.', 'ai-post-scheduler'));

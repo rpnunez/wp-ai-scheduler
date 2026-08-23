@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_Stress_Test_Controller {
+class AIPS_Stress_Test_Controller extends AIPS_Ajax_Controller_Base {
 
     /**
      * Admin page slug.
@@ -38,16 +38,26 @@ class AIPS_Stress_Test_Controller {
     private $service;
 
     /**
+     * @var array<string, string>
+     */
+    protected array $actions = array(
+        'aips_stress_test_run'     => 'ajax_run',
+        'aips_stress_test_cleanup' => 'ajax_cleanup',
+        'aips_stress_test_status'  => 'ajax_status',
+    );
+
+    /**
      * Register AJAX hooks.
      *
      * @param AIPS_Stress_Test_Service|null $service Optional service override.
      */
     public function __construct($service = null) {
-        $this->service = $service ?: new AIPS_Stress_Test_Service();
+        $container = AIPS_Container::get_instance();
+        $this->service = $service ?: $container->makeIfExists(AIPS_Stress_Test_Service::class, function() {
+            return new AIPS_Stress_Test_Service();
+        });
 
-        add_action('wp_ajax_aips_stress_test_run', array($this, 'ajax_run'));
-        add_action('wp_ajax_aips_stress_test_cleanup', array($this, 'ajax_cleanup'));
-        add_action('wp_ajax_aips_stress_test_status', array($this, 'ajax_status'));
+        parent::__construct();
     }
 
     // -----------------------------------------------------------------------
@@ -83,7 +93,7 @@ class AIPS_Stress_Test_Controller {
      * @return void
      */
     public function ajax_run() {
-        $this->verify_request();
+        $this->verify_request(self::NONCE_ACTION);
 
         $case_id = isset($_POST['case']) ? sanitize_key(wp_unslash($_POST['case'])) : '';
 
@@ -108,7 +118,7 @@ class AIPS_Stress_Test_Controller {
      * @return void
      */
     public function ajax_cleanup() {
-        $this->verify_request();
+        $this->verify_request(self::NONCE_ACTION);
 
         $deleted = $this->service->cleanup_test_data();
 
@@ -132,26 +142,11 @@ class AIPS_Stress_Test_Controller {
      * @return void
      */
     public function ajax_status() {
-        $this->verify_request();
+        $this->verify_request(self::NONCE_ACTION);
 
         AIPS_Ajax_Response::success(array(
             'environment' => $this->service->get_environment(),
             'test_data'   => $this->service->count_test_data(),
         ));
-    }
-
-    /**
-     * Reject requests without a valid nonce or the required capability.
-     *
-     * @return void
-     */
-    private function verify_request() {
-        if (!check_ajax_referer(self::NONCE_ACTION, 'nonce', false)) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'), 'invalid_nonce', 403);
-        }
-
-        if (!current_user_can('manage_options')) {
-            AIPS_Ajax_Response::permission_denied();
-        }
     }
 }
