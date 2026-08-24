@@ -1834,6 +1834,7 @@ class AIPS_Admin_Assets {
                 'never'            => __('Never', 'ai-post-scheduler'),
                 'noEntries'        => __('No entries found.', 'ai-post-scheduler'),
                 'noOps'            => __('No operations found.', 'ai-post-scheduler'),
+                'selectEntry'      => __('Select cache entry', 'ai-post-scheduler'),
                 'noEvents'         => __('No events found.', 'ai-post-scheduler'),
                 'noneSelected'     => __('No entries selected.', 'ai-post-scheduler'),
                 'requestFailed'    => __('Request failed. Please try again.', 'ai-post-scheduler'),
