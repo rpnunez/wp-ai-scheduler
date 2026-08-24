@@ -244,6 +244,14 @@ class AIPS_Templates {
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
 
+        // Variables needed for the embedded schedule modal
+        $preselect_template_id  = 0;
+        $preselect_structure_id = 0;
+        $structure_manager  = new AIPS_Article_Structure_Manager();
+        $article_structures = $structure_manager->get_active_structures();
+        $template_type_selector = new AIPS_Template_Type_Selector();
+        $rotation_patterns  = $template_type_selector->get_rotation_patterns();
+
         include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
     }
 }

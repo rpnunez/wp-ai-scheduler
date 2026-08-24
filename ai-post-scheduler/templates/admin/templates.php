@@ -811,4 +811,5 @@ $is_embedded_templates_view = !empty($embedded);
             </div>
         </div>
     </div>
+    <?php require AIPS_PLUGIN_DIR . 'templates/admin/schedule-modals-partial.php'; ?>
 </div>

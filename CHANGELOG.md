@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Changed
+- **UX:** Embedded the Schedule Modal directly into the Templates page. Clicking "Schedule This Template" after creating a template now opens the modal inline, eliminating a disruptive page reload and context switch.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
