@@ -67,7 +67,7 @@ if (!defined('ABSPATH')) {
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
@@ -78,7 +78,7 @@ if (!defined('ABSPATH')) {
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 					</form>
