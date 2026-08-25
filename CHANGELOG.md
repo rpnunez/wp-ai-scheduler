@@ -3,6 +3,9 @@
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
+- **Stress Test: Integration (meta field) cases**: The Diagnostics > Stress Test page gained four cases that exercise the Integration generation engine end to end — a single native custom field, a batched multi-field run (the N-fields-to-one-call path), native custom fields written onto a generated **custom post type** post, and (only when ACF is installed and active) an ACF field-group case. Each drives the real `AIPS_Integration_Manager` against the page's isolated AI service and reads the written values back to verify them.
+- **Stress Test: Export Results**: An "Export Results" button downloads the full run — provider/model/version snapshot, per-case status, timings, compared values, and the complete AI request/response log — as a single JSON file for sharing and analysis.
+- **Meta-field template setup script**: `scripts/create-meta-field-templates.php` (WP-CLI `wp eval-file`) creates two ready-to-run Templates wired to native WordPress custom fields, for exercising integration generation without ACF.
 
 ### Changed
 - **Cache Read Refactor**: Refactored `AIPS_Cacheable_Repository::cache_read` God method into smaller components to enforce Separation of Concerns.
@@ -12,10 +15,39 @@
 - **Short-form AI Responses**: Reserve at least 1200 output tokens for title and excerpt requests so reasoning-capable connector models do not cut off visible responses after spending the smaller configured budget on internal reasoning. The global Max Tokens Limit remains authoritative.
 - **WordPress AI Client Detection**: Treat locally registered connectors with configured credentials as available without requiring a successful remote model-catalog request during admin page loads. Live generation now surfaces the AI Client's connector/model error instead of showing a false missing-provider notice.
 - **Stress Test Reliability**: Give AIPS-scoped WordPress AI Client requests a 90-second timeout, retry one transient provider failure during interactive stress tests, and provide sufficient structured-output budget for reasoning-capable models.
+- **Integration Field Mappings Hardening**: The Integrations save endpoint now validates each submitted field key against its own integration's adapter (instead of assuming every row shares the first row's adapter) and rejects rows referencing an unavailable integration. Native WordPress Custom Field generation now refuses to overwrite WordPress-core-internal or AIPS-owned meta keys (`_wp_*`, `_edit_*`, `_oembed_*`, `_menu_item_*`, `_thumbnail_id`, `_aips*`) even when "Show Advanced Custom Meta Fields" is enabled, and hides those reserved keys from discovery. Single-line integration fields are sanitized as single-line text, and a non-text AI value for a text field is now rejected instead of writing the literal string `Array`. Native-meta discovery also surfaces meta registered site-wide (no post-type subtype), not just per-post-type registrations.
 
 ### Security
 - **Dev Tools Gating**: Cache Monitor and the Seeder are now disabled by default and properly enforce their feature flags (`aips_cache_monitor_enabled`, `aips_developer_mode`) at every layer — menu, Diagnostics tab, page render, and AJAX handlers — closing gaps where the flag was only checked for UI visibility. The AI scaffold generator ("Dev Tools") AJAX handler now also re-checks `aips_developer_mode`.
 - **MCP Bridge**: `mcp-bridge.php` is now disabled by default and can only be enabled by defining `AIPS_MCP_BRIDGE_ENABLED` and a shared-secret `AIPS_MCP_BRIDGE_TOKEN` in `wp-config.php` — it can no longer be turned on from the WordPress admin UI. All HTTP requests must now present a matching `token` field, closing a CSRF gap on this previously cookie-auth-only endpoint. See `docs/MCP_BRIDGE.md`.
+
+## [3.5.1] - 2026-07-25
+
+### Changed
+- **Advanced Custom Meta Fields toggle for native WordPress Custom Fields**: protected/internal meta keys (`_`-prefixed) are no longer hard-rejected by the "WordPress Custom Fields" integration. They stay hidden from the fields dropdown by default, but a new "Show Advanced Custom Meta Fields" radio in the Template editor's Integrations panel lets an admin opt in to see and map them, and they can now be saved and written like any other field once selected.
+
+## [3.5.0] - 2026-07-25
+
+### Added
+- **Native WordPress Custom Field support**: a new "WordPress Custom Fields" integration lets a Template generate content directly into plain post meta on any post type — native (`post`/`page`) or custom — with no ACF (or any other plugin) required. Fields registered via `register_post_meta()` are auto-discovered; the Template editor's Integrations panel also lets an admin hand-add any other meta key via a growable "+ Add Another Field" repeater, with protected/internal meta keys (`_`-prefixed) rejected both in the picker and on save.
+
+## [3.4.0] - 2026-07-25
+
+### Added
+- **Post Type Awareness in History & Content**: `aips_history` now records the post type of every post it generates (backfilled for existing rows via a one-time migration). The History page and the Content page (Generated Posts / Partial Generations / Pending Review tabs) all gained a "Type" column and a post type filter, so a mixed library of `post` and custom-post-type content stays fully navigable.
+
+### Fixed
+- **History link hidden on custom post types**: The "View AI History" link/row-action was incorrectly hidden on any post type other than `post`, even when AIPS generated that post. It now shows correctly for any post type.
+
+## [3.3.0] - 2026-07-25
+
+### Added
+- **Per-Template Post Type**: Templates can now target any public WordPress post type (native or custom, including CPTs registered by other plugins) via a new "Post Type" selector in the Template editor. The choice is locked once the template is saved — it can't be changed on an existing template — since changing it later would orphan already-generated posts and any Integrations field mappings scoped to the old type. The Categories/Tags fields now hide themselves for post types that don't support those taxonomies, and the Integrations panel's ACF field-group picker is now scoped to the template's actual post type instead of showing every field group on the site.
+
+## [3.2.0] - 2026-07-24
+
+### Added
+- **Third-Party Plugin Bridge**: New `AIPS_Integration_Interface` contract, `AIPS_Integration_Registry`, and `AIPS_Integration_Manager` let AIPS generate content directly into fields owned by other plugins. Ships with an Advanced Custom Fields (ACF) adapter — map a template's fields to an ACF field group (with per-field custom prompts) in the Template editor's new "Third-Party Plugin Integrations" panel, and generated posts get those ACF fields populated automatically. Other plugins can register their own adapter via the `aips_integrations_registry` filter without any AIPS core changes.
 
 ## [3.0.1] - 2026-07-07
 

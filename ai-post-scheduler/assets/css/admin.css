@@ -1752,6 +1752,10 @@
     justify-content: center;
 }
 
+.aips-modal[hidden] {
+    display: none !important;
+}
+
 .aips-modal-content {
     background: #fff;
     border-radius: 8px;

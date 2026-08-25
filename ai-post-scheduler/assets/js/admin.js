@@ -235,6 +235,7 @@
             $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
+            $(document).on('change', '#template_post_type', this.toggleTemplatePostTypeFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
@@ -634,6 +635,9 @@
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
+            $('#template_post_type').val('post').prop('disabled', false);
+            $('#template_post_type_locked_notice').hide();
+            AIPS.toggleTemplatePostTypeFields();
             AIPS.setMediaSelection([]);
             AIPS.toggleImagePrompt();
             // Reset AI Variables panel
@@ -704,6 +708,9 @@
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
+                        $('#template_post_type').val(t.post_type || 'post').prop('disabled', true);
+                        $('#template_post_type_locked_notice').show();
+                        AIPS.toggleTemplatePostTypeFields();
                         $('#post_status').val(t.post_status);
                         $('#post_category').val(selectedCategories);
                         $('#post_tags').val(t.post_tags);
@@ -908,6 +915,7 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
@@ -985,6 +993,7 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
@@ -1004,6 +1013,12 @@
                         if (response.data && response.data.template_id) {
                             $('#template_id').val(response.data.template_id);
                             AIPS.lastSavedTemplateId = response.data.template_id;
+
+                            // post_type is write-once server-side as of this save;
+                            // lock the field so the UI doesn't imply it's still changeable.
+                            $('#template_post_type').prop('disabled', true);
+                            $('#template_post_type_locked_notice').show();
+                            AIPS.toggleTemplatePostTypeFields();
                         }
 
                         AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
@@ -3368,6 +3383,27 @@
             } else {
                 $('.aips-image-source-ai').show();
             }
+        },
+
+        /**
+         * Show/hide the Categories and Tags rows based on whether the
+         * currently-selected template post type supports those taxonomies.
+         *
+         * A custom post type isn't guaranteed to support the built-in
+         * 'category'/'post_tag' taxonomies, and assigning them anyway would
+         * silently create orphaned term relationships. Reads the support
+         * flags from `aipsTemplatesL10n.postTypeTaxonomySupport`, localized
+         * per post type alongside the rest of the Templates page strings.
+         *
+         * Bound to the `change` event on `#template_post_type`, and also
+         * called directly after setting its value in openTemplateModal()/editTemplate().
+         */
+        toggleTemplatePostTypeFields: function() {
+            var postType = $('#template_post_type').val();
+            var support = (aipsTemplatesL10n.postTypeTaxonomySupport || {})[postType] || {};
+
+            $('#post_category_row').toggle(!!support.supports_category);
+            $('#post_tags_row').toggle(!!support.supports_post_tag);
         },
 
         /**

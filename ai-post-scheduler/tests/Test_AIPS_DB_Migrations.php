@@ -189,4 +189,62 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 
 		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
 	}
+
+	/**
+	 * migrate_to_3_4_0() must backfill aips_history.post_type from the linked
+	 * post's actual post type for rows created before the column existed.
+	 */
+	public function test_migrate_to_3_4_0_backfills_post_type_from_linked_post() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array(
+			'post_title' => 'Legacy History Row Post',
+			'post_type'  => 'page',
+		) );
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id         = $history_repository->create( array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+			// post_type intentionally omitted, simulating a pre-3.4.0 row.
+		) );
+
+		$before = $history_repository->get_by_id( $history_id );
+		$this->assertNull( $before->post_type );
+
+		update_option( 'aips_db_version', '3.3.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$after = $history_repository->get_by_id( $history_id );
+		$this->assertSame( 'page', $after->post_type );
+	}
+
+	/**
+	 * migrate_to_3_4_0() must not overwrite a post_type that's already set
+	 * (e.g. by the write path on a more recent row), and must be a safe
+	 * no-op to run twice.
+	 */
+	public function test_migrate_to_3_4_0_does_not_overwrite_existing_post_type() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array(
+			'post_title' => 'Already Backfilled Post',
+			'post_type'  => 'page',
+		) );
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id         = $history_repository->create( array(
+			'post_id'   => $post_id,
+			'status'    => 'completed',
+			'post_type' => 'post', // Deliberately mismatched from the post's real type.
+		) );
+
+		update_option( 'aips_db_version', '3.3.0' );
+		AIPS_DB_Migrations::check_and_run();
+		update_option( 'aips_db_version', '3.3.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$after = $history_repository->get_by_id( $history_id );
+		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
+	}
 }

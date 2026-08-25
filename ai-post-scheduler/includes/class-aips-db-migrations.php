@@ -166,6 +166,14 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_1_0();
 		}
 
+		// migrate_to_3_4_0() is a data-backfill migration that requires the
+		// post_type column introduced in this release to already exist
+		// (created above by install_tables()). It must therefore run after
+		// install_tables() rather than before it.
+		if ( version_compare( $from_version, '3.4.0', '<' ) ) {
+			$this->migrate_to_3_4_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -973,6 +981,48 @@ class AIPS_DB_Migrations {
 			"migrate_to_3_1_0: backfilled {$updated} rows, dropped log_type column from {$table}",
 			'info'
 		);
+	}
+
+	/**
+	 * Migration for version 3.4.0.
+	 *
+	 * Backfills the new aips_history.post_type column for existing rows.
+	 * New rows are populated at write time by AIPS_Generator (via
+	 * AIPS_History_Container::complete_success()); this migration only
+	 * covers history rows created before that column existed. A single
+	 * INNER JOIN UPDATE derives post_type from the linked wp_posts row,
+	 * touching only rows where post_id is set and post_type is still NULL,
+	 * so it's naturally idempotent and safe to leave in run_upgrade()
+	 * permanently.
+	 */
+	private function migrate_to_3_4_0() {
+		global $wpdb;
+
+		$table_history = $wpdb->prefix . 'aips_history';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_history ) );
+		if ( $table_exists !== $table_history ) {
+			return;
+		}
+
+		$post_type_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_history}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'post_type'
+		) );
+		if ( ! $post_type_column ) {
+			return;
+		}
+
+		$updated = $wpdb->query(
+			"UPDATE {$table_history} h
+			INNER JOIN {$wpdb->posts} p ON h.post_id = p.ID
+			SET h.post_type = p.post_type
+			WHERE h.post_id IS NOT NULL AND h.post_type IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		if ( $updated ) {
+			$this->logger->log( "migrate_to_3_4_0: backfilled post_type for {$updated} aips_history rows", 'info' );
+		}
 	}
 
 	/**

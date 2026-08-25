@@ -16,6 +16,12 @@
 **PR:** ⚡ Bolt: Fix N+1 post queries by pre-fetching bulk caches
 **Learning:** Loops calling `get_post()` sequentially trigger excessive database lookups.
 **Action:** Pre-fetch post IDs into arrays and use `_prime_post_caches()` before loops.
+## 2026-08-10 - Content Auditor N+1 Optimization
+**Area:** ai-post-scheduler/includes/class-aips-content-auditor.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Fix N+1 post queries in Content Auditor
+**Learning:** Always use `_prime_post_caches` when querying multiple post titles/categories in a loop.
+**Action:** Verify if other auditor/scraper functions run into the same N+1 queries.
 ## 2024-06-08 - Fix N+1 queries in Schedule Controller modal data
 **Area:** ai-post-scheduler/includes/class-aips-schedule-controller.php
 **Status:** opened PR
