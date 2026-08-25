@@ -226,6 +226,15 @@ class and must apply to term and user meta unchanged.
 This is the main cross-cutting edit and the main review risk — it touches #1914 code
 that just landed. Worth a focused review pass on its own (Slice 3).
 
+> **Align with #1999's object-typing convention, don't invent a competing one.** #1999
+> (open) adds a polymorphic `aips_embeddings` table that already discriminates rows by
+> object type via an `object_post_type` column, covering posts, custom post types, and
+> author topics. That is the same problem `AIPS_Object_Ref` solves, solved once already.
+> Before finalizing the value object, reconcile its `type`/`subtype` vocabulary with
+> #1999's column so the plugin ends up with one way to say "which kind of thing is this",
+> not two. If #1999 lands first, prefer adopting its vocabulary over introducing a
+> parallel one.
+
 > **There will be two post-scoped interfaces to widen, not one.** #1991 (open) adds
 > `AIPS_SEO_Provider_Interface` with `write_post_seo($post_id, ...)` /
 > `read_post_seo()` / `delete_post_seo()`, in parallel with #1914's
@@ -431,6 +440,9 @@ Per the feature-slicing guardrail, checked against all open PRs:
 | #1971 Content Hub | **UI coordination.** See Slice 5. |
 | #1973 Generation pipeline | **Watch.** If the pipeline lands, Slice 2's service may fit better as a stage. Doesn't block. |
 | #1719 Existing-post scan | Adjacent (both operate on existing objects), no code overlap — that one is post-only. |
+| #1999 Semantic vector store | **Precedent to follow, not a conflict.** Its `aips_embeddings` table is already polymorphic over object type (`object_post_type`), covering posts, CPTs, and author topics. See §4 — align `AIPS_Object_Ref` with its vocabulary rather than introducing a second one. Its `AIPS_Deduplication_Service` is also the nearest thing to a duplicate guard and is worth reusing before writing one here. |
+| #1996 Content Auditor scanner | **No conflict, adjacent value.** Its post fingerprinting and `_prime_post_caches` batching are a working model for `query_targets()` and `read_context()` batching in Slice 1. Note it is stacked on #1905's branch, not `main`. |
+| #1954 History event contract | **No conflict; affects Slice 0.** It adds indexed `event_type`/`event_status` columns and a canonical recorder. If it lands first, Slice 0's history-labelling fix should emit through `AIPS_History_Event_Recorder` with a canonical event type rather than patching the ad hoc string in place — a better fix, and cheaper than doing it twice. |
 
 **No open PR owns any slice here.** Nearest neighbor is `AIPS_Taxonomy_Controller` on
 `main`, which solves a different problem (§2c) and is left untouched.
@@ -444,13 +456,19 @@ Short answer: **nothing, to start.** Slice 0 depends on no open PR.
 | PR | Needed by | When |
 |---|---|---|
 | #1914 Integrations/meta | Slice 3 | **Already merged** ✅ |
-| #1905 Content digest | Slice 1 (`read_context()` bounded summarization) | Before Slice 1 — the one worth merging soon |
+| #1905 Content digest | Slice 1 (`read_context()` bounded summarization) | Before Slice 1 — **and now also blocking #1996, which is stacked on its branch** |
+| #1954 History event contract | Slice 0 (changes the shape of the fix) | Decide before Slice 0 — see §7 |
+| #1999 Semantic vector store | Slice 1 (object-type vocabulary), Slice 5 (dedup reuse) | Not blocking, but align before finalizing `AIPS_Object_Ref` |
 | #1971 Content Hub | Slice 5 (UI placement) | Before Slice 5, or build standalone |
 | #1991 SEO abstraction | Slice 7 only | Before Slice 7 — last slice, no rush |
 
-**#1905 is the only near-term merge that unblocks anything**, and even it can be
-deferred: Slice 1 could ship with naive truncation in `read_context()` and swap in the
-digest later, at the cost of a follow-up edit.
+**#1905 is the near-term merge that unblocks the most.** It gates Slice 1's context
+quality *and* #1996 is stacked directly on its branch, so #1996 cannot merge until
+#1905 does.
+
+Slice 0 remains startable today, but if #1954 is close, waiting for it produces a
+better fix — emitting a canonical event through the new recorder instead of patching a
+hardcoded string that #1954 is already replacing.
 
 ## 9. Recommended next step
 
