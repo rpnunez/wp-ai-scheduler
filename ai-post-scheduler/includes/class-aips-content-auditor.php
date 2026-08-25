@@ -2,256 +2,317 @@
 /**
  * Content Auditor Service
  *
- * Analyzes existing content to identify gaps and opportunities.
+ * Analyzes existing content to identify gaps, internal link silos, decay, and opportunities.
  *
  * @package AI_Post_Scheduler
  * @since 1.9.0
  */
 
 if (!defined('ABSPATH')) {
-    exit;
+	exit;
 }
 
 /**
  * Class AIPS_Content_Auditor
  *
- * Scans local content and interfaces with AI to find content gaps.
+ * Scans local content, builds internal link & entity graphs, and interfaces with AI to find content gaps.
  */
 class AIPS_Content_Auditor {
 
-    /**
-     * @var AIPS_AI_Service_Interface AI service for making API calls
-     */
-    private $ai_service;
+	/**
+	 * @var AIPS_AI_Service_Interface AI service for making API calls
+	 */
+	private $ai_service;
 
-    /**
-     * @var AIPS_Logger_Interface Logger instance
-     */
-    private $logger;
+	/**
+	 * @var AIPS_Logger_Interface Logger instance
+	 */
+	private $logger;
 
-    /**
-     * Initialize the auditor.
-     *
-     * @param AIPS_AI_Service_Interface|null $ai_service AI service instance.
-     * @param AIPS_Logger_Interface|null     $logger Logger instance.
-     */
-    public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null) {
-        $container = AIPS_Container::get_instance();
-        $this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-        $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-    }
+	/**
+	 * @var AIPS_Content_Auditor_Scanner Scanner instance
+	 */
+	private $scanner;
 
-    /**
-     * Get a summary of existing site content.
-     *
-     * Fetches recent published posts to provide context for the AI.
-     *
-     * @param int $limit Number of posts to fetch.
-     * @return array Array of post summaries (title, categories).
-     */
-    public function get_site_content_summary($limit = 100) {
-        $args = array(
-            'post_type'      => 'post',
-            'post_status'    => 'publish',
-            'posts_per_page' => $limit,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-            'fields'         => 'ids', // Fetch IDs first to be lighter
-        );
+	/**
+	 * Initialize the auditor.
+	 *
+	 * @param AIPS_AI_Service_Interface|null    $ai_service AI service instance.
+	 * @param AIPS_Logger_Interface|null        $logger     Logger instance.
+	 * @param AIPS_Content_Auditor_Scanner|null $scanner    Scanner instance.
+	 */
+	public function __construct(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Content_Auditor_Scanner $scanner = null
+	) {
+		$container = AIPS_Container::get_instance();
+		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->scanner = $scanner ?: new AIPS_Content_Auditor_Scanner();
+	}
 
-        $query = new WP_Query($args);
-        $summary = array();
+	/**
+	 * Get the scanner instance.
+	 *
+	 * @return AIPS_Content_Auditor_Scanner
+	 */
+	public function get_scanner() {
+		if (null === $this->scanner) {
+			$this->scanner = new AIPS_Content_Auditor_Scanner();
+		}
+		return $this->scanner;
+	}
 
-        if ($query->have_posts()) {
-            if (!empty($query->posts) && function_exists('_prime_post_caches')) {
-                _prime_post_caches(array_unique(array_filter(array_map('intval', $query->posts))), false, true);
-            }
-            foreach ($query->posts as $post_id) {
-                $title = get_the_title($post_id);
-                $categories = get_the_category($post_id);
-                $cat_names = array();
-                
-                if ($categories) {
-                    foreach ($categories as $cat) {
-                        $cat_names[] = $cat->name;
-                    }
-                }
+	/**
+	 * Scan site library and return structured fingerprints.
+	 *
+	 * @param int $limit Maximum posts to scan.
+	 * @return array
+	 */
+	public function scan_site_library($limit = 200) {
+		return $this->get_scanner()->scan_library($limit);
+	}
 
-                $summary[] = array(
-                    'title' => $title,
-                    'categories' => implode(', ', $cat_names)
-                );
-            }
-        }
+	/**
+	 * Build and return the internal link graph across library fingerprints.
+	 *
+	 * @param array|null $fingerprints Optional pre-scanned fingerprints.
+	 * @param int        $limit Default limit when scanning on-demand.
+	 * @return array
+	 */
+	public function get_link_graph($fingerprints = null, $limit = 200) {
+		if ($fingerprints === null) {
+			$fingerprints = $this->scan_site_library($limit);
+		}
+		return $this->get_scanner()->build_link_graph($fingerprints);
+	}
 
-        return $summary;
-    }
+	/**
+	 * Build and return entity clusters, decay, and cannibalization insights.
+	 *
+	 * @param array|null $fingerprints Optional pre-scanned fingerprints.
+	 * @param int        $limit Default limit when scanning on-demand.
+	 * @return array
+	 */
+	public function get_entity_clusters($fingerprints = null, $limit = 200) {
+		if ($fingerprints === null) {
+			$fingerprints = $this->scan_site_library($limit);
+		}
+		return $this->get_scanner()->build_entity_clusters($fingerprints);
+	}
 
-    /**
-     * Perform a gap analysis for a specific niche.
-     *
-     * @param string $niche The target niche to analyze.
-     * @return array|WP_Error Array of gap opportunities or WP_Error on failure.
-     */
-    public function perform_gap_analysis($niche) {
-        $this->logger->log("Starting gap analysis for niche: {$niche}", 'info');
+	/**
+	 * Get a summary of existing site content.
+	 *
+	 * Fetches recent published posts to provide context for the AI.
+	 *
+	 * @param int $limit Number of posts to fetch.
+	 * @return array Array of post summaries (title, categories).
+	 */
+	public function get_site_content_summary($limit = 100) {
+		$args = array(
+			'post_type'      => 'post',
+			'post_status'    => 'publish',
+			'posts_per_page' => $limit,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'fields'         => 'ids', // Fetch IDs first to be lighter
+		);
 
-        // 1. Ingest existing content
-        $existing_content = $this->get_site_content_summary(100);
-        
-        if (empty($existing_content)) {
-            // If no content exists, we can still run analysis but context is different
-            $this->logger->log("No existing content found for gap analysis.", 'info');
-        }
+		$query = new WP_Query($args);
+		$summary = array();
 
-        // 2. Construct the prompt
-        $prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
+		if ($query->have_posts()) {
+			if (!empty($query->posts) && function_exists('_prime_post_caches')) {
+				_prime_post_caches(array_unique(array_filter(array_map('intval', $query->posts))), false, true);
+			}
+			foreach ($query->posts as $post_id) {
+				$title = get_the_title($post_id);
+				$categories = get_the_category($post_id);
+				$cat_names = array();
+				
+				if ($categories) {
+					foreach ($categories as $cat) {
+						$cat_names[] = $cat->name;
+					}
+				}
 
-        // 3. Call AI Service
-        $options = array(
-            'temperature' => 0.7,
-            'json_schema' => $this->get_gap_analysis_json_schema(),
-        );
+				$summary[] = array(
+					'title' => $title,
+					'categories' => implode(', ', $cat_names),
+				);
+			}
+		}
 
-        $response = $this->ai_service->generate_json($prompt, $options);
+		return $summary;
+	}
 
-        if (is_wp_error($response)) {
-            $this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
-            return $response;
-        }
+	/**
+	 * Perform a gap analysis for a specific niche.
+	 *
+	 * @param string $niche The target niche to analyze.
+	 * @return array|WP_Error Array of gap opportunities or WP_Error on failure.
+	 */
+	public function perform_gap_analysis($niche) {
+		$this->logger->log("Starting gap analysis for niche: {$niche}", 'info');
 
-        // 4. Validate and return results
-        if (!is_array($response)) {
-            $this->logger->log("Gap analysis returned invalid JSON format.", 'error');
-            return new WP_Error('invalid_response', 'AI returned invalid data format.');
-        }
+		// 1. Ingest existing content
+		$existing_content = $this->get_site_content_summary(100);
+		
+		if (empty($existing_content)) {
+			// If no content exists, we can still run analysis but context is different
+			$this->logger->log("No existing content found for gap analysis.", 'info');
+		}
 
-        $this->logger->log("Gap analysis completed successfully. Found " . count($response) . " gaps.", 'info');
-        
-        return $response;
-    }
+		// 2. Construct the prompt
+		$prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
 
-    /**
-     * Perform a gap analysis for a specific niche (fallback method).
-     *
-     * Uses generate_text and manual JSON parsing.
-     *
-     * @param string $niche The target niche to analyze.
-     * @return array|WP_Error Array of gap opportunities or WP_Error on failure.
-     */
-    public function perform_gap_analysis_fallback($niche) {
-        $this->logger->log("Starting gap analysis (fallback) for niche: {$niche}", 'info');
+		// 3. Call AI Service
+		$options = array(
+			'temperature' => 0.7,
+			'json_schema' => $this->get_gap_analysis_json_schema(),
+		);
 
-        // 1. Ingest existing content
-        $existing_content = $this->get_site_content_summary(100);
-        
-        if (empty($existing_content)) {
-            // If no content exists, we can still run analysis but context is different
-            $this->logger->log("No existing content found for gap analysis.", 'info');
-        }
+		$response = $this->ai_service->generate_json($prompt, $options);
 
-        // 2. Construct the prompt
-        $prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
+		if (is_wp_error($response)) {
+			$this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
+			return $response;
+		}
 
-        // 3. Call AI Service
-        $options = array(
-            'temperature' => 0.7,
-        );
+		// 4. Validate and return results
+		if (!is_array($response)) {
+			$this->logger->log("Gap analysis returned invalid JSON format.", 'error');
+			return new WP_Error('invalid_response', 'AI returned invalid data format.');
+		}
 
-        $response = $this->ai_service->generate_text($prompt, $options);
+		$this->logger->log("Gap analysis completed successfully. Found " . count($response) . " gaps.", 'info');
+		
+		return $response;
+	}
 
-        if (is_wp_error($response)) {
-            $this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
-            return $response;
-        }
+	/**
+	 * Perform a gap analysis for a specific niche (fallback method).
+	 *
+	 * Uses generate_text and manual JSON parsing.
+	 *
+	 * @param string $niche The target niche to analyze.
+	 * @return array|WP_Error Array of gap opportunities or WP_Error on failure.
+	 */
+	public function perform_gap_analysis_fallback($niche) {
+		$this->logger->log("Starting gap analysis (fallback) for niche: {$niche}", 'info');
 
-        // 4. Parse JSON from text response
-        $parsed_response = $this->parse_json_response($response);
+		// 1. Ingest existing content
+		$existing_content = $this->get_site_content_summary(100);
+		
+		if (empty($existing_content)) {
+			// If no content exists, we can still run analysis but context is different
+			$this->logger->log("No existing content found for gap analysis.", 'info');
+		}
 
-        // 5. Validate and return results
-        if (!is_array($parsed_response)) {
-            $this->logger->log("Gap analysis returned invalid JSON format.", 'error');
-            return new WP_Error('invalid_response', 'AI returned invalid data format.');
-        }
+		// 2. Construct the prompt
+		$prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
 
-        $this->logger->log("Gap analysis completed successfully. Found " . count($parsed_response) . " gaps.", 'info');
-        
-        return $parsed_response;
-    }
+		// 3. Call AI Service
+		$options = array(
+			'temperature' => 0.7,
+		);
 
-    /**
-     * Parse JSON from AI text response.
-     * Handles markdown code blocks and raw JSON.
-     *
-     * Applies defensive strict type checking to ensure the parsed JSON is actually
-     * an array, mitigating fatal scalar type errors.
-     *
-     * @param string $response The raw text response from AI.
-     * @return array|null Parsed array or null on failure.
-     */
-    private function parse_json_response($response) {
-        // Remove markdown code blocks if present
-        if (preg_match('/```json\s*([\s\S]*?)\s*```/', $response, $matches)) {
-            $response = $matches[1];
-        } elseif (preg_match('/```\s*([\s\S]*?)\s*```/', $response, $matches)) {
-            $response = $matches[1];
-        }
+		$response = $this->ai_service->generate_text($prompt, $options);
 
-        $decoded = json_decode($response, true);
+		if (is_wp_error($response)) {
+			$this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
+			return $response;
+		}
 
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
+		// 4. Parse JSON from text response
+		$parsed_response = $this->parse_json_response($response);
 
-        return null;
-    }
+		// 5. Validate and return results
+		if (!is_array($parsed_response)) {
+			$this->logger->log("Gap analysis returned invalid JSON format.", 'error');
+			return new WP_Error('invalid_response', 'AI returned invalid data format.');
+		}
 
-    /**
-     * JSON schema for the gap analysis array returned by the AI.
-     *
-     * @return array<string, mixed>
-     */
-    private function get_gap_analysis_json_schema(): array {
-        return array(
-            'type'  => 'array',
-            'items' => array(
-                'type'       => 'object',
-                'properties' => array(
-                    'missing_topic' => array('type' => 'string'),
-                    'priority'      => array('type' => 'string', 'enum' => array('High', 'Medium')),
-                    'reason'        => array('type' => 'string'),
-                    'search_intent' => array('type' => 'string'),
-                ),
-                'required' => array('missing_topic', 'priority', 'reason', 'search_intent'),
-            ),
-        );
-    }
+		$this->logger->log("Gap analysis completed successfully. Found " . count($parsed_response) . " gaps.", 'info');
+		
+		return $parsed_response;
+	}
 
-    /**
-     * Generate the prompt for the AI.
-     *
-     * @param string $niche The target niche.
-     * @param array $existing_content List of existing content summaries.
-     * @return string The constructed prompt.
-     */
-    private function generate_gap_analysis_prompt($niche, $existing_content) {
-        $content_list = "";
-        if (!empty($existing_content)) {
-            foreach ($existing_content as $item) {
-                $content_list .= "- {$item['title']} (Category: {$item['categories']})\n";
-            }
-        } else {
-            $content_list = "(No existing content found)";
-        }
+	/**
+	 * Parse JSON from AI text response.
+	 * Handles markdown code blocks and raw JSON.
+	 *
+	 * Applies defensive strict type checking to ensure the parsed JSON is actually
+	 * an array, mitigating fatal scalar type errors.
+	 *
+	 * @param string $response The raw text response from AI.
+	 * @return array|null Parsed array or null on failure.
+	 */
+	private function parse_json_response($response) {
+		// Remove markdown code blocks if present
+		if (preg_match('/```json\s*([\s\S]*?)\s*```/', $response, $matches)) {
+			$response = $matches[1];
+		} elseif (preg_match('/```\s*([\s\S]*?)\s*```/', $response, $matches)) {
+			$response = $matches[1];
+		}
 
-        $prompt = "You are an SEO Content Strategist. The website's core niche is: {$niche}.\n\n";
-        $prompt .= "Here is a list of the last " . count($existing_content) . " published articles on the site:\n";
-        $prompt .= $content_list . "\n\n";
-        
-        $prompt .= "Task: Analyze the existing content coverage against the target niche. Identify 5-7 major sub-topics, 'pillar' pages, or content clusters that are MISSING or under-represented.\n\n";
-        
-        $prompt .= "Return a JSON array where each item has: \"missing_topic\" (string), \"priority\" (\"High\" or \"Medium\"), \"reason\" (string), \"search_intent\" (string).";
+		$decoded = json_decode($response, true);
 
-        return $prompt;
-    }
+		if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+			return $decoded;
+		}
+
+		return null;
+	}
+
+	/**
+	 * JSON schema for the gap analysis array returned by the AI.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_gap_analysis_json_schema(): array {
+		return array(
+			'type'  => 'array',
+			'items' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'missing_topic' => array('type' => 'string'),
+					'priority'      => array('type' => 'string', 'enum' => array('High', 'Medium')),
+					'reason'        => array('type' => 'string'),
+					'search_intent' => array('type' => 'string'),
+				),
+				'required' => array('missing_topic', 'priority', 'reason', 'search_intent'),
+			),
+		);
+	}
+
+	/**
+	 * Generate the prompt for the AI.
+	 *
+	 * @param string $niche The target niche.
+	 * @param array $existing_content List of existing content summaries.
+	 * @return string The constructed prompt.
+	 */
+	private function generate_gap_analysis_prompt($niche, $existing_content) {
+		$content_list = "";
+		if (!empty($existing_content)) {
+			foreach ($existing_content as $item) {
+				$content_list .= "- {$item['title']} (Category: {$item['categories']})\n";
+			}
+		} else {
+			$content_list = "(No existing content found)";
+		}
+
+		$prompt = "You are an SEO Content Strategist. The website's core niche is: {$niche}.\n\n";
+		$prompt .= "Here is a list of the last " . count($existing_content) . " published articles on the site:\n";
+		$prompt .= $content_list . "\n\n";
+		
+		$prompt .= "Task: Analyze the existing content coverage against the target niche. Identify 5-7 major sub-topics, 'pillar' pages, or content clusters that are MISSING or under-represented.\n\n";
+		
+		$prompt .= "Return a JSON array where each item has: \"missing_topic\" (string), \"priority\" (\"High\" or \"Medium\"), \"reason\" (string), \"search_intent\" (string).";
+
+		return $prompt;
+	}
 }
