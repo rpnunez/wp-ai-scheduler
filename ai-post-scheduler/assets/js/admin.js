@@ -795,12 +795,11 @@
         },
 
         /**
-         * Delete a template using a two-click soft-confirm pattern.
+         * Delete a template.
          *
-         * The first click changes the button label to "Click again to confirm"
-         * and sets a 3-second auto-reset timer. The second click (within the
-         * window) sends the `aips_delete_template` AJAX action and removes the
-         * table row on success.
+         * Confirms deletion using the standard AIPS.Utilities.confirm modal.
+         * On confirm, sends the `aips_delete_template` AJAX action and removes
+         * the table row on success.
          *
          * @param {Event} e - Click event from an `.aips-delete-template` element.
          */
@@ -810,56 +809,36 @@
             var id = $btn.data('id');
             var $row = $btn.closest('tr');
 
-            // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteTemplateConfirm || 'Are you sure you want to delete this template?', 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: aipsAdminL10n.confirmDeleteButton || 'Delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
 
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
-                return;
-            }
-
-            // Confirmed, proceed with deletion
-            AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                        // Reset button state on error
-                        $btn.text($btn.data('original-text'));
-                        $btn.removeClass('aips-confirm-delete');
-                        $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                    // Reset button state on error
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                    $btn.prop('disabled', false);
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_template',
+                            nonce: aipsAjax.nonce,
+                            template_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || 'Failed to delete template.', 'error');
+                                AIPS.Utilities.resetButton($btn);
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain || 'Failed to delete template.', 'error');
+                            AIPS.Utilities.resetButton($btn);
+                        }
+                    });
+                }}
+            ]);
         },
 
         /**
