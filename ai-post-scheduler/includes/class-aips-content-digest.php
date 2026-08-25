@@ -34,9 +34,23 @@ class AIPS_Content_Digest {
 		}
 
 		$plain_text = trim(preg_replace('/\s+/u', ' ', wp_strip_all_tags($content)));
+		if (mb_strlen($plain_text) <= $max_chars) {
+			return $plain_text;
+		}
+
 		$headings = $this->extract_headings($content);
 		$outline = empty($headings) ? '' : "ARTICLE OUTLINE:\n- " . implode("\n- ", $headings) . "\n\n";
-		$available = max(500, $max_chars - mb_strlen($outline) - 80);
+
+		$max_outline_chars = (int) floor($max_chars * 0.4);
+		if (mb_strlen($outline) > $max_outline_chars) {
+			$outline = mb_substr($outline, 0, $max_outline_chars) . "...\n\n";
+		}
+
+		$available = max(200, $max_chars - mb_strlen($outline) - 80);
+		if (mb_strlen($plain_text) <= $available) {
+			return $plain_text;
+		}
+
 		$head_length = (int) floor($available * 0.6);
 		$tail_length = $available - $head_length;
 
@@ -59,7 +73,7 @@ class AIPS_Content_Digest {
 		$headings = array();
 
 		foreach (isset($matches[1]) ? $matches[1] : array() as $heading) {
-			$heading = trim(preg_replace('/\s+/u', ' ', wp_strip_all_tags($heading)));
+			$heading = trim(preg_replace('/\s+/u', ' ', html_entity_decode(wp_strip_all_tags($heading), ENT_QUOTES, 'UTF-8')));
 			if ($heading !== '' && !in_array($heading, $headings, true)) {
 				$headings[] = mb_substr($heading, 0, 200);
 			}

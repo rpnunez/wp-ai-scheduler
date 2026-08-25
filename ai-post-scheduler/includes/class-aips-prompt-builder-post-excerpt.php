@@ -57,7 +57,8 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 			$excerpt_prompt .= $voice_instructions . "\n\n";
 		}
 
-		$excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
+		$clean_title = str_ireplace(array('<article_data', '</article_data'), array('&lt;article_data', '&lt;/article_data'), (string) $title);
+		$excerpt_prompt .= "ARTICLE TITLE:\n" . $clean_title . "\n\n";
 		$max_chars = (int) apply_filters('aips_excerpt_context_max_chars', 6000, $subject);
 		$content_context = $this->content_digest->build($content, $max_chars);
 		$content_context = str_ireplace(array('<article_data', '</article_data'), array('&lt;article_data', '&lt;/article_data'), $content_context);
@@ -91,7 +92,7 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 			$excerpt_prompt .= $voice_instructions . "\n\n";
 		}
 
-		$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
+		$excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.\n\nOutput only 40-60 words of plain text.";
 
 		return apply_filters('aips_excerpt_prompt', $excerpt_prompt, '', '', $voice, $topic);
 	}

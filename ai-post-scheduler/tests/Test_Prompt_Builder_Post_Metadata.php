@@ -41,4 +41,26 @@ class Test_Prompt_Builder_Post_Metadata extends WP_UnitTestCase {
 		$this->assertSame(array('PrimaryKeyword'), $schema['properties']['ai_variables']['required']);
 		$this->assertFalse($schema['properties']['ai_variables']['additionalProperties']);
 	}
+
+	public function test_metadata_with_topic_context_includes_author_tone_and_style() {
+		$author = (object) array(
+			'id' => 5,
+			'name' => 'Tech Author',
+			'field_niche' => 'DevOps',
+			'voice_tone' => 'authoritative and practical',
+			'writing_style' => 'in-depth analysis with code samples',
+		);
+		$topic = (object) array(
+			'id' => 10,
+			'topic_title' => 'Kubernetes Security',
+		);
+		$context = new AIPS_Topic_Context($author, $topic);
+		$builder = new AIPS_Prompt_Builder_Post_Metadata(new AIPS_Template_Processor());
+
+		$prompt = $builder->build($context);
+
+		$this->assertStringContainsString('Tone: authoritative and practical', $prompt);
+		$this->assertStringContainsString('Writing Style: in-depth analysis with code samples', $prompt);
+		$this->assertStringContainsString('EXCERPT INSTRUCTIONS:', $prompt);
+	}
 }

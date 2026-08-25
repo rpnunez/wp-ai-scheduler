@@ -62,9 +62,25 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		}
 
 		$excerpt_instructions = "Between 40 and 60 words. Write naturally as a human would. Plain text, no formatting.";
-		$voice_obj = $context->get_type() === 'template' ? $context->get_voice() : null;
-		if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
-			$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
+		if ($context->get_type() === 'template') {
+			$voice_obj = $context->get_voice();
+			if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
+				$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
+			}
+		} elseif ($context->get_type() === 'topic' && method_exists($context, 'get_author')) {
+			$author_obj = $context->get_author();
+			if ($author_obj) {
+				$author_style = array();
+				if (!empty($author_obj->voice_tone)) {
+					$author_style[] = 'Tone: ' . $author_obj->voice_tone;
+				}
+				if (!empty($author_obj->writing_style)) {
+					$author_style[] = 'Writing Style: ' . $author_obj->writing_style;
+				}
+				if (!empty($author_style)) {
+					$excerpt_instructions .= "\n" . implode("\n", $author_style);
+				}
+			}
 		}
 		$sections[] = "EXCERPT INSTRUCTIONS:\n" . $excerpt_instructions;
 

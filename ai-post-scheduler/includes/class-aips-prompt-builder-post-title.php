@@ -133,13 +133,14 @@ class AIPS_Prompt_Builder_Post_Title {
 			}
 		}
 
-		$prompt = 'Now generate a title for the article you just wrote. Respond with ONLY the most relevant title, nothing else.';
+		$prompt = 'Now generate a title for the article you just wrote.';
 
 		if (!empty($title_instructions)) {
 			$prompt .= " Here are your instructions:\n\n" . $title_instructions;
 		}
 
 		$prompt = $this->append_diversity_blocks($prompt, $context);
+		$prompt .= "\n\nRespond with ONLY one plain-text title, nothing else.";
 
 		return apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, '');
 	}
