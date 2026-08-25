@@ -111,6 +111,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_5_0();
 		}
 
+		if ( version_compare( $from_version, '3.4.2', '<' ) ) {
+			$this->migrate_to_3_4_2();
+		}
+
 		// Apply Layer-1 schema changes (new tables / new columns) so that plugin
 		// updates delivered via WordPress auto-update — which skip activate() —
 		// still get a complete, up-to-date schema.
@@ -160,6 +164,14 @@ class AIPS_DB_Migrations {
 
 		if ( version_compare( $from_version, '3.1.0', '<' ) ) {
 			$this->migrate_to_3_1_0();
+		}
+
+		// migrate_to_3_4_0() is a data-backfill migration that requires the
+		// post_type column introduced in this release to already exist
+		// (created above by install_tables()). It must therefore run after
+		// install_tables() rather than before it.
+		if ( version_compare( $from_version, '3.4.0', '<' ) ) {
+			$this->migrate_to_3_4_0();
 		}
 
 		// Use AIPS_Config::set_option() so the per-request option cache is
@@ -969,6 +981,85 @@ class AIPS_DB_Migrations {
 			"migrate_to_3_1_0: backfilled {$updated} rows, dropped log_type column from {$table}",
 			'info'
 		);
+	}
+
+	/**
+	 * Migration for version 3.4.0.
+	 *
+	 * Backfills the new aips_history.post_type column for existing rows.
+	 * New rows are populated at write time by AIPS_Generator (via
+	 * AIPS_History_Container::complete_success()); this migration only
+	 * covers history rows created before that column existed. A single
+	 * INNER JOIN UPDATE derives post_type from the linked wp_posts row,
+	 * touching only rows where post_id is set and post_type is still NULL,
+	 * so it's naturally idempotent and safe to leave in run_upgrade()
+	 * permanently.
+	 */
+	private function migrate_to_3_4_0() {
+		global $wpdb;
+
+		$table_history = $wpdb->prefix . 'aips_history';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_history ) );
+		if ( $table_exists !== $table_history ) {
+			return;
+		}
+
+		$post_type_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_history}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'post_type'
+		) );
+		if ( ! $post_type_column ) {
+			return;
+		}
+
+		$updated = $wpdb->query(
+			"UPDATE {$table_history} h
+			INNER JOIN {$wpdb->posts} p ON h.post_id = p.ID
+			SET h.post_type = p.post_type
+			WHERE h.post_id IS NOT NULL AND h.post_type IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		if ( $updated ) {
+			$this->logger->log( "migrate_to_3_4_0: backfilled post_type for {$updated} aips_history rows", 'info' );
+		}
+	}
+
+	/**
+	 * Migration for version 3.4.2.
+	 *
+	 * Restores the composite index on aips_history_log. The schema previously
+	 * declared this index over a non-existent `log_type` column — a leftover
+	 * from migrate_to_3_1_0(), which dropped the `log_type` column (and, with
+	 * it, MySQL implicitly dropped this index). The stale definition made
+	 * dbDelta fail on fresh installs ("Key column 'log_type' doesn't exist"),
+	 * aborting creation of every table defined after aips_history_log. The
+	 * schema now correctly targets `history_type_id`; this migration adds the
+	 * corrected index to sites that upgraded through 3.1.0 and therefore lost it.
+	 *
+	 * Guarded by SHOW TABLES / SHOW INDEX so it is a no-op on fresh installs
+	 * (where dbDelta has already created the corrected index) and on any site
+	 * that already has it.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_4_2() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'history_id_log_type'
+		) );
+
+		if ( ! $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_id_log_type (history_id, history_type_id)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
 	}
 
 	/**

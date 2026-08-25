@@ -34,6 +34,7 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
+        'aips_integration_field_mappings',
     );
 
     public function __construct() {
@@ -96,6 +97,7 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
 
         $sql = array();
 
@@ -104,6 +106,7 @@ class AIPS_DB_Manager {
             uuid varchar(36) DEFAULT NULL,
             correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
+            post_type varchar(50) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
@@ -120,6 +123,7 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
+            KEY post_type (post_type),
             KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
@@ -140,7 +144,7 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY history_id (history_id),
             KEY history_type_id (history_type_id),
-            KEY history_id_log_type (history_id, log_type)
+            KEY history_id_log_type (history_id, history_type_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_campaigns (
@@ -661,6 +665,24 @@ class AIPS_DB_Manager {
             KEY event_type (event_type),
             KEY created_at (created_at),
             KEY user_id (user_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_integration_field_mappings (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            template_id bigint(20) DEFAULT NULL,
+            integration_id varchar(50) NOT NULL,
+            source_key varchar(191) NOT NULL,
+            field_key varchar(191) NOT NULL,
+            field_label varchar(191) DEFAULT NULL,
+            field_type varchar(50) DEFAULT NULL,
+            custom_prompt text,
+            is_active tinyint(1) DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY template_integration_field (template_id, integration_id, field_key),
+            KEY template_id (template_id),
+            KEY integration_id (integration_id)
         ) $charset_collate;";
 
         return $sql;
