@@ -267,11 +267,14 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_clear_index'            => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_get_post_for_insertion' => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_find_insert_locations'  => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_apply_insertion'        => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_apply_bulk_insertions'  => 'AIPS_Internal_Links_Controller',
+		// Content Indexer Controller
+		'aips_indexer_get_status'                    => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_process_batch'                 => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_clear_index'                   => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_get_graph'                     => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_run_cannibalization_audit'     => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_save_settings'                 => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_search_posts'                  => 'AIPS_Content_Indexer_Controller',
 
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',

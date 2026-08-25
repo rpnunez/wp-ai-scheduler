@@ -440,6 +440,58 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_System_Status_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Status_Diagnostics_Service();
         });
+
+        // Register AIPS_Embeddings_Repository
+        $container->singleton(AIPS_Embeddings_Repository::class, function( $container ) {
+            return new AIPS_Embeddings_Repository();
+        });
+
+        // Register AIPS_Relationships_Repository
+        $container->singleton(AIPS_Relationships_Repository::class, function( $container ) {
+            return new AIPS_Relationships_Repository();
+        });
+
+        // Register AIPS_Embeddings_Service
+        $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
+            return new AIPS_Embeddings_Service(
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        // Register AIPS_Content_Indexer_Service
+        $container->singleton(AIPS_Content_Indexer_Service::class, function( $container ) {
+            return new AIPS_Content_Indexer_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_History_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Config::class),
+                $container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository()
+            );
+        });
+
+        // Register AIPS_Related_Posts_Service
+        $container->singleton(AIPS_Related_Posts_Service::class, function( $container ) {
+            return new AIPS_Related_Posts_Service(
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        // Register AIPS_Deduplication_Service
+        $container->singleton(AIPS_Deduplication_Service::class, function( $container ) {
+            return new AIPS_Deduplication_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_Config::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
     }
 
     /**
@@ -562,6 +614,19 @@ final class AI_Post_Scheduler {
         add_action('aips_template_changed', function ($args) {
             (new AIPS_Integration_Manager())->handle_template_deleted($args);
         });
+
+        // Continuous semantic indexing: automatically index published posts and refresh relationships
+        add_action('save_post', function ($post_id, $post) {
+            if (!is_object($post) || !isset($post->post_status)) {
+                return;
+            }
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
+        }, 10, 2);
+
+        // Related Posts Frontend integration (content filter, shortcode, block)
+        new AIPS_Related_Posts_Frontend(
+            AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
+        );
     }
 
     /**
