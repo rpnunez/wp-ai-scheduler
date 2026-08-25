@@ -1371,6 +1371,7 @@ class AIPS_Generator {
         // Use new history API to complete with success
         $this->current_history->complete_success(array(
             'post_id' => $post_id,
+            'post_type' => $context->get_post_type(),
             'generated_title' => $title,
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,

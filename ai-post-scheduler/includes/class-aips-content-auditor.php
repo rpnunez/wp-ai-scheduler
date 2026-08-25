@@ -63,6 +63,9 @@ class AIPS_Content_Auditor {
         $summary = array();
 
         if ($query->have_posts()) {
+            if (!empty($query->posts) && function_exists('_prime_post_caches')) {
+                _prime_post_caches(array_unique(array_filter(array_map('intval', $query->posts))), false, true);
+            }
             foreach ($query->posts as $post_id) {
                 $title = get_the_title($post_id);
                 $categories = get_the_category($post_id);

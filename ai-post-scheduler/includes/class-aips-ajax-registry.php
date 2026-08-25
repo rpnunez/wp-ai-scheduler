@@ -296,10 +296,20 @@ class AIPS_Ajax_Registry {
 		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_cleanup'             => 'AIPS_Stress_Test_Controller',
 		'aips_stress_test_status'              => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_save_run'            => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_get_history'         => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_get_run'             => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_diff_runs'           => 'AIPS_Stress_Test_Controller',
 
 		// Dashboard Controller
 		'aips_get_dashboard_data'              => 'AIPS_Dashboard_Controller',
 
+		// Integrations Controller
+		'aips_get_available_integrations'      => 'AIPS_Integrations_Controller',
+		'aips_get_integration_schema'          => 'AIPS_Integrations_Controller',
+		'aips_get_field_mappings'              => 'AIPS_Integrations_Controller',
+		'aips_save_field_mappings'             => 'AIPS_Integrations_Controller',
+		'aips_delete_field_mapping'            => 'AIPS_Integrations_Controller',
 		// Affiliate Links Controller
 		'aips_affiliate_links_list'          => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_get'           => 'AIPS_Affiliate_Links_Controller',
