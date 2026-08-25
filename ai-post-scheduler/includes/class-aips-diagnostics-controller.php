@@ -67,6 +67,10 @@ class AIPS_Diagnostics_Controller {
 			'label' => __('Stress Test', 'ai-post-scheduler'),
 		);
 
+		$tabs['stress-test-history'] = array(
+			'label' => __('Stress Test History', 'ai-post-scheduler'),
+		);
+
 		$tabs['insights'] = array(
 			'label' => __('Insights', 'ai-post-scheduler'),
 		);
@@ -116,7 +120,7 @@ class AIPS_Diagnostics_Controller {
 	public static function is_tab_available($tab) {
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
-		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor', 'stress-test'), true)) {
+		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor', 'stress-test', 'stress-test-history'), true)) {
 			return true;
 		}
 
@@ -171,6 +175,9 @@ class AIPS_Diagnostics_Controller {
 				break;
 			case 'stress-test':
 				$this->render_stress_test_tab();
+				break;
+			case 'stress-test-history':
+				$this->render_stress_test_history_tab();
 				break;
 			case 'telemetry':
 				$this->render_telemetry_tab();
@@ -243,6 +250,17 @@ class AIPS_Diagnostics_Controller {
 	private function render_stress_test_tab() {
 		$controller = new AIPS_Stress_Test_Controller();
 		$controller->render_page(true);
+	}
+
+	/**
+	 * Render the Stress Test History tab.
+	 *
+	 * @return void
+	 */
+	private function render_stress_test_history_tab() {
+		$service = new AIPS_Stress_Test_Service();
+		$runs    = $service->get_run_history(30);
+		include AIPS_PLUGIN_DIR . 'templates/admin/tab-stress-test-history.php';
 	}
 
 	/**
