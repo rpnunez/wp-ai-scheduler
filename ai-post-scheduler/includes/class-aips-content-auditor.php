@@ -35,21 +35,29 @@ class AIPS_Content_Auditor {
 	private $scanner;
 
 	/**
+	 * @var AIPS_Content_Auditor_Engine Engine instance
+	 */
+	private $engine;
+
+	/**
 	 * Initialize the auditor.
 	 *
 	 * @param AIPS_AI_Service_Interface|null    $ai_service AI service instance.
 	 * @param AIPS_Logger_Interface|null        $logger     Logger instance.
 	 * @param AIPS_Content_Auditor_Scanner|null $scanner    Scanner instance.
+	 * @param AIPS_Content_Auditor_Engine|null  $engine     Engine instance.
 	 */
 	public function __construct(
 		?AIPS_AI_Service_Interface $ai_service = null,
 		?AIPS_Logger_Interface $logger = null,
-		?AIPS_Content_Auditor_Scanner $scanner = null
+		?AIPS_Content_Auditor_Scanner $scanner = null,
+		?AIPS_Content_Auditor_Engine $engine = null
 	) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->scanner = $scanner ?: new AIPS_Content_Auditor_Scanner();
+		$this->engine = $engine ?: new AIPS_Content_Auditor_Engine($this->ai_service, $this->logger);
 	}
 
 	/**
@@ -62,6 +70,18 @@ class AIPS_Content_Auditor {
 			$this->scanner = new AIPS_Content_Auditor_Scanner();
 		}
 		return $this->scanner;
+	}
+
+	/**
+	 * Get the engine instance.
+	 *
+	 * @return AIPS_Content_Auditor_Engine
+	 */
+	public function get_engine() {
+		if (null === $this->engine) {
+			$this->engine = new AIPS_Content_Auditor_Engine($this->ai_service, $this->logger);
+		}
+		return $this->engine;
 	}
 
 	/**
@@ -100,6 +120,25 @@ class AIPS_Content_Auditor {
 			$fingerprints = $this->scan_site_library($limit);
 		}
 		return $this->get_scanner()->build_entity_clusters($fingerprints);
+	}
+
+	/**
+	 * Run a full multi-dimensional content audit (5-Pillars + Health Scorecard).
+	 *
+	 * @param string $niche Target niche.
+	 * @param array  $options Audit options.
+	 * @return array Full audit report array.
+	 */
+	public function run_full_audit($niche, array $options = array()) {
+		$limit = isset($options['limit']) ? max(10, (int) $options['limit']) : 200;
+
+		$this->logger->log("Executing full 5-pillar content audit for niche: {$niche}", 'info');
+
+		$fingerprints    = $this->scan_site_library($limit);
+		$link_graph      = $this->get_link_graph($fingerprints);
+		$entity_clusters = $this->get_entity_clusters($fingerprints);
+
+		return $this->get_engine()->run_full_audit($niche, $fingerprints, $link_graph, $entity_clusters, $options);
 	}
 
 	/**
@@ -157,39 +196,19 @@ class AIPS_Content_Auditor {
 	public function perform_gap_analysis($niche) {
 		$this->logger->log("Starting gap analysis for niche: {$niche}", 'info');
 
-		// 1. Ingest existing content
-		$existing_content = $this->get_site_content_summary(100);
-		
-		if (empty($existing_content)) {
-			// If no content exists, we can still run analysis but context is different
-			$this->logger->log("No existing content found for gap analysis.", 'info');
+		$fingerprints    = $this->scan_site_library(100);
+		$entity_clusters = $this->get_entity_clusters($fingerprints);
+
+		$result = $this->get_engine()->analyze_topic_gaps($niche, $fingerprints, $entity_clusters);
+
+		if (empty($result['gaps'])) {
+			// Fallback legacy prompt
+			return $this->perform_gap_analysis_fallback($niche);
 		}
 
-		// 2. Construct the prompt
-		$prompt = $this->generate_gap_analysis_prompt($niche, $existing_content);
+		$this->logger->log("Gap analysis completed successfully. Found " . count($result['gaps']) . " gaps.", 'info');
 
-		// 3. Call AI Service
-		$options = array(
-			'temperature' => 0.7,
-			'json_schema' => $this->get_gap_analysis_json_schema(),
-		);
-
-		$response = $this->ai_service->generate_json($prompt, $options);
-
-		if (is_wp_error($response)) {
-			$this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
-			return $response;
-		}
-
-		// 4. Validate and return results
-		if (!is_array($response)) {
-			$this->logger->log("Gap analysis returned invalid JSON format.", 'error');
-			return new WP_Error('invalid_response', 'AI returned invalid data format.');
-		}
-
-		$this->logger->log("Gap analysis completed successfully. Found " . count($response) . " gaps.", 'info');
-		
-		return $response;
+		return $result['gaps'];
 	}
 
 	/**
@@ -207,7 +226,6 @@ class AIPS_Content_Auditor {
 		$existing_content = $this->get_site_content_summary(100);
 		
 		if (empty($existing_content)) {
-			// If no content exists, we can still run analysis but context is different
 			$this->logger->log("No existing content found for gap analysis.", 'info');
 		}
 
@@ -244,14 +262,10 @@ class AIPS_Content_Auditor {
 	 * Parse JSON from AI text response.
 	 * Handles markdown code blocks and raw JSON.
 	 *
-	 * Applies defensive strict type checking to ensure the parsed JSON is actually
-	 * an array, mitigating fatal scalar type errors.
-	 *
 	 * @param string $response The raw text response from AI.
 	 * @return array|null Parsed array or null on failure.
 	 */
 	private function parse_json_response($response) {
-		// Remove markdown code blocks if present
 		if (preg_match('/```json\s*([\s\S]*?)\s*```/', $response, $matches)) {
 			$response = $matches[1];
 		} elseif (preg_match('/```\s*([\s\S]*?)\s*```/', $response, $matches)) {
