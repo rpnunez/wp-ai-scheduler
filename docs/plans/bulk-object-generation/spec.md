@@ -226,6 +226,19 @@ class and must apply to term and user meta unchanged.
 This is the main cross-cutting edit and the main review risk — it touches #1914 code
 that just landed. Worth a focused review pass on its own (Slice 3).
 
+> **There will be two post-scoped interfaces to widen, not one.** #1991 (open) adds
+> `AIPS_SEO_Provider_Interface` with `write_post_seo($post_id, ...)` /
+> `read_post_seo()` / `delete_post_seo()`, in parallel with #1914's
+> `AIPS_Integration_Interface::write_field_value($post_id, ...)`. Both bake a bare post
+> ID into their contract, and both need the same generalization for Slice 7 (Q1).
+>
+> Since #1991 is **unmerged**, this is much cheaper to address there than here: taking
+> an `AIPS_Object_Ref` (or at minimum an `(type, id)` pair) in its interface now costs
+> a signature change on an unreviewed branch, versus a breaking change to a shipped
+> public contract later. Worth raising on #1991 before it merges — flagged as a
+> suggestion, not a merge blocker, since its post-scoped behavior is correct for
+> everything it does today.
+
 ---
 
 ## 5. Slices
@@ -302,7 +315,14 @@ Target picker (object type → subtype → filter, "only empty" default), queue-
 and a review table with inline diff of current vs generated. `AIPS.Templates` for all
 HTML, `AIPS.Utilities.confirm/showToast`, no `location.reload()`.
 
-**Merge gate:** `admin-ui-changes` skill; browser verification (`needs-browser-test`).
+**Includes the Q4 cost acknowledgment:** resolved target count always shown before
+queueing; above a configurable threshold (default 50) an explicit acknowledgment is
+required, displaying estimated API call count with a layout slot reserved for estimated
+cost once P0-3 lands. Warn-and-proceed, never block.
+
+**Merge gate:** `admin-ui-changes` skill; browser verification (`needs-browser-test`);
+test asserting a job above the threshold cannot be queued without acknowledgment, and one
+below it queues without an extra click.
 
 > **Coordination:** overlaps the Content Hub redesign in #1971. Land #1971 first, or
 > build this as a standalone page and fold it in later. Do not build against the
@@ -315,39 +335,87 @@ Second adapter proves the abstraction. Should require **zero** changes to slices
 if it doesn't, the abstraction is wrong and that's the signal to fix it before adding more.
 
 ### Slice 7 — CPT archive + template adapters
-**Size:** M · **Risk:** medium · **Depends on:** Slice 6 · **Open questions in §6**
+**Size:** M · **Risk:** medium · **Depends on:** Slice 6 **and #1991 merged**
 
-Defer until §6 Q1 is answered.
+Per Q1, CPT archive descriptions route through #1991's SEO provider abstraction. This is
+the only slice that depends on #1991, and it is last — so #1991 does **not** need to merge
+to start this work. It needs to merge before this slice, on its own timeline and merits.
+
+Also carries the second-interface widening described in §4.
 
 **Recommended first milestone: Slices 0–6.** That is a complete, demoable, shippable
 feature covering the two highest-value object types. Slice 7 can follow.
 
 ---
 
-## 6. Open questions
+## 6. Questions
 
-**Q1 — Where does a CPT archive description live?** WordPress has no native storage.
-Options: a plugin option keyed by post type; a hidden term; or write-through to the SEO
-plugin's archive fields via #1991's provider abstraction. **Leaning toward the third** —
-it's where users would look for it, and #1991 already owns that surface. Needs a decision
-before Slice 7, blocks nothing earlier.
+### Q1 — Where does a CPT archive description live? — **RESOLVED**
 
-**Q2 — Do generated values need their own review queue, or reuse the editorial queue?**
+**Decision: route through #1991's SEO provider abstraction.** It's where users would
+look for it, and #1991 already owns that write-through surface for Yoast/Rank Math/Native.
+
+**Consequence for Slice 7:** it gains a hard dependency on #1991 being merged. Slices 0–6
+remain unaffected.
+
+**Caveat found while confirming this** (see §4 note): #1991's
+`AIPS_SEO_Provider_Interface` is post-scoped — `write_post_seo($post_id, ...)`,
+`read_post_seo()`, `delete_post_seo()`. A CPT *archive* is not a post and has no ID to
+pass. So this decision does not hand Slice 7 a ready-made surface; it requires the same
+object-ref widening that Slice 3 applies to the Integration layer. That's fine and still
+the right destination — but it means Slice 7 is "widen a second interface", not "call an
+existing method".
+
+### Q2 — Dedicated review queue, or reuse the editorial queue? — open
+
 Spec assumes a dedicated table (Slice 2). If #1971's Content Hub becomes the universal
-review surface, this could be a tab there instead. Worth deciding alongside #1971.
+review surface, this could be a tab there instead. Worth deciding alongside #1971. Does
+not block Slices 0–4.
 
-**Q3 — Term hierarchy.** Should a child term's context include its parent's description?
-Probably yes for quality; adds a recursion bound to `read_context()`. Cheap to add in
-Slice 1, expensive to retrofit.
+### Q3 — Term hierarchy — open
 
-**Q4 — Cost visibility.** A 500-term job is 500 AI calls with no ceiling. P0-3/P0-4
-(cost attribution + budget caps) have no PR yet. **Recommend at minimum a pre-run item
-count with a warning above a threshold in Slice 5**, so this doesn't ship as an
-unbounded spend button. Full budget-cap integration lands when P0-4 does.
+Should a child term's context include its parent's description? Probably yes for quality;
+adds a recursion bound to `read_context()`. Cheap to add in Slice 1, expensive to retrofit.
 
-**Q5 — Idempotency (AC7).** Does a target with an existing pending row get skipped,
-replaced, or queued twice? Proposal: skip by default, with an explicit "regenerate"
-that supersedes the pending row.
+### Q4 — Cost visibility — **RESOLVED**
+
+**Decision: warn, then let the user proceed on explicit acknowledgment. Do not block.**
+
+The plugin exists to let users do exactly this, so the ceiling is informational, not a
+hard cap. Requirements for Slice 5:
+
+- Always show the resolved target count before queueing ("This will generate descriptions
+  for 512 terms").
+- Above a configurable threshold (default 50), require an explicit acknowledgment —
+  a checkbox or typed confirmation — showing estimated API call count.
+- Once P0-3 (token/cost attribution) lands, add estimated cost to the same dialog. The
+  dialog is designed with a slot for it now so nothing needs restructuring later.
+- Once P0-4 (budget caps) lands, the acknowledgment becomes the override path for a
+  soft cap rather than a standalone gate.
+
+**On the global install-time acknowledgment idea** *(raised: a checkbox at install that
+gates all plugin use until enabled)* — recommend **against** gating plugin access on it,
+for three reasons:
+
+1. It works against P1-4, where time-to-first-post without friction is classified a
+   table stake. A blocking interstitial before the plugin is even viewable is friction
+   applied at exactly the wrong moment — before the user has seen any value.
+2. It provides little real protection. A one-time click at install is ~forgotten by the
+   time someone queues a 500-term job three weeks later. Consent given far from the risk
+   is weak consent.
+3. It reads as a liability disclaimer rather than a safety feature, which is not the
+   impression the onboarding path should leave.
+
+**Recommended instead:** a non-blocking cost notice during onboarding (dismissible,
+recorded), plus the per-run acknowledgment above scaled to job size. That puts the
+friction at the moment of actual risk and in proportion to it, which is both safer and
+less costly to adoption. If a global acknowledgment is still wanted for legal comfort,
+suggest recording it during onboarding without gating plugin visibility on it.
+
+### Q5 — Idempotency (AC7) — open
+
+Does a target with an existing pending row get skipped, replaced, or queued twice?
+Proposal: skip by default, with an explicit "regenerate" that supersedes the pending row.
 
 ---
 
@@ -357,7 +425,7 @@ Per the feature-slicing guardrail, checked against all open PRs:
 
 | PR | Relationship |
 |---|---|
-| #1991 SEO write-through | **Complementary.** Owns SEO fields on posts; this owns non-post objects. Q1 may route CPT archive descriptions through it. No file conflict. |
+| #1991 SEO write-through | **Complementary, and a Slice 7 dependency** per Q1. Owns SEO fields on posts and attachments; this owns non-post objects. No file conflict — #1991 is +3,782/−3 across 25 files, none of which this spec touches. See §4 on widening its interface before it merges. |
 | #1914 (merged) Integrations/meta | **Direct dependency.** Slice 3 widens its interface. |
 | #1905 Content digest | **Should land first.** `read_context()` wants bounded digests. |
 | #1971 Content Hub | **UI coordination.** See Slice 5. |
@@ -369,7 +437,22 @@ Per the feature-slicing guardrail, checked against all open PRs:
 
 ---
 
-## 8. Recommended next step
+## 8. What needs to merge before this starts
 
-Review this spec — particularly the §4 object-identity decision and Q1/Q4 — then start
-**Slice 0**, which is small, independently correct, and unblocks the rest.
+Short answer: **nothing, to start.** Slice 0 depends on no open PR.
+
+| PR | Needed by | When |
+|---|---|---|
+| #1914 Integrations/meta | Slice 3 | **Already merged** ✅ |
+| #1905 Content digest | Slice 1 (`read_context()` bounded summarization) | Before Slice 1 — the one worth merging soon |
+| #1971 Content Hub | Slice 5 (UI placement) | Before Slice 5, or build standalone |
+| #1991 SEO abstraction | Slice 7 only | Before Slice 7 — last slice, no rush |
+
+**#1905 is the only near-term merge that unblocks anything**, and even it can be
+deferred: Slice 1 could ship with naive truncation in `read_context()` and swap in the
+digest later, at the cost of a follow-up edit.
+
+## 9. Recommended next step
+
+Review the §4 object-identity decision, then start **Slice 0** — small, independently
+correct, and unblocks the rest. Q1 and Q4 are resolved; Q2/Q3/Q5 do not block Slices 0–4.
