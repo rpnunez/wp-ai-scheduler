@@ -123,6 +123,21 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
+		if (AIPS_Config::get_instance()->get_option('aips_generation_inject_related_context', true) && !empty($topic)) {
+			$container = AIPS_Container::get_instance();
+			if ($container->has(AIPS_Related_Posts_Service::class)) {
+				$related_service = $container->make(AIPS_Related_Posts_Service::class);
+				$related = $related_service->get_related_posts_for_topic($topic, 3, 0.55);
+				if (!empty($related)) {
+					$rel_context = "Context & Related Published Articles (you may naturally reference or link to these where relevant):\n";
+					foreach ($related as $rel_post) {
+						$rel_context .= "- \"{$rel_post['title']}\" (URL: {$rel_post['url']})\n";
+					}
+					$processed_prompt .= "\n\n" . $rel_context;
+				}
+			}
+		}
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
 
