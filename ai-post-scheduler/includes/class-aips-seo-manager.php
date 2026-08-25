@@ -2,10 +2,11 @@
 /**
  * SEO Manager
  *
- * Orchestrates SEO metadata generation and provider write-through. Handles
- * automatic SEO generation for newly created posts as well as on-demand
- * generation and multi-provider synchronization for existing posts.
- * Respects global/template killswitches and selective field SEO Profiles.
+ * Orchestrates SEO metadata generation, Schema.org JSON-LD generation,
+ * Media SEO optimization, and provider write-through. Handles automatic SEO
+ * generation for newly created posts as well as on-demand generation and
+ * multi-provider synchronization for existing posts.
+ * Respects global/template killswitches, pattern overrides, and selective field SEO Profiles.
  * Always maintains canonical internal backup in _aips_seo_data.
  *
  * @package AI_Post_Scheduler
@@ -39,25 +40,39 @@ class AIPS_SEO_Manager {
 	private $profiles_repo;
 
 	/**
+	 * @var AIPS_SEO_Schema_Generator
+	 */
+	private $schema_generator;
+
+	/**
+	 * @var AIPS_SEO_Media_Manager
+	 */
+	private $media_manager;
+
+	/**
 	 * @var AIPS_Logger
 	 */
 	private $logger;
 
 	/**
-	 * @param AIPS_AI_Service_Interface|null    $ai_service      Optional AI service.
-	 * @param AIPS_Prompt_Builder_SEO|null      $prompt_builder  Optional SEO prompt builder.
-	 * @param AIPS_SEO_Provider_Native|null     $native_provider Optional native provider.
-	 * @param AIPS_SEO_Profiles_Repository|null $profiles_repo   Optional profiles repository.
-	 * @param AIPS_Logger|null                  $logger          Optional logger.
+	 * @param AIPS_AI_Service_Interface|null    $ai_service       Optional AI service.
+	 * @param AIPS_Prompt_Builder_SEO|null      $prompt_builder   Optional SEO prompt builder.
+	 * @param AIPS_SEO_Provider_Native|null     $native_provider  Optional native provider.
+	 * @param AIPS_SEO_Profiles_Repository|null $profiles_repo    Optional profiles repository.
+	 * @param AIPS_SEO_Schema_Generator|null    $schema_generator Optional schema generator.
+	 * @param AIPS_SEO_Media_Manager|null       $media_manager    Optional media manager.
+	 * @param AIPS_Logger|null                  $logger           Optional logger.
 	 */
-	public function __construct($ai_service = null, $prompt_builder = null, $native_provider = null, $profiles_repo = null, $logger = null) {
+	public function __construct($ai_service = null, $prompt_builder = null, $native_provider = null, $profiles_repo = null, $schema_generator = null, $media_manager = null, $logger = null) {
 		$container = AIPS_Container::get_instance();
 
-		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_SEO();
-		$this->native_provider = $native_provider ?: new AIPS_SEO_Provider_Native();
-		$this->profiles_repo   = $profiles_repo ?: AIPS_SEO_Profiles_Repository::instance();
-		$this->logger          = $logger ?: new AIPS_Logger();
+		$this->ai_service       = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->prompt_builder   = $prompt_builder ?: new AIPS_Prompt_Builder_SEO();
+		$this->native_provider  = $native_provider ?: new AIPS_SEO_Provider_Native();
+		$this->profiles_repo    = $profiles_repo ?: AIPS_SEO_Profiles_Repository::instance();
+		$this->schema_generator = $schema_generator ?: new AIPS_SEO_Schema_Generator();
+		$this->media_manager    = $media_manager ?: new AIPS_SEO_Media_Manager($this->ai_service, $logger);
+		$this->logger           = $logger ?: new AIPS_Logger();
 	}
 
 	/**
@@ -120,6 +135,7 @@ class AIPS_SEO_Manager {
 	 *     @type array                   $selected_fields     Specific field keys to generate (overrides profile).
 	 *     @type array                   $field_prompts       Specific field prompt overrides.
 	 *     @type string                  $custom_instructions Optional custom SEO prompt instructions.
+	 *     @type bool                    $optimize_media      Whether to optimize post images.
 	 * }
 	 * @return array {
 	 *     @type bool        $success   Whether generation and write succeeded.
@@ -147,61 +163,58 @@ class AIPS_SEO_Manager {
 
 		$selected_fields = isset($options['selected_fields']) ? (array) $options['selected_fields'] : (is_object($profile) && !empty($profile->fields) ? (array) $profile->fields : array());
 		$field_prompts = isset($options['field_prompts']) ? (array) $options['field_prompts'] : (is_object($profile) && !empty($profile->field_prompts) ? (array) $profile->field_prompts : array());
+		$field_modes = is_object($profile) && !empty($profile->field_modes) ? (array) $profile->field_modes : array();
+		$field_patterns = is_object($profile) && !empty($profile->field_patterns) ? (array) $profile->field_patterns : array();
 		$custom_instructions = isset($options['custom_instructions']) ? sanitize_text_field($options['custom_instructions']) : (is_object($profile) && !empty($profile->custom_instructions) ? $profile->custom_instructions : '');
 		$provider_id = !empty($options['provider_id']) ? sanitize_key($options['provider_id']) : (is_object($profile) && !empty($profile->provider_id) && $profile->provider_id !== 'auto' ? $profile->provider_id : '');
 
-		// 1. Build SEO Prompt
-		if ($context instanceof AIPS_Generation_Context) {
-			$prompt = $this->prompt_builder->build($context, $post->post_content, $post->post_title, $custom_instructions, $selected_fields, $field_prompts);
-		} else {
-			$prompt = $this->prompt_builder->build_for_post($post, $custom_instructions, $selected_fields, $field_prompts);
+		// Separate AI fields from Pattern / Static override fields
+		$ai_fields = array();
+		$static_field_results = array();
+
+		foreach ($selected_fields as $field_key) {
+			$mode = isset($field_modes[$field_key]) ? $field_modes[$field_key] : 'ai';
+
+			if ($mode === 'pattern' && !empty($field_patterns[$field_key])) {
+				$static_field_results[$field_key] = AIPS_SEO_Pattern_Engine::evaluate($field_patterns[$field_key], $post);
+			} elseif ($mode === 'fixed' && isset($field_patterns[$field_key])) {
+				$static_field_results[$field_key] = $field_patterns[$field_key];
+			} else {
+				$ai_fields[] = $field_key;
+			}
 		}
 
-		if (is_wp_error($prompt)) {
-			$this->logger->log(
-				sprintf('AIPS_SEO_Manager: Failed to build SEO prompt for post %d: %s', $post_id, $prompt->get_error_message()),
-				'warning',
-				array('post_id' => $post_id)
-			);
-			return array(
-				'success'  => false,
-				'seo_data' => null,
-				'provider' => '',
-				'error'    => $prompt->get_error_message(),
-			);
+		$ai_results = array();
+
+		// 1. Build SEO Prompt and call AI for requested AI fields (if any)
+		if (!empty($ai_fields)) {
+			if ($context instanceof AIPS_Generation_Context) {
+				$prompt = $this->prompt_builder->build($context, $post->post_content, $post->post_title, $custom_instructions, $ai_fields, $field_prompts);
+			} else {
+				$prompt = $this->prompt_builder->build_for_post($post, $custom_instructions, $ai_fields, $field_prompts);
+			}
+
+			if (!is_wp_error($prompt)) {
+				$response = $this->ai_service->generate_json($prompt);
+				if (is_array($response)) {
+					$ai_results = $response;
+				}
+			}
 		}
 
-		// 2. Call AI Service for Structured JSON
-		$response = $this->ai_service->generate_json($prompt);
-
-		if (is_wp_error($response)) {
-			$this->logger->log(
-				sprintf('AIPS_SEO_Manager: AI generation failed for post %d: %s', $post_id, $response->get_error_message()),
-				'warning',
-				array('post_id' => $post_id)
-			);
-			return array(
-				'success'  => false,
-				'seo_data' => null,
-				'provider' => '',
-				'error'    => $response->get_error_message(),
-			);
-		}
-
-		if (!is_array($response)) {
-			$error_msg = __('Invalid response format received from AI.', 'ai-post-scheduler');
-			$this->logger->log($error_msg, 'warning', array('post_id' => $post_id));
-			return array(
-				'success'  => false,
-				'seo_data' => null,
-				'provider' => '',
-				'error'    => $error_msg,
-			);
-		}
-
-		// 3. Normalize Canonical Data & Merge with Existing Backup
+		// 2. Normalize Canonical Data & Merge with Existing Backup & Pattern Overrides
 		$existing_seo = $this->native_provider->read_post_seo($post_id) ?: array();
-		$new_seo = $this->native_provider->sanitize_seo_data($response);
+		$new_seo = $this->native_provider->sanitize_seo_data(array_merge($ai_results, $static_field_results));
+
+		// Apply Title Prefix/Suffix and Meta Description Prefix/Suffix if configured
+		if (is_object($profile)) {
+			if (!empty($new_seo['seo_title']) && (!empty($profile->title_prefix) || !empty($profile->title_suffix))) {
+				$new_seo['seo_title'] = AIPS_SEO_Pattern_Engine::wrap($new_seo['seo_title'], $profile->title_prefix ?: '', $profile->title_suffix ?: '', $post);
+			}
+			if (!empty($new_seo['meta_description']) && (!empty($profile->meta_desc_prefix) || !empty($profile->meta_desc_suffix))) {
+				$new_seo['meta_description'] = AIPS_SEO_Pattern_Engine::wrap($new_seo['meta_description'], $profile->meta_desc_prefix ?: '', $profile->meta_desc_suffix ?: '', $post);
+			}
+		}
 
 		// If specific fields were selected, only overwrite those specific fields
 		if (!empty($selected_fields)) {
@@ -215,6 +228,10 @@ class AIPS_SEO_Manager {
 		} else {
 			$seo_data = array_merge($existing_seo, $new_seo);
 		}
+
+		// 3. Generate Schema.org JSON-LD Structured Data
+		$schema_types = is_object($profile) && !empty($profile->schema_types) ? (array) $profile->schema_types : array('article', 'breadcrumbs', 'faq');
+		$seo_data['schema'] = $this->schema_generator->generate_for_post($post, $schema_types, $seo_data);
 
 		// Resolve target provider
 		$provider = (!empty($provider_id) && AIPS_SEO_Registry::has($provider_id))
@@ -256,6 +273,13 @@ class AIPS_SEO_Manager {
 
 		$seo_data['sync_status'] = 'success';
 		$this->native_provider->write_post_seo($post_id, $seo_data);
+
+		// 6. Optional: Optimize associated media attachments
+		$optimize_media = isset($options['optimize_media']) ? (bool) $options['optimize_media'] : (is_object($profile) && !empty($profile->media_seo_enabled));
+		if ($optimize_media) {
+			$media_mode = is_object($profile) && !empty($profile->media_seo_mode) ? $profile->media_seo_mode : 'text';
+			$this->media_manager->optimize_post_images($post_id, array('mode' => $media_mode));
+		}
 
 		/**
 		 * Fires after SEO metadata is generated and written for a post.

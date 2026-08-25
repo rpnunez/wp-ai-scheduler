@@ -125,9 +125,14 @@ class AIPS_SEO_Provider_Yoast implements AIPS_SEO_Provider_Interface {
 		}
 
 		// Canonical URL
-		if (!empty($seo_data['canonical_url'])) {
+		if (isset($seo_data['canonical_url'])) {
 			$canonical = esc_url_raw($seo_data['canonical_url']);
 			$this->set_meta_value('canonical', '_yoast_wpseo_canonical', $canonical, $post_id);
+		}
+
+		// Schema.org Structured Data
+		if (!empty($seo_data['schema']) && is_array($seo_data['schema'])) {
+			update_post_meta($post_id, '_aips_yoast_custom_schema', $seo_data['schema']);
 		}
 
 		// Robots Index (Yoast: 1 = noindex, 2 = index)

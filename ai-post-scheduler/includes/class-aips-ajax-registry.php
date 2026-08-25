@@ -333,6 +333,11 @@ class AIPS_Ajax_Registry {
 		'aips_save_seo_profile'              => 'AIPS_SEO_Profiles_Controller',
 		'aips_delete_seo_profile'            => 'AIPS_SEO_Profiles_Controller',
 		'aips_toggle_seo_profile'            => 'AIPS_SEO_Profiles_Controller',
+
+		// SEO Media Controller
+		'aips_seo_optimize_attachment'       => 'AIPS_SEO_Media_Controller',
+		'aips_seo_bulk_optimize_attachments' => 'AIPS_SEO_Media_Controller',
+		'aips_seo_audit_media_library'       => 'AIPS_SEO_Media_Controller',
 	);
 
 	/**

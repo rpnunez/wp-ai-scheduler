@@ -35,6 +35,7 @@ class AIPS_Post_History_UI {
 			: new AIPS_History_Repository();
 
 		add_filter('post_row_actions', array($this, 'add_post_row_action'), 10, 2);
+		add_filter('media_row_actions', array($this, 'add_media_row_action'), 10, 2);
 		add_action('post_submitbox_misc_actions', array($this, 'render_submitbox_action'));
 	}
 
@@ -73,6 +74,35 @@ class AIPS_Post_History_UI {
 			'<a href="#" class="aips-post-generate-seo-btn" data-post-id="%1$s">%2$s</a>',
 			esc_attr($post_id),
 			!empty($seo_data) ? esc_html__('Re-sync SEO', 'ai-post-scheduler') : esc_html__('Generate SEO', 'ai-post-scheduler')
+		);
+
+		return $actions;
+	}
+
+	/**
+	 * Add AI SEO optimizer link to WordPress Media Library row actions.
+	 *
+	 * @param array   $actions Existing row actions.
+	 * @param WP_Post $post    Current attachment post object.
+	 * @return array
+	 */
+	public function add_media_row_action($actions, $post) {
+		if (!current_user_can('manage_options') || !($post instanceof WP_Post) || !wp_attachment_is_image($post->ID)) {
+			return $actions;
+		}
+
+		$attachment_id = (int) $post->ID;
+		$alt_text = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+		$is_optimized = (bool) get_post_meta($attachment_id, '_aips_image_seo_optimized_at', true);
+
+		$label = $is_optimized
+			? __('Re-optimize AI SEO', 'ai-post-scheduler')
+			: (empty($alt_text) ? __('Generate AI Alt Text / SEO', 'ai-post-scheduler') : __('Optimize AI SEO', 'ai-post-scheduler'));
+
+		$actions['aips_media_seo'] = sprintf(
+			'<a href="#" class="aips-optimize-media-seo-btn" data-attachment-id="%1$s">%2$s</a>',
+			esc_attr($attachment_id),
+			esc_html($label)
 		);
 
 		return $actions;

@@ -312,6 +312,7 @@
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
 			$(document).on('click', '.aips-post-generate-seo-btn', this.onGenerateSeoClick.bind(this));
 			$(document).on('click', '.aips-post-sync-seo-btn', this.onSyncSeoClick.bind(this));
+			$(document).on('click', '.aips-optimize-media-seo-btn', this.onOptimizeMediaSeoClick.bind(this));
 		},
 
 		/**
@@ -404,6 +405,50 @@
 				error: function () {
 					$btn.prop('disabled', false).text(originalText);
 					AIPS.Utilities.showToast('An error occurred during SEO synchronization.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Handle click to optimize Media SEO for an attachment.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		onOptimizeMediaSeoClick: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var attachmentId = parseInt($btn.data('attachment-id') || 0, 10);
+			var ajaxConfig = this.getStandaloneAjaxConfig();
+
+			if (!attachmentId || !ajaxConfig) {
+				return;
+			}
+
+			var originalText = $btn.text();
+			$btn.text('Optimizing…').prop('disabled', true);
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_seo_optimize_attachment',
+					nonce: ajaxConfig.nonce,
+					attachment_id: attachmentId
+				},
+				success: function (resp) {
+					$btn.prop('disabled', false);
+					if (resp && resp.success) {
+						AIPS.Utilities.showToast(resp.data && resp.data.message ? resp.data.message : 'Media SEO generated successfully!', 'success');
+						$btn.text('Re-optimize AI SEO');
+					} else {
+						var msg = resp && resp.data && resp.data.message ? resp.data.message : 'Media optimization failed.';
+						AIPS.Utilities.showToast(msg, 'error');
+						$btn.text(originalText);
+					}
+				},
+				error: function () {
+					$btn.prop('disabled', false).text(originalText);
+					AIPS.Utilities.showToast('An error occurred during media SEO optimization.', 'error');
 				}
 			});
 		},

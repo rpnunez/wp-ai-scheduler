@@ -187,6 +187,14 @@ class AIPS_SEO_Provider_Native implements AIPS_SEO_Provider_Interface {
 			echo '<link rel="canonical" href="' . esc_url($seo_data['canonical_url']) . '" />' . "\n";
 		}
 
+		if (!empty($seo_data['schema']) && is_array($seo_data['schema'])) {
+			foreach ($seo_data['schema'] as $schema_obj) {
+				if (!empty($schema_obj)) {
+					echo '<script type="application/ld+json">' . wp_json_encode($schema_obj, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+				}
+			}
+		}
+
 		echo "<!-- /AIPS SEO Meta Tags -->\n\n";
 	}
 

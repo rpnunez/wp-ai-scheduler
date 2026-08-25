@@ -97,13 +97,35 @@ class AIPS_SEO_Profiles_Controller {
 		$raw_prompts = isset($_POST['field_prompts']) ? wp_unslash($_POST['field_prompts']) : array();
 		$field_prompts = is_string($raw_prompts) ? json_decode($raw_prompts, true) : $raw_prompts;
 
+		$raw_modes = isset($_POST['field_modes']) ? wp_unslash($_POST['field_modes']) : array();
+		$field_modes = is_string($raw_modes) ? json_decode($raw_modes, true) : $raw_modes;
+
+		$raw_patterns = isset($_POST['field_patterns']) ? wp_unslash($_POST['field_patterns']) : array();
+		$field_patterns = is_string($raw_patterns) ? json_decode($raw_patterns, true) : $raw_patterns;
+
+		$raw_schema = isset($_POST['schema_types']) ? wp_unslash($_POST['schema_types']) : array();
+		$schema_types = is_string($raw_schema) ? json_decode($raw_schema, true) : $raw_schema;
+
+		$raw_media_fields = isset($_POST['media_seo_fields']) ? wp_unslash($_POST['media_seo_fields']) : array();
+		$media_seo_fields = is_string($raw_media_fields) ? json_decode($raw_media_fields, true) : $raw_media_fields;
+
 		$data = array(
 			'name'                => $name,
 			'description'         => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
 			'provider_id'         => isset($_POST['provider_id']) ? sanitize_key(wp_unslash($_POST['provider_id'])) : 'auto',
 			'fields'              => is_array($fields) ? $fields : array('focus_keyword', 'seo_title', 'meta_description'),
+			'field_modes'         => is_array($field_modes) ? $field_modes : array(),
+			'field_patterns'      => is_array($field_patterns) ? $field_patterns : array(),
 			'field_prompts'       => is_array($field_prompts) ? $field_prompts : array(),
+			'title_prefix'        => isset($_POST['title_prefix']) ? sanitize_text_field(wp_unslash($_POST['title_prefix'])) : '',
+			'title_suffix'        => isset($_POST['title_suffix']) ? sanitize_text_field(wp_unslash($_POST['title_suffix'])) : '',
+			'meta_desc_prefix'    => isset($_POST['meta_desc_prefix']) ? sanitize_textarea_field(wp_unslash($_POST['meta_desc_prefix'])) : '',
+			'meta_desc_suffix'    => isset($_POST['meta_desc_suffix']) ? sanitize_textarea_field(wp_unslash($_POST['meta_desc_suffix'])) : '',
 			'custom_instructions'=> isset($_POST['custom_instructions']) ? sanitize_textarea_field(wp_unslash($_POST['custom_instructions'])) : '',
+			'schema_types'        => is_array($schema_types) ? $schema_types : array('article', 'breadcrumbs'),
+			'media_seo_enabled'   => isset($_POST['media_seo_enabled']) ? filter_var(wp_unslash($_POST['media_seo_enabled']), FILTER_VALIDATE_BOOLEAN) : true,
+			'media_seo_mode'      => isset($_POST['media_seo_mode']) && wp_unslash($_POST['media_seo_mode']) === 'vision' ? 'vision' : 'text',
+			'media_seo_fields'    => is_array($media_seo_fields) ? $media_seo_fields : array('alt', 'title', 'caption', 'description'),
 			'is_active'           => isset($_POST['is_active']) ? filter_var(wp_unslash($_POST['is_active']), FILTER_VALIDATE_BOOLEAN) : true,
 		);
 

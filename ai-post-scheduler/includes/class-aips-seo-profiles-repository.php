@@ -4,7 +4,8 @@
  *
  * Database abstraction layer for SEO profiles. Allows creating, reading,
  * updating, and deleting reusable SEO profiles that define which specific
- * SEO fields to generate, target provider preference, and field-specific prompts.
+ * SEO fields to generate, target provider preference, field-specific prompts,
+ * pattern overrides, Schema.org types, and Media SEO settings.
  *
  * @package AI_Post_Scheduler
  * @since 2.10.0
@@ -117,25 +118,38 @@ class AIPS_SEO_Profiles_Repository {
 
 		$fields = isset($data['fields']) ? (is_array($data['fields']) ? $data['fields'] : json_decode($data['fields'], true)) : array();
 		if (!is_array($fields) || empty($fields)) {
-			// Default to core 3 fields if none selected
 			$fields = array('focus_keyword', 'seo_title', 'meta_description');
 		}
 
+		$field_modes = isset($data['field_modes']) ? (is_array($data['field_modes']) ? $data['field_modes'] : json_decode($data['field_modes'], true)) : array();
+		$field_patterns = isset($data['field_patterns']) ? (is_array($data['field_patterns']) ? $data['field_patterns'] : json_decode($data['field_patterns'], true)) : array();
 		$field_prompts = isset($data['field_prompts']) ? (is_array($data['field_prompts']) ? $data['field_prompts'] : json_decode($data['field_prompts'], true)) : array();
+		$schema_types = isset($data['schema_types']) ? (is_array($data['schema_types']) ? $data['schema_types'] : json_decode($data['schema_types'], true)) : array('article', 'breadcrumbs');
+		$media_seo_fields = isset($data['media_seo_fields']) ? (is_array($data['media_seo_fields']) ? $data['media_seo_fields'] : json_decode($data['media_seo_fields'], true)) : array('alt', 'title', 'caption', 'description');
 
 		$insert_data = array(
 			'name'                => sanitize_text_field($data['name']),
 			'description'         => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'provider_id'         => isset($data['provider_id']) ? sanitize_key($data['provider_id']) : 'auto',
 			'fields'              => wp_json_encode(array_values(array_unique(array_map('sanitize_key', $fields)))),
+			'field_modes'         => wp_json_encode($field_modes),
+			'field_patterns'      => wp_json_encode($field_patterns),
 			'field_prompts'       => wp_json_encode($field_prompts),
+			'title_prefix'        => isset($data['title_prefix']) ? sanitize_text_field($data['title_prefix']) : '',
+			'title_suffix'        => isset($data['title_suffix']) ? sanitize_text_field($data['title_suffix']) : '',
+			'meta_desc_prefix'    => isset($data['meta_desc_prefix']) ? sanitize_textarea_field($data['meta_desc_prefix']) : '',
+			'meta_desc_suffix'    => isset($data['meta_desc_suffix']) ? sanitize_textarea_field($data['meta_desc_suffix']) : '',
 			'custom_instructions'=> isset($data['custom_instructions']) ? sanitize_textarea_field($data['custom_instructions']) : '',
+			'schema_types'        => wp_json_encode($schema_types),
+			'media_seo_enabled'   => isset($data['media_seo_enabled']) ? (filter_var($data['media_seo_enabled'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0) : 1,
+			'media_seo_mode'      => isset($data['media_seo_mode']) && $data['media_seo_mode'] === 'vision' ? 'vision' : 'text',
+			'media_seo_fields'    => wp_json_encode($media_seo_fields),
 			'is_active'           => !empty($data['is_active']) ? 1 : 0,
 			'created_at'          => $now,
 			'updated_at'          => $now,
 		);
 
-		$format = array('%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d');
+		$format = array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 
@@ -184,14 +198,68 @@ class AIPS_SEO_Profiles_Repository {
 			$format[] = '%s';
 		}
 
+		if (isset($data['field_modes'])) {
+			$modes = is_array($data['field_modes']) ? $data['field_modes'] : json_decode($data['field_modes'], true);
+			$update_data['field_modes'] = wp_json_encode(is_array($modes) ? $modes : array());
+			$format[] = '%s';
+		}
+
+		if (isset($data['field_patterns'])) {
+			$patterns = is_array($data['field_patterns']) ? $data['field_patterns'] : json_decode($data['field_patterns'], true);
+			$update_data['field_patterns'] = wp_json_encode(is_array($patterns) ? $patterns : array());
+			$format[] = '%s';
+		}
+
 		if (isset($data['field_prompts'])) {
-			$field_prompts = is_array($data['field_prompts']) ? $data['field_prompts'] : json_decode($data['field_prompts'], true);
-			$update_data['field_prompts'] = wp_json_encode(is_array($field_prompts) ? $field_prompts : array());
+			$prompts = is_array($data['field_prompts']) ? $data['field_prompts'] : json_decode($data['field_prompts'], true);
+			$update_data['field_prompts'] = wp_json_encode(is_array($prompts) ? $prompts : array());
+			$format[] = '%s';
+		}
+
+		if (isset($data['title_prefix'])) {
+			$update_data['title_prefix'] = sanitize_text_field($data['title_prefix']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['title_suffix'])) {
+			$update_data['title_suffix'] = sanitize_text_field($data['title_suffix']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['meta_desc_prefix'])) {
+			$update_data['meta_desc_prefix'] = sanitize_textarea_field($data['meta_desc_prefix']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['meta_desc_suffix'])) {
+			$update_data['meta_desc_suffix'] = sanitize_textarea_field($data['meta_desc_suffix']);
 			$format[] = '%s';
 		}
 
 		if (isset($data['custom_instructions'])) {
 			$update_data['custom_instructions'] = sanitize_textarea_field($data['custom_instructions']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['schema_types'])) {
+			$schema = is_array($data['schema_types']) ? $data['schema_types'] : json_decode($data['schema_types'], true);
+			$update_data['schema_types'] = wp_json_encode(is_array($schema) ? $schema : array());
+			$format[] = '%s';
+		}
+
+		if (isset($data['media_seo_enabled'])) {
+			$update_data['media_seo_enabled'] = filter_var($data['media_seo_enabled'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (isset($data['media_seo_mode'])) {
+			$update_data['media_seo_mode'] = $data['media_seo_mode'] === 'vision' ? 'vision' : 'text';
+			$format[] = '%s';
+		}
+
+		if (isset($data['media_seo_fields'])) {
+			$media_fields = is_array($data['media_seo_fields']) ? $data['media_seo_fields'] : json_decode($data['media_seo_fields'], true);
+			$update_data['media_seo_fields'] = wp_json_encode(is_array($media_fields) ? $media_fields : array());
 			$format[] = '%s';
 		}
 
@@ -261,13 +329,13 @@ class AIPS_SEO_Profiles_Repository {
 	 * @return void
 	 */
 	private function unserialize_row_fields($row) {
-		if (isset($row->fields) && is_string($row->fields)) {
-			$decoded = json_decode($row->fields, true);
-			$row->fields = is_array($decoded) ? $decoded : array();
-		}
-		if (isset($row->field_prompts) && is_string($row->field_prompts)) {
-			$decoded = json_decode($row->field_prompts, true);
-			$row->field_prompts = is_array($decoded) ? $decoded : array();
+		$json_fields = array('fields', 'field_modes', 'field_patterns', 'field_prompts', 'schema_types', 'media_seo_fields');
+
+		foreach ($json_fields as $prop) {
+			if (isset($row->$prop) && is_string($row->$prop)) {
+				$decoded = json_decode($row->$prop, true);
+				$row->$prop = is_array($decoded) ? $decoded : array();
+			}
 		}
 	}
 

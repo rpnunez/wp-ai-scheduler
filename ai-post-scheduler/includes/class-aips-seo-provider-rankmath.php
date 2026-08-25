@@ -125,8 +125,14 @@ class AIPS_SEO_Provider_RankMath implements AIPS_SEO_Provider_Interface {
 		}
 
 		// Canonical URL
-		if (!empty($seo_data['canonical_url'])) {
+		if (isset($seo_data['canonical_url'])) {
 			update_post_meta($post_id, 'rank_math_canonical_url', esc_url_raw($seo_data['canonical_url']));
+		}
+
+		// Schema.org Structured Data
+		if (!empty($seo_data['schema']) && is_array($seo_data['schema'])) {
+			update_post_meta($post_id, 'rank_math_rich_snippet', 'article');
+			update_post_meta($post_id, '_aips_rank_math_custom_schema', $seo_data['schema']);
 		}
 
 		// Robots Meta (Array format for Rank Math)
