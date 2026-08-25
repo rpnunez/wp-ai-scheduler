@@ -128,7 +128,7 @@ class AIPS_Embeddings_Repository {
 				AND p.post_type IN ($placeholders)
 				AND p.post_status = %s
 				ORDER BY e.object_id ASC",
-				...array_merge($post_types, array($post_status))
+				...array_values(array_merge($post_types, array($post_status)))
 			);
 
 			return $this->wpdb->get_results($sql);
