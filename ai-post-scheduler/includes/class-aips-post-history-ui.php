@@ -35,6 +35,7 @@ class AIPS_Post_History_UI {
 			: new AIPS_History_Repository();
 
 		add_filter('post_row_actions', array($this, 'add_post_row_action'), 10, 2);
+		add_filter('media_row_actions', array($this, 'add_media_row_action'), 10, 2);
 		add_action('post_submitbox_misc_actions', array($this, 'render_submitbox_action'));
 	}
 
@@ -68,6 +69,42 @@ class AIPS_Post_History_UI {
 			esc_html__('History', 'ai-post-scheduler')
 		);
 
+		$seo_data = get_post_meta($post_id, '_aips_seo_data', true);
+		$actions['aips_seo'] = sprintf(
+			'<a href="#" class="aips-post-generate-seo-btn" data-post-id="%1$s">%2$s</a>',
+			esc_attr($post_id),
+			!empty($seo_data) ? esc_html__('Re-sync SEO', 'ai-post-scheduler') : esc_html__('Generate SEO', 'ai-post-scheduler')
+		);
+
+		return $actions;
+	}
+
+	/**
+	 * Add AI SEO optimizer link to WordPress Media Library row actions.
+	 *
+	 * @param array   $actions Existing row actions.
+	 * @param WP_Post $post    Current attachment post object.
+	 * @return array
+	 */
+	public function add_media_row_action($actions, $post) {
+		if (!current_user_can('manage_options') || !($post instanceof WP_Post) || !wp_attachment_is_image($post->ID)) {
+			return $actions;
+		}
+
+		$attachment_id = (int) $post->ID;
+		$alt_text = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+		$is_optimized = (bool) get_post_meta($attachment_id, '_aips_image_seo_optimized_at', true);
+
+		$label = $is_optimized
+			? __('Re-optimize AI SEO', 'ai-post-scheduler')
+			: (empty($alt_text) ? __('Generate AI Alt Text / SEO', 'ai-post-scheduler') : __('Optimize AI SEO', 'ai-post-scheduler'));
+
+		$actions['aips_media_seo'] = sprintf(
+			'<a href="#" class="aips-optimize-media-seo-btn" data-attachment-id="%1$s">%2$s</a>',
+			esc_attr($attachment_id),
+			esc_html($label)
+		);
+
 		return $actions;
 	}
 
@@ -92,6 +129,9 @@ class AIPS_Post_History_UI {
 		}
 
 		$history_url = $this->get_post_history_url($post_id);
+		$seo_data = get_post_meta($post_id, '_aips_seo_data', true);
+		$active_provider = AIPS_SEO_Registry::get_active_provider();
+		$provider_label = $active_provider ? $active_provider->get_label() : __('Native', 'ai-post-scheduler');
 		?>
 		<div class="misc-pub-section aips-post-history-link">
 			<span class="dashicons dashicons-backup" aria-hidden="true"></span>
@@ -101,6 +141,25 @@ class AIPS_Post_History_UI {
 			   data-post-id="<?php echo esc_attr($post_id); ?>">
 				<?php esc_html_e('View AI History', 'ai-post-scheduler'); ?>
 			</a>
+		</div>
+		<div class="misc-pub-section aips-post-seo-section">
+			<span class="dashicons dashicons-search" aria-hidden="true"></span>
+			<strong><?php esc_html_e('SEO:', 'ai-post-scheduler'); ?></strong>
+			<?php if (!empty($seo_data) && is_array($seo_data)): ?>
+				<span class="aips-badge aips-badge-success" style="font-size:10px; padding:2px 6px;">
+					<?php echo esc_html(sprintf(__('Synced (%s)', 'ai-post-scheduler'), $provider_label)); ?>
+				</span>
+				<a href="#" class="aips-post-sync-seo-btn" data-post-id="<?php echo esc_attr($post_id); ?>" style="margin-left:4px; font-size:11px;">
+					<?php esc_html_e('Re-sync', 'ai-post-scheduler'); ?>
+				</a>
+			<?php else: ?>
+				<span class="aips-badge aips-badge-neutral" style="font-size:10px; padding:2px 6px;">
+					<?php esc_html_e('Not Generated', 'ai-post-scheduler'); ?>
+				</span>
+				<a href="#" class="aips-post-generate-seo-btn" data-post-id="<?php echo esc_attr($post_id); ?>" style="margin-left:4px; font-size:11px;">
+					<?php esc_html_e('Generate SEO', 'ai-post-scheduler'); ?>
+				</a>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

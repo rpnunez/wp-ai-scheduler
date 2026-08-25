@@ -213,6 +213,10 @@ class AIPS_Config {
             'aips_cache_monitor_full_value_debug_only' => true,
             'aips_cache_monitor_live_refresh_enabled'  => false,
             'aips_cache_monitor_live_refresh_interval' => 30,
+            // SEO Settings
+            'aips_enable_seo_generation'               => true,
+            'aips_seo_enable_head_output'              => false,
+            'aips_default_seo_profile_id'              => 0,
         );
     }
     

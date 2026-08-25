@@ -35,6 +35,7 @@ class AIPS_DB_Manager {
         'aips_cache_index',
         'aips_cache_events',
         'aips_integration_field_mappings',
+        'aips_seo_profiles',
     );
 
     public function __construct() {
@@ -98,6 +99,7 @@ class AIPS_DB_Manager {
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $table_seo_profiles         = $tables['aips_seo_profiles'];
 
         $sql = array();
 
@@ -185,11 +187,14 @@ class AIPS_DB_Manager {
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
+            seo_profile_id bigint(20) DEFAULT NULL,
+            generate_seo tinyint(1) DEFAULT 1,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            KEY campaign_id (campaign_id)
+            KEY campaign_id (campaign_id),
+            KEY seo_profile_id (seo_profile_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
@@ -683,6 +688,31 @@ class AIPS_DB_Manager {
             UNIQUE KEY template_integration_field (template_id, integration_id, field_key),
             KEY template_id (template_id),
             KEY integration_id (integration_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_seo_profiles (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            provider_id varchar(50) NOT NULL DEFAULT 'auto',
+            fields text NOT NULL,
+            field_modes longtext DEFAULT NULL,
+            field_patterns longtext DEFAULT NULL,
+            field_prompts longtext DEFAULT NULL,
+            title_prefix varchar(255) DEFAULT NULL,
+            title_suffix varchar(255) DEFAULT NULL,
+            meta_desc_prefix text DEFAULT NULL,
+            meta_desc_suffix text DEFAULT NULL,
+            custom_instructions text DEFAULT NULL,
+            schema_types text DEFAULT NULL,
+            media_seo_enabled tinyint(1) DEFAULT 1,
+            media_seo_mode varchar(20) DEFAULT 'text',
+            media_seo_fields text DEFAULT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         return $sql;

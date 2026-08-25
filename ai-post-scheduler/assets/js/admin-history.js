@@ -306,10 +306,151 @@
 		},
 
 		/**
-		 * Initialize standalone history modal opener for use outside History page.
+		 * Initialize standalone history and SEO action openers across all admin pages.
 		 */
 		initStandaloneOpener: function () {
 			$(document).on('click', '.aips-open-history-modal', this.onStandaloneOpenClick.bind(this));
+			$(document).on('click', '.aips-post-generate-seo-btn', this.onGenerateSeoClick.bind(this));
+			$(document).on('click', '.aips-post-sync-seo-btn', this.onSyncSeoClick.bind(this));
+			$(document).on('click', '.aips-optimize-media-seo-btn', this.onOptimizeMediaSeoClick.bind(this));
+		},
+
+		/**
+		 * Handle click to generate SEO for a post.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		onGenerateSeoClick: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var postId = parseInt($btn.data('post-id') || 0, 10);
+			var ajaxConfig = this.getStandaloneAjaxConfig();
+
+			if (!postId || !ajaxConfig) {
+				return;
+			}
+
+			var originalText = $btn.text();
+			$btn.text('Generating…').prop('disabled', true);
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_seo_generate_for_post',
+					nonce: ajaxConfig.nonce,
+					post_id: postId
+				},
+				success: function (resp) {
+					$btn.prop('disabled', false);
+					if (resp && resp.success) {
+						AIPS.Utilities.showToast(resp.data && resp.data.message ? resp.data.message : 'SEO generated successfully!', 'success');
+						$btn.text('Re-sync').removeClass('aips-post-generate-seo-btn').addClass('aips-post-sync-seo-btn');
+						var $section = $btn.closest('.aips-post-seo-section');
+						if ($section.length) {
+							$section.find('.aips-badge').removeClass('aips-badge-neutral').addClass('aips-badge-success').text('Synced');
+						}
+					} else {
+						var msg = resp && resp.data && resp.data.message ? resp.data.message : 'SEO generation failed.';
+						AIPS.Utilities.showToast(msg, 'error');
+						$btn.text(originalText);
+					}
+				},
+				error: function () {
+					$btn.prop('disabled', false).text(originalText);
+					AIPS.Utilities.showToast('An error occurred during SEO generation.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Handle click to re-sync SEO for a post.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		onSyncSeoClick: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var postId = parseInt($btn.data('post-id') || 0, 10);
+			var ajaxConfig = this.getStandaloneAjaxConfig();
+
+			if (!postId || !ajaxConfig) {
+				return;
+			}
+
+			var originalText = $btn.text();
+			$btn.text('Syncing…').prop('disabled', true);
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_seo_sync_to_provider',
+					nonce: ajaxConfig.nonce,
+					post_id: postId
+				},
+				success: function (resp) {
+					$btn.prop('disabled', false).text(originalText);
+					if (resp && resp.success) {
+						AIPS.Utilities.showToast(resp.data && resp.data.message ? resp.data.message : 'SEO synchronized successfully!', 'success');
+						var $section = $btn.closest('.aips-post-seo-section');
+						if ($section.length) {
+							$section.find('.aips-badge').removeClass('aips-badge-neutral').addClass('aips-badge-success').text('Synced');
+						}
+					} else {
+						var msg = resp && resp.data && resp.data.message ? resp.data.message : 'SEO synchronization failed.';
+						AIPS.Utilities.showToast(msg, 'error');
+					}
+				},
+				error: function () {
+					$btn.prop('disabled', false).text(originalText);
+					AIPS.Utilities.showToast('An error occurred during SEO synchronization.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Handle click to optimize Media SEO for an attachment.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		onOptimizeMediaSeoClick: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			var attachmentId = parseInt($btn.data('attachment-id') || 0, 10);
+			var ajaxConfig = this.getStandaloneAjaxConfig();
+
+			if (!attachmentId || !ajaxConfig) {
+				return;
+			}
+
+			var originalText = $btn.text();
+			$btn.text('Optimizing…').prop('disabled', true);
+
+			$.ajax({
+				url: ajaxConfig.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_seo_optimize_attachment',
+					nonce: ajaxConfig.nonce,
+					attachment_id: attachmentId
+				},
+				success: function (resp) {
+					$btn.prop('disabled', false);
+					if (resp && resp.success) {
+						AIPS.Utilities.showToast(resp.data && resp.data.message ? resp.data.message : 'Media SEO generated successfully!', 'success');
+						$btn.text('Re-optimize AI SEO');
+					} else {
+						var msg = resp && resp.data && resp.data.message ? resp.data.message : 'Media optimization failed.';
+						AIPS.Utilities.showToast(msg, 'error');
+						$btn.text(originalText);
+					}
+				},
+				error: function () {
+					$btn.prop('disabled', false).text(originalText);
+					AIPS.Utilities.showToast('An error occurred during media SEO optimization.', 'error');
+				}
+			});
 		},
 
 		/**

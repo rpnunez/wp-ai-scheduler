@@ -318,6 +318,26 @@ class AIPS_Ajax_Registry {
 		'aips_affiliate_links_delete'        => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_toggle'        => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_inject_post'   => 'AIPS_Affiliate_Links_Controller',
+
+		// SEO Controller
+		'aips_seo_generate_for_post'         => 'AIPS_SEO_Controller',
+		'aips_seo_sync_to_provider'          => 'AIPS_SEO_Controller',
+		'aips_seo_get_post_data'             => 'AIPS_SEO_Controller',
+		'aips_seo_bulk_generate'             => 'AIPS_SEO_Controller',
+		'aips_seo_bulk_sync'                 => 'AIPS_SEO_Controller',
+		'aips_seo_get_available_providers'   => 'AIPS_SEO_Controller',
+
+		// SEO Profiles Controller
+		'aips_get_seo_profiles'              => 'AIPS_SEO_Profiles_Controller',
+		'aips_get_seo_profile'               => 'AIPS_SEO_Profiles_Controller',
+		'aips_save_seo_profile'              => 'AIPS_SEO_Profiles_Controller',
+		'aips_delete_seo_profile'            => 'AIPS_SEO_Profiles_Controller',
+		'aips_toggle_seo_profile'            => 'AIPS_SEO_Profiles_Controller',
+
+		// SEO Media Controller
+		'aips_seo_optimize_attachment'       => 'AIPS_SEO_Media_Controller',
+		'aips_seo_bulk_optimize_attachments' => 'AIPS_SEO_Media_Controller',
+		'aips_seo_audit_media_library'       => 'AIPS_SEO_Media_Controller',
 	);
 
 	/**

@@ -597,6 +597,44 @@ $is_embedded_templates_view = !empty($embedded);
                             </label>
                         </div>
 
+                        <!-- SEO Metadata Generation Settings -->
+                        <div class="aips-form-row aips-seo-settings-panel">
+                            <details class="aips-collapsible" open>
+                                <summary>
+                                    <span class="dashicons dashicons-search"></span>
+                                    <?php esc_html_e('SEO Metadata Generation', 'ai-post-scheduler'); ?>
+                                    <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Automatically generate search-optimized titles, descriptions, focus keywords, and social tags into Yoast, Rank Math, or native meta.', 'ai-post-scheduler'); ?>"></span>
+                                </summary>
+                                <div class="aips-collapsible-content" style="padding: 12px 16px;">
+                                    <div class="aips-form-row">
+                                        <label class="aips-checkbox-label">
+                                            <input type="checkbox" id="generate_seo" name="generate_seo" value="1" checked>
+                                            <?php esc_html_e('Generate SEO metadata for posts created by this template', 'ai-post-scheduler'); ?>
+                                        </label>
+                                    </div>
+                                    <div class="aips-form-row aips-seo-profile-row" id="aips-template-seo-profile-row">
+                                        <label for="seo_profile_id"><?php esc_html_e('SEO Profile', 'ai-post-scheduler'); ?></label>
+                                        <?php
+                                        $seo_profiles = class_exists('AIPS_SEO_Profiles_Repository')
+                                            ? AIPS_SEO_Profiles_Repository::instance()->get_all(true)
+                                            : array();
+                                        ?>
+                                        <select id="seo_profile_id" name="seo_profile_id" class="regular-text">
+                                            <option value="0"><?php esc_html_e('Default Profile (All Standard SEO Fields)', 'ai-post-scheduler'); ?></option>
+                                            <?php foreach ($seo_profiles as $prof): ?>
+                                                <option value="<?php echo esc_attr($prof->id); ?>">
+                                                    <?php echo esc_html($prof->name); ?> (<?php echo esc_html(count((array) $prof->fields)); ?> <?php esc_html_e('fields', 'ai-post-scheduler'); ?>)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <p class="description">
+                                            <?php esc_html_e('Select which SEO profile controls the specific fields and rules to generate.', 'ai-post-scheduler'); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+
                         <!-- Third-Party Plugin Integrations (bridge) -->
                         <div class="aips-form-row aips-integrations-panel">
                             <details class="aips-collapsible">
