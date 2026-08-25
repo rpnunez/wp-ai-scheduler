@@ -1443,3 +1443,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting cache resolution, cache hit handling, and cache miss handling into distinct private helper methods. The main `cache_read` function was reduced to roughly 20 lines serving strictly as the entry point and orchestrator.
 **Consequence:** Increased the number of private methods on the trait, but vastly improved readability and maintainability. Backwards compatibility for the cache behavior remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-08-25 - [Detangle God Method get_history]
+**Context:** `AIPS_History_Repository::get_history()` was a massive >200-line God method handling argument parsing, complex SQL WHERE clause building, SQL SELECT fields building, and querying. This violated the Single Responsibility Principle.
+**Decision:** Applied "Separation of Concerns" by extracting query clause building (`build_history_query_clauses`) and select fields building (`build_history_select_fields`) into distinct private helper methods. The main `get_history` function now orchestrates these helpers. Added DocBlocks to the new methods and restored the original DocBlock for `get_history`.
+**Consequence:** Increased the number of private methods, but vastly improved readability and maintainability. Backwards compatibility remains 100% intact.
+**Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.

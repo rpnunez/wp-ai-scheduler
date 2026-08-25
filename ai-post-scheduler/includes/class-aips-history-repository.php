@@ -231,61 +231,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      *     @type int   $current_page Current page number.
      * }
      */
-    public function get_history($args = array()) {
-        $defaults = array(
-            'per_page' => 20,
-            'page' => 1,
-            'status' => '',
-            'search' => '',
-            'template_id' => 0,
-            'campaign_id' => 0,
-            'author_id' => 0,
-            'domain' => '',
-            'actor' => '',
-            'date_from' => '',
-            'date_to' => '',
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'fields' => 'all',
-        );
-        
-        $args = wp_parse_args($args, $defaults);
-
-        $offset = ($args['page'] - 1) * $args['per_page'];
-
-        $domain_patterns = array(
-            'author_topics' => 'author_topic%',
-            'research' => '%research%',
-            'sources' => '%source%',
-            'embeddings' => '%embedding%',
-            'internal_links' => '%internal_link%',
-            'batch_jobs' => '%batch%',
-        );
-
-        $event_domain_case_parts = array('CASE');
-        foreach ($domain_patterns as $domain_key => $domain_pattern) {
-            $event_domain_case_parts[] = sprintf(
-                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
-                esc_sql($domain_pattern),
-                esc_sql($domain_key)
-            );
-        }
-        $event_domain_case_parts[] = "ELSE 'post_generation'";
-        $event_domain_case_parts[] = 'END';
-        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
-        $event_label_case_sql = "CASE
-                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
-                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
-                ELSE 'Generation Event'
-            END";
-        $actor_type_case_sql = "CASE
-                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
-                ELSE 'system'
-            END";
-
-        // Build select fields
+    /**
+     * Builds the SELECT fields for the history query.
+     *
+     * @param array  $args                 The query arguments.
+     * @param string $event_domain_case_sql SQL CASE statement for event domain.
+     * @param string $event_label_case_sql  SQL CASE statement for event label.
+     * @param string $actor_type_case_sql   SQL CASE statement for actor type.
+     * @return string The SQL fragment for SELECT fields.
+     */
+    private function build_history_select_fields($args, $event_domain_case_sql, $event_label_case_sql, $actor_type_case_sql) {
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+            return "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
@@ -293,18 +250,24 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds,
                 ls.warning_count, ls.error_count, ls.ai_call_count, ls.latest_message";
         } elseif ($args['fields'] === 'all') {
-            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+            return "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
                 t.name as template_name";
         } else {
-            // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+            return "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
         }
+    }
 
-        // Build where clauses
+    /**
+     * Builds the WHERE clauses and arguments for the history query.
+     *
+     * @param array $args            The query arguments.
+     * @param array $domain_patterns The domain patterns array.
+     * @return array Tuple containing [where_sql, where_args].
+     */
+    private function build_history_query_clauses($args, $domain_patterns) {
         $where_clauses = array("1=1");
         $where_args = array();
 
@@ -312,7 +275,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
         $where_clauses[] = "COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})";
         $where_args = array_merge($where_args, $auxiliary_methods);
-        // Keep excluding legacy orphaned containers that have no contextual linkage.
         $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
         
         if (!empty($args['status'])) {
@@ -337,7 +299,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if (!empty($args['domain'])) {
             $domain = sanitize_key($args['domain']);
-
             if (isset($domain_patterns[$domain])) {
                 $where_clauses[] = "COALESCE(h.creation_method, '') LIKE %s";
                 $where_args[] = $domain_patterns[$domain];
@@ -353,7 +314,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if (!empty($args['actor'])) {
             $actor = sanitize_key($args['actor']);
-
             if ($actor === 'admin') {
                 $where_clauses[] = "(COALESCE(h.creation_method, '') LIKE %s OR COALESCE(h.creation_method, '') LIKE %s)";
                 $where_args[] = '%manual%';
@@ -366,9 +326,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         if (!empty($args['date_from'])) {
-            $date_from = sanitize_text_field($args['date_from']);
-            $date_from_ts = strtotime($date_from . ' 00:00:00');
-
+            $date_from_ts = strtotime(sanitize_text_field($args['date_from']) . ' 00:00:00');
             if ($date_from_ts !== false) {
                 $where_clauses[] = "h.created_at >= %d";
                 $where_args[] = $date_from_ts;
@@ -376,9 +334,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         if (!empty($args['date_to'])) {
-            $date_to = sanitize_text_field($args['date_to']);
-            $date_to_ts = strtotime($date_to . ' 23:59:59');
-
+            $date_to_ts = strtotime(sanitize_text_field($args['date_to']) . ' 23:59:59');
             if ($date_to_ts !== false) {
                 $where_clauses[] = "h.created_at <= %d";
                 $where_args[] = $date_to_ts;
@@ -390,15 +346,77 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_args[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
         }
         
-        $where_sql = implode(' AND ', $where_clauses);
+        return array(implode(' AND ', $where_clauses), $where_args);
+    }
 
-        // Validate orderby and order
+    /**
+     * Get paginated history with optional filtering.
+     *
+     * @param array $args {
+     *     Optional. Query arguments.
+     *
+     *     @type int    $per_page    Number of items per page. Default 20.
+     *     @type int    $page        Current page number. Default 1.
+     *     @type string $status      Filter by status. Default empty.
+     *     @type string $search      Search term for title. Default empty.
+     *     @type int    $template_id Filter by template ID. Default 0.
+     *     @type string $orderby     Column to order by. Default 'created_at'.
+     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+     * }
+     * @return array {
+     *     @type array $items        Array of history items.
+     *     @type int   $total        Total number of items.
+     *     @type int   $pages        Total number of pages.
+     *     @type int   $current_page Current page number.
+     * }
+     */
+    public function get_history($args = array()) {
+        $args = wp_parse_args($args, array(
+            'per_page' => 20,
+            'page' => 1,
+            'status' => '',
+            'search' => '',
+            'template_id' => 0,
+            'campaign_id' => 0,
+            'author_id' => 0,
+            'domain' => '',
+            'actor' => '',
+            'date_from' => '',
+            'date_to' => '',
+            'orderby' => 'created_at',
+            'order' => 'DESC',
+            'fields' => 'all',
+        ));
+
+        $offset = ($args['page'] - 1) * $args['per_page'];
+
+        $domain_patterns = array(
+            'author_topics' => 'author_topic%',
+            'research' => '%research%',
+            'sources' => '%source%',
+            'embeddings' => '%embedding%',
+            'internal_links' => '%internal_link%',
+            'batch_jobs' => '%batch%',
+        );
+
+        $event_domain_case_parts = array('CASE');
+        foreach ($domain_patterns as $domain_key => $domain_pattern) {
+            $event_domain_case_parts[] = sprintf("WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'", esc_sql($domain_pattern), esc_sql($domain_key));
+        }
+        $event_domain_case_parts[] = "ELSE 'post_generation'\nEND";
+
+        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
+        $event_label_case_sql = "CASE WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id) ELSE 'Generation Event' END";
+        $actor_type_case_sql = "CASE WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin' ELSE 'system' END";
+
+        $fields_sql = $this->build_history_select_fields($args, $event_domain_case_sql, $event_label_case_sql, $actor_type_case_sql);
+        list($where_sql, $where_args) = $this->build_history_query_clauses($args, $domain_patterns);
+
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         
-        // Query for items
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
@@ -408,11 +426,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id
             LEFT JOIN (
-                SELECT history_id,
-                    SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count,
-                    SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count,
-                    SUM(CASE WHEN history_type_id = 5 THEN 1 ELSE 0 END) AS ai_call_count,
-                    LEFT(SUBSTRING_INDEX(GROUP_CONCAT(details ORDER BY timestamp DESC SEPARATOR '||'), '||', 1), 180) AS latest_message
+                SELECT history_id, SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count, SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count, SUM(CASE WHEN history_type_id = 5 THEN 1 ELSE 0 END) AS ai_call_count, LEFT(SUBSTRING_INDEX(GROUP_CONCAT(details ORDER BY timestamp DESC SEPARATOR '||'), '||', 1), 180) AS latest_message
                 FROM {$this->table_name_log}
                 GROUP BY history_id
             ) ls ON h.id = ls.history_id
@@ -421,7 +435,6 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             LIMIT %d OFFSET %d
         ", $query_args));
         
-        // Query for total count
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
