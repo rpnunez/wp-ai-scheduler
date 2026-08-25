@@ -55,6 +55,12 @@ class AIPS_Interval_Calculator {
             'type' => 'fixed'
         );
 
+        $intervals['every_2_hours'] = array(
+            'interval' => 7200,
+            'display' => __('Every 2 Hours', 'ai-post-scheduler'),
+            'type' => 'fixed'
+        );
+
         $intervals['every_4_hours'] = array(
             'interval' => 14400,
             'display' => __('Every 4 Hours', 'ai-post-scheduler'),
@@ -64,6 +70,12 @@ class AIPS_Interval_Calculator {
         $intervals['every_6_hours'] = array(
             'interval' => 21600,
             'display' => __('Every 6 Hours', 'ai-post-scheduler'),
+            'type' => 'fixed'
+        );
+
+        $intervals['every_8_hours'] = array(
+            'interval' => 28800,
+            'display' => __('Every 8 Hours', 'ai-post-scheduler'),
             'type' => 'fixed'
         );
         
@@ -216,12 +228,18 @@ class AIPS_Interval_Calculator {
         switch ($frequency) {
             case 'hourly':
                 return (int) $dt->modify('+1 hour')->timestamp();
+
+            case 'every_2_hours':
+                return (int) $dt->modify('+2 hours')->timestamp();
                 
             case 'every_4_hours':
                 return (int) $dt->modify('+4 hours')->timestamp();
                 
             case 'every_6_hours':
                 return (int) $dt->modify('+6 hours')->timestamp();
+
+            case 'every_8_hours':
+                return (int) $dt->modify('+8 hours')->timestamp();
                 
             case 'every_12_hours':
                 return (int) $dt->modify('+12 hours')->timestamp();

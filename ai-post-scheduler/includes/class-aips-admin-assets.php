@@ -926,6 +926,7 @@ class AIPS_Admin_Assets {
                 // "Start Time" datetime-local field in site-local time regardless of the
                 // admin's own browser timezone.
                 'gmtOffsetSeconds'                => (int) wp_timezone()->getOffset(new DateTime('now', wp_timezone())),
+                'timezoneString'                  => wp_timezone_string(),
                 // Run schedule
                 'runScheduleConfirm'             => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
                 'scheduleRunning'                => __('Running...', 'ai-post-scheduler'),
