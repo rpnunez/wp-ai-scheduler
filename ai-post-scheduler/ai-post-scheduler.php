@@ -440,6 +440,21 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_System_Status_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Status_Diagnostics_Service();
         });
+
+        // Register AIPS_Prompt_Builder_SEO
+        $container->singleton(AIPS_Prompt_Builder_SEO::class, function( $container ) {
+            return new AIPS_Prompt_Builder_SEO();
+        });
+
+        // Register AIPS_SEO_Manager
+        $container->singleton(AIPS_SEO_Manager::class, function( $container ) {
+            return new AIPS_SEO_Manager(
+                ai_service: $container->make(AIPS_AI_Service_Interface::class),
+                prompt_builder: $container->make(AIPS_Prompt_Builder_SEO::class),
+                native_provider: new AIPS_SEO_Provider_Native(),
+                logger: $container->make(AIPS_Logger::class)
+            );
+        });
     }
 
     /**
@@ -562,6 +577,11 @@ final class AI_Post_Scheduler {
         add_action('aips_template_changed', function ($args) {
             (new AIPS_Integration_Manager())->handle_template_deleted($args);
         });
+
+        // SEO bridge: listens for 'aips_post_generated' and generates/writes SEO metadata.
+        add_action('aips_post_generated', function ($post_id, $template_or_context, $history_id, $context) {
+            (new AIPS_SEO_Manager())->handle_post_generated($post_id, $template_or_context, $history_id, $context);
+        }, 12, 4);
     }
 
     /**
@@ -904,6 +924,11 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+
+        // Render fallback head meta tags for single posts when enabled and no third-party SEO plugin is active.
+        if (AIPS_Config::get_instance()->get_option('aips_seo_enable_head_output', false) && AIPS_SEO_Registry::get_active_provider() instanceof AIPS_SEO_Provider_Native) {
+            add_action('wp_head', array(new AIPS_SEO_Provider_Native(), 'render_frontend_head'), 1);
+        }
     }
 }
 

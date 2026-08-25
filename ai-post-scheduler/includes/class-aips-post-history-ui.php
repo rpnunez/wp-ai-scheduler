@@ -68,6 +68,13 @@ class AIPS_Post_History_UI {
 			esc_html__('History', 'ai-post-scheduler')
 		);
 
+		$seo_data = get_post_meta($post_id, '_aips_seo_data', true);
+		$actions['aips_seo'] = sprintf(
+			'<a href="#" class="aips-post-generate-seo-btn" data-post-id="%1$s">%2$s</a>',
+			esc_attr($post_id),
+			!empty($seo_data) ? esc_html__('Re-sync SEO', 'ai-post-scheduler') : esc_html__('Generate SEO', 'ai-post-scheduler')
+		);
+
 		return $actions;
 	}
 
@@ -92,6 +99,9 @@ class AIPS_Post_History_UI {
 		}
 
 		$history_url = $this->get_post_history_url($post_id);
+		$seo_data = get_post_meta($post_id, '_aips_seo_data', true);
+		$active_provider = AIPS_SEO_Registry::get_active_provider();
+		$provider_label = $active_provider ? $active_provider->get_label() : __('Native', 'ai-post-scheduler');
 		?>
 		<div class="misc-pub-section aips-post-history-link">
 			<span class="dashicons dashicons-backup" aria-hidden="true"></span>
@@ -101,6 +111,25 @@ class AIPS_Post_History_UI {
 			   data-post-id="<?php echo esc_attr($post_id); ?>">
 				<?php esc_html_e('View AI History', 'ai-post-scheduler'); ?>
 			</a>
+		</div>
+		<div class="misc-pub-section aips-post-seo-section">
+			<span class="dashicons dashicons-search" aria-hidden="true"></span>
+			<strong><?php esc_html_e('SEO:', 'ai-post-scheduler'); ?></strong>
+			<?php if (!empty($seo_data) && is_array($seo_data)): ?>
+				<span class="aips-badge aips-badge-success" style="font-size:10px; padding:2px 6px;">
+					<?php echo esc_html(sprintf(__('Synced (%s)', 'ai-post-scheduler'), $provider_label)); ?>
+				</span>
+				<a href="#" class="aips-post-sync-seo-btn" data-post-id="<?php echo esc_attr($post_id); ?>" style="margin-left:4px; font-size:11px;">
+					<?php esc_html_e('Re-sync', 'ai-post-scheduler'); ?>
+				</a>
+			<?php else: ?>
+				<span class="aips-badge aips-badge-neutral" style="font-size:10px; padding:2px 6px;">
+					<?php esc_html_e('Not Generated', 'ai-post-scheduler'); ?>
+				</span>
+				<a href="#" class="aips-post-generate-seo-btn" data-post-id="<?php echo esc_attr($post_id); ?>" style="margin-left:4px; font-size:11px;">
+					<?php esc_html_e('Generate SEO', 'ai-post-scheduler'); ?>
+				</a>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

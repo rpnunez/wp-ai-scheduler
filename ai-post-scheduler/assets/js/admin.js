@@ -236,6 +236,9 @@
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('change', '#template_post_type', this.toggleTemplatePostTypeFields);
+            $(document).on('change', '#generate_seo', function() {
+                $('#aips-template-seo-profile-row').toggle($(this).is(':checked'));
+            });
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
@@ -640,6 +643,10 @@
             // Reset source groups
             $('.aips-template-source-group-cb').prop('checked', false);
             $('#template-source-groups-selector').hide();
+            // Reset SEO settings
+            $('#generate_seo').prop('checked', true);
+            $('#seo_profile_id').val('0');
+            $('#aips-template-seo-profile-row').show();
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
@@ -731,6 +738,12 @@
                         sgIds.forEach(function(tid) {
                             $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
                         });
+
+                        // Restore SEO settings.
+                        var generateSeo = t.generate_seo !== 0 && t.generate_seo !== '0';
+                        $('#generate_seo').prop('checked', generateSeo);
+                        $('#seo_profile_id').val(t.seo_profile_id || '0');
+                        $('#aips-template-seo-profile-row').toggle(generateSeo);
 
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
@@ -917,6 +930,8 @@
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
                     affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
+                    generate_seo: $('#generate_seo').is(':checked') ? 1 : 0,
+                    seo_profile_id: $('#seo_profile_id').val() || 0,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
@@ -995,6 +1010,8 @@
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
                     affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
+                    generate_seo: $('#generate_seo').is(':checked') ? 1 : 0,
+                    seo_profile_id: $('#seo_profile_id').val() || 0,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });

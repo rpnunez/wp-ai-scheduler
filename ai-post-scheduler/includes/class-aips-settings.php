@@ -207,6 +207,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
 			),
+			'aips_enable_seo_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_seo_generation'],
+			),
+			'aips_seo_enable_head_output' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_seo_enable_head_output'],
+			),
+			'aips_default_seo_profile_id' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_default_seo_profile_id'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
@@ -266,6 +278,30 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_enable_seo_generation',
+            __('AI SEO Generation', 'ai-post-scheduler'),
+            array($this->ui, 'enable_seo_generation_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_seo_enable_head_output',
+            __('Frontend Fallback Meta Tags', 'ai-post-scheduler'),
+            array($this->ui, 'seo_enable_head_output_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_default_seo_profile_id',
+            __('Default SEO Profile', 'ai-post-scheduler'),
+            array($this->ui, 'default_seo_profile_field_callback'),
             'aips-settings',
             'aips_general_section'
         );

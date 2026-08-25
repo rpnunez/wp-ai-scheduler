@@ -97,6 +97,61 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the global SEO generation toggle field.
+     *
+     * @return void
+     */
+    public function enable_seo_generation_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_seo_generation', true);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_enable_seo_generation" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Enable AI SEO metadata generation globally across all templates and posts', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('When enabled, AI Post Scheduler generates focus keywords, titles, descriptions, and social tags into your active SEO plugin (Yoast, Rank Math) or internal storage.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the frontend wp_head output toggle field.
+     *
+     * @return void
+     */
+    public function seo_enable_head_output_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_seo_enable_head_output', false);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_seo_enable_head_output" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Output fallback SEO meta tags in wp_head on the frontend', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('When enabled and no third-party SEO plugin (like Yoast or Rank Math) is active, outputs standard meta description, robots, and OpenGraph/Twitter tags in the site HTML head.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the default SEO profile dropdown.
+     *
+     * @return void
+     */
+    public function default_seo_profile_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_default_seo_profile_id', 0);
+        $profiles = class_exists('AIPS_SEO_Profiles_Repository')
+            ? AIPS_SEO_Profiles_Repository::instance()->get_all(true)
+            : array();
+        ?>
+        <select name="aips_default_seo_profile_id">
+            <option value="0"><?php esc_html_e('Default Profile (All Standard SEO Fields)', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($profiles as $profile): ?>
+                <option value="<?php echo esc_attr($profile->id); ?>" <?php selected($value, $profile->id); ?>>
+                    <?php echo esc_html($profile->name); ?> (<?php echo esc_html(count((array) $profile->fields)); ?> <?php esc_html_e('fields', 'ai-post-scheduler'); ?>)
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Default SEO Profile used for single-post generation or templates with no profile assigned.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the AI provider selection field.
      *
      * Lets the admin pick which AI backend serves requests. "Auto-detect" lets
