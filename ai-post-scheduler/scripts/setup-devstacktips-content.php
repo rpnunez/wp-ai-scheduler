@@ -5,14 +5,14 @@
  * Creates a complete content strategy for DevStackTips including:
  * - Plugin settings (Content Strategy + Resilience & Limits + Production Settings)
  * - 7 Categories
- * - 5 Voices (writing styles)
- * - 8 Article Structures
- * - 5 Authors
+ * - 8 Voices (writing styles)
+ * - 11 Article Structures
+ * - 8 Authors
  * - 4 Post Slices
  * - 2 Source Groups with 6 Sources
- * - 8 Templates
- * - 8 Campaigns
- * - 8 Schedules
+ * - 11 Templates
+ * - 11 Campaigns
+ * - 11 Schedules
  *
  * Plugin Settings Configured:
  * - Default Article Structure, Research Niches, Notifications
@@ -48,7 +48,7 @@ class AIPS_DevStackTips_Setup {
 	/**
 	 * Strategy profile name
 	 */
-	private const STRATEGY_PROFILE = 'devstacktips-production-v1';
+	private const STRATEGY_PROFILE = 'devstacktips-production-v2';
 
 	/**
 	 * Distribution configuration defines the overall content distribution strategy, including:
@@ -61,8 +61,8 @@ class AIPS_DevStackTips_Setup {
 		'distribution_period' => 'weekly',
 		'target_posts' => array(
 			'daily' => 6,
-			'weekly' => 30,
-			'monthly' => 120,
+			'weekly' => 42,
+			'monthly' => 180,
 		),
 		'campaign_shares' => array(
 			'Developer Foundations' => 4,
@@ -73,13 +73,19 @@ class AIPS_DevStackTips_Setup {
 			'AI for Developers' => 3,
 			'PHP Ecosystem Radar' => 4,
 			'Security Intelligence Briefing' => 3,
+			'Software Architecture Patterns' => 4,
+			'Refactoring & Code Smells' => 4,
+			'Test Strategy & Automation' => 4,
 		),
 		'author_shares' => array(
-			'Backend Architecture Specialist' => 8,
-			'Security Expert' => 7,
-			'DevOps Practitioner' => 6,
-			'Framework Analyst' => 5,
+			'Backend Architecture Specialist' => 6,
+			'Security Expert' => 5,
+			'DevOps Practitioner' => 5,
+			'Framework Analyst' => 4,
 			'AI Engineering Pragmatist' => 4,
+			'Staff Software Architect' => 6,
+			'Test Automation & Quality Specialist' => 6,
+			'Code Quality & Refactoring Craftsman' => 6,
 		),
 	);
 
@@ -1577,6 +1583,80 @@ DevStackTips Content Setup
 				'excerpt_instructions' => 'Emphasize both the benefits and limitations of the AI approach discussed.',
 				'is_active' => 1,
 			),
+			array(
+				'name' => 'Staff Software Architect',
+				'title_prompt' => 'Create a title emphasizing system architecture, design patterns, or domain modeling (e.g., "Designing a Resilient Event-Driven System", "Domain-Driven Design in Practice"). Make it authoritative, clear, and technically profound.',
+				'content_instructions' => 'You are a staff software architect providing strategic architectural guidance on DevStackTips.
+
+Writing approach:
+- Focus on system boundaries, high cohesion, low coupling, and modularity
+- Deeply analyze architectural trade-offs (e.g., consistency vs availability, simplicity vs flexibility)
+- Provide clear structural diagrams (ASCII or text decomposition)
+- Balance immediate pragmatic delivery with long-term evolvability
+- Address failure modes, scalability limits, and resilience patterns
+
+Technical depth:
+- Target senior software engineers and technical leaders
+- Use precise architectural terminology (bounded contexts, aggregates, ports and adapters, saga pattern)
+- Compare alternative patterns before justifying the recommended approach
+- Include concrete, idiomatic code examples implementing the pattern cleanly
+
+Avoid:
+- Abstract architectural hand-waving without code implementation
+- Dogmatic purity that ignores real-world operational realities
+- Superficial design pattern overviews without trade-off analysis',
+				'excerpt_instructions' => 'Summarize the foundational architectural principle and high-impact structural trade-off.',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Test Automation & QA Lead',
+				'title_prompt' => 'Create a title emphasizing automated testing strategies, TDD cycles, or quality engineering (e.g., "Mastering TDD with Mocking Strategies", "Building Robust Integration Tests for Distributed APIs").',
+				'content_instructions' => 'You are a quality engineering and test automation lead guiding developers on DevStackTips.
+
+Teaching style:
+- Advocate rigorous, test-first thinking and disciplined TDD cycles
+- Demonstrate clear Red-Green-Refactor steps
+- Emphasize test isolation, speed, determinism, and maintainability
+- Teach proper test double usage (distinguish mocks, stubs, fakes, and spies)
+- Focus on eliminating flaky tests and building mutation-resistant suites
+
+Content structure:
+- Start with the testing scenario and requirements
+- Show how to write the failing test assertion first
+- Provide the minimal implementation to pass
+- Refactor the code while keeping tests green
+- Cover edge cases, mutation testing, and CI pipeline automation
+
+Tone:
+- Methodical, encouraging, and quality-driven
+- Practical with concrete test assertions and frameworks
+- Focused on confidence in continuous delivery',
+				'excerpt_instructions' => 'Highlight the primary testing methodology, TDD cycle, or quality assurance pattern discussed.',
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Code Craftsman & Refactoring Lead',
+				'title_prompt' => 'Create a title emphasizing safe code refactoring, code smell elimination, or technical debt management (e.g., "Refactoring God Classes into Clean Services", "Eliminating Code Smells with Strangler Patterns").',
+				'content_instructions' => 'You are a seasoned code craftsman specializing in legacy modernization and refactoring on DevStackTips.
+
+Refactoring approach:
+- Treat refactoring as disciplined, incremental behavior-preserving transformations
+- Always establish characterization tests and safety nets BEFORE changing code
+- Explicitly identify code smells (God Class, Feature Envy, Primitive Obsession, Hidden Coupling)
+- Demonstrate step-by-step micro-refactorings with clear before/after diffs
+- Emphasize clean code, readability, maintainability, and SOLID principles
+
+Analysis style:
+- Ground recommendations in real-world messy codebases, not toy examples
+- Show how to pay down technical debt incrementally without risky total rewrites
+- Benchmark or assess clean code against performance implications
+- Emphasize automated static analysis and linting rules
+
+Tone:
+- Pragmatic, empathetic to legacy constraints, disciplined, and craftsmanship-oriented',
+				'excerpt_instructions' => 'Highlight the specific code smell eliminated and the core refactoring step applied.',
+				'is_active' => 1,
+			),
 		);
 	}
 
@@ -1769,6 +1849,62 @@ DevStackTips Content Setup
 				'content' => 'Provide balanced recommendations based on different scenarios and requirements.',
 				'is_active' => 1,
 			),
+			'architectural_tradeoffs' => array(
+				'name' => 'Architectural Trade-offs & Alternatives',
+				'section_key' => 'architectural_tradeoffs',
+				'description' => 'Analysis of architectural trade-offs, complexity vs maintainability, and alternative designs',
+				'content' => 'Deeply analyze the architectural trade-offs of this pattern (e.g. coupling vs cohesion, latency vs consistency, simplicity vs flexibility). Discuss alternative patterns and why this specific solution was chosen.',
+				'is_active' => 1,
+			),
+			'system_diagram_concept' => array(
+				'name' => 'System & Component Architecture',
+				'section_key' => 'system_diagram_concept',
+				'description' => 'Visual or structural breakdown of components, boundaries, and data flow',
+				'content' => 'Provide a clear textual/ASCII diagram or structured decomposition showing how components, modules, or services interact, detailing boundaries and data flows.',
+				'is_active' => 1,
+			),
+			'smelly_code_analysis' => array(
+				'name' => 'Code Smell & Anti-Pattern Analysis',
+				'section_key' => 'smelly_code_analysis',
+				'description' => 'Inspection of problematic legacy code and identified design flaws',
+				'content' => 'Show the original problematic or smelly code. Pinpoint exact anti-patterns (e.g. God Class, Feature Envy, Primitive Obsession, Hidden Coupling) and explain the business/technical risks of leaving it unchanged.',
+				'is_active' => 1,
+			),
+			'safety_nets_tests' => array(
+				'name' => 'Safety Nets & Characterization Tests',
+				'section_key' => 'safety_nets_tests',
+				'description' => 'Establishing test coverage and regression baselines before refactoring',
+				'content' => 'Explain how to wrap the existing code with characterization tests and regression safety nets before making any changes, ensuring behavior preservation.',
+				'is_active' => 1,
+			),
+			'step_by_step_refactoring' => array(
+				'name' => 'Step-by-Step Refactoring Sequence',
+				'section_key' => 'step_by_step_refactoring',
+				'description' => 'Disciplined micro-steps to transform the code cleanly',
+				'content' => 'Walk through the refactoring process in incremental, test-backed micro-steps. Show before/after diffs for each transformation step.',
+				'is_active' => 1,
+			),
+			'test_scenario_setup' => array(
+				'name' => 'Test Scenarios & Fixture Design',
+				'section_key' => 'test_scenario_setup',
+				'description' => 'Defining testing scenarios, state fixtures, and test doubles',
+				'content' => 'Outline the exact test scenarios, state fixtures, and mock/stub boundaries needed to test this behavior thoroughly without fragile dependencies.',
+				'is_active' => 1,
+			),
+			'red_green_refactor' => array(
+				'name' => 'Red-Green-Refactor Cycle',
+				'section_key' => 'red_green_refactor',
+				'description' => 'TDD cycle walkthrough with failing test, minimal implementation, and clean refactor',
+				'content' => 'Demonstrate the TDD cycle: write the failing assertion (Red), write the simplest code to pass (Green), and refactor for elegance and performance (Refactor).',
+				'is_active' => 1,
+			),
+			'mutation_edge_cases' => array(
+				'name' => 'Edge Cases & Mutation Resistance',
+				'section_key' => 'mutation_edge_cases',
+				'description' => 'Testing boundaries, failure modes, and mutation test verification',
+				'content' => 'Identify critical edge cases, null/unexpected inputs, failure modes, and how to verify test suite quality using mutation testing concepts.',
+				'is_active' => 1,
+			),
 		);
 	}
 
@@ -1818,6 +1954,21 @@ DevStackTips Content Setup
 				'name' => 'News / Trend Analysis',
 				'description' => 'For timely technical analysis',
 				'sections' => array('introduction', 'technical_context', 'use_cases', 'recommendation', 'conclusion'),
+			),
+			array(
+				'name' => 'Architecture Pattern Deep Dive',
+				'description' => 'For system architecture, design patterns, domain modeling, and modularity',
+				'sections' => array('problem_statement', 'system_diagram_concept', 'architectural_tradeoffs', 'implementation_strategy', 'step_by_step', 'code_examples', 'best_practices', 'common_mistakes', 'conclusion'),
+			),
+			array(
+				'name' => 'Refactoring & Code Smells Case Study',
+				'description' => 'For legacy code modernization, code smell elimination, and safe refactoring workflows',
+				'sections' => array('problem_statement', 'smelly_code_analysis', 'safety_nets_tests', 'step_by_step_refactoring', 'code_examples', 'best_practices', 'operational_tips', 'conclusion'),
+			),
+			array(
+				'name' => 'Test Strategy & Automation Guide',
+				'description' => 'For TDD, integration testing, test doubles, and quality automation pipelines',
+				'sections' => array('problem_statement', 'test_scenario_setup', 'red_green_refactor', 'code_examples', 'mutation_edge_cases', 'best_practices', 'testing_validation', 'conclusion'),
 			),
 		);
 	}
@@ -1945,6 +2096,78 @@ DevStackTips Content Setup
 				'category_name' => 'AI for Developers',
 				'topic_generation_frequency' => 'weekly',
 				'topic_generation_quantity' => 5,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Staff Software Architect',
+				'field_niche' => 'System Architecture, Domain-Driven Design, Design Patterns, Modularity',
+				'keywords' => 'clean architecture, domain-driven design, design patterns, microservices vs monolith, event-driven architecture, modularity, system design',
+				'description' => 'Staff software architect specializing in scalable system design, domain modeling, and enterprise design patterns',
+				'details' => 'Focuses on large-scale software architecture, domain-driven design (DDD), hexagonal/clean architecture, event-driven patterns, and strategic technical decision making. Guides developers on balancing immediate pragmatism with long-term architectural health.',
+				'voice_name' => 'Staff Software Architect',
+				'structure_name' => 'Architecture Pattern Deep Dive',
+				'voice_tone' => 'Authoritative, strategic, pragmatic, architectural',
+				'writing_style' => 'Architectural deep-dive with system trade-offs and structural analysis',
+				'target_audience' => 'Senior engineers, tech leads, and aspiring software architects',
+				'expertise_level' => 'advanced',
+				'content_goals' => 'Elevate system design skills, Demystify architectural patterns, Master domain modeling and modularity',
+				'excluded_topics' => 'Basic syntax tutorials, Superficial tool installations, Marketing buzzwords',
+				'preferred_content_length' => 'long',
+				'category_name' => 'Backend Development',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 6,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Test Automation & Quality Specialist',
+				'field_niche' => 'Test-Driven Development, Automation Pipelines, Quality Engineering',
+				'keywords' => 'TDD, unit testing, integration testing, end-to-end testing, mocking, mutation testing, test fixtures, CI/CD quality gates',
+				'description' => 'Quality engineering and test automation specialist advocating test-driven design and bulletproof test suites',
+				'details' => 'Covers practical testing strategies across the testing pyramid. Specializes in TDD workflows, robust test doubles/mocking, property-based and mutation testing, eliminating flaky tests, and embedding automated quality gates in CI/CD pipelines.',
+				'voice_name' => 'Test Automation & QA Lead',
+				'structure_name' => 'Test Strategy & Automation Guide',
+				'voice_tone' => 'Rigorous, methodical, test-first, encouraging',
+				'writing_style' => 'Step-by-step testing walkthrough with red-green-refactor cycles and concrete assertions',
+				'target_audience' => 'Software engineers looking to master testing and build resilient automated test suites',
+				'expertise_level' => 'intermediate',
+				'content_goals' => 'Promote test-driven development, Eliminate software defects, Teach robust test automation patterns',
+				'excluded_topics' => 'Manual clicking QA checklists, Theoretical quality models without code, Deprecated testing frameworks',
+				'preferred_content_length' => 'medium',
+				'category_name' => 'DevOps & Tools',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 6,
+				'post_generation_frequency' => 'weekly',
+				'max_posts_per_topic' => 1,
+				'manual_post_generation_quantity' => 1,
+				'scheduled_post_generation_quantity' => 1,
+				'is_active' => 1,
+			),
+			array(
+				'name' => 'Code Quality & Refactoring Craftsman',
+				'field_niche' => 'Legacy Code Refactoring, Code Smells, Static Analysis, Technical Debt',
+				'keywords' => 'refactoring, code smells, legacy code, static analysis, technical debt, clean code, code review, SOLID principles',
+				'description' => 'Code craftsman dedicated to transforming tangled legacy systems into clean, maintainable, and well-tested codebases',
+				'details' => 'Specializes in safe, incremental refactoring techniques for mission-critical codebases. Covers code smell detection, characterization testing, strangler fig transformations, automated static analysis tooling, and maintaining clean code standards in growing teams.',
+				'voice_name' => 'Code Craftsman & Refactoring Lead',
+				'structure_name' => 'Refactoring & Code Smells Case Study',
+				'voice_tone' => 'Pragmatic, disciplined, detail-oriented, empathetic to legacy constraints',
+				'writing_style' => 'Case-study style refactoring tutorial with clear before/after transformations',
+				'target_audience' => 'Intermediate and senior software developers managing evolving or legacy codebases',
+				'expertise_level' => 'intermediate',
+				'content_goals' => 'Demystify safe refactoring, Reduce technical debt, Share actionable code quality techniques',
+				'excluded_topics' => 'Total rewrites without business rationale, Pure dogmatic clean code debates, Unactionable theory',
+				'preferred_content_length' => 'medium',
+				'category_name' => 'Backend Development',
+				'topic_generation_frequency' => 'weekly',
+				'topic_generation_quantity' => 6,
 				'post_generation_frequency' => 'weekly',
 				'max_posts_per_topic' => 1,
 				'manual_post_generation_quantity' => 1,
@@ -2111,6 +2334,21 @@ DevStackTips Content Setup
 				'content_goal' => 'Deliver actionable security briefings tied to current vulnerabilities and prevention patterns',
 				'topics' => "CVE Triage Workflow for Engineering Teams\nPatch Prioritization Under Time Constraints\nHow to Communicate Security Risk to Stakeholders\nDependency Vulnerability Response Playbook\nFrom Advisory to Action: Turning Alerts into Fixes\nThreat Modeling for Existing Applications\nSecure Defaults for New Services\nIncident Readiness Checklist for Web Apps\nHow to Validate Security Fixes in CI\nPost-Incident Lessons Learned Template",
 			),
+			array(
+				'name' => 'Software Architecture Patterns',
+				'content_goal' => 'Deep-dive architectural patterns, domain modeling, and modular system design',
+				'topics' => "Implementing Domain-Driven Design Bounded Contexts\nHexagonal Architecture (Ports and Adapters) in Modern Backend Systems\nCQRS and Event Sourcing Architectural Trade-offs\nEvent-Driven Architecture vs Synchronous REST\nDesigning Resilient Saga Patterns for Distributed Transactions\nOutbox Pattern for Reliable Message Publishing\nModular Monolith vs Microservices: Strategic Decision Matrix\nApplying SOLID Principles in Enterprise Web Applications\nImplementing the Strategy and Factory Patterns for Extensible Code\nDesigning Clean Application Layers: Domain, Application, and Infrastructure",
+			),
+			array(
+				'name' => 'Refactoring & Code Smells',
+				'content_goal' => 'Step-by-step legacy code refactoring, anti-pattern remediation, and clean code techniques',
+				'topics' => "Refactoring God Classes into Cohesive Domain Services\nEliminating Primitive Obsession with Value Objects\nSafe Refactoring of Nested Conditionals using Guard Clauses\nBreaking Hidden Coupling with Dependency Inversion\nUsing the Strangler Fig Pattern to Modernize Legacy Systems\nExtracting Service Objects from Bloated Controllers\nCharacterization Testing: Writing Safety Nets for Untested Legacy Code\nRefactoring Switch Statements using Polymorphism and Strategy Patterns\nManaging and Paying Down Technical Debt in Agile Teams\nAutomating Code Quality Gates with Static Analysis Tools",
+			),
+			array(
+				'name' => 'Test Strategy & Automation',
+				'content_goal' => 'Practical test-driven development, resilient test doubles, and CI/CD quality engineering',
+				'topics' => "Mastering the Red-Green-Refactor Cycle in Practice\nTest Doubles Demystified: Mocks vs Stubs vs Fakes vs Spies\nWriting Fast and Deterministic Integration Tests with In-Memory Databases\nMutation Testing: Validating the Quality of Your Test Suite\nContract Testing for Microservices with Pact\nDesigning Clean Test Fixtures and Object Mothers\nTesting Asynchronous Queue Workers and Event Listeners\nEnd-to-End Testing Strategies without Flaky Tests\nEmbedding Automated Quality Gates in CI Pipelines\nProperty-Based Testing for Edge Case Discovery",
+			),
 		);
 		$post_targets = $this->get_campaign_post_targets();
 
@@ -2239,6 +2477,48 @@ DevStackTips Content Setup
 				'generate_featured_image' => 0,
 				'featured_image_source' => 'ai_prompt',
 			),
+			array(
+				'name' => 'Architecture Pattern Deep Dive',
+				'description' => 'Architectural pattern deep-dives with system diagrams and trade-off analysis',
+				'campaign_name' => 'Software Architecture Patterns',
+				'voice_name' => 'Staff Software Architect',
+				'structure_name' => 'Architecture Pattern Deep Dive',
+				'categories' => array('Backend Development'),
+				'post_tags' => 'software-architecture,design-patterns,ddd,clean-architecture,system-design',
+				'prompt_template' => 'Write an in-depth architectural guide about {{topic}}. Focus on structural design, trade-offs, modularity, and production-tested patterns.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'A clean, modern technical blueprint and architectural system diagram, isometric modular components, sleek dark mode theme with neon blue and cyan accents, high-end developer engineering aesthetic',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Refactoring & Code Smells',
+				'description' => 'Practical code smell elimination and safe step-by-step legacy refactoring',
+				'campaign_name' => 'Refactoring & Code Smells',
+				'voice_name' => 'Code Craftsman & Refactoring Lead',
+				'structure_name' => 'Refactoring & Code Smells Case Study',
+				'categories' => array('Backend Development'),
+				'post_tags' => 'refactoring,code-smells,clean-code,technical-debt,legacy-code',
+				'prompt_template' => 'Write a practical refactoring guide about {{topic}}. Demonstrate how to transform problematic code into clean, maintainable architecture with safety-net tests.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'An elegant visual metaphor for code transformation and refactoring, tangled complex glowing lines organizing into clean orderly modular geometric code blocks, dark theme with emerald green and teal highlights',
+				'include_sources' => 0,
+			),
+			array(
+				'name' => 'Test Strategy & Automation Guide',
+				'description' => 'Test-driven development, automated testing patterns, and quality engineering',
+				'campaign_name' => 'Test Strategy & Automation',
+				'voice_name' => 'Test Automation & QA Lead',
+				'structure_name' => 'Test Strategy & Automation Guide',
+				'categories' => array('DevOps & Tools', 'Backend Development'),
+				'post_tags' => 'tdd,automated-testing,unit-testing,integration-testing,qa,code-quality',
+				'prompt_template' => 'Write a rigorous, practical automated testing guide about {{topic}}. Walk through testing cycles, fixtures, mocking strategies, and robust test assertions.',
+				'generate_featured_image' => 1,
+				'featured_image_source' => 'ai_prompt',
+				'image_prompt' => 'A sleek developer dashboard showing automated test suites passing with glowing green checkmarks, code coverage metrics, terminal test runner output, dark background with vibrant green and turquoise accents',
+				'include_sources' => 0,
+			),
 		);
 		$post_targets = $this->get_campaign_post_targets();
 
@@ -2321,6 +2601,30 @@ DevStackTips Content Setup
 				'frequency' => 'weekly',
 				'weekday' => 6,
 				'start_time' => '10:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Architecture Pattern Deep Dive',
+				'title' => 'Core Monday PM - Software Architecture Patterns',
+				'frequency' => 'weekly',
+				'weekday' => 1,
+				'start_time' => '14:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Test Strategy & Automation Guide',
+				'title' => 'Core Wednesday PM - Test Strategy & Automation',
+				'frequency' => 'weekly',
+				'weekday' => 3,
+				'start_time' => '14:00',
+				'is_active' => 1,
+			),
+			array(
+				'template_name' => 'Refactoring & Code Smells',
+				'title' => 'Core Friday PM - Refactoring & Code Smells',
+				'frequency' => 'weekly',
+				'weekday' => 5,
+				'start_time' => '14:00',
 				'is_active' => 1,
 			),
 		);
