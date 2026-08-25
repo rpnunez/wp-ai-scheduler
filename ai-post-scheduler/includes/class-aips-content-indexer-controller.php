@@ -203,6 +203,7 @@ class AIPS_Content_Indexer_Controller {
 		$query = isset($_POST['q']) ? sanitize_text_field($_POST['q']) : '';
 		if (empty($query)) {
 			AIPS_Ajax_Response::success(array('results' => array()));
+			return;
 		}
 
 		$posts = get_posts(array(

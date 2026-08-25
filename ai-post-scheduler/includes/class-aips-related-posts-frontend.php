@@ -91,6 +91,10 @@ class AIPS_Related_Posts_Frontend {
 			return $content;
 		}
 
+		if (has_shortcode($content, 'aips_related_posts') || (function_exists('has_block') && has_block('aips/related-posts', $post_id))) {
+			return $content;
+		}
+
 		$related_html = $this->related_service->render_related_posts_html($post_id);
 		if (!empty($related_html)) {
 			$content .= "\n\n" . $related_html;

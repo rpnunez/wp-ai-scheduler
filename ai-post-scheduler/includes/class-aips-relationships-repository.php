@@ -264,7 +264,7 @@ class AIPS_Relationships_Repository {
 					AND source_id IN ($placeholders)
 					AND target_id IN ($placeholders)
 					AND similarity >= %f",
-					...array_merge($neighbor_ids, $neighbor_ids, array($min_similarity))
+					...array_values(array_merge($neighbor_ids, $neighbor_ids, array($min_similarity)))
 				)
 			);
 
