@@ -14,7 +14,6 @@ if (!defined('ABSPATH')) {
  * @since 1.6.0
  */
 class AIPS_Schedule_Processor {
-
     /**
      * @var AIPS_Schedule_Repository_Interface
      */
@@ -252,6 +251,35 @@ class AIPS_Schedule_Processor {
 
         // Load (or create) the schedule's persistent lifecycle history container.
         $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
+
+		if (AIPS_Config::get_instance()->is_scheduled_ai_generation_prevented()) {
+			$this->result_handler->handle_execution_terminated_by_setting(
+				$schedule_obj,
+				$history,
+				false,
+				AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+				array(
+					'message_override' => sprintf(
+						/* translators: 1: 1-based slice start position, 2: total posts, 3: setting label */
+						__('Batch slice starting at post %1$d of %2$d was terminated early due to %3$s being enabled.', 'ai-post-scheduler'),
+						$start_index + 1,
+						$total_quantity,
+						AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label()
+					),
+					'event_type'       => 'batch_slice_terminated',
+					'total'            => $total_quantity,
+					'completed'        => max(0, $start_index),
+					'run_state'        => array(
+						'completed'      => max(0, $start_index),
+						'total'          => $total_quantity,
+						'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
+						'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+					),
+				)
+			);
+
+			return;
+		}
 
         $this->repository->update_run_state($schedule_id, array(
             'status'         => 'batch_processing',
@@ -496,7 +524,7 @@ class AIPS_Schedule_Processor {
             return false;
         }
 
-        if (in_array($run_state['status'], array('partial', 'failed', 'success'), true)) {
+        if (in_array($run_state['status'], array('partial', 'failed', 'success', 'terminated'), true)) {
             $this->logger->log(
                 sprintf(
                     'Batch slice: skipping schedule %d because run_state is already terminal (%s).',
@@ -562,6 +590,7 @@ class AIPS_Schedule_Processor {
         // Ensure schedule_id is set correctly (s.id alias)
         $schedule_with_template->schedule_id = $schedule->id;
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
+		$original_next_run = isset($schedule->next_run) ? (int) $schedule->next_run : null;
 
         if ($advance_schedule && $schedule->frequency !== 'once') {
             $next_run = $this->interval_calculator->calculate_next_run(
@@ -575,7 +604,7 @@ class AIPS_Schedule_Processor {
         AIPS_Correlation_ID::generate();
 
         try {
-            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override, $advance_schedule);
+            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override, $advance_schedule, $original_next_run);
         } finally {
             AIPS_Correlation_ID::reset();
         }
@@ -648,7 +677,12 @@ class AIPS_Schedule_Processor {
                     )
                 );
 
-                $this->execute_schedule_logic($schedule, false);
+				$restore_next_run = null;
+				if ($schedule->frequency === 'once') {
+					$restore_next_run = (int) $original_next_run;
+				}
+
+                $this->execute_schedule_logic($schedule, false, null, true, $restore_next_run);
             },
             'schedule_execution',
             array('schedule_id' => $schedule->schedule_id),
@@ -679,9 +713,11 @@ class AIPS_Schedule_Processor {
      * @param bool     $is_manual        Whether this is a manual execution.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
      * @param bool     $advance_schedule Whether a manual run updates schedule state.
+     * @param int|null $restore_next_run Original next_run value restored when the
+     *                                   schedule is terminated before generation starts.
      * @return int|WP_Error Post ID or WP_Error.
      */
-    private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null, $advance_schedule = true) {
+    private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null, $advance_schedule = true, $restore_next_run = null) {
         if (!$is_manual) {
             // Dispatch schedule execution started event
             do_action('aips_schedule_execution_started', $schedule->schedule_id);
@@ -754,6 +790,29 @@ class AIPS_Schedule_Processor {
         // the work as a set of time-spread single cron events rather than
         // generating all posts synchronously here.  This applies to both
         // automated (cron) and manual runs.
+		if (AIPS_Config::get_instance()->is_scheduled_ai_generation_prevented()) {
+			$termination_options = array(
+				'total'     => $post_quantity,
+				'completed' => 0,
+			);
+
+			if ($restore_next_run !== null) {
+				$termination_options['restore_next_run'] = (int) $restore_next_run;
+			}
+
+			if (!$is_manual && isset($schedule->frequency) && $schedule->frequency !== 'once') {
+				$termination_options['update_last_run'] = true;
+			}
+
+			return $this->result_handler->handle_execution_terminated_by_setting(
+				$schedule,
+				$history,
+				$is_manual,
+				AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+				$termination_options
+			);
+		}
+
         $batch_service = $this->get_batch_queue_service();
         if ($batch_service->needs_batch_queue($post_quantity)) {
             if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {

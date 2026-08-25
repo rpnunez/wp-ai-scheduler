@@ -151,6 +151,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_env_id'],
 			),
+			'aips_prevent_scheduled_ai_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_prevent_scheduled_ai_generation'],
+			),
 			'aips_max_tokens_limit' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_max_tokens_limit'],
@@ -311,6 +315,14 @@ class AIPS_Settings {
             'aips-settings',
             'aips_ai_section'
         );
+
+		add_settings_field(
+			'aips_prevent_scheduled_ai_generation',
+			__('Prevent Scheduled AI Generation', 'ai-post-scheduler'),
+			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
         add_settings_field(
             'aips_max_tokens_limit',

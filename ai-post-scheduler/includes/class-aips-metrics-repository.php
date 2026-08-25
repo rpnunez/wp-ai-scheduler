@@ -142,6 +142,7 @@ class AIPS_Metrics_Repository {
 	 *     @type int   $successful                  Completed (success) count.
 	 *     @type int   $failed                      Failed count.
 	 *     @type int   $partial                     Partial (incomplete) count.
+	 *     @type int   $terminated                  Terminated count.
 	 *     @type float $success_rate                Success rate percentage (0–100).
 	 *     @type float $failure_rate                Failure rate percentage (0–100).
 	 *     @type int   $avg_duration_seconds        Average generation duration (seconds).
@@ -177,6 +178,7 @@ class AIPS_Metrics_Repository {
 					'successful'              => $counts['completed'],
 					'failed'                  => $counts['failed'],
 					'partial'                 => $counts['partial'],
+					'terminated'              => $counts['terminated'],
 					'success_rate'            => $total > 0 ? round( ( $counts['completed'] / $total ) * 100, 1 ) : 0.0,
 					'failure_rate'            => $total > 0 ? round( ( $counts['failed'] / $total ) * 100, 1 ) : 0.0,
 					'avg_duration_seconds'    => $durations['avg'],
@@ -425,10 +427,10 @@ class AIPS_Metrics_Repository {
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SELECT
-					COUNT(*) AS total,
 					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
 					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
-					SUM(CASE WHEN status = 'partial'   THEN 1 ELSE 0 END) AS partial
+					SUM(CASE WHEN status = 'partial'   THEN 1 ELSE 0 END) AS partial,
+					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS terminated
 				FROM {$this->table_history}
 				WHERE created_at >= %d",
 				$cutoff
@@ -436,14 +438,20 @@ class AIPS_Metrics_Repository {
 		);
 
 		if ( ! $row ) {
-			return array( 'total' => 0, 'completed' => 0, 'failed' => 0, 'partial' => 0 );
+			return array( 'total' => 0, 'completed' => 0, 'failed' => 0, 'partial' => 0, 'terminated' => 0 );
 		}
 
+		$completed  = isset( $row->completed ) ? (int) $row->completed : 0;
+		$failed     = isset( $row->failed ) ? (int) $row->failed : 0;
+		$partial    = isset( $row->partial ) ? (int) $row->partial : 0;
+		$terminated = isset( $row->terminated ) ? (int) $row->terminated : 0;
+
 		return array(
-			'total'     => isset( $row->total )     ? (int) $row->total     : 0,
-			'completed' => isset( $row->completed ) ? (int) $row->completed : 0,
-			'failed'    => isset( $row->failed )    ? (int) $row->failed    : 0,
-			'partial'   => isset( $row->partial )   ? (int) $row->partial   : 0,
+			'total'      => $completed + $failed + $partial + $terminated,
+			'completed'  => $completed,
+			'failed'     => $failed,
+			'partial'    => $partial,
+			'terminated' => $terminated,
 		);
 	}
 
@@ -641,8 +649,10 @@ class AIPS_Metrics_Repository {
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SELECT
-					COUNT(*) AS total,
-					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed
+					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+					SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+					SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) AS partial,
+					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS terminated
 				FROM {$this->table_history}
 				WHERE creation_method = %s
 				  AND created_at >= %d",
@@ -651,11 +661,21 @@ class AIPS_Metrics_Repository {
 			)
 		);
 
-		if ( ! $row || ! isset( $row->total ) || (int) $row->total === 0 ) {
+		if ( ! $row ) {
 			return -1.0; // No scheduled-run data available.
 		}
 
-		return round( ( (int) $row->completed / (int) $row->total ) * 100, 1 );
+		$completed  = isset( $row->completed ) ? (int) $row->completed : 0;
+		$failed     = isset( $row->failed ) ? (int) $row->failed : 0;
+		$partial    = isset( $row->partial ) ? (int) $row->partial : 0;
+		$terminated = isset( $row->terminated ) ? (int) $row->terminated : 0;
+		$total      = $completed + $failed + $partial + $terminated;
+
+		if ( $total === 0 ) {
+			return -1.0; // No scheduled-run data available.
+		}
+
+		return round( ( $completed / $total ) * 100, 1 );
 	}
 
 	/**
