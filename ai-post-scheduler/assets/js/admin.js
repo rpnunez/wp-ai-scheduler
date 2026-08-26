@@ -3062,6 +3062,7 @@
                         'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
+                        'author_post_generation':    { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                         'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                     };
                     var defaultIcon = { icon: 'dashicons-info', cls: '' };
