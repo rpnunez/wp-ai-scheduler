@@ -733,33 +733,9 @@ class AIPS_Schedule_Controller {
             array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
         );
 
-        $entries = array();
-        foreach ($logs as $log) {
-            $details = array();
-
-            if (!empty($log->details)) {
-                $decoded_details = json_decode($log->details, true);
-                if (is_array($decoded_details)) {
-                    $details = $decoded_details;
-                }
-            }
-
-            $input = array();
-            if (isset($details['input']) && is_array($details['input'])) {
-                $input = $details['input'];
-            }
-
-            $entries[] = array(
-                'id' => absint($log->id),
-                'timestamp' => esc_html($log->timestamp),
-                'log_type' => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
-                'history_type_id' => absint($log->history_type_id),
-                'message' => isset($details['message']) ? esc_html($details['message']) : '',
-                'event_type' => isset($input['event_type']) ? esc_html($input['event_type']) : '',
-                'event_status' => isset($input['event_status']) ? esc_html($input['event_status']) : '',
-                'context' => (isset($details['context']) && is_array($details['context'])) ? $details['context'] : array(),
-            );
-        }
+        // Normalize via the shared read model so event_type/event_status are
+        // canonicalized and the record shape matches every other consumer.
+        $entries = AIPS_History_Event_View::from_logs($logs);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
     }

@@ -14,11 +14,11 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixLengthsPsr4 = array (
-        'P' =>
+        'P' => 
         array (
             'PhpParser\\' => 10,
         ),
-        'D' =>
+        'D' => 
         array (
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
@@ -26,15 +26,15 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
     );
 
     public static $prefixDirsPsr4 = array (
-        'PhpParser\\' =>
+        'PhpParser\\' => 
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
-        'Doctrine\\Instantiator\\' =>
+        'Doctrine\\Instantiator\\' => 
         array (
             0 => __DIR__ . '/..' . '/doctrine/instantiator/src/Doctrine/Instantiator',
         ),
-        'DeepCopy\\' =>
+        'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
@@ -110,7 +110,9 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Config' => __DIR__ . '/../..' . '/includes/class-aips-config.php',
         'AIPS_Container' => __DIR__ . '/../..' . '/includes/class-aips-container.php',
         'AIPS_Content_Auditor' => __DIR__ . '/../..' . '/includes/class-aips-content-auditor.php',
+        'AIPS_Content_Auditor_Controller' => __DIR__ . '/../..' . '/includes/class-aips-content-auditor-controller.php',
         'AIPS_Content_Auditor_Engine' => __DIR__ . '/../..' . '/includes/class-aips-content-auditor-engine.php',
+        'AIPS_Content_Auditor_Repository' => __DIR__ . '/../..' . '/includes/class-aips-content-auditor-repository.php',
         'AIPS_Content_Auditor_Scanner' => __DIR__ . '/../..' . '/includes/class-aips-content-auditor-scanner.php',
         'AIPS_Content_Digest' => __DIR__ . '/../..' . '/includes/class-aips-content-digest.php',
         'AIPS_Correlation_ID' => __DIR__ . '/../..' . '/includes/class-aips-correlation-id.php',
@@ -145,12 +147,18 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Generator' => __DIR__ . '/../..' . '/includes/class-aips-generator.php',
         'AIPS_History' => __DIR__ . '/../..' . '/includes/class-aips-history.php',
         'AIPS_History_Container' => __DIR__ . '/../..' . '/includes/class-aips-history-container.php',
+        'AIPS_History_Event' => __DIR__ . '/../..' . '/includes/class-aips-history-event.php',
+        'AIPS_History_Event_Recorder' => __DIR__ . '/../..' . '/includes/class-aips-history-event-recorder.php',
+        'AIPS_History_Event_Status' => __DIR__ . '/../..' . '/includes/class-aips-history-event-status.php',
+        'AIPS_History_Event_Type' => __DIR__ . '/../..' . '/includes/class-aips-history-event-type.php',
+        'AIPS_History_Event_View' => __DIR__ . '/../..' . '/includes/class-aips-history-event-view.php',
         'AIPS_History_Repository' => __DIR__ . '/../..' . '/includes/class-aips-history-repository.php',
         'AIPS_History_Repository_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-history-repository-interface.php',
         'AIPS_History_Repository_Performance_Test' => __DIR__ . '/../..' . '/tests/AIPS_History_Repository_Performance_Test.php',
         'AIPS_History_Repository_Test' => __DIR__ . '/../..' . '/tests/AIPS_History_Repository_Test.php',
         'AIPS_History_Service' => __DIR__ . '/../..' . '/includes/class-aips-history-service.php',
         'AIPS_History_Service_Interface' => __DIR__ . '/../..' . '/includes/interface-aips-history-service-interface.php',
+        'AIPS_History_Subject' => __DIR__ . '/../..' . '/includes/class-aips-history-subject.php',
         'AIPS_History_Type' => __DIR__ . '/../..' . '/includes/class-aips-history-type.php',
         'AIPS_Image_Service' => __DIR__ . '/../..' . '/includes/class-aips-image-service.php',
         'AIPS_Internal_Link_Inserter_Service' => __DIR__ . '/../..' . '/includes/class-aips-internal-link-inserter-service.php',
@@ -1268,7 +1276,9 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Config_Option_Cache' => __DIR__ . '/../..' . '/tests/Test_AIPS_Config_Option_Cache.php',
         'Test_AIPS_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_Container.php',
         'Test_AIPS_Container_Bindings' => __DIR__ . '/../..' . '/tests/Test_AIPS_Container_Bindings.php',
+        'Test_AIPS_Content_Auditor_Controller' => __DIR__ . '/../..' . '/tests/Test_AIPS_Content_Auditor_Controller.php',
         'Test_AIPS_Content_Auditor_Engine' => __DIR__ . '/../..' . '/tests/Test_AIPS_Content_Auditor_Engine.php',
+        'Test_AIPS_Content_Auditor_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Content_Auditor_Repository.php',
         'Test_AIPS_Content_Auditor_Scanner' => __DIR__ . '/../..' . '/tests/Test_AIPS_Content_Auditor_Scanner.php',
         'Test_AIPS_Content_Digest' => __DIR__ . '/../..' . '/tests/Test_AIPS_Content_Digest.php',
         'Test_AIPS_Context_Boot' => __DIR__ . '/../..' . '/tests/Test_AIPS_Context_Boot.php',
@@ -1286,6 +1296,8 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Generator_Content_Cleanup' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Content_Cleanup.php',
         'Test_AIPS_Generator_Conversational' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Conversational.php',
         'Test_AIPS_Generator_Required_Content' => __DIR__ . '/../..' . '/tests/Test_AIPS_Generator_Required_Content.php',
+        'Test_AIPS_History_Event_Contract' => __DIR__ . '/../..' . '/tests/Test_AIPS_History_Event_Contract.php',
+        'Test_AIPS_History_Event_Indexed_Columns' => __DIR__ . '/../..' . '/tests/Test_AIPS_History_Event_Indexed_Columns.php',
         'Test_AIPS_History_Security' => __DIR__ . '/../..' . '/tests/Test_AIPS_History_Security.php',
         'Test_AIPS_Image_Service' => __DIR__ . '/../..' . '/tests/Test_AIPS_Image_Service.php',
         'Test_AIPS_Image_Service_Collision' => __DIR__ . '/../..' . '/tests/Test_AIPS_Image_Service_Collision.php',
@@ -1312,6 +1324,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'Test_AIPS_Post_Review_Repository' => __DIR__ . '/../..' . '/tests/Test_AIPS_Post_Review_Repository.php',
         'Test_AIPS_Prompt_Builder' => __DIR__ . '/../..' . '/tests/Test_AIPS_Prompt_Builder.php',
         'Test_AIPS_Provider_Availability' => __DIR__ . '/../..' . '/tests/Test_AIPS_Provider_Availability.php',
+        'Test_AIPS_Recording_Container' => __DIR__ . '/../..' . '/tests/Test_AIPS_History_Event_Contract.php',
         'Test_AIPS_Repository_Cache_Config' => __DIR__ . '/../..' . '/tests/Test_AIPS_Repository_Cache_Config.php',
         'Test_AIPS_Repository_Cache_Dependencies' => __DIR__ . '/../..' . '/tests/Test_AIPS_Repository_Cache_Dependencies.php',
         'Test_AIPS_Repository_Cache_Key_Builder' => __DIR__ . '/../..' . '/tests/Test_AIPS_Repository_Cache_Key_Builder.php',

@@ -155,6 +155,16 @@ class AIPS_Ajax_Registry {
 		'aips_perform_gap_analysis'       => 'AIPS_Research_Controller',
 		'aips_generate_topics_from_gap'   => 'AIPS_Research_Controller',
 
+		// Content Auditor Controller
+		'aips_auditor_scan_step'          => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_graph_step'         => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_analyze_step'       => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_synthesize_step'    => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_get_latest'         => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_get_history'        => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_get_audit'          => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_delete_audit'       => 'AIPS_Content_Auditor_Controller',
+
 		// History
 		'aips_bulk_delete_history'        => 'AIPS_History',
 		'aips_export_history'             => 'AIPS_History',
