@@ -1443,3 +1443,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting cache resolution, cache hit handling, and cache miss handling into distinct private helper methods. The main `cache_read` function was reduced to roughly 20 lines serving strictly as the entry point and orchestrator.
 **Consequence:** Increased the number of private methods on the trait, but vastly improved readability and maintainability. Backwards compatibility for the cache behavior remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-08-23 - Extract Complex History Query Logic
+**Context:** The `AIPS_History_Repository` class was a God Object (1500+ lines), with methods like `get_history` and `get_partial_generations` containing hundreds of lines of complex SQL formatting and conditionals, violating the Single Responsibility Principle.
+**Decision:** Applied the Extract Class pattern. Created `AIPS_History_Query_Service` to own the complex reporting/querying logic for history grids, while `AIPS_History_Repository` focuses on CRUD operations and delegates read queries to the query service.
+**Consequence:** The repository size is reduced and focused on data access. Complex view-based SQL queries are encapsulated, making both classes easier to test.
+**Tests:** Ran the full PHPUnit test suite to ensure backwards compatibility and no regressions.

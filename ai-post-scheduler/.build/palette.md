@@ -22,3 +22,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in History template
 **Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons), confusing users.
 **Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
+## 2026-08-26 - Add aria-label to taxonomy table row checkbox
+**Area:** Taxonomy page (`templates/admin/taxonomy.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to taxonomy row checkbox
+**Learning:** Row checkboxes inside data tables must have explicit `aria-label` attributes to define what they are selecting. The `aips-tmpl-taxonomy-row` JS template lacked this.
+**Action:** When creating JS template rows containing check columns, always add `aria-label` mapped to the relevant select action.

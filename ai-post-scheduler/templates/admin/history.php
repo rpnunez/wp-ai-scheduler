@@ -10,6 +10,9 @@ $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 $domain_filter = isset($domain_filter) ? $domain_filter : (isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '');
 $actor_filter = isset($actor_filter) ? $actor_filter : (isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '');
+$post_type_filter = isset($post_type_filter) ? $post_type_filter : (isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '');
+$selectable_post_types = isset($selectable_post_types) ? $selectable_post_types : AIPS_Utilities::get_selectable_post_types();
+$correlation_filter = isset($correlation_id) ? $correlation_id : (isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '');
 $date_from = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '');
 $date_to = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '');
 
@@ -50,7 +53,7 @@ if (is_object($history)) {
         </div>
 
         <?php
-        $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($domain_filter) || !empty($actor_filter) || !empty($date_from) || !empty($date_to);
+        $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($domain_filter) || !empty($actor_filter) || !empty($post_type_filter) || !empty($correlation_filter) || !empty($date_from) || !empty($date_to);
         $show_panel        = $total_items > 0 || $has_active_filter;
         ?>
         <?php if ($show_panel): ?>
@@ -108,6 +111,15 @@ if (is_object($history)) {
                         <option value="system" <?php selected($actor_filter, 'system'); ?>>System</option>
                         <option value="admin" <?php selected($actor_filter, 'admin'); ?>>Admin</option>
                     </select>
+                    <select id="aips-filter-post-type" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+                        <option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
+                            <?php echo esc_html($post_type_info['label']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($correlation_filter); ?>">
                     <div class="aips-date-range-group">
                         <label class="screen-reader-text" for="aips-filter-date-from"><?php esc_html_e('Logged after', 'ai-post-scheduler'); ?></label>
                         <input type="date" id="aips-filter-date-from" class="aips-form-input" aria-label="<?php esc_attr_e('Logged after', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_from); ?>">
@@ -158,6 +170,7 @@ if (is_object($history)) {
                                         <input id="aips-cb-select-all" type="checkbox">
                                     </td>
                                     <th class="column-title"><?php esc_html_e('Run', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-post-type"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
                                     <th class="column-status"><?php esc_html_e('Result', 'ai-post-scheduler'); ?></th>
                                     <th class="column-type"><?php esc_html_e('Activity', 'ai-post-scheduler'); ?></th>
                                     <th class="column-date"><?php esc_html_e('Logged', 'ai-post-scheduler'); ?></th>
@@ -170,7 +183,7 @@ if (is_object($history)) {
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="5" style="text-align:center;padding:40px;">
+                                        <td colspan="6" style="text-align:center;padding:40px;">
                                             <span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
                                             <?php esc_html_e('No history containers match your current filters.', 'ai-post-scheduler'); ?>
                                             <?php if ($has_active_filter): ?>
