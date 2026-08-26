@@ -261,7 +261,7 @@ class AIPS_Unified_Schedule_Service {
 			case self::TYPE_AUTHOR_POST:
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
-					array('topic_post_generation'),
+					array(AIPS_History_Event_Type::AUTHOR_POST_GENERATION),
 					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
@@ -489,29 +489,8 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array
 	 */
 	private function format_history_logs($logs) {
-		$entries = array();
-		foreach ($logs as $log) {
-			$details = array();
-			if (!empty($log->details)) {
-				$decoded = json_decode($log->details, true);
-				if (is_array($decoded)) {
-					$details = $decoded;
-				}
-			}
-
-			$input = isset($details['input']) && is_array($details['input']) ? $details['input'] : array();
-
-			$entries[] = array(
-				'id'              => absint($log->id),
-				'timestamp'       => esc_html($log->timestamp),
-				'log_type'        => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
-				'history_type_id' => absint($log->history_type_id),
-				'message'         => isset($details['message']) ? esc_html($details['message']) : '',
-				'event_type'      => isset($input['event_type']) ? esc_html($input['event_type']) : '',
-				'event_status'    => isset($input['event_status']) ? esc_html($input['event_status']) : '',
-				'context'         => isset($details['context']) && is_array($details['context']) ? $details['context'] : array(),
-			);
-		}
-		return $entries;
+		// Delegate decoding + canonicalization to the shared read model so every
+		// consumer sees one stable event vocabulary and record shape.
+		return AIPS_History_Event_View::from_logs($logs);
 	}
 }
