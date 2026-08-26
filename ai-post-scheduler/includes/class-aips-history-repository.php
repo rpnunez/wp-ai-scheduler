@@ -249,7 +249,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function get_partial_generations($args = array()) {
         return $this->get_query_service()->get_partial_generations($args);
     }
-        /**
+  
+    /**
      * Get a single history item by ID.
      *
      * @param int $id History item ID.
@@ -328,11 +329,85 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         $format = array('%d', '%d', '%s', '%d');
 
+        // Mirror the event identity into indexed columns so consumers can filter
+        // on event_type / event_status without LIKE-scanning the serialized
+        // details blob. The canonical source of truth remains details.input;
+        // these columns are a best-effort denormalized projection of it. Guard
+        // on column existence so a database that has not yet applied the 3.5.0
+        // schema (e.g. a failed/retrying upgrade) still records the log entry —
+        // the backfill migration populates the columns once the schema catches up.
+        if ($this->history_log_has_event_columns()) {
+            list($event_type, $event_status) = $this->extract_event_identity($details);
+            $insert_data['event_type']   = $event_type;
+            $insert_data['event_status'] = $event_status;
+            $format[] = '%s';
+            $format[] = '%s';
+        }
+
         $result = $this->wpdb->insert($this->table_name_log, $insert_data, $format);
 
         return $result ? $this->wpdb->insert_id : false;
     }
-    
+
+    /**
+     * Whether the history-log table carries the indexed event_type / event_status
+     * columns introduced in 3.5.0.
+     *
+     * Resolved once per request and memoized: a lightweight guard so log writes
+     * never fail against a database that has not yet applied the 3.5.0 schema.
+     *
+     * @var bool|null
+     */
+    private $history_log_has_event_columns = null;
+
+    /**
+     * Determine (and memoize) whether the indexed event columns exist.
+     *
+     * @return bool
+     */
+    private function history_log_has_event_columns() {
+        if ($this->history_log_has_event_columns !== null) {
+            return $this->history_log_has_event_columns;
+        }
+
+        $column = $this->wpdb->get_var($this->wpdb->prepare(
+            "SHOW COLUMNS FROM `{$this->table_name_log}` LIKE %s",
+            'event_type'
+        ));
+
+        $this->history_log_has_event_columns = ($column === 'event_type');
+
+        return $this->history_log_has_event_columns;
+    }
+
+    /**
+     * Extract the event_type / event_status identity from a log details array.
+     *
+     * The identity is written by producers into the `input` block (canonically
+     * via AIPS_History_Event). Returns raw stored values (not canonicalized) so
+     * the indexed columns faithfully mirror the serialized payload; alias
+     * resolution happens on read.
+     *
+     * @param array|string $details Log details.
+     * @return array{0: string|null, 1: string|null} [event_type, event_status]
+     */
+    private function extract_event_identity($details) {
+        if (!is_array($details) || !isset($details['input']) || !is_array($details['input'])) {
+            return array(null, null);
+        }
+
+        $input = $details['input'];
+
+        $event_type = isset($input['event_type']) && $input['event_type'] !== ''
+            ? substr(sanitize_text_field((string) $input['event_type']), 0, 64)
+            : null;
+        $event_status = isset($input['event_status']) && $input['event_status'] !== ''
+            ? substr(sanitize_text_field((string) $input['event_status']), 0, 32)
+            : null;
+
+        return array($event_type, $event_status);
+    }
+
     /**
      * Get overall statistics for history.
      *
@@ -572,27 +647,29 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return array();
         }
 
-        $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+        $id_placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+
+        // Events that represent a generated post for a schedule container.
+        $event_types = AIPS_History_Event_Type::expand(array(
+            AIPS_History_Event_Type::POST_PUBLISHED,
+            AIPS_History_Event_Type::POST_DRAFT,
+            AIPS_History_Event_Type::MANUAL_SCHEDULE_COMPLETED,
+        ));
+        $event_placeholders = implode(', ', array_fill(0, count($event_types), '%s'));
 
         $sql = "
             SELECT history_id, COUNT(*) AS count
             FROM {$this->table_name_log}
-            WHERE history_id IN ({$placeholders})
+            WHERE history_id IN ({$id_placeholders})
                 AND history_type_id IN (%d, %d)
-                AND (
-                    details LIKE %s
-                    OR details LIKE %s
-                    OR details LIKE %s
-                )
+                AND event_type IN ({$event_placeholders})
             GROUP BY history_id
         ";
 
         $args = $history_ids;
         $args[] = AIPS_History_Type::ACTIVITY;
         $args[] = AIPS_History_Type::ERROR;
-        $args[] = '%"event_type":"post_published"%';
-        $args[] = '%"event_type":"post_draft"%';
-        $args[] = '%"event_type":"manual_schedule_completed"%';
+        $args = array_merge($args, $event_types);
 
         $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
 
@@ -621,18 +698,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return array();
         }
 
-        $where_events = array();
+        // Expand each requested event type to its canonical name plus every
+        // registered legacy alias, then match the indexed event_type column so
+        // both new canonical rows and historical rows surface.
+        $match_types = AIPS_History_Event_Type::expand($event_types);
+        $event_placeholders = implode(', ', array_fill(0, count($match_types), '%s'));
+
         $args = array(
             $author_id,
             AIPS_History_Type::ACTIVITY,
             AIPS_History_Type::ERROR,
         );
-
-        foreach ($event_types as $event_type) {
-            $where_events[] = 'hl.details LIKE %s';
-            $args[] = '%"event_type":"' . $this->wpdb->esc_like($event_type) . '"%';
-        }
-
+        $args = array_merge($args, $match_types);
         $args[] = $limit;
 
         $sql = "
@@ -641,7 +718,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             INNER JOIN {$this->table_name} h ON hl.history_id = h.id
             WHERE h.author_id = %d
                 AND hl.history_type_id IN (%d, %d)
-                AND (" . implode(' OR ', $where_events) . ")
+                AND hl.event_type IN ({$event_placeholders})
             ORDER BY hl.timestamp DESC
             LIMIT %d
         ";
@@ -660,25 +737,34 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Activity entries
      */
     public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
-        $where_clauses = array("history_type_id = %d");
+        $where_clauses = array("hl.history_type_id = %d");
         $where_args = array(AIPS_History_Type::ACTIVITY);
 
-        // Event type filter
+        // Event type filter — match the requested canonical name plus every
+        // registered legacy alias, using the indexed event_type column.
         if (!empty($filters['event_type'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_type":"' . $this->wpdb->esc_like($filters['event_type']) . '"%';
+            $type_names = AIPS_History_Event_Type::expand(array($filters['event_type']));
+            $placeholders = implode(', ', array_fill(0, count($type_names), '%s'));
+            $where_clauses[] = "hl.event_type IN ({$placeholders})";
+            $where_args = array_merge($where_args, $type_names);
         }
 
-        // Event status filter
+        // Event status filter — match every stored synonym of the canonical
+        // status, using the indexed event_status column.
         if (!empty($filters['event_status'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_status":"' . $this->wpdb->esc_like($filters['event_status']) . '"%';
+            $status_values = AIPS_History_Event_Status::synonyms_for($filters['event_status']);
+            if (empty($status_values)) {
+                $status_values = array((string) $filters['event_status']);
+            }
+            $placeholders = implode(', ', array_fill(0, count($status_values), '%s'));
+            $where_clauses[] = "hl.event_status IN ({$placeholders})";
+            $where_args = array_merge($where_args, $status_values);
         }
 
         // Search filter
         if (!empty($filters['search'])) {
             $search_term = '%' . $this->wpdb->esc_like($filters['search']) . '%';
-            $where_clauses[] = "details LIKE %s";
+            $where_clauses[] = "hl.details LIKE %s";
             $where_args[] = $search_term;
         }
 
@@ -771,18 +857,20 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
+            'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : null,
             'created_at' => absint($data['created_at']),
         );
-        
-        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
+
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        $insert_id = $result ? (int) $this->wpdb->insert_id : false;
         
         if ($result) {
             $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $insert_id;
     }
     
     /**
@@ -805,7 +893,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $update_data['post_id'] = absint($data['post_id']);
             $format[] = '%d';
         }
-        
+
+        if (isset($data['post_type'])) {
+            $update_data['post_type'] = sanitize_key($data['post_type']);
+            $format[] = '%s';
+        }
+
         if (isset($data['generated_title'])) {
             $update_data['generated_title'] = sanitize_text_field($data['generated_title']);
             $format[] = '%s';
