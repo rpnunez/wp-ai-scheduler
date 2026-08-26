@@ -174,6 +174,13 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_4_0();
 		}
 
+		// migrate_to_3_5_0() is a data-backfill migration that depends on the
+		// event_type / event_status columns added to aips_history_log by
+		// install_tables() above, so it runs after the Layer-1 schema apply.
+		if ( version_compare( $from_version, '3.5.0', '<' ) ) {
+			$this->migrate_to_3_5_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -981,6 +988,97 @@ class AIPS_DB_Migrations {
 			"migrate_to_3_1_0: backfilled {$updated} rows, dropped log_type column from {$table}",
 			'info'
 		);
+	}
+
+	/**
+	 * Migration for version 3.5.0.
+	 *
+	 * Backfills the indexed `event_type` and `event_status` columns on
+	 * `aips_history_log` from the serialized `details.input` block, so that
+	 * repositories can filter events with an indexed column lookup instead of a
+	 * `LIKE '%"event_type":"…"%'` scan over the JSON payload.
+	 *
+	 * The columns themselves are created by dbDelta in install_tables(); this
+	 * migration only populates historical rows. Guarded with SHOW COLUMNS so it
+	 * is a no-op when the target schema is absent, and it only touches rows whose
+	 * columns are still NULL so it is safe to re-run and cheap once complete.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_5_0() {
+    global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+	
+    // No-op unless both target columns exist (dbDelta must have run first).
+		$has_type = $wpdb->get_var(
+			$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'event_type' ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+		$has_status = $wpdb->get_var(
+			$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'event_status' ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+		if ( ! $has_type || ! $has_status ) {
+			return;
+		}
+
+		$batch_size = 500;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT id, details FROM `{$table}`
+					WHERE id > %d AND event_type IS NULL AND event_status IS NULL
+					ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$last_id,
+					$batch_size
+				)
+			);
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+
+				$details = json_decode( (string) $row->details, true );
+				if ( ! is_array( $details ) || ! isset( $details['input'] ) || ! is_array( $details['input'] ) ) {
+					continue;
+				}
+
+				$input        = $details['input'];
+				$event_type   = isset( $input['event_type'] ) && '' !== $input['event_type']
+					? substr( sanitize_text_field( (string) $input['event_type'] ), 0, 64 )
+					: null;
+				$event_status = isset( $input['event_status'] ) && '' !== $input['event_status']
+					? substr( sanitize_text_field( (string) $input['event_status'] ), 0, 32 )
+					: null;
+
+				if ( null === $event_type && null === $event_status ) {
+					continue;
+				}
+
+				$wpdb->update(
+					$table,
+					array(
+						'event_type'   => $event_type,
+						'event_status' => $event_status,
+					),
+					array( 'id' => (int) $row->id ),
+					array( '%s', '%s' ),
+					array( '%d' )
+				);
+				++$updated;
+			}
+		} while ( ! empty( $rows ) );
+
+		$this->logger->log(
+			"migrate_to_3_5_0: backfilled event_type/event_status on {$updated} history log rows",
+			'info'
+		);
+	
 	}
 
 	/**
