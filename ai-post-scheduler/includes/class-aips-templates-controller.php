@@ -123,6 +123,9 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'ai_routing_policy' => $this->normalize_ai_routing_policy(
+                isset($_POST['ai_routing_policy']) ? wp_unslash($_POST['ai_routing_policy']) : ''
+            ),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -267,6 +270,7 @@ class AIPS_Templates_Controller {
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'affiliate_links_enabled' => isset($template->affiliate_links_enabled) ? $template->affiliate_links_enabled : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
+            'ai_routing_policy' => isset($template->ai_routing_policy) ? $template->ai_routing_policy : '',
             'is_active' => $template->is_active,
         );
 
@@ -290,6 +294,36 @@ class AIPS_Templates_Controller {
         } else {
             AIPS_Ajax_Response::error(__('Failed to clone template.', 'ai-post-scheduler'));
         }
+    }
+
+    /**
+     * Normalize the template routing policy submitted by the template editor.
+     *
+     * @param mixed $raw JSON string or array.
+     * @return array
+     */
+    private function normalize_ai_routing_policy($raw) {
+        $policy = is_array($raw) ? $raw : json_decode((string) $raw, true);
+
+        if (!is_array($policy)) {
+            return array();
+        }
+
+        $result = array(
+            'profile' => !empty($policy['profile']) ? sanitize_key($policy['profile']) : 'site_default',
+            'overrides' => array(),
+			'fallback_enabled' => isset($policy['fallback_enabled']) ? (bool) $policy['fallback_enabled'] : true,
+        );
+
+        if (!empty($policy['overrides']) && is_array($policy['overrides'])) {
+            foreach (array('title_model', 'excerpt_model', 'content_model', 'image_model', 'connector') as $key) {
+                if (isset($policy['overrides'][$key])) {
+                    $result['overrides'][$key] = sanitize_text_field((string) $policy['overrides'][$key]);
+                }
+            }
+        }
+
+        return $result;
     }
 
     public function ajax_test_template() {

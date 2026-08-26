@@ -15,8 +15,36 @@ Filters an optional prebuilt WordPress AI Client prompt builder before AIPS call
 ### `aips_wp_ai_client_connectors`
 Filters active WordPress AI connectors before AIPS applies its connector allowlist and failover policy.
 
+  * **Arguments:**
+    * `array $connectors`: Active AI connector definitions keyed by connector ID.
+
+### `aips_ai_model_catalog`
+Filters the cached capability-aware model catalog used by the Admin model pickers and strict model validation.
+
 * **Arguments:**
-  * `array $connectors`: Active AI connector definitions keyed by connector ID.
+  * `array $models`: Models normalized as `id`, `provider`, `provider_label`, `label`, and `capability`.
+  * `string $capability`: Requested capability (`text` or `image`).
+
+### `aips_ai_call_usage`
+Provides billed token usage for an AI call when the active provider exposes usage metadata. Return an array containing `prompt_tokens` and `completion_tokens`; returning `null` preserves the built-in estimate.
+
+* **Arguments:**
+  * `null|array $usage`: Provider usage or `null` when unavailable.
+  * `string $type`: Call type (`text`, `json`, `image`, or `embedding`).
+  * `string $prompt`: Prompt sent to the provider.
+  * `mixed $response`: Provider response, if any.
+  * `array $options`: Sanitized request options including resolved routing.
+  * `AIPS_AI_Provider_Interface $provider`: Active provider adapter.
+
+### `aips_ai_call_cost`
+Filters the USD cost calculated from normalized usage and the configured per-million-token rates.
+
+* **Arguments:**
+  * `float $cost`: Estimated or provider-backed cost in USD.
+  * `array $usage`: Normalized usage data.
+  * `array $options`: Sanitized request options including resolved routing.
+  * `string $model`: First model in the effective preference list.
+  * `AIPS_AI_Provider_Interface $provider`: Active provider adapter.
 
 ## Action Hooks
 

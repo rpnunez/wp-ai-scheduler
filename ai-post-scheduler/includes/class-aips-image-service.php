@@ -52,8 +52,8 @@ class AIPS_Image_Service {
      * @param string $post_title   The post title to use for the image filename.
      * @return int|WP_Error The attachment ID on success, WP_Error on failure.
      */
-    public function generate_and_upload_featured_image($image_prompt, $post_title) {
-        $image_url = $this->ai_service->generate_image($image_prompt);
+    public function generate_and_upload_featured_image($image_prompt, $post_title, $options = array()) {
+        $image_url = $this->ai_service->generate_image($image_prompt, is_array($options) ? $options : array());
         
         if (is_wp_error($image_url)) {
             return $image_url;

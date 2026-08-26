@@ -550,6 +550,7 @@ class AIPS_Stress_Test_Service {
             array(
                 'duration_ms' => (int) round($duration_ms),
                 'ai_calls'    => $this->collect_ai_calls(),
+				'ai_statistics' => $this->ai_service->get_call_statistics(),
             )
         );
     }
@@ -599,6 +600,7 @@ class AIPS_Stress_Test_Service {
             $calls[] = array(
                 'type'     => isset($entry['type']) ? $entry['type'] : '',
                 'time'     => isset($entry['timestamp']) ? $entry['timestamp'] : '',
+				'usage'    => isset($entry['usage']) && is_array($entry['usage']) ? $entry['usage'] : array(),
                 'request'  => array(
                     'prompt'  => isset($entry['request']['prompt']) ? (string) $entry['request']['prompt'] : '',
                     'options' => isset($entry['request']['options']) ? $this->scrub_options($entry['request']['options']) : array(),

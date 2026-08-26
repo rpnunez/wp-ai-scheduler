@@ -374,6 +374,19 @@ class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
         $this->assertSame(512, $builder->captured_max_tokens);
     }
 
+    public function test_generate_image_forwards_model_preferences() {
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        (new AIPS_WP_AI_Client_Provider())->generate_image('Image prompt', array(
+            'model' => 'image-model, image-fallback',
+        ));
+
+        $this->assertSame(array('image-model', 'image-fallback'), $builder->captured_model_preferences);
+    }
+
 	public function test_selected_connectors_are_attempted_in_saved_order_with_failover() {
 		global $aips_wp_ai_client_test_builder, $aips_wp_ai_client_test_connectors;
 

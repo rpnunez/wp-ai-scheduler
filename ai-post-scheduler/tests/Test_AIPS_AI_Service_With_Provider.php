@@ -165,6 +165,222 @@ class Test_AIPS_AI_Service_With_Provider extends WP_UnitTestCase {
         $this->assertSame('https://cdn.example/x.png', $result);
     }
 
+    public function test_generate_image_applies_configured_image_model_when_not_overridden() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_image_model', 'gemini-image-model, image-fallback');
+        $stub = new AIPS_Stub_AI_Provider();
+        $service = $this->make_service($stub);
+
+        $service->generate_image('A cat');
+
+        $this->assertSame('gemini-image-model, image-fallback', $stub->last_params['model']);
+        $config->set_option('aips_ai_image_model', '');
+    }
+
+    public function test_generate_image_option_model_overrides_configured_image_model() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_image_model', 'configured-image-model');
+        $stub = new AIPS_Stub_AI_Provider();
+        $service = $this->make_service($stub);
+
+        $service->generate_image('A cat', array('model' => 'override-image-model'));
+
+        $this->assertSame('override-image-model', $stub->last_params['model']);
+        $config->set_option('aips_ai_image_model', '');
+    }
+
+    public function test_generate_text_uses_request_type_model_override() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_model', 'global-text-model');
+        $config->set_option('aips_ai_model_title', 'title-model, title-fallback');
+        $stub = new AIPS_Stub_AI_Provider();
+        $service = $this->make_service($stub);
+
+        $service->generate_text('Title prompt', array('request_type' => 'title'));
+
+        $this->assertSame('title-model, title-fallback', $stub->last_params['model']);
+        $config->set_option('aips_ai_model', '');
+        $config->set_option('aips_ai_model_title', '');
+    }
+
+    public function test_template_routing_override_takes_precedence_for_text() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_model', 'global-text-model');
+        $config->set_option('aips_ai_routing_profiles', array(
+            'budget' => array('model' => 'profile-text-model'),
+        ));
+
+        try {
+            $stub = new AIPS_Stub_AI_Provider();
+            $service = $this->make_service($stub);
+
+            $service->generate_text('Title prompt', array(
+                'request_type' => 'title',
+                'routing_policy' => array(
+                    'profile' => 'budget',
+                    'overrides' => array('title_model' => 'template-title-model'),
+                ),
+            ));
+
+            $this->assertSame('template-title-model', $stub->last_params['model']);
+        } finally {
+            $config->set_option('aips_ai_model', '');
+            $config->set_option('aips_ai_routing_profiles', array());
+        }
+    }
+
+    public function test_template_routing_profile_applies_to_images() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_routing_profiles', array(
+            'image_quality' => array('image_model' => 'profile-image-model'),
+        ));
+
+        try {
+            $stub = new AIPS_Stub_AI_Provider();
+            $service = $this->make_service($stub);
+
+            $service->generate_image('A cat', array(
+                'routing_policy' => array('profile' => 'image_quality'),
+            ));
+
+            $this->assertSame('profile-image-model', $stub->last_params['model']);
+        } finally {
+            $config->set_option('aips_ai_routing_profiles', array());
+        }
+    }
+
+    public function test_template_routing_profile_passes_connector_to_provider() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_routing_profiles', array(
+            'google_budget' => array('connector' => 'google', 'model' => 'gemini-3.1-flash-lite'),
+        ));
+
+        try {
+            $stub = new AIPS_Stub_AI_Provider();
+            $service = $this->make_service($stub);
+
+            $service->generate_text('Prompt', array(
+                'routing_policy' => array('profile' => 'google_budget'),
+            ));
+
+            $this->assertSame('google', $stub->last_params['connector_id']);
+        } finally {
+            $config->set_option('aips_ai_routing_profiles', array());
+        }
+    }
+
+    public function test_call_log_contains_resolved_model_and_provider() {
+        $stub = new AIPS_Stub_AI_Provider();
+        $service = $this->make_service($stub);
+
+        $service->generate_text('Prompt', array('model' => 'explicit-model'));
+
+        $call_log = $service->get_call_log();
+        $this->assertNotEmpty($call_log);
+        $this->assertSame('explicit-model', $call_log[0]['request']['options']['resolved_model']);
+        $this->assertSame('stub', $call_log[0]['request']['options']['resolved_provider']);
+    }
+
+    public function test_call_log_contains_estimated_usage_statistics() {
+        $stub = new AIPS_Stub_AI_Provider();
+        $stub->text_return = 'response text';
+        $service = $this->make_service($stub);
+
+        $service->generate_text('A prompt with enough text to estimate usage.');
+
+        $call_log = $service->get_call_log();
+        $this->assertTrue($call_log[0]['usage']['estimated']);
+        $this->assertGreaterThan(0, $call_log[0]['usage']['prompt_tokens']);
+        $this->assertGreaterThan(0, $call_log[0]['usage']['completion_tokens']);
+        $this->assertSame($call_log[0]['usage']['prompt_tokens'] + $call_log[0]['usage']['completion_tokens'], $call_log[0]['usage']['total_tokens']);
+        $this->assertSame($call_log[0]['usage']['total_tokens'], $service->get_call_statistics()['estimated_usage']['total_tokens']);
+    }
+
+    public function test_provider_reported_usage_and_configured_pricing_are_recorded() {
+        $config = AIPS_Config::get_instance();
+        $previous_pricing = $config->get_option('aips_ai_model_pricing');
+        $config->set_option('aips_ai_model_pricing', array(
+            'priced-model' => array('input' => 2.00, 'output' => 8.00),
+        ));
+        $usage_filter = function($usage, $type, $prompt, $response, $options, $provider) {
+            return array('prompt_tokens' => 1000, 'completion_tokens' => 250);
+        };
+        add_filter('aips_ai_call_usage', $usage_filter, 10, 6);
+
+        try {
+            $stub = new AIPS_Stub_AI_Provider();
+            $service = $this->make_service($stub);
+            $service->generate_text('Prompt', array('model' => 'priced-model'));
+
+            $usage = $service->get_call_log()[0]['usage'];
+            $this->assertFalse($usage['estimated']);
+            $this->assertSame(1000, $usage['prompt_tokens']);
+            $this->assertSame(250, $usage['completion_tokens']);
+            $this->assertSame(0.004, $usage['estimated_cost_usd']);
+            $this->assertSame(0.004, $service->get_call_statistics()['estimated_usage']['estimated_cost_usd']);
+        } finally {
+            remove_filter('aips_ai_call_usage', $usage_filter, 10);
+            $config->set_option('aips_ai_model_pricing', $previous_pricing);
+        }
+    }
+
+    public function test_fallback_setting_is_forwarded_to_provider() {
+        $stub = new AIPS_Stub_AI_Provider();
+        $service = $this->make_service($stub);
+
+        $service->generate_text('Prompt', array(
+            'model' => 'primary-model,backup-model',
+            'routing_fallback_enabled' => false,
+        ));
+
+        $this->assertFalse($stub->last_params['routing_fallback_enabled']);
+    }
+
+    public function test_routing_profile_can_disable_fallback() {
+        $config = AIPS_Config::get_instance();
+        $previous_profiles = $config->get_option('aips_ai_routing_profiles');
+        $config->set_option('aips_ai_routing_profiles', array(
+            'single_model' => array(
+                'model' => 'primary-model,backup-model',
+                'fallback_enabled' => false,
+            ),
+        ));
+
+        try {
+            $stub = new AIPS_Stub_AI_Provider();
+            $service = $this->make_service($stub);
+            $service->generate_text('Prompt', array(
+                'routing_policy' => array('profile' => 'single_model'),
+            ));
+
+            $this->assertSame('primary-model,backup-model', $stub->last_params['model']);
+            $this->assertFalse($stub->last_params['routing_fallback_enabled']);
+        } finally {
+            $config->set_option('aips_ai_routing_profiles', $previous_profiles);
+        }
+    }
+
+    public function test_strict_model_validation_rejects_unknown_catalog_model() {
+        $config = AIPS_Config::get_instance();
+        $config->set_option('aips_ai_model_validation', 'strict');
+        delete_transient('aips_ai_model_catalog_text');
+        $catalog_filter = function($models, $capability) {
+            return array(array('id' => 'known-model', 'provider' => 'google', 'provider_label' => 'Google', 'label' => 'Known model', 'capability' => $capability));
+        };
+        add_filter('aips_ai_model_catalog', $catalog_filter, 10, 2);
+
+        try {
+            $result = AIPS_AI_Model_Validator::validate('unknown-model', 'text', 'google');
+
+            $this->assertFalse($result['valid']);
+            $this->assertStringContainsString('not found', $result['message']);
+        } finally {
+            remove_filter('aips_ai_model_catalog', $catalog_filter, 10);
+            delete_transient('aips_ai_model_catalog_text');
+            $config->set_option('aips_ai_model_validation', 'warn');
+        }
+    }
+
     public function test_generate_embedding_delegates_to_provider() {
         $stub = new AIPS_Stub_AI_Provider();
         $stub->embedding_return = array(0.5, 0.6);

@@ -147,6 +147,34 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_model'],
 			),
+			'aips_ai_model_title' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_model_title'],
+			),
+			'aips_ai_model_excerpt' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_model_excerpt'],
+			),
+			'aips_ai_model_content' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_model_content'],
+			),
+			'aips_ai_image_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_image_model'],
+			),
+			'aips_ai_routing_profiles' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_routing_profiles'),
+				'default'           => $defaults['aips_ai_routing_profiles'],
+			),
+			'aips_ai_model_validation' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_model_validation'),
+				'default'           => $defaults['aips_ai_model_validation'],
+			),
+			'aips_ai_model_pricing' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_model_pricing'),
+				'default'           => $defaults['aips_ai_model_pricing'],
+			),
 			'aips_ai_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_env_id'],
@@ -303,6 +331,65 @@ class AIPS_Settings {
             'aips-settings',
             'aips_ai_section'
         );
+
+        add_settings_field(
+            'aips_ai_model_title',
+            __('Post Title Model Override', 'ai-post-scheduler'),
+            array($this->ui, 'ai_model_override_field_callback'),
+            'aips-settings',
+            'aips_ai_section',
+            array('option_name' => 'aips_ai_model_title', 'description' => __('Optional model preference for post-title requests. Leave empty to use the global text model.', 'ai-post-scheduler'))
+        );
+
+        add_settings_field(
+            'aips_ai_model_excerpt',
+            __('Excerpt Model Override', 'ai-post-scheduler'),
+            array($this->ui, 'ai_model_override_field_callback'),
+            'aips-settings',
+            'aips_ai_section',
+            array('option_name' => 'aips_ai_model_excerpt', 'description' => __('Optional model preference for excerpt requests. Leave empty to use the global text model.', 'ai-post-scheduler'))
+        );
+
+        add_settings_field(
+            'aips_ai_model_content',
+            __('Content Model Override', 'ai-post-scheduler'),
+            array($this->ui, 'ai_model_override_field_callback'),
+            'aips-settings',
+            'aips_ai_section',
+            array('option_name' => 'aips_ai_model_content', 'description' => __('Optional model preference for article-content requests. Leave empty to use the global text model.', 'ai-post-scheduler'))
+        );
+
+        add_settings_field(
+            'aips_ai_image_model',
+            __('AI Image Model', 'ai-post-scheduler'),
+            array($this->ui, 'ai_image_model_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+		add_settings_field(
+			'aips_ai_routing_profiles',
+			__('AI Routing Profiles', 'ai-post-scheduler'),
+			array($this->ui, 'ai_routing_profiles_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
+
+		add_settings_field(
+			'aips_ai_model_validation',
+			__('Unknown Model Policy', 'ai-post-scheduler'),
+			array($this->ui, 'ai_model_validation_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
+
+		add_settings_field(
+			'aips_ai_model_pricing',
+			__('Model Pricing', 'ai-post-scheduler'),
+			array($this->ui, 'ai_model_pricing_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
         add_settings_field(
             'aips_ai_env_id',

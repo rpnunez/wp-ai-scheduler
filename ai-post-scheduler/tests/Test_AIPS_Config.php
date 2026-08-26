@@ -24,6 +24,10 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 	 */
 	private $tracked_option_keys = array(
 		'aips_ai_model',
+		'aips_ai_model_title',
+		'aips_ai_model_excerpt',
+		'aips_ai_model_content',
+		'aips_ai_image_model',
 		'aips_max_tokens_limit',
 		'aips_enable_logging',
 		'aips_cache_driver',
@@ -218,6 +222,10 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 		$ai = $this->config->get_ai_config();
 
 		$this->assertArrayHasKey( 'model',            $ai );
+		$this->assertArrayHasKey( 'model_title',      $ai );
+		$this->assertArrayHasKey( 'model_excerpt',    $ai );
+		$this->assertArrayHasKey( 'model_content',    $ai );
+		$this->assertArrayHasKey( 'image_model',      $ai );
 		$this->assertArrayHasKey( 'env_id',           $ai );
 		$this->assertArrayHasKey( 'max_tokens_limit', $ai );
 		$this->assertArrayHasKey( 'temperature',      $ai );
@@ -233,6 +241,10 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 		$ai = $this->config->get_ai_config();
 
 		$this->assertSame( '',      $ai['model'] );
+		$this->assertSame( '',      $ai['model_title'] );
+		$this->assertSame( '',      $ai['model_excerpt'] );
+		$this->assertSame( '',      $ai['model_content'] );
+		$this->assertSame( '',      $ai['image_model'] );
 		$this->assertSame( '',      $ai['env_id'] );
 		$this->assertSame( 16000,   $ai['max_tokens_limit'] );
 		$this->assertSame( 0.7,     $ai['temperature'] );

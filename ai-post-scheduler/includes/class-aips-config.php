@@ -134,6 +134,13 @@ class AIPS_Config {
             // AI provider & model
             'aips_ai_provider' => '', // '' = auto-detect (Meow preferred)
             'aips_ai_model' => '',
+            'aips_ai_model_title' => '',
+            'aips_ai_model_excerpt' => '',
+            'aips_ai_model_content' => '',
+            'aips_ai_image_model' => '',
+            'aips_ai_routing_profiles' => array(),
+			'aips_ai_model_validation' => 'warn',
+			'aips_ai_model_pricing' => array(),
             'aips_ai_env_id' => '',
 			'aips_wp_ai_connector_mode' => 'all',
 			'aips_wp_ai_connector_ids' => array(),
@@ -414,6 +421,10 @@ class AIPS_Config {
         return array(
             'provider'         => (string) $this->get_option('aips_ai_provider'),
             'model'            => (string) $this->get_option('aips_ai_model'),
+            'model_title'     => (string) $this->get_option('aips_ai_model_title'),
+            'model_excerpt'   => (string) $this->get_option('aips_ai_model_excerpt'),
+            'model_content'   => (string) $this->get_option('aips_ai_model_content'),
+            'image_model'      => (string) $this->get_option('aips_ai_image_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
             'temperature'      => (float) $this->get_option('aips_temperature'),

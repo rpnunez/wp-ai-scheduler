@@ -219,10 +219,85 @@ class AIPS_Settings_UI {
     public function ai_model_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
-        <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI model to use (leave empty for the provider default). For the WordPress AI Client you may enter a comma-separated model preference list, e.g. "claude-sonnet-4-5, gemini-3-pro-preview".', 'ai-post-scheduler'); ?></p>
+        <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" list="aips-ai-model-catalog-text" placeholder="Leave empty for provider default">
+        <datalist id="aips-ai-model-catalog-text"></datalist>
+        <button type="button" class="button" data-aips-refresh-model-catalog="text"><?php esc_html_e('Refresh available models', 'ai-post-scheduler'); ?></button>
+        <p class="description"><?php esc_html_e('Text model preference for titles, excerpts, content, topics, and other text requests. For the WordPress AI Client, enter a comma-separated ordered preference list. Use an explicit model to prevent automatic selection of a more expensive provider default.', 'ai-post-scheduler'); ?></p>
         <?php
     }
+
+    /**
+     * Render the AI image model setting field.
+     *
+     * @return void
+     */
+    public function ai_image_model_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_ai_image_model');
+        ?>
+        <input type="text" name="aips_ai_image_model" value="<?php echo esc_attr($value); ?>" class="regular-text" list="aips-ai-model-catalog-image" placeholder="Leave empty for provider default">
+        <datalist id="aips-ai-model-catalog-image"></datalist>
+        <button type="button" class="button" data-aips-refresh-model-catalog="image"><?php esc_html_e('Refresh image models', 'ai-post-scheduler'); ?></button>
+        <p class="description"><?php esc_html_e('Image model preference for featured-image generation. For the WordPress AI Client, enter a comma-separated ordered preference list containing image-capable model IDs. This is separate from the text model because text-only models cannot generate images.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render a request-type text model override field.
+     *
+     * @param array $args Settings field arguments.
+     * @return void
+     */
+    public function ai_model_override_field_callback($args) {
+        $option_name = isset($args['option_name']) ? sanitize_key($args['option_name']) : '';
+        $description = isset($args['description']) ? (string) $args['description'] : '';
+        $value       = $option_name !== '' ? AIPS_Config::get_instance()->get_option($option_name) : '';
+        ?>
+        <input type="text" name="<?php echo esc_attr($option_name); ?>" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Use global text model">
+        <p class="description"><?php echo esc_html($description); ?> <?php esc_html_e('The WordPress AI Client accepts comma-separated ordered model preferences.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+	/**
+	 * Render reusable AI routing profiles as editable JSON.
+	 *
+	 * @return void
+	 */
+	public function ai_routing_profiles_field_callback() {
+		$profiles = AIPS_Config::get_instance()->get_option('aips_ai_routing_profiles');
+		if (!is_array($profiles)) {
+			$profiles = array();
+		}
+		?>
+		<textarea name="aips_ai_routing_profiles" rows="10" class="large-text code"><?php echo esc_textarea(wp_json_encode($profiles, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); ?></textarea>
+		<p class="description">
+			<?php esc_html_e('Define reusable profiles as JSON. Each profile can contain label, connector, fallback_enabled, and model keys such as model, title_model, excerpt_model, content_model, and image_model. The connector is the WordPress AI Client provider ID (for example google, anthropic, or openai). Template-level overrides take precedence over the selected profile.', 'ai-post-scheduler'); ?>
+		</p>
+		<p class="description"><code>{"budget_text":{"label":"Budget text","model":"gemini-3.1-flash-lite","content_model":"gemini-3.1-flash-lite","image_model":"gemini-3.1-flash-image"}}</code></p>
+		<?php
+	}
+
+	/** Render the unknown-model handling policy. */
+	public function ai_model_validation_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_ai_model_validation');
+		?>
+		<select name="aips_ai_model_validation">
+			<option value="off" <?php selected($value, 'off'); ?>><?php esc_html_e('Allow connector validation', 'ai-post-scheduler'); ?></option>
+			<option value="warn" <?php selected($value, 'warn'); ?>><?php esc_html_e('Warn in logs and continue', 'ai-post-scheduler'); ?></option>
+			<option value="strict" <?php selected($value, 'strict'); ?>><?php esc_html_e('Reject unknown model preferences', 'ai-post-scheduler'); ?></option>
+		</select>
+		<p class="description"><?php esc_html_e('Strict mode prevents a request when none of its model preferences appear in the cached capability catalog. If the catalog is unavailable, the connector still receives the request so manually configured model IDs continue to work.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/** Render optional per-million-token pricing as JSON. */
+	public function ai_model_pricing_field_callback() {
+		$value = AIPS_Config::get_instance()->get_option('aips_ai_model_pricing');
+		$value = is_array($value) ? $value : array();
+		?>
+		<textarea name="aips_ai_model_pricing" rows="7" class="large-text code"><?php echo esc_textarea(wp_json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); ?></textarea>
+		<p class="description"><?php esc_html_e('Optional JSON pricing used for estimated costs. Values are USD per one million input/output tokens. Example: {"gemini-3.1-flash-lite":{"input":0.10,"output":0.40}}.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
 
     /**
      * Render the AI environment ID setting field.
@@ -1064,6 +1139,76 @@ class AIPS_Settings_UI {
 		}
 
 		return array_values(array_unique($connector_ids));
+	}
+
+	/**
+	 * Sanitize reusable AI routing profiles.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return array<string,array<string,mixed>>
+	 */
+	public function sanitize_ai_routing_profiles($value) {
+		if (is_string($value)) {
+			$value = json_decode(wp_unslash($value), true);
+		}
+
+		if (!is_array($value)) {
+			return array();
+		}
+
+		$allowed = array('label', 'connector', 'provider', 'fallback_enabled', 'model', 'title_model', 'excerpt_model', 'content_model', 'image_model');
+		$profiles = array();
+		foreach ($value as $profile_id => $profile) {
+			$profile_id = sanitize_key((string) $profile_id);
+			if ($profile_id === '' || !is_array($profile)) {
+				continue;
+			}
+
+			$clean = array();
+			foreach ($allowed as $key) {
+				if (!array_key_exists($key, $profile)) {
+					continue;
+				}
+				if ($key === 'fallback_enabled') {
+					$clean[$key] = (bool) filter_var($profile[$key], FILTER_VALIDATE_BOOLEAN);
+				} else {
+					$clean[$key] = sanitize_text_field((string) $profile[$key]);
+				}
+			}
+			$profiles[$profile_id] = $clean;
+		}
+
+		return $profiles;
+	}
+
+	/** Sanitize unknown-model handling policy. */
+	public function sanitize_ai_model_validation($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('off', 'warn', 'strict'), true) ? $value : 'warn';
+	}
+
+	/** Sanitize optional model pricing JSON. */
+	public function sanitize_ai_model_pricing($value) {
+		if (is_string($value)) {
+			$value = json_decode(wp_unslash($value), true);
+		}
+		if (!is_array($value)) {
+			return array();
+		}
+
+		$pricing = array();
+		foreach ($value as $model => $rates) {
+			$model = sanitize_text_field((string) $model);
+			if ($model === '' || !is_array($rates)) {
+				continue;
+			}
+			$pricing[$model] = array(
+				'input' => max(0, (float) (isset($rates['input']) ? $rates['input'] : 0)),
+				'output' => max(0, (float) (isset($rates['output']) ? $rates['output'] : 0)),
+			);
+		}
+
+		return $pricing;
 	}
 
 }

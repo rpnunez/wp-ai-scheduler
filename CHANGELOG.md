@@ -2,6 +2,16 @@
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
+- **AI Model Routing Profiles**: Added global request-type model settings, reusable routing profiles, and template-level model overrides for title, content, and featured-image generation. Effective template policy is carried into generation history and cloned with templates.
+- **Template Connector Routing**: Routing profiles can target a specific WordPress AI Client connector, such as Google, Anthropic, or OpenAI, while respecting the configured connector allowlist and failover policy.
+- **Model Catalog Picker**: Added a cached, capability-aware model catalog endpoint and Admin datalists for text and image model selection. Catalog discovery is optional and never blocks manual model IDs or generation.
+- **Model Validation Policy**: Added off, warning, and strict handling for model preferences. Strict mode rejects configured preferences when none match the available capability catalog, avoiding silent provider-default selection.
+- **Resolved Model Logging**: AI call logs now include the effective provider, model, and connector after routing resolution.
+- **Estimated Usage Tracking**: AI call logs and in-memory statistics now expose estimated prompt, completion, and total token counts, clearly marked as estimates until providers expose billed usage metadata.
+- **Usage and Cost Accounting**: Provider-reported token usage can be supplied through `aips_ai_call_usage`; optional per-model USD-per-million-token rates now produce cost estimates in call logs, diagnostics, and statistics.
+- **Template Routing UX**: Template editors can select reusable routing profiles, override the connector, and explicitly enable or disable ordered model fallback for each template.
+- **Fallback Controls**: Ordered model preferences now honor the template/profile fallback toggle for both WordPress AI Client and Meow AI Engine transports.
+- **Meow Fallback Execution**: Meow AI Engine requests now retry the next ordered model when a provider exception occurs, while preserving single-model behavior when fallback is disabled.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Stress Test: Integration (meta field) cases**: The Diagnostics > Stress Test page gained four cases that exercise the Integration generation engine end to end — a single native custom field, a batched multi-field run (the N-fields-to-one-call path), native custom fields written onto a generated **custom post type** post, and (only when ACF is installed and active) an ACF field-group case. Each drives the real `AIPS_Integration_Manager` against the page's isolated AI service and reads the written values back to verify them.
 - **Stress Test: Export Results**: An "Export Results" button downloads the full run — provider/model/version snapshot, per-case status, timings, compared values, and the complete AI request/response log — as a single JSON file for sharing and analysis.
