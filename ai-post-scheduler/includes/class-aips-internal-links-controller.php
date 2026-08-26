@@ -35,7 +35,7 @@ class AIPS_Internal_Links_Controller {
 	private $links_repo;
 
 	/**
-	 * @var AIPS_Post_Embeddings_Repository
+	 * @var AIPS_Embeddings_Repository
 	 */
 	private $embeddings_repo;
 
@@ -59,7 +59,7 @@ class AIPS_Internal_Links_Controller {
 	 *
 	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
 	 * @param AIPS_Internal_Links_Repository|null       $links_repo       Links repository.
-	 * @param AIPS_Post_Embeddings_Repository|null      $embeddings_repo  Embeddings repository.
+	 * @param AIPS_Embeddings_Repository|null           $embeddings_repo  Embeddings repository.
 	 * @param AIPS_Logger|null                          $logger           Logger instance.
 	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
 	 * @param AIPS_Job_Scheduler|null                   $job_scheduler    Job scheduler service.
@@ -72,9 +72,10 @@ class AIPS_Internal_Links_Controller {
 		$inserter_service = null,
 		$job_scheduler = null
 	) {
+		$container              = AIPS_Container::get_instance();
 		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
 		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_repo  = $embeddings_repo  ?: new AIPS_Post_Embeddings_Repository();
+		$this->embeddings_repo  = $embeddings_repo  ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->logger           = $logger           ?: new AIPS_Logger();
 		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
 		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();

@@ -403,4 +403,56 @@ class AIPS_Embeddings_Repository {
 			'models'       => $models,
 		);
 	}
+
+	/**
+	 * Get total count of indexed records for a given object type.
+	 *
+	 * @param string $object_type Object type ('post', 'topic'). Default 'post'.
+	 * @return int
+	 */
+	public function get_total_indexed($object_type = 'post') {
+		return $this->count($object_type);
+	}
+
+	/**
+	 * Get all indexed post IDs.
+	 *
+	 * @return int[]
+	 */
+	public function get_all_indexed_post_ids() {
+		$results = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT object_id FROM {$this->table} WHERE object_type = 'post' ORDER BY object_id ASC"
+			)
+		);
+
+		return array_map('intval', (array) $results);
+	}
+
+	/**
+	 * Get post embeddings for similarity search by post type and status.
+	 * Returns row objects with post_id and embedding properties.
+	 *
+	 * @param string $post_type   Post type (default: 'post').
+	 * @param string $post_status Post status (default: 'publish').
+	 * @return object[] Array of rows with post_id and embedding columns.
+	 */
+	public function get_all_for_similarity_by_type($post_type = 'post', $post_status = 'publish') {
+		$post_type   = sanitize_key($post_type);
+		$post_status = sanitize_key($post_status);
+
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT e.object_id AS post_id, e.embedding
+				FROM {$this->table} e
+				INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+				WHERE e.object_type = 'post'
+				AND p.post_type = %s
+				AND p.post_status = %s
+				ORDER BY e.object_id ASC",
+				$post_type,
+				$post_status
+			)
+		);
+	}
 }
