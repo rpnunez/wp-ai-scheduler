@@ -547,6 +547,21 @@ final class AI_Post_Scheduler {
                 'query_var'         => false,
             )
         );
+
+        // Integration bridge: listens for 'aips_post_generated' and
+        // 'aips_template_changed' in every request context (cron and AJAX
+        // both trigger generation). Registered as lazy closures rather than
+        // an eagerly-constructed object — AIPS_Integration_Manager resolves
+        // AIPS_AI_Service (and, through it, AIPS_Resilience_Service, whose
+        // constructor reads a transient) via the container, which is not
+        // lazy, so constructing it here would do real work on every request
+        // even when no post is ever generated.
+        add_action('aips_post_generated', function ($post_id, $template_or_context, $history_id, $context) {
+            (new AIPS_Integration_Manager())->handle_post_generated($post_id, $template_or_context, $history_id, $context);
+        }, 10, 4);
+        add_action('aips_template_changed', function ($args) {
+            (new AIPS_Integration_Manager())->handle_template_deleted($args);
+        });
     }
 
     /**

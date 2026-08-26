@@ -281,6 +281,23 @@ $is_embedded_templates_view = !empty($embedded);
                             <p class="description"><?php esc_html_e('Optional. Helps you remember the purpose of this template.', 'ai-post-scheduler'); ?></p>
                         </div>
 
+                        <div class="aips-form-row">
+                            <label for="template_post_type">
+                                <?php esc_html_e('Post Type', 'ai-post-scheduler'); ?>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Which WordPress post type this template generates. Includes custom post types registered by other plugins (e.g. ACF). This cannot be changed after the template is saved.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
+                            <select id="template_post_type" name="post_type">
+                                <?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+                                <option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_key, 'post'); ?>>
+                                    <?php echo esc_html($post_type_info['label']); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description" id="template_post_type_locked_notice" style="display: none;">
+                                <?php esc_html_e("Post type can't be changed after a template is created.", 'ai-post-scheduler'); ?>
+                            </p>
+                        </div>
+
                         <hr style="margin: 20px 0;">
 
                         <h3>
@@ -545,7 +562,7 @@ $is_embedded_templates_view = !empty($embedded);
                                 </select>
                             </div>
                             
-                            <div class="aips-form-row">
+                            <div class="aips-form-row" id="post_category_row">
                                 <label for="post_category"><?php esc_html_e('Categories', 'ai-post-scheduler'); ?></label>
                                 <select id="post_category" name="post_category[]" multiple size="5" style="min-height:100px;">
                                     <?php foreach ($categories as $cat): ?>
@@ -556,7 +573,7 @@ $is_embedded_templates_view = !empty($embedded);
                             </div>
                         </div>
                         
-                        <div class="aips-form-row">
+                        <div class="aips-form-row" id="post_tags_row">
                             <label for="post_tags"><?php esc_html_e('Tags', 'ai-post-scheduler'); ?></label>
                             <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="<?php esc_attr_e('tag1, tag2, tag3', 'ai-post-scheduler'); ?>">
                             <p class="description"><?php esc_html_e('Comma-separated list of tags', 'ai-post-scheduler'); ?></p>
@@ -579,8 +596,70 @@ $is_embedded_templates_view = !empty($embedded);
                                 <?php esc_html_e('Template is active', 'ai-post-scheduler'); ?>
                             </label>
                         </div>
+
+                        <!-- Third-Party Plugin Integrations (bridge) -->
+                        <div class="aips-form-row aips-integrations-panel">
+                            <details class="aips-collapsible">
+                                <summary>
+                                    <span class="dashicons dashicons-admin-plugins"></span>
+                                    <?php esc_html_e('Third-Party Plugin Integrations (optional)', 'ai-post-scheduler'); ?>
+                                    <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Generate content directly into fields owned by another plugin on this site, such as an Advanced Custom Fields (ACF) field group.', 'ai-post-scheduler'); ?>"></span>
+                                </summary>
+                                <div class="aips-collapsible-content" id="aips-integrations-panel-body">
+                                    <p class="description aips-integrations-unsaved-notice" style="display: none;">
+                                        <?php esc_html_e('Save this template first to configure plugin integrations for it.', 'ai-post-scheduler'); ?>
+                                    </p>
+                                    <div class="aips-integrations-config">
+                                        <div class="aips-form-columns">
+                                            <div class="aips-form-row">
+                                                <label for="aips-integration-select"><?php esc_html_e('Integration', 'ai-post-scheduler'); ?></label>
+                                                <select id="aips-integration-select">
+                                                    <option value=""><?php esc_html_e('Loading…', 'ai-post-scheduler'); ?></option>
+                                                </select>
+                                            </div>
+                                            <div class="aips-form-row">
+                                                <label for="aips-integration-group-select"><?php esc_html_e('Field Group', 'ai-post-scheduler'); ?></label>
+                                                <select id="aips-integration-group-select" disabled>
+                                                    <option value=""><?php esc_html_e('Select an integration first', 'ai-post-scheduler'); ?></option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="aips-form-row aips-integration-field-visibility-toggle" id="aips-integration-field-visibility-toggle" style="display: none;">
+                                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Protected/internal meta keys (starting with an underscore) are hidden by default since most of them are used internally by WordPress, themes, or other plugins. Only show them if you specifically need to generate into one.', 'ai-post-scheduler'); ?>"></span>
+                                            <label class="aips-radio-label">
+                                                <input type="radio" name="aips-integration-field-visibility" value="standard" checked>
+                                                <?php esc_html_e('Standard Fields', 'ai-post-scheduler'); ?>
+                                            </label>
+                                            <label class="aips-radio-label">
+                                                <input type="radio" name="aips-integration-field-visibility" value="advanced">
+                                                <?php esc_html_e('Show Advanced Custom Meta Fields', 'ai-post-scheduler'); ?>
+                                            </label>
+                                        </div>
+                                        <table class="aips-table aips-integration-fields-table" id="aips-integration-fields-table">
+                                            <thead>
+                                                <tr>
+                                                    <th><?php esc_html_e('Field', 'ai-post-scheduler'); ?></th>
+                                                    <th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+                                                    <th><?php esc_html_e('Generate?', 'ai-post-scheduler'); ?></th>
+                                                    <th><?php esc_html_e('Generation Instructions', 'ai-post-scheduler'); ?></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="aips-integration-fields-tbody">
+                                            </tbody>
+                                        </table>
+                                        <button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" id="aips-add-custom-field-row" style="display: none;">
+                                            <span class="dashicons dashicons-plus-alt2"></span>
+                                            <?php esc_html_e('Add Another Field', 'ai-post-scheduler'); ?>
+                                        </button>
+                                        <button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" id="aips-save-integration-mappings">
+                                            <?php esc_html_e('Save Field Mappings', 'ai-post-scheduler'); ?>
+                                        </button>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
                     </div>
-                    
+
                     <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
                     <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
                         <div style="text-align: center; padding: 30px 20px;">
@@ -811,4 +890,46 @@ $is_embedded_templates_view = !empty($embedded);
             </div>
         </div>
     </div>
+
+    <script type="text/html" id="aips-tmpl-integration-field-row">
+        <tr class="aips-integration-field-row {{unsupported_class}}" data-field-key="{{field_key}}" data-native-type="{{native_type}}">
+            <td>{{label}}</td>
+            <td>{{native_type}}</td>
+            <td>
+                <input type="checkbox" class="aips-integration-field-enabled" {{checked_attr}} {{disabled_attr}}>
+            </td>
+            <td>
+                <textarea class="aips-integration-field-prompt regular-text" rows="2" {{disabled_attr}} placeholder="{{prompt_placeholder}}">{{prompt_value}}</textarea>
+                <p class="description" style="{{unsupported_note_style}}">{{unsupported_note_text}}</p>
+            </td>
+        </tr>
+    </script>
+
+    <!-- Growable "field slot" row for integrations where supports_custom_field_keys
+         is true (e.g. native WordPress custom fields): each row independently
+         picks its own field via a dropdown (populated in JS), with a "Custom
+         meta key…" escape hatch for a field that isn't in the discovered list. -->
+    <script type="text/html" id="aips-tmpl-integration-custom-field-row">
+        <tr class="aips-integration-custom-field-row">
+            <td class="aips-integration-field-key-cell">
+                <select class="aips-integration-field-key-select"></select>
+                <input type="text" class="aips-integration-custom-field-key-input regular-text" placeholder="{{customKeyPlaceholder}}" style="display:none;">
+            </td>
+            <td>
+                <select class="aips-integration-custom-field-shape-select" style="display:none;">
+                    <option value="freeform_short_text">{{shapeShortText}}</option>
+                    <option value="freeform_long_text">{{shapeLongText}}</option>
+                    <option value="freeform_html">{{shapeHtml}}</option>
+                </select>
+                <span class="aips-integration-field-native-type-display"></span>
+            </td>
+            <td>
+                <input type="checkbox" class="aips-integration-field-enabled" checked>
+            </td>
+            <td>
+                <textarea class="aips-integration-field-prompt regular-text" rows="2" placeholder="{{prompt_placeholder}}"></textarea>
+                <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-remove-custom-field-row">{{removeLabel}}</button>
+            </td>
+        </tr>
+    </script>
 </div>
