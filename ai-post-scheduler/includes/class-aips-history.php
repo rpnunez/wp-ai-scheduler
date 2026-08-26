@@ -6,8 +6,7 @@ if (!defined('ABSPATH')) {
 /**
  * Handles history management for AI post generation runs.
  *
- * Registers history-related AJAX endpoints and coordinates history
- * retrieval, export, stats, and admin page rendering.
+ * Coordinates history retrieval, stats, and admin page rendering.
  */
 class AIPS_History {
 
@@ -22,13 +21,12 @@ class AIPS_History {
     private $repository;
 
     /**
-     * Initialize history handler dependencies and AJAX hooks.
+     * Initialize history handler dependencies.
      *
      * @return void
      */
     public function __construct() {
         $this->repository = new AIPS_History_Repository();
-        new AIPS_History_Ajax_Controller($this, $this->repository);
     }
 
     /**
@@ -122,6 +120,28 @@ class AIPS_History {
     }
 
     /**
+     * Format a duration for the History summary UI.
+     *
+     * @param int|null $duration_seconds Duration in seconds.
+     * @return string
+     */
+    public function format_duration_for_display($duration_seconds) {
+        if ($duration_seconds === null) {
+            return '';
+        }
+
+        if ($duration_seconds < 60) {
+            return sprintf(__('%d seconds', 'ai-post-scheduler'), $duration_seconds);
+        }
+
+        return sprintf(
+            __('%d min %d sec', 'ai-post-scheduler'),
+            intdiv((int) $duration_seconds, 60),
+            ((int) $duration_seconds) % 60
+        );
+    }
+
+    /**
      * Render pagination HTML for history table (used by template and AJAX).
      *
      * @param array  $history       History result with total, pages, current_page.
@@ -170,6 +190,8 @@ class AIPS_History {
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
         $domain_filter = isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '';
         $actor_filter = isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '';
+        $post_type_filter = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
+        $correlation_id = isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '';
         $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
         $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
 
@@ -179,6 +201,8 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
+            'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
@@ -189,6 +213,7 @@ class AIPS_History {
 
         // Pass handler to template for helper methods
         $history_handler = $this;
+        $selectable_post_types = AIPS_Utilities::get_selectable_post_types();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }

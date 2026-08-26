@@ -1444,8 +1444,8 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:** Increased the number of private methods on the trait, but vastly improved readability and maintainability. Backwards compatibility for the cache behavior remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
 
-## 2026-06-25 - [Extract History AJAX Handlers]
-**Context:** `AIPS_History` was a "God Object" (~1575 lines), handling data logic, modal/view preparation, and complex AJAX routing and handlers.
-**Decision:** Extracted all `ajax_*` methods and `wp_ajax_*` hooks into a new `AIPS_History_Ajax_Controller`. `AIPS_History` retains the view logic and acts as a dependency to the controller.
-**Consequence:** Single Responsibility Principle applied. `AIPS_History` size is significantly reduced. Controller cleanly handles request routing. Methods shared between view and AJAX have been made public.
-**Tests:** Checked syntax with `php -l`. Ran full PHPUnit test suite to ensure backwards compatibility and no regressions.
+## 2026-08-23 - Extract Complex History Query Logic
+**Context:** The `AIPS_History_Repository` class was a God Object (1500+ lines), with methods like `get_history` and `get_partial_generations` containing hundreds of lines of complex SQL formatting and conditionals, violating the Single Responsibility Principle.
+**Decision:** Applied the Extract Class pattern. Created `AIPS_History_Query_Service` to own the complex reporting/querying logic for history grids, while `AIPS_History_Repository` focuses on CRUD operations and delegates read queries to the query service.
+**Consequence:** The repository size is reduced and focused on data access. Complex view-based SQL queries are encapsulated, making both classes easier to test.
+**Tests:** Ran the full PHPUnit test suite to ensure backwards compatibility and no regressions.

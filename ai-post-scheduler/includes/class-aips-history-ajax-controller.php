@@ -5,9 +5,9 @@ class AIPS_History_Ajax_Controller {
     private $view;
     private $repository;
 
-    public function __construct($view, $repository) {
-        $this->view = $view;
-        $this->repository = $repository;
+    public function __construct($view = null, $repository = null) {
+        $this->view = $view ?: new AIPS_History();
+        $this->repository = $repository ?: new AIPS_History_Repository();
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
@@ -68,6 +68,8 @@ class AIPS_History_Ajax_Controller {
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
         $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
+        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
 
@@ -83,6 +85,8 @@ class AIPS_History_Ajax_Controller {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
+            'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
         ));
@@ -121,7 +125,7 @@ class AIPS_History_Ajax_Controller {
                     $item->created_at,
                     $this->view->sanitize_csv_cell($item->generated_title),
                     $item->status,
-                    $this->view->sanitize_csv_cell(self::get_creation_method_label((string) $item->creation_method)),
+                    $this->view->sanitize_csv_cell(AIPS_History::get_creation_method_label((string) $item->creation_method)),
                     $item->post_id,
                     $this->view->sanitize_csv_cell($item->error_message)
                 ));
@@ -1208,6 +1212,8 @@ class AIPS_History_Ajax_Controller {
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
         $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
+        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
@@ -1218,6 +1224,8 @@ class AIPS_History_Ajax_Controller {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
+            'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
@@ -1237,9 +1245,12 @@ class AIPS_History_Ajax_Controller {
         $this->view->render_pagination_html($history, $status_filter, $search_query);
         $pagination_html = ob_get_clean();
 
+        $timeline_html = $this->view->render_timeline_html($history['items']);
+
         AIPS_Ajax_Response::success(array(
             'items_html'      => $items_html,
             'pagination_html' => $pagination_html,
+            'timeline_html'   => $timeline_html,
             'paged'           => $paged,
             'stats'           => $this->view->get_stats(),
         ));
