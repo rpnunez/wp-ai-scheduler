@@ -603,6 +603,30 @@ class AIPS_Author_Topics_Repository {
 	}
 
 	/**
+	 * Returns an associative array of author_id => MAX(generated_at) for all authors.
+	 *
+	 * @return array<int, int> Map of author_id => latest generated_at timestamp.
+	 */
+	public function get_latest_generation_timestamps_grouped_by_author() {
+		return $this->cache_read(
+			'author_topics.get_latest_generation_timestamps_grouped_by_author',
+			array(),
+			function() {
+				$results = $this->wpdb->get_results(
+					"SELECT author_id, MAX(generated_at) AS latest_ts FROM {$this->table_name} GROUP BY author_id"
+				);
+
+				$timestamps = array();
+				foreach ( $results as $row ) {
+					$timestamps[ (int) $row->author_id ] = (int) $row->latest_ts;
+				}
+
+				return $timestamps;
+			}
+		);
+	}
+
+	/**
 	 * Get per-day topic-creation counts for the last N days.
 	 *
 	 * Returns an array keyed by ISO date string (Y-m-d) with an integer count.
