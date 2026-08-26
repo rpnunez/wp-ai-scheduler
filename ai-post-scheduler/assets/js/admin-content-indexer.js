@@ -105,6 +105,34 @@
 			// Cannibalization Audit
 			$('#aips-run-audit-btn').on('click', this.runCannibalizationAudit.bind(this));
 
+			// Dimension Mismatch Re-Index Button
+			$('#aips-reindex-dimension-btn').on('click', function () {
+				if (!confirm('This will clear stored vector embeddings and re-index all content using the active environment and model. Proceed?')) {
+					return;
+				}
+				self.handleClearIndex();
+				$('.aips-tab-link[data-tab="scanner"]').trigger('click');
+				setTimeout(function () {
+					self.handleStartIndexing();
+				}, 600);
+			});
+
+			// Meow Environment Discovery
+			$('#aips-fetch-meow-envs-btn').on('click', this.fetchMeowEnvironments.bind(this));
+			$('#aips-meow-envs-select').on('change', function () {
+				var selected = $(this).find(':selected');
+				if (!selected.val()) {
+					return;
+				}
+				$('#aips_embeddings_env_id').val(selected.val());
+				if (selected.data('model')) {
+					$('#aips_embeddings_model').val(selected.data('model'));
+				}
+				if (selected.data('dimensions')) {
+					$('#aips_embeddings_dimensions').val(selected.data('dimensions'));
+				}
+			});
+
 			// Settings Form Save
 			$('#aips-indexer-settings-form').on('submit', this.handleSaveSettings.bind(this));
 		},
@@ -539,6 +567,58 @@
 					$btn.prop('disabled', false);
 					$loading.hide();
 					AIPS.Utilities && AIPS.Utilities.showNotice('Error running cannibalization audit.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Discover and populate configured Meow AI Engine embedding environments.
+		 */
+		fetchMeowEnvironments: function () {
+			var $btn = $('#aips-fetch-meow-envs-btn');
+			var originalHtml = $btn.html();
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Discovering…');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_indexer_fetch_meow_environments',
+					nonce: aipsContentIndexerL10n.nonce
+				},
+				success: function (res) {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (res.success && res.data.environments) {
+						var envs = res.data.environments;
+						var $select = $('#aips-meow-envs-select');
+						$select.empty().append('<option value="">— Select a discovered environment —</option>');
+
+						if (envs.length === 0) {
+							AIPS.Utilities && AIPS.Utilities.showNotice('No custom embedding environments found in Meow Apps AI Engine. Default OpenAI configuration will be used.', 'info');
+							return;
+						}
+
+						envs.forEach(function (env) {
+							var label = env.name + ' (' + (env.serverType || 'default') + ' / ' + env.model + ' - ' + env.dimensions + 'd)';
+							var $opt = $('<option>')
+								.val(env.id)
+								.text(label)
+								.attr('data-model', env.model)
+								.attr('data-dimensions', env.dimensions);
+							$select.append($opt);
+						});
+
+						$('#aips-meow-envs-dropdown-container').slideDown(150);
+						AIPS.Utilities && AIPS.Utilities.showNotice('Discovered ' + envs.length + ' environment(s) from Meow Apps AI Engine.', 'success');
+					} else {
+						var msg = (res.data && res.data.message) ? res.data.message : 'Could not retrieve environments from Meow Apps AI Engine.';
+						AIPS.Utilities && AIPS.Utilities.showNotice(msg, 'warning');
+					}
+				},
+				error: function () {
+					$btn.prop('disabled', false).html(originalHtml);
+					AIPS.Utilities && AIPS.Utilities.showNotice('Failed to connect to Meow Apps AI Engine.', 'error');
 				}
 			});
 		},

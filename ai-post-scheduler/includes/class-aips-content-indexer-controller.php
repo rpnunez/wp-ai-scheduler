@@ -69,6 +69,7 @@ class AIPS_Content_Indexer_Controller {
 		add_action('wp_ajax_aips_indexer_run_cannibalization_audit', array($this, 'ajax_run_cannibalization_audit'));
 		add_action('wp_ajax_aips_indexer_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_indexer_search_posts', array($this, 'ajax_search_posts'));
+		add_action('wp_ajax_aips_indexer_fetch_meow_environments', array($this, 'ajax_fetch_meow_environments'));
 	}
 
 	/**
@@ -79,15 +80,23 @@ class AIPS_Content_Indexer_Controller {
 			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
 		}
 
-		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
-		$status     = $this->indexer_service->get_indexing_status($post_types);
-		$stats      = $this->embeddings_repo->get_stats();
+		$post_types  = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+		$status      = $this->indexer_service->get_indexing_status($post_types);
+		$stats       = $this->embeddings_repo->get_stats();
+		$stored_dims = $this->embeddings_repo->get_stored_dimensions();
+		$active_dims = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
+
+		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
 
 		// Available public post types
 		$all_post_types = get_post_types(array('public' => true), 'objects');
 		unset($all_post_types['attachment']);
 
 		$settings = array(
+			'embeddings_provider'      => (string) $this->config->get_option('aips_embeddings_provider', ''),
+			'embeddings_model'         => (string) $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small'),
+			'embeddings_env_id'        => (string) $this->config->get_option('aips_embeddings_env_id', ''),
+			'embeddings_dimensions'    => $active_dims,
 			'post_types'               => $post_types,
 			'similarity_threshold'     => (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65),
 			'auto_index_on_publish'    => (bool) $this->config->get_option('aips_auto_index_on_publish', true),
@@ -109,13 +118,20 @@ class AIPS_Content_Indexer_Controller {
 	public function ajax_get_status() {
 		$this->verify_request();
 
-		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
-		$status     = $this->indexer_service->get_indexing_status($post_types);
-		$stats      = $this->embeddings_repo->get_stats();
+		$post_types  = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+		$status      = $this->indexer_service->get_indexing_status($post_types);
+		$stats       = $this->embeddings_repo->get_stats();
+		$stored_dims = $this->embeddings_repo->get_stored_dimensions();
+		$active_dims = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
+
+		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
 
 		AIPS_Ajax_Response::success(array(
-			'status' => $status,
-			'stats'  => $stats,
+			'status'             => $status,
+			'stats'              => $stats,
+			'stored_dimensions'  => $stored_dims,
+			'active_dimensions'  => $active_dims,
+			'dimension_mismatch' => $dimension_mismatch,
 		));
 	}
 
@@ -225,10 +241,45 @@ class AIPS_Content_Indexer_Controller {
 	}
 
 	/**
+	 * AJAX: Fetch configured embedding environments / connections from Meow Apps AI Engine.
+	 */
+	public function ajax_fetch_meow_environments() {
+		$this->verify_request();
+
+		$meow = new AIPS_Meow_AI_Provider();
+		if (!$meow->is_available()) {
+			AIPS_Ajax_Response::error(__('Meow Apps AI Engine is not available.', 'ai-post-scheduler'));
+		}
+
+		$environments = $meow->get_embeddings_environments();
+
+		AIPS_Ajax_Response::success(array(
+			'environments' => $environments,
+			'count'        => count($environments),
+		));
+	}
+
+	/**
 	 * AJAX: Save Content Indexer and Related Posts configuration.
 	 */
 	public function ajax_save_settings() {
 		$this->verify_request();
+
+		if (isset($_POST['embeddings_provider'])) {
+			update_option('aips_embeddings_provider', sanitize_key($_POST['embeddings_provider']));
+		}
+
+		if (isset($_POST['embeddings_model'])) {
+			update_option('aips_embeddings_model', sanitize_text_field($_POST['embeddings_model']));
+		}
+
+		if (isset($_POST['embeddings_env_id'])) {
+			update_option('aips_embeddings_env_id', sanitize_text_field($_POST['embeddings_env_id']));
+		}
+
+		if (isset($_POST['embeddings_dimensions'])) {
+			update_option('aips_embeddings_dimensions', max(1, absint($_POST['embeddings_dimensions'])));
+		}
 
 		if (isset($_POST['post_types']) && is_array($_POST['post_types'])) {
 			$post_types = array_map('sanitize_key', $_POST['post_types']);

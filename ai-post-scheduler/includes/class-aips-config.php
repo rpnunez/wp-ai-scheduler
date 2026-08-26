@@ -214,6 +214,10 @@ class AIPS_Config {
             'aips_cache_monitor_live_refresh_enabled'  => false,
             'aips_cache_monitor_live_refresh_interval' => 30,
             // Content Indexer & Embeddings
+            'aips_embeddings_provider'                 => '', // '' = auto-detect (Meow preferred)
+            'aips_embeddings_model'                    => 'text-embedding-3-small',
+            'aips_embeddings_env_id'                   => '',
+            'aips_embeddings_dimensions'               => 1536,
             'aips_indexer_post_types'                  => array('post'),
             'aips_indexer_similarity_threshold'        => 0.65,
             'aips_auto_index_on_publish'               => true,

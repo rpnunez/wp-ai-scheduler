@@ -67,6 +67,18 @@ class AIPS_Embeddings_Service {
 			return $this->embedding_cache[$cache_key];
 		}
 
+		$config = AIPS_Config::get_instance();
+		$default_env_id = (string) $config->get_option('aips_embeddings_env_id');
+		$default_model  = (string) $config->get_option('aips_embeddings_model');
+
+		if (!empty($default_env_id) && !isset($options['embeddings_env_id'])) {
+			$options['embeddings_env_id'] = $default_env_id;
+		}
+
+		if (!empty($default_model) && !isset($options['model'])) {
+			$options['model'] = $default_model;
+		}
+
 		// Delegate the raw call to the active provider via the AI service, which
 		// applies resilience and logging. The provider abstracts away whether the
 		// backend is Meow AI Engine, the WordPress AI Client, or another adapter.

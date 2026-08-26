@@ -58,6 +58,36 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			</div>
 		</div>
 
+		<!-- Dimension Mismatch Notice -->
+		<?php if (!empty($dimension_mismatch)) : ?>
+		<div class="notice notice-warning inline aips-dimension-mismatch-banner" style="margin: 0 0 20px; padding: 16px; border-left-color: #dba617; background: #fff8e5; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+			<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+				<div>
+					<h4 style="margin:0 0 4px;font-size:15px;color:#614700;display:flex;align-items:center;gap:6px;">
+						<span class="dashicons dashicons-warning" style="color:#dba617;font-size:20px;width:20px;height:20px;"></span>
+						<?php esc_html_e('Vector Dimension Mismatch Detected', 'ai-post-scheduler'); ?>
+					</h4>
+					<p style="margin:0;font-size:13px;color:#705300;">
+						<?php
+						printf(
+							/* translators: 1: stored dimensions, 2: active dimensions */
+							esc_html__('Stored vector embeddings use %1$s dimensions, but your active environment is configured for %2$s dimensions. Cosine similarity comparisons cannot cross mismatched dimensions.', 'ai-post-scheduler'),
+							'<strong>' . esc_html(implode(', ', (array) $stored_dims)) . '</strong>',
+							'<strong>' . esc_html($active_dims) . '</strong>'
+						);
+						?>
+					</p>
+				</div>
+				<div>
+					<button type="button" id="aips-reindex-dimension-btn" class="aips-btn aips-btn-sm aips-btn-primary">
+						<span class="dashicons dashicons-update"></span>
+						<?php esc_html_e('Re-index All Content with Active Model', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+			</div>
+		</div>
+		<?php endif; ?>
+
 		<!-- Status / Metric Cards -->
 		<div class="aips-stats-row" style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
 
@@ -347,6 +377,59 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		     ===================================================================== -->
 		<div id="settings-tab" class="aips-tab-content" role="tabpanel">
 			<form id="aips-indexer-settings-form">
+				<div class="aips-content-panel" style="margin-bottom:20px;">
+					<div class="aips-panel-header">
+						<h3 class="aips-panel-title"><?php esc_html_e('Embeddings Provider & Connection Configuration', 'ai-post-scheduler'); ?></h3>
+					</div>
+					<div class="aips-panel-body">
+						<table class="form-table">
+							<tr>
+								<th scope="row"><?php esc_html_e('Vector Embeddings Provider', 'ai-post-scheduler'); ?></th>
+								<td>
+									<select name="embeddings_provider" id="aips_embeddings_provider" class="regular-text">
+										<option value="" <?php selected($settings['embeddings_provider'], ''); ?>><?php esc_html_e('Auto-detect (Meow Apps AI Engine preferred)', 'ai-post-scheduler'); ?></option>
+										<option value="meow" <?php selected($settings['embeddings_provider'], 'meow'); ?>><?php esc_html_e('Meow Apps AI Engine', 'ai-post-scheduler'); ?></option>
+										<option value="wp_ai_client" <?php selected($settings['embeddings_provider'], 'wp_ai_client'); ?>><?php esc_html_e('WordPress AI Client (WP AI API)', 'ai-post-scheduler'); ?></option>
+									</select>
+									<p class="description"><?php esc_html_e('Select which AI subsystem produces vector embeddings. Decoupled from the primary post generation provider.', 'ai-post-scheduler'); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e('Embedding Model', 'ai-post-scheduler'); ?></th>
+								<td>
+									<input type="text" name="embeddings_model" id="aips_embeddings_model" value="<?php echo esc_attr($settings['embeddings_model']); ?>" class="regular-text" placeholder="text-embedding-3-small">
+									<p class="description"><?php esc_html_e('Model identifier (e.g. text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002, all-minilm).', 'ai-post-scheduler'); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e('Meow AI Engine Environment', 'ai-post-scheduler'); ?></th>
+								<td>
+									<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+										<input type="text" name="embeddings_env_id" id="aips_embeddings_env_id" value="<?php echo esc_attr($settings['embeddings_env_id']); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g. default, percona_db, pinecone_env', 'ai-post-scheduler'); ?>">
+										<button type="button" id="aips-fetch-meow-envs-btn" class="aips-btn aips-btn-secondary aips-btn-sm">
+											<span class="dashicons dashicons-rest-api"></span>
+											<?php esc_html_e('Fetch Environments from Meow Apps', 'ai-post-scheduler'); ?>
+										</button>
+									</div>
+									<div id="aips-meow-envs-dropdown-container" style="display:none;margin-top:8px;">
+										<select id="aips-meow-envs-select" class="regular-text">
+											<option value=""><?php esc_html_e('— Select a discovered environment —', 'ai-post-scheduler'); ?></option>
+										</select>
+									</div>
+									<p class="description"><?php esc_html_e('Optional connection / environment ID from Meow AI Engine (e.g. Percona Server vector database, OpenAI, Pinecone, Qdrant, Ollama).', 'ai-post-scheduler'); ?></p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e('Vector Dimensions', 'ai-post-scheduler'); ?></th>
+								<td>
+									<input type="number" name="embeddings_dimensions" id="aips_embeddings_dimensions" value="<?php echo esc_attr($settings['embeddings_dimensions']); ?>" min="1" step="1" class="small-text">
+									<p class="description"><?php esc_html_e('Number of vector dimensions produced by the model (e.g. 1536 for OpenAI, 768 for Percona / Sentence-Transformers, 384 for all-MiniLM).', 'ai-post-scheduler'); ?></p>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+
 				<div class="aips-content-panel" style="margin-bottom:20px;">
 					<div class="aips-panel-header">
 						<h3 class="aips-panel-title"><?php esc_html_e('Index Scope & Continuous Sync', 'ai-post-scheduler'); ?></h3>

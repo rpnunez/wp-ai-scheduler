@@ -455,4 +455,17 @@ class AIPS_Embeddings_Repository {
 			)
 		);
 	}
+
+	/**
+	 * Get distinct vector dimensions currently stored across all indexed objects.
+	 *
+	 * @return int[] Array of distinct dimension integers.
+	 */
+	public function get_stored_dimensions() {
+		$results = $this->wpdb->get_col(
+			"SELECT DISTINCT dimensions FROM {$this->table} WHERE dimensions > 0 ORDER BY dimensions ASC"
+		);
+
+		return array_map('intval', (array) $results);
+	}
 }
