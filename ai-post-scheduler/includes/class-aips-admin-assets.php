@@ -1055,6 +1055,13 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
           );
 
+          wp_enqueue_style(
+            'aips-content-auditor-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-content-auditor.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+          );
+
           wp_enqueue_script(
               'aips-admin-research',
               AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
@@ -1062,6 +1069,52 @@ class AIPS_Admin_Assets {
               AIPS_VERSION,
               true
           );
+
+          wp_enqueue_script(
+              'aips-admin-content-auditor',
+              AIPS_PLUGIN_URL . 'assets/js/admin-content-auditor.js',
+              array('jquery', 'aips-admin-script'),
+              AIPS_VERSION,
+              true
+          );
+
+          wp_localize_script('aips-admin-content-auditor', 'aipsAuditorL10n', array(
+              'nonce'                  => wp_create_nonce('aips_ajax_nonce'),
+              'selectAtLeastOneModule' => __('Please select at least one audit module.', 'ai-post-scheduler'),
+              'step1Text'              => __('Step 1/4: Ingesting and profiling content library...', 'ai-post-scheduler'),
+              'step2Text'              => __('Step 2/4: Constructing link graph & entity clusters...', 'ai-post-scheduler'),
+              'step3Text'              => __('Step 3/4: Running AI intelligence modules...', 'ai-post-scheduler'),
+              'step4Text'              => __('Step 4/4: Synthesizing health scorecard & saving...', 'ai-post-scheduler'),
+              'completeText'           => __('Audit complete!', 'ai-post-scheduler'),
+              'runningModule'          => __('Analyzing', 'ai-post-scheduler'),
+              'auditError'             => __('An error occurred during the audit.', 'ai-post-scheduler'),
+              'topicAddedSuccess'      => __('Topic successfully added to Author Persona!', 'ai-post-scheduler'),
+              'confirmGeneratePost'    => __('Generate post immediately for this topic?', 'ai-post-scheduler'),
+              'badgeGood'              => __('Strong Standing', 'ai-post-scheduler'),
+              'badgeWarning'           => __('Moderate Gaps', 'ai-post-scheduler'),
+              'badgeDanger'            => __('Action Required', 'ai-post-scheduler'),
+              'auditedAt'              => __('Audited:', 'ai-post-scheduler'),
+              'noGapsFound'            => __('No major content gaps identified.', 'ai-post-scheduler'),
+              'noConflictsFound'       => __('No keyword cannibalization conflicts detected across your published articles.', 'ai-post-scheduler'),
+              'noDecayFound'           => __('All evaluated content is fresh and within healthy word count thresholds.', 'ai-post-scheduler'),
+              'noLinkGapsFound'        => __('Internal link connectivity is strong with no orphan articles.', 'ai-post-scheduler'),
+              'noTrendsFound'          => __('No new external industry trends uncovered from active sources.', 'ai-post-scheduler'),
+              'thTopic'                => __('Missing Topic', 'ai-post-scheduler'),
+              'thPriority'             => __('Priority', 'ai-post-scheduler'),
+              'thType'                 => __('Type', 'ai-post-scheduler'),
+              'thIntent'               => __('Intent', 'ai-post-scheduler'),
+              'thReason'               => __('Strategic Reason & Angle', 'ai-post-scheduler'),
+              'thActions'              => __('Actions', 'ai-post-scheduler'),
+              'thPost'                 => __('Post Title', 'ai-post-scheduler'),
+              'thUrgency'              => __('Urgency', 'ai-post-scheduler'),
+              'thRefreshPlan'          => __('Refresh Checklist & Actions', 'ai-post-scheduler'),
+              'thOrphan'               => __('Orphan Article', 'ai-post-scheduler'),
+              'thTargetSource'         => __('Suggested Source Article', 'ai-post-scheduler'),
+              'thAnchorRationale'      => __('Anchor & Silo Rationale', 'ai-post-scheduler'),
+              'thTrend'                => __('Industry Trend', 'ai-post-scheduler'),
+              'thSourceSnippet'        => __('Source Evidence', 'ai-post-scheduler'),
+              'thAngle'                => __('Recommended Angle', 'ai-post-scheduler'),
+          ));
 
           wp_enqueue_script(
               'aips-admin-planner',

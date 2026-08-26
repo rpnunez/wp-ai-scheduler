@@ -983,8 +983,7 @@ class AIPS_Generator {
         $content = $this->strip_leading_title_block_from_content($content);
 
         // Generate excerpt
-        $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+		$excerpt = $this->generate_excerpt_from_context($title, $content, $context);
 
         $result = array(
             'title' => $title,
@@ -1257,10 +1256,8 @@ class AIPS_Generator {
             $excerpt         = self::truncate_excerpt($metadata['excerpt']);
             $excerpt_success = ($excerpt !== '');
         } else {
-            // Use actual generated Content for excerpt, truncated to prevent token limits
-            $excerpt_content = mb_substr($content, 0, 6000);
-            $excerpt_success = false;
-            $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
+			$excerpt_success = false;
+			$excerpt = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
         }
 
         // Set Post Excerpt component status based on whether excerpt generation was successful
