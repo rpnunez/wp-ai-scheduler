@@ -1345,6 +1345,7 @@ class AIPS_Generator {
             );
 
             $this->end_conversation();
+            $this->current_routing_policy = array();
 
             return $post_id;
         }
@@ -1468,6 +1469,7 @@ class AIPS_Generator {
         }
 
         $this->end_conversation();
+        $this->current_routing_policy = array();
 
         return $post_id;
     }

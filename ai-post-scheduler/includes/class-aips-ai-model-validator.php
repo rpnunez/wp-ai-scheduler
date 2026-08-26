@@ -40,7 +40,7 @@ class AIPS_AI_Model_Validator {
 			if (!is_array($entry) || empty($entry['id'])) {
 				continue;
 			}
-			if ($connector !== '' && !empty($entry['provider']) && $entry['provider'] !== $connector) {
+			if ($connector !== '' && $connector !== 'wp_ai_client' && !empty($entry['provider']) && $entry['provider'] !== $connector) {
 				continue;
 			}
 			$known_ids[] = (string) $entry['id'];

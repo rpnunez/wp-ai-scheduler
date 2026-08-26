@@ -123,9 +123,9 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
-            'ai_routing_policy' => $this->normalize_ai_routing_policy(
+            'ai_routing_policy' => wp_json_encode($this->normalize_ai_routing_policy(
                 isset($_POST['ai_routing_policy']) ? wp_unslash($_POST['ai_routing_policy']) : ''
-            ),
+            )),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 

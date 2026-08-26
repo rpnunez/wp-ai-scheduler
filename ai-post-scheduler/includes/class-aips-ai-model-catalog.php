@@ -25,14 +25,16 @@ class AIPS_AI_Model_Catalog {
 		$key = 'aips_ai_model_catalog_' . $capability;
 		if (!$refresh) {
 			$cached = get_transient($key);
-			if (is_array($cached)) {
+			if (is_array($cached) && !empty($cached)) {
 				return $cached;
 			}
 		}
 
 		$models = self::discover_wp_ai_client_models($capability);
 		$models = (array) apply_filters('aips_ai_model_catalog', $models, $capability);
-		set_transient($key, $models, self::CACHE_TTL);
+		if (!empty($models)) {
+			set_transient($key, $models, self::CACHE_TTL);
+		}
 
 		return $models;
 	}

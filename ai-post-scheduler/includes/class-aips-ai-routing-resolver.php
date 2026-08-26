@@ -39,10 +39,16 @@ class AIPS_AI_Routing_Resolver {
 			$model = sanitize_text_field((string) $overrides[$request_type . '_model']);
 		}
 
+		$connector = !empty($profile['connector'])
+			? sanitize_key($profile['connector'])
+			: (!empty($profile['provider']) && !in_array($profile['provider'], array('meow', 'wp_ai_client'), true) ? sanitize_key($profile['provider']) : '');
+
+		if ($connector === '' && !empty($ai_config['connector'])) {
+			$connector = sanitize_key($ai_config['connector']);
+		}
+
 		$result = array(
-			'connector' => !empty($profile['connector'])
-				? sanitize_key($profile['connector'])
-				: (!empty($profile['provider']) && !in_array($profile['provider'], array('meow', 'wp_ai_client'), true) ? sanitize_key($profile['provider']) : ''),
+			'connector' => $connector,
 			'model' => $model,
 			'fallback_enabled' => isset($template_policy['fallback_enabled']) ? (bool) $template_policy['fallback_enabled'] : (array_key_exists('fallback_enabled', $profile) ? (bool) $profile['fallback_enabled'] : true),
 			'source' => $model !== '' ? ($overrides !== array() ? 'template_override_or_profile' : 'profile_or_global') : 'provider_default',

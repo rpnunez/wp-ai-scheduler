@@ -22,6 +22,12 @@
 
 
 ### Fixed
+- **PR #2001 Review Findings**: Fixed PHP 8.2 `TypeError` when saving `ai_routing_policy` in templates by encoding policies to JSON strings in controller and safely handling array inputs in `AIPS_Template_Repository`.
+- **Model Validator Connector Matching**: Updated `AIPS_AI_Model_Validator::validate()` to prevent filtering out models when `$connector` is set to `wp_ai_client`.
+- **AJAX Registry Mapping**: Registered `'aips_get_ai_model_catalog'` in `AIPS_Ajax_Registry::$map`.
+- **Model Catalog Transient Caching**: Prevented `AIPS_AI_Model_Catalog::get()` from caching empty catalog responses in transients.
+- **AI Routing Resolver Connector Fallback**: Added fallback to global site AI config when profile connector is unconfigured.
+- **Generator Instance State Leakage**: Reset `$this->current_routing_policy` after post generation completes.
 - **Short-form AI Responses**: Reserve at least 1200 output tokens for title and excerpt requests so reasoning-capable connector models do not cut off visible responses after spending the smaller configured budget on internal reasoning. The global Max Tokens Limit remains authoritative.
 - **WordPress AI Client Detection**: Treat locally registered connectors with configured credentials as available without requiring a successful remote model-catalog request during admin page loads. Live generation now surfaces the AI Client's connector/model error instead of showing a false missing-provider notice.
 - **Stress Test Reliability**: Give AIPS-scoped WordPress AI Client requests a 90-second timeout, retry one transient provider failure during interactive stress tests, and provide sufficient structured-output budget for reasoning-capable models.
