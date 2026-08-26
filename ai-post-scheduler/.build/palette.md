@@ -16,3 +16,9 @@
 **PR:** 🎨 Palette: Add aria-label to data table checkboxes in Authors templates
 **Learning:** Checkboxes in JS-rendered templates (like Handlebars `{{}}`) require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element.
 **Action:** Always ensure that dynamically generated checkboxes in data tables have an `aria-label` attached for assistive technologies.
+## 2026-08-26 - Add aria-label to taxonomy table row checkbox
+**Area:** Taxonomy page (`templates/admin/taxonomy.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to taxonomy row checkbox
+**Learning:** Row checkboxes inside data tables must have explicit `aria-label` attributes to define what they are selecting. The `aips-tmpl-taxonomy-row` JS template lacked this.
+**Action:** When creating JS template rows containing check columns, always add `aria-label` mapped to the relevant select action.
