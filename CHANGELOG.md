@@ -13,6 +13,11 @@
 - **Fallback Controls**: Ordered model preferences now honor the template/profile fallback toggle for both WordPress AI Client and Meow AI Engine transports.
 - **Meow Fallback Execution**: Meow AI Engine requests now retry the next ordered model when a provider exception occurs, while preserving single-model behavior when fallback is disabled.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
+- **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.
+
+### Changed
+- **Prompt Hardening**: Source and article content are now delimited as reference data with explicit prompt-injection boundaries, metadata generation preserves voice excerpt instructions, and structured metadata schemas reject unexpected properties.
+- **Title Regeneration**: Template and topic regeneration now use the same context-aware path and include saved post content when conversational replay is unavailable.
 - **Stress Test: Integration (meta field) cases**: The Diagnostics > Stress Test page gained four cases that exercise the Integration generation engine end to end — a single native custom field, a batched multi-field run (the N-fields-to-one-call path), native custom fields written onto a generated **custom post type** post, and (only when ACF is installed and active) an ACF field-group case. Each drives the real `AIPS_Integration_Manager` against the page's isolated AI service and reads the written values back to verify them.
 - **Stress Test: Export Results**: An "Export Results" button downloads the full run — provider/model/version snapshot, per-case status, timings, compared values, and the complete AI request/response log — as a single JSON file for sharing and analysis.
 - **Meta-field template setup script**: `scripts/create-meta-field-templates.php` (WP-CLI `wp eval-file`) creates two ready-to-run Templates wired to native WordPress custom fields, for exercising integration generation without ACF.

@@ -564,9 +564,10 @@ class AIPS_Schedule_Processor {
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
 
         if ($advance_schedule && $schedule->frequency !== 'once') {
+            $base_run = !empty($schedule->next_run) ? (int) $schedule->next_run : AIPS_DateTime::now()->timestamp();
             $next_run = $this->interval_calculator->calculate_next_run(
                 $schedule->frequency,
-                AIPS_DateTime::now()->timestamp()
+                $base_run
             );
             $this->repository->update($schedule->id, array('next_run' => $next_run));
         }
@@ -611,11 +612,11 @@ class AIPS_Schedule_Processor {
 					// On success it will be deleted by handle_post_execution_cleanup().
 					$new_next_run = AIPS_DateTime::now()->addSeconds(HOUR_IN_SECONDS)->timestamp();
 				} else {
-					// Advance from the current execution window instead of preserving
-					// the stale prior phase so late runs do not appear to recur too soon.
+					// Advance from the schedule's configured time slot to preserve the
+					// scheduled phase and time-of-day without runtime clock drift.
 					$new_next_run = $this->interval_calculator->calculate_next_run(
 						$schedule->frequency,
-						AIPS_DateTime::now()->timestamp()
+						$original_next_run
 					);
 				}
 
