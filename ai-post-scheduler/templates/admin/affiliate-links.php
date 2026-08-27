@@ -212,8 +212,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		}
 		var rows = items.map(function(item) {
 			var enabledToggle = '<label class="aips-toggle" title="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
-				+ '<input type="checkbox" class="aips-afl-toggle" data-id="' + item.id + '"' + (item.enabled == 1 ? ' checked' : '') + ' aria-label="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
-				+ '<span class="screen-reader-text"><?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?></span>'
+				+ '<input type="checkbox" class="aips-afl-toggle" data-id="' + item.id + '"' + (item.enabled == 1 ? ' checked' : '') + '>'
 				+ '<span class="aips-toggle-slider"></span></label>';
 			var aiIcon = item.use_ai_injection == 1
 				? '<span class="dashicons dashicons-yes-alt" style="color:#00a32a;" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'

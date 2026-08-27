@@ -185,7 +185,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertStringContainsString('between 40 and 60 words', $result);
 		$this->assertStringContainsString('ARTICLE TITLE:', $result);
 		$this->assertStringContainsString('Understanding AI Technology', $result);
-		$this->assertStringContainsString('<article_data>', $result);
+		$this->assertStringContainsString('ARTICLE BODY:', $result);
 		$this->assertStringContainsString('artificial intelligence', $result);
 	}
 
@@ -204,7 +204,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertStringContainsString('Write an excerpt for an article', $result);
 		$this->assertStringContainsString('ARTICLE TITLE:', $result);
 		$this->assertStringContainsString('Understanding AI Technology', $result);
-		$this->assertStringContainsString('<article_data>', $result);
+		$this->assertStringContainsString('ARTICLE BODY:', $result);
 	}
 
 	/**
@@ -366,7 +366,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$result = $builder->build_title_prompt($template, 'Topic', null, '');
 
 		$this->assertStringContainsString('Generate a title for a blog post', $result);
-		$this->assertStringContainsString('<article_data>', $result);
+		$this->assertStringContainsString('Here is the content:', $result);
 	}
 
 	/**
@@ -409,7 +409,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$result = $builder->build_excerpt_prompt($title, '', null, null);
 
 		$this->assertStringContainsString('ARTICLE TITLE:', $result);
-		$this->assertStringContainsString('<article_data>', $result);
+		$this->assertStringContainsString('ARTICLE BODY:', $result);
 		$this->assertStringContainsString('Test Title', $result);
 	}
 

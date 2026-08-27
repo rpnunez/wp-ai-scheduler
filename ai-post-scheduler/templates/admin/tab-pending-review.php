@@ -11,8 +11,6 @@
  * @var string $search_query
  * @var array $draft_posts
  * @var int $review_current_page
- * @var array $selectable_post_types
- * @var string $post_type_filter
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -37,35 +35,24 @@ if (!defined('ABSPATH')) {
 								</option>
 								<?php endforeach; ?>
 							</select>
-							<?php endif; ?>
-							<?php if (!empty($selectable_post_types)): ?>
-							<label class="screen-reader-text" for="aips-filter-post-type-review"><?php esc_html_e('Filter by Post Type:', 'ai-post-scheduler'); ?></label>
-							<select name="post_type" id="aips-filter-post-type-review" class="aips-form-select">
-								<option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
-								<?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
-								<option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
-									<?php echo esc_html($post_type_info['label']); ?>
-								</option>
-								<?php endforeach; ?>
-							</select>
-							<?php endif; ?>
 							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-								<span class="dashicons dashicons-filter"></span>
+								<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($template_id) || !empty($post_type_filter)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('template_id', 'post_type'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
+							<?php if (!empty($template_id)): ?>
+							<a href="<?php echo esc_url(remove_query_arg('template_id')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
 							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 							<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 							<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
-								<span class="dashicons dashicons-search"></span>
+								<span class="dashicons dashicons-search" aria-hidden="true"></span>
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
+							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
 							<?php endif; ?>
 						</div>
 					</form>
@@ -100,7 +87,6 @@ if (!defined('ABSPATH')) {
 										<input id="cb-select-all-1" type="checkbox">
 									</th>
 									<th scope="col"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
-									<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 								</tr>
@@ -120,12 +106,6 @@ if (!defined('ABSPATH')) {
 											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 										</a>
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
-									</td>
-									<td>
-										<?php $post_type_obj = !empty($item->post_type) ? get_post_type_object($item->post_type) : null; ?>
-										<span class="aips-badge aips-badge-neutral">
-											<?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : ($item->post_type ?: '—')); ?>
-										</span>
 									</td>
 									<td>
 										<div class="cell-meta">
@@ -244,11 +224,10 @@ if (!defined('ABSPATH')) {
 					<?php if ($draft_posts['pages'] > 1): ?>
 					<?php
 					$review_base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-					$build_review_page_url = static function($page_number) use ($review_base_url, $template_id, $post_type_filter, $search_query) {
+					$build_review_page_url = static function($page_number) use ($review_base_url, $template_id, $search_query) {
 						return add_query_arg(array_filter(array(
 							'review_paged' => absint($page_number),
 							'template_id'  => $template_id ? $template_id : false,
-							'post_type'    => $post_type_filter ? $post_type_filter : false,
 							's'            => $search_query ? $search_query : false,
 						)), $review_base_url) . '#aips-pending-review';
 					};

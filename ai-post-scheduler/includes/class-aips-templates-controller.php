@@ -126,13 +126,6 @@ class AIPS_Templates_Controller {
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
-        // post_type is write-once: only honor it when creating a new template
-        // (no template_id yet). Existing templates ignore any post_type sent
-        // with the request — see AIPS_Template_Repository::update().
-        if (!$data['id'] && isset($_POST['post_type'])) {
-            $data['post_type'] = sanitize_key(wp_unslash($_POST['post_type']));
-        }
-
         if (empty(trim($data['name'])) || empty(trim($data['prompt_template']))) {
             AIPS_Ajax_Response::error(__('Name and prompt template are required.', 'ai-post-scheduler'));
         }
@@ -260,7 +253,6 @@ class AIPS_Templates_Controller {
             'featured_image_unsplash_keywords' => $template->featured_image_unsplash_keywords,
             'featured_image_media_ids' => $template->featured_image_media_ids,
             'post_status' => $template->post_status,
-            'post_type' => isset($template->post_type) ? $template->post_type : 'post',
             'post_category' => $template->post_category,
             'post_tags' => $template->post_tags,
             'post_author' => $template->post_author,
@@ -273,9 +265,6 @@ class AIPS_Templates_Controller {
         $new_id = $this->templates->save($new_data);
 
         if ($new_id) {
-            $mappings_repo = new AIPS_Integration_Mappings_Repository();
-            $mappings_repo->clone_template_mappings($id, $new_id);
-
             do_action('aips_template_changed', array(
                 'action'        => 'cloned',
                 'template_id'   => absint($new_id),

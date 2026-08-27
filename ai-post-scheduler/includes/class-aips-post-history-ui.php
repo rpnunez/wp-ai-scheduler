@@ -163,10 +163,10 @@ class AIPS_Post_History_UI {
 			return false;
 		}
 
-		// No post_type gate here: whether an AIPS-authored history entry
-		// exists for this post (checked by the caller immediately after,
-		// via get_cached_history()) is the correct condition — AIPS can
-		// generate any post type since Templates gained per-type support.
+		if ($post->post_type !== 'post') {
+			return false;
+		}
+
 		return true;
 	}
 }

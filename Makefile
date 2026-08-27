@@ -13,14 +13,6 @@ YELLOW := \033[0;33m
 RED := \033[0;31m
 NC := \033[0m # No Color
 
-# Per-instance host ports, read from .env (provisioned by start-dev.sh) with a
-# fallback to the shared defaults. This keeps the URLs/ports shown by targets
-# like `make urls` in sync with whatever ports this instance actually uses.
-WP_PORT         := $(or $(shell grep -hE '^WP_PORT=' .env 2>/dev/null | tail -1 | cut -d= -f2),8080)
-PHPMYADMIN_PORT := $(or $(shell grep -hE '^PHPMYADMIN_PORT=' .env 2>/dev/null | tail -1 | cut -d= -f2),8082)
-MYSQL_PORT      := $(or $(shell grep -hE '^MYSQL_PORT=' .env 2>/dev/null | tail -1 | cut -d= -f2),3307)
-INSTANCE_ID     := $(or $(shell grep -hE '^AIPS_INSTANCE_ID=' .env 2>/dev/null | tail -1 | cut -d= -f2),default)
-
 help: ## Show this help message
 	@echo "$(BLUE)AI Post Scheduler - Docker Development Commands$(NC)"
 	@echo ""
@@ -28,7 +20,7 @@ help: ## Show this help message
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
 	@echo "  1. Run '$(GREEN)make up$(NC)' to start the environment"
-	@echo "  2. Visit $(BLUE)http://localhost:$(WP_PORT)$(NC)"
+	@echo "  2. Visit $(BLUE)http://localhost:8080$(NC)"
 	@echo "  3. Run '$(GREEN)make logs$(NC)' to view logs"
 	@echo ""
 
@@ -36,8 +28,8 @@ up: ## Start all services
 	@echo "$(GREEN)Starting Docker services...$(NC)"
 	docker compose up -d
 	@echo "$(GREEN)Services started!$(NC)"
-	@echo "WordPress: $(BLUE)http://localhost:$(WP_PORT)$(NC)"
-	@echo "phpMyAdmin: $(BLUE)http://localhost:$(PHPMYADMIN_PORT)$(NC)"
+	@echo "WordPress: $(BLUE)http://localhost:8080$(NC)"
+	@echo "phpMyAdmin: $(BLUE)http://localhost:8082$(NC)"
 	@echo "Run '$(GREEN)make logs$(NC)' to view startup logs"
 
 build: ## Build Docker images
@@ -180,14 +172,14 @@ xdebug-status: ## Check Xdebug configuration
 	@docker compose exec web php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request"
 
 urls: ## Display all service URLs
-	@echo "$(BLUE)Service URLs$(NC) (instance: $(GREEN)$(INSTANCE_ID)$(NC)):"
-	@echo "WordPress:   $(GREEN)http://localhost:$(WP_PORT)$(NC)"
-	@echo "Admin:       $(GREEN)http://localhost:$(WP_PORT)/wp-admin$(NC) (admin/admin)"
-	@echo "phpMyAdmin:  $(GREEN)http://localhost:$(PHPMYADMIN_PORT)$(NC) (wordpress/wordpress)"
+	@echo "$(BLUE)Service URLs:$(NC)"
+	@echo "WordPress:   $(GREEN)http://localhost:8080$(NC)"
+	@echo "Admin:       $(GREEN)http://localhost:8080/wp-admin$(NC) (admin/admin)"
+	@echo "phpMyAdmin:  $(GREEN)http://localhost:8082$(NC) (wordpress/wordpress)"
 	@echo ""
 	@echo "$(BLUE)Database Connection:$(NC)"
 	@echo "Host:     localhost"
-	@echo "Port:     $(MYSQL_PORT)"
+	@echo "Port:     3307"
 	@echo "User:     wordpress"
 	@echo "Password: wordpress"
 	@echo "Database: wordpress"

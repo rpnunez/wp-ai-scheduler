@@ -1,7 +1,7 @@
 services:
   db:
     image: mariadb:10.6
-    container_name: "${AIPS_DB_CONTAINER:-wp-ai-scheduler-db}"
+    container_name: wp-ai-scheduler-db
     command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -15,7 +15,7 @@ services:
       - ./mariadb-conf/my.cnf:/etc/mysql/conf.d/my_custom.cnf:ro
     ports:
       # Expose MySQL port for external database tools (e.g., MySQL Workbench, TablePlus)
-      - "${MYSQL_PORT:-3307}:3306"
+      - "3307:3306"
     healthcheck:
       test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot" ]
       interval: 10s
@@ -26,13 +26,13 @@ services:
 
   web:
     build: .
-    container_name: "${AIPS_WEB_CONTAINER:-wp-ai-scheduler-web}"
+    container_name: wp-ai-scheduler-web
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "${WP_PORT:-8080}:80"        # WordPress site
-      - "${XDEBUG_PORT:-9003}:9003"  # Xdebug
+      - "8080:80"      # WordPress site
+      - "9003:9003"    # Xdebug
     environment:
       # WordPress DB settings used by entrypoint WP-CLI commands
       WORDPRESS_DB_HOST: db:3306
@@ -47,22 +47,13 @@ services:
       WP_ADMIN_PASSWORD: admin
       WP_ADMIN_EMAIL: admin@example.com
       WP_SITE_TITLE: "WP AI Scheduler Dev"
-      WP_SITE_URL: "http://localhost:${WP_PORT:-8080}"
+      WP_SITE_URL: http://localhost:8080
 
       # Enable entrypoint debug output
       ENTRYPOINT_DEBUG: "1"
       
-      # AI Connector Configuration
-      AIPS_AI_PROVIDER: "${AIPS_AI_PROVIDER:-wp_ai_client}"
-      DEFAULT_AI_CONNECTOR_PLUGIN: "${DEFAULT_AI_CONNECTOR_PLUGIN:-ai-provider-for-google}"
-      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
-
-
       # PHP Configuration
       PHP_IDE_CONFIG: "serverName=localhost"
-
     volumes:
       # Use a named Docker volume for WordPress core files
       - wordpress_data_v2:/var/www/html
@@ -95,12 +86,12 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
-    container_name: "${AIPS_PMA_CONTAINER:-wp-ai-scheduler-phpmyadmin}"
+    container_name: wp-ai-scheduler-phpmyadmin
     restart: always
     depends_on:
       - db
     ports:
-      - "${PHPMYADMIN_PORT:-8082}:80"
+      - "8082:80"
     environment:
       PMA_HOST: db
       PMA_PORT: 3306

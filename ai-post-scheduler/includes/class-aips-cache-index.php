@@ -34,18 +34,6 @@ class AIPS_Cache_Index {
 	private $max_entries;
 
 	/**
-	 * Memoized result of the aips_cache_index table-existence check.
-	 *
-	 * Null until first resolved, then true/false for the remainder of the
-	 * request. Guards every DB operation so that cache writes triggered before
-	 * the table is installed (for example, during plugin activation before
-	 * install_tables() runs) no-op silently instead of emitting DB errors.
-	 *
-	 * @var bool|null
-	 */
-	private $table_exists = null;
-
-	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -74,7 +62,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_set( string $key, $value, int $ttl, string $group, array $context = array() ): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled) {
 			return;
 		}
 
@@ -94,7 +82,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_delete( string $key, string $group ): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled) {
 			return;
 		}
 
@@ -115,7 +103,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_flush(): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled) {
 			return;
 		}
 
@@ -137,7 +125,7 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_access( string $key, string $group ): void {
-		if (!$this->enabled || !$this->table_ready()) {
+		if (!$this->enabled) {
 			return;
 		}
 
@@ -159,10 +147,6 @@ class AIPS_Cache_Index {
 	 * @return int Number of rows deleted.
 	 */
 	public function prune_expired(): int {
-		if (!$this->table_ready()) {
-			return 0;
-		}
-
 		try {
 			global $wpdb;
 			$table = $wpdb->prefix . 'aips_cache_index';
@@ -192,10 +176,6 @@ class AIPS_Cache_Index {
 		$driver = get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
-			return 0;
-		}
-
-		if (!$this->table_ready()) {
 			return 0;
 		}
 
@@ -229,10 +209,6 @@ class AIPS_Cache_Index {
 		$driver = get_option( 'aips_cache_driver', 'array' );
 
 		if ($driver !== 'db') {
-			return 0;
-		}
-
-		if (!$this->table_ready()) {
 			return 0;
 		}
 
@@ -308,34 +284,6 @@ class AIPS_Cache_Index {
 	// -----------------------------------------------------------------------
 	// Internal helpers
 	// -----------------------------------------------------------------------
-
-	/**
-	 * Determine whether the aips_cache_index table exists, memoizing the result.
-	 *
-	 * The index is a fire-and-forget metadata store. When a cache write happens
-	 * before the table is created — most notably during plugin activation, where
-	 * the logger writes cache entries before AIPS_DB_Manager::install_tables()
-	 * runs — querying the missing table would emit a "table doesn't exist" DB
-	 * error for every write. Gating all DB operations on this check keeps those
-	 * pre-install writes silent while the index self-heals once the table lands.
-	 *
-	 * @return bool
-	 */
-	private function table_ready(): bool {
-		if (null !== $this->table_exists) {
-			return $this->table_exists;
-		}
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_cache_index';
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
-
-		$this->table_exists = ( $found === $table );
-
-		return $this->table_exists;
-	}
 
 	/**
 	 * Insert or update a single index row.

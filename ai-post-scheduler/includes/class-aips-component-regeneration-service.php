@@ -186,9 +186,23 @@ class AIPS_Component_Regeneration_Service {
 			$result = $this->generator->generate_title_for_context($generation_context);
 
 			$this->generator->set_conversation(null);
+		} elseif ($generation_context->get_type() === 'template') {
+			if (!method_exists($generation_context, 'get_template')) {
+				return new WP_Error('invalid_context', __('Template context is missing template details.', 'ai-post-scheduler'));
+			}
+
+			$template = call_user_func(array($generation_context, 'get_template'));
+			$voice = $generation_context->get_voice();
+			$topic = $generation_context->get_topic();
+
+			// Use generator's generate_title method
+			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
+			// For topic context, build the prompt and generate using generic method
 			$post_content = $post_id ? get_post_field('post_content', $post_id) : '';
-			$result = $this->generator->generate_title_for_context($generation_context, $post_content);
+			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, $post_content);
+			// Use generate_content with log_type 'title' for proper logging
+			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
 
 		if (is_wp_error($result)) {

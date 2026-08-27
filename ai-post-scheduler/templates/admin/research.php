@@ -40,7 +40,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <!-- Tab Navigation -->
         <div class="aips-tab-nav">
             <a href="#trending" class="aips-tab-link<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
-            <a href="#gap-analysis" class="aips-tab-link<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Content Auditor', 'ai-post-scheduler'); ?></a>
+            <a href="#gap-analysis" class="aips-tab-link<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Gap Analysis', 'ai-post-scheduler'); ?></a>
             <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
         </div>
 
@@ -336,7 +336,30 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </div><!-- #trending-tab -->
 
     <div id="gap-analysis-tab" class="aips-tab-content<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'gap-analysis' ? '' : 'display:none;'; ?>">
-        <?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-content-auditor.php'; ?>
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('Content Gap Analysis', 'ai-post-scheduler'); ?></h2>
+            </div>
+            <div class="aips-panel-body">
+                <p class="description"><?php esc_html_e('Analyze your existing content against your target niche to identify missing sub-topics and opportunities.', 'ai-post-scheduler'); ?></p>
+
+                <div class="aips-gap-analysis-controls">
+                    <input type="text" id="gap-niche" class="regular-text" placeholder="<?php esc_attr_e('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
+                    <button type="button" class="aips-btn aips-btn-primary" id="analyze-gaps-btn">
+                        <span class="dashicons dashicons-chart-area"></span>
+                        <?php esc_html_e('Analyze Site for Gaps', 'ai-post-scheduler'); ?>
+                    </button>
+                    <span class="spinner" style="float: none; margin-left: 10px;"></span>
+                </div>
+
+                <div id="gap-results-container" style="margin-top: 30px; display: none;">
+                    <h3><?php esc_html_e('Identified Content Gaps', 'ai-post-scheduler'); ?></h3>
+                    <div class="aips-gap-grid">
+                        <!-- Gap cards will be injected here -->
+                    </div>
+                </div>
+            </div><!-- .aips-panel-body -->
+        </div><!-- .aips-content-panel -->
     </div>
 
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">

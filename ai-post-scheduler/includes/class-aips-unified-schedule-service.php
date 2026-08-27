@@ -261,7 +261,7 @@ class AIPS_Unified_Schedule_Service {
 			case self::TYPE_AUTHOR_POST:
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
-					array(AIPS_History_Event_Type::AUTHOR_POST_GENERATION),
+					array('topic_post_generation'),
 					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
@@ -356,15 +356,13 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array
 	 */
 	private function get_author_topic_schedules($include_stats = true) {
-		$authors           = $this->authors_repository->get_all();
-		$result            = array();
-		$topic_counts      = array();
-		$latest_topic_runs = array();
+		$authors      = $this->authors_repository->get_all();
+		$result       = array();
 
-		// Batch fetch topic counts and latest generation timestamps per author using the repository.
+		// Batch fetch topic counts per author using the repository.
+		$topic_counts = array();
 		if ($include_stats) {
-			$topic_counts      = $this->author_topics_repository->get_counts_grouped_by_author();
-			$latest_topic_runs = $this->author_topics_repository->get_latest_generation_timestamps_grouped_by_author();
+			$topic_counts = $this->author_topics_repository->get_counts_grouped_by_author();
 		}
 
 		foreach ($authors as $author) {
@@ -383,11 +381,7 @@ class AIPS_Unified_Schedule_Service {
 				$is_active = 0;
 			}
 
-			$stats    = isset($topic_counts[$author->id]) ? $topic_counts[$author->id] : 0;
-			$last_run = !empty($author->topic_generation_last_run) ? (int) $author->topic_generation_last_run : 0;
-			if ($last_run <= 0 && isset($latest_topic_runs[$author->id])) {
-				$last_run = (int) $latest_topic_runs[$author->id];
-			}
+			$stats = isset($topic_counts[$author->id]) ? $topic_counts[$author->id] : 0;
 
 			$result[] = array(
 				'id'                   => absint($author->id),
@@ -396,7 +390,7 @@ class AIPS_Unified_Schedule_Service {
 				'subtitle'             => isset($author->field_niche) ? $author->field_niche : '',
 				'cron_hook'            => 'aips_generate_author_topics',
 				'frequency'            => $author->topic_generation_frequency,
-				'last_run'             => $last_run,
+				'last_run'             => $author->topic_generation_last_run,
 				'next_run'             => $author->topic_generation_next_run,
 				'is_active'            => $is_active,
 				'status'               => $is_active ? 'active' : 'inactive',
@@ -424,15 +418,13 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array
 	 */
 	private function get_author_post_schedules($include_stats = true) {
-		$authors          = $this->authors_repository->get_all();
-		$result           = array();
-		$post_counts      = array();
-		$latest_post_runs = array();
+		$authors     = $this->authors_repository->get_all();
+		$result      = array();
 
-		// Batch fetch post-generation counts and latest generation timestamps per author using the repository.
+		// Batch fetch post-generation counts per author using the repository.
+		$post_counts = array();
 		if ($include_stats) {
-			$post_counts      = $this->author_topic_logs_repository->get_post_generation_counts_grouped_by_author();
-			$latest_post_runs = $this->author_topic_logs_repository->get_latest_post_generation_timestamps_grouped_by_author();
+			$post_counts = $this->author_topic_logs_repository->get_post_generation_counts_grouped_by_author();
 		}
 
 		foreach ($authors as $author) {
@@ -450,11 +442,7 @@ class AIPS_Unified_Schedule_Service {
 				$is_active = 0;
 			}
 
-			$stats    = isset($post_counts[$author->id]) ? $post_counts[$author->id] : 0;
-			$last_run = !empty($author->post_generation_last_run) ? (int) $author->post_generation_last_run : 0;
-			if ($last_run <= 0 && isset($latest_post_runs[$author->id])) {
-				$last_run = (int) $latest_post_runs[$author->id];
-			}
+			$stats = isset($post_counts[$author->id]) ? $post_counts[$author->id] : 0;
 
 			$result[] = array(
 				'id'                   => absint($author->id),
@@ -463,7 +451,7 @@ class AIPS_Unified_Schedule_Service {
 				'subtitle'             => $author->field_niche,
 				'cron_hook'            => 'aips_generate_author_posts',
 				'frequency'            => $author->post_generation_frequency,
-				'last_run'             => $last_run,
+				'last_run'             => $author->post_generation_last_run,
 				'next_run'             => $author->post_generation_next_run,
 				'is_active'            => $is_active,
 				'status'               => $is_active ? 'active' : 'inactive',
@@ -489,8 +477,29 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array
 	 */
 	private function format_history_logs($logs) {
-		// Delegate decoding + canonicalization to the shared read model so every
-		// consumer sees one stable event vocabulary and record shape.
-		return AIPS_History_Event_View::from_logs($logs);
+		$entries = array();
+		foreach ($logs as $log) {
+			$details = array();
+			if (!empty($log->details)) {
+				$decoded = json_decode($log->details, true);
+				if (is_array($decoded)) {
+					$details = $decoded;
+				}
+			}
+
+			$input = isset($details['input']) && is_array($details['input']) ? $details['input'] : array();
+
+			$entries[] = array(
+				'id'              => absint($log->id),
+				'timestamp'       => esc_html($log->timestamp),
+				'log_type'        => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
+				'history_type_id' => absint($log->history_type_id),
+				'message'         => isset($details['message']) ? esc_html($details['message']) : '',
+				'event_type'      => isset($input['event_type']) ? esc_html($input['event_type']) : '',
+				'event_status'    => isset($input['event_status']) ? esc_html($input['event_status']) : '',
+				'context'         => isset($details['context']) && is_array($details['context']) ? $details['context'] : array(),
+			);
+		}
+		return $entries;
 	}
 }
