@@ -28,3 +28,9 @@
 **PR:** 🎨 Palette: Add aria-label to taxonomy row checkbox
 **Learning:** Row checkboxes inside data tables must have explicit `aria-label` attributes to define what they are selecting. The `aips-tmpl-taxonomy-row` JS template lacked this.
 **Action:** When creating JS template rows containing check columns, always add `aria-label` mapped to the relevant select action.
+## 2024-11-23 - Accessibility Fix for Planner and Research Checkboxes
+**Area:** Admin Templates (`templates/admin/planner.php`, `templates/admin/research.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to checkboxes in Planner and Research templates
+**Learning:** Checkboxes in JS-rendered templates or table headers require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element. Do not add `aria-label` if a checkbox is already properly nested inside a descriptive `<label>` tag.
+**Action:** Always ensure checkboxes not wrapped in a descriptive `<label>` have an explicit `aria-label` for screen reader accessibility.
