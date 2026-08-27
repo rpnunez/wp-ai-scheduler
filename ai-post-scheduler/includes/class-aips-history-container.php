@@ -344,7 +344,6 @@ class AIPS_History_Container {
 			'debug' => AIPS_History_Type::DEBUG,
 			'log' => AIPS_History_Type::LOG,
 			'metric_generation_result' => AIPS_History_Type::METRIC,
-			'session_metadata' => AIPS_History_Type::SESSION_METADATA,
 		);
 		
 		return isset($map[$log_type]) ? $map[$log_type] : AIPS_History_Type::LOG;

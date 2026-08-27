@@ -34,8 +34,6 @@ class AIPS_DB_Manager {
         'aips_bulk_batch_jobs',
         'aips_cache_index',
         'aips_cache_events',
-        'aips_integration_field_mappings',
-        'aips_content_audits',
     );
 
     public function __construct() {
@@ -98,8 +96,6 @@ class AIPS_DB_Manager {
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
-        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
-        $table_content_audits       = $tables['aips_content_audits'];
 
         $sql = array();
 
@@ -108,12 +104,11 @@ class AIPS_DB_Manager {
             uuid varchar(36) DEFAULT NULL,
             correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
-            post_type varchar(50) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
-            creation_method varchar(64) DEFAULT NULL,
+            creation_method varchar(20) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -125,7 +120,6 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
-            KEY post_type (post_type),
             KEY template_id (template_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
@@ -141,16 +135,12 @@ class AIPS_DB_Manager {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             history_id bigint(20) NOT NULL,
             history_type_id int DEFAULT 1,
-            event_type varchar(64) DEFAULT NULL,
-            event_status varchar(32) DEFAULT NULL,
             timestamp bigint(20) unsigned NOT NULL DEFAULT 0,
             details longtext,
             PRIMARY KEY  (id),
             KEY history_id (history_id),
             KEY history_type_id (history_type_id),
-            KEY history_id_type (history_id, history_type_id),
-            KEY event_status (event_status),
-            KEY event_type_timestamp (event_type, timestamp)
+            KEY history_id_log_type (history_id, log_type)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_campaigns (
@@ -671,46 +661,6 @@ class AIPS_DB_Manager {
             KEY event_type (event_type),
             KEY created_at (created_at),
             KEY user_id (user_id)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_integration_field_mappings (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            template_id bigint(20) DEFAULT NULL,
-            integration_id varchar(50) NOT NULL,
-            source_key varchar(191) NOT NULL,
-            field_key varchar(191) NOT NULL,
-            field_label varchar(191) DEFAULT NULL,
-            field_type varchar(50) DEFAULT NULL,
-            custom_prompt text,
-            is_active tinyint(1) DEFAULT 1,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            UNIQUE KEY template_integration_field (template_id, integration_id, field_key),
-            KEY template_id (template_id),
-            KEY integration_id (integration_id)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_content_audits (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            niche varchar(255) NOT NULL,
-            overall_score int(11) NOT NULL DEFAULT 0,
-            freshness_score int(11) NOT NULL DEFAULT 0,
-            link_score int(11) NOT NULL DEFAULT 0,
-            cannibalization_score int(11) NOT NULL DEFAULT 0,
-            gap_score int(11) NOT NULL DEFAULT 0,
-            total_posts int(11) NOT NULL DEFAULT 0,
-            orphan_count int(11) NOT NULL DEFAULT 0,
-            decay_count int(11) NOT NULL DEFAULT 0,
-            conflict_count int(11) NOT NULL DEFAULT 0,
-            gap_count int(11) NOT NULL DEFAULT 0,
-            audit_report longtext NOT NULL,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY niche_idx (niche),
-            KEY overall_score_idx (overall_score),
-            KEY created_at_idx (created_at)
         ) $charset_collate;";
 
         return $sql;

@@ -166,26 +166,30 @@ class AIPS_Author_Topics_Controller {
 			// Apply reward for approval
 			$this->penalty_service->apply_reward($topic_id, $reason_category);
 
-			// Log to activity feed via the canonical event recorder.
+			// Log to activity feed using History Container
 			if ($topic) {
-				$recorder = new AIPS_History_Event_Recorder($this->history_service);
-				$recorder->record(
-					AIPS_History_Event::success(
-						AIPS_History_Event_Type::TOPIC_APPROVED,
-						sprintf(
-							__('Topic approved: "%s"', 'ai-post-scheduler'),
-							$topic->topic_title
-						),
-						AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TOPIC, $topic_id, $topic->topic_title),
-						array(
-							'topic_id' => $topic_id,
-							'topic_title' => $topic->topic_title,
-							'author_id' => $topic->author_id,
-							'reason' => $reason,
-							'reason_category' => $reason_category,
-							'source' => $source,
-							'approved_by' => get_current_user_id(),
-						)
+				$approve_history = $this->history_service->create('topic_approval', array(
+					'topic_id' => $topic_id,
+				));
+				$approve_history->record(
+					'activity',
+					sprintf(
+						__('Topic approved: "%s"', 'ai-post-scheduler'),
+						$topic->topic_title
+					),
+					array(
+						'event_type' => 'topic_approved',
+						'event_status' => 'success',
+					),
+					null,
+					array(
+						'topic_id' => $topic_id,
+						'topic_title' => $topic->topic_title,
+						'author_id' => $topic->author_id,
+						'reason' => $reason,
+						'reason_category' => $reason_category,
+						'source' => $source,
+						'approved_by' => get_current_user_id(),
 					)
 				);
 			}
@@ -232,26 +236,30 @@ class AIPS_Author_Topics_Controller {
 			// Apply penalty based on reason category
 			$this->penalty_service->apply_penalty($topic_id, $reason_category);
 
-			// Log to activity feed via the canonical event recorder.
+			// Log to activity feed using History Container
 			if ($topic) {
-				$recorder = new AIPS_History_Event_Recorder($this->history_service);
-				$recorder->record(
-					AIPS_History_Event::failure(
-						AIPS_History_Event_Type::TOPIC_REJECTED,
-						sprintf(
-							__('Topic rejected: "%s"', 'ai-post-scheduler'),
-							$topic->topic_title
-						),
-						AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TOPIC, $topic_id, $topic->topic_title),
-						array(
-							'topic_id' => $topic_id,
-							'topic_title' => $topic->topic_title,
-							'author_id' => $topic->author_id,
-							'reason' => $reason,
-							'reason_category' => $reason_category,
-							'source' => $source,
-							'rejected_by' => get_current_user_id(),
-						)
+				$reject_history = $this->history_service->create('topic_rejection', array(
+					'topic_id' => $topic_id,
+				));
+				$reject_history->record(
+					'activity',
+					sprintf(
+						__('Topic rejected: "%s"', 'ai-post-scheduler'),
+						$topic->topic_title
+					),
+					array(
+						'event_type' => 'topic_rejected',
+						'event_status' => 'failed',
+					),
+					null,
+					array(
+						'topic_id' => $topic_id,
+						'topic_title' => $topic->topic_title,
+						'author_id' => $topic->author_id,
+						'reason' => $reason,
+						'reason_category' => $reason_category,
+						'source' => $source,
+						'rejected_by' => get_current_user_id(),
 					)
 				);
 			}

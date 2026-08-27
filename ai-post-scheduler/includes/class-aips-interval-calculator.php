@@ -55,12 +55,6 @@ class AIPS_Interval_Calculator {
             'type' => 'fixed'
         );
 
-        $intervals['every_2_hours'] = array(
-            'interval' => 7200,
-            'display' => __('Every 2 Hours', 'ai-post-scheduler'),
-            'type' => 'fixed'
-        );
-
         $intervals['every_4_hours'] = array(
             'interval' => 14400,
             'display' => __('Every 4 Hours', 'ai-post-scheduler'),
@@ -70,12 +64,6 @@ class AIPS_Interval_Calculator {
         $intervals['every_6_hours'] = array(
             'interval' => 21600,
             'display' => __('Every 6 Hours', 'ai-post-scheduler'),
-            'type' => 'fixed'
-        );
-
-        $intervals['every_8_hours'] = array(
-            'interval' => 28800,
-            'display' => __('Every 8 Hours', 'ai-post-scheduler'),
             'type' => 'fixed'
         );
         
@@ -146,33 +134,36 @@ class AIPS_Interval_Calculator {
             : AIPS_DateTime::now()->timestamp();
         $now = AIPS_DateTime::now()->timestamp();
         
-        // If start time is in the past or now, advance forward until future (Catch-up logic)
-        // This prevents schedule drift by preserving the phase and time-of-day of the schedule
-        if ($base_time <= $now) {
+        // If start time is in the past, add intervals until future (Catch-up logic)
+        // This prevents schedule drift by preserving the phase of the schedule
+        if ($base_time < $now) {
             $interval_duration = $this->get_interval_duration($frequency);
             $intervals = $this->get_intervals();
             $interval_type = isset($intervals[$frequency]['type']) ? $intervals[$frequency]['type'] : 'fixed';
             
             // For fixed intervals (with known duration), use mathematical calculation.
-            // But skip for calendar types (like monthly or day-specific) which vary in length.
+            // But skip for calendar types (like monthly) which vary in length.
             if ($interval_duration > 0 && $interval_type !== 'calendar') {
                 $time_diff = $now - $base_time;
-                $intervals_needed = (int) floor($time_diff / $interval_duration) + 1;
+                $intervals_needed = ceil($time_diff / $interval_duration);
                 
                 // Safety check: if more than 1000 intervals are needed, something is likely wrong
                 if ($intervals_needed > 1000) {
+                    // Log warning or handle error - for now, just jump to now + interval
                     $base_time = $this->calculate_next_timestamp($frequency, $now);
                 } else {
+                    // Add the calculated number of intervals
                     $base_time += ($intervals_needed * $interval_duration);
                 }
             } else {
                 // For day-specific intervals or calendar intervals (e.g., every_monday, monthly), iterate with safety limit
-                $limit = 1000;
+                $limit = 1000; // Reduced from 50000 - if we need more than 1000 iterations, something is wrong
                 while ($base_time <= $now && $limit > 0) {
                     $base_time = $this->calculate_next_timestamp($frequency, $base_time);
                     $limit--;
                 }
                 
+                // If we hit the limit, log error and fall back to now + interval
                 if ($limit === 0) {
                     $base_time = $this->calculate_next_timestamp($frequency, $now);
                 }
@@ -180,7 +171,7 @@ class AIPS_Interval_Calculator {
             return $base_time;
         }
         
-        return $base_time;
+        return $this->calculate_next_timestamp($frequency, $base_time);
     }
 
     /**
@@ -224,37 +215,30 @@ class AIPS_Interval_Calculator {
      * @return int The next run timestamp.
      */
     private function calculate_next_timestamp($frequency, $base_time) {
-        $dt = AIPS_DateTime::fromTimestamp($base_time);
         switch ($frequency) {
             case 'hourly':
-                return (int) $dt->modify('+1 hour')->timestamp();
-
-            case 'every_2_hours':
-                return (int) $dt->modify('+2 hours')->timestamp();
+                return strtotime('+1 hour', $base_time);
                 
             case 'every_4_hours':
-                return (int) $dt->modify('+4 hours')->timestamp();
+                return strtotime('+4 hours', $base_time);
                 
             case 'every_6_hours':
-                return (int) $dt->modify('+6 hours')->timestamp();
-
-            case 'every_8_hours':
-                return (int) $dt->modify('+8 hours')->timestamp();
+                return strtotime('+6 hours', $base_time);
                 
             case 'every_12_hours':
-                return (int) $dt->modify('+12 hours')->timestamp();
+                return strtotime('+12 hours', $base_time);
                 
             case 'daily':
-                return (int) $dt->modify('+1 day')->timestamp();
+                return strtotime('+1 day', $base_time);
                 
             case 'weekly':
-                return (int) $dt->modify('+1 week')->timestamp();
+                return strtotime('+1 week', $base_time);
                 
             case 'bi_weekly':
-                return (int) $dt->modify('+2 weeks')->timestamp();
+                return strtotime('+2 weeks', $base_time);
                 
             case 'monthly':
-                return (int) $dt->modify('+1 month')->timestamp();
+                return strtotime('+1 month', $base_time);
                 
             default:
                 return $this->calculate_day_specific_interval($frequency, $base_time);
@@ -273,21 +257,23 @@ class AIPS_Interval_Calculator {
      */
     private function calculate_day_specific_interval($frequency, $base_time) {
         if (strpos($frequency, 'every_') !== 0) {
-            return (int) AIPS_DateTime::fromTimestamp($base_time)->modify('+1 day')->timestamp();
+            return strtotime('+1 day', $base_time);
         }
         
         $day = ucfirst(str_replace('every_', '', $frequency));
         $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
 
-        if (!in_array($day, $valid_days, true)) {
-            return (int) AIPS_DateTime::fromTimestamp($base_time)->modify('+1 day')->timestamp();
+        if (!in_array($day, $valid_days)) {
+            return strtotime('+1 day', $base_time);
         }
         
         // Calculate next occurrence of the day while preserving time
-        $dt = AIPS_DateTime::fromTimestamp($base_time);
-        $next_dt = $dt->modify("next $day");
+        $next = strtotime("next $day", $base_time);
+
+        // Reset the time to the base_time's time
+        $next = strtotime(date('H:i:s', $base_time), $next);
         
-        return (int) $next_dt->timestamp();
+        return $next;
     }
     
     /**

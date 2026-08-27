@@ -180,9 +180,7 @@ class AIPS_Template_Repository {
             'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($data['featured_image_media_ids']) ? sanitize_text_field($data['featured_image_media_ids']) : '',
             'post_status' => sanitize_text_field($data['post_status']),
-            'post_type' => AIPS_Utilities::is_selectable_post_type(isset($data['post_type']) ? sanitize_key($data['post_type']) : '')
-                ? sanitize_key($data['post_type'])
-                : 'post',
+            'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : 'post',
             'post_category' => $this->sanitise_post_categories( isset( $data['post_category'] ) ? $data['post_category'] : null ),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
@@ -273,10 +271,10 @@ class AIPS_Template_Repository {
             $format[] = '%s';
         }
 
-        // post_type is intentionally immutable after creation: changing it on
-        // an existing template would orphan already-generated posts of the
-        // old type and any integration field mappings scoped to it. Any
-        // 'post_type' key in $data is silently ignored here.
+        if (isset($data['post_type'])) {
+            $update_data['post_type'] = sanitize_key($data['post_type']);
+            $format[] = '%s';
+        }
 
         if (isset($data['post_category'])) {
             $update_data['post_category'] = $this->sanitise_post_categories( $data['post_category'] );

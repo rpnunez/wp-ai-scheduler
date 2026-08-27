@@ -33,16 +33,6 @@ if (!defined('ABSPATH')) {
         <span class="aips-history-latest-message"><?php echo esc_html(wp_trim_words((string) $item->latest_message, 14)); ?></span>
         <?php endif; ?>
     </td>
-    <td class="column-post-type">
-        <?php if (!empty($item->post_type)): ?>
-        <?php $post_type_obj = get_post_type_object($item->post_type); ?>
-        <span class="aips-badge aips-badge-neutral">
-            <?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $item->post_type); ?>
-        </span>
-        <?php else: ?>
-        <span class="aips-meta-text">&mdash;</span>
-        <?php endif; ?>
-    </td>
     <td class="column-status">
         <?php
         $status_class = 'aips-badge ';

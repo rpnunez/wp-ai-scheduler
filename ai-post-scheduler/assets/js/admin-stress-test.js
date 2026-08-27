@@ -46,32 +46,23 @@
 		aborted: false,
 
 		init: function () {
-			if (!$('#aips-stress-test').length && !$('#aips-stress-test-history').length) {
+			if (!$('#aips-stress-test').length) {
 				return;
 			}
 
 			this.bindEvents();
-			this.loadRunHistory();
 		},
 
 		bindEvents: function () {
 			$(document)
 				.on('click', '#aips-stress-run-all', this.handleRunAll.bind(this))
 				.on('click', '#aips-stress-reset', this.handleReset.bind(this))
-				.on('click', '#aips-stress-export', this.handleExport.bind(this))
 				.on('click', '#aips-stress-cleanup', this.handleCleanup.bind(this))
 				.on('click', '.aips-stress-run-one', this.handleRunOne.bind(this))
 				.on('click', '.aips-stress-row', this.handleRowToggle.bind(this))
 				// Keyboard parity for the row: the toggle button carries the
 				// aria state, so Enter/Space on it drives the same toggle.
-				.on('keydown', '.aips-stress-toggle', this.handleToggleKeydown.bind(this))
-				// History & Diff bindings
-				.on('change', '#aips-stress-history-select', this.handleHistorySelectChange.bind(this))
-				.on('click', '#aips-stress-compare-btn', this.handleCompareCurrentVsSelected.bind(this))
-				.on('change', '.aips-stress-history-checkbox', this.handleHistoryCheckboxChange.bind(this))
-				.on('click', '#aips-stress-history-diff-btn', this.handleCompareDualHistory.bind(this))
-				.on('click', '.aips-stress-view-run-btn', this.handleViewRunDetails.bind(this))
-				.on('click', '#aips-stress-diff-modal .aips-modal-close, #aips-stress-diff-modal .aips-modal-close-btn, #aips-stress-diff-modal .aips-modal-backdrop', this.closeDiffModal.bind(this));
+				.on('keydown', '.aips-stress-toggle', this.handleToggleKeydown.bind(this));
 		},
 
 		// -------------------------------------------------------------------
@@ -147,7 +138,6 @@
 
 					if (!self.aborted) {
 						self.renderSummary();
-						self.saveRunToHistory();
 					}
 
 					return;
@@ -251,9 +241,6 @@
 
 			this.setRowState($row, result.status, result.summary || '', duration);
 			$row.data('result', result);
-
-			// A rendered result means there is something to export.
-			$('#aips-stress-export').prop('disabled', false);
 
 			var $details = $('#aips-stress-details-' + result['case']).find('.aips-stress-details');
 			$details.empty().append(this.buildDetails(result));
@@ -716,27 +703,14 @@
 			var $list = $summary.find('.aips-stress-summary-list').empty();
 
 			results.forEach(function (result) {
-				var itemHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-summary-item'))
-					? AIPS.Templates.render('aips-tmpl-stress-summary-item', {
-						status: result.status,
-						label:  result.label,
-						detail: result.summary || '',
-						time:   this.formatDuration(result.duration_ms || 0)
-					})
-					: '';
-
-				if (itemHtml) {
-					$list.append(itemHtml);
-				} else {
-					$list.append(
-						$('<li></li>')
-							.attr('data-status', result.status)
-							.append($('<span class="aips-stress-summary-dot"></span>'))
-							.append($('<span class="aips-stress-summary-label"></span>').text(result.label))
-							.append($('<span class="aips-stress-summary-detail"></span>').text(result.summary || ''))
-							.append($('<span class="aips-stress-summary-time"></span>').text(this.formatDuration(result.duration_ms || 0)))
-					);
-				}
+				$list.append(
+					$('<li></li>')
+						.attr('data-status', result.status)
+						.append($('<span class="aips-stress-summary-dot"></span>'))
+						.append($('<span class="aips-stress-summary-label"></span>').text(result.label))
+						.append($('<span class="aips-stress-summary-detail"></span>').text(result.summary || ''))
+						.append($('<span class="aips-stress-summary-time"></span>').text(this.formatDuration(result.duration_ms || 0)))
+				);
 			}.bind(this));
 
 			// Restart the banner animation even when the previous run left the
@@ -776,98 +750,6 @@
 			});
 
 			$('.aips-stress-details-row').attr('hidden', true).find('.aips-stress-details').empty();
-			$('#aips-stress-export').prop('disabled', true);
-		},
-
-		// -------------------------------------------------------------------
-		// Export
-		// -------------------------------------------------------------------
-
-		/**
-		 * Read the environment/version snapshot embedded in the page.
-		 *
-		 * @returns {Object}
-		 */
-		readExportMeta: function () {
-			var raw = $('#aips-stress-export-meta').text();
-
-			if (!raw) {
-				return {};
-			}
-
-			try {
-				return JSON.parse(raw) || {};
-			} catch (err) {
-				return {};
-			}
-		},
-
-		/**
-		 * Download every rendered result as a single JSON file.
-		 *
-		 * The file bundles the provider/model/version snapshot with each case's
-		 * status, timing, compared values, and full AI request/response log, so
-		 * one run can be shared verbatim for analysis.
-		 *
-		 * @param {Event} e
-		 */
-		handleExport: function (e) {
-			e.preventDefault();
-
-			var results = [];
-
-			$('.aips-stress-row').each(function () {
-				var result = $(this).data('result');
-
-				if (result) {
-					results.push(result);
-				}
-			});
-
-			if (!results.length) {
-				AIPS.Utilities.showToast(t('nothingToExport', 'Run at least one test case before exporting.'), 'info');
-				return;
-			}
-
-			var meta = this.readExportMeta();
-			var passed = results.filter(function (r) { return r.status === 'passed'; }).length;
-
-			var payload = {
-				exported_at: new Date().toISOString(),
-				plugin_version: meta.plugin_version || '',
-				environment: meta.environment || {},
-				totals: {
-					cases: results.length,
-					passed: passed,
-					failed: results.length - passed,
-					duration_ms: results.reduce(function (sum, r) { return sum + (r.duration_ms || 0); }, 0)
-				},
-				results: results
-			};
-
-			var stamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
-			this.downloadJson('aips-stress-test-results-' + stamp + '.json', payload);
-		},
-
-		/**
-		 * Trigger a client-side download of a pretty-printed JSON object.
-		 *
-		 * @param {string} filename
-		 * @param {Object} data
-		 */
-		downloadJson: function (filename, data) {
-			var json = JSON.stringify(data, null, 2);
-			var blob = new Blob([json], { type: 'application/json' });
-			var url = window.URL.createObjectURL(blob);
-			var $link = $('<a></a>')
-				.attr('href', url)
-				.attr('download', filename)
-				.css('display', 'none')
-				.appendTo('body');
-
-			$link[0].click();
-			$link.remove();
-			window.URL.revokeObjectURL(url);
 		},
 
 		/**
@@ -977,416 +859,6 @@
 			var seconds = Math.round((ms % 60000) / 1000);
 
 			return minutes + 'm ' + seconds + 's';
-		},
-
-		// -------------------------------------------------------------------
-		// History & Comparison / Diff Handling
-		// -------------------------------------------------------------------
-
-		/**
-		 * Load recent history runs and populate the select box.
-		 */
-		loadRunHistory: function () {
-			var $select = $('#aips-stress-history-select');
-			if (!$select.length) {
-				return;
-			}
-
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_stress_test_get_history',
-					nonce: settings.nonce,
-					limit: 25
-				}
-			}).done(function (res) {
-				if (res && res.success && res.data && res.data.runs) {
-					var currentVal = $select.val();
-					$select.find('option:not(:first)').remove();
-					res.data.runs.forEach(function (run) {
-						var label = run.formatted_date + ' (' + run.passed + '/' + run.total_cases + ' passed, ' + run.provider + ')';
-						$('<option></option>').val(run.id).text(label).appendTo($select);
-					});
-					if (currentVal) {
-						$select.val(currentVal);
-					}
-				}
-			});
-		},
-
-		/**
-		 * Auto-save completed suite run into the History API.
-		 */
-		saveRunToHistory: function () {
-			var self = this;
-			var results = [];
-			$('.aips-stress-row').each(function () {
-				var result = $(this).data('result');
-				if (result) {
-					results.push(result);
-				}
-			});
-
-			if (!results.length) {
-				return;
-			}
-
-			var meta = this.readExportMeta();
-			var passed = results.filter(function (r) { return r.status === 'passed'; }).length;
-			var payload = {
-				environment: meta.environment || {},
-				totals: {
-					cases: results.length,
-					passed: passed,
-					failed: results.length - passed,
-					duration_ms: results.reduce(function (sum, r) { return sum + (r.duration_ms || 0); }, 0)
-				},
-				results: results
-			};
-
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_stress_test_save_run',
-					nonce: settings.nonce,
-					run_data: JSON.stringify(payload)
-				}
-			}).done(function (res) {
-				if (res && res.success) {
-					self.loadRunHistory();
-				}
-			});
-		},
-
-		/**
-		 * Enable Compare button when a historical run is chosen.
-		 */
-		handleHistorySelectChange: function () {
-			var val = $('#aips-stress-history-select').val();
-			$('#aips-stress-compare-btn').prop('disabled', !val);
-		},
-
-		/**
-		 * Compare selected historical run against the latest historical run or current results.
-		 */
-		handleCompareCurrentVsSelected: function (e) {
-			e.preventDefault();
-			var selectedId = parseInt($('#aips-stress-history-select').val(), 10);
-			if (!selectedId) {
-				return;
-			}
-
-			var $select = $('#aips-stress-history-select');
-			var $options = $select.find('option:not(:first)');
-			var baseId = selectedId;
-			var targetId = $options.length > 1 && parseInt($options.first().val(), 10) !== selectedId ? parseInt($options.first().val(), 10) : selectedId;
-
-			this.fetchAndShowDiff(baseId, targetId);
-		},
-
-		/**
-		 * Handle checkboxes in the Stress Test History tab (max 2).
-		 */
-		handleHistoryCheckboxChange: function () {
-			var $checked = $('.aips-stress-history-checkbox:checked');
-			if ($checked.length > 2) {
-				$(this).prop('checked', false);
-				$checked = $('.aips-stress-history-checkbox:checked');
-				AIPS.Utilities.showToast(t('maxTwoRuns', 'You can select up to 2 runs to compare.'), 'warning');
-			}
-
-			$('#aips-stress-history-diff-btn').prop('disabled', $checked.length !== 2);
-		},
-
-		/**
-		 * Compare the two checked historical runs.
-		 */
-		handleCompareDualHistory: function (e) {
-			e.preventDefault();
-			var $checked = $('.aips-stress-history-checkbox:checked');
-			if ($checked.length !== 2) {
-				return;
-			}
-
-			var idA = parseInt($checked.eq(1).val(), 10); // earlier
-			var idB = parseInt($checked.eq(0).val(), 10); // later
-
-			this.fetchAndShowDiff(idA, idB);
-		},
-
-		/**
-		 * View single run details.
-		 */
-		handleViewRunDetails: function (e) {
-			e.preventDefault();
-			var historyId = $(e.currentTarget).data('history-id');
-			if (!historyId) {
-				return;
-			}
-
-			var self = this;
-			this.openDiffModal();
-			var spinnerHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-spinner'))
-				? AIPS.Templates.render('aips-tmpl-stress-spinner', {})
-				: '<div class="aips-spinner" style="text-align:center;padding:32px;"><span class="dashicons dashicons-update" style="animation:spin 1s infinite linear;font-size:28px;"></span></div>';
-			$('#aips-stress-diff-body').html(spinnerHtml);
-
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_stress_test_get_run',
-					nonce: settings.nonce,
-					history_id: historyId
-				}
-			}).done(function (res) {
-				if (res && res.success && res.data && res.data.run) {
-					self.renderSingleRunModal(res.data.run);
-				} else {
-					var msg = res.data ? res.data.message : 'Error loading run.';
-					var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-						? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: msg })
-						: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + msg + '</p></div>';
-					$('#aips-stress-diff-body').html(noticeHtml);
-				}
-			}).fail(function () {
-				var failMsg = t('requestFailed', 'Request failed.');
-				var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-					? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: failMsg })
-					: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + failMsg + '</p></div>';
-				$('#aips-stress-diff-body').html(noticeHtml);
-			});
-		},
-
-		/**
-		 * Fetch diff between two runs and render modal.
-		 */
-		fetchAndShowDiff: function (runAId, runBId) {
-			var self = this;
-			this.openDiffModal();
-			var spinnerHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-spinner'))
-				? AIPS.Templates.render('aips-tmpl-stress-spinner', {})
-				: '<div class="aips-spinner" style="text-align:center;padding:32px;"><span class="dashicons dashicons-update" style="animation:spin 1s infinite linear;font-size:28px;"></span></div>';
-			$('#aips-stress-diff-body').html(spinnerHtml);
-
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_stress_test_diff_runs',
-					nonce: settings.nonce,
-					run_a_id: runAId,
-					run_b_id: runBId
-				}
-			}).done(function (res) {
-				if (res && res.success && res.data && res.data.diff) {
-					self.renderDiffModal(res.data.diff);
-				} else {
-					var msg = res.data ? res.data.message : 'Error calculating diff.';
-					var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-						? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: msg })
-						: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + msg + '</p></div>';
-					$('#aips-stress-diff-body').html(noticeHtml);
-				}
-			}).fail(function () {
-				var failMsg = t('requestFailed', 'Request failed.');
-				var noticeHtml = (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-notice'))
-					? AIPS.Templates.render('aips-tmpl-stress-notice', { type: 'danger', message: failMsg })
-					: '<div class="aips-stress-notice aips-stress-notice-danger"><p>' + failMsg + '</p></div>';
-				$('#aips-stress-diff-body').html(noticeHtml);
-			});
-		},
-
-		openDiffModal: function () {
-			$('#aips-stress-diff-modal').removeAttr('hidden').css('display', 'flex');
-			$('body').addClass('modal-open');
-		},
-
-		closeDiffModal: function () {
-			$('#aips-stress-diff-modal').attr('hidden', true).css('display', 'none');
-			$('body').removeClass('modal-open');
-		},
-
-		/**
-		 * Render comparative diff modal view using AIPS.Templates.
-		 */
-		renderDiffModal: function (diff) {
-			var runA = diff.run_a;
-			var runB = diff.run_b;
-			var caseDiffs = diff.case_diffs || [];
-			var totalsDiff = diff.totals_diff || {};
-
-			var durDiff = totalsDiff.duration_diff || 0;
-			var durBadge = durDiff < 0
-				? '<span class="aips-stress-diff-delta-faster">(' + (durDiff / 1000).toFixed(2) + ' s faster)</span>'
-				: (durDiff > 0 ? '<span class="aips-stress-diff-delta-slower">(+' + (durDiff / 1000).toFixed(2) + ' s slower)</span>' : '');
-
-			var rowsHtml = '';
-			caseDiffs.forEach(function (c) {
-				var changeClass = c.status_change === 'regressed' ? 'aips-stress-diff-change-regressed' : (c.status_change === 'improved' ? 'aips-stress-diff-change-improved' : '');
-				var deltaBadge = c.duration_diff < 0
-					? '<span class="aips-stress-diff-delta-faster">' + c.duration_diff + ' ms</span>'
-					: (c.duration_diff > 0 ? '<span class="aips-stress-diff-delta-slower">+' + c.duration_diff + ' ms</span>' : '0 ms');
-
-				var changeLabel = c.status_change === 'regressed'
-					? '<span class="aips-badge aips-badge-error">Regressed</span>'
-					: (c.status_change === 'improved' ? '<span class="aips-badge aips-badge-success">Improved</span>' : '<span class="aips-badge aips-badge-neutral">Unchanged</span>');
-
-				if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-diff-row')) {
-					rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-stress-diff-row', {
-						changeClass: changeClass,
-						label: AIPS.Templates.escape(c.label || c.case),
-						summary: AIPS.Templates.escape(c.summary_b || c.summary_a || ''),
-						statusA: AIPS.Templates.escape(c.status_a),
-						statusABadgeClass: c.status_a === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
-						durationA: c.duration_a,
-						statusB: AIPS.Templates.escape(c.status_b),
-						statusBBadgeClass: c.status_b === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
-						durationB: c.duration_b,
-						deltaBadgeHtml: deltaBadge,
-						changeBadgeHtml: changeLabel
-					});
-				} else {
-					rowsHtml += '<tr class="' + changeClass + '">' +
-						'<td><strong>' + (c.label || c.case) + '</strong><div style="font-size:11px;color:#64748b;">' + (c.summary_b || c.summary_a) + '</div></td>' +
-						'<td><span class="aips-badge ' + (c.status_a === 'passed' ? 'aips-badge-success' : 'aips-badge-error') + '">' + c.status_a + '</span> (' + c.duration_a + ' ms)</td>' +
-						'<td><span class="aips-badge ' + (c.status_b === 'passed' ? 'aips-badge-success' : 'aips-badge-error') + '">' + c.status_b + '</span> (' + c.duration_b + ' ms)</td>' +
-						'<td>' + deltaBadge + '</td>' +
-						'<td>' + changeLabel + '</td>' +
-					'</tr>';
-				}
-			});
-
-			if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-diff-modal')) {
-				var modalHtml = AIPS.Templates.renderRaw('aips-tmpl-stress-diff-modal', {
-					runAId: runA.id,
-					runAStatus: AIPS.Templates.escape(runA.status),
-					runABadgeClass: runA.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
-					runADate: AIPS.Templates.escape(runA.formatted_date),
-					runAProvider: AIPS.Templates.escape(runA.environment.provider || 'Default'),
-					runAModel: AIPS.Templates.escape(runA.environment.model || 'Default Model'),
-					runAPassed: runA.totals.passed || 0,
-					runATotal: runA.totals.cases || 0,
-					runADuration: ((runA.totals.duration_ms || 0) / 1000).toFixed(2) + ' s',
-
-					runBId: runB.id,
-					runBStatus: AIPS.Templates.escape(runB.status),
-					runBBadgeClass: runB.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
-					runBDate: AIPS.Templates.escape(runB.formatted_date),
-					runBProvider: AIPS.Templates.escape(runB.environment.provider || 'Default'),
-					runBModel: AIPS.Templates.escape(runB.environment.model || 'Default Model'),
-					runBPassed: runB.totals.passed || 0,
-					runBTotal: runB.totals.cases || 0,
-					runBDuration: ((runB.totals.duration_ms || 0) / 1000).toFixed(2) + ' s',
-					durBadgeHtml: durBadge,
-					rowsHtml: rowsHtml
-				});
-				$('#aips-stress-diff-body').html(modalHtml);
-			} else {
-				var fallbackHtml = '<div class="aips-stress-diff-meta-grid">' +
-					'<div class="aips-stress-diff-card">' +
-						'<h4>Base Run (# ' + runA.id + ') <span class="aips-badge ' + (runA.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning') + '">' + runA.status + '</span></h4>' +
-						'<div class="aips-stress-diff-meta-list">' +
-							'<div><strong>Date:</strong> ' + runA.formatted_date + '</div>' +
-							'<div><strong>Provider:</strong> ' + (runA.environment.provider || 'Default') + ' (' + (runA.environment.model || 'Default Model') + ')</div>' +
-							'<div><strong>Passed:</strong> ' + (runA.totals.passed || 0) + ' / ' + (runA.totals.cases || 0) + ' cases</div>' +
-							'<div><strong>Total Duration:</strong> ' + ((runA.totals.duration_ms || 0) / 1000).toFixed(2) + ' s</div>' +
-						'</div>' +
-					'</div>' +
-					'<div class="aips-stress-diff-card">' +
-						'<h4>Target / Comparison Run (# ' + runB.id + ') <span class="aips-badge ' + (runB.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning') + '">' + runB.status + '</span></h4>' +
-						'<div class="aips-stress-diff-meta-list">' +
-							'<div><strong>Date:</strong> ' + runB.formatted_date + '</div>' +
-							'<div><strong>Provider:</strong> ' + (runB.environment.provider || 'Default') + ' (' + (runB.environment.model || 'Default Model') + ')</div>' +
-							'<div><strong>Passed:</strong> ' + (runB.totals.passed || 0) + ' / ' + (runB.totals.cases || 0) + ' cases</div>' +
-							'<div><strong>Total Duration:</strong> ' + ((runB.totals.duration_ms || 0) / 1000).toFixed(2) + ' s ' + durBadge + '</div>' +
-						'</div>' +
-					'</div>' +
-				'</div>';
-
-				fallbackHtml += '<table class="aips-stress-diff-table">' +
-					'<thead>' +
-						'<tr>' +
-							'<th>Test Case</th>' +
-							'<th>Base Run Status</th>' +
-							'<th>Target Run Status</th>' +
-							'<th>Duration Diff</th>' +
-							'<th>Outcome Delta</th>' +
-						'</tr>' +
-					'</thead>' +
-					'<tbody>' + rowsHtml + '</tbody></table>';
-
-				$('#aips-stress-diff-body').html(fallbackHtml);
-			}
-		},
-
-		/**
-		 * Render single run modal view using AIPS.Templates.
-		 */
-		renderSingleRunModal: function (run) {
-			var results = run.results || [];
-			var rowsHtml = '';
-
-			results.forEach(function (r) {
-				if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-single-run-row')) {
-					rowsHtml += AIPS.Templates.render('aips-tmpl-stress-single-run-row', {
-						label: r.label || r.case,
-						status: r.status,
-						badgeClass: r.status === 'passed' ? 'aips-badge-success' : 'aips-badge-error',
-						duration: r.duration_ms || 0,
-						summary: r.summary || ''
-					});
-				} else {
-					rowsHtml += '<tr>' +
-						'<td><strong>' + (r.label || r.case) + '</strong></td>' +
-						'<td><span class="aips-badge ' + (r.status === 'passed' ? 'aips-badge-success' : 'aips-badge-error') + '">' + r.status + '</span></td>' +
-						'<td>' + (r.duration_ms || 0) + ' ms</td>' +
-						'<td>' + (r.summary || '') + '</td>' +
-					'</tr>';
-				}
-			});
-
-			if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-stress-single-run')) {
-				var modalHtml = AIPS.Templates.renderRaw('aips-tmpl-stress-single-run', {
-					id: run.id,
-					status: AIPS.Templates.escape(run.status),
-					badgeClass: run.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning',
-					date: AIPS.Templates.escape(run.formatted_date),
-					provider: AIPS.Templates.escape(run.environment.provider || 'Default'),
-					model: AIPS.Templates.escape(run.environment.model || 'Default'),
-					passed: run.totals.passed || 0,
-					failed: run.totals.failed || 0,
-					total: run.totals.cases || 0,
-					duration: ((run.totals.duration_ms || 0) / 1000).toFixed(2) + ' s',
-					rowsHtml: rowsHtml
-				});
-				$('#aips-stress-diff-body').html(modalHtml);
-			} else {
-				var fallbackHtml = '<div class="aips-stress-diff-card" style="margin-bottom:16px;">' +
-					'<h4>Stress Test Run #' + run.id + ' <span class="aips-badge ' + (run.status === 'completed' ? 'aips-badge-success' : 'aips-badge-warning') + '">' + run.status + '</span></h4>' +
-					'<div class="aips-stress-diff-meta-list">' +
-						'<div><strong>Timestamp:</strong> ' + run.formatted_date + '</div>' +
-						'<div><strong>Provider:</strong> ' + (run.environment.provider || 'Default') + ' | <strong>Model:</strong> ' + (run.environment.model || 'Default') + '</div>' +
-						'<div><strong>Results:</strong> ' + (run.totals.passed || 0) + ' passed, ' + (run.totals.failed || 0) + ' failed across ' + (run.totals.cases || 0) + ' cases</div>' +
-						'<div><strong>Total Execution Time:</strong> ' + ((run.totals.duration_ms || 0) / 1000).toFixed(2) + ' s</div>' +
-					'</div>' +
-				'</div>';
-
-				fallbackHtml += '<table class="aips-table" style="width:100%;">' +
-					'<thead>' +
-						'<tr>' +
-							'<th>Case</th>' +
-							'<th>Status</th>' +
-							'<th>Duration</th>' +
-							'<th>Summary</th>' +
-						'</tr>' +
-					'</thead>' +
-					'<tbody>' + rowsHtml + '</tbody></table>';
-
-				$('#aips-stress-diff-body').html(fallbackHtml);
-			}
 		}
 	};
 

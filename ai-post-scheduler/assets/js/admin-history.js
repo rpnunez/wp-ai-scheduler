@@ -509,12 +509,6 @@
 		/** @type {string} Actor filter value (cron, manual, etc.) */
 		actorFilter: '',
 
-		/** @type {string} Post type filter value (post, page, or a custom post type slug) */
-		postTypeFilter: '',
-
-		/** @type {string} Correlation ID filter for request tracing */
-		correlationId: '',
-
 		/** @type {string} Date range filter start (YYYY-MM-DD format) */
 		dateFrom: '',
 
@@ -552,8 +546,6 @@
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
-			this.postTypeFilter = $('#aips-filter-post-type').val() || '';
-			this.correlationId = $('#aips-filter-correlation').val() || '';
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
@@ -1399,8 +1391,6 @@
 					search: self.searchQuery,
 					domain: self.domainFilter,
 					actor: self.actorFilter,
-					post_type: self.postTypeFilter,
-					correlation_id: self.correlationId,
 					date_from: self.dateFrom,
 					date_to: self.dateTo,
 					paged: paged
@@ -1511,15 +1501,13 @@
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
-			this.postTypeFilter = $('#aips-filter-post-type').val() || '';
-			this.correlationId = $('#aips-filter-correlation').val() || '';
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery = $('#aips-history-search-input').val() || '';
 
 			// Reflect change in the URL without reloading.
 			var url = new URL(window.location.href);
-			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['post_type', this.postTypeFilter], ['correlation_id', this.correlationId], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
+			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
 				if (entry[1]) {
 					url.searchParams.set(entry[0], entry[1]);
 				} else {
@@ -1563,8 +1551,6 @@
 				['status', this.statusFilter, $('#aips-filter-status option:selected').text()],
 				['domain', this.domainFilter, $('#aips-filter-domain option:selected').text()],
 				['actor', this.actorFilter, $('#aips-filter-actor option:selected').text()],
-				['post_type', this.postTypeFilter, $('#aips-filter-post-type option:selected').text()],
-				['correlation_id', this.correlationId, this.correlationId ? 'Correlation: ' + this.correlationId : ''],
 				['date_from', this.dateFrom, this.dateFrom ? 'From ' + this.dateFrom : ''],
 				['date_to', this.dateTo, this.dateTo ? 'To ' + this.dateTo : ''],
 				['search', this.searchQuery, this.searchQuery ? 'Search: ' + this.searchQuery : '']
@@ -1574,7 +1560,7 @@
 			}).join('');
 			if (html) { html += '<button type="button" class="aips-history-clear-filters">Clear all</button>'; }
 			$('#aips-history-filter-chips').html(html);
-			if (this.domainFilter || this.actorFilter || this.postTypeFilter || this.correlationId || this.dateFrom || this.dateTo) {
+			if (this.domainFilter || this.actorFilter || this.dateFrom || this.dateTo) {
 				$('#aips-history-advanced-filters').prop('hidden', false);
 				$('#aips-history-more-filters').attr('aria-expanded', 'true');
 			}
@@ -1583,14 +1569,14 @@
 		removeFilterChip: function (e) {
 			e.preventDefault();
 			var filter = $(e.currentTarget).data('filter');
-			var selectors = { status: '#aips-filter-status', domain: '#aips-filter-domain', actor: '#aips-filter-actor', post_type: '#aips-filter-post-type', correlation_id: '#aips-filter-correlation', date_from: '#aips-filter-date-from', date_to: '#aips-filter-date-to', search: '#aips-history-search-input' };
+			var selectors = { status: '#aips-filter-status', domain: '#aips-filter-domain', actor: '#aips-filter-actor', date_from: '#aips-filter-date-from', date_to: '#aips-filter-date-to', search: '#aips-history-search-input' };
 			$(selectors[filter]).val('');
 			this.applyFilter();
 		},
 
 		clearAllFilters: function (e) {
 			if (e) { e.preventDefault(); }
-			$('#aips-filter-status, #aips-filter-domain, #aips-filter-actor, #aips-filter-post-type, #aips-filter-correlation, #aips-filter-date-from, #aips-filter-date-to, #aips-history-search-input').val('');
+			$('#aips-filter-status, #aips-filter-domain, #aips-filter-actor, #aips-filter-date-from, #aips-filter-date-to, #aips-history-search-input').val('');
 			this.applyFilter();
 		},
 
@@ -1688,8 +1674,6 @@
 			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
 			form.append($('<input type="hidden" name="domain">').val(this.domainFilter));
 			form.append($('<input type="hidden" name="actor">').val(this.actorFilter));
-			form.append($('<input type="hidden" name="post_type">').val(this.postTypeFilter));
-			form.append($('<input type="hidden" name="correlation_id">').val(this.correlationId));
 			form.append($('<input type="hidden" name="date_from">').val(this.dateFrom));
 			form.append($('<input type="hidden" name="date_to">').val(this.dateTo));
 			$('body').append(form);

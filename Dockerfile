@@ -32,7 +32,8 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Enable Apache modules required for WordPress
 RUN a2enmod rewrite expires headers
 
-# Copy plugin source into image
+# Copy plugin source into image so entrypoint can copy it into the mounted wp-content/plugins
+# Expecting plugin folder in build context at ./ai-post-scheduler
 COPY ai-post-scheduler /plugin-src/ai-post-scheduler
 
 # Copy custom entrypoint and make executable

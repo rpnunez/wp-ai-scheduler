@@ -348,56 +348,6 @@ class AIPS_Authors_Repository {
 	}
 
 	/**
-	 * Update only topic generation last run for an author.
-	 *
-	 * @param int      $author_id Author ID.
-	 * @param int|null $last_run  Optional timestamp. Defaults to now.
-	 * @return int|false The number of rows updated, or false on error.
-	 */
-	public function update_topic_generation_last_run($author_id, $last_run = null) {
-		$last_run = is_numeric($last_run) && (int) $last_run > 0 ? (int) $last_run : AIPS_DateTime::now()->timestamp();
-		$result = $this->wpdb->update(
-			$this->table_name,
-			array(
-				'topic_generation_last_run' => $last_run,
-				'updated_at'                => AIPS_DateTime::now()->timestamp(),
-			),
-			array('id' => absint($author_id)),
-			array('%d', '%d'),
-			array('%d')
-		);
-		if ( $result !== false ) {
-			$this->invalidate_author_cache( $author_id, 'author_topic_generation_last_run_updated' );
-		}
-		return $result;
-	}
-
-	/**
-	 * Update only post generation last run for an author.
-	 *
-	 * @param int      $author_id Author ID.
-	 * @param int|null $last_run  Optional timestamp. Defaults to now.
-	 * @return int|false The number of rows updated, or false on error.
-	 */
-	public function update_post_generation_last_run($author_id, $last_run = null) {
-		$last_run = is_numeric($last_run) && (int) $last_run > 0 ? (int) $last_run : AIPS_DateTime::now()->timestamp();
-		$result = $this->wpdb->update(
-			$this->table_name,
-			array(
-				'post_generation_last_run' => $last_run,
-				'updated_at'               => AIPS_DateTime::now()->timestamp(),
-			),
-			array('id' => absint($author_id)),
-			array('%d', '%d'),
-			array('%d')
-		);
-		if ( $result !== false ) {
-			$this->invalidate_author_cache( $author_id, 'author_post_generation_last_run_updated' );
-		}
-		return $result;
-	}
-
-	/**
 	 * Return the repository cache group for author reads.
 	 *
 	 * @return string

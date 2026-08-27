@@ -10,21 +10,17 @@
 **PR:** 🎨 Palette: Add aria-label to remove post button in taxonomy
 **Learning:** Missing aria-labels on icon-only buttons (like `&times;`) degrades screen reader accessibility.
 **Action:** Always ensure icon-only buttons have an `aria-label` attribute describing their function for assistive technologies.
-## 2024-11-22 - Data Table Checkboxes Accessibility
-**Area:** Authors and Author Topics Admin Templates (`templates/admin/authors.php`, `templates/admin/author-topics.php`)
+
+## 2026-08-15 - Accessibility Fix for Dashicons
+**Area:** Partial Generations Template (`templates/admin/tab-partial-generations.php`)
 **Status:** opened PR
-**PR:** 🎨 Palette: Add aria-label to data table checkboxes in Authors templates
-**Learning:** Checkboxes in JS-rendered templates (like Handlebars `{{}}`) require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element.
-**Action:** Always ensure that dynamically generated checkboxes in data tables have an `aria-label` attached for assistive technologies.
-## 2024-11-23 - Decorative Dashicon Accessibility
-**Area:** History Template (`templates/admin/history.php`)
+**PR:** 🎨 Palette: Add aria-hidden to decorative dashicons in partial generations
+**Learning:** Decorative dashicons (like filter, search) without `aria-hidden="true"` can be unnecessarily announced by screen readers, creating noise.
+**Action:** Always ensure decorative dashicons have the `aria-hidden="true"` attribute.
+
+## 2026-08-26 - Add aria-hidden to remaining decorative Dashicons in Partial Generations
+**Area:** Admin Partial Generations Tab (`templates/admin/tab-partial-generations.php`)
 **Status:** opened PR
-**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in History template
-**Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons), confusing users.
-**Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
-## 2026-08-26 - Add aria-label to taxonomy table row checkbox
-**Area:** Taxonomy page (`templates/admin/taxonomy.php`)
-**Status:** opened PR
-**PR:** 🎨 Palette: Add aria-label to taxonomy row checkbox
-**Learning:** Row checkboxes inside data tables must have explicit `aria-label` attributes to define what they are selecting. The `aips-tmpl-taxonomy-row` JS template lacked this.
-**Action:** When creating JS template rows containing check columns, always add `aria-label` mapped to the relevant select action.
+**PR:** 🎨 Palette: Fix decorative dashicons aria-hidden in partial generations template
+**Learning:** Decorative Dashicons inside buttons and actions without explicit `aria-hidden="true"` cause screen reader noise.
+**Action:** Always add `aria-hidden="true"` to all decorative Dashicons embedded in button text or action menus.

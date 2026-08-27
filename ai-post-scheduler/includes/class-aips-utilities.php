@@ -67,40 +67,4 @@ class AIPS_Utilities {
 
 		return $sanitized;
 	}
-
-	/**
-	 * List public, non-attachment post types selectable in admin UIs (native
-	 * WordPress types plus any custom post type registered by a plugin, e.g.
-	 * ACF-based CPTs), with taxonomy-support flags for the built-in
-	 * category/tag taxonomies.
-	 *
-	 * @return array<string, array{label: string, supports_category: bool, supports_post_tag: bool}>
-	 */
-	public static function get_selectable_post_types() {
-		$post_types = get_post_types(array('public' => true), 'objects');
-		unset($post_types['attachment']);
-
-		$result = array();
-		foreach ($post_types as $post_type => $post_type_obj) {
-			$result[$post_type] = array(
-				'label'              => $post_type_obj->labels->singular_name,
-				'supports_category'  => post_type_supports($post_type, 'category'),
-				'supports_post_tag'  => post_type_supports($post_type, 'post_tag'),
-			);
-		}
-
-		return $result;
-	}
-
-	/**
-	 * Whether a post type is a valid, selectable target (public, registered,
-	 * not the internal 'attachment' type).
-	 *
-	 * @param string $post_type Post type key.
-	 * @return bool
-	 */
-	public static function is_selectable_post_type($post_type) {
-		$post_type_obj = get_post_type_object($post_type);
-		return $post_type_obj && !empty($post_type_obj->public) && 'attachment' !== $post_type;
-	}
 }
