@@ -23,6 +23,10 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
             'Doctrine\\Instantiator\\' => 22,
             'DeepCopy\\' => 9,
         ),
+        'A' =>
+        array (
+            'AIPS\\' => 5,
+        ),
     );
 
     public static $prefixDirsPsr4 = array (
@@ -38,9 +42,51 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
         ),
+        'AIPS\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/src',
+        ),
     );
 
     public static $classMap = array (
+        'AIPS\\AI\\AIService' => __DIR__ . '/../..' . '/src/AI/AIService.php',
+        'AIPS\\AI\\AIServiceInterface' => __DIR__ . '/../..' . '/src/AI/AIServiceInterface.php',
+        'AIPS\\Cache\\Cache' => __DIR__ . '/../..' . '/src/Cache/Cache.php',
+        'AIPS\\Cache\\CacheDriverInterface' => __DIR__ . '/../..' . '/src/Cache/CacheDriverInterface.php',
+        'AIPS\\Cache\\CacheFactory' => __DIR__ . '/../..' . '/src/Cache/CacheFactory.php',
+        'AIPS\\Cache\\CacheIndex' => __DIR__ . '/../..' . '/src/Cache/CacheIndex.php',
+        'AIPS\\Cache\\CacheInvalidationBus' => __DIR__ . '/../..' . '/src/Cache/CacheInvalidationBus.php',
+        'AIPS\\Cache\\CacheMonitorableDriverInterface' => __DIR__ . '/../..' . '/src/Cache/CacheMonitorableDriverInterface.php',
+        'AIPS\\Cache\\CachePolicy' => __DIR__ . '/../..' . '/src/Cache/CachePolicy.php',
+        'AIPS\\Cache\\CacheableRepositoryTrait' => __DIR__ . '/../..' . '/src/Cache/CacheableRepositoryTrait.php',
+        'AIPS\\Cache\\Drivers\\ArrayDriver' => __DIR__ . '/../..' . '/src/Cache/Drivers/ArrayDriver.php',
+        'AIPS\\Cache\\Drivers\\DBDriver' => __DIR__ . '/../..' . '/src/Cache/Drivers/DBDriver.php',
+        'AIPS\\Cache\\Drivers\\WPObjectCacheDriver' => __DIR__ . '/../..' . '/src/Cache/Drivers/WPObjectCacheDriver.php',
+        'AIPS\\Cache\\RepositoryCacheConfig' => __DIR__ . '/../..' . '/src/Cache/RepositoryCacheConfig.php',
+        'AIPS\\Cache\\RepositoryCacheDependencies' => __DIR__ . '/../..' . '/src/Cache/RepositoryCacheDependencies.php',
+        'AIPS\\Cache\\RepositoryCacheKeyBuilder' => __DIR__ . '/../..' . '/src/Cache/RepositoryCacheKeyBuilder.php',
+        'AIPS\\Cache\\RepositoryCacheObserver' => __DIR__ . '/../..' . '/src/Cache/RepositoryCacheObserver.php',
+        'AIPS\\Campaigns\\CampaignsController' => __DIR__ . '/../..' . '/src/Campaigns/CampaignsController.php',
+        'AIPS\\Campaigns\\CampaignsRepository' => __DIR__ . '/../..' . '/src/Campaigns/CampaignsRepository.php',
+        'AIPS\\Core\\Autoloader' => __DIR__ . '/../..' . '/src/Core/Autoloader.php',
+        'AIPS\\Core\\Config' => __DIR__ . '/../..' . '/src/Core/Config.php',
+        'AIPS\\Core\\Container' => __DIR__ . '/../..' . '/src/Core/Container.php',
+        'AIPS\\Core\\CorrelationID' => __DIR__ . '/../..' . '/src/Core/CorrelationID.php',
+        'AIPS\\Core\\DateTime' => __DIR__ . '/../..' . '/src/Core/DateTime.php',
+        'AIPS\\Core\\ErrorHandler' => __DIR__ . '/../..' . '/src/Core/ErrorHandler.php',
+        'AIPS\\Core\\Logger' => __DIR__ . '/../..' . '/src/Core/Logger.php',
+        'AIPS\\Core\\LoggerInterface' => __DIR__ . '/../..' . '/src/Core/LoggerInterface.php',
+        'AIPS\\Core\\SiteContext' => __DIR__ . '/../..' . '/src/Core/SiteContext.php',
+        'AIPS\\Core\\Utilities' => __DIR__ . '/../..' . '/src/Core/Utilities.php',
+        'AIPS\\DB\\DBManager' => __DIR__ . '/../..' . '/src/DB/DBManager.php',
+        'AIPS\\DB\\DBMigrations' => __DIR__ . '/../..' . '/src/DB/DBMigrations.php',
+        'AIPS\\DB\\DateTimeDBRepair' => __DIR__ . '/../..' . '/src/DB/DateTimeDBRepair.php',
+        'AIPS\\DB\\SeederService' => __DIR__ . '/../..' . '/src/DB/SeederService.php',
+        'AIPS\\DB\\Upgrades' => __DIR__ . '/../..' . '/src/DB/Upgrades.php',
+        'AIPS\\Routing\\AJAXRegistry' => __DIR__ . '/../..' . '/src/Routing/AJAXRegistry.php',
+        'AIPS\\Routing\\AJAXResponse' => __DIR__ . '/../..' . '/src/Routing/AJAXResponse.php',
+        'AIPS\\Taxonomy\\TaxonomyController' => __DIR__ . '/../..' . '/src/Taxonomy/TaxonomyController.php',
+        'AIPS\\Taxonomy\\TaxonomyRepository' => __DIR__ . '/../..' . '/src/Taxonomy/TaxonomyRepository.php',
         'AIPS_AI_Assistance_Controller' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-controller.php',
         'AIPS_AI_Assistance_Repository' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-repository.php',
         'AIPS_AI_Assistance_Service' => __DIR__ . '/../..' . '/includes/class-aips-ai-assistance-service.php',
