@@ -47,12 +47,12 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id' => $this->test_template_id,
 				'title' => 'Test Schedule',
 				'frequency' => 'daily',
-				'next_run' => current_time('mysql'),
+				'next_run' => time(),
 				'is_active' => 1,
 				'status' => 'active',
-				'created_at' => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS),
+				'created_at' => time() - HOUR_IN_SECONDS,
 			),
-			array('%d', '%s', '%s', '%s', '%d', '%s', '%s')
+			array('%d', '%s', '%s', '%d', '%d', '%s', '%d')
 		);
 
 		$this->test_schedule_id = $wpdb->insert_id;
@@ -74,9 +74,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'generated_content' => 'Test content ' . $i . ' with more details',
 					'prompt' => 'Test prompt ' . $i . ' with full context',
 					'error_message' => null,
-					'created_at' => current_time('mysql'),
+					'created_at' => time(),
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
 			);
 			$this->test_history_ids[] = $wpdb->insert_id;
 		}
@@ -347,6 +347,15 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$today     = gmdate('Y-m-d');
 		$yesterday = gmdate('Y-m-d', time() - DAY_IN_SECONDS);
 
+		// created_at is a bigint unix timestamp, so anchor each bucket to a
+		// concrete time inside its own UTC day rather than a datetime string.
+		// The setUp fixture already writes history rows dated now, so assert on
+		// the delta this test contributes rather than on absolute bucket totals.
+		$baseline = $this->repository->get_daily_generation_counts(14);
+
+		$today_ts     = strtotime($today . ' 10:00:00 UTC');
+		$yesterday_ts = strtotime($yesterday . ' 08:00:00 UTC');
+
 		// Today: 2 completed + 1 failed.
 		foreach ( array( 'completed', 'completed', 'failed' ) as $status ) {
 			$wpdb->insert(
@@ -359,9 +368,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'generated_content'=> '',
 					'prompt'           => '',
 					'error_message'    => null,
-					'created_at'       => $today . ' 10:00:00',
+					'created_at'       => $today_ts,
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -377,9 +386,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'generated_content'=> '',
 				'prompt'           => '',
 				'error_message'    => null,
-				'created_at'       => $yesterday . ' 08:00:00',
+				'created_at'       => $yesterday_ts,
 			),
-			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
 		);
 		$extra_ids[] = $wpdb->insert_id;
 
@@ -387,13 +396,17 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 
 		// Today's bucket must contain the correct values.
 		$this->assertArrayHasKey($today, $result, 'Today should have a bucket in the result.' );
-		$this->assertSame(2, $result[$today]['completed'], 'Expected 2 completed today.' );
-		$this->assertSame(1, $result[$today]['failed'],    'Expected 1 failed today.' );
+		$base_today_completed = isset($baseline[$today]['completed']) ? $baseline[$today]['completed'] : 0;
+		$base_today_failed    = isset($baseline[$today]['failed'])    ? $baseline[$today]['failed']    : 0;
+		$this->assertSame(2, $result[$today]['completed'] - $base_today_completed, 'Expected 2 further completed today.' );
+		$this->assertSame(1, $result[$today]['failed'] - $base_today_failed,       'Expected 1 further failed today.' );
 
 		// Yesterday's bucket must be present.
 		$this->assertArrayHasKey($yesterday, $result, 'Yesterday should have a bucket in the result.' );
-		$this->assertSame(1, $result[$yesterday]['completed'], 'Expected 1 completed yesterday.' );
-		$this->assertSame(0, $result[$yesterday]['failed'],    'Expected 0 failed yesterday.' );
+		$base_yday_completed = isset($baseline[$yesterday]['completed']) ? $baseline[$yesterday]['completed'] : 0;
+		$base_yday_failed    = isset($baseline[$yesterday]['failed'])    ? $baseline[$yesterday]['failed']    : 0;
+		$this->assertSame(1, $result[$yesterday]['completed'] - $base_yday_completed, 'Expected 1 further completed yesterday.' );
+		$this->assertSame(0, $result[$yesterday]['failed'] - $base_yday_failed,       'Expected 0 further failed yesterday.' );
 
 		// A date outside the window must not appear.
 		$out_of_range = gmdate('Y-m-d', time() - 30 * DAY_IN_SECONDS);
