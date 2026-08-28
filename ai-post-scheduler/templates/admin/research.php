@@ -441,7 +441,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <table class="aips-table aips-research-table">
             <thead>
                 <tr>
-                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics"></th>
+                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
                     <th scope="col"><?php esc_html_e('Topic', 'ai-post-scheduler'); ?></th>
                     <th scope="col"><?php esc_html_e('Score', 'ai-post-scheduler'); ?></th>
                     <th scope="col"><?php esc_html_e('Niche', 'ai-post-scheduler'); ?></th>
@@ -457,7 +457,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
 
     <script type="text/html" id="aips-tmpl-research-topics-row">
         <tr>
-            <td><input type="checkbox" class="topic-checkbox" value="{{id}}"></td>
+            <td><input type="checkbox" class="topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></td>
             <td>
                 <strong>{{topic}}</strong>
                 {{status_chip_html}}

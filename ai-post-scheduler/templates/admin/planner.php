@@ -134,7 +134,7 @@ $default_planner_frequency = 'daily';
 
 <script type="text/html" id="aips-tmpl-planner-topic-item">
 <div class="topic-item">
-    <input type="checkbox" class="topic-checkbox" checked>
+    <input type="checkbox" class="topic-checkbox" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>" checked>
     <input type="text" class="topic-text-input" value="{{topic}}" aria-label="<?php esc_attr_e('Edit topic title', 'ai-post-scheduler'); ?>">
     <button type="button" class="aips-remove-topic-btn" aria-label="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Remove Topic', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss"></span></button>
 </div>
