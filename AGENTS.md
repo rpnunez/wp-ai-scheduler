@@ -2,10 +2,10 @@
 
 ## Canonical project context
 - This file is the canonical cross-agent instruction source; keep tool-specific files brief and link here instead of duplicating it.
-- Project: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
+- Project: WordPress plugin for scheduling and generating AI-written posts. Supports native WordPress AI connectors and optional connector plugins (e.g., Meow Apps AI Engine).
 - Plugin app root: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
 - Bootstrap/version source: `ai-post-scheduler/ai-post-scheduler.php`.
-- Current plugin version: **2.9.1** (`Version:` header and `AIPS_VERSION`).
+- Current plugin version: **3.4.1** (`Version:` header and `AIPS_VERSION`).
 - Runtime targets: PHP 8.2+ and WordPress 5.8+.
 
 ## Key paths
@@ -46,7 +46,7 @@
 - Sanitize request data with WordPress helpers.
 - Parse AJAX boolean parameters using `filter_var($val, FILTER_VALIDATE_BOOLEAN)` (jQuery transmits `"false"` as a string).
 - Use `AIPS_Ajax_Response` for consistent AJAX JSON responses.
-- Handle missing Meow Apps AI Engine dependency gracefully.
+- Handle missing AI connector dependencies gracefully (supports native WordPress AI and optional connectors such as Meow Apps AI Engine).
 
 ## Testing policy
 - No local unit tests by default: do not run `composer test`, PHPUnit, or test setup commands unless the user explicitly asks or the task requires it.

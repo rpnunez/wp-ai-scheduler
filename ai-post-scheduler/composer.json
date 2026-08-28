@@ -1,6 +1,6 @@
 {
   "name": "rpnunez/wp-ai-scheduler",
-  "description": "AI Post Scheduler - Schedule AI-generated posts using Meow Apps AI Engine",
+  "description": "AI Post Scheduler - Schedule AI-generated posts with native WordPress AI connectors and optional provider adapters (e.g., Meow Apps AI Engine)",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "authors": [

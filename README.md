@@ -1,6 +1,6 @@
 # AI Post Scheduler
 
-AI Post Scheduler is a WordPress plugin that automates editorial workflows with AI-generated content. It integrates with Meow Apps AI Engine to create, schedule, review, and monitor posts through a WordPress admin interface.
+AI Post Scheduler is a WordPress plugin that automates editorial workflows with AI-generated content. It integrates with WordPress AI connectors (native WordPress AI and optional connector plugins such as Meow Apps AI Engine) to create, schedule, review, and monitor posts through a WordPress admin interface.
 
 ## About
 
@@ -25,8 +25,9 @@ Core goals:
 ## Dependencies
 
 Runtime dependencies:
+
 - WordPress.
-- Meow Apps AI Engine plugin (required for generation).
+- Native WordPress AI plugin support (recommended) and connector plugins such as Meow Apps AI Engine are supported; Meow Apps is optional. See docs/SETUP.md for connector configuration and selection guidance.
 
 Development dependencies:
 - Composer.

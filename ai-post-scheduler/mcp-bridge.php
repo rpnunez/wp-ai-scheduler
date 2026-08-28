@@ -1718,7 +1718,7 @@ class AIPS_MCP_Bridge {
 				'success' => false,
 				'connected' => false,
 				'error' => 'No AI provider is available or configured',
-				'message' => 'Activate the Meow Apps AI Engine plugin or configure a WordPress AI Client connector'
+				'message' => 'Activate or configure a supported AI connector (for example, a WordPress AI Client connector or Meow Apps AI Engine)'
 			);
 		}
 		

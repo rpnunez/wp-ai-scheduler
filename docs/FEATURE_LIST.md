@@ -35,7 +35,7 @@ The generation pipeline produces WordPress posts using AI. It supports both temp
 
 ### Template-Based Generation (`AIPS_Generator`)
 - Generates post title, content, and excerpt from a template prompt
-- Featured image generation via AI (DALL-E / Meow AI Engine) or Unsplash
+- Featured image generation via AI (DALL‑E or configured AI image connector) or Unsplash
 - Template variable processing (see [Content Management](#2-content-management))
 - Retry logic with exponential backoff and circuit breaker for API failures
 
@@ -218,7 +218,7 @@ Visual calendar showing upcoming scheduled generation runs.
 ## 5. AI Integration
 
 ### AI Service Layer (`AIPS_AI_Service`)
-Central orchestration layer between the plugin and Meow Apps AI Engine:
+Central orchestration layer between the plugin and an AI provider/connector (e.g., native WordPress AI or Meow Apps AI Engine):
 
 - Abstracts the `Meow_MWAI_Core` runtime dependency
 - Handles text generation (chat completions) and image generation

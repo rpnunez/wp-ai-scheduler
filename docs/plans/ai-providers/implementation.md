@@ -12,6 +12,8 @@ PRs #1809 and #1815 will be closed in favor of this one.
 
 ## What changed and why
 
+> Note: This refactor introduces a provider abstraction for AI backends. The Meow Apps AI Engine is preserved as an optional provider adapter (AIPS_Meow_AI_Provider). Native WordPress AI connectors are supported via AIPS_WP_AI_Client_Provider. See the provider interface and factory sections below for integration details.
+
 ### 1. AI Provider abstraction layer
 
 **The problem:** `AIPS_AI_Service` was tightly coupled to the Meow Apps AI Engine — it imported the global `$mwai` object directly in every generation method, making it impossible to swap in a different backend without touching the service itself.

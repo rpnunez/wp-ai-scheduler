@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 <div class="wrap aips-wrap">
 	<?php if (empty($ai_provider_available)): ?>
 	<div class="notice notice-error">
-		<p><?php esc_html_e('No AI provider is available. Install the Meow Apps AI Engine plugin or configure a WordPress AI Client connector (WordPress 7.0+).', 'ai-post-scheduler'); ?></p>
+		<p><?php esc_html_e('No AI provider is available. Install or activate a supported AI connector (for example, a WordPress AI Client connector or Meow Apps AI Engine).', 'ai-post-scheduler'); ?></p>
 	</div>
 	<?php endif; ?>
 

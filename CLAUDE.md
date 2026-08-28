@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Note: The project now uses a provider abstraction for AI backends. AIPS supports native WordPress AI connectors and optional provider adapters (for example, Meow Apps AI Engine). See docs/plans/ai-providers/implementation.md and AGENTS.md for the canonical provider abstraction details and adapter list.
+
 ## Canonical references
 
 `AGENTS.md` is the canonical cross-agent instruction source — read it first. This file adds Claude Code-specific orientation and does not duplicate what is already there.

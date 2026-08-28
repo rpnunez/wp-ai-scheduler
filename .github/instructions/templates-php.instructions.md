@@ -4,6 +4,8 @@ applyTo: "templates/**/*.php,ai-post-scheduler/templates/**/*.php"
 
 Use this file for PHP template changes in `templates/**/*.php`.
 
+Note: This repository uses a provider abstraction for AI backends. Prefer provider-agnostic wording in templates and link to [AGENTS.md](../../AGENTS.md) for the canonical provider and adapter details.
+
 - Treat templates as presentation-layer files.
 - Keep business logic, data access, and heavy processing out of templates.
 - Do not place SQL in templates; use repositories/services/controllers to prepare data before rendering.

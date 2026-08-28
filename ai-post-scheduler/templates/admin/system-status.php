@@ -238,7 +238,7 @@ if (!defined('ABSPATH')) {
                                 if (!empty($ai_provider_unavailable_msg)) {
                                     echo esc_html($ai_provider_unavailable_msg);
                                 } else {
-                                    esc_html_e('No AI provider is available. Install the Meow Apps AI Engine plugin or configure a WordPress AI Client connector.', 'ai-post-scheduler');
+                                    esc_html_e('No AI provider is available. Install or activate a supported AI connector (for example, a WordPress AI Client connector or Meow Apps AI Engine).', 'ai-post-scheduler');
                                 }
                                 ?>
                             </p>

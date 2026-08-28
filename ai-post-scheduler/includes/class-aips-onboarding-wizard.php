@@ -354,7 +354,7 @@ class AIPS_Onboarding_Wizard {
 		$this->ajax_guard();
 
 		if (!AIPS_AI_Provider_Factory::has_available_provider()) {
-			AIPS_Ajax_Response::invalid_request(__('No AI provider is available. Activate Meow Apps AI Engine or configure a WordPress AI Client connector before generating topics.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::invalid_request(__('No AI provider is available. Activate or configure a supported AI connector (for example, a WordPress AI Client connector or Meow Apps AI Engine) before generating topics.', 'ai-post-scheduler'));
 		}
 
 		$state = $this->get_state();
@@ -413,7 +413,7 @@ class AIPS_Onboarding_Wizard {
 		$this->ajax_guard();
 
 		if (!AIPS_AI_Provider_Factory::has_available_provider()) {
-			AIPS_Ajax_Response::invalid_request(__('No AI provider is available. Activate Meow Apps AI Engine or configure a WordPress AI Client connector before generating a post.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::invalid_request(__('No AI provider is available. Activate or configure a supported AI connector (for example, a WordPress AI Client connector or Meow Apps AI Engine) before generating a post.', 'ai-post-scheduler'));
 		}
 
 		$state = $this->get_state();

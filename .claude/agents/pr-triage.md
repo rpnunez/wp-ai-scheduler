@@ -6,6 +6,8 @@ tools: [read]
 
 > **Canonical reference:** Read [`AGENTS.md`](../../AGENTS.md) and [`docs/DEVELOPMENT_GUIDELINES.md`](../../docs/DEVELOPMENT_GUIDELINES.md) first. This file adds PR-triage-specific guidance only.
 
+> Note: The project uses a provider abstraction for AI backends. PR triage should treat Meow as an optional adapter and prefer provider-agnostic descriptions of changes; see `AGENTS.md` for details.
+
 ## Workflow
 
 ### 1. Check current open PRs/issues
