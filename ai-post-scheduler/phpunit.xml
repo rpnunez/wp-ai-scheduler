@@ -12,6 +12,7 @@
             <exclude>./tests/bootstrap.php</exclude>
             <exclude>./tests/index.php</exclude>
             <exclude>./tests/test-batch-queue-service.php</exclude>
+            <exclude>./tests/stubs</exclude>
         </testsuite>
     </testsuites>
 

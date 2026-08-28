@@ -36,6 +36,7 @@
 - Prefer `AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`, and `AIPS_Generation_Context_Factory` for generation flows.
 - Use shared/specialized prompt builders rather than ad hoc prompt assembly.
 - Use `AIPS_History_Service`, `AIPS_History_Container`, `AIPS_Generation_Logger`, `AIPS_Logger`, and `AIPS_Correlation_Id` for lifecycle logging and tracing.
+- Schedule background jobs through `AIPS_Job_Scheduler`; never call `wp_schedule_single_event`/`as_schedule_single_action` from controllers, cron handlers, or services. Backend selection (Action Scheduler vs WP-Cron) lives behind `AIPS_Job_Transport_Interface` and is resolved once by `AIPS_Job_Transport_Resolver`. `composer lint:scheduling-boundary` enforces this.
 - Site-wide content strategy settings live in `AIPS_Settings::get_content_strategy_options()`.
 - Localization uses `AIPS_Language_Store` and `AIPS_Admin_L10n`.
 

@@ -50,6 +50,11 @@ class AIPS_Job_Definition {
 	private $correlation_id;
 
 	/**
+	 * @var string Queue group used by backends that support grouping (Action Scheduler).
+	 */
+	private $group;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string $job_type       Job type identifier.
@@ -58,6 +63,7 @@ class AIPS_Job_Definition {
 	 * @param int    $fire_at        Unix timestamp.
 	 * @param array  $metadata       Optional metadata for logging.
 	 * @param string $correlation_id Optional correlation ID.
+	 * @param string $group          Optional queue group (used by grouping-capable backends).
 	 */
 	public function __construct(
 		string $job_type,
@@ -65,7 +71,8 @@ class AIPS_Job_Definition {
 		array $args,
 		int $fire_at,
 		array $metadata = array(),
-		string $correlation_id = ''
+		string $correlation_id = '',
+		string $group = ''
 	) {
 		$this->job_type = $job_type;
 		$this->hook = $hook;
@@ -73,6 +80,7 @@ class AIPS_Job_Definition {
 		$this->fire_at = $fire_at;
 		$this->metadata = $metadata;
 		$this->correlation_id = $correlation_id;
+		$this->group = $group;
 	}
 
 	/**
@@ -130,6 +138,15 @@ class AIPS_Job_Definition {
 	}
 
 	/**
+	 * Get the queue group.
+	 *
+	 * @return string
+	 */
+	public function get_group(): string {
+		return $this->group;
+	}
+
+	/**
 	 * Create a new job definition with modified fire time.
 	 *
 	 * @param int $fire_at New fire timestamp.
@@ -142,7 +159,8 @@ class AIPS_Job_Definition {
 			$this->args,
 			$fire_at,
 			$this->metadata,
-			$this->correlation_id
+			$this->correlation_id,
+			$this->group
 		);
 	}
 

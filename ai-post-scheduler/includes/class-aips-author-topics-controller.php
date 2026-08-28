@@ -825,22 +825,22 @@ class AIPS_Author_Topics_Controller {
 		// Schedule to run in a few seconds
 		$timestamp = time() + 5;
 
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
-		} else {
-			$this->job_scheduler->schedule_simple(
-				'aips_process_author_embeddings',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'author_embeddings',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
+		// Route through the centralized job scheduler; transport selection
+		// (Action Scheduler when available, otherwise WP-Cron) is handled by
+		// infrastructure wiring, not this controller. The callback receives a
+		// single associative $args array under both transports.
+		$this->job_scheduler->schedule_simple(
+			'aips_process_author_embeddings',
+			$timestamp,
+			array($args),
+			array(
+				'job_type'      => 'author_embeddings',
+				'group'         => AIPS_Job_Groups::EMBEDDINGS,
+				'retry_options' => array(
+					'max_attempts' => 3,
+				),
+			)
+		);
 	}
 
 	/**

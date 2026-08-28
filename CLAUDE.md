@@ -122,6 +122,10 @@ Migrations entry point: `AIPS_DB_Migrations::check_and_run()`.
 
 The core content-generation flow uses context objects rather than ad hoc parameters: `AIPS_Template_Context`, `AIPS_Topic_Context`, and `AIPS_Generation_Context` (built by `AIPS_Generation_Context_Factory`). `AIPS_Generator` drives generation; `AIPS_Generation_Logger` + `AIPS_History_Service` + `AIPS_Correlation_Id` provide observability. Prompt assembly goes through shared prompt builders, never string concatenation in callers.
 
+### Background job transports
+
+All background jobs are scheduled through `AIPS_Job_Scheduler` (→ `AIPS_Job_Dispatcher`), which hands the job to a resolved `AIPS_Job_Transport_Interface`. Two transports exist: `AIPS_Action_Scheduler_Transport` (preferred when Action Scheduler is loaded) and `AIPS_WP_Cron_Transport` (always-available fallback). `AIPS_Job_Transport_Resolver` picks one — filterable via `aips_prefer_action_scheduler`. Feature controllers, cron handlers, and services must **never** call `wp_schedule_single_event`/`as_schedule_single_action` directly; `composer lint:scheduling-boundary` (`tools/check-scheduling-boundary.php` + `config/scheduling-boundary-whitelist.txt`) enforces this. Action Scheduler group names live in `AIPS_Job_Groups`. Policy (dedup, retry, correlation, history, logging) stays in the dispatcher; transports only translate a `AIPS_Job_Definition` to their backend and preserve the callback argument shape across both.
+
 ### Bulk/batch jobs
 
 `AIPS_Bulk_Batch_Processor` dispatches `aips_process_bulk_batch` single-event cron slices. Job types (`author_topic_post`, `planner_post`, `trending_topic_post`) are registered as strategies via `$processor->register(type, callable)` in `boot_cron()`. Job state lives in `AIPS_Bulk_Batch_Job_Store`.

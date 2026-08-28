@@ -75,6 +75,11 @@ jobs:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
 
+      - name: Run scheduling boundary lint
+        run: |
+          cd ai-post-scheduler
+          composer run lint:scheduling-boundary
+
       - name: Run PHPCS (WordPress Coding Standards) if installed
         run: |
           cd ai-post-scheduler

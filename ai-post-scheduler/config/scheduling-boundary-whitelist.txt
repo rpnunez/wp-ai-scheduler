@@ -1,0 +1,27 @@
+# Paths (relative to ai-post-scheduler/) allowed to call scheduling backend APIs
+# directly: wp_schedule_single_event, wp_schedule_event, wp_next_scheduled,
+# wp_unschedule_event, wp_clear_scheduled_hook, as_schedule_single_action,
+# as_schedule_recurring_action, as_next_scheduled_action, as_unschedule_action,
+# as_unschedule_all_actions, as_has_scheduled_action.
+#
+# Feature controllers, cron handlers, and services must schedule background jobs
+# through AIPS_Job_Scheduler instead — transport selection (Action Scheduler vs
+# WP-Cron) happens once, in the transport layer. Only infrastructure, bootstrap,
+# and diagnostic code that legitimately inspects or wires the raw scheduler
+# belongs here. Keep this list short; include rationale in PRs for new entries.
+
+# --- Transport layer: the only place background-job backend APIs are called. ---
+includes/job/class-aips-wp-cron-transport.php
+includes/job/class-aips-action-scheduler-transport.php
+
+# --- Infrastructure that registers/repairs recurring plugin cron events. ---
+includes/class-aips-db-manager.php
+includes/class-aips-sources-cron.php
+includes/class-aips-system-diagnostics-service.php
+
+# --- Read-only inspection of recurring/next-run schedule state for display. ---
+includes/class-aips-schedule-controller.php
+
+# --- Diagnostics that intentionally inspect the WordPress cron array. ---
+includes/diagnostics/class-aips-system-diagnostics-scheduler-provider.php
+includes/diagnostics/class-aips-system-diagnostics-logs-provider.php

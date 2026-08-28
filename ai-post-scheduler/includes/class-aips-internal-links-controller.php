@@ -739,21 +739,21 @@ class AIPS_Internal_Links_Controller {
 
 		$timestamp = time() + 5;
 
-		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
-		} else {
-			// Use centralized job scheduler
-			$this->job_scheduler->schedule_simple(
-				'aips_index_posts_batch',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'internal_links_indexing',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
+		// Route through the centralized job scheduler; transport selection
+		// (Action Scheduler when available, otherwise WP-Cron) is handled by
+		// infrastructure wiring, not this controller. The callback receives a
+		// single associative $args array under both transports.
+		$this->job_scheduler->schedule_simple(
+			'aips_index_posts_batch',
+			$timestamp,
+			array($args),
+			array(
+				'job_type'      => 'internal_links_indexing',
+				'group'         => AIPS_Job_Groups::INTERNAL_LINKS,
+				'retry_options' => array(
+					'max_attempts' => 3,
+				),
+			)
+		);
 	}
 }

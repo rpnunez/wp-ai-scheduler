@@ -440,6 +440,17 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_System_Status_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Status_Diagnostics_Service();
         });
+
+        // Register the background-job transport resolver and the resolved
+        // transport. Transport selection (Action Scheduler vs WP-Cron) is a
+        // single infrastructure concern, wired here rather than in features.
+        $container->singleton(AIPS_Job_Transport_Resolver::class, function( $container ) {
+            return new AIPS_Job_Transport_Resolver();
+        });
+
+        $container->singleton(AIPS_Job_Transport_Interface::class, function( $container ) {
+            return $container->make(AIPS_Job_Transport_Resolver::class)->resolve();
+        });
     }
 
     /**

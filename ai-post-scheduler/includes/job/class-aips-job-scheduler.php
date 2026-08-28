@@ -69,6 +69,7 @@ class AIPS_Job_Scheduler {
 	 *     @type string $job_type       Job type identifier (default: 'simple').
 	 *     @type array  $metadata       Metadata for logging.
 	 *     @type string $correlation_id Correlation ID.
+	 *     @type string $group          Queue group for grouping-capable transports (Action Scheduler).
 	 *     @type array  $retry_options  Retry configuration (see AIPS_Job_Dispatcher::dispatch()).
 	 * }
 	 * @return bool True if successfully scheduled.
@@ -85,7 +86,8 @@ class AIPS_Job_Scheduler {
 			$args,
 			$fire_at,
 			isset($options['metadata']) ? $options['metadata'] : array(),
-			isset($options['correlation_id']) ? $options['correlation_id'] : ''
+			isset($options['correlation_id']) ? $options['correlation_id'] : '',
+			isset($options['group']) ? (string) $options['group'] : ''
 		);
 
 		$retry_options = isset($options['retry_options']) ? $options['retry_options'] : array();
@@ -141,6 +143,7 @@ class AIPS_Job_Scheduler {
 		$metadata = isset($options['metadata']) ? $options['metadata'] : array();
 		$correlation_id = isset($options['correlation_id']) ? $options['correlation_id'] : (string) AIPS_Correlation_ID::get();
 		$retry_options = isset($options['retry_options']) ? $options['retry_options'] : array();
+		$group = isset($options['group']) ? (string) $options['group'] : '';
 
 		// Dispatch jobs with staggered timing
 		$scheduled_count = 0;
@@ -157,7 +160,8 @@ class AIPS_Job_Scheduler {
 				$args,
 				$fire_at,
 				array_merge($metadata, array('item_index' => $index)),
-				$correlation_id
+				$correlation_id,
+				$group
 			);
 
 			if ($this->dispatcher->dispatch($job, $retry_options)) {
@@ -247,6 +251,7 @@ class AIPS_Job_Scheduler {
 		$metadata = isset($options['metadata']) ? $options['metadata'] : array();
 		$correlation_id = isset($options['correlation_id']) ? $options['correlation_id'] : (string) AIPS_Correlation_ID::get();
 		$retry_options = isset($options['retry_options']) ? $options['retry_options'] : array();
+		$group = isset($options['group']) ? (string) $options['group'] : '';
 
 		// Calculate slice configuration
 		$slice_config = $this->slicer->calculate_slices($item_count, $slice_options);
@@ -288,7 +293,8 @@ class AIPS_Job_Scheduler {
 					'start_index' => $start_index,
 					'slice_size'  => $this_slice_size,
 				)),
-				$correlation_id
+				$correlation_id,
+				$group
 			);
 
 			if ($this->dispatcher->dispatch($job, $retry_options)) {
