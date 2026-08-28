@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-PLUGIN_DIR="/var/www/html/wp-content/plugins/ai-post-scheduler"
-cd "$PLUGIN_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 TEST_FILES=(
   "tests/Test_AIPS_Embeddings_Repository.php"
@@ -15,14 +15,17 @@ TEST_FILES=(
   "tests/Test_AIPS_DB_Migrations.php"
 )
 
-echo "Running full test validation suite across 8 files..."
+echo "========================================================"
+echo "Running full vector & migration test verification suite"
+echo "========================================================"
+
 for test_file in "${TEST_FILES[@]}"; do
   echo "--------------------------------------------------------"
   echo "Running: $test_file"
   echo "--------------------------------------------------------"
-  bash scripts/run-docker-test.sh "$test_file"
+  bash "$SCRIPT_DIR/run-docker-test.sh" "$test_file"
 done
 
-echo "--------------------------------------------------------"
+echo "========================================================"
 echo "ALL 8 TEST SUITES COMPLETED SUCCESSFULLY!"
-echo "--------------------------------------------------------"
+echo "========================================================"
