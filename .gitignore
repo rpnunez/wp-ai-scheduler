@@ -46,6 +46,7 @@ Thumbs.db
 *.log
 *.tmp
 /tmp/
+pr_report*.html
 node_modules/
 scripts/__pycache__/
 
