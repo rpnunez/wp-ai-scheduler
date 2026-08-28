@@ -386,3 +386,29 @@ Filters the maximum number of similar approved topics used as expanded context w
 *   **Default:** `5`
 *   **Arguments:**
     *   `int $limit` Maximum context topics.
+
+---
+
+## Semantic Embeddings & Related Posts Filters (added in 3.6.5)
+
+### `aips_related_posts_query_args`
+
+Filters query parameters before fetching related posts from `wp_aips_relationships`.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $args`: Array containing `limit`, `min_similarity`, `post_types`.
+    *   `int $post_id`: The source post ID.
+
+---
+
+### `aips_related_posts_html`
+
+Filters the rendered HTML output for the Related Posts block, shortcode, or auto-append content.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: The rendered HTML.
+    *   `int $post_id`: The source post ID.
+    *   `array $posts`: The list of related post arrays.
+
