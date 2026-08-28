@@ -109,6 +109,25 @@ class AIPS_Generated_Posts_Controller {
 			_prime_post_caches(array_unique($history_post_ids), false, true);
 		}
 
+		$template_ids = array();
+		if (!empty($history['items'])) {
+			foreach ($history['items'] as $item) {
+				if ($item->template_id) {
+					$template_ids[] = (int) $item->template_id;
+				}
+			}
+		}
+
+		$schedules_by_template = array();
+		if (!empty($template_ids) && method_exists($this->schedule_repository, 'get_by_template_ids')) {
+			$all_schedules = $this->schedule_repository->get_by_template_ids(array_unique($template_ids));
+			foreach ($all_schedules as $sched) {
+				if (!isset($schedules_by_template[$sched->template_id])) {
+					$schedules_by_template[$sched->template_id] = $sched;
+				}
+			}
+		}
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -124,9 +143,13 @@ class AIPS_Generated_Posts_Controller {
 			// Get most recent schedule for this template (if exists)
 			$schedule = null;
 			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
+				if (method_exists($this->schedule_repository, 'get_by_template_ids')) {
+					$schedule = isset($schedules_by_template[$item->template_id]) ? $schedules_by_template[$item->template_id] : null;
+				} else {
+					$schedules = $this->schedule_repository->get_by_template($item->template_id);
+					// get_by_template returns multiple schedules, get the first one
+					$schedule = !empty($schedules) ? $schedules[0] : null;
+				}
 			}
 			
 			// Format source information

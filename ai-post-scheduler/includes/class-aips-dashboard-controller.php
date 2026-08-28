@@ -105,8 +105,31 @@ class AIPS_Dashboard_Controller {
 		$ai_error_rate_in_period = $ai_calls_in_period > 0 ? round( ( $ai_errors_in_period / $ai_calls_in_period ) * 100, 1 ) : 0.0;
 
 		$date_format = $this->get_cached_date_format();
-		
+
 		$recent_posts = $dashboard_repo->get_recent_posts( $from_ts, $to_ts, 10 );
+
+		$dashboard_post_ids = array();
+		if ( ! empty( $recent_posts ) ) {
+			foreach ( $recent_posts as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		$posts_by_topic = $dashboard_repo->get_posts_by_topic( $from_ts, $to_ts, 10 );
+		if ( ! empty( $posts_by_topic ) ) {
+			foreach ( $posts_by_topic as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		if ( ! empty( $dashboard_post_ids ) && function_exists( '_prime_post_caches' ) ) {
+			_prime_post_caches( array_unique( array_filter( $dashboard_post_ids ) ), false, true );
+		}
+
 		$recent_posts_formatted = array();
 		foreach ( $recent_posts as $item ) {
 			$recent_posts_formatted[] = array(
@@ -359,6 +382,30 @@ class AIPS_Dashboard_Controller {
 		// 4. Detail lists/tables inside range
 		// Generated Posts
 		$recent_posts = $dashboard_repo->get_recent_posts($from_ts, $to_ts, 10);
+
+		$dashboard_render_post_ids = array();
+		if ( ! empty( $recent_posts ) ) {
+			foreach ( $recent_posts as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_render_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		// Pre-fetch posts_by_topic to prime caches together
+		$posts_by_topic = $dashboard_repo->get_posts_by_topic($from_ts, $to_ts, 10);
+		if ( ! empty( $posts_by_topic ) ) {
+			foreach ( $posts_by_topic as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_render_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		if ( ! empty( $dashboard_render_post_ids ) && function_exists( '_prime_post_caches' ) ) {
+			_prime_post_caches( array_unique( array_filter( $dashboard_render_post_ids ) ), false, true );
+		}
+
 		foreach ($recent_posts as $item) {
 			$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
 				$item->created_at,
@@ -375,8 +422,7 @@ class AIPS_Dashboard_Controller {
 			);
 		}
 
-		// Generated Posts via Individual Author Topic
-		$posts_by_topic = $dashboard_repo->get_posts_by_topic($from_ts, $to_ts, 10);
+		// Generated Posts via Individual Author Topic (Already fetched above for cache priming)
 		foreach ($posts_by_topic as $item) {
 			$item->completed_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
 				$item->completed_at,

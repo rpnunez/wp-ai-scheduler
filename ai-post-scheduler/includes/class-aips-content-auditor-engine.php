@@ -200,11 +200,12 @@ class AIPS_Content_Auditor_Engine {
 	public function analyze_cannibalization(array $candidates) {
 		if (empty($candidates)) {
 			return array(
-				'conflicts'       => array(),
-				'conflict_count'  => 0,
-				'status'          => 'clean',
+				'conflict_count' => 0,
+				'conflicts'      => array(),
+				'status'         => 'healthy',
 			);
 		}
+
 
 		$pairs_to_analyze = array_slice($candidates, 0, 10);
 		$pairs_text = '';
