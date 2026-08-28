@@ -54,6 +54,11 @@ class AIPS_Author_Topics_Generator {
 	 * @var AIPS_Feedback_Repository Feedback repository for building quality context
 	 */
 	private $feedback_repository;
+
+	/**
+	 * @var AIPS_Authors_Repository Repository for authors
+	 */
+	private $authors_repository;
 	
 	/**
 	 * @var AIPS_Prompt_Builder_Topic Topic prompt builder.
@@ -71,13 +76,15 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $feedback_repository Feedback repository (optional for testing).
 	 * @param object|null $prompt_builder Topic prompt builder (optional for testing).
 	 * @param object|null $deduplication_service Deduplication service (optional for testing).
+   * @param object|null $authors_repository Authors repository (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
 		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
@@ -152,6 +159,9 @@ class AIPS_Author_Topics_Generator {
 					'author_id' => $author->id
 				));
 			}
+
+			// Always record author's topic generation last run timestamp.
+			$this->authors_repository->update_topic_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
 		} else {
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
 			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');

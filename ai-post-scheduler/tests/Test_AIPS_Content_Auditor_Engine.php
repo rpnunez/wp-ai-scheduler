@@ -219,4 +219,19 @@ class Test_AIPS_Content_Auditor_Engine extends WP_UnitTestCase {
 		$this->assertArrayHasKey('decay', $report['modules']);
 		$this->assertArrayHasKey('links', $report['modules']);
 	}
+
+	public function test_analyze_cannibalization_empty_candidates() {
+		$result = $this->engine->analyze_cannibalization(array());
+		$this->assertSame(0, $result['conflict_count']);
+		$this->assertSame('fresh', $result['health_status']);
+		$this->assertEmpty($result['conflicts']);
+	}
+
+	public function test_analyze_content_decay_empty_inputs() {
+		$result = $this->engine->analyze_content_decay(array(), array());
+		$this->assertSame(0, $result['decay_count']);
+		$this->assertSame(0, $result['thin_count']);
+		$this->assertSame('fresh', $result['health_status']);
+		$this->assertEmpty($result['recommendations']);
+	}
 }

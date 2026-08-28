@@ -194,7 +194,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 
 <script type="text/html" id="aips-tmpl-taxonomy-row">
 <tr data-taxonomy-id="{{id}}" data-taxonomy-type="{{taxonomy_type}}">
-	<th class="check-column"><input type="checkbox" class="aips-taxonomy-checkbox" value="{{id}}"></th>
+	<th class="check-column"><input type="checkbox" class="aips-taxonomy-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select taxonomy', 'ai-post-scheduler'); ?>"></th>
 	<td class="column-name">
 		<span class="taxonomy-name">{{name}}</span>
 	</td>
