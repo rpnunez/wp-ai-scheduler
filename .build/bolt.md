@@ -32,3 +32,10 @@
 **PR:** To be created
 **Learning:** The internal links service looped over suggestion results and called `get_post()` individually to fetch titles for anchor text, resulting in N+1 queries.
 **Action:** When looping over post IDs to call `get_post()`, use `_prime_post_caches(array_unique($post_ids), false, true)` before the loop (with a `function_exists` check) to bulk load the posts.
+
+## 2026-08-23 - [N+1 Schedule Query in Generated Posts]
+**Area:** ai-post-scheduler/includes/class-aips-generated-posts-controller.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Fix N+1 schedule queries in generated posts UI
+**Learning:** The Generated Posts list view queried schedules for each template iteratively. Fetching these via an IN clause prevents N+1 overhead.
+**Action:** When gathering models in loops (like fetching latest schedules for list items), use array_column to aggregate IDs and perform a bulk fetch.
