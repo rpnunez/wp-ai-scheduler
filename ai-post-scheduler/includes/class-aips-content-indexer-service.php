@@ -312,6 +312,9 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$neighbors = $this->embeddings_service->find_nearest_neighbors($source_vector, $candidate_vectors, $top_k);
+		if (!is_array($neighbors)) {
+			$neighbors = array();
+		}
 
 		$targets = array();
 		foreach ($neighbors as $n) {

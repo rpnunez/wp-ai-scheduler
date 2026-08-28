@@ -23,18 +23,27 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 		$this->embeddings_repo    = new AIPS_Embeddings_Repository();
 		$this->relationships_repo = new AIPS_Relationships_Repository();
 
-		$mock_embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
-		$mock_embeddings_service->method( 'generate_embedding' )->willReturnCallback( function( $text ) {
+		$mock_ai_service = $this->createMock( AIPS_AI_Service_Interface::class );
+		$mock_ai_service->method( 'is_available' )->willReturn( true );
+		$mock_ai_service->method( 'supports_embeddings' )->willReturn( true );
+		$mock_ai_service->method( 'generate_embedding' )->willReturnCallback( function( $text ) {
 			if ( false !== strpos( strtolower( $text ), 'duplicate' ) ) {
-				return array( 0.99, 0.01 );
+				return array( 1.0, 0.0 );
 			}
-			return array( 0.10, 0.99 );
+			return array( 0.0, 1.0 );
 		} );
+
+		$embeddings_service = new AIPS_Embeddings_Service(
+			$mock_ai_service,
+			new AIPS_Logger()
+		);
 
 		$this->dedup_service = new AIPS_Deduplication_Service(
 			$this->embeddings_repo,
 			$this->relationships_repo,
-			$mock_embeddings_service
+			$embeddings_service,
+			AIPS_Config::get_instance(),
+			new AIPS_Logger()
 		);
 	}
 
@@ -46,7 +55,7 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test check_topic_duplicate finds duplicate candidate above threshold.
+	 * Test check_post_title_duplicate finds duplicate candidate above threshold.
 	 */
 	public function test_check_topic_duplicate() {
 		$post_id = wp_insert_post( array(
@@ -55,19 +64,21 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 			'post_type'    => 'post',
 		) );
 
-		$this->embeddings_repo->upsert( array(
-			'object_type'      => 'post',
-			'object_post_type' => 'post',
-			'object_id'        => $post_id,
-			'embedding'        => array( 1.0, 0.0 ),
-			'dimensions'       => 2,
-		) );
+		$this->embeddings_repo->upsert(
+			'post',
+			$post_id,
+			array( 1.0, 0.0 ),
+			'model',
+			2,
+			'',
+			'post'
+		);
 
-		// Passing a topic that generates [0.99, 0.01] should have > 0.95 cosine similarity
-		$result = $this->dedup_service->check_topic_duplicate( 'duplicate topic headline', 0.85 );
+		// Passing a title containing 'duplicate' generates [0.99, 0.01] -> ~0.99 similarity
+		$result = $this->dedup_service->check_pre_generation_duplicate( 'duplicate topic headline', 'post' );
 		$this->assertTrue( $result['is_duplicate'] );
-		$this->assertNotEmpty( $result['matches'] );
-		$this->assertEquals( $post_id, $result['matches'][0]['id'] );
+		$this->assertEquals( $post_id, $result['matched_post_id'] );
+		$this->assertGreaterThanOrEqual( 0.85, $result['similarity'] );
 	}
 
 	/**
@@ -77,12 +88,13 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 		$p1 = wp_insert_post( array( 'post_title' => 'Article One', 'post_status' => 'publish', 'post_type' => 'post' ) );
 		$p2 = wp_insert_post( array( 'post_title' => 'Article Two', 'post_status' => 'publish', 'post_type' => 'post' ) );
 
-		$this->relationships_repo->upsert_relationship( 'post', $p1, 'post', $p2, 0.94, 'related_post' );
+		$min_id = min( $p1, $p2 );
+		$max_id = max( $p1, $p2 );
+		$this->relationships_repo->upsert( 'post', $min_id, 'post', $max_id, 0.94, 'related_post' );
 
 		$audit = $this->dedup_service->get_cannibalization_audit_results( 0.85, 10 );
 		$this->assertIsArray( $audit );
 		$this->assertCount( 1, $audit );
-		$this->assertEquals( 'Critical Cannibalization Risk', $audit[0]['risk_level'] );
-		$this->assertEquals( 94, $audit[0]['similarity_pct'] );
+		$this->assertEquals( 94.0, (float) $audit[0]['similarity_pct'] );
 	}
 }

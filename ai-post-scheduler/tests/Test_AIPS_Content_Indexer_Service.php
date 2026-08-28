@@ -23,9 +23,9 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->embeddings_repo    = new AIPS_Embeddings_Repository();
 		$this->relationships_repo = new AIPS_Relationships_Repository();
 
-		// Mock Embeddings Service returning deterministic unit vectors
-		$mock_embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
-		$mock_embeddings_service->method( 'generate_embedding' )->willReturnCallback( function( $text ) {
+		// Mock AI Service returning deterministic unit vectors
+		$mock_ai_service = $this->createMock( AIPS_AI_Service_Interface::class );
+		$mock_ai_service->method( 'generate_embedding' )->willReturnCallback( function( $text ) {
 			if ( false !== strpos( strtolower( $text ), 'alpha' ) ) {
 				return array( 1.0, 0.0 );
 			} elseif ( false !== strpos( strtolower( $text ), 'beta' ) ) {
@@ -34,10 +34,15 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 			return array( 0.7071, 0.7071 );
 		} );
 
+		$embeddings_service = new AIPS_Embeddings_Service(
+			$mock_ai_service,
+			new AIPS_Logger()
+		);
+
 		$this->indexer_service = new AIPS_Content_Indexer_Service(
 			$this->embeddings_repo,
 			$this->relationships_repo,
-			$mock_embeddings_service
+			$embeddings_service
 		);
 	}
 
@@ -64,8 +69,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 
 		$record = $this->embeddings_repo->get_by_post_id( $post_id );
 		$this->assertNotNull( $record );
-		$this->assertEquals( 'post', $record['object_type'] );
-		$this->assertEquals( array( 1.0, 0.0 ), $record['embedding'] );
+		$this->assertEquals( 'post', $record->object_type );
+		$this->assertEquals( array( 1.0, 0.0 ), json_decode( $record->embedding, true ) );
 	}
 
 	/**
@@ -95,13 +100,14 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	 * Test process_indexing_batch.
 	 */
 	public function test_process_indexing_batch() {
-		$p1 = wp_insert_post( array( 'post_title' => 'Alpha 1', 'post_status' => 'publish', 'post_type' => 'post' ) );
-		$p2 = wp_insert_post( array( 'post_title' => 'Beta 2', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		wp_insert_post( array( 'post_title' => 'Alpha 1', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		wp_insert_post( array( 'post_title' => 'Beta 2', 'post_status' => 'publish', 'post_type' => 'post' ) );
 
-		$batch_res = $this->indexer_service->process_indexing_batch( 0, 10 );
+		$batch_res = $this->indexer_service->process_indexing_batch( 10, 0 );
 		$this->assertIsArray( $batch_res );
-		$this->assertArrayHasKey( 'processed_count', $batch_res );
-		$this->assertGreaterThanOrEqual( 2, $batch_res['processed_count'] );
+		$this->assertArrayHasKey( 'success', $batch_res );
+		$this->assertArrayHasKey( 'total_indexed', $batch_res );
+		$this->assertGreaterThanOrEqual( 2, $batch_res['success'] );
 	}
 
 	/**
@@ -113,9 +119,9 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 
 		$status = $this->indexer_service->get_indexing_status();
 		$this->assertIsArray( $status );
-		$this->assertArrayHasKey( 'total_published', $status );
-		$this->assertArrayHasKey( 'total_indexed', $status );
-		$this->assertArrayHasKey( 'pct_complete', $status );
-		$this->assertGreaterThanOrEqual( 2, $status['total_published'] );
+		$this->assertArrayHasKey( 'total_posts', $status );
+		$this->assertArrayHasKey( 'indexed', $status );
+		$this->assertArrayHasKey( 'percent', $status );
+		$this->assertGreaterThanOrEqual( 2, $status['total_posts'] );
 	}
 }

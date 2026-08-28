@@ -36,17 +36,17 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test get_related_posts_for_post returns hydrated published post data.
+	 * Test get_related_posts returns hydrated published post data.
 	 */
 	public function test_get_related_posts_for_post() {
 		$p1 = wp_insert_post( array( 'post_title' => 'Main Guide', 'post_status' => 'publish', 'post_type' => 'post' ) );
 		$p2 = wp_insert_post( array( 'post_title' => 'Related Guide A', 'post_status' => 'publish', 'post_type' => 'post' ) );
 		$p3 = wp_insert_post( array( 'post_title' => 'Related Guide B', 'post_status' => 'publish', 'post_type' => 'post' ) );
 
-		$this->relationships_repo->upsert_relationship( 'post', $p1, 'post', $p2, 0.85, 'related_post' );
-		$this->relationships_repo->upsert_relationship( 'post', $p1, 'post', $p3, 0.75, 'related_post' );
+		$this->relationships_repo->upsert( 'post', $p1, 'post', $p2, 0.85, 'related_post' );
+		$this->relationships_repo->upsert( 'post', $p1, 'post', $p3, 0.75, 'related_post' );
 
-		$related = $this->service->get_related_posts_for_post( $p1, 5, 0.70 );
+		$related = $this->service->get_related_posts( $p1, array( 'count' => 5, 'min_similarity' => 0.70 ) );
 		$this->assertCount( 2, $related );
 		$this->assertEquals( 'Related Guide A', $related[0]['title'] );
 		$this->assertEquals( 0.85, $related[0]['similarity'] );
@@ -60,14 +60,14 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 		$p1 = wp_insert_post( array( 'post_title' => 'Source Article', 'post_status' => 'publish', 'post_type' => 'post' ) );
 		$p2 = wp_insert_post( array( 'post_title' => 'Target Article', 'post_status' => 'publish', 'post_type' => 'post' ) );
 
-		$this->relationships_repo->upsert_relationship( 'post', $p1, 'post', $p2, 0.90, 'related_post' );
+		$this->relationships_repo->upsert( 'post', $p1, 'post', $p2, 0.90, 'related_post' );
 
 		// Grid layout
 		$html_grid = $this->service->render_related_posts_html( $p1, array(
 			'layout'  => 'grid',
 			'heading' => 'You Might Also Like',
 		) );
-		$this->assertStringContainsString( 'aips-related-posts-grid', $html_grid );
+		$this->assertStringContainsString( 'aips-related-grid', $html_grid );
 		$this->assertStringContainsString( 'Target Article', $html_grid );
 		$this->assertStringContainsString( 'You Might Also Like', $html_grid );
 
@@ -76,7 +76,7 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 			'layout'  => 'list',
 			'heading' => 'Further Reading',
 		) );
-		$this->assertStringContainsString( 'aips-related-posts-list', $html_list );
+		$this->assertStringContainsString( 'aips-related-list', $html_list );
 		$this->assertStringContainsString( 'Target Article', $html_list );
 	}
 
