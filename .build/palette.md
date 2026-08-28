@@ -22,3 +22,9 @@
 **PR:** 🎨 Palette: Add aria-label to toggle checkboxes in affiliate links
 **Learning:** Toggle slider checkboxes in admin UIs often lack native labels on the `<input>` element itself.
 **Action:** Always ensure toggle `<input type="checkbox">` elements have an explicit `aria-label` or are wrapped with a text-inclusive `<label>` to remain accessible to screen readers.
+## 2024-08-25 - Add aria-label to cache monitor checkboxes
+**Area:** Cache Monitor (`templates/admin/cache-monitor.php`, `assets/js/cache-monitor.js`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to cache monitor checkboxes
+**Learning:** Data tables and lists sometimes contain generated or standalone checkboxes for bulk actions without `<label>` elements or ARIA labels.
+**Action:** When adding checkboxes for bulk actions, ensure both the header select-all and individual row checkboxes have an explicit localized `aria-label`.
