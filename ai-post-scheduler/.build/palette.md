@@ -28,3 +28,9 @@
 **PR:** 🎨 Palette: Add aria-label to taxonomy row checkbox
 **Learning:** Row checkboxes inside data tables must have explicit `aria-label` attributes to define what they are selecting. The `aips-tmpl-taxonomy-row` JS template lacked this.
 **Action:** When creating JS template rows containing check columns, always add `aria-label` mapped to the relevant select action.
+## 2026-08-28 - Add aria-label to voice search input
+**Area:** Templates wizard (`templates/admin/templates.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add accessible label to voice search input
+**Learning:** Text inputs inside custom components (like the voice selector dropdown) require explicit `<label>` tags for accessibility.
+**Action:** When building custom search inputs, always add an explicit `<label>` tag mapped to the input ID, using the `screen-reader-text` class if it should be visually hidden.
