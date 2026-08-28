@@ -267,9 +267,11 @@ if (!class_exists('AIPS_Test_Stub_AI_Service')) {
 	class AIPS_Test_Stub_AI_Service implements AIPS_AI_Service_Interface {
 		public $next_response = 'stub response';
 		public $next_json_response = array();
+		public $next_embedding = array();
 		public $last_json_prompt = null;
 		public $json_call_count = 0;
 		public $text_call_count = 0;
+		public $embedding_call_count = 0;
 
 		public function is_available() {
 			return true;
@@ -285,6 +287,16 @@ if (!class_exists('AIPS_Test_Stub_AI_Service')) {
 		}
 		public function generate_image($prompt, $options = array()) {
 			return '';
+		}
+		public function generate_embedding($text, $options = array()) {
+			$this->embedding_call_count++;
+			return $this->next_embedding;
+		}
+		public function supports_embeddings() {
+			return false;
+		}
+		public function supports_conversation() {
+			return false;
 		}
 		public function get_call_log() {
 			return array();
