@@ -34,3 +34,9 @@
 **PR:** 🎨 Palette: Add accessible label to voice search input
 **Learning:** Text inputs inside custom components (like the voice selector dropdown) require explicit `<label>` tags for accessibility.
 **Action:** When building custom search inputs, always add an explicit `<label>` tag mapped to the input ID, using the `screen-reader-text` class if it should be visually hidden.
+## 2026-08-28 - Accessibility Fix for Planner and Research Checkboxes
+**Area:** Admin Templates (`templates/admin/planner.php`, `templates/admin/research.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to checkboxes in Planner and Research templates
+**Learning:** Checkboxes in JS-rendered templates or table headers require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element. Do not add `aria-label` if a checkbox is already properly nested inside a descriptive `<label>` tag.
+**Action:** Always ensure checkboxes not wrapped in a descriptive `<label>` have an explicit `aria-label` for screen reader accessibility.
