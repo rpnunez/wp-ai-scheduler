@@ -95,8 +95,21 @@
          */
         renderTopics: function(topics, append) {
             var html = '';
+            var existingTopics = [];
+            if (append) {
+                $('#topics-list .topic-text-input').each(function() {
+                    existingTopics.push($(this).val().trim().toLowerCase());
+                });
+            }
+
             topics.forEach(function(topic) {
-                html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
+                var normalizedTopic = topic.trim().toLowerCase();
+                if (!append || existingTopics.indexOf(normalizedTopic) === -1) {
+                    html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
+                    if (append) {
+                        existingTopics.push(normalizedTopic);
+                    }
+                }
             });
 
             if (append) {
