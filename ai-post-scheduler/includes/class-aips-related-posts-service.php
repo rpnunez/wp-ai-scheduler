@@ -107,6 +107,14 @@ class AIPS_Related_Posts_Service {
 		$related_posts = array();
 		$found_ids     = array();
 
+		$prefetch_ids = array();
+		foreach ($rel_rows as $row) {
+			$prefetch_ids[] = (int) $row->target_id;
+		}
+		if (!empty($prefetch_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($prefetch_ids), false, true);
+		}
+
 		foreach ($rel_rows as $row) {
 			$target_id = (int) $row->target_id;
 			if (in_array($target_id, $parsed_args['exclude_ids'], true)) {
@@ -167,6 +175,14 @@ class AIPS_Related_Posts_Service {
 						$candidate_vecs,
 						$parsed_args['count'] - count($related_posts)
 					);
+
+					$prefetch_nids = array();
+					foreach ($neighbors as $n) {
+						$prefetch_nids[] = (int) $n['id'];
+					}
+					if (!empty($prefetch_nids) && function_exists('_prime_post_caches')) {
+						_prime_post_caches(array_unique($prefetch_nids), false, true);
+					}
 
 					foreach ($neighbors as $n) {
 						if ($n['similarity'] < $parsed_args['min_similarity']) {
@@ -235,6 +251,14 @@ class AIPS_Related_Posts_Service {
 
 		$neighbors = $this->embeddings_service->find_nearest_neighbors($embedding, $candidate_vecs, $limit * 2);
 		$results   = array();
+
+		$prefetch_topic_ids = array();
+		foreach ($neighbors as $n) {
+			$prefetch_topic_ids[] = (int) $n['id'];
+		}
+		if (!empty($prefetch_topic_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($prefetch_topic_ids), false, true);
+		}
 
 		foreach ($neighbors as $n) {
 			if ($n['similarity'] < $min_similarity) {
