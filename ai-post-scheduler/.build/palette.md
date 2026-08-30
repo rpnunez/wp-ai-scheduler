@@ -40,3 +40,9 @@
 **PR:** 🎨 Palette: Add aria-label to checkboxes in Planner and Research templates
 **Learning:** Checkboxes in JS-rendered templates or table headers require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element. Do not add `aria-label` if a checkbox is already properly nested inside a descriptive `<label>` tag.
 **Action:** Always ensure checkboxes not wrapped in a descriptive `<label>` have an explicit `aria-label` for screen reader accessibility.
+## 2024-11-23 - Add aria-hidden to decorative Dashicons in Planner template
+**Area:** Planner Template (`templates/admin/planner.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Planner template
+**Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons or headers), confusing users.
+**Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
