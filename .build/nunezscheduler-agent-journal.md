@@ -290,3 +290,8 @@ Outcome: Simplifies code maintainability and offers a unified UI flow for user c
 **Improvement:** Optimized the search and filter clear buttons in the Generated Posts, Pending Review, and Partial Generations tabs by replacing text buttons with standard dashicon icons, reducing visual clutter and improving UI consistency while preserving full accessibility via aria-labels.
 **Files Modified:** `ai-post-scheduler/templates/admin/tab-generated-posts.php`, `ai-post-scheduler/templates/admin/tab-pending-review.php`, `ai-post-scheduler/templates/admin/tab-partial-generations.php`
 **Outcome:** Improved flow/efficiency and consistency for the Post Generator without expanding scope to unrelated areas.
+## 2024-08-31 - Generated Posts Optimization
+Target Feature: Generated Posts
+Improvement: Ensure pagination resets when clearing filters or searches so users aren't stranded on empty pages.
+Files Modified: ai-post-scheduler/templates/admin/tab-partial-generations.php
+Outcome: Flow improvement for navigating the Generated Posts lists
