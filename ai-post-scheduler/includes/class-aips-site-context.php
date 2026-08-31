@@ -65,13 +65,20 @@ class AIPS_Site_Context {
 	 * @return mixed Stored option value, the caller's $default, or '' when $default is null.
 	 */
 	public static function get_setting($key, $default = null) {
-		$options = AIPS_Settings::get_content_strategy_options();
-		$config  = AIPS_Config::get_instance();
+		static $key_map = null;
 
-		foreach ($options as $option_name => $meta) {
-			if ($meta['key'] === $key) {
-				return $config->get_option($option_name, $default);
+		if ($key_map === null) {
+			$options = AIPS_Settings::get_content_strategy_options();
+			$key_map = array();
+			foreach ($options as $option_name => $meta) {
+				if (isset($meta['key'])) {
+					$key_map[$meta['key']] = $option_name;
+				}
 			}
+		}
+
+		if (isset($key_map[$key])) {
+			return AIPS_Config::get_instance()->get_option($key_map[$key], $default);
 		}
 
 		return $default !== null ? $default : '';
