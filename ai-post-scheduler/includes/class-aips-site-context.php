@@ -50,13 +50,6 @@ class AIPS_Site_Context {
 	/**
 	 * Return a single site-wide setting value.
 	 *
-	 * @param string $key     Short key as defined in the settings registry (e.g. 'niche').
-	 * @param mixed  $default Default value if the setting has not been configured.
-	 * @return mixed
-	 */
-	/**
-	 * Return a single site-wide setting value.
-	 *
 	 * @param string     $key     Short key as defined in the settings registry (e.g. 'niche').
 	 * @param mixed|null $default Optional. Explicit fallback value when the option is not set.
 	 *                            When omitted (null) the AIPS_Config registered default is used,
@@ -65,13 +58,20 @@ class AIPS_Site_Context {
 	 * @return mixed Stored option value, the caller's $default, or '' when $default is null.
 	 */
 	public static function get_setting($key, $default = null) {
-		$options = AIPS_Settings::get_content_strategy_options();
-		$config  = AIPS_Config::get_instance();
+		static $key_map = null;
 
-		foreach ($options as $option_name => $meta) {
-			if ($meta['key'] === $key) {
-				return $config->get_option($option_name, $default);
+		if ($key_map === null) {
+			$options = AIPS_Settings::get_content_strategy_options();
+			$key_map = array();
+			foreach ($options as $option_name => $meta) {
+				if (isset($meta['key'])) {
+					$key_map[$meta['key']] = $option_name;
+				}
 			}
+		}
+
+		if (isset($key_map[$key])) {
+			return AIPS_Config::get_instance()->get_option($key_map[$key], $default);
 		}
 
 		return $default !== null ? $default : '';
