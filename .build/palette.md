@@ -28,3 +28,9 @@
 **PR:** 🎨 Palette: Add aria-label to cache monitor checkboxes
 **Learning:** Data tables and lists sometimes contain generated or standalone checkboxes for bulk actions without `<label>` elements or ARIA labels.
 **Action:** When adding checkboxes for bulk actions, ensure both the header select-all and individual row checkboxes have an explicit localized `aria-label`.
+## 2024-05-30 - Add aria-hidden to decorative Dashicons in Authors
+**Area:** Authors template (templates/admin/authors.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Authors template
+**Learning:** Decorative icons must be explicitly hidden from screen readers.
+**Action:** When adding or auditing authors dashicons, include aria-hidden="true".
