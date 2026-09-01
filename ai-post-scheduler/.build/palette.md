@@ -40,3 +40,9 @@
 **PR:** 🎨 Palette: Add aria-label to checkboxes in Planner and Research templates
 **Learning:** Checkboxes in JS-rendered templates or table headers require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element. Do not add `aria-label` if a checkbox is already properly nested inside a descriptive `<label>` tag.
 **Action:** Always ensure checkboxes not wrapped in a descriptive `<label>` have an explicit `aria-label` for screen reader accessibility.
+## 2026-08-28 - Add aria-label and aria-hidden to Source Data template links
+**Area:** Admin Templates (`templates/admin/source-data.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to pagination links in Source Data template
+**Learning:** Icon-only pagination links require explicit `aria-label` attributes to be accessible, and the decorative dashicons inside them should have `aria-hidden="true"`.
+**Action:** Always add `aria-label` to icon-only links, and `aria-hidden="true"` to their internal dashicons.
