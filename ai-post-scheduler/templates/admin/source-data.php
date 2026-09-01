@@ -99,7 +99,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 				</div>
 				<div class="aips-page-actions">
 					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url($back_url); ?>">
-						<span class="dashicons dashicons-arrow-left-alt2"></span>
+						<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 						<?php esc_html_e('Back to Sources', 'ai-post-scheduler'); ?>
 					</a>
 				</div>
@@ -276,11 +276,11 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 									<td class="column-actions cell-actions">
 										<div class="aips-row-action-group">
 											<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-view-source-data" data-id="<?php echo esc_attr($data_id); ?>">
-												<span class="dashicons dashicons-visibility"></span>
+												<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
 												<?php esc_html_e('View', 'ai-post-scheduler'); ?>
 											</button>
 											<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source-data" data-id="<?php echo esc_attr($data_id); ?>">
-												<span class="dashicons dashicons-trash"></span>
+												<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 												<?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
 											</button>
 										</div>
@@ -306,7 +306,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 						<?php $start = max(1, $current - 3); $end = min($pages, $current + 3); ?>
 						<div class="aips-history-pagination-links">
 							<?php if ($current > 1): ?>
-								<a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url($build_page_url($current - 1)); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span></a>
+								<a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url($build_page_url($current - 1)); ?>" aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span></a>
 							<?php endif; ?>
 							<?php for ($p = $start; $p <= $end; $p++): ?>
 								<?php if ($p === $current): ?>
@@ -316,7 +316,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 								<?php endif; ?>
 							<?php endfor; ?>
 							<?php if ($current < $pages): ?>
-								<a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url($build_page_url($current + 1)); ?>"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
+								<a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url($build_page_url($current + 1)); ?>" aria-label="<?php esc_attr_e('Next page', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 					<?php endif; ?>
