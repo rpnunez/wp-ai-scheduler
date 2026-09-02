@@ -28,3 +28,9 @@
 **PR:** 🎨 Palette: Add aria-label to cache monitor checkboxes
 **Learning:** Data tables and lists sometimes contain generated or standalone checkboxes for bulk actions without `<label>` elements or ARIA labels.
 **Action:** When adding checkboxes for bulk actions, ensure both the header select-all and individual row checkboxes have an explicit localized `aria-label`.
+## 2024-09-02 - Add aria-hidden to Affiliate Links Dashicons
+**Area:** Affiliate Links template (templates/admin/affiliate-links.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Affiliate Links template
+**Learning:** Decorative icons in lists and buttons must be explicitly hidden from screen readers.
+**Action:** When adding or auditing affiliate links Dashicons, include aria-hidden="true".
