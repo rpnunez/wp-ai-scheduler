@@ -121,6 +121,7 @@ class AIPS_Schedule_Batch_Resume_Service {
             'scanned' => 0,
             'skipped_invalid' => 0,
             'synthesized_from_batch_progress' => 0,
+            'synthesized_from_batch_runs' => 0,
         );
 
         foreach ($schedules_by_id as $schedule) {
@@ -129,11 +130,45 @@ class AIPS_Schedule_Batch_Resume_Service {
 
             $run_state = $this->decode_run_state($schedule);
 
-            // If run_state isn't resumable, try to build a resume cursor from
-            // the batch_progress payload as a fallback. Validate batch_progress
-            // carefully before trusting it.
+            // If run_state isn't resumable, first check the canonical batch_runs
+            // table (if available). This is the preferred source for resume
+            // information in Phase 1 of the migration away from ad-hoc JSON blobs.
             $is_resumable = $this->is_resumable($run_state);
 
+            if (!$is_resumable && method_exists($this->repository, 'get_batch_runs_for_schedule')) {
+                $runs = $this->repository->get_batch_runs_for_schedule($schedule_id);
+                foreach ($runs as $run) {
+                    // Consider pending or running runs as resumable candidates.
+                    if (isset($run->status) && in_array($run->status, array('pending', 'running'), true)) {
+                        $completed = isset($run->completed) ? max(0, (int) $run->completed) : 0;
+                        $total = isset($run->total) ? max(0, (int) $run->total) : 0;
+
+                        if ($total > 0 && $completed < $total) {
+                            $run_state = array(
+                                'resumable' => true,
+                                'status' => AIPS_History_Event_Status::TERMINATED,
+                                'resume_index' => $completed,
+                                'total' => $total,
+                                'correlation_id' => isset($run->correlation_id) && $run->correlation_id ? (string) $run->correlation_id : (string) AIPS_Correlation_ID::get(),
+                                'batch_uuid' => isset($run->batch_uuid) ? (string) $run->batch_uuid : null,
+                            );
+
+                            $is_resumable = true;
+                            $metrics['synthesized_from_batch_runs']++;
+
+                            $this->logger->log(
+                                'Batch resume: schedule ' . $schedule_id . ' synthesized resumable cursor from aips_schedule_batch_runs table.',
+                                'info',
+                                array('schedule_id' => $schedule_id, 'batch_uuid' => isset($run->batch_uuid) ? $run->batch_uuid : null)
+                            );
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // If still not resumable, fall back to the legacy batch_progress JSON.
             if (!$is_resumable && !empty($schedule->batch_progress)) {
                 $bp_raw = $schedule->batch_progress;
                 $bp = json_decode($bp_raw, true);
@@ -209,6 +244,7 @@ class AIPS_Schedule_Batch_Resume_Service {
                 }
             }
 
+
             if (!$is_resumable) {
                 $summary['skipped']++;
                 continue;
@@ -227,7 +263,7 @@ class AIPS_Schedule_Batch_Resume_Service {
                 $summary['skipped'],
                 $summary['failed'],
                 $metrics['scanned'],
-                $metrics['synthesized_from_batch_progress'],
+                ($metrics['synthesized_from_batch_progress'] + $metrics['synthesized_from_batch_runs']),
                 $metrics['skipped_invalid']
             ),
             'info'
