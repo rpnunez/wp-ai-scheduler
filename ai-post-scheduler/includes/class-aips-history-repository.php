@@ -106,8 +106,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'history.get_schedule_completed_count',
             array( 'schedule_id' => $schedule_id ),
             function() use ( $schedule, $schedule_id ) {
-                return (int) $this->wpdb->get_var($this->wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$this->table_name}
+                $count = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COALESCE(COUNT(*), 0) FROM {$this->table_name}
                     WHERE template_id = %d
                     AND status = %s
                     AND created_at >= (
@@ -117,6 +117,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     'completed',
                     $schedule_id
                 ));
+
+                return max(0, (int) $count);
             }
         );
     }
@@ -208,6 +210,116 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $days,
             $limit
         ), ARRAY_A);
+    }
+
+    /**
+     * Fetch recent stress-test runs from history.
+     *
+     * @param int $limit Maximum rows to return.
+     * @return array<int, array<string, mixed>>
+     */
+    public function get_stress_test_runs($limit = 20) {
+        $limit = max(1, absint($limit));
+
+        $records = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT h.id, h.uuid, h.status, h.created_at, hl.details
+             FROM {$this->table_name} h
+             LEFT JOIN {$this->table_name_log} hl ON h.id = hl.history_id AND hl.history_type_id = %d
+             WHERE h.creation_method = %s
+             ORDER BY h.created_at DESC
+             LIMIT %d",
+            AIPS_History_Type::SESSION_METADATA,
+            'stress_test',
+            $limit
+        ));
+
+        if (!is_array($records)) {
+            return array();
+        }
+
+        $runs = array();
+        foreach ($records as $row) {
+            $details = !empty($row->details) ? json_decode($row->details, true) : array();
+            $payload = isset($details['output']) && is_array($details['output'])
+                ? $details['output']
+                : (isset($details['context']) && is_array($details['context']) ? $details['context'] : $details);
+            $totals  = isset($payload['totals']) ? $payload['totals'] : array();
+            $env     = isset($payload['environment']) ? $payload['environment'] : array();
+
+            $formatted_date = '';
+            if (!empty($row->created_at)) {
+                if (is_numeric($row->created_at)) {
+                    $formatted_date = AIPS_DateTime::fromTimestamp((int) $row->created_at)->format('M j, Y H:i:s');
+                } else {
+                    $dt = AIPS_DateTime::fromMysqlOrNull((string) $row->created_at);
+                    $formatted_date = $dt ? $dt->format('M j, Y H:i:s') : (string) $row->created_at;
+                }
+            }
+
+            $runs[] = array(
+                'id'             => (int) $row->id,
+                'uuid'           => $row->uuid,
+                'status'         => $row->status,
+                'created_at'     => $row->created_at,
+                'formatted_date' => $formatted_date,
+                'provider'       => isset($env['provider']) ? $env['provider'] : 'Unknown',
+                'model'          => isset($env['model']) ? $env['model'] : '',
+                'total_cases'    => isset($totals['cases']) ? (int) $totals['cases'] : 0,
+                'passed'         => isset($totals['passed']) ? (int) $totals['passed'] : 0,
+                'failed'         => isset($totals['failed']) ? (int) $totals['failed'] : 0,
+                'duration_ms'    => isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0,
+            );
+        }
+
+        return $runs;
+    }
+
+    /**
+     * Fetch one stress-test run by ID.
+     *
+     * @param int $history_id History row ID.
+     * @return array<string, mixed>|null
+     */
+    public function get_stress_test_run_by_id($history_id) {
+        $row = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT h.id, h.uuid, h.status, h.created_at, hl.details
+             FROM {$this->table_name} h
+             LEFT JOIN {$this->table_name_log} hl ON h.id = hl.history_id AND hl.history_type_id = %d
+             WHERE h.id = %d AND h.creation_method = %s",
+            AIPS_History_Type::SESSION_METADATA,
+            absint($history_id),
+            'stress_test'
+        ));
+
+        if (!$row) {
+            return null;
+        }
+
+        $details = !empty($row->details) ? json_decode($row->details, true) : array();
+        $payload = isset($details['output']) && is_array($details['output'])
+            ? $details['output']
+            : (isset($details['context']) && is_array($details['context']) ? $details['context'] : $details);
+
+        $formatted_date = '';
+        if (!empty($row->created_at)) {
+            if (is_numeric($row->created_at)) {
+                $formatted_date = AIPS_DateTime::fromTimestamp((int) $row->created_at)->format('M j, Y H:i:s');
+            } else {
+                $dt = AIPS_DateTime::fromMysqlOrNull((string) $row->created_at);
+                $formatted_date = $dt ? $dt->format('M j, Y H:i:s') : (string) $row->created_at;
+            }
+        }
+
+        return array(
+            'id'             => (int) $row->id,
+            'uuid'           => $row->uuid,
+            'status'         => $row->status,
+            'created_at'     => $row->created_at,
+            'formatted_date' => $formatted_date,
+            'environment'    => isset($payload['environment']) ? $payload['environment'] : array(),
+            'totals'         => isset($payload['totals']) ? $payload['totals'] : array(),
+            'results'        => isset($payload['results']) ? $payload['results'] : array(),
+        );
     }
     
         /**
