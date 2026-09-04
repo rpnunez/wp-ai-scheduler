@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 				<div class="aips-page-actions">
 					<button type="button" id="aips-afl-add-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-plus-alt2"></span>
+						<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>
 						<?php esc_html_e( 'Add Mapping', 'ai-post-scheduler' ); ?>
 					</button>
 				</div>
@@ -69,9 +69,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<!-- Pagination -->
 			<div class="aips-panel-footer" id="aips-afl-pagination" style="padding:12px 16px;display:none;">
 				<div class="aips-pagination">
-					<button type="button" id="aips-afl-prev" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e( '&laquo; Prev', 'ai-post-scheduler' ); ?></button>
+					<button type="button" id="aips-afl-prev" class="aips-btn aips-btn-sm aips-btn-secondary" aria-label="<?php esc_attr_e( 'Previous page', 'ai-post-scheduler' ); ?>"><?php esc_html_e( '&laquo; Prev', 'ai-post-scheduler' ); ?></button>
 					<span id="aips-afl-page-info" style="margin:0 12px;font-size:13px;"></span>
-					<button type="button" id="aips-afl-next" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e( 'Next &raquo;', 'ai-post-scheduler' ); ?></button>
+					<button type="button" id="aips-afl-next" class="aips-btn aips-btn-sm aips-btn-secondary" aria-label="<?php esc_attr_e( 'Next page', 'ai-post-scheduler' ); ?>"><?php esc_html_e( 'Next &raquo;', 'ai-post-scheduler' ); ?></button>
 				</div>
 			</div>
 		</div>
@@ -216,7 +216,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				+ '<span class="screen-reader-text"><?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?></span>'
 				+ '<span class="aips-toggle-slider"></span></label>';
 			var aiIcon = item.use_ai_injection == 1
-				? '<span class="dashicons dashicons-yes-alt" style="color:#00a32a;" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'
+				? '<span class="dashicons dashicons-yes-alt" aria-hidden="true" style="color:#00a32a;" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span><span class="screen-reader-text"><?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?></span>'
 				: '<span style="color:#ccc;">—</span>';
 			var shortUrl = item.affiliate_url.length > 40 ? item.affiliate_url.substring(0, 40) + '…' : item.affiliate_url;
 			return '<tr data-id="' + item.id + '">'
