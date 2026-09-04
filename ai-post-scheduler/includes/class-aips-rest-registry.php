@@ -59,6 +59,9 @@ class AIPS_Rest_Registry {
 		'sources'         => 'AIPS_Sources_Rest_Controller',
 		'source-groups'   => 'AIPS_Source_Groups_Rest_Controller',
 		'source-data'     => 'AIPS_Source_Data_Rest_Controller',
+		// Slice 3b: authors CRUD + reporters + AI suggestions
+		'authors'         => 'AIPS_Authors_Rest_Controller',
+		'author-topics'   => 'AIPS_Authors_Rest_Controller',
 	);
 
 	/**
