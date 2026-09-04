@@ -16,3 +16,27 @@
 **PR:** 🎨 Palette: Add aria-label to data table checkboxes in Authors templates
 **Learning:** Checkboxes in JS-rendered templates (like Handlebars `{{}}`) require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element.
 **Action:** Always ensure that dynamically generated checkboxes in data tables have an `aria-label` attached for assistive technologies.
+## 2024-11-23 - Decorative Dashicon Accessibility
+**Area:** History Template (`templates/admin/history.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in History template
+**Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons), confusing users.
+**Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
+## 2026-08-26 - Add aria-label to taxonomy table row checkbox
+**Area:** Taxonomy page (`templates/admin/taxonomy.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to taxonomy row checkbox
+**Learning:** Row checkboxes inside data tables must have explicit `aria-label` attributes to define what they are selecting. The `aips-tmpl-taxonomy-row` JS template lacked this.
+**Action:** When creating JS template rows containing check columns, always add `aria-label` mapped to the relevant select action.
+## 2026-08-28 - Add aria-label to voice search input
+**Area:** Templates wizard (`templates/admin/templates.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add accessible label to voice search input
+**Learning:** Text inputs inside custom components (like the voice selector dropdown) require explicit `<label>` tags for accessibility.
+**Action:** When building custom search inputs, always add an explicit `<label>` tag mapped to the input ID, using the `screen-reader-text` class if it should be visually hidden.
+## 2026-08-28 - Accessibility Fix for Planner and Research Checkboxes
+**Area:** Admin Templates (`templates/admin/planner.php`, `templates/admin/research.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to checkboxes in Planner and Research templates
+**Learning:** Checkboxes in JS-rendered templates or table headers require explicit `aria-label` attributes to be accessible to screen readers, especially when they lack a `<label>` element. Do not add `aria-label` if a checkbox is already properly nested inside a descriptive `<label>` tag.
+**Action:** Always ensure checkboxes not wrapped in a descriptive `<label>` have an explicit `aria-label` for screen reader accessibility.

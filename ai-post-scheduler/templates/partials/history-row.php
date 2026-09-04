@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<tr class="aips-history-row aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
+<tr class="aips-history-row aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" data-status="<?php echo esc_attr($item->status); ?>" tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
     <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>">
             <?php esc_html_e('Select Item', 'ai-post-scheduler'); ?>
@@ -31,6 +31,16 @@ if (!defined('ABSPATH')) {
         <?php endif; ?>
         <?php if (!empty($item->latest_message)): ?>
         <span class="aips-history-latest-message"><?php echo esc_html(wp_trim_words((string) $item->latest_message, 14)); ?></span>
+        <?php endif; ?>
+    </td>
+    <td class="column-post-type">
+        <?php if (!empty($item->post_type)): ?>
+        <?php $post_type_obj = get_post_type_object($item->post_type); ?>
+        <span class="aips-badge aips-badge-neutral">
+            <?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $item->post_type); ?>
+        </span>
+        <?php else: ?>
+        <span class="aips-meta-text">&mdash;</span>
         <?php endif; ?>
     </td>
     <td class="column-status">

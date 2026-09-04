@@ -1,7 +1,7 @@
 # Makefile for AI Post Scheduler Docker Development Environment
 # Provides convenient shortcuts for common Docker operations
 
-.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test test-coverage reload-php xdebug-log-follow sync-wp-core
+.PHONY: help build up down restart logs shell wp-shell db-shell clean rebuild install test test-coverage reload-php xdebug-log-follow xdebug-on xdebug-off sync-wp-core
 
 # Default target
 .DEFAULT_GOAL := help
@@ -177,7 +177,40 @@ xdebug-log-follow: ## Follow Xdebug log (Git Bash-safe wrapper)
 
 xdebug-status: ## Check Xdebug configuration
 	@echo "$(BLUE)Xdebug Configuration:$(NC)"
-	@docker compose exec web php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request"
+	@echo "XDEBUG_MODE (.env): $(or $(shell grep -hE '^XDEBUG_MODE=' .env 2>/dev/null | tail -1 | cut -d= -f2),off)"
+	@docker compose exec web php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request" || echo "$(YELLOW)Xdebug appears disabled inside the container.$(NC)"
+
+xdebug-on: ## Enable Xdebug in .env (mode=develop,debug, trigger-based) and restart web
+	@echo "$(YELLOW)Enabling Xdebug in .env...$(NC)"
+	@touch .env
+	@if grep -q '^XDEBUG_MODE=' .env; then \
+		sed -i.bak 's|^XDEBUG_MODE=.*|XDEBUG_MODE=develop,debug|' .env && rm -f .env.bak; \
+	else \
+		echo 'XDEBUG_MODE=develop,debug' >> .env; \
+	fi
+	@if grep -q '^XDEBUG_START_WITH_REQUEST=' .env; then \
+		sed -i.bak 's|^XDEBUG_START_WITH_REQUEST=.*|XDEBUG_START_WITH_REQUEST=trigger|' .env && rm -f .env.bak; \
+	else \
+		echo 'XDEBUG_START_WITH_REQUEST=trigger' >> .env; \
+	fi
+	@echo "$(GREEN)XDEBUG_MODE=develop,debug, XDEBUG_START_WITH_REQUEST=trigger$(NC)"
+	@echo "$(YELLOW)Rebuilding web image (no-op if unchanged) and restarting...$(NC)"
+	@docker compose build web
+	@docker compose up -d --force-recreate web
+	@echo "$(GREEN)Xdebug enabled.$(NC)"
+
+xdebug-off: ## Disable Xdebug in .env and restart web
+	@echo "$(YELLOW)Disabling Xdebug in .env...$(NC)"
+	@touch .env
+	@if grep -q '^XDEBUG_MODE=' .env; then \
+		sed -i.bak 's|^XDEBUG_MODE=.*|XDEBUG_MODE=off|' .env && rm -f .env.bak; \
+	else \
+		echo 'XDEBUG_MODE=off' >> .env; \
+	fi
+	@echo "$(YELLOW)Rebuilding web image (no-op if unchanged) and restarting...$(NC)"
+	@docker compose build web
+	@docker compose up -d --force-recreate web
+	@echo "$(GREEN)Xdebug disabled.$(NC)"
 
 urls: ## Display all service URLs
 	@echo "$(BLUE)Service URLs$(NC) (instance: $(GREEN)$(INSTANCE_ID)$(NC)):"
