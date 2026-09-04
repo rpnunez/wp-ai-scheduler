@@ -56,6 +56,7 @@ class AIPS_Ad_Frontend {
 	private function init_hooks() {
 		add_filter( 'the_content', array( $this, 'filter_content' ), 15 );
 		add_shortcode( 'aips_ad', array( $this, 'render_shortcode' ) );
+		add_action( 'init', array( $this, 'register_block' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -200,5 +201,67 @@ class AIPS_Ad_Frontend {
 		}
 
 		return $this->injection_service->render_ad_slot( $slot, $post_id, $campaign );
+	}
+
+	/**
+	 * Register Gutenberg block type for ad unit.
+	 */
+	public function register_block() {
+		if ( ! function_exists( 'register_block_type' ) ) {
+			return;
+		}
+
+		register_block_type(
+			'aips/ad-unit',
+			array(
+				'render_callback' => array( $this, 'render_block' ),
+				'attributes'      => array(
+					'slotId'     => array(
+						'type'    => 'number',
+						'default' => 0,
+					),
+					'customCode' => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Render callback for aips/ad-unit block.
+	 *
+	 * @param array $attributes
+	 * @return string
+	 */
+	public function render_block( $attributes ) {
+		if ( ! $this->config->get_option( 'aips_monetization_enabled', true ) ) {
+			return '';
+		}
+
+		$slot_id     = ! empty( $attributes['slotId'] ) ? absint( $attributes['slotId'] ) : 0;
+		$custom_code = ! empty( $attributes['customCode'] ) ? $attributes['customCode'] : '';
+
+		if ( ! empty( $custom_code ) ) {
+			return '<div class="aips-ad-wrapper aips-ad-custom">' . $custom_code . '</div>';
+		}
+
+		if ( $slot_id > 0 ) {
+			$slot = $this->slots_repo->get_by_id( $slot_id );
+			if ( $slot && 'active' === $slot->status ) {
+				$post_id  = get_the_ID() ?: 0;
+				$campaign = null;
+				if ( $post_id > 0 ) {
+					$campaign_id = (int) get_post_meta( $post_id, '_aips_sponsor_campaign_id', true );
+					if ( $campaign_id > 0 ) {
+						$campaign = $this->campaigns_repo->get_by_id( $campaign_id );
+					}
+				}
+				return $this->injection_service->render_ad_slot( $slot, $post_id, $campaign );
+			}
+		}
+
+		return '';
 	}
 }

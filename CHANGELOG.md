@@ -1,3 +1,17 @@
+## [3.7.0] - 2026-09-04
+
+### Added
+- **Monetization Hub & In-Content Ad Placement Engine**: Complete revenue infrastructure under **AI Post Scheduler → Monetization Hub** with 4 tabs:
+  - **Ad Slots & Display Units**: Dynamic in-article ad slot configuration supporting custom HTML/JS, shortcodes, and auto-insertion by paragraph offset, 50% depth mid-content, or post conclusion.
+  - **Direct Sponsor Campaigns & FTC Disclosures**: Direct sponsor and advertiser deals management with automated keyword/category matching, custom call-to-action badges, and automated FTC compliance notices.
+  - **Affiliate Links Inserter**: Embedded management of affiliate merchants, keyword triggers, and contextual AI callout placement.
+  - **Revenue & Telemetry Analytics**: Real-time aggregated viewable impressions, ad clicks, CTR calculations, and Chart.js daily telemetry visualization.
+- **Gutenberg Ad Unit Block (`aips/ad-unit`)**: Native editor block allowing manual placement of pre-configured ad slots or custom embed snippets anywhere in article drafts, with server-side render callbacks.
+- **Post Editor Monetization Sidebar**: Real-time commercial intent analysis (Transactional, Commercial Investigation, Informational) with projected RPM tiering, sponsor campaign overriding, and per-post ad suppression controls.
+- **AI Directives for Commercial Revenue**: Context-aware prompt injection that instructs AI content generation engines to craft high-converting recommendation sections and seamless sponsor brand integration without sounding promotional.
+- **Frontend Telemetry Beacon & GA4 Integration**: Privacy-preserving `IntersectionObserver` beacon reporting viewable impressions (>50% visible for >=1s) and clicks to REST endpoint `/aips/v1/monetization/track` and pushing standard events to `window.dataLayer` for Google Analytics 4.
+- **Database Schema Migration (`migrate_to_3_7_0`)**: Added `wp_aips_ad_slots`, `wp_aips_sponsor_campaigns`, and `wp_aips_monetization_telemetry` tables with proper indexes.
+
 ## [3.6.5] - 2026-08-28
 
 ### Added

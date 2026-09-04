@@ -126,7 +126,18 @@ class AIPS_Sponsor_Campaigns_Repository {
 		$id  = ! empty( $data['id'] ) ? absint( $data['id'] ) : 0;
 		$now = time();
 
+		$start_date = ! empty( $data['start_date'] ) ? sanitize_text_field( $data['start_date'] ) : null;
+		if ( $start_date && ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start_date ) ) {
+			$start_date = null;
+		}
+
+		$end_date = ! empty( $data['end_date'] ) ? sanitize_text_field( $data['end_date'] ) : null;
+		if ( $end_date && ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end_date ) ) {
+			$end_date = null;
+		}
+
 		$record = array(
+			'name'            => sanitize_text_field( $data['name'] ?? '' ),
 			'brand_name'      => sanitize_text_field( $data['brand_name'] ?? '' ),
 			'logo_url'        => esc_url_raw( $data['logo_url'] ?? '' ),
 			'target_url'      => esc_url_raw( $data['target_url'] ?? '' ),
@@ -134,13 +145,13 @@ class AIPS_Sponsor_Campaigns_Repository {
 			'disclosure_text' => sanitize_textarea_field( $data['disclosure_text'] ?? '' ),
 			'category_ids'    => sanitize_text_field( $data['category_ids'] ?? '' ),
 			'keywords'        => sanitize_text_field( $data['keywords'] ?? '' ),
-			'start_date'      => ! empty( $data['start_date'] ) ? sanitize_text_field( $data['start_date'] ) : null,
-			'end_date'        => ! empty( $data['end_date'] ) ? sanitize_text_field( $data['end_date'] ) : null,
+			'start_date'      => $start_date,
+			'end_date'        => $end_date,
 			'status'          => in_array( $data['status'] ?? '', array( 'active', 'paused', 'completed' ), true ) ? $data['status'] : 'active',
 			'updated_at'      => $now,
 		);
 
-		$formats = array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' );
+		$formats = array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' );
 
 		if ( $id > 0 ) {
 			$result = $this->wpdb->update(

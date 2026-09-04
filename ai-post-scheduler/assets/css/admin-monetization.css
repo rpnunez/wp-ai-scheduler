@@ -247,3 +247,13 @@
 .aips-form-row .required {
 	color: #dc2626;
 }
+
+#tab-affiliates .wrap.aips-wrap {
+	margin: 0;
+	padding: 0;
+}
+
+.aips-hidden {
+	display: none !important;
+}
+

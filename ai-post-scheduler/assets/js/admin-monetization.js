@@ -18,11 +18,27 @@
 
 		config: window.aipsMonetizationAdminConfig || {},
 		chartInstance: null,
+		slotsMap: {},
+		campaignsMap: {},
 
 		/**
 		 * Bootstrap module.
 		 */
 		init: function () {
+			var self = this;
+			if (window.aipsMonetizationInitialData) {
+				if (Array.isArray(window.aipsMonetizationInitialData.slots)) {
+					window.aipsMonetizationInitialData.slots.forEach(function (s) {
+						self.slotsMap[s.id] = s;
+					});
+				}
+				if (Array.isArray(window.aipsMonetizationInitialData.campaigns)) {
+					window.aipsMonetizationInitialData.campaigns.forEach(function (c) {
+						self.campaignsMap[c.id] = c;
+					});
+				}
+			}
+
 			this.bindTabs();
 			this.bindSlotActions();
 			this.bindCampaignActions();
@@ -76,7 +92,7 @@
 			$('#aips-btn-add-slot').on('click', function () {
 				$('#aips-modal-slot-title').text(self.config.i18n.addSlotTitle || 'Add Ad Slot');
 				$('#aips-form-slot')[0].reset();
-				$('#aips-slot-id').value = '0';
+				$('#aips-slot-id').val('0');
 				$('#aips-wrap-paragraph-offset').show();
 				$('#aips-modal-slot').fadeIn(150);
 			});
@@ -97,9 +113,15 @@
 
 			// Edit Slot
 			$(document).on('click', '.aips-btn-edit-slot', function () {
-				var slot = $(this).data('slot');
-				if (typeof slot === 'string') {
-					try { slot = JSON.parse(slot); } catch (e) {}
+				var slotId = $(this).data('id');
+				var slot = self.slotsMap[slotId];
+				if (!slot) {
+					var raw = $(this).data('slot');
+					if (typeof raw === 'string') {
+						try { slot = JSON.parse(raw); } catch (e) {}
+					} else if (typeof raw === 'object') {
+						slot = raw;
+					}
 				}
 
 				if (!slot) { return; }
@@ -207,6 +229,7 @@
 					}
 
 					res.data.slots.forEach(function (slot) {
+						self.slotsMap[slot.id] = slot;
 						var placementDesc = '';
 						if (slot.position === 'after_paragraph') {
 							placementDesc = 'After Paragraph ' + slot.paragraph_offset + ' (Min words: ' + slot.min_word_count + ')';
@@ -223,12 +246,12 @@
 							name: slot.name,
 							slot_type: slot.slot_type,
 							css_classes: slot.css_classes || '',
+							cssClassHidden: slot.css_classes ? '' : 'aips-hidden',
 							placementDescription: placementDesc,
 							deviceLabel: slot.device_targeting ? slot.device_targeting.charAt(0).toUpperCase() + slot.device_targeting.slice(1) : 'All',
 							priority: slot.priority,
 							statusLabel: slot.status === 'active' ? 'Active' : 'Paused',
-							activeClass: slot.status === 'active' ? 'button-primary' : '',
-							jsonString: JSON.stringify(slot)
+							activeClass: slot.status === 'active' ? 'button-primary' : ''
 						};
 
 						var rowHtml = AIPS.Templates.render('aips-tmpl-ad-slot-row', rowData);
@@ -256,9 +279,15 @@
 			});
 
 			$(document).on('click', '.aips-btn-edit-campaign', function () {
-				var camp = $(this).data('campaign');
-				if (typeof camp === 'string') {
-					try { camp = JSON.parse(camp); } catch (e) {}
+				var campId = $(this).data('id');
+				var camp = self.campaignsMap[campId];
+				if (!camp) {
+					var raw = $(this).data('campaign');
+					if (typeof raw === 'string') {
+						try { camp = JSON.parse(raw); } catch (e) {}
+					} else if (typeof raw === 'object') {
+						camp = raw;
+					}
 				}
 				if (!camp) { return; }
 
@@ -361,6 +390,7 @@
 					}
 
 					res.data.campaigns.forEach(function (camp) {
+						self.campaignsMap[camp.id] = camp;
 						var start = camp.start_date || 'Immediately';
 						var end = camp.end_date || 'Ongoing';
 
@@ -369,10 +399,10 @@
 							brand_name: camp.brand_name,
 							target_url: camp.target_url,
 							keywords: camp.keywords || '',
+							kwHidden: camp.keywords ? '' : 'aips-hidden',
 							duration: start + ' → ' + end,
 							statusLabel: camp.status === 'active' ? 'Active' : 'Paused',
-							activeClass: camp.status === 'active' ? 'button-primary' : '',
-							jsonString: JSON.stringify(camp)
+							activeClass: camp.status === 'active' ? 'button-primary' : ''
 						};
 
 						var rowHtml = AIPS.Templates.render('aips-tmpl-sponsor-campaign-row', rowData);

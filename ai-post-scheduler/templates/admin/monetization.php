@@ -23,6 +23,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php esc_html_e( 'Manage automated in-article ad slots, sponsor campaigns, affiliate links, and monitor real-time viewability & revenue metrics.', 'ai-post-scheduler' ); ?>
 	</p>
 
+	<script>
+		window.aipsMonetizationInitialData = {
+			slots: <?php echo wp_json_encode( $slots ); ?>,
+			campaigns: <?php echo wp_json_encode( $campaigns ); ?>
+		};
+	</script>
+
 	<!-- Nav Tabs -->
 	<nav class="nav-tab-wrapper aips-nav-tab-wrapper" id="aips-monetization-tabs">
 		<a href="#tab-slots" class="nav-tab nav-tab-active" data-tab="slots">
@@ -106,7 +113,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<td><span class="aips-badge"><?php echo esc_html( ucfirst( $slot->device_targeting ) ); ?></span></td>
 								<td><?php echo (int) $slot->priority; ?></td>
 								<td style="text-align: right;">
-									<button type="button" class="button button-small aips-btn-edit-slot" data-slot='<?php echo esc_attr( wp_json_encode( $slot ) ); ?>'>
+									<button type="button" class="button button-small aips-btn-edit-slot" data-id="<?php echo esc_attr( $slot->id ); ?>">
 										<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
 									</button>
 									<button type="button" class="button button-small button-link-delete aips-btn-delete-slot" data-id="<?php echo esc_attr( $slot->id ); ?>">
@@ -179,7 +186,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 									?>
 								</td>
 								<td style="text-align: right;">
-									<button type="button" class="button button-small aips-btn-edit-campaign" data-campaign='<?php echo esc_attr( wp_json_encode( $camp ) ); ?>'>
+									<button type="button" class="button button-small aips-btn-edit-campaign" data-id="<?php echo esc_attr( $camp->id ); ?>">
 										<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
 									</button>
 									<button type="button" class="button button-small button-link-delete aips-btn-delete-campaign" data-id="<?php echo esc_attr( $camp->id ); ?>">
@@ -195,12 +202,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 		<!-- TAB 3: Affiliate Links -->
 		<div id="tab-affiliates" class="aips-tab-panel">
-			<div class="aips-tab-header">
-				<div class="aips-tab-header-text">
-					<h2><?php esc_html_e( 'Affiliate Link Inserter', 'ai-post-scheduler' ); ?></h2>
-					<p class="description"><?php esc_html_e( 'Manage affiliate merchant tags, target URLs, and call-to-action cards automatically injected into matching posts.', 'ai-post-scheduler' ); ?></p>
-				</div>
-			</div>
 			<?php
 			// Render Affiliate Links Table from existing template
 			if ( file_exists( AIPS_PLUGIN_DIR . 'templates/admin/affiliate-links.php' ) ) {
@@ -431,14 +432,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</td>
 		<td>
 			<strong>{{name}}</strong>
-			{{#css_classes}}<code>.{{css_classes}}</code>{{/css_classes}}
+			<span class="{{cssClassHidden}}"><code>.{{css_classes}}</code></span>
 		</td>
 		<td><span class="aips-badge aips-badge-type">{{slot_type}}</span></td>
 		<td>{{placementDescription}}</td>
 		<td><span class="aips-badge">{{deviceLabel}}</span></td>
 		<td>{{priority}}</td>
 		<td style="text-align: right;">
-			<button type="button" class="button button-small aips-btn-edit-slot" data-slot='{{jsonString}}'>
+			<button type="button" class="button button-small aips-btn-edit-slot" data-id="{{id}}">
 				<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
 			</button>
 			<button type="button" class="button button-small button-link-delete aips-btn-delete-slot" data-id="{{id}}">
@@ -460,11 +461,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</td>
 		<td><a href="{{target_url}}" target="_blank" rel="noopener">{{target_url}}</a></td>
 		<td>
-			<span class="aips-badge aips-badge-kw">{{keywords}}</span>
+			<span class="aips-badge aips-badge-kw {{kwHidden}}">{{keywords}}</span>
 		</td>
 		<td>{{duration}}</td>
 		<td style="text-align: right;">
-			<button type="button" class="button button-small aips-btn-edit-campaign" data-campaign='{{jsonString}}'>
+			<button type="button" class="button button-small aips-btn-edit-campaign" data-id="{{id}}">
 				<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
 			</button>
 			<button type="button" class="button button-small button-link-delete aips-btn-delete-campaign" data-id="{{id}}">

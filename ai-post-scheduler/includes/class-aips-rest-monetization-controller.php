@@ -265,6 +265,9 @@ class AIPS_REST_Monetization_Controller extends WP_REST_Controller {
 			return rest_ensure_response( array( 'recorded' => 0 ) );
 		}
 
+		// Cap max batch size to 50 to prevent DoS
+		$events = array_slice( $events, 0, 50 );
+
 		$recorded = $this->telemetry_repo->record_events_batch( $events );
 
 		return rest_ensure_response( array(
