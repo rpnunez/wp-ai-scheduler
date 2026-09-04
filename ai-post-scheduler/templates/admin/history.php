@@ -99,6 +99,7 @@ if (is_object($history)) {
                     <select id="aips-filter-domain" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
                         <option value="post_generation" <?php selected($domain_filter, 'post_generation'); ?>>Post Generation</option>
+                        <option value="content_indexing" <?php selected($domain_filter, 'content_indexing'); ?>>Content Indexing</option>
                         <option value="author_topics" <?php selected($domain_filter, 'author_topics'); ?>>Author Topics</option>
                         <option value="research" <?php selected($domain_filter, 'research'); ?>>Research</option>
                         <option value="sources" <?php selected($domain_filter, 'sources'); ?>>Sources</option>
@@ -178,9 +179,7 @@ if (is_object($history)) {
                             </thead>
                             <tbody id="aips-history-tbody">
                                 <?php if (!empty($items)): ?>
-                                    <?php foreach ($items as $item): ?>
-                                        <?php include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php'; ?>
-                                    <?php endforeach; ?>
+                                    <?php echo isset($history_handler) ? $history_handler->render_table_rows_html($items) : ''; ?>
                                 <?php else: ?>
                                     <tr>
                                         <td colspan="6" style="text-align:center;padding:40px;">

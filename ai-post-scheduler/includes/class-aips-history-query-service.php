@@ -97,6 +97,7 @@ class AIPS_History_Query_Service {
         $offset = ($args['page'] - 1) * $args['per_page'];
 
         $domain_patterns = array(
+            'content_indexing' => '%content_index%',
             'author_topics' => 'author_topic%',
             'research' => '%research%',
             'sources' => '%source%',
@@ -119,6 +120,8 @@ class AIPS_History_Query_Service {
         $event_label_case_sql = "CASE
                 WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
                 WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
+                WHEN h.post_id IS NOT NULL THEN CONCAT('Post #', h.post_id)
+                WHEN COALESCE(h.creation_method, '') LIKE '%content_index%' THEN 'Content Indexing'
                 ELSE 'Generation Event'
             END";
         $actor_type_case_sql = "CASE
@@ -159,8 +162,13 @@ class AIPS_History_Query_Service {
         $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
 
         if (!empty($args['status'])) {
-            $where_clauses[] = "h.status = %s";
-            $where_args[] = $args['status'];
+            if ($args['status'] === 'completed') {
+                $where_clauses[] = "(h.status = %s OR h.status = 'indexed')";
+                $where_args[] = 'completed';
+            } else {
+                $where_clauses[] = "h.status = %s";
+                $where_args[] = $args['status'];
+            }
         }
 
         if (!empty($args['template_id'])) {

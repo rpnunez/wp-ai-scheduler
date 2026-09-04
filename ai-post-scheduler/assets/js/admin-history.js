@@ -596,6 +596,11 @@
 			// Select-all and individual row checkboxes
 			$(document).on('change', '#aips-cb-select-all', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
+			$(document).on('change', '.aips-history-group-cb', this.onGroupCheckboxChange.bind(this));
+
+			// Group toggle expand/collapse
+			$(document).on('click', '.aips-history-group-header, .aips-history-group-toggle', this.toggleGroup.bind(this));
+			$(document).on('keydown', '.aips-history-group-header', this.onGroupHeaderKeyDown.bind(this));
 
 			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
@@ -1156,24 +1161,122 @@
 		 * ======================================================================== */
 
 		/**
-		 * Toggle all row checkboxes to match the select-all checkbox state.
+		 * Toggle select-all for all row checkboxes and group checkboxes.
 		 *
 		 * @param {Event} e
 		 */
 		toggleSelectAll: function (e) {
 			var checked = $(e.target).prop('checked');
 			$('.aips-history-cb').prop('checked', checked);
+			$('.aips-history-group-cb').prop('checked', checked).prop('indeterminate', false);
 			this.updateDeleteButton();
 		},
 
 		/**
-		 * Sync the select-all checkbox and Delete Selected button on row change.
+		 * Sync the select-all checkbox, parent group checkboxes, and Delete Selected button on row change.
+		 *
+		 * @param {Event} [e] Optional change event.
 		 */
-		onRowCheckboxChange: function () {
+		onRowCheckboxChange: function (e) {
 			this.updateDeleteButton();
+
+			// If event came from an individual row checkbox, update that row's parent group checkbox
+			if (e && e.target && $(e.target).hasClass('aips-history-cb')) {
+				var groupId = $(e.target).data('group-id');
+				if (groupId) {
+					var $groupCbs      = $('.aips-history-group-child[data-group-id="' + groupId + '"] .aips-history-cb');
+					var $groupHeaderCb = $('#cb-group-' + groupId);
+					var totalInGroup   = $groupCbs.length;
+					var checkedInGroup = $groupCbs.filter(':checked').length;
+
+					if (checkedInGroup === 0) {
+						$groupHeaderCb.prop('checked', false).prop('indeterminate', false);
+					} else if (checkedInGroup === totalInGroup) {
+						$groupHeaderCb.prop('checked', true).prop('indeterminate', false);
+					} else {
+						$groupHeaderCb.prop('checked', false).prop('indeterminate', true);
+					}
+				}
+			}
+
 			var allChecked = $('.aips-history-cb').length > 0
 				&& $('.aips-history-cb:not(:checked)').length === 0;
 			$('#aips-cb-select-all').prop('checked', allChecked);
+		},
+
+		/**
+		 * Handle checkbox change on a group header row to select/deselect all child rows.
+		 *
+		 * @param {Event} e Change event.
+		 */
+		onGroupCheckboxChange: function (e) {
+			var $cb     = $(e.currentTarget);
+			var checked = $cb.prop('checked');
+			var groupId = $cb.data('group-id');
+
+			if (groupId) {
+				$('.aips-history-group-child[data-group-id="' + groupId + '"] .aips-history-cb')
+					.prop('checked', checked);
+			}
+
+			this.onRowCheckboxChange(e);
+		},
+
+		/**
+		 * Toggle expanding or collapsing child rows in a history activity group.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		toggleGroup: function (e) {
+			if ($(e.target).closest('input[type="checkbox"], label, a, .aips-row-action-menu').length && !$(e.target).closest('.aips-history-group-toggle').length) {
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+
+			var $header = $(e.currentTarget).closest('.aips-history-group-header');
+			var groupId = $header.data('group-id');
+			if (!groupId) {
+				return;
+			}
+
+			var $children = $('.aips-history-group-child[data-group-id="' + groupId + '"]');
+			var isExpanded = $header.attr('aria-expanded') === 'true';
+
+			if (isExpanded) {
+				$children.hide();
+				$header.attr('aria-expanded', 'false');
+				$header.find('.aips-history-group-toggle').attr('aria-expanded', 'false');
+				$header.find('.aips-group-chevron')
+					.removeClass('dashicons-arrow-down-alt2')
+					.addClass('dashicons-arrow-right-alt2');
+				$header.find('.aips-group-subtitle')
+					.text((aipsHistoryL10n.clickToExpand || 'Click to expand %d items').replace('%d', $children.length));
+			} else {
+				$children.show();
+				$header.attr('aria-expanded', 'true');
+				$header.find('.aips-history-group-toggle').attr('aria-expanded', 'true');
+				$header.find('.aips-group-chevron')
+					.removeClass('dashicons-arrow-right-alt2')
+					.addClass('dashicons-arrow-down-alt2');
+				$header.find('.aips-group-subtitle')
+					.text(aipsHistoryL10n.clickToCollapse || 'Click to collapse');
+			}
+		},
+
+		/**
+		 * Keyboard accessibility for group header toggles.
+		 *
+		 * @param {Event} e Keydown event.
+		 */
+		onGroupHeaderKeyDown: function (e) {
+			if (e.key === 'Enter' || e.key === ' ') {
+				if ($(e.target).is('input[type="checkbox"]')) {
+					return;
+				}
+				e.preventDefault();
+				this.toggleGroup(e);
+			}
 		},
 
 		/**
@@ -1457,7 +1560,7 @@
 					window.history.replaceState({}, '', url.toString());
 
 					// Reset checkboxes and delete button.
-					$('#aips-cb-select-all').prop('checked', false);
+					$('#aips-cb-select-all, .aips-history-group-cb').prop('checked', false).prop('indeterminate', false);
 					self.updateDeleteButton();
 					self.renderFilterChips();
 				},
