@@ -48,6 +48,9 @@ class AIPS_Voices {
         return $this->repository->delete($id);
     }
     
+    /**
+     * @deprecated 3.7.0 Use POST /aips/v1/voices or PUT /aips/v1/voices/{id}.
+     */
     public function ajax_save_voice() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -82,6 +85,9 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * @deprecated 3.7.0 Use DELETE /aips/v1/voices/{id}.
+     */
     public function ajax_delete_voice() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -104,6 +110,9 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * @deprecated 3.7.0 Use GET /aips/v1/voices/{id}.
+     */
     public function ajax_get_voice() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -128,6 +137,9 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * @deprecated 3.7.0 Use GET /aips/v1/voices?search=...
+     */
     public function ajax_search_voices() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));

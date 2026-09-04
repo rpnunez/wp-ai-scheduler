@@ -84,14 +84,14 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The five boot methods must all exist on the plugin class.
+	 * The six boot methods must all exist on the plugin class.
 	 *
 	 * They are private but PHP Reflection can confirm their presence.
 	 */
-	public function test_plugin_class_has_all_five_boot_methods() {
+	public function test_plugin_class_has_all_boot_methods() {
 		$rc = new ReflectionClass( 'AI_Post_Scheduler' );
 
-		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_admin', 'boot_frontend' ) as $method ) {
+		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_rest', 'boot_admin', 'boot_frontend' ) as $method ) {
 			$this->assertTrue(
 				$rc->hasMethod( $method ),
 				"AI_Post_Scheduler must have a private {$method}() method"
@@ -100,12 +100,12 @@ class Test_AIPS_Context_Boot extends WP_UnitTestCase {
 	}
 
 	/**
-	 * All five boot methods must be declared private.
+	 * All boot methods must be declared private.
 	 */
 	public function test_all_boot_methods_have_private_visibility() {
 		$rc = new ReflectionClass( 'AI_Post_Scheduler' );
 
-		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_admin', 'boot_frontend' ) as $method ) {
+		foreach ( array( 'boot_common', 'boot_cron', 'boot_ajax', 'boot_rest', 'boot_admin', 'boot_frontend' ) as $method ) {
 			$this->assertTrue(
 				$rc->getMethod( $method )->isPrivate(),
 				"{$method}() must be declared private"
