@@ -116,32 +116,95 @@ class AIPS_Schedule_Batch_Resume_Service {
             $schedules_by_id[(int) $schedule->id] = $schedule;
         }
 
+        // Additional diagnostics counters
+        $metrics = array(
+            'scanned' => 0,
+            'skipped_invalid' => 0,
+            'synthesized_from_batch_progress' => 0,
+        );
+
         foreach ($schedules_by_id as $schedule) {
+            $metrics['scanned']++;
+            $schedule_id = isset($schedule->id) ? (int) $schedule->id : 0;
+
             $run_state = $this->decode_run_state($schedule);
 
             // If run_state isn't resumable, try to build a resume cursor from
-            // the batch_progress payload as a fallback.
+            // the batch_progress payload as a fallback. Validate batch_progress
+            // carefully before trusting it.
             $is_resumable = $this->is_resumable($run_state);
 
             if (!$is_resumable && !empty($schedule->batch_progress)) {
-                $bp = json_decode($schedule->batch_progress, true);
-                if (is_array($bp) && isset($bp['completed']) && isset($bp['total'])) {
-                    $completed = max(0, (int) $bp['completed']);
-                    $total = max(0, (int) $bp['total']);
+                $bp_raw = $schedule->batch_progress;
+                $bp = json_decode($bp_raw, true);
 
-                    if ($total > 0 && $completed < $total) {
-                        // Construct a synthetic run_state that indicates the run was
-                        // terminated and is resumable. This lets existing resume
-                        // logic handle dispatching the remaining slices.
-                        $run_state = array(
-                            'resumable' => true,
-                            'status' => AIPS_History_Event_Status::TERMINATED,
-                            'resume_index' => $completed,
-                            'total' => $total,
-                            'correlation_id' => isset($bp['correlation_id']) ? (string) $bp['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                if (!is_array($bp)) {
+                    $this->logger->log(
+                        'Batch resume: schedule ' . $schedule_id . ' has invalid batch_progress JSON; skipping.',
+                        'warning',
+                        array('schedule_id' => $schedule_id)
+                    );
+                    $metrics['skipped_invalid']++;
+                } else {
+                    // Validate fields
+                    $has_total = isset($bp['total']);
+                    $has_completed = isset($bp['completed']);
+
+                    if (!$has_total || !$has_completed) {
+                        $this->logger->log(
+                            'Batch resume: schedule ' . $schedule_id . ' batch_progress missing required fields; skipping.',
+                            'warning',
+                            array('schedule_id' => $schedule_id, 'batch_progress' => $bp)
                         );
+                        $metrics['skipped_invalid']++;
+                    } else {
+                        $completed = max(0, (int) $bp['completed']);
+                        $total = max(0, (int) $bp['total']);
 
-                        $is_resumable = true;
+                        // Basic invariants
+                        if ($total < 1 || $completed < 0 || $completed > $total) {
+                            $this->logger->log(
+                                'Batch resume: schedule ' . $schedule_id . ' batch_progress has invalid numeric values; skipping.',
+                                'warning',
+                                array('schedule_id' => $schedule_id, 'completed' => $completed, 'total' => $total)
+                            );
+                            $metrics['skipped_invalid']++;
+                        } else {
+                            // If post_ids is present, sanity-check its length
+                            if (isset($bp['post_ids']) && is_array($bp['post_ids'])) {
+                                $post_ids_count = count($bp['post_ids']);
+                                if ($post_ids_count !== $completed) {
+                                    $this->logger->log(
+                                        'Batch resume: schedule ' . $schedule_id . ' batch_progress post_ids length mismatch with completed count.',
+                                        'warning',
+                                        array('schedule_id' => $schedule_id, 'post_ids_count' => $post_ids_count, 'completed' => $completed)
+                                    );
+                                    // Not fatal — proceed but record diagnostic
+                                }
+                            }
+
+                            if ($total > 0 && $completed < $total) {
+                                // Construct a synthetic run_state that indicates the run was
+                                // terminated and is resumable. This lets existing resume
+                                // logic handle dispatching the remaining slices.
+                                $run_state = array(
+                                    'resumable' => true,
+                                    'status' => AIPS_History_Event_Status::TERMINATED,
+                                    'resume_index' => $completed,
+                                    'total' => $total,
+                                    'correlation_id' => isset($bp['correlation_id']) ? (string) $bp['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                                );
+
+                                $is_resumable = true;
+                                $metrics['synthesized_from_batch_progress']++;
+
+                                $this->logger->log(
+                                    'Batch resume: schedule ' . $schedule_id . ' synthesized resumable cursor from batch_progress.',
+                                    'info',
+                                    array('schedule_id' => $schedule_id, 'completed' => $completed, 'total' => $total)
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -154,6 +217,21 @@ class AIPS_Schedule_Batch_Resume_Service {
             $outcome = $this->resume_schedule($schedule, $run_state);
             $summary[$outcome]++;
         }
+
+        // Emit final metrics alongside the summary to aid diagnosing resume behaviour.
+        $this->logger->log(
+            sprintf(
+                'Batch resume summary: resumed=%d finished=%d skipped=%d failed=%d scanned=%d synthesized=%d skipped_invalid=%d',
+                $summary['resumed'],
+                $summary['finished'],
+                $summary['skipped'],
+                $summary['failed'],
+                $metrics['scanned'],
+                $metrics['synthesized_from_batch_progress'],
+                $metrics['skipped_invalid']
+            ),
+            'info'
+        );
 
         if ($summary['resumed'] > 0 || $summary['finished'] > 0) {
             $this->logger->log(
