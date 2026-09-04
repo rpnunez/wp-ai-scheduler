@@ -362,7 +362,11 @@ class AIPS_History {
 
         $changes = array();
         if ($saw_embedding) {
-            $changes[] = sprintf(__('Generated %d-dimension vector', 'ai-post-scheduler'), $embedding_dims > 0 ? $embedding_dims : 1536);
+            if ($embedding_dims > 0) {
+                $changes[] = sprintf(__('Generated %d-dimension vector', 'ai-post-scheduler'), $embedding_dims);
+            } else {
+                $changes[] = __('Generated embedding vector', 'ai-post-scheduler');
+            }
         }
         if ($saw_relationships) {
             $changes[] = __('Recomputed related posts', 'ai-post-scheduler');
@@ -1660,10 +1664,8 @@ class AIPS_History {
                 $first_item = $slice[0];
                 $last_item  = $slice[ $run_length - 1 ];
 
-                $time_range = ! empty( $first_item->relative_date ) ? $first_item->relative_date : '';
-                if ( ! empty( $last_item->relative_date ) && $last_item->relative_date !== $first_item->relative_date ) {
-                    $time_range = sprintf( '%s &ndash; %s', $first_item->relative_date, $last_item->relative_date );
-                }
+                $first_date = ! empty( $first_item->relative_date ) ? (string) $first_item->relative_date : '';
+                $last_date  = ! empty( $last_item->relative_date ) ? (string) $last_item->relative_date : '';
 
                 $grouped[] = array(
                     'is_group'        => true,
@@ -1676,7 +1678,8 @@ class AIPS_History {
                     'failed_count'    => $failed,
                     'post_types'      => $post_types,
                     'ids'             => $ids,
-                    'time_range'      => $time_range,
+                    'first_date'      => $first_date,
+                    'last_date'       => $last_date,
                 );
 
                 $group_index++;
@@ -1701,7 +1704,6 @@ class AIPS_History {
      */
     public function render_table_rows_html( array $items ): string {
         $grouped_entries = $this->group_contiguous_items( $items );
-        $history_handler = $this;
 
         ob_start();
         foreach ( $grouped_entries as $entry ) {

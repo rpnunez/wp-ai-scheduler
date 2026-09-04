@@ -115,20 +115,29 @@ class AIPS_Content_Indexer_Service {
 
 		$start_time = microtime(true);
 		$ai_config  = $this->config->get_ai_config();
-		$model      = (string) $this->config->get_option('aips_embeddings_model', !empty($ai_config['model']) ? $ai_config['model'] : 'text-embedding-3-small');
-		$provider   = (string) $this->config->get_option('aips_embeddings_provider', 'default');
+		$configured_model = (string) $this->config->get_option('aips_embeddings_model');
+		if ($configured_model === '') {
+			$configured_model = !empty($ai_config['model']) ? (string) $ai_config['model'] : 'text-embedding-3-small';
+		}
+		$model    = $configured_model;
+		$provider = (string) $this->config->get_option('aips_embeddings_provider');
+		if ($provider === '') {
+			$provider = 'default';
+		}
 
-		// Create History container at the start of indexing
+		// Rich per-step logging (ai_request/ai_response/intermediate activities) can
+		// balloon the history log for large reindex runs, so it is opt-in via setting.
+		$verbose = (bool) $this->config->get_option('aips_indexer_verbose_history', false);
+
+		// Create History container at the start of indexing. Only columns actually
+		// persisted by AIPS_History_Repository::create() are passed; anything else
+		// belongs in individual log entries below.
 		$container = $this->history_service->create('content_indexing', array(
-			'post_id'          => $post_id,
-			'post_type'        => $post->post_type,
-			'generated_title'  => $post->post_title,
-			'creation_method'  => 'content_indexing',
-			'status'           => 'processing',
-			'correlation_id'   => AIPS_Correlation_ID::get(),
-			'object_type'      => 'post',
-			'object_id'        => $post_id,
-			'object_post_type' => $post->post_type,
+			'post_id'         => $post_id,
+			'post_type'       => $post->post_type,
+			'generated_title' => $post->post_title,
+			'creation_method' => 'content_indexing',
+			'correlation_id'  => AIPS_Correlation_ID::get(),
 		));
 
 		$container->record(
@@ -138,26 +147,28 @@ class AIPS_Content_Indexer_Service {
 				'post_id'        => $post_id,
 				'post_type'      => $post->post_type,
 				'title'          => $post->post_title,
-				'content_length' => strlen($text),
+				'content_length' => mb_strlen($text),
 			)
 		);
 
-		$text_sample = mb_strlen($text) > 400 ? mb_substr($text, 0, 400) . '...' : $text;
+		if ($verbose) {
+			$text_sample = mb_strlen($text) > 400 ? mb_substr($text, 0, 400) . '...' : $text;
 
-		$container->record(
-			'ai_request',
-			sprintf(__('AI request: Sent post #%d content for embedding generation', 'ai-post-scheduler'), $post_id),
-			array(
-				'component'   => 'embeddings',
-				'model'       => $model,
-				'provider'    => $provider,
-				'text_sample' => $text_sample,
-				'text_length' => mb_strlen($text),
-				'post_id'     => $post_id,
-			),
-			null,
-			array('component' => 'embeddings')
-		);
+			$container->record(
+				'ai_request',
+				sprintf(__('AI request: Sent post #%d content for embedding generation', 'ai-post-scheduler'), $post_id),
+				array(
+					'component'   => 'embeddings',
+					'model'       => $model,
+					'provider'    => $provider,
+					'text_sample' => $text_sample,
+					'text_length' => mb_strlen($text),
+					'post_id'     => $post_id,
+				),
+				null,
+				array('component' => 'embeddings')
+			);
+		}
 
 		$embedding = $this->embeddings_service->generate_embedding($text);
 
@@ -186,27 +197,38 @@ class AIPS_Content_Indexer_Service {
 		$dimensions = count($embedding);
 		$duration   = round(microtime(true) - $start_time, 3);
 
-		// Format truncated vector sample preview (first 5 floats)
-		$sample_preview = array();
-		for ($i = 0; $i < min(5, $dimensions); $i++) {
-			$sample_preview[] = round($embedding[$i], 6);
-		}
+		if ($verbose) {
+			$sample_preview = array();
+			for ($i = 0; $i < min(5, $dimensions); $i++) {
+				$sample_preview[] = round($embedding[$i], 6);
+			}
 
-		$container->record(
-			'ai_response',
-			sprintf(__('AI response: Received %d-dimensional embedding vector in %ss', 'ai-post-scheduler'), $dimensions, $duration),
-			null,
-			array(
-				'component'      => 'embeddings',
-				'dimensions'     => $dimensions,
-				'model'          => $model,
-				'provider'       => $provider,
-				'duration'       => $duration,
-				'sample_vector'  => $sample_preview,
-				'vector_summary' => sprintf(__('5 of %d dimensions preview: [%s, ...]', 'ai-post-scheduler'), $dimensions, implode(', ', $sample_preview)),
-			),
-			array('component' => 'embeddings')
-		);
+			$container->record(
+				'ai_response',
+				sprintf(
+					/* translators: 1: vector dimensions count, 2: duration seconds. */
+					__('AI response: Received %1$d-dimensional embedding vector in %2$ss', 'ai-post-scheduler'),
+					$dimensions,
+					$duration
+				),
+				null,
+				array(
+					'component'      => 'embeddings',
+					'dimensions'     => $dimensions,
+					'model'          => $model,
+					'provider'       => $provider,
+					'duration'       => $duration,
+					'sample_vector'  => $sample_preview,
+					'vector_summary' => sprintf(
+						/* translators: 1: total dimensions, 2: comma-separated preview values. */
+						__('5 of %1$d dimensions preview: [%2$s, ...]', 'ai-post-scheduler'),
+						$dimensions,
+						implode(', ', $sample_preview)
+					),
+				),
+				array('component' => 'embeddings')
+			);
+		}
 
 		$this->embeddings_repo->upsert(
 			'post',
@@ -218,36 +240,63 @@ class AIPS_Content_Indexer_Service {
 			$post->post_type
 		);
 
-		$container->record(
-			'activity',
-			sprintf(__('Saved %d-dimension vector to embeddings database for post #%d', 'ai-post-scheduler'), $dimensions, $post_id),
-			array(
-				'post_id'    => $post_id,
-				'dimensions' => $dimensions,
-				'model'      => $model,
-			)
-		);
-
-		$rel_count = 0;
-		if ($compute_relationships) {
-			$rel_count = (int) $this->recompute_relationships_for_post($post_id);
+		if ($verbose) {
 			$container->record(
-				'info',
-				sprintf(__('Recomputed top related post relationships (%d matches)', 'ai-post-scheduler'), $rel_count),
+				'activity',
+				sprintf(
+					/* translators: 1: dimensions, 2: post id. */
+					__('Saved %1$d-dimension vector to embeddings database for post #%2$d', 'ai-post-scheduler'),
+					$dimensions,
+					$post_id
+				),
 				array(
-					'post_id'            => $post_id,
-					'relationships_saved' => $rel_count,
+					'post_id'    => $post_id,
+					'dimensions' => $dimensions,
+					'model'      => $model,
 				)
 			);
 		}
 
+		$rel_count = 0;
+		if ($compute_relationships) {
+			$rel_count = (int) $this->recompute_relationships_for_post($post_id);
+			if ($verbose) {
+				$container->record(
+					'info',
+					sprintf(__('Recomputed top related post relationships (%d matches)', 'ai-post-scheduler'), $rel_count),
+					array(
+						'post_id'             => $post_id,
+						'relationships_saved' => $rel_count,
+					)
+				);
+			}
+		}
+
 		$total_duration = round(microtime(true) - $start_time, 3);
+
+		// complete_success only merges columns whitelisted by the repository update;
+		// dimensions/duration/relationships live in the final activity log entry.
+		$container->record(
+			'activity',
+			sprintf(
+				/* translators: 1: dimensions, 2: total duration seconds, 3: related-post count. */
+				__('Indexed post: %1$d dims, %2$ss, %3$d related', 'ai-post-scheduler'),
+				$dimensions,
+				$total_duration,
+				$rel_count
+			),
+			array(
+				'dimensions'          => $dimensions,
+				'duration'            => $total_duration,
+				'relationships_saved' => $rel_count,
+				'model'               => $model,
+				'provider'            => $provider,
+			)
+		);
 
 		$container->complete_success(array(
 			'status'          => 'completed',
 			'generated_title' => $post->post_title,
-			'dimensions'      => $dimensions,
-			'duration'        => $total_duration,
 		));
 
 		$this->logger->log(

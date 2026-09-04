@@ -602,9 +602,8 @@
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
 			$(document).on('change', '.aips-history-group-cb', this.onGroupCheckboxChange.bind(this));
 
-			// Group toggle expand/collapse
+			// Group toggle expand/collapse (button is a real <button>, so native Enter/Space works)
 			$(document).on('click', '.aips-history-group-header, .aips-history-group-toggle', this.toggleGroup.bind(this));
-			$(document).on('keydown', '.aips-history-group-header', this.onGroupHeaderKeyDown.bind(this));
 
 			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
@@ -1232,11 +1231,12 @@
 		 * @param {Event} e Click event.
 		 */
 		toggleGroup: function (e) {
-			if ($(e.target).closest('input[type="checkbox"], label, a, .aips-row-action-menu').length && !$(e.target).closest('.aips-history-group-toggle').length) {
+			// Ignore interactions with the row's checkbox, labels, and any nested interactive element,
+			// unless the click landed on the dedicated toggle button.
+			if ($(e.target).closest('input[type="checkbox"], label, a, .aips-row-action-menu, .check-column').length && !$(e.target).closest('.aips-history-group-toggle').length) {
 				return;
 			}
 			e.preventDefault();
-			e.stopPropagation();
 
 			var $header = $(e.currentTarget).closest('.aips-history-group-header');
 			var groupId = $header.data('group-id');
@@ -1265,21 +1265,6 @@
 					.addClass('dashicons-arrow-down-alt2');
 				$header.find('.aips-group-subtitle')
 					.text(aipsHistoryL10n.clickToCollapse || 'Click to collapse');
-			}
-		},
-
-		/**
-		 * Keyboard accessibility for group header toggles.
-		 *
-		 * @param {Event} e Keydown event.
-		 */
-		onGroupHeaderKeyDown: function (e) {
-			if (e.key === 'Enter' || e.key === ' ') {
-				if ($(e.target).is('input[type="checkbox"]')) {
-					return;
-				}
-				e.preventDefault();
-				this.toggleGroup(e);
 			}
 		},
 

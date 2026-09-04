@@ -444,14 +444,14 @@
 
 /* History Table Contiguous Grouping */
 .aips-history-group-header {
-    background: #f8fafc;
+    background: var(--aips-gray-50);
     border-top: 1px solid var(--aips-gray-200);
     border-bottom: 1px solid var(--aips-gray-200);
     cursor: pointer;
     transition: background 0.15s ease;
 }
 .aips-history-group-header:hover {
-    background: #f1f5f9;
+    background: var(--aips-gray-100);
 }
 .aips-history-group-header .column-title {
     padding-top: 10px;
@@ -508,7 +508,7 @@
     transition: background 0.15s ease;
 }
 .aips-history-group-child:hover {
-    background: #f8fafc;
+    background: var(--aips-gray-50);
 }
 .aips-group-child-indent {
     display: inline-block;

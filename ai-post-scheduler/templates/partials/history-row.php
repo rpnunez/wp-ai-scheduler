@@ -13,7 +13,6 @@ $group_id = !empty($group_id) ? $group_id : '';
 $row_classes = array('aips-history-row', 'aips-view-history-logs');
 if ($is_child_row) {
     $row_classes[] = 'aips-history-group-child';
-    $row_classes[] = 'aips-group-child-' . sanitize_html_class($group_id);
 }
 ?>
 <tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>" style="display: none;"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">

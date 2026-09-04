@@ -15,25 +15,26 @@ $count = isset($group['count']) ? (int) $group['count'] : 0;
 $label = isset($group['label']) ? $group['label'] : __('Activity', 'ai-post-scheduler');
 $completed = isset($group['completed_count']) ? (int) $group['completed_count'] : 0;
 $failed = isset($group['failed_count']) ? (int) $group['failed_count'] : 0;
-$time_range = isset($group['time_range']) ? $group['time_range'] : '';
+$first_date = isset($group['first_date']) ? (string) $group['first_date'] : '';
+$last_date = isset($group['last_date']) ? (string) $group['last_date'] : '';
 $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $group['post_types'] : array();
 ?>
-<tr class="aips-history-group-header" data-group-id="<?php echo esc_attr($group_id); ?>" tabindex="0" role="button" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf(__('Toggle group for %d %s runs', 'ai-post-scheduler'), $count, $label)); ?>">
-    <th scope="row" class="check-column" onclick="event.stopPropagation();">
+<tr class="aips-history-group-header" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="false">
+    <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-group-<?php echo esc_attr($group_id); ?>">
-            <?php echo esc_html(sprintf(__('Select all %d items in %s group', 'ai-post-scheduler'), $count, $label)); ?>
+            <?php echo esc_html(sprintf(_n('Select %1$d item in %2$s group', 'Select all %1$d items in %2$s group', $count, 'ai-post-scheduler'), $count, $label)); ?>
         </label>
         <input id="cb-group-<?php echo esc_attr($group_id); ?>" type="checkbox" class="aips-history-group-cb" data-group-id="<?php echo esc_attr($group_id); ?>">
     </th>
     <td class="column-title">
         <div class="aips-group-title-row">
-            <button type="button" class="aips-history-group-toggle" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf(__('Expand %d %s runs', 'ai-post-scheduler'), $count, $label)); ?>">
+            <button type="button" class="aips-history-group-toggle" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf(_n('Expand %1$d %2$s run', 'Expand %1$d %2$s runs', $count, 'ai-post-scheduler'), $count, $label)); ?>">
                 <span class="dashicons dashicons-arrow-right-alt2 aips-group-chevron" aria-hidden="true"></span>
             </button>
             <strong class="aips-history-title aips-group-title-text"><?php echo esc_html($label); ?></strong>
             <span class="aips-badge aips-badge-neutral aips-group-count-badge"><?php echo esc_html(sprintf(_n('%d run', '%d runs', $count, 'ai-post-scheduler'), $count)); ?></span>
         </div>
-        <span class="aips-history-subtitle aips-group-subtitle"><?php echo esc_html(sprintf(__('Click to expand %d items', 'ai-post-scheduler'), $count)); ?></span>
+        <span class="aips-history-subtitle aips-group-subtitle"><?php echo esc_html(sprintf(_n('Click to expand %d item', 'Click to expand %d items', $count, 'ai-post-scheduler'), $count)); ?></span>
     </td>
     <td class="column-post-type">
         <?php if (!empty($post_types)): ?>
@@ -52,13 +53,13 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
             <?php if ($completed > 0): ?>
                 <span class="aips-badge aips-badge-success">
                     <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
-                    <?php echo esc_html(sprintf(__('%d Succeeded', 'ai-post-scheduler'), $completed)); ?>
+                    <?php echo esc_html(sprintf(_n('%d Succeeded', '%d Succeeded', $completed, 'ai-post-scheduler'), $completed)); ?>
                 </span>
             <?php endif; ?>
             <?php if ($failed > 0): ?>
                 <span class="aips-badge aips-badge-error">
                     <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
-                    <?php echo esc_html(sprintf(__('%d Failed', 'ai-post-scheduler'), $failed)); ?>
+                    <?php echo esc_html(sprintf(_n('%d Failed', '%d Failed', $failed, 'ai-post-scheduler'), $failed)); ?>
                 </span>
             <?php endif; ?>
             <?php if ($completed === 0 && $failed === 0): ?>
@@ -75,7 +76,12 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
             <span><?php echo esc_html(sprintf(_n('%d event', '%d events', $count, 'ai-post-scheduler'), $count)); ?></span>
         </span>
     </td>
-    <td class="column-date" colspan="2">
-        <span class="aips-meta-text"><?php echo wp_kses($time_range, array('ndash' => array())); ?></span>
+    <td class="column-date">
+        <span class="aips-meta-text">
+            <?php echo esc_html($first_date); ?>
+            <?php if ($last_date && $last_date !== $first_date): ?>
+                &ndash; <?php echo esc_html($last_date); ?>
+            <?php endif; ?>
+        </span>
     </td>
 </tr>
