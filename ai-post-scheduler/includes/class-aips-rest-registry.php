@@ -54,6 +54,11 @@ class AIPS_Rest_Registry {
 		'structures'      => 'AIPS_Structures_Rest_Controller',
 		'prompt-sections' => 'AIPS_Prompt_Sections_Rest_Controller',
 		'post-slices'     => 'AIPS_Post_Slices_Rest_Controller',
+		// Slice 3a: templates + sources CRUD (schedules, authors, campaigns land in later slices)
+		'templates'       => 'AIPS_Templates_Rest_Controller',
+		'sources'         => 'AIPS_Sources_Rest_Controller',
+		'source-groups'   => 'AIPS_Source_Groups_Rest_Controller',
+		'source-data'     => 'AIPS_Source_Data_Rest_Controller',
 	);
 
 	/**
