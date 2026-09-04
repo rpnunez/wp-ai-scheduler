@@ -20,7 +20,9 @@ class AIPS_Seeder_Admin {
         $page = $page ? sanitize_key($page) : '';
         $tab  = $tab ? sanitize_key($tab) : '';
 
-        if (strpos($hook, 'aips-seeder') === false && !('aips-diagnostics' === $page && 'seeder' === $tab)) {
+        // Enqueue when on the standalone seeder route OR when Diagnostics is
+        // showing the Dev Tools tab (Seeder UI was moved under Dev Tools).
+        if (strpos($hook, 'aips-seeder') === false && !('aips-diagnostics' === $page && 'dev-tools' === $tab)) {
             return;
         }
 

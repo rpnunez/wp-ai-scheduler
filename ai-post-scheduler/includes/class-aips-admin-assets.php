@@ -183,7 +183,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_cache_monitor_assets();
 		}
 
-		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test') || $this->is_diagnostics_tab($page, 'stress-test-history')) {
+		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
 			$this->enqueue_stress_test_assets();
 		}
 

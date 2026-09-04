@@ -55,7 +55,8 @@ class AIPS_Admin_Menu_Helper {
 	 */
 	private static $diagnostics_tabs = array(
 		'system_status'      => 'status',
-		'seeder'             => 'seeder',
+		// 'seeder' links are redirected to Dev Tools (Seed Configuration moved)
+		'seeder'             => 'dev-tools',
 		'operations_insights' => 'operations-insights',
 		'telemetry'          => 'telemetry',
 		'dev_tools'          => 'dev-tools',

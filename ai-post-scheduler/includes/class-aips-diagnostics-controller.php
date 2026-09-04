@@ -67,20 +67,12 @@ class AIPS_Diagnostics_Controller {
 			'label' => __('Stress Test', 'ai-post-scheduler'),
 		);
 
-		$tabs['stress-test-history'] = array(
-			'label' => __('Stress Test History', 'ai-post-scheduler'),
-		);
-
 		$tabs['insights'] = array(
 			'label' => __('Insights', 'ai-post-scheduler'),
 		);
 
-		if (self::is_tab_available('seeder')) {
-			$tabs['seeder'] = array(
-				'label' => __('Seeder', 'ai-post-scheduler'),
-			);
-		}
-
+		// The Seeder UI has been moved into the Dev Tools tab. Dev Tools is still
+		// gated by developer mode.
 		if (self::is_tab_available('dev-tools')) {
 			$tabs['dev-tools'] = array(
 				'label' => __('Dev Tools', 'ai-post-scheduler'),
@@ -120,16 +112,22 @@ class AIPS_Diagnostics_Controller {
 	public static function is_tab_available($tab) {
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
-		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor', 'stress-test', 'stress-test-history'), true)) {
+		if (in_array($tab, array('status', 'insights', 'cache-monitor', 'stress-test'), true)) {
 			return true;
 		}
 
 		if ('telemetry' === $tab) {
-			return (bool) AIPS_Config::get_instance()->get_option('aips_enable_telemetry');
+			// Use the runtime guard which prevents re-entrant option lookups.
+			return (bool) (class_exists('AIPS_Telemetry') && AIPS_Telemetry::is_enabled());
 		}
 
 		if ('cache-monitor' === $tab) {
-			return (bool) AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
+			// Only show the Cache Monitor tab when the plugin option is enabled
+			// and the plugin cache system is enabled site-wide.
+			$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
+			$system_enabled_raw = get_option('aips_enable_cache_system', '1');
+			$system_enabled = ($system_enabled_raw !== '0' && $system_enabled_raw !== 0 && $system_enabled_raw !== false);
+			return $enabled && $system_enabled;
 		}
 
 		if ('seeder' === $tab || 'dev-tools' === $tab) {
@@ -248,6 +246,15 @@ class AIPS_Diagnostics_Controller {
 	 * @return void
 	 */
 	private function render_stress_test_tab() {
+		// If the Stress Test tab requested the history view, render the history
+		// inline so it behaves like a contextual sub-view (similar to Author
+		// Topics -> Author Topics behavior).
+		$view = filter_input(INPUT_GET, 'view', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		if ($view && 'history' === sanitize_key($view)) {
+			$this->render_stress_test_history_tab();
+			return;
+		}
+
 		$controller = new AIPS_Stress_Test_Controller();
 		$controller->render_page(true);
 	}
