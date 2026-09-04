@@ -187,6 +187,21 @@ class AIPS_Job_Progress_Tracker {
 			$schedule_id = (int) substr($job_key, 9);
 
 			if ($schedule_id > 0) {
+				$repo = $this->repository;
+				// If a canonical batch_run exists, mark it completed; otherwise
+				// clear the legacy batch_progress field.
+				if (method_exists($repo, 'get_batch_runs_for_schedule')) {
+					$runs = $repo->get_batch_runs_for_schedule($schedule_id);
+					foreach ($runs as $run) {
+						if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+							if (method_exists($repo, 'update_batch_run_status')) {
+								$repo->update_batch_run_status($run->id, 'completed');
+								return true;
+							}
+						}
+					}
+				}
+
 				return $this->repository->clear_batch_progress($schedule_id);
 			}
 		}

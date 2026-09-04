@@ -846,6 +846,22 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Update the status field for a batch run row.
+     *
+     * @param int $id
+     * @param string $status
+     * @return bool
+     */
+    public function update_batch_run_status($id, $status) {
+        $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
+        $result = $this->wpdb->update($table, array(
+            'status' => sanitize_text_field($status),
+            'updated_at' => AIPS_DateTime::now()->timestamp()
+        ), array('id' => absint($id)));
+        return $result !== false;
+    }
+
+    /**
      * Create multiple schedules in a single query.
      *
      * @param array $schedules Array of schedule data arrays.
