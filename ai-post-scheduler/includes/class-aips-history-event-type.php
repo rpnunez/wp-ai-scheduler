@@ -59,6 +59,7 @@ final class AIPS_History_Event_Type {
 	const SCHEDULE_TERMINATED        = 'schedule_terminated';
 	const MANUAL_SCHEDULE_TERMINATED = 'manual_schedule_terminated';
 	const BATCH_SLICE_TERMINATED     = 'batch_slice_terminated';
+	const BATCH_RESUMED              = 'batch_resumed';
 	const RETRY_SCHEDULE_FAILED      = 'retry_schedule_failed';
 	const BULK_SLICING_NOTICE        = 'bulk_slicing_notice';
 	const TEMPLATE_SLICING_NOTICE    = 'template_slicing_notice';
@@ -200,6 +201,7 @@ final class AIPS_History_Event_Type {
 			self::SCHEDULE_TERMINATED       => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::TERMINATED)),
 			self::MANUAL_SCHEDULE_TERMINATED => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::TERMINATED)),
 			self::BATCH_SLICE_TERMINATED    => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::TERMINATED)),
+			self::BATCH_RESUMED             => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::RUNNING)),
 			self::RETRY_SCHEDULE_FAILED     => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::FAILED)),
 			self::BULK_SLICING_NOTICE       => array('aliases' => array(), 'subject' => self::SUBJECT_SCHEDULE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS)),
 			self::TEMPLATE_SLICING_NOTICE   => array('aliases' => array(), 'subject' => self::SUBJECT_TEMPLATE, 'statuses' => array(AIPS_History_Event_Status::SUCCESS)),

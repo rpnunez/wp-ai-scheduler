@@ -279,6 +279,13 @@ class AIPS_Schedule_Processor {
                         'total'          => $total_quantity,
                         'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
                         'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                        // Resume cursor. A large batch stopped part-way through is
+                        // resumable: the remaining slices are re-dispatched from
+                        // resume_index once the blocking setting is turned off. A run
+                        // blocked before it ever dispatched is not marked resumable —
+                        // that is a skipped occurrence, not an interrupted batch.
+                        'resumable'      => true,
+                        'resume_index'   => max(0, $start_index),
                     ),
                 )
             );

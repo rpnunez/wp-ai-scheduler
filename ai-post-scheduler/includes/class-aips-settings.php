@@ -54,6 +54,37 @@ class AIPS_Settings {
 
 		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
 		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
+
+		// Turning AI generation back on queues a one-off sweep that resumes any
+		// large batch the setting stopped part-way through. The sweep runs on
+		// cron rather than inline so saving settings stays a cheap request.
+		add_action(
+			'update_option_aips_prevent_scheduled_ai_generation',
+			array(__CLASS__, 'maybe_queue_batch_resume'),
+			10,
+			2
+		);
+	}
+
+	/**
+	 * Queue a batch-resume sweep when AI generation is re-enabled.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 * @return void
+	 */
+	public static function maybe_queue_batch_resume($old_value, $new_value) {
+		// Only on the on -> off transition. Saving settings without changing this
+		// option, or switching it on, must not queue anything.
+		if (!(bool) $old_value || (bool) $new_value) {
+			return;
+		}
+
+		if (wp_next_scheduled('aips_resume_terminated_batches')) {
+			return;
+		}
+
+		wp_schedule_single_event(AIPS_DateTime::now()->timestamp() + 60, 'aips_resume_terminated_batches');
 	}
 
 	/**
