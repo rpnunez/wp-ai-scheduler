@@ -1229,8 +1229,11 @@ class AIPS_Generator {
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();
-            if ($template && !empty($template->campaign_id)) {
-                AIPS_Campaigns_Repository::instance()->flush_campaign_cache((int) $template->campaign_id);
+            if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
+                $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
+                    $campaigns_repo->flush_campaign_cache((int) $template->campaign_id);
+                }
             }
         }
 
