@@ -140,13 +140,10 @@ class AIPS_Link_Cloaking_Service {
 		$this->telemetry_repo->record_event(
 			0,
 			0,
-			'click',
 			0,
-			array(
-				'source' => 'cloaked_redirect',
-				'slug'   => $slug,
-				'label'  => $label,
-			)
+			'click',
+			wp_is_mobile() ? 'mobile' : 'desktop',
+			1
 		);
 
 		// Prevent search engine indexation of redirects

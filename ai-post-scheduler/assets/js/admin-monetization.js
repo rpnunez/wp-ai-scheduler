@@ -61,6 +61,11 @@
 				$('#aips-engine-settings-panel').slideToggle(180);
 			});
 
+			$('#aips-setting-cloaking-prefix').on('input', function () {
+				var prefix = $(this).val().trim() || 'go';
+				$('#aips-preview-cloaking-path').text('/' + prefix + '/{slug}');
+			});
+
 			$('#aips-form-engine-settings').on('submit', function (e) {
 				e.preventDefault();
 				var $btn = $('#aips-btn-save-engine-settings');
@@ -449,6 +454,8 @@
 						var rowData = {
 							id: camp.id,
 							brand_name: camp.brand_name,
+							logo_url: camp.logo_url || '',
+							logoHidden: camp.logo_url ? '' : 'aips-hidden',
 							target_url: camp.target_url,
 							keywords: camp.keywords || '',
 							kwHidden: camp.keywords ? '' : 'aips-hidden',

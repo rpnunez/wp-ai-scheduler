@@ -82,7 +82,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<span><?php esc_html_e( 'Enable', 'ai-post-scheduler' ); ?></span>
 						</label>
 						<input type="text" name="aips_link_cloaking_prefix" id="aips-setting-cloaking-prefix" value="<?php echo esc_attr( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ); ?>" style="width:90px;" placeholder="go" />
-						<span class="description" style="font-size:12px;">/<?php echo esc_html( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ); ?>/{slug}</span>
+						<span class="description" style="font-size:12px;" id="aips-preview-cloaking-path">/<?php echo esc_html( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ); ?>/{slug}</span>
 					</div>
 				</div>
 			</div>
@@ -609,6 +609,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</td>
 		<td>
 			<strong>{{brand_name}}</strong>
+			<div class="aips-table-thumb {{logoHidden}}"><img src="{{logo_url}}" alt="" /></div>
 		</td>
 		<td><a href="{{target_url}}" target="_blank" rel="noopener">{{target_url}}</a></td>
 		<td>

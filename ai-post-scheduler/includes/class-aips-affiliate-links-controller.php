@@ -227,6 +227,7 @@ class AIPS_Affiliate_Links_Controller {
 	 */
 	private function extract_mapping_data() {
 		return array(
+			'slug'               => isset( $_POST['slug'] )               ? sanitize_title( wp_unslash( $_POST['slug'] ) )                    : '',
 			'tag'                => isset( $_POST['tag'] )                ? sanitize_text_field( wp_unslash( $_POST['tag'] ) )                : '',
 			'label'              => isset( $_POST['label'] )              ? sanitize_text_field( wp_unslash( $_POST['label'] ) )              : '',
 			'affiliate_url'      => isset( $_POST['affiliate_url'] )      ? esc_url_raw( wp_unslash( $_POST['affiliate_url'] ) )              : '',
