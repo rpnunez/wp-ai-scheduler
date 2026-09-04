@@ -55,6 +55,9 @@ class AIPS_Post_Slices_Controller {
 	 *
 	 * @return void
 	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/post-slices.
+	 */
 	public function ajax_get_post_slices() {
 		$this->authorize();
 
@@ -70,6 +73,9 @@ class AIPS_Post_Slices_Controller {
 	 * Get one post slice.
 	 *
 	 * @return void
+	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/post-slices/{id}.
 	 */
 	public function ajax_get_post_slice() {
 		$this->authorize();
@@ -91,6 +97,9 @@ class AIPS_Post_Slices_Controller {
 	 * Save a post slice.
 	 *
 	 * @return void
+	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/post-slices or PUT /aips/v1/post-slices/{id}.
 	 */
 	public function ajax_save_post_slice() {
 		$this->authorize();
@@ -156,6 +165,9 @@ class AIPS_Post_Slices_Controller {
 	 *
 	 * @return void
 	 */
+	/**
+	 * @deprecated 3.7.0 Use DELETE /aips/v1/post-slices/{id}.
+	 */
 	public function ajax_delete_post_slice() {
 		$this->authorize();
 
@@ -180,6 +192,9 @@ class AIPS_Post_Slices_Controller {
 	 * Toggle active status.
 	 *
 	 * @return void
+	 */
+	/**
+	 * @deprecated 3.7.0 Use PATCH /aips/v1/post-slices/{id} with `is_active`.
 	 */
 	public function ajax_toggle_post_slice_active() {
 		$this->authorize();
@@ -207,6 +222,9 @@ class AIPS_Post_Slices_Controller {
 	 *
 	 * @return void
 	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/post-slices/bulk-toggle.
+	 */
 	public function ajax_bulk_toggle_post_slices() {
 		$this->authorize();
 
@@ -233,6 +251,9 @@ class AIPS_Post_Slices_Controller {
 	 * Bulk delete post slices.
 	 *
 	 * @return void
+	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/post-slices/bulk-delete.
 	 */
 	public function ajax_bulk_delete_post_slices() {
 		$this->authorize();

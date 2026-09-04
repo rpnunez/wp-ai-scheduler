@@ -39,6 +39,9 @@ class AIPS_Prompt_Sections_Controller {
 		add_action('wp_ajax_aips_toggle_prompt_section_active', array($this, 'ajax_toggle_section_active'));
 	}
 
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/prompt-sections.
+	 */
 	public function ajax_get_sections() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -52,6 +55,9 @@ class AIPS_Prompt_Sections_Controller {
 		AIPS_Ajax_Response::success(array('sections' => $sections));
 	}
 
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/prompt-sections/{id}.
+	 */
 	public function ajax_get_section() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -74,6 +80,9 @@ class AIPS_Prompt_Sections_Controller {
 		AIPS_Ajax_Response::success(array('section' => $section));
 	}
 
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/prompt-sections or PUT /aips/v1/prompt-sections/{id}.
+	 */
 	public function ajax_save_section() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -123,6 +132,9 @@ class AIPS_Prompt_Sections_Controller {
 		AIPS_Ajax_Response::success(array('message' => __('Section created.', 'ai-post-scheduler'), 'section_id' => $new_id, 'section' => $section));
 	}
 
+	/**
+	 * @deprecated 3.7.0 Use DELETE /aips/v1/prompt-sections/{id}.
+	 */
 	public function ajax_delete_section() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -145,6 +157,9 @@ class AIPS_Prompt_Sections_Controller {
 		AIPS_Ajax_Response::success(array(), __('Section deleted.', 'ai-post-scheduler'));
 	}
 
+	/**
+	 * @deprecated 3.7.0 Use PATCH /aips/v1/prompt-sections/{id} with `is_active`.
+	 */
 	public function ajax_toggle_section_active() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));

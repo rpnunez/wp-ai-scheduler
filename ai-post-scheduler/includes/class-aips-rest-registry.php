@@ -46,9 +46,14 @@ class AIPS_Rest_Registry {
 	 */
 	private static $map = array(
 		// Slice 1: read-only reporters
-		'dashboard' => 'AIPS_Dashboard_Rest_Controller',
-		'telemetry' => 'AIPS_Telemetry_Rest_Controller',
-		'calendar'  => 'AIPS_Calendar_Rest_Controller',
+		'dashboard'       => 'AIPS_Dashboard_Rest_Controller',
+		'telemetry'       => 'AIPS_Telemetry_Rest_Controller',
+		'calendar'        => 'AIPS_Calendar_Rest_Controller',
+		// Slice 2: simple CRUD singletons
+		'voices'          => 'AIPS_Voices_Rest_Controller',
+		'structures'      => 'AIPS_Structures_Rest_Controller',
+		'prompt-sections' => 'AIPS_Prompt_Sections_Rest_Controller',
+		'post-slices'     => 'AIPS_Post_Slices_Rest_Controller',
 	);
 
 	/**

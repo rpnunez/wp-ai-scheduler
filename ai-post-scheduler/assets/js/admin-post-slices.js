@@ -140,28 +140,25 @@
 			$btn.prop('disabled', true).text(aipsPostSlicesL10n.saving);
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
-				action:      'aips_save_post_slice',
-				nonce:       aipsAjax.nonce,
-				slice_id:    this.currentSliceId,
+			var id = parseInt(this.currentSliceId, 10) || 0;
+			var payload = {
 				name:        name,
 				description: $('#aips-post-slice-description').val().trim(),
 				sort_order:  parseInt($('#aips-post-slice-sort-order').val(), 10) || 0,
-				is_active:   $('#aips-post-slice-is-active').is(':checked') ? 1 : 0,
-			}, function (response) {
+				is_active:   $('#aips-post-slice-is-active').is(':checked'),
+			};
+			var promise = id > 0
+				? AIPS.Http.put('post-slices/' + id, payload)
+				: AIPS.Http.post('post-slices', payload);
+
+			promise.then(function (data) {
 				$btn.prop('disabled', false).text(aipsPostSlicesL10n.saveSlice);
-
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.saveFailed, 'error');
-					return;
-				}
-
-				AIPS.Utilities.showToast(response.data.message, 'success');
+				AIPS.Utilities.showToast(data.message, 'success');
 				$('#aips-post-slice-modal').hide();
 				self.refreshPage();
-			}).fail(function () {
+			}).catch(function (err) {
 				$btn.prop('disabled', false).text(aipsPostSlicesL10n.saveSlice);
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.saveFailed, 'error');
+				AIPS.Utilities.showToast((err && err.message) || aipsPostSlicesL10n.saveFailed, 'error');
 			});
 		},
 
@@ -181,20 +178,11 @@
 			}
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
-				action:   'aips_delete_post_slice',
-				nonce:    aipsAjax.nonce,
-				slice_id: id,
-			}, function (response) {
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.deleteFailed, 'error');
-					return;
-				}
-
-				AIPS.Utilities.showToast(response.data.message, 'success');
+			AIPS.Http.delete('post-slices/' + id).then(function (data) {
+				AIPS.Utilities.showToast(data.message, 'success');
 				self.refreshPage();
-			}).fail(function () {
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.deleteFailed, 'error');
+			}).catch(function (err) {
+				AIPS.Utilities.showToast((err && err.message) || aipsPostSlicesL10n.deleteFailed, 'error');
 			});
 		},
 
@@ -213,21 +201,11 @@
 			var newStatus = isActive === 1 ? 0 : 1;
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
-				action:    'aips_toggle_post_slice_active',
-				nonce:     aipsAjax.nonce,
-				slice_id:  id,
-				is_active: newStatus,
-			}, function (response) {
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.toggleFailed, 'error');
-					return;
-				}
-
-				AIPS.Utilities.showToast(response.data.message, 'success');
+			AIPS.Http.patch('post-slices/' + id, { is_active: newStatus === 1 }).then(function (data) {
+				AIPS.Utilities.showToast(data.message, 'success');
 				self.refreshPage();
-			}).fail(function () {
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.toggleFailed, 'error');
+			}).catch(function (err) {
+				AIPS.Utilities.showToast((err && err.message) || aipsPostSlicesL10n.toggleFailed, 'error');
 			});
 		},
 
