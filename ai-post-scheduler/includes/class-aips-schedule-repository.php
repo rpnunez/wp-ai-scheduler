@@ -722,6 +722,28 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Get active schedules that carry a batch_progress payload.
+     *
+     * Some interrupted runs may persist only a batch_progress cursor. When the
+     * global AI generation prevention is lifted we should consider these rows
+     * as candidates for resume as well. This method mirrors
+     * get_schedules_with_run_state() but looks for batch_progress instead.
+     *
+     * @return array Array of schedule row objects (may be empty).
+     */
+    public function get_schedules_with_batch_progress() {
+        return $this->wpdb->get_results( "
+            SELECT s.*, t.name as template_name
+            FROM {$this->schedule_table} s
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+              AND s.batch_progress IS NOT NULL
+              AND s.batch_progress <> ''
+            ORDER BY s.id ASC
+        " );
+    }
+
+    /**
      * Create multiple schedules in a single query.
      *
      * @param array $schedules Array of schedule data arrays.

@@ -100,10 +100,54 @@ class AIPS_Schedule_Batch_Resume_Service {
             return $summary;
         }
 
-        foreach ($this->repository->get_schedules_with_run_state() as $schedule) {
+        // Merge schedules that have run_state or batch_progress into a unique set
+        $schedules_by_id = array();
+
+        $with_run_state = $this->repository->get_schedules_with_run_state();
+        foreach ($with_run_state as $schedule) {
+            $schedules_by_id[(int) $schedule->id] = $schedule;
+        }
+
+        $with_bp = array();
+        if (method_exists($this->repository, 'get_schedules_with_batch_progress')) {
+            $with_bp = $this->repository->get_schedules_with_batch_progress();
+        }
+        foreach ($with_bp as $schedule) {
+            $schedules_by_id[(int) $schedule->id] = $schedule;
+        }
+
+        foreach ($schedules_by_id as $schedule) {
             $run_state = $this->decode_run_state($schedule);
 
-            if (!$this->is_resumable($run_state)) {
+            // If run_state isn't resumable, try to build a resume cursor from
+            // the batch_progress payload as a fallback.
+            $is_resumable = $this->is_resumable($run_state);
+
+            if (!$is_resumable && !empty($schedule->batch_progress)) {
+                $bp = json_decode($schedule->batch_progress, true);
+                if (is_array($bp) && isset($bp['completed']) && isset($bp['total'])) {
+                    $completed = max(0, (int) $bp['completed']);
+                    $total = max(0, (int) $bp['total']);
+
+                    if ($total > 0 && $completed < $total) {
+                        // Construct a synthetic run_state that indicates the run was
+                        // terminated and is resumable. This lets existing resume
+                        // logic handle dispatching the remaining slices.
+                        $run_state = array(
+                            'resumable' => true,
+                            'status' => AIPS_History_Event_Status::TERMINATED,
+                            'resume_index' => $completed,
+                            'total' => $total,
+                            'correlation_id' => isset($bp['correlation_id']) ? (string) $bp['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                        );
+
+                        $is_resumable = true;
+                    }
+                }
+            }
+
+            if (!$is_resumable) {
+                $summary['skipped']++;
                 continue;
             }
 
