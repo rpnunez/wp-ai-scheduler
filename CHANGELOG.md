@@ -1,4 +1,21 @@
+## [3.6.5] - 2026-08-28
+
+### Added
+- **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
+- **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
+- **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
+  - Interactive SVG force-directed semantic graph visualizer with live similarity threshold controls and node inspection drawer.
+  - Progressive chunked backfill scanner with pause/resume controls and multi-CPT coverage counters.
+  - Duplicate & cannibalization clustering audit engine.
+- **AI-Powered Related Posts Presentation Layer**: Dynamic shortcode (`[aips_related_posts]`), Gutenberg block (`aips/related-posts`), auto-append single post filter, and customizable card grid and list layouts.
+- **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma) and WP AI Client connector fallback.
+- **Vector Dimension Mismatch Guard**: Detection of dimension variance between stored vectors and active environments with one-click guided re-index.
+- **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
+- **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
+
 ## [Unreleased]
+
+- **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
@@ -17,6 +34,7 @@
 
 
 ### Fixed
+- **Content Auditor Tab**: Fixed fatal error `Class "AIPS_Author_Repository" not found` in `templates/admin/tab-content-auditor.php` by correcting class name to `AIPS_Authors_Repository`.
 - **Short-form AI Responses**: Reserve at least 1200 output tokens for title and excerpt requests so reasoning-capable connector models do not cut off visible responses after spending the smaller configured budget on internal reasoning. The global Max Tokens Limit remains authoritative.
 - **WordPress AI Client Detection**: Treat locally registered connectors with configured credentials as available without requiring a successful remote model-catalog request during admin page loads. Live generation now surfaces the AI Client's connector/model error instead of showing a false missing-provider notice.
 - **Stress Test Reliability**: Give AIPS-scoped WordPress AI Client requests a 90-second timeout, retry one transient provider failure during interactive stress tests, and provide sufficient structured-output budget for reasoning-capable models.

@@ -1449,3 +1449,8 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied the Extract Class pattern. Created `AIPS_History_Query_Service` to own the complex reporting/querying logic for history grids, while `AIPS_History_Repository` focuses on CRUD operations and delegates read queries to the query service.
 **Consequence:** The repository size is reduced and focused on data access. Complex view-based SQL queries are encapsulated, making both classes easier to test.
 **Tests:** Ran the full PHPUnit test suite to ensure backwards compatibility and no regressions.
+## 2025-01-20 - [Refactor N+1 Database Query Bottleneck]
+**Context:** The `AIPS_Dashboard_Controller` contained iterations over DB items calling `get_edit_post_link` natively, triggering N+1 database queries per row.
+**Decision:** Implemented a bulk cache preloading strategy with `_prime_post_caches` for both `$recent_posts` and `$posts_by_topic`.
+**Consequence:** Avoided repetitive database queries, improving performance on dashboard loading, but added negligible memory allocation overhead to construct an array of post IDs prior to iterations.
+**Tests:** Ran the existing PHPUnit test suite to ensure backwards compatibility and no regressions.

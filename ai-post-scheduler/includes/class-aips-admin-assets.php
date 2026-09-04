@@ -54,6 +54,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 	private const PAGE_STRESS_TEST    = 'aips-stress-test';
 
@@ -172,6 +173,10 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
 			$this->enqueue_internal_links_assets();
+		}
+
+		if (self::PAGE_CONTENT_INDEXER === $page || $this->hook_contains($hook, self::PAGE_CONTENT_INDEXER) || $this->is_automations_tab($page, 'content-indexer')) {
+			$this->enqueue_content_indexer_assets();
 		}
 
         if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
@@ -957,6 +962,7 @@ class AIPS_Admin_Assets {
                 // "Start Time" datetime-local field in site-local time regardless of the
                 // admin's own browser timezone.
                 'gmtOffsetSeconds'                => (int) wp_timezone()->getOffset(new DateTime('now', wp_timezone())),
+                'timezoneString'                  => wp_timezone_string(),
                 // Run schedule
                 'runScheduleConfirm'             => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
                 'scheduleRunning'                => __('Running...', 'ai-post-scheduler'),
@@ -1898,6 +1904,39 @@ class AIPS_Admin_Assets {
     }
 
     /**
+     * Enqueue assets for the Content Indexer page.
+     */
+    private function enqueue_content_indexer_assets() {
+        wp_enqueue_style(
+            'aips-content-indexer-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-content-indexer.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-content-indexer-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-content-indexer.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-content-indexer-script',
+            'aipsContentIndexerL10n',
+            array(
+                'nonce'            => wp_create_nonce('aips_ajax_nonce'),
+                'startScan'        => __('Start Backfill Scan', 'ai-post-scheduler'),
+                'resumeScan'       => __('Resume Scan', 'ai-post-scheduler'),
+                'indexingPaused'   => __('Indexing Paused', 'ai-post-scheduler'),
+                'indexingComplete' => __('Content indexing complete!', 'ai-post-scheduler'),
+                'confirmClear'     => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
      * Enqueue assets for the Cache Monitor page.
      *
      * @return void
@@ -1918,6 +1957,7 @@ class AIPS_Admin_Assets {
                 'never'            => __('Never', 'ai-post-scheduler'),
                 'noEntries'        => __('No entries found.', 'ai-post-scheduler'),
                 'noOps'            => __('No operations found.', 'ai-post-scheduler'),
+                'selectEntry'      => __('Select cache entry', 'ai-post-scheduler'),
                 'noEvents'         => __('No events found.', 'ai-post-scheduler'),
                 'noneSelected'     => __('No entries selected.', 'ai-post-scheduler'),
                 'requestFailed'    => __('Request failed. Please try again.', 'ai-post-scheduler'),

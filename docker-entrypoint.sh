@@ -267,27 +267,56 @@ fi
 
 
 #============================================================
-# Xdebug log file setup
+# Xdebug runtime configuration
 #============================================================
+#
+# Xdebug is opt-in via .env. `xdebug.start_with_request=yes` (the previous
+# hardcoded default) imposes a substantial per-request cost even with no IDE
+# attached, so we default XDEBUG_MODE to `off` and generate the ini here at
+# boot from environment variables rather than baking values into dev-php.ini.
 
-# Xdebug is configured to write to /tmp/xdebug.log by default. Always create
-# that file so the container has a guaranteed writable target at boot.
-XDEBUG_DEFAULT_LOG_FILE="/tmp/xdebug.log"
-XDEBUG_OVERRIDE_LOG_FILE="${XDEBUG_LOG:-}"
+XDEBUG_MODE="${XDEBUG_MODE:-off}"
+XDEBUG_RUNTIME_INI="/usr/local/etc/php/conf.d/zz-xdebug-runtime.ini"
 
-if php -m | grep -qi '^xdebug$'; then
-  mkdir -p "$(dirname "$XDEBUG_DEFAULT_LOG_FILE")"
-  touch "$XDEBUG_DEFAULT_LOG_FILE"
-  chown www-data:www-data "$XDEBUG_DEFAULT_LOG_FILE"
-  chmod 664 "$XDEBUG_DEFAULT_LOG_FILE"
-
-  # If an override path is provided, prepare that path too.
-  if [ -n "$XDEBUG_OVERRIDE_LOG_FILE" ] && [ "$XDEBUG_OVERRIDE_LOG_FILE" != "$XDEBUG_DEFAULT_LOG_FILE" ]; then
-    mkdir -p "$(dirname "$XDEBUG_OVERRIDE_LOG_FILE")"
-    touch "$XDEBUG_OVERRIDE_LOG_FILE"
-    chown www-data:www-data "$XDEBUG_OVERRIDE_LOG_FILE"
-    chmod 664 "$XDEBUG_OVERRIDE_LOG_FILE"
+if [ "$XDEBUG_MODE" = "off" ] || [ -z "$XDEBUG_MODE" ]; then
+  # Write an explicit `xdebug.mode = off` ini. Deleting the file is NOT enough:
+  # Xdebug's compiled defaults are `mode = develop` and `start_with_request =
+  # default` (which resolves to "yes"), so with no ini Xdebug would still run
+  # develop-mode instrumentation on every request. `mode = off` disables all
+  # Xdebug features (Xdebug 3 semantics) with negligible overhead.
+  if php -m | grep -qi '^xdebug$'; then
+    cat > "$XDEBUG_RUNTIME_INI" <<EOF
+[xdebug]
+xdebug.mode = off
+EOF
+  else
+    rm -f "$XDEBUG_RUNTIME_INI"
   fi
+  echo "[entrypoint] Xdebug: disabled (XDEBUG_MODE=off)"
+elif php -m | grep -qi '^xdebug$'; then
+  XDEBUG_LOG_FILE="${XDEBUG_LOG:-/tmp/xdebug.log}"
+  mkdir -p "$(dirname "$XDEBUG_LOG_FILE")"
+  touch "$XDEBUG_LOG_FILE"
+  chown www-data:www-data "$XDEBUG_LOG_FILE"
+  chmod 664 "$XDEBUG_LOG_FILE"
+
+  cat > "$XDEBUG_RUNTIME_INI" <<EOF
+[xdebug]
+xdebug.mode = ${XDEBUG_MODE}
+xdebug.start_with_request = ${XDEBUG_START_WITH_REQUEST:-trigger}
+xdebug.client_host = ${XDEBUG_CLIENT_HOST:-host.docker.internal}
+xdebug.client_port = ${XDEBUG_CLIENT_PORT:-9003}
+xdebug.idekey = ${XDEBUG_IDEKEY:-PHPSTORM}
+xdebug.log = ${XDEBUG_LOG_FILE}
+xdebug.log_level = ${XDEBUG_LOG_LEVEL:-7}
+xdebug.discover_client_host = false
+xdebug.var_display_max_depth = 5
+xdebug.var_display_max_children = 128
+xdebug.var_display_max_data = 512
+EOF
+  echo "[entrypoint] Xdebug: enabled (mode=${XDEBUG_MODE}, start_with_request=${XDEBUG_START_WITH_REQUEST:-trigger})"
+else
+  echo "[entrypoint] Xdebug: XDEBUG_MODE=${XDEBUG_MODE} requested but xdebug extension is not loaded; skipping."
 fi
 
 #============================================================
@@ -319,10 +348,15 @@ if [ "${ENTRYPOINT_DEBUG}" = "1" ]; then
 
   echo ""
   echo "---- Xdebug Status ----"
-  php -v | grep -i xdebug || echo "Xdebug not detected"
-  echo ""
-  echo "Xdebug configuration:"
-  php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request" || true
+  echo "XDEBUG_MODE (env): ${XDEBUG_MODE:-off}"
+  if [ "${XDEBUG_MODE:-off}" = "off" ]; then
+    echo "Xdebug is DISABLED. Set XDEBUG_MODE in .env (e.g. debug) and restart the web container to enable."
+  else
+    php -v | grep -i xdebug || echo "Xdebug extension not detected"
+    echo ""
+    echo "Xdebug configuration:"
+    php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request" || true
+  fi
 
   echo ""
   echo "---- PHP Info ----"
@@ -333,7 +367,11 @@ if [ "${ENTRYPOINT_DEBUG}" = "1" ]; then
   echo "  Development environment ready!"
   echo "  WordPress: ${WP_SITE_URL}"
   echo "  phpMyAdmin: http://localhost:8082"
-  echo "  Xdebug: Listening on port 9003"
+  if [ "${XDEBUG_MODE:-off}" = "off" ]; then
+    echo "  Xdebug: disabled (set XDEBUG_MODE in .env to enable)"
+  else
+    echo "  Xdebug: mode=${XDEBUG_MODE}, port ${XDEBUG_CLIENT_PORT:-9003}, start_with_request=${XDEBUG_START_WITH_REQUEST:-trigger}"
+  fi
   echo "============================================================"
   echo ""
 
