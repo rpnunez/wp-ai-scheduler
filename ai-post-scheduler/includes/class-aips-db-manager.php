@@ -25,7 +25,8 @@ class AIPS_DB_Manager {
         'aips_source_group_terms',
         'aips_sources_data',
         'aips_taxonomy',
-        'aips_post_embeddings',
+        'aips_embeddings',
+        'aips_relationships',
         'aips_internal_links',
         'aips_affiliate_links',
         'aips_cache',
@@ -89,7 +90,8 @@ class AIPS_DB_Manager {
         $table_source_group_terms   = $tables['aips_source_group_terms'];
         $table_sources_data         = $tables['aips_sources_data'];
         $table_taxonomy             = $tables['aips_taxonomy'];
-        $table_post_embeddings      = $tables['aips_post_embeddings'];
+        $table_embeddings           = $tables['aips_embeddings'];
+        $table_relationships        = $tables['aips_relationships'];
         $table_internal_links       = $tables['aips_internal_links'];
         $table_affiliate_links      = $tables['aips_affiliate_links'];
         $table_cache                = $tables['aips_cache'];
@@ -502,16 +504,39 @@ class AIPS_DB_Manager {
             KEY term_id (term_id),
             KEY created_at (created_at)
         ) $charset_collate;";
-        
-        $sql[] = "CREATE TABLE $table_post_embeddings (
+
+        $sql[] = "CREATE TABLE $table_embeddings (
             id bigint(20) NOT NULL AUTO_INCREMENT,
-            post_id bigint(20) NOT NULL,
+            object_type varchar(32) NOT NULL DEFAULT 'post',
+            object_post_type varchar(50) DEFAULT '',
+            object_id bigint(20) NOT NULL,
+            content_hash varchar(64) DEFAULT '',
             embedding longtext NOT NULL,
+            dimensions int(11) DEFAULT 0,
             model varchar(100) DEFAULT '',
             indexed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            UNIQUE KEY post_id (post_id),
+            UNIQUE KEY object_lookup (object_type, object_id),
+            KEY object_post_type (object_post_type),
+            KEY model_dim (model, dimensions),
             KEY indexed_at (indexed_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_relationships (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_type varchar(32) NOT NULL DEFAULT 'post',
+            source_id bigint(20) NOT NULL,
+            target_type varchar(32) NOT NULL DEFAULT 'post',
+            target_id bigint(20) NOT NULL,
+            similarity decimal(5,4) NOT NULL DEFAULT 0.0000,
+            relation_type varchar(32) NOT NULL DEFAULT 'related_post',
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_target_rel (source_type, source_id, target_type, target_id, relation_type),
+            KEY source_idx (source_type, source_id),
+            KEY target_idx (target_type, target_id),
+            KEY similarity_idx (similarity),
+            KEY updated_at (updated_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_internal_links (

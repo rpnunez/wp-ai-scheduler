@@ -14,10 +14,12 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$this->markTestSkipped('Database migration tests require the full WordPress test library.');
 		}
 
+		AIPS_Config::get_instance()->set_option('aips_db_version', null);
 		delete_option('aips_db_version');
 	}
 
 	public function tearDown(): void {
+		AIPS_Config::get_instance()->set_option('aips_db_version', null);
 		delete_option('aips_db_version');
 		parent::tearDown();
 	}
@@ -79,7 +81,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertNotContains( 'dedupe_key_created_at', $index_names_before, 'Pre-condition: index should be absent before migration' );
 
 		// Trigger upgrade from a version older than 2.3.1.
-		update_option( 'aips_db_version', '2.3.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '2.3.0' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$index_names_after = $wpdb->get_col( "SHOW INDEX FROM `{$table}`", 2 );
@@ -100,7 +102,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	 * stored version is older than the current plugin version.
 	 */
 	public function test_check_and_run_saves_version_after_upgrade() {
-		update_option('aips_db_version', '0.0.1');
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '0.0.1' );
 
 		AIPS_DB_Migrations::check_and_run();
 
@@ -113,7 +115,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	 * the current plugin version.
 	 */
 	public function test_check_and_run_skips_when_version_matches() {
-		update_option('aips_db_version', AIPS_VERSION);
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', AIPS_VERSION );
 
 		AIPS_DB_Migrations::check_and_run();
 
@@ -136,9 +138,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		add_post_meta( $post_id, 'aips_post_generation_incomplete', 'true' );
 		add_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode( array( 'post_title' => false ) ) );
 
-		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
 		AIPS_DB_Migrations::check_and_run();
-		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$this->assertFalse( metadata_exists( 'post', $post_id, 'aips_post_generation_component_statuses' ) );
@@ -184,8 +186,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertNotFalse( $history_id );
 		$this->assertFalse( metadata_exists( 'post', $post_id, AIPS_Post_Manager::META_GENERATED_POST ) );
 
-		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
 		AIPS_DB_Migrations::check_and_run();
+		clean_post_cache( $post_id );
 
 		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
 	}
@@ -212,7 +215,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$before = $history_repository->get_by_id( $history_id );
 		$this->assertNull( $before->post_type );
 
-		update_option( 'aips_db_version', '3.3.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$after = $history_repository->get_by_id( $history_id );
@@ -239,9 +242,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			'post_type' => 'post', // Deliberately mismatched from the post's real type.
 		) );
 
-		update_option( 'aips_db_version', '3.3.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
 		AIPS_DB_Migrations::check_and_run();
-		update_option( 'aips_db_version', '3.3.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$after = $history_repository->get_by_id( $history_id );

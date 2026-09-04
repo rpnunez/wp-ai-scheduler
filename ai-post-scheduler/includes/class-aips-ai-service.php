@@ -807,22 +807,30 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @return array|WP_Error The embedding vector or WP_Error on failure.
      */
     public function generate_embedding($text, $options = array()) {
-        if (!$this->provider->is_available()) {
-            $error = new WP_Error('ai_unavailable', __('The selected AI provider is not available.', 'ai-post-scheduler'));
-            $this->log_call('embedding', $text, $options, $error);
-            $this->emit_integration_error_notification('embedding', $error, $options);
-            return $error;
+        $config      = AIPS_Config::get_instance();
+        $provider_id = !empty($options['provider']) ? (string) $options['provider'] : (string) $config->get_option('aips_embeddings_provider');
+        $provider    = !empty($provider_id) ? AIPS_AI_Provider_Factory::create($provider_id) : $this->provider;
+
+        if (!$provider->is_available()) {
+            if ($provider !== $this->provider && $this->provider->is_available() && $this->provider->supports_embeddings()) {
+                $provider = $this->provider;
+            } else {
+                $error = new WP_Error('ai_unavailable', __('The selected AI embeddings provider is not available.', 'ai-post-scheduler'));
+                $this->log_call('embedding', $text, $options, $error);
+                $this->emit_integration_error_notification('embedding', $error, $options);
+                return $error;
+            }
         }
 
-        if (!$this->provider->supports_embeddings()) {
+        if (!$provider->supports_embeddings()) {
             return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI provider.', 'ai-post-scheduler'));
         }
 
         $params = is_array($options) ? $options : array();
 
-        $result = $this->resilience_service->execute_safely(function() use ($text, $params, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($provider, $text, $params, $options) {
             try {
-                $embedding = $this->provider->generate_embedding($text, $params);
+                $embedding = $provider->generate_embedding($text, $params);
 
                 if (empty($embedding) || !is_array($embedding)) {
                     $error = new WP_Error('empty_response', __('AI provider returned an empty embedding response.', 'ai-post-scheduler'));

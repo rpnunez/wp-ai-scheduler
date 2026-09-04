@@ -1,3 +1,18 @@
+## [3.6.5] - 2026-08-28
+
+### Added
+- **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
+- **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
+- **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
+  - Interactive SVG force-directed semantic graph visualizer with live similarity threshold controls and node inspection drawer.
+  - Progressive chunked backfill scanner with pause/resume controls and multi-CPT coverage counters.
+  - Duplicate & cannibalization clustering audit engine.
+- **AI-Powered Related Posts Presentation Layer**: Dynamic shortcode (`[aips_related_posts]`), Gutenberg block (`aips/related-posts`), auto-append single post filter, and customizable card grid and list layouts.
+- **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma) and WP AI Client connector fallback.
+- **Vector Dimension Mismatch Guard**: Detection of dimension variance between stored vectors and active environments with one-click guided re-index.
+- **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
+- **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
+
 ## [Unreleased]
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
