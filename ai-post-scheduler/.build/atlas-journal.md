@@ -1,4 +1,4 @@
-## 2024-08-11 - Extract JSON Parsing Logic
+## 2026-08-11 - Extract JSON Parsing Logic
 
 **Context:** `AIPS_AI_Service` was acting as a "God Object" by handling AI provider orchestration, resilience, rate limiting, *and* raw text manipulation/JSON parsing.
 
@@ -6,7 +6,7 @@
 
 **Consequence:** A new class is introduced to the autoloader. The AI service is now decoupled from the specifics of JSON string manipulation, making it cleaner.
 
-**Tests:** Verified the existing test suite continues to pass, ensuring that the new decoupled architecture behaves identically to the old one with 100% backward compatibility.
+**Tests:** Added focused coverage for raw, fenced, nested, malformed, truncated, and control-character JSON responses, including prose with misleading brackets before valid JSON.
 
 ## 2026-05-27 - [Extract Schedule Logic]
 **Context:** The `AIPS_Schedule_Processor::execute_schedule_logic` method was a massive >400-line God method handling pre-execution setup, large-batch dispatch, resumable batch progress, and DB cleanup.

@@ -404,33 +404,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                     return $error;
                 }
 
-                $extract_result = AIPS_JSON_Extractor::extract_json_fragment((string) $text_response);
+                $data = AIPS_JSON_Extractor::decode_json_response((string) $text_response);
 
-                if (is_wp_error($extract_result)) {
-                    $error = new WP_Error('json_parse_error', $extract_result->get_error_message());
+                if (is_wp_error($data)) {
+                    $error = new WP_Error('json_parse_error', $data->get_error_message());
 
                     $this->logger->log('JSON extraction failed for text-based JSON generation.', 'error', array(
-                        'response_preview' => substr((string) $text_response, 0, 220),
-                        'response_full' => (string) $text_response,
-                    ));
-
-                    $this->log_call('json', $prompt, $options, $error);
-
-                    return $error;
-                }
-
-                $data = json_decode($extract_result, true);
-
-                if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-                    $error = new WP_Error(
-                        'json_parse_error',
-                        sprintf(
-                            __('Failed to parse JSON: %s', 'ai-post-scheduler'),
-                            json_last_error_msg()
-                        )
-                    );
-
-                    $this->logger->log('JSON decode failed for text-based JSON generation.', 'error', array(
                         'response_preview' => substr((string) $text_response, 0, 220),
                         'response_full' => (string) $text_response,
                     ));
