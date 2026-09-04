@@ -192,6 +192,10 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.1', '<' ) ) {
 			$this->migrate_to_3_7_1();
 		}
+
+		if ( version_compare( $from_version, '3.7.2', '<' ) ) {
+			$this->migrate_to_3_7_2();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1404,5 +1408,61 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.1: Configured Smart Ad Refresh, Sticky Anchors, and Affiliate Link Cloaking.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.2.
+	 *
+	 * Establishes wp_aips_referral_programs table schema, configures default
+	 * affiliate network profiles option, and seeds an initial sample partner referral program.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_2() {
+		global $wpdb;
+		$table_referrals = $wpdb->prefix . 'aips_referral_programs';
+
+		// Apply Layer-1 schema changes via dbDelta to create or update wp_aips_referral_programs.
+		AIPS_DB_Manager::install_tables();
+
+		// Verify table exists before executing queries.
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_referrals ) );
+		if ( $table_exists === $table_referrals ) {
+			// Seed default active referral program if table is empty.
+			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table_referrals}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( 0 === $count ) {
+				$now = time();
+				$wpdb->insert(
+					$table_referrals,
+					array(
+						'name'             => 'WP Engine Hosting',
+						'network_provider' => 'shareasale',
+						'referral_url'     => 'https://shareasale.com/r.cfm?b=12345&u=67890',
+						'slug'             => 'wp-engine-deal',
+						'promo_code'       => 'SAVE20',
+						'discount_offer'   => 'Get 4 months free + 20% off with code SAVE20',
+						'commission_notes' => '$200 CPA or 20% recurring',
+						'category_ids'     => '',
+						'keywords'         => 'hosting, wordpress, cloud, managed hosting, speed',
+						'status'           => 'active',
+						'created_at'       => $now,
+						'updated_at'       => $now,
+					),
+					array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
+				);
+			}
+		}
+
+		// Initialize default affiliate network profiles option if not present or empty in DB.
+		$profiles = AIPS_Config::get_instance()->get_option( 'aips_affiliate_network_profiles' );
+		if ( empty( $profiles ) ) {
+			$defaults = AIPS_Config::get_instance()->get_default_options();
+			$network_profiles = isset( $defaults['aips_affiliate_network_profiles'] )
+				? $defaults['aips_affiliate_network_profiles']
+				: array();
+			AIPS_Config::get_instance()->set_option( 'aips_affiliate_network_profiles', $network_profiles );
+		}
+
+		$this->logger->log( 'Migration 3.7.2: Initialized wp_aips_referral_programs schema, seeded sample partner program, and configured network profiles.', 'info' );
 	}
 }

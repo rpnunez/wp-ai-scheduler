@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.7.1
+ * Version: 3.7.2
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.1');
+    define('AIPS_VERSION', '3.7.2');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -494,12 +494,20 @@ final class AI_Post_Scheduler {
         });
 
         // Register Monetization Hub Repositories & Services
+        $container->singleton(AIPS_Affiliate_Links_Repository::class, function() {
+            return new AIPS_Affiliate_Links_Repository();
+        });
+
         $container->singleton(AIPS_Ad_Slots_Repository::class, function() {
             return new AIPS_Ad_Slots_Repository();
         });
 
         $container->singleton(AIPS_Sponsor_Campaigns_Repository::class, function() {
             return new AIPS_Sponsor_Campaigns_Repository();
+        });
+
+        $container->singleton(AIPS_Referral_Programs_Repository::class, function() {
+            return new AIPS_Referral_Programs_Repository();
         });
 
         $container->singleton(AIPS_Monetization_Telemetry_Repository::class, function() {
@@ -530,7 +538,8 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Config::class),
                 $container->make(AIPS_Affiliate_Links_Repository::class),
                 $container->make(AIPS_Sponsor_Campaigns_Repository::class),
-                $container->make(AIPS_Monetization_Telemetry_Repository::class)
+                $container->make(AIPS_Monetization_Telemetry_Repository::class),
+                $container->make(AIPS_Referral_Programs_Repository::class)
             );
         });
     }

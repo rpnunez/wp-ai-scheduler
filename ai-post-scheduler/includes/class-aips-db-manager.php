@@ -32,6 +32,7 @@ class AIPS_DB_Manager {
         'aips_ad_slots',
         'aips_sponsor_campaigns',
         'aips_monetization_events',
+        'aips_referral_programs',
         'aips_cache',
         'aips_telemetry',
         'aips_ai_assistance',
@@ -100,6 +101,7 @@ class AIPS_DB_Manager {
         $table_ad_slots             = $tables['aips_ad_slots'];
         $table_sponsor_campaigns    = $tables['aips_sponsor_campaigns'];
         $table_monetization_events  = $tables['aips_monetization_events'];
+        $table_referral_programs    = $tables['aips_referral_programs'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
@@ -642,6 +644,28 @@ class AIPS_DB_Manager {
             KEY event_date (event_date),
             KEY slot_id (slot_id),
             KEY post_id (post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_referral_programs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            network_provider varchar(50) NOT NULL DEFAULT 'direct',
+            referral_url text NOT NULL,
+            slug varchar(100) DEFAULT NULL,
+            promo_code varchar(100) DEFAULT '',
+            discount_offer varchar(255) DEFAULT '',
+            commission_notes varchar(255) DEFAULT '',
+            category_ids text DEFAULT NULL,
+            keywords text DEFAULT NULL,
+            expiry_date date DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'active',
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY slug (slug),
+            KEY network_provider (network_provider),
+            KEY status (status),
+            KEY expiry_date (expiry_date)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache (

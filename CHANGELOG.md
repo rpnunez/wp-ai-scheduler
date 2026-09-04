@@ -1,3 +1,25 @@
+## [3.7.2] - 2026-09-04
+
+### Added
+- **Referral & Partner Programs Management Engine**:
+  - New dedicated database table `wp_aips_referral_programs` managing partner programs, direct deals, network providers, custom promo/coupon codes, discount descriptions, and commission notes.
+  - Full administrative CRUD interface in Monetization Hub with interactive modal editing, search filtering, and live status toggles.
+- **Affiliate Network Profiles Configuration**:
+  - Centralized network profile settings for Amazon Associates, ShareASale, CJ Affiliate, Impact, Awin, Rakuten Advertising, and Direct/In-House partners.
+  - Automated subID tracking parameter template decoration supporting `{post_id}`, `{slug}`, `{date}`, `{author_id}`, and `{category}` tokens.
+- **Automated In-Content Promo Ribbon Delivery Engine**:
+  - Contextual auto-injection of high-converting discount callout ribbons into AI-generated posts based on matched category, tag, or content keywords.
+  - Interactive 1-click "Copy Code" button with visual feedback and clipboard fallback.
+  - Native shortcode `[aips_referral id="..."]` and Gutenberg block `aips/referral-card`.
+- **Cloaked Referral Redirection & Telemetry**:
+  - Integrated referral redirection via `/{prefix}/{slug}/` with strict HTTP 307 temporary redirects and `X-Robots-Tag: noindex, nofollow, noarchive` headers.
+  - Real-time click and viewable impression telemetry aggregation in `wp_aips_monetization_events`.
+- **Unified 5-Tab Monetization Hub**:
+  - Consolidated 5-tab admin layout (Ad Slots, Sponsor Campaigns, Affiliate Links, Referrals & Networks, Analytics).
+- **Database Schema Migration (`migrate_to_3_7_2`)**:
+  - Automatic table provisioning for `wp_aips_referral_programs` via dbDelta.
+  - Default network profile options initialization and sample partner program seeding.
+
 ## [3.7.1] - 2026-09-04
 
 ### Added
