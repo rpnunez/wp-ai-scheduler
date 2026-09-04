@@ -502,6 +502,10 @@ final class AI_Post_Scheduler {
             return new AIPS_Sponsor_Campaigns_Repository();
         });
 
+        $container->singleton(AIPS_Affiliate_Links_Repository::class, function() {
+            return new AIPS_Affiliate_Links_Repository();
+        });
+
         $container->singleton(AIPS_Monetization_Telemetry_Repository::class, function() {
             return new AIPS_Monetization_Telemetry_Repository();
         });
