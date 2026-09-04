@@ -551,6 +551,8 @@ final class AI_Post_Scheduler {
             $this->boot_cron();
         } elseif (wp_doing_ajax()) {
             $this->boot_ajax();
+        } elseif ($this->is_rest_request()) {
+            $this->boot_rest();
         } elseif (is_admin()) {
             $this->boot_admin();
         } else {
@@ -920,6 +922,54 @@ final class AI_Post_Scheduler {
         if (strncmp($action, 'aips_', 5) === 0) {
             $this->register_lazy_ajax_hooks();
         }
+    }
+
+    /**
+     * Determine whether the current request targets the WP REST API.
+     *
+     * `REST_REQUEST` is only defined by core on `parse_request`, which fires
+     * after `init`, so the dispatcher cannot rely on it. Instead this inspects
+     * the request the same way core does (the `rest_route` query var or a
+     * REQUEST_URI under the REST prefix). The constant is still honoured when
+     * present so programmatic REST contexts behave consistently.
+     *
+     * @return bool
+     */
+    private function is_rest_request() {
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            return true;
+        }
+
+        return null !== AIPS_Rest_Registry::detect_current_route();
+    }
+
+    /**
+     * Boot subsystems required for a REST API request.
+     *
+     * Registers a single `rest_api_init` listener that constructs only the
+     * REST controllers owning the requested route (see
+     * AIPS_Rest_Registry::controllers_for_route()) and lets each register its
+     * routes. Requests for other plugins' or core's namespaces construct nothing.
+     *
+     * No admin-ajax controllers, admin menu, or schedulers are loaded here.
+     *
+     * @return void
+     */
+    private function boot_rest() {
+        add_action('rest_api_init', function () {
+            $route = AIPS_Rest_Registry::detect_current_route();
+            if (null === $route) {
+                // REST_REQUEST was defined without a detectable route: register everything.
+                $route = '/';
+            }
+
+            foreach (AIPS_Rest_Registry::controllers_for_route($route) as $controller_class) {
+                if (class_exists($controller_class)) {
+                    $controller = new $controller_class();
+                    $controller->register_routes();
+                }
+            }
+        });
     }
 
     /**

@@ -82,6 +82,7 @@ php bin/benchmark.php --wp-core-dir=/tmp/wordpress --baseline-file=../.github/pe
 |---|---|---|
 | WP-Cron | `boot_cron()` | Lazy closures for schedulers, batch processors, embeddings, sources, notifications |
 | AJAX | `boot_ajax()` | One controller resolved from `AIPS_Ajax_Registry` |
+| REST | `boot_rest()` | `rest_api_init` listener that constructs only the `AIPS_Rest_Registry` controllers owning the requested route |
 | Admin | `boot_admin()` | Admin menu, assets, settings, onboarding, notifications, reconciler |
 | Frontend | `boot_frontend()` | Admin toolbar node only |
 
@@ -90,6 +91,18 @@ This means only the classes required for the current request type are ever insta
 ### AJAX routing
 
 Every `wp_ajax_*` action must be registered in `AIPS_Ajax_Registry::$map` (`includes/class-aips-ajax-registry.php`) mapping `action_name => ControllerClass`. `boot_ajax()` reads `$_REQUEST['action']`, resolves the controller, and constructs it — the constructor registers the hook, WordPress fires it. Never add ad hoc AJAX registrations outside the registry.
+
+### REST routing (preferred for new endpoints)
+
+Namespace `aips/v1`. `AIPS_Rest_Registry::$map` (`includes/class-aips-rest-registry.php`) maps `resource_base => ControllerClass`; `boot_rest()` detects the requested route (`rest_route` query var or REQUEST_URI under the REST prefix) and constructs only the owning controller, or all of them for the index / unmapped routes. Controllers extend `AIPS_Rest_Controller` (`includes/class-aips-rest-controller.php`):
+
+- Set `$rest_base`, implement `register_routes()`.
+- Auth: `'permission_callback' => array($this, 'permission_check')` (default `manage_options`) or `$this->capability_callback('cap')`. Cookie + `X-WP-Nonce` (`wp_rest`) is verified by core — no manual nonce checks.
+- Input: declare `args` schemas (`id_arg()`, `pagination_args()`, `ids_arg()` helpers) rather than reading `$_POST`.
+- Output: `respond()` / `respond_created()` / `respond_no_content()` / `respond_collection()` return the payload directly (no `{success, data}` envelope); failures return `error_*()` `WP_Error`s carrying an HTTP status.
+- JS: `AIPS.Http.get|post|put|patch|delete(path, data)` (`assets/js/http.js`, native Promises, rejects with `{code, message, status, data}`). Enqueued globally with `aipsRest` localization.
+
+Keep on admin-ajax only: file downloads/exports, HTML-fragment endpoints, long-running batch/step pollers, wizard step state, destructive DB-admin tools, and dev-only tools.
 
 ### Dependency injection
 
