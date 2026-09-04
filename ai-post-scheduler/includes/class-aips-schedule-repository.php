@@ -755,13 +755,13 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @param string $status
      * @return int|false Insert ID on success, false on failure.
      */
-    public function create_batch_run($schedule_id, $batch_uuid, $total, $completed = 0, $resume_index = 0, $post_ids = array(), $status = 'pending') {
+    public function create_batch_run($schedule_id, $batch_uuid, $total, $completed = 0, $resume_index = 0, $post_ids = array(), $status = 'pending', $correlation_id = null) {
         $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
         $now = AIPS_DateTime::now()->timestamp();
         $data = array(
             'batch_uuid' => sanitize_text_field($batch_uuid),
             'schedule_id' => absint($schedule_id),
-            'correlation_id' => null,
+            'correlation_id' => $correlation_id !== null ? sanitize_text_field($correlation_id) : null,
             'status' => sanitize_text_field($status),
             'total' => absint($total),
             'completed' => absint($completed),

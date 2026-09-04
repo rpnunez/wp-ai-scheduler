@@ -242,12 +242,12 @@ class AIPS_Batch_Queue_Service {
 					}
 
 					if ($repo && method_exists($repo, 'create_batch_run')) {
-						$created = $repo->create_batch_run($schedule_id_for_row, $batch_uuid, $total, $completed, $completed, array(), 'pending');
+						$created = $repo->create_batch_run($schedule_id_for_row, $batch_uuid, $total, $completed, $completed, array(), 'pending', $correlation_id);
 						if ($created) {
 							$this->logger->log(
-								sprintf('Created batch_run %s for schedule %d (total=%d, completed=%d)', $batch_uuid, $schedule_id_for_row, $total, $completed),
+								sprintf('Created batch_run %s for schedule %d (total=%d, completed=%d, correlation=%s)', $batch_uuid, $schedule_id_for_row, $total, $completed, $correlation_id),
 								'info',
-								array('schedule_id' => $schedule_id_for_row, 'batch_uuid' => $batch_uuid)
+								array('schedule_id' => $schedule_id_for_row, 'batch_uuid' => $batch_uuid, 'correlation_id' => $correlation_id)
 							);
 						}
 					}

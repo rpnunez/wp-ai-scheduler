@@ -146,6 +146,23 @@ class AIPS_Schedule_Processor {
     }
 
     /**
+     * @var AIPS_Job_Progress_Tracker|null
+     */
+    private $progress_tracker = null;
+
+    /**
+     * Lazy-load the Job Progress Tracker used to save/load resumable cursors.
+     *
+     * @return AIPS_Job_Progress_Tracker
+     */
+    private function get_progress_tracker(): AIPS_Job_Progress_Tracker {
+        if ($this->progress_tracker === null) {
+            $this->progress_tracker = new AIPS_Job_Progress_Tracker();
+        }
+        return $this->progress_tracker;
+    }
+
+    /**
      * Process a specific slice of posts for a scheduled batch job.
      *
      * Called by the aips_process_schedule_batch cron hook for each individual
@@ -302,6 +319,34 @@ class AIPS_Schedule_Processor {
             'timestamp'      => AIPS_DateTime::now()->toIso8601(),
         ));
 
+        // Mark the canonical batch_run as running when present. Prefer a run
+        // that matches the current correlation ID, falling back to the most
+        // recent pending run.
+        $repo = $this->repository;
+        $target_run = null;
+        $correlation = (string) AIPS_Correlation_ID::get();
+        if (method_exists($repo, 'get_batch_runs_for_schedule')) {
+            $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+            foreach ($runs as $run) {
+                if (!empty($correlation) && isset($run->correlation_id) && $run->correlation_id === $correlation && in_array($run->status, array('pending','running'), true)) {
+                    $target_run = $run;
+                    break;
+                }
+            }
+            if (!$target_run) {
+                foreach ($runs as $run) {
+                    if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+                        $target_run = $run;
+                        break;
+                    }
+                }
+            }
+
+            if ($target_run && method_exists($repo, 'update_batch_run_status')) {
+                $repo->update_batch_run_status($target_run->id, 'running');
+            }
+        }
+
         $successful_post_ids = array();
         $errors              = array();
 
@@ -327,13 +372,14 @@ class AIPS_Schedule_Processor {
             // Persist incremental progress so a crash mid-slice is visible.
             // At this point count($successful_post_ids) >= 1, so last_index is always >= 0.
             $completed_so_far = $start_index + count($successful_post_ids);
-            $this->repository->update_batch_progress(
-                $schedule_id,
-                $completed_so_far,
-                $total_quantity,
-                $completed_so_far - 1,
-                $successful_post_ids
-            );
+            // Persist incremental progress via the Job Progress Tracker so
+            // canonical batch_runs are updated when available.
+            $this->get_progress_tracker()->save_progress('schedule_' . $schedule_id, array(
+                'completed' => $completed_so_far,
+                'total' => $total_quantity,
+                'last_index' => $completed_so_far - 1,
+                'post_ids' => $successful_post_ids,
+            ));
         }
 
         $completed_in_slice = count($successful_post_ids);
@@ -352,9 +398,24 @@ class AIPS_Schedule_Processor {
                 'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
                 'timestamp'     => AIPS_DateTime::now()->toIso8601(),
             ));
+
+            // Mark canonical batch_run as partial/failed when present.
+            $repo = $this->repository;
+            if (method_exists($repo, 'get_batch_runs_for_schedule')) {
+                $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+                foreach ($runs as $run) {
+                    if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+                        if (method_exists($repo, 'update_batch_run_status')) {
+                            $repo->update_batch_run_status($run->id, $total_completed > 0 ? 'partial' : 'failed');
+                        }
+                        break;
+                    }
+                }
+            }
+
             $this->logger->log(
                 sprintf(
-                    'Batch slice marked schedule %d as %s after error at slice start=%d. completed=%d/%d, error=%s',
+                    'Batch slice marked schedul'e %d as %s after error at slice start=%d. completed=%d/%d, error=%s',
                     $schedule_id,
                     $total_completed > 0 ? 'partial' : 'failed',
                     $start_index,
@@ -380,7 +441,11 @@ class AIPS_Schedule_Processor {
                 return;
             }
 
-            $this->repository->clear_batch_progress($schedule_id);
+            // Clear legacy/canonical progress. The Job Progress Tracker clears
+            // legacy schedule.batch_progress or marks canonical batch_run completed
+            // when present.
+            $this->get_progress_tracker()->clear_progress('schedule_' . $schedule_id);
+
             $this->repository->update_run_state($schedule_id, array(
                 'status'         => 'success',
                 'completed'      => $total_completed,
@@ -389,6 +454,21 @@ class AIPS_Schedule_Processor {
                 'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
                 'timestamp'      => AIPS_DateTime::now()->toIso8601(),
             ));
+
+            // Ensure canonical batch_run (if present) is marked completed as a backup
+            // in case the tracker did not find the row above.
+            $repo = $this->repository;
+            if (method_exists($repo, 'get_batch_runs_for_schedule')) {
+                $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+                foreach ($runs as $run) {
+                    if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+                        if (method_exists($repo, 'update_batch_run_status')) {
+                            $repo->update_batch_run_status($run->id, 'completed');
+                        }
+                        break;
+                    }
+                }
+            }
 
             // Clean up one-time schedules now that all posts have been generated.
             if (isset($schedule->frequency) && $schedule->frequency === 'once') {
@@ -1077,7 +1157,7 @@ class AIPS_Schedule_Processor {
         if ($is_manual) {
             // Clear any stale progress left by a previous interrupted automated run
             // so the next scheduled execution starts a fresh batch.
-            $this->repository->clear_batch_progress($schedule->schedule_id);
+            $this->get_progress_tracker()->clear_progress('schedule_' . $schedule->schedule_id);
         } elseif (!empty($schedule->batch_progress)) {
             $saved = json_decode($schedule->batch_progress, true);
             if (
@@ -1147,6 +1227,20 @@ class AIPS_Schedule_Processor {
                         'total'         => $post_quantity,
                         'timestamp'     => AIPS_DateTime::now()->toIso8601(),
                     ));
+
+                    // Mark canonical batch_run as partial/failed when present.
+                    $repo = $this->repository;
+                    if (method_exists($repo, 'get_batch_runs_for_schedule')) {
+                        $runs = $repo->get_batch_runs_for_schedule($schedule->schedule_id);
+                        foreach ($runs as $run) {
+                            if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+                                if (method_exists($repo, 'update_batch_run_status')) {
+                                    $repo->update_batch_run_status($run->id, $completed_so_far > 0 ? 'partial' : 'failed');
+                                }
+                                break;
+                            }
+                        }
+                    }
                 }
                 // Stop the batch so batch_progress is preserved for resumption.
                 break;
@@ -1160,13 +1254,14 @@ class AIPS_Schedule_Processor {
                 // index instead of last_index+1, preventing duplicate posts.
                 if (!$is_manual && $post_quantity > 1) {
                     $completed_so_far = $prior_completed + count($successful_post_ids);
-                    $this->repository->update_batch_progress(
-                        $schedule->schedule_id,
-                        $completed_so_far,
-                        $post_quantity,
-                        $i,
-                        $successful_post_ids
-                    );
+                    // Persist incremental progress via the Job Progress Tracker so
+                    // canonical batch_runs are updated when available.
+                    $this->get_progress_tracker()->save_progress('schedule_' . $schedule->schedule_id, array(
+                        'completed' => $completed_so_far,
+                        'total' => $post_quantity,
+                        'last_index' => $i,
+                        'post_ids' => $successful_post_ids,
+                    ));
                 }
             }
         }
