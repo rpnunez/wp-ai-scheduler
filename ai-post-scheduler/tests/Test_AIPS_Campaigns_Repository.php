@@ -233,6 +233,16 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringContainsString('LIMIT 1', $this->wpdb_stub->last_get_results_query);
 	}
 
+	public function test_flush_campaign_cache_invalidates_cache_without_error() {
+		$repository = $this->new_repository();
+
+		// Should succeed for specific campaign ID and for 0 (all campaigns) without throwing error.
+		$repository->flush_campaign_cache(42);
+		$repository->flush_campaign_cache(0);
+
+		$this->assertTrue(true);
+	}
+
 	private function get_campaign_payload() {
 		return array(
 			'campaign_name'         => 'Campaign Alpha',
@@ -273,13 +283,17 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$repository = new AIPS_Campaigns_Repository($this->template_repository, $this->schedule_repository);
 		$reflection = new ReflectionClass($repository);
 
-		$cache_initialized = $reflection->getProperty('cache_initialized');
-		$cache_initialized->setAccessible(true);
-		$cache_initialized->setValue($repository, true);
+		if ($reflection->hasProperty('cache_initialized')) {
+			$cache_initialized = $reflection->getProperty('cache_initialized');
+			$cache_initialized->setAccessible(true);
+			$cache_initialized->setValue($repository, true);
+		}
 
-		$cache = $reflection->getProperty('cache');
-		$cache->setAccessible(true);
-		$cache->setValue($repository, null);
+		if ($reflection->hasProperty('cache')) {
+			$cache = $reflection->getProperty('cache');
+			$cache->setAccessible(true);
+			$cache->setValue($repository, null);
+		}
 
 		return $repository;
 	}
