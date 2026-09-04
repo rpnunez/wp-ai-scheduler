@@ -135,6 +135,31 @@ class AIPS_Job_Progress_Tracker {
 			$schedule_id = (int) substr($job_key, 9);
 
 			if ($schedule_id > 0) {
+				// Prefer canonical batch_runs when available.
+				$repo = $this->repository;
+				if (method_exists($repo, 'get_batch_runs_for_schedule')) {
+					$runs = $repo->get_batch_runs_for_schedule($schedule_id);
+					foreach ($runs as $run) {
+						if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+							$post_ids = array();
+							if (!empty($run->post_ids)) {
+								$decoded = json_decode($run->post_ids, true);
+								if (is_array($decoded)) {
+									$post_ids = $decoded;
+								}
+							}
+
+							return array(
+								'completed' => isset($run->completed) ? (int) $run->completed : 0,
+								'total' => isset($run->total) ? (int) $run->total : 0,
+								'last_index' => isset($run->resume_index) ? (int) $run->resume_index : 0,
+								'post_ids' => $post_ids,
+							);
+						}
+					}
+				}
+
+				// Fallback to legacy schedule.batch_progress storage
 				$schedule = $this->repository->get_by_id($schedule_id);
 
 				if ($schedule && !empty($schedule->batch_progress)) {
