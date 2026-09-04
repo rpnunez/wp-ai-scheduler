@@ -40,7 +40,11 @@ $is_embedded_internal_links_view = !empty($embedded);
 					<p class="aips-page-description"><?php esc_html_e('Automatically discover related content and generate internal link suggestions using semantic similarity.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
-					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-secondary">
+					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-content-indexer')); ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-networking"></span>
+						<?php esc_html_e('Content Indexer & Graph', 'ai-post-scheduler'); ?>
+					</a>
+					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
 						<span class="dashicons dashicons-database-import"></span>
 						<?php esc_html_e('Index Posts', 'ai-post-scheduler'); ?>
 					</button>

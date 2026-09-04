@@ -173,14 +173,18 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.4.0', '<' ) ) {
 			$this->migrate_to_3_4_0();
 		}
-
-		// migrate_to_3_5_0() is a data-backfill migration that depends on the
+    
+    // migrate_to_3_5_0() is a data-backfill migration that depends on the
 		// event_type / event_status columns added to aips_history_log by
 		// install_tables() above, so it runs after the Layer-1 schema apply.
 		if ( version_compare( $from_version, '3.5.0', '<' ) ) {
 			$this->migrate_to_3_5_0();
 		}
 
+		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
+			$this->migrate_to_3_6_5();
+    }
+    
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1182,5 +1186,89 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 3.6.5.
+	 *
+	 * Consolidates the legacy single-purpose `aips_post_embeddings` table into
+	 * the unified polymorphic `aips_embeddings` table. Backfills existing post
+	 * embeddings with post_type resolution and dimension tracking, then drops
+	 * the legacy `aips_post_embeddings` table.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_6_5() {
+		global $wpdb;
+
+		$old_table = $wpdb->prefix . 'aips_post_embeddings';
+		$new_table = $wpdb->prefix . 'aips_embeddings';
+
+		// Guard: Check if old table exists
+		$old_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $old_table ) );
+		if ( $old_table_exists !== $old_table ) {
+			return;
+		}
+
+		// Guard: Check if new table exists
+		$new_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_table ) );
+		if ( $new_table_exists !== $new_table ) {
+			return;
+		}
+
+		// Backfill existing rows from old table into new unified table
+		$rows = $wpdb->get_results( "SELECT post_id, embedding, updated_at, created_at FROM `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( ! empty( $rows ) ) {
+			$now = AIPS_DateTime::now()->timestamp();
+
+			foreach ( $rows as $row ) {
+				$post_id = absint( $row->post_id );
+				if ( ! $post_id ) {
+					continue;
+				}
+
+				// Check if already in new table
+				$existing = $wpdb->get_var( $wpdb->prepare(
+					"SELECT id FROM `{$new_table}` WHERE object_type = 'post' AND object_id = %d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$post_id
+				) );
+
+				if ( ! $existing ) {
+					// Resolve post_type from posts table
+					$post_type = $wpdb->get_var( $wpdb->prepare(
+						"SELECT post_type FROM {$wpdb->posts} WHERE ID = %d LIMIT 1",
+						$post_id
+					) );
+					$post_type = $post_type ? sanitize_key( $post_type ) : 'post';
+
+					// Decode embedding to inspect dimensions
+					$vector = json_decode( $row->embedding, true );
+					$dims   = ( is_array( $vector ) && ! empty( $vector ) ) ? count( $vector ) : 1536;
+
+					$indexed_at = ! empty( $row->updated_at ) ? (int) $row->updated_at : ( ! empty( $row->created_at ) ? (int) $row->created_at : $now );
+
+					$wpdb->insert(
+						$new_table,
+						array(
+							'object_type'      => 'post',
+							'object_post_type' => $post_type,
+							'object_id'        => $post_id,
+							'content_hash'     => '',
+							'embedding'        => $row->embedding,
+							'dimensions'       => $dims,
+							'model'            => 'text-embedding-3-small',
+							'indexed_at'       => $indexed_at,
+						),
+						array( '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%d' )
+					);
+				}
+			}
+		}
+
+		// Drop the legacy table
+		$wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$this->logger->log( 'Migration 3.6.5: Consolidated aips_post_embeddings into aips_embeddings and dropped legacy table.', 'info' );
 	}
 }

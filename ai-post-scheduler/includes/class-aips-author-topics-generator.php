@@ -46,6 +46,11 @@ class AIPS_Author_Topics_Generator {
 	private $embeddings_service;
 
 	/**
+	 * @var AIPS_Deduplication_Service Deduplication service
+	 */
+	private $deduplication_service;
+
+	/**
 	 * @var AIPS_Feedback_Repository Feedback repository for building quality context
 	 */
 	private $feedback_repository;
@@ -70,9 +75,10 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $embeddings_service Embeddings service (optional for testing).
 	 * @param object|null $feedback_repository Feedback repository (optional for testing).
 	 * @param object|null $prompt_builder Topic prompt builder (optional for testing).
-	 * @param object|null $authors_repository Authors repository (optional for testing).
+	 * @param object|null $deduplication_service Deduplication service (optional for testing).
+   * @param object|null $authors_repository Authors repository (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $authors_repository = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -80,6 +86,7 @@ class AIPS_Author_Topics_Generator {
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
+		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
 			null,
@@ -387,79 +394,15 @@ class AIPS_Author_Topics_Generator {
 	/**
 	 * Flag semantically similar generated topics as potential duplicates.
 	 *
+	 * Uses AIPS_Deduplication_Service to check candidates against both existing
+	 * topics and existing published WordPress articles.
+	 *
 	 * @param object $author Author object.
 	 * @param array  $topics Generated topic arrays.
 	 * @return array Topics with updated metadata and score adjustments.
 	 */
 	private function apply_fuzzy_duplicate_flags($author, $topics) {
-		if (empty($topics) || !$this->embeddings_service->is_embeddings_supported()) {
-			return $topics;
-		}
-
-		$existing_topics = $this->topics_repository->get_by_author($author->id);
-		if (empty($existing_topics)) {
-			return $topics;
-		}
-
-		$candidate_existing = array();
-		foreach ($existing_topics as $existing_topic) {
-			$metadata = !empty($existing_topic->metadata) ? json_decode($existing_topic->metadata, true) : array();
-			if (!is_array($metadata) || empty($metadata['embedding']) || !is_array($metadata['embedding'])) {
-				continue;
-			}
-
-			$candidate_existing[] = array(
-				'topic_title' => $existing_topic->topic_title,
-				'embedding' => $metadata['embedding'],
-			);
-		}
-
-		if (empty($candidate_existing)) {
-			return $topics;
-		}
-
-		$threshold = (float) AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
-		foreach ($topics as &$topic) {
-			$text = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
-			if (empty($text)) {
-				continue;
-			}
-
-			$embedding = $this->embeddings_service->generate_embedding($text);
-			if (is_wp_error($embedding) || !is_array($embedding)) {
-				continue;
-			}
-
-			$best_similarity = 0;
-			$best_match = '';
-			foreach ($candidate_existing as $existing) {
-				$similarity = $this->embeddings_service->calculate_similarity($embedding, $existing['embedding']);
-				if (!is_wp_error($similarity) && $similarity > $best_similarity) {
-					$best_similarity = $similarity;
-					$best_match = (string) $existing['topic_title'];
-				}
-			}
-
-			$metadata = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
-			if (!is_array($metadata)) {
-				$metadata = array();
-			}
-			$metadata['embedding'] = $embedding;
-
-			if ($best_similarity >= $threshold) {
-				$metadata['potential_duplicate'] = true;
-				$metadata['duplicate_similarity'] = round($best_similarity, 4);
-				$metadata['duplicate_match'] = $best_match;
-				$topic['score'] = max(0, ((int) (isset($topic['score']) ? $topic['score'] : 50)) - 15);
-			} else {
-				$metadata['potential_duplicate'] = false;
-			}
-
-			$topic['metadata'] = wp_json_encode($metadata);
-		}
-		unset($topic);
-
-		return $topics;
+		return $this->deduplication_service->evaluate_topics_for_duplicates($topics, $author->id);
 	}
 	
 	/**
