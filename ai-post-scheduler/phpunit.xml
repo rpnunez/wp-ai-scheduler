@@ -15,15 +15,13 @@
         </testsuite>
     </testsuites>
 
-    <coverage>
-        <include>
-            <directory suffix=".php">./includes</directory>
-        </include>
-        <report>
-            <html outputDirectory="coverage" lowUpperBound="35" highLowerBound="70"/>
-            <text outputFile="php://stdout" showUncoveredFiles="false"/>
-        </report>
-    </coverage>
+    <!--
+        Coverage configuration is intentionally NOT declared here. When a
+        <coverage> block is present, PHPUnit 9 boots its coverage driver on
+        every run and warns unless Xdebug is in `coverage` mode (or PCOV is
+        loaded). Since Xdebug defaults to off, we drive coverage via CLI
+        flags from `composer test:coverage` instead — see composer.json.
+    -->
 
     <php>
         <const name="WP_TESTS_PHPUNIT_POLYFILLS_PATH" value="vendor/yoast/phpunit-polyfills"/>
