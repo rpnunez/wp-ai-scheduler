@@ -77,7 +77,7 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 	}
 }
 
-if (!class_exists('AIPS_Test_Stub_History_Repository')) {
+if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 	class AIPS_Test_Stub_History_Repository implements AIPS_History_Repository_Interface {
 		public $history_by_post = array();
 
