@@ -280,3 +280,13 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Stagger scheduled topics with frequency 'once' to improve queue management
 **Files Modified:** ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
 **Outcome:** Reduced concurrent background queue spike by staggering 'once' schedules
+## 2025-05-15 - Research Planner Optimization
+Target Feature: Research Planner
+Improvement: Replaced the non-standard custom two-click soft confirm behavior in the Planner UI with the standardized AIPS.Utilities.confirm modal for improved UI consistency and accessibility.
+Files Modified: ai-post-scheduler/assets/js/admin-planner.js, ai-post-scheduler/includes/class-aips-admin-assets.php
+Outcome: Simplifies code maintainability and offers a unified UI flow for user confirmations during content planning.
+## 2026-08-24 - Post Generator Optimization
+**Target Feature:** Post Generator
+**Improvement:** Optimized the search and filter clear buttons in the Generated Posts, Pending Review, and Partial Generations tabs by replacing text buttons with standard dashicon icons, reducing visual clutter and improving UI consistency while preserving full accessibility via aria-labels.
+**Files Modified:** `ai-post-scheduler/templates/admin/tab-generated-posts.php`, `ai-post-scheduler/templates/admin/tab-pending-review.php`, `ai-post-scheduler/templates/admin/tab-partial-generations.php`
+**Outcome:** Improved flow/efficiency and consistency for the Post Generator without expanding scope to unrelated areas.

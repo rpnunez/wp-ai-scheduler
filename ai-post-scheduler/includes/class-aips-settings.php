@@ -207,6 +207,34 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
 			),
+			'aips_embeddings_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_embeddings_provider'],
+			),
+			'aips_embeddings_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_model'],
+			),
+			'aips_embeddings_env_id' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_env_id'],
+			),
+			'aips_embeddings_dimensions' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_dimensions'],
+			),
+			'aips_indexer_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_indexer_post_types'],
+			),
+			'aips_indexer_similarity_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_similarity_threshold'],
+			),
+			'aips_auto_index_on_publish' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_auto_index_on_publish'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {

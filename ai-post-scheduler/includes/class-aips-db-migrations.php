@@ -111,6 +111,10 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_2_5_0();
 		}
 
+		if ( version_compare( $from_version, '3.4.2', '<' ) ) {
+			$this->migrate_to_3_4_2();
+		}
+
 		// Apply Layer-1 schema changes (new tables / new columns) so that plugin
 		// updates delivered via WordPress auto-update — which skip activate() —
 		// still get a complete, up-to-date schema.
@@ -162,6 +166,25 @@ class AIPS_DB_Migrations {
 			$this->migrate_to_3_1_0();
 		}
 
+		// migrate_to_3_4_0() is a data-backfill migration that requires the
+		// post_type column introduced in this release to already exist
+		// (created above by install_tables()). It must therefore run after
+		// install_tables() rather than before it.
+		if ( version_compare( $from_version, '3.4.0', '<' ) ) {
+			$this->migrate_to_3_4_0();
+		}
+    
+    // migrate_to_3_5_0() is a data-backfill migration that depends on the
+		// event_type / event_status columns added to aips_history_log by
+		// install_tables() above, so it runs after the Layer-1 schema apply.
+		if ( version_compare( $from_version, '3.5.0', '<' ) ) {
+			$this->migrate_to_3_5_0();
+		}
+
+		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
+			$this->migrate_to_3_6_5();
+    }
+    
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -972,6 +995,176 @@ class AIPS_DB_Migrations {
 	}
 
 	/**
+	 * Migration for version 3.5.0.
+	 *
+	 * Backfills the indexed `event_type` and `event_status` columns on
+	 * `aips_history_log` from the serialized `details.input` block, so that
+	 * repositories can filter events with an indexed column lookup instead of a
+	 * `LIKE '%"event_type":"…"%'` scan over the JSON payload.
+	 *
+	 * The columns themselves are created by dbDelta in install_tables(); this
+	 * migration only populates historical rows. Guarded with SHOW COLUMNS so it
+	 * is a no-op when the target schema is absent, and it only touches rows whose
+	 * columns are still NULL so it is safe to re-run and cheap once complete.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_5_0() {
+    global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+	
+    // No-op unless both target columns exist (dbDelta must have run first).
+		$has_type = $wpdb->get_var(
+			$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'event_type' ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+		$has_status = $wpdb->get_var(
+			$wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'event_status' ) // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+		if ( ! $has_type || ! $has_status ) {
+			return;
+		}
+
+		$batch_size = 500;
+		$last_id    = 0;
+		$updated    = 0;
+
+		do {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT id, details FROM `{$table}`
+					WHERE id > %d AND event_type IS NULL AND event_status IS NULL
+					ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$last_id,
+					$batch_size
+				)
+			);
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+
+				$details = json_decode( (string) $row->details, true );
+				if ( ! is_array( $details ) || ! isset( $details['input'] ) || ! is_array( $details['input'] ) ) {
+					continue;
+				}
+
+				$input        = $details['input'];
+				$event_type   = isset( $input['event_type'] ) && '' !== $input['event_type']
+					? substr( sanitize_text_field( (string) $input['event_type'] ), 0, 64 )
+					: null;
+				$event_status = isset( $input['event_status'] ) && '' !== $input['event_status']
+					? substr( sanitize_text_field( (string) $input['event_status'] ), 0, 32 )
+					: null;
+
+				if ( null === $event_type && null === $event_status ) {
+					continue;
+				}
+
+				$wpdb->update(
+					$table,
+					array(
+						'event_type'   => $event_type,
+						'event_status' => $event_status,
+					),
+					array( 'id' => (int) $row->id ),
+					array( '%s', '%s' ),
+					array( '%d' )
+				);
+				++$updated;
+			}
+		} while ( ! empty( $rows ) );
+
+		$this->logger->log(
+			"migrate_to_3_5_0: backfilled event_type/event_status on {$updated} history log rows",
+			'info'
+		);
+	
+	}
+
+	/**
+	 * Migration for version 3.4.0.
+	 *
+	 * Backfills the new aips_history.post_type column for existing rows.
+	 * New rows are populated at write time by AIPS_Generator (via
+	 * AIPS_History_Container::complete_success()); this migration only
+	 * covers history rows created before that column existed. A single
+	 * INNER JOIN UPDATE derives post_type from the linked wp_posts row,
+	 * touching only rows where post_id is set and post_type is still NULL,
+	 * so it's naturally idempotent and safe to leave in run_upgrade()
+	 * permanently.
+	 */
+	private function migrate_to_3_4_0() {
+		global $wpdb;
+
+		$table_history = $wpdb->prefix . 'aips_history';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_history ) );
+		if ( $table_exists !== $table_history ) {
+			return;
+		}
+
+		$post_type_column = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table_history}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'post_type'
+		) );
+		if ( ! $post_type_column ) {
+			return;
+		}
+
+		$updated = $wpdb->query(
+			"UPDATE {$table_history} h
+			INNER JOIN {$wpdb->posts} p ON h.post_id = p.ID
+			SET h.post_type = p.post_type
+			WHERE h.post_id IS NOT NULL AND h.post_type IS NULL" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		if ( $updated ) {
+			$this->logger->log( "migrate_to_3_4_0: backfilled post_type for {$updated} aips_history rows", 'info' );
+		}
+	}
+
+	/**
+	 * Migration for version 3.4.2.
+	 *
+	 * Restores the composite index on aips_history_log. The schema previously
+	 * declared this index over a non-existent `log_type` column — a leftover
+	 * from migrate_to_3_1_0(), which dropped the `log_type` column (and, with
+	 * it, MySQL implicitly dropped this index). The stale definition made
+	 * dbDelta fail on fresh installs ("Key column 'log_type' doesn't exist"),
+	 * aborting creation of every table defined after aips_history_log. The
+	 * schema now correctly targets `history_type_id`; this migration adds the
+	 * corrected index to sites that upgraded through 3.1.0 and therefore lost it.
+	 *
+	 * Guarded by SHOW TABLES / SHOW INDEX so it is a no-op on fresh installs
+	 * (where dbDelta has already created the corrected index) and on any site
+	 * that already has it.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_4_2() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$exists = $wpdb->get_row( $wpdb->prepare(
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'history_id_log_type'
+		) );
+
+		if ( ! $exists ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY history_id_log_type (history_id, history_type_id)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
+	}
+
+	/**
 	 * Normalize the run_state timestamp payload into a Unix timestamp.
 	 *
 	 * @param mixed $value Raw run_state timestamp value.
@@ -993,5 +1186,89 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 3.6.5.
+	 *
+	 * Consolidates the legacy single-purpose `aips_post_embeddings` table into
+	 * the unified polymorphic `aips_embeddings` table. Backfills existing post
+	 * embeddings with post_type resolution and dimension tracking, then drops
+	 * the legacy `aips_post_embeddings` table.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_6_5() {
+		global $wpdb;
+
+		$old_table = $wpdb->prefix . 'aips_post_embeddings';
+		$new_table = $wpdb->prefix . 'aips_embeddings';
+
+		// Guard: Check if old table exists
+		$old_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $old_table ) );
+		if ( $old_table_exists !== $old_table ) {
+			return;
+		}
+
+		// Guard: Check if new table exists
+		$new_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_table ) );
+		if ( $new_table_exists !== $new_table ) {
+			return;
+		}
+
+		// Backfill existing rows from old table into new unified table
+		$rows = $wpdb->get_results( "SELECT post_id, embedding, updated_at, created_at FROM `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( ! empty( $rows ) ) {
+			$now = AIPS_DateTime::now()->timestamp();
+
+			foreach ( $rows as $row ) {
+				$post_id = absint( $row->post_id );
+				if ( ! $post_id ) {
+					continue;
+				}
+
+				// Check if already in new table
+				$existing = $wpdb->get_var( $wpdb->prepare(
+					"SELECT id FROM `{$new_table}` WHERE object_type = 'post' AND object_id = %d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$post_id
+				) );
+
+				if ( ! $existing ) {
+					// Resolve post_type from posts table
+					$post_type = $wpdb->get_var( $wpdb->prepare(
+						"SELECT post_type FROM {$wpdb->posts} WHERE ID = %d LIMIT 1",
+						$post_id
+					) );
+					$post_type = $post_type ? sanitize_key( $post_type ) : 'post';
+
+					// Decode embedding to inspect dimensions
+					$vector = json_decode( $row->embedding, true );
+					$dims   = ( is_array( $vector ) && ! empty( $vector ) ) ? count( $vector ) : 1536;
+
+					$indexed_at = ! empty( $row->updated_at ) ? (int) $row->updated_at : ( ! empty( $row->created_at ) ? (int) $row->created_at : $now );
+
+					$wpdb->insert(
+						$new_table,
+						array(
+							'object_type'      => 'post',
+							'object_post_type' => $post_type,
+							'object_id'        => $post_id,
+							'content_hash'     => '',
+							'embedding'        => $row->embedding,
+							'dimensions'       => $dims,
+							'model'            => 'text-embedding-3-small',
+							'indexed_at'       => $indexed_at,
+						),
+						array( '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%d' )
+					);
+				}
+			}
+		}
+
+		// Drop the legacy table
+		$wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$this->logger->log( 'Migration 3.6.5: Consolidated aips_post_embeddings into aips_embeddings and dropped legacy table.', 'info' );
 	}
 }

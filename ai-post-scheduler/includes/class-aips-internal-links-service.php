@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Internal_Links_Service {
 
 	/**
-	 * @var AIPS_Post_Embeddings_Repository
+	 * @var AIPS_Embeddings_Repository
 	 */
 	private $embeddings_repo;
 
@@ -64,7 +64,7 @@ class AIPS_Internal_Links_Service {
 	/**
 	 * Initialize the service.
 	 *
-	 * @param AIPS_Post_Embeddings_Repository|null $embeddings_repo    Embeddings repository.
+	 * @param AIPS_Embeddings_Repository|null      $embeddings_repo    Embeddings repository.
 	 * @param AIPS_Internal_Links_Repository|null  $links_repo         Internal links repository.
 	 * @param AIPS_Embeddings_Service|null         $embeddings_service Embeddings service.
 	 * @param AIPS_Logger|null                     $logger             Logger instance.
@@ -75,7 +75,8 @@ class AIPS_Internal_Links_Service {
 		$embeddings_service = null,
 		$logger = null
 	) {
-		$this->embeddings_repo    = $embeddings_repo    ?: new AIPS_Post_Embeddings_Repository();
+		$container                = AIPS_Container::get_instance();
+		$this->embeddings_repo    = $embeddings_repo    ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->links_repo         = $links_repo         ?: new AIPS_Internal_Links_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->logger             = $logger             ?: new AIPS_Logger();
@@ -111,7 +112,7 @@ class AIPS_Internal_Links_Service {
 			return $embedding;
 		}
 
-		$this->embeddings_repo->upsert($post_id, $embedding);
+		$this->embeddings_repo->upsert('post', $post_id, $embedding);
 
 		$this->logger->log(
 			sprintf('Indexed post %d for internal links.', $post_id),
