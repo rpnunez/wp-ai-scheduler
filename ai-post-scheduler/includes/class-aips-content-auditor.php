@@ -67,7 +67,8 @@ class AIPS_Content_Auditor {
 	 */
 	public function get_scanner() {
 		if (null === $this->scanner) {
-			$this->scanner = new AIPS_Content_Auditor_Scanner();
+			$container = AIPS_Container::get_instance();
+			$this->scanner = $container->has(AIPS_Content_Auditor_Scanner::class) ? $container->make(AIPS_Content_Auditor_Scanner::class) : new AIPS_Content_Auditor_Scanner();
 		}
 		return $this->scanner;
 	}
@@ -79,7 +80,8 @@ class AIPS_Content_Auditor {
 	 */
 	public function get_engine() {
 		if (null === $this->engine) {
-			$this->engine = new AIPS_Content_Auditor_Engine($this->ai_service, $this->logger);
+			$container = AIPS_Container::get_instance();
+			$this->engine = $container->has(AIPS_Content_Auditor_Engine::class) ? $container->make(AIPS_Content_Auditor_Engine::class) : new AIPS_Content_Auditor_Engine($this->ai_service, $this->logger);
 		}
 		return $this->engine;
 	}
@@ -170,7 +172,7 @@ class AIPS_Content_Auditor {
 				$title = get_the_title($post_id);
 				$categories = get_the_category($post_id);
 				$cat_names = array();
-				
+
 				if ($categories) {
 					foreach ($categories as $cat) {
 						$cat_names[] = $cat->name;
@@ -224,7 +226,7 @@ class AIPS_Content_Auditor {
 
 		// 1. Ingest existing content
 		$existing_content = $this->get_site_content_summary(100);
-		
+
 		if (empty($existing_content)) {
 			$this->logger->log("No existing content found for gap analysis.", 'info');
 		}
@@ -254,7 +256,7 @@ class AIPS_Content_Auditor {
 		}
 
 		$this->logger->log("Gap analysis completed successfully. Found " . count($parsed_response) . " gaps.", 'info');
-		
+
 		return $parsed_response;
 	}
 
@@ -266,19 +268,9 @@ class AIPS_Content_Auditor {
 	 * @return array|null Parsed array or null on failure.
 	 */
 	private function parse_json_response($response) {
-		if (preg_match('/```json\s*([\s\S]*?)\s*```/', $response, $matches)) {
-			$response = $matches[1];
-		} elseif (preg_match('/```\s*([\s\S]*?)\s*```/', $response, $matches)) {
-			$response = $matches[1];
-		}
+		$decoded = AIPS_JSON_Extractor::decode_json_response( $response );
 
-		$decoded = json_decode($response, true);
-
-		if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-			return $decoded;
-		}
-
-		return null;
+		return is_wp_error( $decoded ) ? null : $decoded;
 	}
 
 	/**
@@ -322,9 +314,9 @@ class AIPS_Content_Auditor {
 		$prompt = "You are an SEO Content Strategist. The website's core niche is: {$niche}.\n\n";
 		$prompt .= "Here is a list of the last " . count($existing_content) . " published articles on the site:\n";
 		$prompt .= $content_list . "\n\n";
-		
+
 		$prompt .= "Task: Analyze the existing content coverage against the target niche. Identify 5-7 major sub-topics, 'pillar' pages, or content clusters that are MISSING or under-represented.\n\n";
-		
+
 		$prompt .= "Return a JSON array where each item has: \"missing_topic\" (string), \"priority\" (\"High\" or \"Medium\"), \"reason\" (string), \"search_intent\" (string).";
 
 		return $prompt;

@@ -327,8 +327,22 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
 
         $query = new Meow_MWAI_Query_Embed($text);
 
-        if (!empty($params['embeddings_env_id']) && method_exists($query, 'set_embeddings_env_id')) {
-            $query->set_embeddings_env_id($params['embeddings_env_id']);
+        if (!empty($params['embeddings_env_id'])) {
+            if (method_exists($query, 'set_embeddings_env_id')) {
+                $query->set_embeddings_env_id($params['embeddings_env_id']);
+            } elseif (method_exists($query, 'set_env_id')) {
+                $query->set_env_id($params['embeddings_env_id']);
+            } elseif (property_exists($query, 'envId')) {
+                $query->envId = $params['embeddings_env_id'];
+            }
+        }
+
+        if (!empty($params['model'])) {
+            if (method_exists($query, 'set_model')) {
+                $query->set_model($params['model']);
+            } elseif (property_exists($query, 'model')) {
+                $query->model = $params['model'];
+            }
         }
 
         $response = $core->run_query($query);
@@ -338,6 +352,68 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
         }
 
         return $response->result;
+    }
+
+    /**
+     * Fetch configured embedding environments / connections from Meow Apps AI Engine.
+     *
+     * Queries AI Engine configuration for custom vector environments (e.g. Percona,
+     * OpenAI, Pinecone, Qdrant, Ollama) and returns normalized metadata.
+     *
+     * @return array<int, array{id: string, name: string, model: string, dimensions: int, serverType: string}>
+     */
+    public function get_embeddings_environments(): array {
+        $environments = array();
+
+        if (function_exists('mwai_get_embeddings_environments')) {
+            $raw = mwai_get_embeddings_environments();
+            if (is_array($raw)) {
+                $environments = $raw;
+            }
+        }
+
+        if (empty($environments) && isset($GLOBALS['mwai_core']) && is_object($GLOBALS['mwai_core']) && method_exists($GLOBALS['mwai_core'], 'get_embeddings_environments')) {
+            $raw = $GLOBALS['mwai_core']->get_embeddings_environments();
+            if (is_array($raw)) {
+                $environments = $raw;
+            }
+        }
+
+        if (empty($environments)) {
+            $opt = get_option('mwai_embeddings', array());
+            if (is_array($opt) && !empty($opt['environments']) && is_array($opt['environments'])) {
+                $environments = $opt['environments'];
+            } elseif (is_array($opt) && !empty($opt)) {
+                $environments = $opt;
+            } else {
+                $mwai_opt = get_option('mwai_options', array());
+                if (is_array($mwai_opt) && !empty($mwai_opt['embeddings_environments']) && is_array($mwai_opt['embeddings_environments'])) {
+                    $environments = $mwai_opt['embeddings_environments'];
+                }
+            }
+        }
+
+        $normalized = array();
+        foreach ($environments as $key => $env) {
+            if (!is_array($env)) {
+                continue;
+            }
+            $id         = !empty($env['id']) ? (string) $env['id'] : (string) $key;
+            $name       = !empty($env['name']) ? (string) $env['name'] : (!empty($env['label']) ? (string) $env['label'] : $id);
+            $model      = !empty($env['model']) ? (string) $env['model'] : (!empty($env['embeddingsModel']) ? (string) $env['embeddingsModel'] : 'text-embedding-3-small');
+            $dimensions = !empty($env['dimensions']) ? absint($env['dimensions']) : (!empty($env['dims']) ? absint($env['dims']) : 1536);
+            $serverType = !empty($env['serverType']) ? (string) $env['serverType'] : (!empty($env['type']) ? (string) $env['type'] : 'default');
+
+            $normalized[] = array(
+                'id'         => $id,
+                'name'       => $name,
+                'model'      => $model,
+                'dimensions' => $dimensions,
+                'serverType' => $serverType,
+            );
+        }
+
+        return $normalized;
     }
 
     /**

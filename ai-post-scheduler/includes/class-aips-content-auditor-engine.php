@@ -200,11 +200,12 @@ class AIPS_Content_Auditor_Engine {
 	public function analyze_cannibalization(array $candidates) {
 		if (empty($candidates)) {
 			return array(
-				'conflicts'       => array(),
-				'conflict_count'  => 0,
-				'status'          => 'clean',
+				'conflict_count' => 0,
+				'conflicts'      => array(),
+				'status'         => 'healthy',
 			);
 		}
+
 
 		$pairs_to_analyze = array_slice($candidates, 0, 10);
 		$pairs_text = '';
@@ -575,13 +576,8 @@ class AIPS_Content_Auditor_Engine {
 	 * @return array
 	 */
 	private function parse_json_fallback($response) {
-		if (preg_match('/```json\s*([\s\S]*?)\s*```/', $response, $matches)) {
-			$response = $matches[1];
-		} elseif (preg_match('/```\s*([\s\S]*?)\s*```/', $response, $matches)) {
-			$response = $matches[1];
-		}
+		$decoded = AIPS_JSON_Extractor::decode_json_response( $response );
 
-		$decoded = json_decode(trim($response), true);
-		return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : array();
+		return is_wp_error( $decoded ) ? array() : $decoded;
 	}
 }

@@ -240,7 +240,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="filter-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                 </div>
             </div>
             
@@ -441,7 +441,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <table class="aips-table aips-research-table">
             <thead>
                 <tr>
-                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics"></th>
+                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
                     <th scope="col"><?php esc_html_e('Topic', 'ai-post-scheduler'); ?></th>
                     <th scope="col"><?php esc_html_e('Score', 'ai-post-scheduler'); ?></th>
                     <th scope="col"><?php esc_html_e('Niche', 'ai-post-scheduler'); ?></th>
@@ -457,7 +457,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
 
     <script type="text/html" id="aips-tmpl-research-topics-row">
         <tr>
-            <td><input type="checkbox" class="topic-checkbox" value="{{id}}"></td>
+            <td><input type="checkbox" class="topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></td>
             <td>
                 <strong>{{topic}}</strong>
                 {{status_chip_html}}

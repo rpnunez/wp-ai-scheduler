@@ -896,8 +896,24 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
      * {@inheritDoc}
      */
     public function generate_embedding(string $text, array $params): array {
-        // The WordPress AI Client does not expose a stable embeddings API yet.
-        throw new Exception('embeddings_not_supported: ' . __('Embeddings are not supported by the WordPress AI Client.', 'ai-post-scheduler'));
+        // 1. Check if the active connector or builder exposes a native embeddings method
+        if ($this->is_available()) {
+            $builder = $this->create_prompt_builder($text);
+            if (is_object($builder) && is_callable(array($builder, 'generate_embedding'))) {
+                $result = $builder->generate_embedding();
+                if (is_array($result) && !empty($result)) {
+                    return $result;
+                }
+            }
+        }
+
+        // 2. If Meow AI Engine is available on the site, fallback gracefully
+        $meow = new AIPS_Meow_AI_Provider();
+        if ($meow->is_available() && $meow->supports_embeddings()) {
+            return $meow->generate_embedding($text, $params);
+        }
+
+        throw new Exception('embeddings_not_supported: ' . __('The active WordPress AI Client connector does not support vector embeddings, and Meow Apps AI Engine is not available.', 'ai-post-scheduler'));
     }
 
     /**
@@ -913,7 +929,13 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
      * {@inheritDoc}
      */
     public function supports_embeddings(): bool {
-        return false;
+        $builder = $this->create_prompt_builder();
+        if (is_object($builder) && is_callable(array($builder, 'generate_embedding'))) {
+            return true;
+        }
+
+        $meow = new AIPS_Meow_AI_Provider();
+        return $meow->is_available() && $meow->supports_embeddings();
     }
 
     /**
