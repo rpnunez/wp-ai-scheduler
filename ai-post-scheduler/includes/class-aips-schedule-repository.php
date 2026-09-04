@@ -744,6 +744,108 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Create a canonical batch run entry in the aips_schedule_batch_runs table.
+     *
+     * @param int $schedule_id
+     * @param string $batch_uuid
+     * @param int $total
+     * @param int $completed
+     * @param int $resume_index
+     * @param array $post_ids
+     * @param string $status
+     * @return int|false Insert ID on success, false on failure.
+     */
+    public function create_batch_run($schedule_id, $batch_uuid, $total, $completed = 0, $resume_index = 0, $post_ids = array(), $status = 'pending') {
+        $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
+        $now = AIPS_DateTime::now()->timestamp();
+        $data = array(
+            'batch_uuid' => sanitize_text_field($batch_uuid),
+            'schedule_id' => absint($schedule_id),
+            'correlation_id' => null,
+            'status' => sanitize_text_field($status),
+            'total' => absint($total),
+            'completed' => absint($completed),
+            'resume_index' => absint($resume_index),
+            'post_ids' => !empty($post_ids) ? wp_json_encode($post_ids) : null,
+            'created_at' => $now,
+            'updated_at' => $now
+        );
+        $result = $this->wpdb->insert($table, $data);
+        if ($result !== false) {
+            return $this->wpdb->insert_id;
+        }
+        return false;
+    }
+
+    /**
+     * Get batch run rows for a given schedule.
+     *
+     * @param int $schedule_id
+     * @return array
+     */
+    public function get_batch_runs_for_schedule($schedule_id) {
+        $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
+        return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$table} WHERE schedule_id = %d ORDER BY created_at DESC", absint($schedule_id)));
+    }
+
+    /**
+     * Get a batch run by its UUID.
+     *
+     * @param string $batch_uuid
+     * @return object|null
+     */
+    public function get_batch_run_by_uuid($batch_uuid) {
+        $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
+        return $this->wpdb->get_row($this->wpdb->prepare("SELECT * FROM {$table} WHERE batch_uuid = %s", sanitize_text_field($batch_uuid)));
+    }
+
+    /**
+     * Update progress counters for a batch run.
+     *
+     * @param int $id
+     * @param int $completed
+     * @param int $resume_index
+     * @return bool
+     */
+    public function update_batch_run_progress($id, $completed, $resume_index) {
+        $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
+        $result = $this->wpdb->update($table, array(
+            'completed' => absint($completed),
+            'resume_index' => absint($resume_index),
+            'updated_at' => AIPS_DateTime::now()->timestamp()
+        ), array('id' => absint($id)));
+        return $result !== false;
+    }
+
+    /**
+     * Append post IDs to the stored post_ids JSON array for a batch run.
+     * Ensures uniqueness and preserves existing entries.
+     *
+     * @param int $id
+     * @param array $post_ids
+     * @return bool
+     */
+    public function append_post_ids_to_batch_run($id, array $post_ids) {
+        if (empty($post_ids)) {
+            return true;
+        }
+        $row = $this->wpdb->get_row($this->wpdb->prepare("SELECT post_ids FROM {$this->wpdb->prefix}aips_schedule_batch_runs WHERE id = %d", absint($id)));
+        $existing = array();
+        if ($row && !empty($row->post_ids)) {
+            $decoded = json_decode($row->post_ids, true);
+            if (is_array($decoded)) {
+                $existing = $decoded;
+            }
+        }
+        $merged = array_values(array_unique(array_merge($existing, array_values($post_ids))));
+        $result = $this->wpdb->update($this->wpdb->prefix . 'aips_schedule_batch_runs', array(
+            'post_ids' => wp_json_encode($merged),
+            'updated_at' => AIPS_DateTime::now()->timestamp()
+        ), array('id' => absint($id)));
+        return $result !== false;
+    }
+
+    /**
      * Create multiple schedules in a single query.
      *
      * @param array $schedules Array of schedule data arrays.
