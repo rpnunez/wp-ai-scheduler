@@ -16,7 +16,7 @@
  * when `wp-api-fetch` is enqueued, and by hand in the jQuery fallback.
  *
  * @package AI_Post_Scheduler
- * @since 2.6.0
+ * @since 3.7.0
  */
 
 (function($) {

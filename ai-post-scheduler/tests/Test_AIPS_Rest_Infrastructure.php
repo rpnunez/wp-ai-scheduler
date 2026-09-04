@@ -10,7 +10,7 @@
  *   4. Shared arg-schema helpers (id, pagination, ids) sanitize/validate.
  *
  * @package AI_Post_Scheduler
- * @since 2.6.0
+ * @since 3.7.0
  */
 
 /**

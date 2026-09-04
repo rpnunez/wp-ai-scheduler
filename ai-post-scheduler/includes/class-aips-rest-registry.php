@@ -7,7 +7,7 @@
  * which controllers own which `aips/v1/{resource}` routes.
  *
  * @package AI_Post_Scheduler
- * @since 2.6.0
+ * @since 3.7.0
  */
 
 if (!defined('ABSPATH')) {
@@ -44,7 +44,12 @@ class AIPS_Rest_Registry {
 	 *
 	 * @var array<string, string>
 	 */
-	private static $map = array();
+	private static $map = array(
+		// Slice 1: read-only reporters
+		'dashboard' => 'AIPS_Dashboard_Rest_Controller',
+		'telemetry' => 'AIPS_Telemetry_Rest_Controller',
+		'calendar'  => 'AIPS_Calendar_Rest_Controller',
+	);
 
 	/**
 	 * Register a controller for a resource base at runtime.

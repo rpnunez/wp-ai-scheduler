@@ -125,28 +125,23 @@
 			$('.aips-dashboard-spinner-overlay').show();
 
 			var self = this;
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_dashboard_data',
-					nonce: l10n.nonce,
-					date_from: dateFromVal,
-					date_to: dateToVal
-				},
-				success: function(response) {
+			var query = {};
+			if (dateFromVal) { query.date_from = dateFromVal; }
+			if (dateToVal) { query.date_to = dateToVal; }
+
+			AIPS.Http.get('dashboard', query)
+				.then(function(data) {
 					$('.aips-dashboard-spinner-overlay').hide();
-					if (response.success && response.data) {
-						self.updateDashboardData(response.data);
+					if (data) {
+						self.updateDashboardData(data);
 					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to fetch dashboard data.', 'error');
+						AIPS.Utilities.showToast('Failed to fetch dashboard data.', 'error');
 					}
-				},
-				error: function() {
+				})
+				.catch(function(err) {
 					$('.aips-dashboard-spinner-overlay').hide();
-					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
-				}
-			});
+					AIPS.Utilities.showToast((err && err.message) || 'An error occurred while fetching dashboard data.', 'error');
+				});
 		},
 
 		/**

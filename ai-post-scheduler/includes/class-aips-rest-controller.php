@@ -7,7 +7,7 @@
  * AIPS_Ajax_Response conventions used by the admin-ajax controllers.
  *
  * @package AI_Post_Scheduler
- * @since 2.6.0
+ * @since 3.7.0
  */
 
 if (!defined('ABSPATH')) {
