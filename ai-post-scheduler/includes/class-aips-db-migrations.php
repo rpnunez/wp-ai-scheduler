@@ -188,6 +188,10 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.0', '<' ) ) {
 			$this->migrate_to_3_7_0();
 		}
+
+		if ( version_compare( $from_version, '3.7.1', '<' ) ) {
+			$this->migrate_to_3_7_1();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1333,5 +1337,72 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.0: Initialized Monetization Hub tables and seeded default ad slots.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.1.
+	 *
+	 * Upgrades schema for Smart Ad Refresh, Sticky Bottom Anchors, and Link Cloaking.
+	 */
+	private function migrate_to_3_7_1() {
+		global $wpdb;
+		$table_ad_slots  = $wpdb->prefix . 'aips_ad_slots';
+		$table_aff_links = $wpdb->prefix . 'aips_affiliate_links';
+
+		// Re-run install_tables() to add any missing columns via dbDelta
+		AIPS_DB_Manager::install_tables();
+
+		// Check and add sticky bottom anchor sample if not already present
+		$has_anchor = (int) $wpdb->get_var(
+			$wpdb->prepare( "SELECT COUNT(*) FROM `{$table_ad_slots}` WHERE position = %s", 'sticky_bottom_anchor' )
+		);
+
+		if ( 0 === $has_anchor ) {
+			$now = time();
+			$wpdb->insert(
+				$table_ad_slots,
+				array(
+					'name'                => 'Sticky Bottom Anchor Ad',
+					'slot_type'           => 'custom_html',
+					'code'                => '<div style="background:#1e293b; color:#ffffff; padding:12px 20px; text-align:center; font-size:13px; border-radius:6px;">[Advertisement: High-Impact Sticky Anchor Unit]</div>',
+					'position'            => 'sticky_bottom_anchor',
+					'paragraph_offset'    => 0,
+					'min_word_count'      => 100,
+					'device_targeting'    => 'all',
+					'auto_refresh'        => 1,
+					'refresh_interval'    => 30,
+					'max_refreshes'       => 5,
+					'anchor_trigger'      => 'smart_scroll',
+					'anchor_scroll_depth' => 15,
+					'anchor_dismissible'  => 1,
+					'status'              => 'paused',
+					'priority'            => 50,
+					'css_classes'         => 'aips-anchor-bar',
+					'created_at'          => $now,
+					'updated_at'          => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%d' )
+			);
+		}
+
+		// Populate empty slugs in affiliate links
+		$links_without_slug = $wpdb->get_results( "SELECT id, tag, label FROM `{$table_aff_links}` WHERE slug IS NULL OR slug = ''" );
+		if ( ! empty( $links_without_slug ) ) {
+			foreach ( $links_without_slug as $link ) {
+				$slug = sanitize_title( $link->label ?: $link->tag );
+				if ( empty( $slug ) ) {
+					$slug = 'link-' . $link->id;
+				}
+				$wpdb->update(
+					$table_aff_links,
+					array( 'slug' => $slug ),
+					array( 'id' => $link->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.1: Configured Smart Ad Refresh, Sticky Anchors, and Affiliate Link Cloaking.', 'info' );
 	}
 }

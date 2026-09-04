@@ -564,6 +564,7 @@ class AIPS_DB_Manager {
 
         $sql[] = "CREATE TABLE $table_affiliate_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
+            slug varchar(100) DEFAULT NULL,
             tag varchar(255) NOT NULL,
             label varchar(255) NOT NULL DEFAULT '',
             affiliate_url text NOT NULL,
@@ -577,6 +578,7 @@ class AIPS_DB_Manager {
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
+            KEY slug (slug),
             KEY tag (tag),
             KEY enabled (enabled)
         ) $charset_collate;";
@@ -590,6 +592,12 @@ class AIPS_DB_Manager {
             paragraph_offset int(11) NOT NULL DEFAULT 2,
             min_word_count int(11) NOT NULL DEFAULT 300,
             device_targeting varchar(50) NOT NULL DEFAULT 'all',
+            auto_refresh tinyint(1) NOT NULL DEFAULT 0,
+            refresh_interval int(11) NOT NULL DEFAULT 30,
+            max_refreshes int(11) NOT NULL DEFAULT 5,
+            anchor_trigger varchar(32) NOT NULL DEFAULT 'scroll_depth',
+            anchor_scroll_depth int(11) NOT NULL DEFAULT 15,
+            anchor_dismissible tinyint(1) NOT NULL DEFAULT 1,
             status varchar(20) NOT NULL DEFAULT 'active',
             priority int(11) NOT NULL DEFAULT 10,
             css_classes varchar(255) DEFAULT '',

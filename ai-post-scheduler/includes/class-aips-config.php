@@ -238,6 +238,12 @@ class AIPS_Config {
             'aips_ad_telemetry_enabled'                => true,
             'aips_ad_ga4_datalayer_enabled'            => true,
             'aips_default_ftc_disclosure'              => 'This post contains sponsored content and/or affiliate links. We may earn a commission on qualifying purchases at no extra cost to you.',
+            'aips_ad_refresh_enabled'                  => true,
+            'aips_adblock_recovery_mode'               => 'silent_fallback',
+            'aips_adblock_notice_text'                 => 'We notice you are using an ad blocker. Please consider supporting our free content by disabling your ad blocker.',
+            'aips_adblock_fallback_campaign_id'        => 0,
+            'aips_link_cloaking_enabled'               => true,
+            'aips_link_cloaking_prefix'                => 'go',
         );
     }
     

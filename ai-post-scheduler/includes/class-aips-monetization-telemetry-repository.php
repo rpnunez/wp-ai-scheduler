@@ -24,6 +24,11 @@ class AIPS_Monetization_Telemetry_Repository {
 	 */
 	private $table;
 
+	/**
+	 * Supported telemetry event types.
+	 */
+	const VALID_EVENT_TYPES = array( 'impression', 'click', 'smart_refresh', 'ad_block_detected' );
+
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
@@ -31,12 +36,12 @@ class AIPS_Monetization_Telemetry_Repository {
 	}
 
 	/**
-	 * Record a single event (impression or click) with atomic aggregation.
+	 * Record a single event (impression, click, smart_refresh, or ad_block_detected) with atomic aggregation.
 	 *
 	 * @param int    $slot_id     Ad slot ID.
 	 * @param int    $post_id     WordPress post ID.
 	 * @param int    $campaign_id Sponsor campaign ID (0 if none).
-	 * @param string $event_type  'impression' or 'click'.
+	 * @param string $event_type  'impression', 'click', 'smart_refresh', or 'ad_block_detected'.
 	 * @param string $device_type 'desktop', 'mobile', or 'tablet'.
 	 * @param int    $count       Number of events.
 	 * @return bool
@@ -46,7 +51,7 @@ class AIPS_Monetization_Telemetry_Repository {
 		$post_id     = absint( $post_id );
 		$campaign_id = absint( $campaign_id );
 		$count       = max( 1, absint( $count ) );
-		$event_type  = ( 'click' === $event_type ) ? 'click' : 'impression';
+		$event_type  = in_array( $event_type, self::VALID_EVENT_TYPES, true ) ? $event_type : 'impression';
 		$device_type = in_array( $device_type, array( 'desktop', 'mobile', 'tablet' ), true ) ? $device_type : 'desktop';
 		$event_date  = current_time( 'Y-m-d' );
 
@@ -121,23 +126,34 @@ class AIPS_Monetization_Telemetry_Repository {
 
 		$impressions = 0;
 		$clicks      = 0;
+		$refreshes   = 0;
+		$ad_blocks   = 0;
 
 		foreach ( $results as $row ) {
 			if ( 'impression' === $row->event_type ) {
 				$impressions = (int) $row->total;
 			} elseif ( 'click' === $row->event_type ) {
 				$clicks = (int) $row->total;
+			} elseif ( 'smart_refresh' === $row->event_type ) {
+				$refreshes = (int) $row->total;
+			} elseif ( 'ad_block_detected' === $row->event_type ) {
+				$ad_blocks = (int) $row->total;
 			}
 		}
 
-		$ctr = ( $impressions > 0 ) ? round( ( $clicks / $impressions ) * 100, 2 ) : 0.0;
+		$ctr           = ( $impressions > 0 ) ? round( ( $clicks / $impressions ) * 100, 2 ) : 0.0;
+		$total_views   = $impressions + $ad_blocks;
+		$ad_block_rate = ( $total_views > 0 ) ? round( ( $ad_blocks / $total_views ) * 100, 1 ) : 0.0;
 
 		return array(
-			'impressions' => $impressions,
-			'clicks'      => $clicks,
-			'ctr'         => $ctr,
-			'start_date'  => $start_date,
-			'end_date'    => $end_date,
+			'impressions'   => $impressions,
+			'clicks'        => $clicks,
+			'refreshes'     => $refreshes,
+			'ad_blocks'     => $ad_blocks,
+			'ad_block_rate' => $ad_block_rate,
+			'ctr'           => $ctr,
+			'start_date'    => $start_date,
+			'end_date'      => $end_date,
 		);
 	}
 

@@ -352,6 +352,7 @@ class AIPS_Ajax_Registry {
 		'aips_delete_sponsor_campaign'         => 'AIPS_Monetization_Controller',
 		'aips_toggle_sponsor_campaign'         => 'AIPS_Monetization_Controller',
 		'aips_get_monetization_analytics'      => 'AIPS_Monetization_Controller',
+		'aips_save_monetization_engine_settings'=> 'AIPS_Monetization_Controller',
 	);
 
 	/**

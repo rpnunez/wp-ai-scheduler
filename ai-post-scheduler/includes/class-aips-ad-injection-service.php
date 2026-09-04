@@ -72,6 +72,7 @@ class AIPS_Ad_Injection_Service {
 		$after_p_slots = array();
 		$mid_slots     = array();
 		$end_slots     = array();
+		$anchor_slots  = array();
 
 		foreach ( $eligible_slots as $slot ) {
 			switch ( $slot->position ) {
@@ -83,6 +84,9 @@ class AIPS_Ad_Injection_Service {
 					break;
 				case 'end_of_post':
 					$end_slots[] = $slot;
+					break;
+				case 'sticky_bottom_anchor':
+					$anchor_slots[] = $slot;
 					break;
 			}
 		}
@@ -97,6 +101,15 @@ class AIPS_Ad_Injection_Service {
 				$end_html .= "\n" . $this->render_ad_slot( $slot, $post_id, $sponsor_campaign );
 			}
 			$content .= $end_html;
+		}
+
+		// Inject sticky bottom anchor ads
+		if ( ! empty( $anchor_slots ) ) {
+			$anchor_html = '';
+			foreach ( $anchor_slots as $slot ) {
+				$anchor_html .= "\n" . $this->render_ad_slot( $slot, $post_id, $sponsor_campaign );
+			}
+			$content .= $anchor_html;
 		}
 
 		return $content;
@@ -186,6 +199,7 @@ class AIPS_Ad_Injection_Service {
 		$device      = ! empty( $slot->device_targeting ) ? $slot->device_targeting : 'all';
 		$device_cls  = ( 'all' !== $device ) ? 'aips-device-' . esc_attr( $device ) : '';
 		$custom_cls  = ! empty( $slot->css_classes ) ? esc_attr( $slot->css_classes ) : '';
+		$is_anchor   = ( 'sticky_bottom_anchor' === ( $slot->position ?? '' ) );
 
 		$inner_code = '';
 
@@ -198,12 +212,60 @@ class AIPS_Ad_Injection_Service {
 			$inner_code = (string) $slot->code;
 		}
 
-		$output  = '<div class="aips-ad-container aips-ad-slot-' . $slot_id . ' ' . $device_cls . ' ' . $custom_cls . '"';
+		$container_cls = 'aips-ad-container aips-ad-slot-' . $slot_id . ' ' . $device_cls . ' ' . $custom_cls;
+		if ( $is_anchor ) {
+			$container_cls .= ' aips-sticky-anchor';
+		}
+
+		$output  = '<div class="' . trim( $container_cls ) . '"';
 		$output .= ' data-slot-id="' . $slot_id . '"';
 		$output .= ' data-post-id="' . absint( $post_id ) . '"';
-		$output .= ' data-campaign-id="' . $campaign_id . '">';
+		$output .= ' data-campaign-id="' . $campaign_id . '"';
+
+		// Smart refresh data attributes
+		if ( ! empty( $slot->auto_refresh ) ) {
+			$output .= ' data-auto-refresh="1"';
+			$output .= ' data-refresh-interval="' . max( 15, absint( $slot->refresh_interval ?? 30 ) ) . '"';
+			$output .= ' data-max-refreshes="' . max( 1, absint( $slot->max_refreshes ?? 5 ) ) . '"';
+		}
+
+		// Sticky anchor attributes
+		if ( $is_anchor ) {
+			$trigger     = ! empty( $slot->anchor_trigger ) ? $slot->anchor_trigger : 'scroll_depth';
+			$depth       = isset( $slot->anchor_scroll_depth ) ? absint( $slot->anchor_scroll_depth ) : 15;
+			$dismissible = isset( $slot->anchor_dismissible ) ? ( ! empty( $slot->anchor_dismissible ) ? '1' : '0' ) : '1';
+
+			$output .= ' data-anchor-trigger="' . esc_attr( $trigger ) . '"';
+			$output .= ' data-anchor-scroll="' . $depth . '"';
+			$output .= ' data-anchor-dismissible="' . $dismissible . '"';
+		}
+
+		$output .= '>';
+
+		// Dismiss button for sticky anchor
+		if ( $is_anchor && ( ! isset( $slot->anchor_dismissible ) || ! empty( $slot->anchor_dismissible ) ) ) {
+			$output .= '<button type="button" class="aips-anchor-close" aria-label="' . esc_attr__( 'Close Advertisement', 'ai-post-scheduler' ) . '">&times;</button>';
+		}
+
 		$output .= '<span class="aips-ad-label">' . esc_html__( 'Advertisement', 'ai-post-scheduler' ) . '</span>';
 		$output .= '<div class="aips-ad-inner">' . $inner_code . '</div>';
+
+		// House fallback ad for ad-block recovery
+		$recovery_mode = AIPS_Config::get_instance()->get_option( 'aips_adblock_recovery_mode', 'silent_fallback' );
+		if ( 'silent_fallback' === $recovery_mode ) {
+			$fallback_camp = $sponsor_campaign;
+			if ( ! $fallback_camp ) {
+				$fallback_id = (int) AIPS_Config::get_instance()->get_option( 'aips_adblock_fallback_campaign_id', 0 );
+				if ( $fallback_id > 0 ) {
+					$camp_repo     = AIPS_Container::get_instance()->make( AIPS_Sponsor_Campaigns_Repository::class );
+					$fallback_camp = $camp_repo->get_by_id( $fallback_id );
+				}
+			}
+			if ( $fallback_camp ) {
+				$output .= '<div class="aips-ad-fallback" style="display:none;">' . $this->render_sponsor_card( $fallback_camp ) . '</div>';
+			}
+		}
+
 		$output .= '</div>';
 
 		return $output;

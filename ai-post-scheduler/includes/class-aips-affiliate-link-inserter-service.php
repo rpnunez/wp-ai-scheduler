@@ -136,16 +136,32 @@ class AIPS_Affiliate_Link_Inserter_Service {
 	 */
 	private function apply_mapping( $content, $mapping ) {
 		$affiliate_url = (string) $mapping->affiliate_url;
-		$cta_html      = (string) $mapping->cta_html;
-		$max           = max( 1, (int) $mapping->cta_max_insertions );
+		$target_url    = $affiliate_url;
+
+		// Use cloaked URL if enabled
+		$container = AIPS_Container::get_instance();
+		$cloaking  = $container->has( AIPS_Link_Cloaking_Service::class )
+			? $container->make( AIPS_Link_Cloaking_Service::class )
+			: new AIPS_Link_Cloaking_Service();
+
+		$slug_to_cloak = ! empty( $mapping->slug ) ? $mapping->slug : ( ! empty( $mapping->tag ) ? $mapping->tag : '' );
+		if ( ! empty( $slug_to_cloak ) ) {
+			$cloaked = $cloaking->get_cloaked_url( $slug_to_cloak );
+			if ( ! empty( $cloaked ) ) {
+				$target_url = $cloaked;
+			}
+		}
+
+		$cta_html = (string) $mapping->cta_html;
+		$max      = max( 1, (int) $mapping->cta_max_insertions );
 
 		if ( ! empty( $cta_html ) ) {
-			$rendered_cta = str_replace( self::URL_PLACEHOLDER, esc_url( $affiliate_url ), $cta_html );
+			$rendered_cta = str_replace( self::URL_PLACEHOLDER, esc_url( $target_url ), $cta_html );
 			$content      = $this->insert_cta_block( $content, $rendered_cta, $mapping, $max );
 		}
 
 		if ( ! empty( $mapping->use_ai_injection ) ) {
-			$content = $this->apply_ai_injection( $content, $affiliate_url, (string) $mapping->tag );
+			$content = $this->apply_ai_injection( $content, $target_url, (string) $mapping->tag );
 		}
 
 		return $content;

@@ -57,6 +57,7 @@ class AIPS_Monetization_Controller {
 		add_action( 'wp_ajax_aips_delete_sponsor_campaign', array( $this, 'ajax_delete_sponsor_campaign' ) );
 		add_action( 'wp_ajax_aips_toggle_sponsor_campaign', array( $this, 'ajax_toggle_sponsor_campaign' ) );
 		add_action( 'wp_ajax_aips_get_monetization_analytics', array( $this, 'ajax_get_monetization_analytics' ) );
+		add_action( 'wp_ajax_aips_save_monetization_engine_settings', array( $this, 'ajax_save_engine_settings' ) );
 	}
 
 	/**
@@ -101,17 +102,23 @@ class AIPS_Monetization_Controller {
 		$this->verify_request();
 
 		$data = array(
-			'id'               => isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0,
-			'name'             => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
-			'slot_type'        => isset( $_POST['slot_type'] ) ? sanitize_key( wp_unslash( $_POST['slot_type'] ) ) : 'custom_html',
-			'code'             => isset( $_POST['code'] ) ? wp_unslash( $_POST['code'] ) : '',
-			'position'         => isset( $_POST['position'] ) ? sanitize_key( wp_unslash( $_POST['position'] ) ) : 'after_paragraph',
-			'paragraph_offset' => isset( $_POST['paragraph_offset'] ) ? absint( $_POST['paragraph_offset'] ) : 2,
-			'min_word_count'   => isset( $_POST['min_word_count'] ) ? absint( $_POST['min_word_count'] ) : 300,
-			'device_targeting' => isset( $_POST['device_targeting'] ) ? sanitize_key( wp_unslash( $_POST['device_targeting'] ) ) : 'all',
-			'status'           => isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : 'active',
-			'priority'         => isset( $_POST['priority'] ) ? absint( $_POST['priority'] ) : 10,
-			'css_classes'      => isset( $_POST['css_classes'] ) ? sanitize_text_field( wp_unslash( $_POST['css_classes'] ) ) : '',
+			'id'                  => isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0,
+			'name'                => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
+			'slot_type'           => isset( $_POST['slot_type'] ) ? sanitize_key( wp_unslash( $_POST['slot_type'] ) ) : 'custom_html',
+			'code'                => isset( $_POST['code'] ) ? wp_unslash( $_POST['code'] ) : '',
+			'position'            => isset( $_POST['position'] ) ? sanitize_key( wp_unslash( $_POST['position'] ) ) : 'after_paragraph',
+			'paragraph_offset'    => isset( $_POST['paragraph_offset'] ) ? absint( $_POST['paragraph_offset'] ) : 2,
+			'min_word_count'      => isset( $_POST['min_word_count'] ) ? absint( $_POST['min_word_count'] ) : 300,
+			'device_targeting'    => isset( $_POST['device_targeting'] ) ? sanitize_key( wp_unslash( $_POST['device_targeting'] ) ) : 'all',
+			'auto_refresh'        => ! empty( $_POST['auto_refresh'] ) ? 1 : 0,
+			'refresh_interval'    => isset( $_POST['refresh_interval'] ) ? max( 15, absint( $_POST['refresh_interval'] ) ) : 30,
+			'max_refreshes'       => isset( $_POST['max_refreshes'] ) ? max( 1, absint( $_POST['max_refreshes'] ) ) : 5,
+			'anchor_trigger'      => isset( $_POST['anchor_trigger'] ) ? sanitize_key( wp_unslash( $_POST['anchor_trigger'] ) ) : 'scroll_depth',
+			'anchor_scroll_depth' => isset( $_POST['anchor_scroll_depth'] ) ? absint( $_POST['anchor_scroll_depth'] ) : 15,
+			'anchor_dismissible'  => isset( $_POST['anchor_dismissible'] ) ? ( ! empty( $_POST['anchor_dismissible'] ) ? 1 : 0 ) : 1,
+			'status'              => isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : 'active',
+			'priority'            => isset( $_POST['priority'] ) ? absint( $_POST['priority'] ) : 10,
+			'css_classes'         => isset( $_POST['css_classes'] ) ? sanitize_text_field( wp_unslash( $_POST['css_classes'] ) ) : '',
 		);
 
 		if ( empty( $data['name'] ) ) {
@@ -276,6 +283,41 @@ class AIPS_Monetization_Controller {
 			'trends'  => $trends,
 			'top'     => $top,
 			'slots'   => $slots,
+		) );
+	}
+
+	/**
+	 * AJAX: Save monetization engine and ad-block recovery settings.
+	 */
+	public function ajax_save_engine_settings() {
+		$this->verify_request();
+
+		$refresh_enabled  = ! empty( $_POST['aips_ad_refresh_enabled'] );
+		$adblock_mode     = sanitize_key( $_POST['aips_adblock_recovery_mode'] ?? 'silent_fallback' );
+		$notice_text      = sanitize_textarea_field( wp_unslash( $_POST['aips_adblock_notice_text'] ?? '' ) );
+		$fallback_camp_id = absint( $_POST['aips_adblock_fallback_campaign_id'] ?? 0 );
+		$cloaking_enabled = ! empty( $_POST['aips_link_cloaking_enabled'] );
+		$cloaking_prefix  = sanitize_title( wp_unslash( $_POST['aips_link_cloaking_prefix'] ?? 'go' ) );
+
+		if ( empty( $cloaking_prefix ) ) {
+			$cloaking_prefix = 'go';
+		}
+
+		$old_prefix = $this->config->get_option( 'aips_link_cloaking_prefix', 'go' );
+
+		$this->config->set_option( 'aips_ad_refresh_enabled', $refresh_enabled );
+		$this->config->set_option( 'aips_adblock_recovery_mode', $adblock_mode );
+		$this->config->set_option( 'aips_adblock_notice_text', $notice_text );
+		$this->config->set_option( 'aips_adblock_fallback_campaign_id', $fallback_camp_id );
+		$this->config->set_option( 'aips_link_cloaking_enabled', $cloaking_enabled );
+		$this->config->set_option( 'aips_link_cloaking_prefix', $cloaking_prefix );
+
+		if ( $old_prefix !== $cloaking_prefix || $cloaking_enabled ) {
+			flush_rewrite_rules( false );
+		}
+
+		AIPS_Ajax_Response::success( array(
+			'message' => __( 'Monetization engine settings saved successfully.', 'ai-post-scheduler' ),
 		) );
 	}
 }

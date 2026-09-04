@@ -40,6 +40,7 @@
 			}
 
 			this.bindTabs();
+			this.bindEngineSettings();
 			this.bindSlotActions();
 			this.bindCampaignActions();
 			this.bindAnalyticsActions();
@@ -48,6 +49,37 @@
 			if (window.location.hash === '#tab-analytics') {
 				this.loadAnalytics();
 			}
+		},
+
+		/**
+		 * Engine Settings Toggle and Submission
+		 */
+		bindEngineSettings: function () {
+			var self = this;
+
+			$('#aips-btn-toggle-engine-settings').on('click', function () {
+				$('#aips-engine-settings-panel').slideToggle(180);
+			});
+
+			$('#aips-form-engine-settings').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-engine-settings');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_monetization_engine_settings&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						alert(res.data && res.data.message ? res.data.message : 'Engine settings saved successfully.');
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving engine settings.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
 		},
 
 		/**
@@ -94,15 +126,25 @@
 				$('#aips-form-slot')[0].reset();
 				$('#aips-slot-id').val('0');
 				$('#aips-wrap-paragraph-offset').show();
+				$('#aips-wrap-anchor-options').hide();
+				$('#aips-slot-auto-refresh').prop('checked', false);
+				$('#aips-slot-anchor-dismissible').prop('checked', true);
 				$('#aips-modal-slot').fadeIn(150);
 			});
 
-			// Position change toggles offset field
+			// Position change toggles offset field and anchor options
 			$('#aips-slot-position').on('change', function () {
-				if ($(this).val() === 'after_paragraph') {
+				var val = $(this).val();
+				if (val === 'after_paragraph') {
 					$('#aips-wrap-paragraph-offset').slideDown(120);
 				} else {
 					$('#aips-wrap-paragraph-offset').slideUp(120);
+				}
+
+				if (val === 'sticky_bottom_anchor') {
+					$('#aips-wrap-anchor-options').slideDown(120);
+				} else {
+					$('#aips-wrap-anchor-options').slideUp(120);
 				}
 			});
 
@@ -137,6 +179,14 @@
 				$('#aips-slot-device').val(slot.device_targeting || 'all');
 				$('#aips-slot-priority').val(slot.priority || 10);
 				$('#aips-slot-classes').val(slot.css_classes || '');
+
+				// Anchor & Refresh attributes
+				$('#aips-slot-auto-refresh').prop('checked', parseInt(slot.auto_refresh, 10) === 1);
+				$('#aips-slot-refresh-interval').val(slot.refresh_interval || 30);
+				$('#aips-slot-max-refreshes').val(slot.max_refreshes || 5);
+				$('#aips-slot-anchor-trigger').val(slot.anchor_trigger || 'scroll_depth');
+				$('#aips-slot-anchor-scroll-depth').val(slot.anchor_scroll_depth || 25);
+				$('#aips-slot-anchor-dismissible').prop('checked', parseInt(slot.anchor_dismissible, 10) !== 0);
 
 				$('#aips-modal-slot').fadeIn(150);
 			});
@@ -237,6 +287,8 @@
 							placementDesc = 'Mid-Content (50% depth, Min words: ' + slot.min_word_count + ')';
 						} else if (slot.position === 'end_of_post') {
 							placementDesc = 'End of Post / Conclusion';
+						} else if (slot.position === 'sticky_bottom_anchor') {
+							placementDesc = 'Sticky Bottom Anchor (' + (slot.anchor_trigger || 'scroll_depth') + ')';
 						} else {
 							placementDesc = 'Custom Shortcode / Block Only';
 						}
@@ -435,9 +487,11 @@
 					var data = res.data;
 
 					// Update cards
-					$('#aips-stat-impressions').text(Number(data.summary.impressions).toLocaleString());
-					$('#aips-stat-clicks').text(Number(data.summary.clicks).toLocaleString());
-					$('#aips-stat-ctr').text(data.summary.ctr + '%');
+					$('#aips-stat-impressions').text(Number(data.summary.impressions || 0).toLocaleString());
+					$('#aips-stat-clicks').text(Number(data.summary.clicks || 0).toLocaleString());
+					$('#aips-stat-ctr').text((data.summary.ctr || 0) + '%');
+					$('#aips-stat-refreshes').text(Number(data.summary.refreshes || 0).toLocaleString());
+					$('#aips-stat-adblock').text((data.summary.ad_block_rate || 0) + '%');
 
 					// Render Chart
 					self.renderChart(data.trends);

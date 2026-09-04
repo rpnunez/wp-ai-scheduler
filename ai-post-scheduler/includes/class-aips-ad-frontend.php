@@ -58,6 +58,7 @@ class AIPS_Ad_Frontend {
 		add_shortcode( 'aips_ad', array( $this, 'render_shortcode' ) );
 		add_action( 'init', array( $this, 'register_block' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp_footer', array( $this, 'render_adblock_bait' ) );
 	}
 
 	/**
@@ -92,13 +93,26 @@ class AIPS_Ad_Frontend {
 				'aips-monetization-frontend',
 				'aipsMonetizationConfig',
 				array(
-					'restUrl'         => esc_url_raw( rest_url( 'aips/v1/monetization/track' ) ),
-					'nonce'           => wp_create_nonce( 'wp_rest' ),
-					'ga4Enabled'      => (bool) $this->config->get_option( 'aips_ad_ga4_datalayer_enabled', true ),
-					'telemetryEnabled'=> true,
+					'restUrl'             => esc_url_raw( rest_url( 'aips/v1/monetization/track' ) ),
+					'nonce'               => wp_create_nonce( 'wp_rest' ),
+					'ga4Enabled'          => (bool) $this->config->get_option( 'aips_ad_ga4_datalayer_enabled', true ),
+					'telemetryEnabled'    => true,
+					'adRefreshEnabled'    => (bool) $this->config->get_option( 'aips_ad_refresh_enabled', true ),
+					'adblockRecoveryMode' => esc_js( $this->config->get_option( 'aips_adblock_recovery_mode', 'silent_fallback' ) ),
+					'adblockNoticeText'   => esc_html( $this->config->get_option( 'aips_adblock_notice_text' ) ),
 				)
 			);
 		}
+	}
+
+	/**
+	 * Output lightweight bait element to detect ad blocking clients.
+	 */
+	public function render_adblock_bait() {
+		if ( ! is_singular( 'post' ) || ! $this->config->get_option( 'aips_monetization_enabled', true ) ) {
+			return;
+		}
+		echo '<div id="aips-adblock-bait" class="pub_300x250 pub_728x90 adsbox ad-zone aips-ad-bait" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;pointer-events:none;" aria-hidden="true"></div>';
 	}
 
 	/**

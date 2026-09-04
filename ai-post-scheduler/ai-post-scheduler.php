@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.7.0
+ * Version: 3.7.1
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.0');
+    define('AIPS_VERSION', '3.7.1');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -524,6 +524,15 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Config::class)
             );
         });
+
+        $container->singleton(AIPS_Link_Cloaking_Service::class, function( $container ) {
+            return new AIPS_Link_Cloaking_Service(
+                $container->make(AIPS_Config::class),
+                $container->make(AIPS_Affiliate_Links_Repository::class),
+                $container->make(AIPS_Sponsor_Campaigns_Repository::class),
+                $container->make(AIPS_Monetization_Telemetry_Repository::class)
+            );
+        });
     }
 
     /**
@@ -662,6 +671,9 @@ final class AI_Post_Scheduler {
 
         // Monetization & Ad Frontend integration (the_content filter, shortcode, viewability)
         new AIPS_Ad_Frontend();
+
+        // Link Cloaking Service (rewrite rules, query vars, 307 redirects)
+        AIPS_Container::get_instance()->make(AIPS_Link_Cloaking_Service::class);
 
         // REST Monetization Controller (editor sidebar, blocks, and telemetry tracking)
         new AIPS_REST_Monetization_Controller();

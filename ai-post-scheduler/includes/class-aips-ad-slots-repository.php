@@ -29,7 +29,7 @@ class AIPS_Ad_Slots_Repository {
 	 *
 	 * @var string[]
 	 */
-	const VALID_POSITIONS = array( 'after_paragraph', 'mid_content', 'end_of_post', 'custom_shortcode' );
+	const VALID_POSITIONS = array( 'after_paragraph', 'mid_content', 'end_of_post', 'sticky_bottom_anchor', 'custom_shortcode' );
 
 	/**
 	 * Valid slot types.
@@ -95,21 +95,31 @@ class AIPS_Ad_Slots_Repository {
 		$id  = ! empty( $data['id'] ) ? absint( $data['id'] ) : 0;
 		$now = time();
 
+		$anchor_trigger = in_array( $data['anchor_trigger'] ?? '', array( 'scroll_depth', 'immediate', 'smart_scroll' ), true )
+			? $data['anchor_trigger']
+			: 'scroll_depth';
+
 		$record = array(
-			'name'             => sanitize_text_field( $data['name'] ?? '' ),
-			'slot_type'        => in_array( $data['slot_type'] ?? '', self::VALID_TYPES, true ) ? $data['slot_type'] : 'custom_html',
-			'code'             => $data['code'] ?? '',
-			'position'         => in_array( $data['position'] ?? '', self::VALID_POSITIONS, true ) ? $data['position'] : 'after_paragraph',
-			'paragraph_offset' => max( 1, absint( $data['paragraph_offset'] ?? 2 ) ),
-			'min_word_count'   => absint( $data['min_word_count'] ?? 300 ),
-			'device_targeting' => in_array( $data['device_targeting'] ?? '', array( 'all', 'desktop', 'mobile' ), true ) ? $data['device_targeting'] : 'all',
-			'status'           => in_array( $data['status'] ?? '', array( 'active', 'inactive' ), true ) ? $data['status'] : 'active',
-			'priority'         => absint( $data['priority'] ?? 10 ),
-			'css_classes'      => sanitize_text_field( $data['css_classes'] ?? '' ),
-			'updated_at'       => $now,
+			'name'                => sanitize_text_field( $data['name'] ?? '' ),
+			'slot_type'           => in_array( $data['slot_type'] ?? '', self::VALID_TYPES, true ) ? $data['slot_type'] : 'custom_html',
+			'code'                => $data['code'] ?? '',
+			'position'            => in_array( $data['position'] ?? '', self::VALID_POSITIONS, true ) ? $data['position'] : 'after_paragraph',
+			'paragraph_offset'    => max( 1, absint( $data['paragraph_offset'] ?? 2 ) ),
+			'min_word_count'      => absint( $data['min_word_count'] ?? 300 ),
+			'device_targeting'    => in_array( $data['device_targeting'] ?? '', array( 'all', 'desktop', 'mobile' ), true ) ? $data['device_targeting'] : 'all',
+			'auto_refresh'        => ! empty( $data['auto_refresh'] ) ? 1 : 0,
+			'refresh_interval'    => max( 15, absint( $data['refresh_interval'] ?? 30 ) ),
+			'max_refreshes'       => max( 1, absint( $data['max_refreshes'] ?? 5 ) ),
+			'anchor_trigger'      => $anchor_trigger,
+			'anchor_scroll_depth' => max( 0, min( 100, absint( $data['anchor_scroll_depth'] ?? 15 ) ) ),
+			'anchor_dismissible'  => isset( $data['anchor_dismissible'] ) ? ( ! empty( $data['anchor_dismissible'] ) ? 1 : 0 ) : 1,
+			'status'              => in_array( $data['status'] ?? '', array( 'active', 'inactive' ), true ) ? $data['status'] : 'active',
+			'priority'            => absint( $data['priority'] ?? 10 ),
+			'css_classes'         => sanitize_text_field( $data['css_classes'] ?? '' ),
+			'updated_at'          => $now,
 		);
 
-		$formats = array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%d' );
+		$formats = array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%d' );
 
 		if ( $id > 0 ) {
 			$result = $this->wpdb->update(

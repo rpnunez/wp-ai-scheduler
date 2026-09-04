@@ -16,12 +16,101 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 
 <div class="wrap aips-wrap aips-monetization-wrap">
-	<h1 class="wp-heading-inline">
-		<?php esc_html_e( 'Monetization Hub & Ad Revenue', 'ai-post-scheduler' ); ?>
-	</h1>
-	<p class="description">
-		<?php esc_html_e( 'Manage automated in-article ad slots, sponsor campaigns, affiliate links, and monitor real-time viewability & revenue metrics.', 'ai-post-scheduler' ); ?>
-	</p>
+	<div class="aips-header-row" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+		<div>
+			<h1 class="wp-heading-inline" style="margin:0;">
+				<?php esc_html_e( 'Monetization Hub & Ad Revenue', 'ai-post-scheduler' ); ?>
+			</h1>
+			<p class="description" style="margin:4px 0 0 0;">
+				<?php esc_html_e( 'Manage automated in-article ad slots, sponsor campaigns, affiliate links, and monitor real-time viewability & revenue metrics.', 'ai-post-scheduler' ); ?>
+			</p>
+		</div>
+		<div>
+			<button type="button" class="button button-secondary" id="aips-btn-toggle-engine-settings">
+				<span class="dashicons dashicons-admin-generic" style="vertical-align:text-bottom;"></span>
+				<?php esc_html_e( 'Engine & Ad-Block Settings', 'ai-post-scheduler' ); ?>
+			</button>
+		</div>
+	</div>
+
+	<!-- Collapsible Monetization Engine & Ad-Block Settings Panel -->
+	<div id="aips-engine-settings-panel" class="aips-engine-panel" style="display: none; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:20px; margin-bottom:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+		<h3 style="margin-top:0; margin-bottom:12px; font-size:16px; display:flex; align-items:center; gap:8px;">
+			<span class="dashicons dashicons-shield"></span>
+			<?php esc_html_e( 'Monetization Optimization & Ad-Block Recovery Engine', 'ai-post-scheduler' ); ?>
+		</h3>
+		<form id="aips-form-engine-settings">
+			<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px; margin-bottom:16px;">
+				<div>
+					<label style="display:block; font-weight:600; margin-bottom:6px;">
+						<?php esc_html_e( 'Ad-Block Recovery Strategy', 'ai-post-scheduler' ); ?>
+					</label>
+					<?php $rec_mode = AIPS_Config::get_instance()->get_option( 'aips_adblock_recovery_mode', 'silent_fallback' ); ?>
+					<select name="aips_adblock_recovery_mode" id="aips-setting-adblock-mode" style="width:100%;">
+						<option value="disabled" <?php selected( $rec_mode, 'disabled' ); ?>><?php esc_html_e( 'Disabled (Standard ads only)', 'ai-post-scheduler' ); ?></option>
+						<option value="silent_fallback" <?php selected( $rec_mode, 'silent_fallback' ); ?>><?php esc_html_e( 'Tier 1: Silent Fallback (Fill with House Sponsor Ad)', 'ai-post-scheduler' ); ?></option>
+						<option value="soft_notice" <?php selected( $rec_mode, 'soft_notice' ); ?>><?php esc_html_e( 'Tier 2: Soft Notice (Polite floating toast prompt)', 'ai-post-scheduler' ); ?></option>
+						<option value="polite_dimmer" <?php selected( $rec_mode, 'polite_dimmer' ); ?>><?php esc_html_e( 'Tier 3: Polite Content Dimmer (Dim after Paragraph 3)', 'ai-post-scheduler' ); ?></option>
+					</select>
+					<p class="description" style="margin-top:4px; font-size:12px;">
+						<?php esc_html_e( 'Detects client-side ad blockers and applies high-converting recovery.', 'ai-post-scheduler' ); ?>
+					</p>
+				</div>
+
+				<div>
+					<label style="display:block; font-weight:600; margin-bottom:6px;">
+						<?php esc_html_e( 'Fallback Sponsor Campaign (House Ad)', 'ai-post-scheduler' ); ?>
+					</label>
+					<?php $current_fb_id = (int) AIPS_Config::get_instance()->get_option( 'aips_adblock_fallback_campaign_id', 0 ); ?>
+					<select name="aips_adblock_fallback_campaign_id" id="aips-setting-fallback-campaign" style="width:100%;">
+						<option value="0"><?php esc_html_e( 'Auto-Match by Post Topic / Category', 'ai-post-scheduler' ); ?></option>
+						<?php foreach ( $campaigns as $camp ) : ?>
+							<option value="<?php echo esc_attr( $camp->id ); ?>" <?php selected( $current_fb_id, $camp->id ); ?>>
+								<?php echo esc_html( $camp->brand_name ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+
+				<div>
+					<label style="display:block; font-weight:600; margin-bottom:6px;">
+						<?php esc_html_e( 'Affiliate Link Cloaking Prefix', 'ai-post-scheduler' ); ?>
+					</label>
+					<div style="display:flex; align-items:center; gap:8px;">
+						<label style="display:inline-flex; align-items:center; gap:6px; margin-right:12px;">
+							<input type="checkbox" name="aips_link_cloaking_enabled" id="aips-setting-cloaking-enabled" value="1" <?php checked( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_enabled', true ) ); ?> />
+							<span><?php esc_html_e( 'Enable', 'ai-post-scheduler' ); ?></span>
+						</label>
+						<input type="text" name="aips_link_cloaking_prefix" id="aips-setting-cloaking-prefix" value="<?php echo esc_attr( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ); ?>" style="width:90px;" placeholder="go" />
+						<span class="description" style="font-size:12px;">/<?php echo esc_html( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ); ?>/{slug}</span>
+					</div>
+				</div>
+			</div>
+
+			<div style="margin-bottom:16px;">
+				<label style="display:block; font-weight:600; margin-bottom:6px;">
+					<?php esc_html_e( 'Custom Ad-Block Whitelist Prompt Message', 'ai-post-scheduler' ); ?>
+				</label>
+				<textarea name="aips_adblock_notice_text" id="aips-setting-notice-text" rows="2" class="large-text" placeholder="<?php esc_attr_e( 'We notice you are using an ad blocker. Please consider supporting our free content by disabling your ad blocker.', 'ai-post-scheduler' ); ?>"><?php echo esc_textarea( AIPS_Config::get_instance()->get_option( 'aips_adblock_notice_text' ) ); ?></textarea>
+			</div>
+
+			<div style="margin-bottom:16px;">
+				<label style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+					<input type="checkbox" name="aips_ad_refresh_enabled" id="aips-setting-refresh-master" value="1" <?php checked( AIPS_Config::get_instance()->get_option( 'aips_ad_refresh_enabled', true ) ); ?> />
+					<span><?php esc_html_e( 'Master Switch: Enable Smart Ad Refresh across all configured units', 'ai-post-scheduler' ); ?></span>
+				</label>
+				<p class="description" style="margin-left:24px; font-size:12px;">
+					<?php esc_html_e( 'Ensures AdSense/Mediavine policy compliance: ads only refresh when in viewport (>50% visible) and user has recent activity.', 'ai-post-scheduler' ); ?>
+				</p>
+			</div>
+
+			<div style="display:flex; justify-content:flex-end; gap:10px;">
+				<button type="submit" class="button button-primary" id="aips-btn-save-engine-settings">
+					<?php esc_html_e( 'Save Engine Settings', 'ai-post-scheduler' ); ?>
+				</button>
+			</div>
+		</form>
+	</div>
 
 	<script>
 		window.aipsMonetizationInitialData = {
@@ -106,6 +195,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 										<?php printf( esc_html__( 'Mid-Content (50%% Depth, Min words: %d)', 'ai-post-scheduler' ), (int) $slot->min_word_count ); ?>
 									<?php elseif ( 'end_of_post' === $slot->position ) : ?>
 										<?php esc_html_e( 'End of Post / Conclusion', 'ai-post-scheduler' ); ?>
+									<?php elseif ( 'sticky_bottom_anchor' === $slot->position ) : ?>
+										<span class="aips-badge" style="background: #e0e7ff; color: #3730a3;"><?php esc_html_e( 'Sticky Bottom Anchor', 'ai-post-scheduler' ); ?></span>
 									<?php else : ?>
 										<?php esc_html_e( 'Custom Shortcode / Block Only', 'ai-post-scheduler' ); ?>
 									<?php endif; ?>
@@ -244,6 +335,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<span class="aips-stat-label"><?php esc_html_e( 'Estimated CTR', 'ai-post-scheduler' ); ?></span>
 					<span class="aips-stat-value" id="aips-stat-ctr"><?php echo esc_html( ( $summary['ctr'] ?? 0 ) . '%' ); ?></span>
 				</div>
+				<div class="aips-stat-card">
+					<span class="aips-stat-label"><?php esc_html_e( 'Smart Refreshes', 'ai-post-scheduler' ); ?></span>
+					<span class="aips-stat-value" id="aips-stat-refreshes"><?php echo number_format_i18n( $summary['refreshes'] ?? 0 ); ?></span>
+				</div>
+				<div class="aips-stat-card">
+					<span class="aips-stat-label"><?php esc_html_e( 'Ad-Block Detection Rate', 'ai-post-scheduler' ); ?></span>
+					<span class="aips-stat-value" id="aips-stat-adblock"><?php echo esc_html( ( $summary['ad_block_rate'] ?? 0 ) . '%' ); ?></span>
+				</div>
 			</div>
 
 			<!-- Chart Section -->
@@ -325,6 +424,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 								<option value="after_paragraph"><?php esc_html_e( 'After Paragraph N', 'ai-post-scheduler' ); ?></option>
 								<option value="mid_content"><?php esc_html_e( 'Mid-Content (50% depth)', 'ai-post-scheduler' ); ?></option>
 								<option value="end_of_post"><?php esc_html_e( 'End of Post / Conclusion', 'ai-post-scheduler' ); ?></option>
+								<option value="sticky_bottom_anchor"><?php esc_html_e( 'Sticky Bottom Anchor (Mobile & Desktop)', 'ai-post-scheduler' ); ?></option>
 								<option value="custom_shortcode"><?php esc_html_e( 'Shortcode / Block Only', 'ai-post-scheduler' ); ?></option>
 							</select>
 						</div>
@@ -335,6 +435,57 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<div>
 							<label for="aips-slot-min-words"><?php esc_html_e( 'Min Word Count', 'ai-post-scheduler' ); ?></label>
 							<input type="number" name="min_word_count" id="aips-slot-min-words" value="300" min="0" step="50" style="width: 100px;" />
+						</div>
+					</div>
+
+					<!-- Anchor Options (visible only when position is sticky_bottom_anchor) -->
+					<div id="aips-wrap-anchor-options" class="aips-form-row aips-row-flex" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
+						<div>
+							<label for="aips-slot-anchor-trigger"><?php esc_html_e( 'Anchor Display Trigger', 'ai-post-scheduler' ); ?></label>
+							<select name="anchor_trigger" id="aips-slot-anchor-trigger">
+								<option value="scroll_depth"><?php esc_html_e( 'Scroll Depth (% of page)', 'ai-post-scheduler' ); ?></option>
+								<option value="immediate"><?php esc_html_e( 'Immediate on Load', 'ai-post-scheduler' ); ?></option>
+								<option value="smart_scroll"><?php esc_html_e( 'Smart Scroll (Hide on scroll up)', 'ai-post-scheduler' ); ?></option>
+							</select>
+						</div>
+						<div>
+							<label for="aips-slot-anchor-scroll-depth"><?php esc_html_e( 'Scroll Trigger (%)', 'ai-post-scheduler' ); ?></label>
+							<input type="number" name="anchor_scroll_depth" id="aips-slot-anchor-scroll-depth" value="25" min="5" max="95" style="width: 80px;" />
+						</div>
+						<div style="align-self: flex-end; padding-bottom: 5px;">
+							<label>
+								<input type="checkbox" name="anchor_dismissible" id="aips-slot-anchor-dismissible" value="1" checked />
+								<?php esc_html_e( 'User Dismissible (✕)', 'ai-post-scheduler' ); ?>
+							</label>
+						</div>
+					</div>
+
+					<!-- Smart Ad Refresh Options -->
+					<div id="aips-wrap-refresh-options" class="aips-form-row aips-row-flex" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
+						<div style="align-self: center; padding-right: 15px;">
+							<label style="font-weight: 600; color: #166534;">
+								<input type="checkbox" name="auto_refresh" id="aips-slot-auto-refresh" value="1" />
+								<?php esc_html_e( 'Enable Smart Ad Refresh', 'ai-post-scheduler' ); ?>
+							</label>
+							<p class="description" style="margin: 2px 0 0 20px; font-size: 11px;"><?php esc_html_e( 'Refreshes only when >50% visible & user active in last 30s.', 'ai-post-scheduler' ); ?></p>
+						</div>
+						<div>
+							<label for="aips-slot-refresh-interval"><?php esc_html_e( 'Refresh Interval', 'ai-post-scheduler' ); ?></label>
+							<select name="refresh_interval" id="aips-slot-refresh-interval">
+								<option value="30"><?php esc_html_e( '30 seconds (Standard)', 'ai-post-scheduler' ); ?></option>
+								<option value="45"><?php esc_html_e( '45 seconds', 'ai-post-scheduler' ); ?></option>
+								<option value="60"><?php esc_html_e( '60 seconds (Conservative)', 'ai-post-scheduler' ); ?></option>
+								<option value="90"><?php esc_html_e( '90 seconds', 'ai-post-scheduler' ); ?></option>
+								<option value="120"><?php esc_html_e( '120 seconds', 'ai-post-scheduler' ); ?></option>
+							</select>
+						</div>
+						<div>
+							<label for="aips-slot-max-refreshes"><?php esc_html_e( 'Max Refreshes / Session', 'ai-post-scheduler' ); ?></label>
+							<select name="max_refreshes" id="aips-slot-max-refreshes">
+								<option value="3"><?php esc_html_e( '3 Refreshes', 'ai-post-scheduler' ); ?></option>
+								<option value="5"><?php esc_html_e( '5 Refreshes (Recommended)', 'ai-post-scheduler' ); ?></option>
+								<option value="10"><?php esc_html_e( '10 Refreshes', 'ai-post-scheduler' ); ?></option>
+							</select>
 						</div>
 					</div>
 					<div class="aips-form-row aips-row-flex">

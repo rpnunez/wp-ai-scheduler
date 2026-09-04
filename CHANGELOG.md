@@ -1,3 +1,34 @@
+## [3.7.1] - 2026-09-04
+
+### Added
+- **Smart Ad Refresh Engine**:
+  - Compliance-first auto-refresh conforming to AdSense, Mediavine, and Raptive policies.
+  - IntersectionObserver monitoring triggers refreshes only when ad slots are >50% visible in the active viewport AND user activity (mouse, touch, keydown, scroll) has been observed within the past 30 seconds.
+  - Automatic pause when the browser tab is hidden or backgrounded.
+  - Granular slot configuration: interval setting (30s, 45s, 60s, 90s, 120s) and session refresh cap (3, 5, 10 refreshes) with telemetry logging (`smart_refresh`).
+- **High-RPM Sticky Bottom Anchors**:
+  - Dedicated `sticky_bottom_anchor` position type formatted for mobile and desktop screens.
+  - Configurable display triggers: `scroll_depth` (% scroll trigger), `immediate`, and `smart_scroll` (auto-hides on upward reading scroll).
+  - User dismissible controls (✕) with session persistence.
+- **Three-Tier Ad-Block Recovery Suite**:
+  - Non-intrusive client-side bait element detection (`#aips-adblock-bait`).
+  - Tier 1: Silent Fallback to house/direct sponsor campaigns without breaking layout or aesthetics.
+  - Tier 2: Polite Soft Notice toast banner with customizable messaging requesting whitelist/support.
+  - Tier 3: Content Dimmer below paragraph 3 politely prompting reader support.
+  - Telemetry logging for `ad_block_detected` events and detection rate calculation in analytics.
+- **Affiliate Link Cloaking & 307 Temporary Redirect Engine**:
+  - Dedicated URL cloaking service using clean rewrite rules (`/{prefix}/{slug}/`, default `/go/`).
+  - Strict HTTP 307 temporary redirects with `X-Robots-Tag: noindex, nofollow, noarchive` headers.
+  - Automated link rewriting for contextual affiliate links with outbound conversion tracking.
+- **Monetization Engine Settings Admin Panel**:
+  - Slide-out quick configuration panel in the Monetization Hub.
+  - Global toggles for Smart Ad Refresh, Ad-Block Recovery modes, Fallback Campaign mapping, and Link Cloaking prefixes with instant rewrite flushing.
+  - Real-time telemetry cards for Smart Refreshes and Ad-Block Detection Rate in the Analytics dashboard.
+- **Database Schema Migration (`migrate_to_3_7_1`)**:
+  - Added `slug` column to `wp_aips_affiliate_links` with unique index.
+  - Added `auto_refresh`, `refresh_interval`, `max_refreshes`, `anchor_trigger`, `anchor_scroll_depth`, and `anchor_dismissible` columns to `wp_aips_ad_slots`.
+  - Automatic migration runner and default sticky anchor seeding.
+
 ## [3.7.0] - 2026-09-04
 
 ### Added
