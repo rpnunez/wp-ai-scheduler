@@ -25,6 +25,13 @@ if (!defined('ABSPATH')) {
 class AIPS_Site_Context {
 
 	/**
+	 * Map of short keys (e.g. 'niche') to WordPress option names (e.g. 'aips_site_niche').
+	 *
+	 * @var array<string, string>|null
+	 */
+	private static $key_map = null;
+
+	/**
 	 * Return all site-wide content settings as an associative array.
 	 *
 	 * Keys are the short 'key' values defined in the settings registry
@@ -35,16 +42,46 @@ class AIPS_Site_Context {
 	public static function get() {
 		$result  = array();
 		$config  = AIPS_Config::get_instance();
-		$options = AIPS_Settings::get_content_strategy_options();
+		$key_map = self::get_key_map();
 
-		foreach ($options as $option_name => $meta) {
-			if (!isset($meta['key'])) {
-				continue;
-			}
-			$result[ $meta['key'] ] = $config->get_option($option_name);
+		foreach ($key_map as $key => $option_name) {
+			$result[ $key ] = $config->get_option($option_name);
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Get the map of short setting keys to full WordPress option names.
+	 *
+	 * Caches the inverted mapping from AIPS_Settings::get_content_strategy_options()
+	 * for O(1) lookups.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function get_key_map() {
+		if (self::$key_map === null) {
+			$options = AIPS_Settings::get_content_strategy_options();
+			self::$key_map = array();
+			foreach ($options as $option_name => $meta) {
+				if (isset($meta['key'])) {
+					self::$key_map[ $meta['key'] ] = $option_name;
+				}
+			}
+		}
+
+		return self::$key_map;
+	}
+
+	/**
+	 * Reset the internal key map cache.
+	 *
+	 * Useful for testing when settings definitions may be altered.
+	 *
+	 * @return void
+	 */
+	public static function reset_key_map() {
+		self::$key_map = null;
 	}
 
 	/**
@@ -58,17 +95,11 @@ class AIPS_Site_Context {
 	 * @return mixed Stored option value, the caller's $default, or '' when $default is null.
 	 */
 	public static function get_setting($key, $default = null) {
-		static $key_map = null;
-
-		if ($key_map === null) {
-			$options = AIPS_Settings::get_content_strategy_options();
-			$key_map = array();
-			foreach ($options as $option_name => $meta) {
-				if (isset($meta['key'])) {
-					$key_map[$meta['key']] = $option_name;
-				}
-			}
+		if (!is_string($key)) {
+			return $default !== null ? $default : '';
 		}
+
+		$key_map = self::get_key_map();
 
 		if (isset($key_map[$key])) {
 			return AIPS_Config::get_instance()->get_option($key_map[$key], $default);
