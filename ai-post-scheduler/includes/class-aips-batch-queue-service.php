@@ -221,6 +221,43 @@ class AIPS_Batch_Queue_Service {
 			return $result;
 		}
 
+		// When dispatching schedule-specific batches, create a canonical batch_run
+		// row so the resume path can rely on a first-class DB record instead of
+		// ad-hoc JSON stored in the schedule row.
+		try {
+			$schedule_id_for_row = isset($batch_options['prefix_args'][0]) ? (int) $batch_options['prefix_args'][0] : 0;
+			$index_offset = isset($batch_options['index_offset']) ? (int) $batch_options['index_offset'] : 0;
+			$total_override = isset($batch_options['total_override']) ? $batch_options['total_override'] : null;
+
+			if ($schedule_id_for_row > 0) {
+				$total = $total_override !== null ? (int) $total_override : ($post_quantity + $index_offset);
+				$completed = $index_offset;
+
+				if ($total > 0 && $completed < $total) {
+					// Use WordPress UUID when available; fallback to a unique md5 id.
+					$batch_uuid = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : md5(uniqid((string) $schedule_id_for_row, true));
+					$repo = null;
+					if (class_exists('AIPS_Schedule_Repository')) {
+						$repo = AIPS_Schedule_Repository::instance();
+					}
+
+					if ($repo && method_exists($repo, 'create_batch_run')) {
+						$created = $repo->create_batch_run($schedule_id_for_row, $batch_uuid, $total, $completed, $completed, array(), 'pending');
+						if ($created) {
+							$this->logger->log(
+								sprintf('Created batch_run %s for schedule %d (total=%d, completed=%d)', $batch_uuid, $schedule_id_for_row, $total, $completed),
+								'info',
+								array('schedule_id' => $schedule_id_for_row, 'batch_uuid' => $batch_uuid)
+							);
+						}
+					}
+				}
+			}
+		} catch (Exception $e) {
+			// Don't let batch-run bookkeeping break dispatch; log and continue.
+			$this->logger->log('Batch queue: failed to create batch_run row — ' . $e->getMessage(), 'warning');
+		}
+
 		// Convert to legacy format
 		return $result->to_array();
 	}
