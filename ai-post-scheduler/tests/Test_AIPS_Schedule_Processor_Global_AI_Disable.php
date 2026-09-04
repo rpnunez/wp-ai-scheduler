@@ -59,9 +59,8 @@ class Test_AIPS_Schedule_Processor_Global_AI_Disable extends WP_UnitTestCase {
 			->disableOriginalConstructor()
 			->onlyMethods(array('select_structure'))
 			->getMock();
-		$template_type_selector->expects($this->once())
-			->method('select_structure')
-			->willReturn(0);
+		$template_type_selector->expects($this->never())
+			->method('select_structure');
 
 		$logger = $this->createMock(AIPS_Logger_Interface::class);
 		$logger->method('log');
@@ -70,18 +69,18 @@ class Test_AIPS_Schedule_Processor_Global_AI_Disable extends WP_UnitTestCase {
 			->disableOriginalConstructor()
 			->getMock();
 
+		// The run is terminated before it starts, so no "started execution"
+		// activity entry may be recorded against the container.
 		$history = $this->createMock(AIPS_History_Container::class);
-		$history->expects($this->once())
-			->method('record')
-			->with(
-				'activity',
-				'Manual execution of schedule "Blocked Template" started',
-				$this->anything(),
-				null,
-				$this->anything()
-			);
+		$history->expects($this->never())
+			->method('record');
 
-		$terminated_error = new WP_Error('ai_calls_disabled', 'Schedule was terminated early due to Prevent Scheduled AI Generation being enabled.');
+		$setting_label = AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label();
+
+		$terminated_error = new WP_Error(
+			'ai_calls_disabled',
+			sprintf('Schedule was terminated early due to %s being enabled.', $setting_label)
+		);
 		$result_handler = $this->getMockBuilder(AIPS_Schedule_Result_Handler::class)
 			->disableOriginalConstructor()
 			->onlyMethods(array('get_or_create_schedule_history', 'handle_execution_terminated_by_setting'))
@@ -100,7 +99,7 @@ class Test_AIPS_Schedule_Processor_Global_AI_Disable extends WP_UnitTestCase {
 				}),
 				$history,
 				true,
-				'Prevent Scheduled AI Generation',
+				$setting_label,
 				$this->callback(function($options) {
 					return isset($options['restore_next_run'], $options['total'], $options['completed']) &&
 						(int) $options['restore_next_run'] === 1700000000 &&

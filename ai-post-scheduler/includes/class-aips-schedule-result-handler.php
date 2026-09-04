@@ -230,96 +230,104 @@ class AIPS_Schedule_Result_Handler {
         }
     }
 
-	/**
-	 * Handle early termination when a higher-level setting blocks AI execution.
-	 *
-	 * @param object $schedule
-	 * @param object $history
-	 * @param bool   $is_manual
-	 * @param string $setting_label
-	 * @param array  $options {
-	 *     Optional termination behavior.
-	 *
-	 *     @type string $message_override Custom history/log message.
-	 *     @type string $event_type       Custom history event type.
-	 *     @type int    $total            Optional requested quantity.
-	 *     @type int    $completed        Optional completed quantity.
-	 *     @type bool   $update_last_run  Whether to persist last_run.
-	 *     @type int    $restore_next_run Optional timestamp restored onto the schedule.
-	 *     @type array  $run_state        Extra run_state fields.
-	 * }
-	 * @return WP_Error
-	 */
-	public function handle_execution_terminated_by_setting($schedule, $history, $is_manual, $setting_label, array $options = array()) {
-		$setting_label = (string) $setting_label;
-		$message = isset($options['message_override']) && is_string($options['message_override']) && $options['message_override'] !== ''
-			? $options['message_override']
-			: sprintf(
-				__('Schedule was terminated early due to %s being enabled.', 'ai-post-scheduler'),
-				$setting_label
-			);
-		$event_type = isset($options['event_type']) && is_string($options['event_type']) && $options['event_type'] !== ''
-			? $options['event_type']
-			: ($is_manual ? 'manual_schedule_terminated' : 'schedule_terminated');
-		$completed = isset($options['completed']) ? max(0, absint($options['completed'])) : 0;
-		$total = isset($options['total']) ? max(0, absint($options['total'])) : 0;
-		$run_state = array(
-			'status'        => 'terminated',
-			'error_code'    => 'ai_calls_disabled',
-			'error_message' => $message,
-			'completed'     => $completed,
-			'total'         => $total,
-			'timestamp'     => AIPS_DateTime::now()->toIso8601(),
-		);
+    /**
+     * Handle early termination when a higher-level setting blocks AI execution.
+     *
+     * @param object $schedule
+     * @param object $history
+     * @param bool   $is_manual
+     * @param string $setting_label
+     * @param array  $options {
+     *     Optional termination behavior.
+     *
+     *     @type string $message_override Custom history/log message.
+     *     @type string $event_type       Custom history event type.
+     *     @type int    $total            Optional requested quantity.
+     *     @type int    $completed        Optional completed quantity.
+     *     @type bool   $update_last_run  Whether to persist last_run.
+     *     @type int    $restore_next_run Optional timestamp restored onto the schedule.
+     *     @type array  $run_state        Extra run_state fields.
+     * }
+     * @return WP_Error
+     */
+    public function handle_execution_terminated_by_setting($schedule, $history, $is_manual, $setting_label, array $options = array()) {
+        $setting_label = (string) $setting_label;
+        $message = isset($options['message_override']) && is_string($options['message_override']) && $options['message_override'] !== ''
+            ? $options['message_override']
+            : sprintf(
+                /* translators: %s: name of the setting that blocked the run. */
+                __('Schedule was terminated early due to %s being enabled.', 'ai-post-scheduler'),
+                $setting_label
+            );
+        $event_type = isset($options['event_type']) && is_string($options['event_type']) && $options['event_type'] !== ''
+            ? $options['event_type']
+            : ($is_manual
+                ? AIPS_History_Event_Type::MANUAL_SCHEDULE_TERMINATED
+                : AIPS_History_Event_Type::SCHEDULE_TERMINATED);
+        $completed = isset($options['completed']) ? max(0, absint($options['completed'])) : 0;
+        $total = isset($options['total']) ? max(0, absint($options['total'])) : 0;
+        $run_state = array(
+            'status'        => AIPS_History_Event_Status::TERMINATED,
+            'error_code'    => 'ai_calls_disabled',
+            'error_message' => $message,
+            'completed'     => $completed,
+            'total'         => $total,
+            'timestamp'     => AIPS_DateTime::now()->toIso8601(),
+        );
 
-		if (isset($options['run_state']) && is_array($options['run_state'])) {
-			$run_state = array_merge($run_state, $options['run_state']);
-		}
+        if (isset($options['run_state']) && is_array($options['run_state'])) {
+            $run_state = array_merge($run_state, $options['run_state']);
+        }
 
-		$this->repository->update_run_state($schedule->schedule_id, $run_state);
+        $this->repository->update_run_state($schedule->schedule_id, $run_state);
 
-		if (array_key_exists('restore_next_run', $options) && $options['restore_next_run'] !== null) {
-			$this->repository->update($schedule->schedule_id, array(
-				'next_run' => (int) $options['restore_next_run'],
-			));
-		}
+        if (array_key_exists('restore_next_run', $options) && $options['restore_next_run'] !== null) {
+            $this->repository->update($schedule->schedule_id, array(
+                'next_run' => (int) $options['restore_next_run'],
+            ));
+        }
 
-		if (!empty($options['update_last_run'])) {
-			$this->repository->update_last_run($schedule->schedule_id, AIPS_DateTime::now()->timestamp());
-		}
+        if (!empty($options['update_last_run'])) {
+            $this->repository->update_last_run($schedule->schedule_id, AIPS_DateTime::now()->timestamp());
+        }
 
-		$this->logger->log(
-			'Schedule execution terminated by setting: ' . $message,
-			'info',
-			array(
-				'schedule_id' => $schedule->schedule_id,
-				'event_type'  => $event_type,
-			)
-		);
+        $this->logger->log(
+            'Schedule execution terminated by setting: ' . $message,
+            'info',
+            array(
+                'schedule_id' => $schedule->schedule_id,
+                'event_type'  => $event_type,
+            )
+        );
 
-		if ($history) {
-			$history->record(
-				'activity',
-				$message,
-				array(
-					'event_type'   => $event_type,
-					'event_status' => 'terminated',
-				),
-				null,
-				array(
-					'schedule_id'   => $schedule->schedule_id,
-					'template_id'   => isset($schedule->template_id) ? $schedule->template_id : 0,
-					'frequency'     => isset($schedule->frequency) ? $schedule->frequency : '',
-					'setting_name'  => $setting_label,
-					'completed'     => $completed,
-					'total'         => $total,
-					'correlation_id'=> class_exists('AIPS_Correlation_ID') ? AIPS_Correlation_ID::get() : '',
-				)
-			);
-		}
+        if ($history) {
+            $history->record(
+                'activity',
+                $message,
+                array(
+                    'event_type'   => $event_type,
+                    'event_status' => AIPS_History_Event_Status::TERMINATED,
+                ),
+                null,
+                array(
+                    'schedule_id'   => $schedule->schedule_id,
+                    'template_id'   => isset($schedule->template_id) ? $schedule->template_id : 0,
+                    'frequency'     => isset($schedule->frequency) ? $schedule->frequency : '',
+                    'setting_name'  => $setting_label,
+                    'completed'     => $completed,
+                    'total'         => $total,
+                    'correlation_id'=> class_exists('AIPS_Correlation_ID') ? AIPS_Correlation_ID::get() : '',
+                )
+            );
 
-		return new WP_Error('ai_calls_disabled', $message);
-	}
+            // Close the container with its own terminal status. Without this the
+            // history row stays in 'processing' forever, and metrics that count
+            // terminated runs by status would never see the run.
+            $history->complete_terminated($message);
+        }
+
+        return new WP_Error('ai_calls_disabled', $message);
+    }
 
     /**
      * Load the schedule's persistent lifecycle history container, or create one if missing.

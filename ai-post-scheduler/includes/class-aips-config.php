@@ -20,6 +20,7 @@ if (!defined('ABSPATH')) {
  * Centralizes default options, constants, and feature flags.
  */
 class AIPS_Config {
+    
     /**
      * @var AIPS_Config Singleton instance
      */
@@ -429,7 +430,8 @@ class AIPS_Config {
      *               'provider'                      (string) AI provider identifier.
      *               'model'            (string) AI model identifier.
      *               'env_id'           (string) Optional AI Engine environment ID.
-     *               'prevent_scheduled_generation' (bool)  Whether scheduled AI generation is prevented.
+     *               'prevent_scheduled_generation' (bool)  Whether schedule-driven AI
+     *                                              generation (cron and manual runs) is prevented.
      *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
      *               'temperature'      (float)  Sampling temperature (creativity).
      */
@@ -445,21 +447,23 @@ class AIPS_Config {
     }
 
 	/**
-	 * Check whether scheduled AI generation is prevented.
+	 * Check whether schedule-driven AI generation is prevented.
 	 *
-	 * @return bool True when scheduled AI generation is prevented, false otherwise.
+	 * Applies to both cron-started runs and manual "Run Now" executions.
+	 *
+	 * @return bool True when schedule-driven AI generation is prevented, false otherwise.
 	 */
 	public function is_scheduled_ai_generation_prevented() {
 		return (bool) $this->get_option('aips_prevent_scheduled_ai_generation');
 	}
 
 	/**
-	 * Get the user-facing label for the scheduled AI generation setting.
+	 * Get the user-facing label for the AI generation prevention setting.
 	 *
 	 * @return string
 	 */
 	public function get_scheduled_ai_generation_prevention_label() {
-		return __('Prevent Scheduled AI Generation', 'ai-post-scheduler');
+		return __('Prevent AI Generation (Scheduled & Manual)', 'ai-post-scheduler');
 	}
     
     /**

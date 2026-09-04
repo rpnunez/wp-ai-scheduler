@@ -240,7 +240,7 @@ class AIPS_Settings_UI {
     }
 
 	/**
-	 * Render the global AI-disable setting field.
+	 * Render the AI generation prevention setting field.
 	 *
 	 * @return void
 	 */
@@ -249,7 +249,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_prevent_scheduled_ai_generation" value="0">
 		<input type="checkbox" name="aips_prevent_scheduled_ai_generation" value="1" <?php checked(1, $value); ?>>
-		<p class="description"><?php esc_html_e('Stop scheduled runs before they begin AI generation. Schedules remain active and will record an early-termination history entry instead of generating content while this setting is enabled.', 'ai-post-scheduler'); ?></p>
+		<p class="description"><?php esc_html_e('Stop schedule runs before they begin AI generation. This applies to cron-started runs and to manual "Run Now" executions. Schedules remain active and record an early-termination history entry instead of generating content while this setting is enabled.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 

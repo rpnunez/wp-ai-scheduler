@@ -346,7 +346,7 @@ class AIPS_Settings {
 
 		add_settings_field(
 			'aips_prevent_scheduled_ai_generation',
-			__('Prevent Scheduled AI Generation', 'ai-post-scheduler'),
+			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
 			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
 			'aips-settings',
 			'aips_ai_section'
