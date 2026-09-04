@@ -20,12 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for post content generation.
  */
-class AIPS_Prompt_Builder_Post_Content {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
+class AIPS_Prompt_Builder_Post_Content extends AIPS_Prompt_Builder_Section_Base {
 
 	/**
 	 * @var AIPS_Prompt_Builder_Article_Structure_Section Builder for structured section prompts.
@@ -33,19 +28,14 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $article_structure_section_builder;
 
 	/**
-	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
-	 */
-	private $diversity_injector;
-
-	/**
 	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
 	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null  $diversity_injector            Optional diversity injector.
 	 */
 	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
-		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		parent::__construct($template_processor, $diversity_injector);
+
+		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->get_template_processor());
 	}
 
 	/**
@@ -92,33 +82,33 @@ class AIPS_Prompt_Builder_Post_Content {
 		if (!$used_structured_prompt) {
 			// Always process template variables, even when topic is empty.
 			// This prevents raw placeholders like {{topic}} from leaking into prompts.
-			$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
+			$processed_prompt = $this->get_template_processor()->process($processed_prompt, $topic);
 		}
 
 		if ($context->get_type() === 'template' && $context->get_voice_id()) {
 			$voice = $context->get_voice();
 			if ($voice && !empty($voice->content_instructions)) {
-				$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
+				$voice_instructions = $this->get_template_processor()->process($voice->content_instructions, $topic);
 				$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 			}
 		}
 
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($context);
+		$diversity_block = $this->get_diversity_injector()->build_avoid_titles_block($context);
 		if (!empty($diversity_block)) {
 			$processed_prompt .= "\n\n" . $diversity_block;
 		}
 
-		$content_format_block = $this->diversity_injector->build_content_format_block($context);
+		$content_format_block = $this->get_diversity_injector()->build_content_format_block($context);
 		if (!empty($content_format_block)) {
 			$processed_prompt .= "\n\n" . $content_format_block;
 		}
 
-		$post_slice_block = $this->diversity_injector->build_post_slice_block($context);
+		$post_slice_block = $this->get_diversity_injector()->build_post_slice_block($context);
 		if (!empty($post_slice_block)) {
 			$processed_prompt .= "\n\n" . $post_slice_block;
 		}
 
-		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($context);
+		$uniqueness_seed_line_block = $this->get_diversity_injector()->build_uniqueness_seed_line_block($context);
 		if (!empty($uniqueness_seed_line_block)) {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
@@ -138,29 +128,29 @@ class AIPS_Prompt_Builder_Post_Content {
 	 */
 	private function build_from_template($template, $topic = null, $voice = null) {
 		do_action('aips_before_build_content_prompt', $template, $topic);
-		$processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+		$processed_prompt = $this->get_template_processor()->process($template->prompt_template, $topic);
 
 		if ($voice) {
-			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
+			$voice_instructions = $this->get_template_processor()->process($voice->content_instructions, $topic);
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 		}
 
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($template);
+		$diversity_block = $this->get_diversity_injector()->build_avoid_titles_block($template);
 		if (!empty($diversity_block)) {
 			$processed_prompt .= "\n\n" . $diversity_block;
 		}
 
-		$content_format_block = $this->diversity_injector->build_content_format_block($template);
+		$content_format_block = $this->get_diversity_injector()->build_content_format_block($template);
 		if (!empty($content_format_block)) {
 			$processed_prompt .= "\n\n" . $content_format_block;
 		}
 
-		$post_slice_block = $this->diversity_injector->build_post_slice_block($template);
+		$post_slice_block = $this->get_diversity_injector()->build_post_slice_block($template);
 		if (!empty($post_slice_block)) {
 			$processed_prompt .= "\n\n" . $post_slice_block;
 		}
 
-		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($template);
+		$uniqueness_seed_line_block = $this->get_diversity_injector()->build_uniqueness_seed_line_block($template);
 		if (!empty($uniqueness_seed_line_block)) {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
