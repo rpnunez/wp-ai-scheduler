@@ -1411,6 +1411,9 @@ class AIPS_Admin_Assets {
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
                 'heartbeatUnavailable' => __('Heartbeat API unavailable.', 'ai-post-scheduler'),
+                'processingGroup'      => __('Processing', 'ai-post-scheduler'),
+                'expandGroup'          => __('Show runs', 'ai-post-scheduler'),
+                'collapseGroup'        => __('Hide runs', 'ai-post-scheduler'),
             ));
     }
 

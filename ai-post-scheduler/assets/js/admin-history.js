@@ -560,6 +560,7 @@
 			this.syncSearchClearButton();
 			this.bindEvents();
 			this.renderFilterChips();
+			this.groupProcessingRows($('#aips-history-tbody'));
 			this.maybeOpenFromQuery();
 		},
 
@@ -574,6 +575,9 @@
 			// Open logs modal
 			$(document).on('click', '.aips-view-history-logs', this.openLogsModal.bind(this));
 			$(document).on('keydown', '.aips-history-row', this.onHistoryRowKeydown.bind(this));
+
+			// Processing group toggle
+			$(document).on('click', '.aips-history-group-header-row', this.toggleProcessingGroup.bind(this));
 
 			// Collapsible log-detail sections inside the modal
 			$(document).on('click', '.aips-log-toggle', this.toggleLogDetail.bind(this));
@@ -1526,6 +1530,7 @@
 					if ($tbody.length) {
 						if (itemsHtml) {
 							$tbody.html(itemsHtml);
+							self.groupProcessingRows($tbody);
 							$('#aips-history-search-no-results').hide();
 						} else {
 							// No results: render a friendly inline empty state.
@@ -1800,11 +1805,109 @@
 			form.remove();
 		},
 
-	};
+		/**
+		 * Group consecutive rows with data-status="processing" in a given tbody into
+		 * collapsible group rows with a badge showing the count.
+		 *
+		 * @param {jQuery} $tbody The tbody element to process.
+		 */
+		groupProcessingRows: function ($tbody) {
+			if (!$tbody || !$tbody.length) {
+				return;
+			}
 
-	/* ---------------------------------------------------------------------- */
-	/* Document ready                                                          */
-	/* ---------------------------------------------------------------------- */
+			// Remove any previously injected group headers so we can re-group cleanly.
+			$tbody.find('.aips-history-group-header-row').remove();
+			$tbody.find('.aips-history-group-member-row').each(function () {
+				$(this).removeClass('aips-history-group-member-row').show();
+			});
+
+			var groupId = 0;
+			var rows    = $tbody.find('tr.aips-history-row');
+			var i       = 0;
+
+			while (i < rows.length) {
+				var $row = $(rows[i]);
+				if ($row.data('status') !== 'processing') {
+					i++;
+					continue;
+				}
+
+				// Collect consecutive processing rows starting at i.
+				var $group = $row;
+				var j      = i + 1;
+				while (j < rows.length && $(rows[j]).data('status') === 'processing') {
+					$group = $group.add(rows[j]);
+					j++;
+				}
+
+				var count = $group.length;
+
+				if (count < 2) {
+					// Single processing row — no group needed.
+					i = j;
+					continue;
+				}
+
+				groupId++;
+				var gid         = 'aips-pg-' + groupId;
+				var headerLabel = (aipsHistoryL10n && aipsHistoryL10n.processingGroup)
+					? aipsHistoryL10n.processingGroup
+					: 'Processing';
+				var toggleLabel = (aipsHistoryL10n && aipsHistoryL10n.expandGroup)
+					? aipsHistoryL10n.expandGroup
+					: 'Show runs';
+
+				var $header = $(
+					'<tr class="aips-history-group-header-row" data-group="' + gid + '">' +
+						'<td colspan="5" class="aips-history-group-header-cell">' +
+							'<div class="aips-history-group-header-inner">' +
+								'<span class="aips-history-group-toggle-icon">&#9658;</span>' +
+								'<span class="aips-badge aips-badge-info">' + headerLabel + '</span>' +
+								'<span class="aips-badge aips-badge-neutral">' + count + '</span>' +
+								'<span class="aips-history-group-toggle-label">' + toggleLabel + '</span>' +
+							'</div>' +
+						'</td>' +
+					'</tr>'
+				);
+
+				$group.addClass('aips-history-group-member-row').attr('data-group', gid).hide();
+				$($group[0]).before($header);
+
+				i = j;
+			}
+		},
+
+		/**
+		 * Toggle the visibility of a processing row group.
+		 *
+		 * @param {Event} e Click event on the group header row.
+		 */
+		toggleProcessingGroup: function (e) {
+			var $header   = $(e.currentTarget);
+			var gid       = $header.data('group');
+			var $members  = $('[data-group="' + gid + '"].aips-history-group-member-row');
+			var expanded  = $header.hasClass('is-expanded');
+			var $label    = $header.find('.aips-history-group-toggle-label');
+			var collapseLabel = (aipsHistoryL10n && aipsHistoryL10n.collapseGroup)
+				? aipsHistoryL10n.collapseGroup
+				: 'Hide runs';
+			var expandLabel   = (aipsHistoryL10n && aipsHistoryL10n.expandGroup)
+				? aipsHistoryL10n.expandGroup
+				: 'Show runs';
+
+			if (expanded) {
+				$members.slideUp(160);
+				$header.removeClass('is-expanded');
+				$label.text(expandLabel);
+			} else {
+				$members.slideDown(160);
+				$header.addClass('is-expanded');
+				$label.text(collapseLabel);
+			}
+		},
+
+	};
 	$(document).ready(function () {
 		AIPS.History.init();
 		AIPS.HistoryModalShared.initStandaloneOpener();
