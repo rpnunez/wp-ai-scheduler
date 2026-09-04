@@ -1,0 +1,18 @@
+﻿{
+    "schema_version":  1,
+    "finding_id":  "026dfa160c80702e05c0eae0d466290d640113cd",
+    "type":  "scheduler_datetime_error_handling_gap",
+    "severity":  "medium",
+    "status":  "open",
+    "path":  "ai-post-scheduler/includes/class-aips-sources-cron.php",
+    "symbol":  "AIPS_Sources_Cron",
+    "anchor":  "schedule:wp_schedule_event-time-unchecked",
+    "lines":  [
+                  107
+              ],
+    "rationale":  "Cron registration uses raw time() and does not inspect wp_schedule_event() failure return.",
+    "remediation":  "Use AIPS_DateTime for the schedule timestamp and log WP_Error/false scheduling failures through AIPS_Logger.",
+    "first_seen_run_id":  "aips-20260509T202750Z",
+    "last_seen_run_id":  "aips-20260509T202750Z",
+    "updated_at":  "2026-05-09T20:27:50Z"
+}
