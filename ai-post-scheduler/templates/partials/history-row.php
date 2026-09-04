@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<tr class="aips-history-row aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
+<tr class="aips-history-row aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" data-status="<?php echo esc_attr($item->status); ?>" tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
     <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>">
             <?php esc_html_e('Select Item', 'ai-post-scheduler'); ?>

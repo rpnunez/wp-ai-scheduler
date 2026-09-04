@@ -227,6 +227,15 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
+            'ai-post-scheduler',
+            __('Content Indexer', 'ai-post-scheduler'),
+            __('Content Indexer', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-indexer',
+            array($this, 'render_content_indexer_page')
+        );
+
+        add_submenu_page(
             null,
             __('Affiliate Links', 'ai-post-scheduler'),
             __('Affiliate Links', 'ai-post-scheduler'),
@@ -832,5 +841,16 @@ class AIPS_Admin_Menu {
         echo '<div class="notice notice-error"><p>' .
             esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
         '</p></div>';
+    }
+
+    public function render_content_indexer_page() {
+        try {
+            $controller = new AIPS_Content_Indexer_Controller();
+            $controller->render_page();
+        } catch (Throwable $throwable) {
+            echo '<div class="notice notice-error"><p>' .
+                esc_html__('The Content Indexer page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+            '</p></div>';
+        }
     }
 }

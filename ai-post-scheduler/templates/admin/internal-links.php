@@ -40,7 +40,11 @@ $is_embedded_internal_links_view = !empty($embedded);
 					<p class="aips-page-description"><?php esc_html_e('Automatically discover related content and generate internal link suggestions using semantic similarity.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
-					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-secondary">
+					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-content-indexer')); ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-networking"></span>
+						<?php esc_html_e('Content Indexer & Graph', 'ai-post-scheduler'); ?>
+					</a>
+					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
 						<span class="dashicons dashicons-database-import"></span>
 						<?php esc_html_e('Index Posts', 'ai-post-scheduler'); ?>
 					</button>
@@ -114,7 +118,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-il-search"><?php esc_html_e('Search posts:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="aips-il-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search by post title…', 'ai-post-scheduler'); ?>">
-						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 					</div>
 				</div>
 
