@@ -1,0 +1,137 @@
+/**
+ * Gutenberg Editor Monetization Sidebar Styles
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.0
+ */
+
+.aips-sidebar-loading {
+	padding: 40px 20px;
+	text-align: center;
+}
+
+.aips-density-widget {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 6px;
+	padding: 12px;
+	margin-top: 6px;
+}
+
+.aips-density-stat-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+	font-size: 13px;
+	color: #334155;
+}
+
+.aips-density-badge {
+	display: block;
+	text-align: center;
+	color: #ffffff;
+	font-weight: 600;
+	font-size: 12px;
+	padding: 6px 10px;
+	border-radius: 4px;
+	margin-top: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.aips-intent-box {
+	background: #f1f5f9;
+	border: 1px solid #cbd5e1;
+	border-radius: 6px;
+	padding: 12px;
+	margin: 10px 0;
+	text-align: center;
+}
+
+.aips-intent-badge {
+	display: inline-block;
+	color: #ffffff;
+	font-weight: 700;
+	font-size: 12px;
+	padding: 4px 10px;
+	border-radius: 12px;
+	margin-bottom: 8px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.aips-rpm-estimate {
+	font-size: 13px;
+	color: #1e293b;
+}
+
+.aips-reanalyze-btn {
+	margin-top: 6px !important;
+	width: 100%;
+	justify-content: center;
+}
+
+.aips-subheading {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: #64748b;
+	margin: 14px 0 8px 0;
+}
+
+.aips-sponsor-assigned-notice {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	color: #166534;
+	padding: 8px 10px;
+	border-radius: 4px;
+	font-size: 12px;
+	margin-top: 10px;
+}
+
+.aips-slot-inserter-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px 0;
+	border-bottom: 1px solid #f1f5f9;
+	font-size: 13px;
+}
+
+/* Ad Unit Gutenberg Block Preview Styles */
+.aips-ad-unit-block-editor-wrapper .components-placeholder {
+	border: 2px dashed #94a3b8;
+	background: #f8fafc;
+	padding: 20px;
+	text-align: center;
+}
+
+.aips-ad-unit-placeholder-meta {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+	margin-top: 10px;
+}
+
+.aips-ad-preview-tag {
+	background: #e2e8f0;
+	color: #334155;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	padding: 2px 8px;
+	border-radius: 3px;
+}
+
+.aips-ad-preview-device {
+	background: #dbeafe;
+	color: #1e40af;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 3px;
+}

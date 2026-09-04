@@ -57,12 +57,14 @@ class AIPS_Admin_Assets {
 	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 	private const PAGE_STRESS_TEST    = 'aips-stress-test';
+	private const PAGE_MONETIZATION   = 'aips-monetization';
 
     /**
      * Initialize the class.
      */
     public function __construct() {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_action('enqueue_block_editor_assets', array($this, 'enqueue_block_editor_assets'));
     }
 
     /**
@@ -187,6 +189,103 @@ class AIPS_Admin_Assets {
 			$this->enqueue_stress_test_assets();
 		}
 
+		if (self::PAGE_MONETIZATION === $page || $this->hook_contains($hook, self::PAGE_MONETIZATION)) {
+			$this->enqueue_monetization_assets();
+		}
+	}
+
+	/**
+	 * Enqueue assets for the Monetization Hub page.
+	 *
+	 * @return void
+	 */
+	private function enqueue_monetization_assets() {
+		wp_enqueue_style(
+			'aips-admin-monetization-style',
+			AIPS_PLUGIN_URL . 'assets/css/admin-monetization.css',
+			array('aips-admin-style'),
+			AIPS_VERSION
+		);
+
+		wp_enqueue_script(
+			'aips-chartjs',
+			apply_filters(
+				'aips_chartjs_src',
+				AIPS_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js'
+			),
+			array(),
+			'4.4.2',
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-admin-monetization-script',
+			AIPS_PLUGIN_URL . 'assets/js/admin-monetization.js',
+			array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-chartjs'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script('aips-admin-monetization-script', 'aipsMonetizationAdminConfig', array(
+			'nonce' => wp_create_nonce('aips_monetization_nonce'),
+			'i18n'  => array(
+				'addSlotTitle'          => __('Add Ad Slot', 'ai-post-scheduler'),
+				'editSlotTitle'         => __('Edit Ad Slot', 'ai-post-scheduler'),
+				'confirmDeleteSlot'     => __('Are you sure you want to delete this ad slot?', 'ai-post-scheduler'),
+				'addCampaignTitle'      => __('Add Sponsor Campaign', 'ai-post-scheduler'),
+				'editCampaignTitle'     => __('Edit Sponsor Campaign', 'ai-post-scheduler'),
+				'confirmDeleteCampaign' => __('Are you sure you want to delete this sponsor campaign?', 'ai-post-scheduler'),
+			),
+		));
+	}
+
+	/**
+	 * Enqueue block editor assets for Gutenberg ad unit block and monetization sidebar.
+	 *
+	 * @return void
+	 */
+	public function enqueue_block_editor_assets() {
+		if (!current_user_can('edit_posts')) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'aips-editor-sidebar-monetization-style',
+			AIPS_PLUGIN_URL . 'assets/css/editor-sidebar-monetization.css',
+			array(),
+			AIPS_VERSION
+		);
+
+		wp_enqueue_script(
+			'aips-ad-unit-block',
+			AIPS_PLUGIN_URL . 'assets/js/blocks/ad-unit-block.js',
+			array(
+				'wp-blocks',
+				'wp-element',
+				'wp-components',
+				'wp-i18n',
+				'wp-api-fetch',
+			),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'aips-editor-sidebar-monetization',
+			AIPS_PLUGIN_URL . 'assets/js/blocks/editor-sidebar-monetization.js',
+			array(
+				'wp-plugins',
+				'wp-edit-post',
+				'wp-element',
+				'wp-components',
+				'wp-data',
+				'wp-blocks',
+				'wp-i18n',
+				'wp-api-fetch',
+			),
+			AIPS_VERSION,
+			true
+		);
 	}
 
 	/**

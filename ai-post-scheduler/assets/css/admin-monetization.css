@@ -1,0 +1,249 @@
+/**
+ * Admin Monetization Hub Stylesheet
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.0
+ */
+
+.aips-monetization-wrap {
+	margin-top: 16px;
+}
+
+.aips-monetization-wrap .aips-nav-tab-wrapper {
+	margin-bottom: 20px;
+}
+
+.aips-tab-panel {
+	display: none;
+}
+
+.aips-tab-panel.aips-tab-active {
+	display: block;
+}
+
+.aips-tab-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #e2e8f0;
+}
+
+.aips-tab-header-text h2 {
+	margin: 0 0 4px 0;
+	font-size: 18px;
+}
+
+.aips-tab-header-text p {
+	margin: 0;
+	color: #64748b;
+}
+
+/* Badges */
+.aips-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 4px;
+	background: #f1f5f9;
+	color: #475569;
+}
+
+.aips-badge-type {
+	background: #e0e7ff;
+	color: #3730a3;
+	text-transform: uppercase;
+}
+
+.aips-badge-kw {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.aips-table-thumb img {
+	max-width: 60px;
+	max-height: 28px;
+	display: block;
+	margin-top: 4px;
+	object-fit: contain;
+}
+
+/* Stat Cards */
+.aips-stat-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.aips-stat-card {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 16px 20px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.aips-stat-label {
+	display: block;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #64748b;
+	margin-bottom: 8px;
+}
+
+.aips-stat-value {
+	display: block;
+	font-size: 26px;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+/* Chart */
+.aips-chart-container {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 20px;
+	margin-bottom: 24px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Two-column layout */
+.aips-two-col-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+}
+
+@media (max-width: 900px) {
+	.aips-two-col-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.aips-grid-col {
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 16px 20px;
+}
+
+.aips-grid-col h3 {
+	margin-top: 0;
+	font-size: 15px;
+	color: #1e293b;
+	border-bottom: 1px solid #f1f5f9;
+	padding-bottom: 8px;
+}
+
+/* Modal Window */
+.aips-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.aips-modal-backdrop {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(15, 23, 42, 0.55);
+}
+
+.aips-modal-content {
+	position: relative;
+	background: #ffffff;
+	width: 640px;
+	max-width: 92%;
+	border-radius: 8px;
+	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+	overflow: hidden;
+	z-index: 1;
+}
+
+.aips-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 20px;
+	border-bottom: 1px solid #e2e8f0;
+}
+
+.aips-modal-header h3 {
+	margin: 0;
+	font-size: 16px;
+	color: #0f172a;
+}
+
+.aips-modal-close {
+	background: transparent;
+	border: none;
+	font-size: 24px;
+	line-height: 1;
+	color: #94a3b8;
+	cursor: pointer;
+}
+
+.aips-modal-close:hover {
+	color: #0f172a;
+}
+
+.aips-modal-body {
+	padding: 20px;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.aips-modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	padding: 14px 20px;
+	background: #f8fafc;
+	border-top: 1px solid #e2e8f0;
+}
+
+.aips-form-row {
+	margin-bottom: 16px;
+}
+
+.aips-form-row label {
+	display: block;
+	font-weight: 600;
+	font-size: 13px;
+	color: #334155;
+	margin-bottom: 6px;
+}
+
+.aips-form-row input[type="text"],
+.aips-form-row input[type="url"],
+.aips-form-row select,
+.aips-form-row textarea {
+	width: 100%;
+}
+
+.aips-row-flex {
+	display: flex;
+	gap: 16px;
+}
+
+.aips-row-flex > div {
+	flex: 1;
+}
+
+.aips-form-row .required {
+	color: #dc2626;
+}

@@ -233,6 +233,11 @@ class AIPS_Config {
             'aips_deduplication_mode'                  => 'warn',
             'aips_deduplication_threshold'             => 0.85,
             'aips_generation_inject_related_context'   => true,
+            // Monetization & Ad Placements
+            'aips_monetization_enabled'                => true,
+            'aips_ad_telemetry_enabled'                => true,
+            'aips_ad_ga4_datalayer_enabled'            => true,
+            'aips_default_ftc_disclosure'              => 'This post contains sponsored content and/or affiliate links. We may earn a commission on qualifying purchases at no extra cost to you.',
         );
     }
     

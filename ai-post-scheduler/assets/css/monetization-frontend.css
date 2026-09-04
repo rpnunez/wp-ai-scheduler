@@ -1,0 +1,131 @@
+/**
+ * Monetization Frontend Stylesheet
+ *
+ * Styles for dynamic in-article ad slots, sponsor cards, and FTC disclosures.
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.0
+ */
+
+.aips-ad-container {
+	margin: 28px auto;
+	text-align: center;
+	clear: both;
+	max-width: 100%;
+	position: relative;
+	box-sizing: border-box;
+}
+
+.aips-ad-label {
+	display: block;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.75px;
+	color: #94a3b8;
+	margin-bottom: 6px;
+	line-height: 1;
+}
+
+.aips-ad-inner {
+	display: inline-block;
+	max-width: 100%;
+	overflow: hidden;
+}
+
+.aips-ad-inner img.aips-ad-banner-img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: 0 auto;
+	border-radius: 4px;
+}
+
+/* Device Targeting Helpers */
+@media (max-width: 767px) {
+	.aips-device-desktop {
+		display: none !important;
+	}
+}
+
+@media (min-width: 768px) {
+	.aips-device-mobile {
+		display: none !important;
+	}
+}
+
+/* Sponsor FTC Disclosure */
+.aips-sponsor-disclosure {
+	background-color: #f8fafc;
+	border-left: 3px solid #3b82f6;
+	border-radius: 0 4px 4px 0;
+	padding: 10px 16px;
+	margin: 0 0 24px 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #475569;
+}
+
+.aips-sponsor-disclosure-badge {
+	font-weight: 700;
+	text-transform: uppercase;
+	font-size: 11px;
+	letter-spacing: 0.5px;
+	color: #1d4ed8;
+	background-color: #dbeafe;
+	padding: 2px 6px;
+	border-radius: 3px;
+	margin-right: 6px;
+}
+
+.aips-sponsor-disclosure-text {
+	display: inline;
+}
+
+/* Sponsor Card */
+.aips-sponsor-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 16px;
+	margin: 20px 0;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.aips-sponsor-logo img {
+	max-width: 80px;
+	max-height: 60px;
+	object-fit: contain;
+	display: block;
+}
+
+.aips-sponsor-details {
+	flex: 1;
+	text-align: left;
+}
+
+.aips-sponsor-title {
+	margin: 0 0 8px 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: #1e293b;
+}
+
+.aips-sponsor-button {
+	display: inline-block;
+	background-color: #2563eb;
+	color: #ffffff !important;
+	padding: 6px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	border-radius: 4px;
+	text-decoration: none !important;
+	transition: background-color 0.2s ease;
+}
+
+.aips-sponsor-button:hover {
+	background-color: #1d4ed8;
+}

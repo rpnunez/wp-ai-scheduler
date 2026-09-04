@@ -183,7 +183,11 @@ class AIPS_DB_Migrations {
 
 		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
 			$this->migrate_to_3_6_5();
-    }
+		}
+
+		if ( version_compare( $from_version, '3.7.0', '<' ) ) {
+			$this->migrate_to_3_7_0();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1270,5 +1274,64 @@ class AIPS_DB_Migrations {
 		$wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		$this->logger->log( 'Migration 3.6.5: Consolidated aips_post_embeddings into aips_embeddings and dropped legacy table.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.0.
+	 *
+	 * Seeds initial baseline ad slots if table is empty.
+	 */
+	private function migrate_to_3_7_0() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_ad_slots';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( 0 === $count ) {
+			$now = time();
+			$wpdb->insert(
+				$table,
+				array(
+					'name'             => 'In-Article Paragraph 2 Ad',
+					'slot_type'        => 'custom_html',
+					'code'             => '<div style="background:#f8f9fa; border:1px dashed #cbd5e1; padding:20px; text-align:center; color:#64748b; font-size:14px;">[Advertisement: In-Article Ad Unit]</div>',
+					'position'         => 'after_paragraph',
+					'paragraph_offset' => 2,
+					'min_word_count'   => 300,
+					'device_targeting' => 'all',
+					'status'           => 'active',
+					'priority'         => 10,
+					'css_classes'      => 'aips-ad-inline',
+					'created_at'       => $now,
+					'updated_at'       => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%d', '%d' )
+			);
+
+			$wpdb->insert(
+				$table,
+				array(
+					'name'             => 'End of Article Ad',
+					'slot_type'        => 'custom_html',
+					'code'             => '<div style="background:#f8f9fa; border:1px dashed #cbd5e1; padding:20px; text-align:center; color:#64748b; font-size:14px;">[Advertisement: Bottom Ad Unit]</div>',
+					'position'         => 'end_of_post',
+					'paragraph_offset' => 0,
+					'min_word_count'   => 200,
+					'device_targeting' => 'all',
+					'status'           => 'active',
+					'priority'         => 20,
+					'css_classes'      => 'aips-ad-bottom',
+					'created_at'       => $now,
+					'updated_at'       => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%d', '%d' )
+			);
+		}
+
+		$this->logger->log( 'Migration 3.7.0: Initialized Monetization Hub tables and seeded default ad slots.', 'info' );
 	}
 }

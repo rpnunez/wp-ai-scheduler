@@ -492,6 +492,38 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger_Interface::class)
             );
         });
+
+        // Register Monetization Hub Repositories & Services
+        $container->singleton(AIPS_Ad_Slots_Repository::class, function() {
+            return new AIPS_Ad_Slots_Repository();
+        });
+
+        $container->singleton(AIPS_Sponsor_Campaigns_Repository::class, function() {
+            return new AIPS_Sponsor_Campaigns_Repository();
+        });
+
+        $container->singleton(AIPS_Monetization_Telemetry_Repository::class, function() {
+            return new AIPS_Monetization_Telemetry_Repository();
+        });
+
+        $container->singleton(AIPS_Ad_Injection_Service::class, function() {
+            return new AIPS_Ad_Injection_Service();
+        });
+
+        $container->singleton(AIPS_Monetization_AI_Service::class, function( $container ) {
+            return new AIPS_Monetization_AI_Service(
+                $container->make(AIPS_Sponsor_Campaigns_Repository::class)
+            );
+        });
+
+        $container->singleton(AIPS_Monetization_Controller::class, function( $container ) {
+            return new AIPS_Monetization_Controller(
+                $container->make(AIPS_Ad_Slots_Repository::class),
+                $container->make(AIPS_Sponsor_Campaigns_Repository::class),
+                $container->make(AIPS_Monetization_Telemetry_Repository::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
     }
 
     /**
@@ -627,6 +659,12 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Monetization & Ad Frontend integration (the_content filter, shortcode, viewability)
+        new AIPS_Ad_Frontend();
+
+        // REST Monetization Controller (editor sidebar, blocks, and telemetry tracking)
+        new AIPS_REST_Monetization_Controller();
     }
 
     /**
