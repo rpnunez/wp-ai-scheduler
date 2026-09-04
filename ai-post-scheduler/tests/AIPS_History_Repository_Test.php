@@ -562,8 +562,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 
 		$results = $this->repository->get_history(array('post_type' => 'product_review', 'per_page' => 50));
 
-		$ids = wp_list_pluck($results['items'], 'id');
-		$this->assertContains($matching_id, $ids);
-		$this->assertNotContains($other_id, $ids);
+		// wpdb returns column values as strings; assertContains is strict.
+		$ids = array_map('intval', wp_list_pluck($results['items'], 'id'));
+		$this->assertContains((int) $matching_id, $ids);
+		$this->assertNotContains((int) $other_id, $ids);
 	}
 }
