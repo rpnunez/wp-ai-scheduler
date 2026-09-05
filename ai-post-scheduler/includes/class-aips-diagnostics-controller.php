@@ -122,15 +122,11 @@ class AIPS_Diagnostics_Controller {
 		}
 
 		if ('cache-monitor' === $tab) {
-			// Only show the Cache Monitor tab when the plugin option is enabled
-			// and the plugin cache system is enabled site-wide.
-			$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled');
-			$system_enabled_raw = get_option('aips_enable_cache_system', '1');
-			$system_enabled = ($system_enabled_raw !== '0' && $system_enabled_raw !== 0 && $system_enabled_raw !== false);
-			return $enabled && $system_enabled;
+			$config = AIPS_Config::get_instance();
+			return (bool) $config->get_option('aips_cache_monitor_enabled') && $config->is_cache_system_enabled();
 		}
 
-		if ('seeder' === $tab || 'dev-tools' === $tab) {
+		if ('dev-tools' === $tab) {
 			return (bool) AIPS_Config::get_instance()->get_option('aips_developer_mode');
 		}
 
@@ -161,10 +157,7 @@ class AIPS_Diagnostics_Controller {
 	 */
 	public function render_tab_content($active_tab) {
 		switch ($active_tab) {
-			case 'seeder':
-				$this->render_seeder_tab();
-				break;
-				case 'operations-insights':
+			case 'operations-insights':
 			case 'insights':
 				$this->render_operations_insights_tab();
 				break;
@@ -173,9 +166,6 @@ class AIPS_Diagnostics_Controller {
 				break;
 			case 'stress-test':
 				$this->render_stress_test_tab();
-				break;
-			case 'stress-test-history':
-				$this->render_stress_test_history_tab();
 				break;
 			case 'telemetry':
 				$this->render_telemetry_tab();
@@ -198,16 +188,6 @@ class AIPS_Diagnostics_Controller {
 	private function render_status_tab() {
 		$status_handler = new AIPS_System_Status();
 		$status_handler->render_page(true);
-	}
-
-	/**
-	 * Render the Seeder tab.
-	 *
-	 * @return void
-	 */
-	private function render_seeder_tab() {
-		$seeder_admin = new AIPS_Seeder_Admin();
-		$seeder_admin->render_page(true);
 	}
 
 	/**
