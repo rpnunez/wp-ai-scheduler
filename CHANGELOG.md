@@ -19,6 +19,16 @@
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
+- **AI Model Routing Profiles**: Added global request-type model settings, reusable routing profiles, and template-level model overrides for title, content, and featured-image generation. Effective template policy is carried into generation history and cloned with templates.
+- **Template Connector Routing**: Routing profiles can target a specific WordPress AI Client connector, such as Google, Anthropic, or OpenAI, while respecting the configured connector allowlist and failover policy.
+- **Model Catalog Picker**: Added a cached, capability-aware model catalog endpoint and Admin datalists for text and image model selection. Catalog discovery is optional and never blocks manual model IDs or generation.
+- **Model Validation Policy**: Added off, warning, and strict handling for model preferences. Strict mode rejects configured preferences when none match the available capability catalog, avoiding silent provider-default selection.
+- **Resolved Model Logging**: AI call logs now include the effective provider, model, and connector after routing resolution.
+- **Estimated Usage Tracking**: AI call logs and in-memory statistics now expose estimated prompt, completion, and total token counts, clearly marked as estimates until providers expose billed usage metadata.
+- **Usage and Cost Accounting**: Provider-reported token usage can be supplied through `aips_ai_call_usage`; optional per-model USD-per-million-token rates now produce cost estimates in call logs, diagnostics, and statistics.
+- **Template Routing UX**: Template editors can select reusable routing profiles, override the connector, and explicitly enable or disable ordered model fallback for each template.
+- **Fallback Controls**: Ordered model preferences now honor the template/profile fallback toggle for both WordPress AI Client and Meow AI Engine transports.
+- **Meow Fallback Execution**: Meow AI Engine requests now retry the next ordered model when a provider exception occurs, while preserving single-model behavior when fallback is disabled.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.
 
@@ -34,6 +44,11 @@
 
 
 ### Fixed
+- **PR #2001 Review Findings**: Fixed PHP 8.2 `TypeError` when saving `ai_routing_policy` in templates by encoding policies to JSON strings in controller and safely handling array inputs in `AIPS_Template_Repository`.
+- **Model Validator Connector Matching**: Updated `AIPS_AI_Model_Validator::validate()` to prevent filtering out models when `$connector` is set to `wp_ai_client`.
+- **AJAX Registry Mapping**: Registered `'aips_get_ai_model_catalog'` in `AIPS_Ajax_Registry::$map`.
+- **Model Catalog Transient Caching**: Prevented `AIPS_AI_Model_Catalog::get()` from caching empty catalog responses in transients.
+- **Generator Instance State Leakage**: Reset `$this->current_routing_policy` after post generation completes.
 - **Content Auditor Tab**: Fixed fatal error `Class "AIPS_Author_Repository" not found` in `templates/admin/tab-content-auditor.php` by correcting class name to `AIPS_Authors_Repository`.
 - **Short-form AI Responses**: Reserve at least 1200 output tokens for title and excerpt requests so reasoning-capable connector models do not cut off visible responses after spending the smaller configured budget on internal reasoning. The global Max Tokens Limit remains authoritative.
 - **WordPress AI Client Detection**: Treat locally registered connectors with configured credentials as available without requiring a successful remote model-catalog request during admin page loads. Live generation now surfaces the AI Client's connector/model error instead of showing a false missing-provider notice.

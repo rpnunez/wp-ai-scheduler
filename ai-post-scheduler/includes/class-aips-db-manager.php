@@ -193,6 +193,7 @@ class AIPS_DB_Manager {
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
+            ai_routing_policy longtext DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,

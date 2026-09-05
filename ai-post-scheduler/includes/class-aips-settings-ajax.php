@@ -38,6 +38,23 @@ class AIPS_Settings_AJAX {
 
 		add_action('wp_ajax_aips_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
+		add_action('wp_ajax_aips_get_ai_model_catalog', array($this, 'ajax_get_ai_model_catalog'));
+	}
+
+	/**
+	 * Return cached model metadata for the Admin model picker.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_ai_model_catalog() {
+		$this->verify_request();
+
+		$capability = isset($_POST['capability']) ? sanitize_key(wp_unslash($_POST['capability'])) : 'text';
+		$refresh = !empty($_POST['refresh']);
+		AIPS_Ajax_Response::success(array(
+			'capability' => $capability === 'image' ? 'image' : 'text',
+			'models' => AIPS_AI_Model_Catalog::get($capability, $refresh),
+		));
 	}
 
 	/**

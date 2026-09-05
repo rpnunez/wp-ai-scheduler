@@ -61,9 +61,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     /**
      * Optional canonical query option keys forwarded to providers.
      */
-    private const OPTIONAL_QUERY_OPTION_KEYS = array(
-        'context',
-        'instructions',
+	private const OPTIONAL_QUERY_OPTION_KEYS = array(
+		'context',
+		'instructions',
+		'connector_id',
+		'routing_fallback_enabled',
         'messages',
         'env_id',
         'embeddings_env_id',
@@ -137,6 +139,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         $params = $this->prepare_options($options, $prompt);
+		$options = $this->add_resolved_options_to_log($options, $params);
+		$model_error = $this->validate_model_params($params, 'text');
+		if (is_wp_error($model_error)) {
+			$this->log_call('text', $prompt, $options, $model_error);
+			return $model_error;
+		}
 
         $log_context = array(
             'model' => isset($params['model']) ? $params['model'] : '',
@@ -247,6 +255,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         $params = $this->prepare_options($options, $prompt);
+		$options = $this->add_resolved_options_to_log($options, $params);
+		$model_error = $this->validate_model_params($params, 'text');
+		if (is_wp_error($model_error)) {
+			$this->log_call('json', $prompt, $options, $model_error);
+			return $model_error;
+		}
         
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state is managed by execute_safely — do NOT call record_failure / record_success
@@ -372,6 +386,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         $params = $this->prepare_options($options, $prompt);
+		$options = $this->add_resolved_options_to_log($options, $params);
+		$model_error = $this->validate_model_params($params, 'text');
+		if (is_wp_error($model_error)) {
+			$this->log_call('json', $prompt, $options, $model_error);
+			return $model_error;
+		}
 
         $log_context = array(
             'model'         => isset($params['model']) ? $params['model'] : '',
@@ -462,10 +482,36 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             return $error;
         }
 
-        // Image options are passed through to the provider as-is (no token
-        // budgeting), preserving historical behavior. Providers translate the
-        // canonical keys they understand.
+        // Image requests use a separate configured model policy because text
+        // models are generally not image-capable. Explicit caller options take
+        // precedence over the site-wide image model setting.
+        $ai_config = AIPS_Config::get_instance()->get_ai_config();
         $params = is_array($options) ? $options : array();
+		$routing_policy = isset($params['routing_policy']) && is_array($params['routing_policy']) ? $params['routing_policy'] : array();
+		$explicit_image_model = isset($params['model']) && (string) $params['model'] !== '';
+
+		if (!$explicit_image_model && !empty($routing_policy)) {
+			$resolved = AIPS_AI_Routing_Resolver::resolve($routing_policy, 'image', $params);
+			if (!empty($resolved['model'])) {
+				$params['model'] = $resolved['model'];
+			}
+			if (!empty($resolved['connector'])) {
+				$params['connector_id'] = $resolved['connector'];
+			}
+			$params['routing_fallback_enabled'] = !empty($resolved['fallback_enabled']);
+		}
+
+		if (!$explicit_image_model && empty($params['model']) && !empty($ai_config['image_model'])) {
+			$params['model'] = $ai_config['image_model'];
+		}
+
+		unset($params['routing_policy']);
+		$options = $this->add_resolved_options_to_log($options, $params);
+		$model_error = $this->validate_model_params($params, 'image');
+		if (is_wp_error($model_error)) {
+			$this->log_call('image', $prompt, $options, $model_error);
+			return $model_error;
+		}
 
         // Execute safely with retry, circuit breaker, and rate limiting.
         // CB state is managed by execute_safely — do NOT call record_failure / record_success
@@ -595,6 +641,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      */
     private function prepare_options($options, $prompt = '') {
         $ai_config = AIPS_Config::get_instance()->get_ai_config();
+		$routing_policy = isset($options['routing_policy']) && is_array($options['routing_policy']) ? $options['routing_policy'] : array();
+		// Only genuinely caller-supplied options are "explicit" for routing purposes;
+		// the site defaults merged in below must not masquerade as an explicit request.
+		$caller_options = is_array($options) ? $options : array();
 
         $default_options = array(
             'model'       => $ai_config['model'],
@@ -602,7 +652,15 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             'temperature' => $ai_config['temperature'],
         );
 
+        $explicit_model = isset($options['model']) && (string) $options['model'] !== '';
         $options = wp_parse_args($options);
+
+        $request_type = isset($options['request_type']) ? (string) $options['request_type'] : 'content';
+        $model_overrides = array(
+            'title'   => $ai_config['model_title'],
+            'excerpt' => $ai_config['model_excerpt'],
+            'content' => $ai_config['model_content'],
+        );
 
         // Accept legacy 'envId' from callers; canonicalize to 'env_id'.
         if (isset($options['envId']) && !isset($options['env_id'])) {
@@ -610,6 +668,23 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
         $options = wp_parse_args($options, $default_options);
+
+        if (!$explicit_model && !empty($model_overrides[$request_type])) {
+            $options['model'] = $model_overrides[$request_type];
+        }
+
+		if (!$explicit_model && !empty($routing_policy)) {
+			$resolved = AIPS_AI_Routing_Resolver::resolve($routing_policy, $request_type, $caller_options);
+			if (!empty($resolved['model'])) {
+				$options['model'] = $resolved['model'];
+			}
+			if (!empty($resolved['connector'])) {
+				$options['connector_id'] = $resolved['connector'];
+			}
+			$options['routing_fallback_enabled'] = !empty($resolved['fallback_enabled']);
+		}
+
+		unset($options['routing_policy']);
         $params  = array();
 
         if (!empty($options['model'])) {
@@ -665,6 +740,55 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 
         return $params;
     }
+
+	/**
+	 * Validate a resolved model preference without making catalog discovery a
+	 * hard dependency for manually configured connector model IDs.
+	 *
+	 * @param array  $params Resolved provider parameters.
+	 * @param string $capability text or image.
+	 * @return true|WP_Error
+	 */
+	private function validate_model_params(array $params, $capability) {
+		if (empty($params['model']) || $this->provider->get_id() !== 'wp_ai_client') {
+			return true;
+		}
+
+		$result = AIPS_AI_Model_Validator::validate(
+			$params['model'],
+			$capability,
+			!empty($params['connector_id']) ? (string) $params['connector_id'] : ''
+		);
+
+		if (!empty($result['message'])) {
+			$this->logger->log($result['message'], !empty($result['valid']) ? 'warning' : 'error');
+		}
+
+		if (empty($result['valid'])) {
+			return new WP_Error('ai_model_not_found', $result['message']);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Add effective routing details to the request log without replacing the
+	 * original routing policy supplied by the caller.
+	 *
+	 * @param array $options Original request options.
+	 * @param array $params  Normalized provider parameters.
+	 * @return array
+	 */
+	private function add_resolved_options_to_log($options, array $params) {
+		$options = is_array($options) ? $options : array();
+		$options['resolved_provider'] = $this->provider->get_id();
+		$options['resolved_model'] = isset($params['model']) ? (string) $params['model'] : '';
+		if (isset($params['connector_id'])) {
+			$options['resolved_connector'] = (string) $params['connector_id'];
+		}
+
+		return $options;
+	}
 
     /**
      * Generate an embedding vector for a text string.
@@ -825,9 +949,25 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             $error_message = $error;
         }
 
+		$usage = apply_filters('aips_ai_call_usage', null, $type, $prompt, $response, $options, $this->provider);
+		if (!is_array($usage) || !isset($usage['prompt_tokens'], $usage['completion_tokens'])) {
+			$usage = array(
+				'estimated' => true,
+				'prompt_tokens' => AIPS_Token_Budget::estimate_prompt_tokens($prompt),
+				'completion_tokens' => $type === 'image' ? 0 : AIPS_Token_Budget::estimate_prompt_tokens($response),
+			);
+		} else {
+			$usage['estimated'] = false;
+			$usage['prompt_tokens'] = max(0, (int) $usage['prompt_tokens']);
+			$usage['completion_tokens'] = max(0, (int) $usage['completion_tokens']);
+		}
+		$usage['total_tokens'] = $usage['prompt_tokens'] + $usage['completion_tokens'];
+		$usage['estimated_cost_usd'] = $this->estimate_call_cost($usage, $options);
+
         $call_data = array(
             'type' => $type,
             'timestamp' => AIPS_DateTime::now()->toIso8601(),
+			'usage' => $usage,
             'request' => array(
                 'prompt' => $prompt,
                 'options' => $options,
@@ -849,10 +989,11 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             'type' => $type,
             'prompt_length' => strlen($prompt_for_length),
             'prompt' => $prompt,
-            'response_length' => strlen($response_for_length),
-            'response' => $response,
-            'options' => $options,
-            'error_message' => $error_message,
+			'response_length' => strlen($response_for_length),
+			'response' => $response,
+			'options' => $options,
+			'usage' => $usage,
+			'error_message' => $error_message,
         ));
     }
     
@@ -862,7 +1003,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      * @param mixed $options Options array as supplied by the caller.
      * @return array Options safe to serialize into logs and history records.
      */
-    private function summarize_conversation_option($options) {
+	private function summarize_conversation_option($options) {
         if (!is_array($options) || !isset($options['conversation'])) {
             return is_array($options) ? $options : array();
         }
@@ -877,8 +1018,29 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             );
         }
 
-        return $options;
-    }
+		return $options;
+	}
+
+	/**
+	 * Estimate the USD cost for a call using administrator-supplied per-million
+	 * token rates. Provider-reported usage is preferred when available; the
+	 * estimate remains zero when no rate has been configured for the model.
+	 *
+	 * @param array $usage   Normalized usage data.
+	 * @param array $options Resolved request options.
+	 * @return float Estimated cost in USD.
+	 */
+	private function estimate_call_cost($usage, $options) {
+		$model = !empty($options['resolved_model']) ? (string) $options['resolved_model'] : (!empty($options['model']) ? (string) $options['model'] : '');
+		$model = trim((string) explode(',', $model)[0]);
+		$pricing = $this->config->get_option('aips_ai_model_pricing');
+		$rates = is_array($pricing) && isset($pricing[$model]) && is_array($pricing[$model]) ? $pricing[$model] : array();
+		$input_rate = isset($rates['input']) ? max(0, (float) $rates['input']) : 0.0;
+		$output_rate = isset($rates['output']) ? max(0, (float) $rates['output']) : 0.0;
+		$cost = ((int) $usage['prompt_tokens'] * $input_rate + (int) $usage['completion_tokens'] * $output_rate) / 1000000;
+
+		return (float) apply_filters('aips_ai_call_cost', $cost, $usage, $options, $model, $this->provider);
+	}
 
     /**
      * Get all AI call logs from this session.
@@ -910,6 +1072,10 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         $successes = 0;
         $failures = 0;
         $types = array();
+		$prompt_tokens = 0;
+		$completion_tokens = 0;
+		$total_tokens = 0;
+		$estimated_cost = 0.0;
         
         foreach ($this->call_log as $call) {
             if ($call['response']['success']) {
@@ -923,6 +1089,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
                 $types[$type] = 0;
             }
             $types[$type]++;
+			if (isset($call['usage']) && is_array($call['usage'])) {
+				$prompt_tokens += isset($call['usage']['prompt_tokens']) ? (int) $call['usage']['prompt_tokens'] : 0;
+				$completion_tokens += isset($call['usage']['completion_tokens']) ? (int) $call['usage']['completion_tokens'] : 0;
+				$total_tokens += isset($call['usage']['total_tokens']) ? (int) $call['usage']['total_tokens'] : 0;
+				$estimated_cost += isset($call['usage']['estimated_cost_usd']) ? (float) $call['usage']['estimated_cost_usd'] : 0.0;
+			}
         }
         
         return array(
@@ -930,6 +1102,12 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
             'successes' => $successes,
             'failures' => $failures,
             'by_type' => $types,
+			'estimated_usage' => array(
+				'prompt_tokens' => $prompt_tokens,
+				'completion_tokens' => $completion_tokens,
+				'total_tokens' => $total_tokens,
+				'estimated_cost_usd' => round($estimated_cost, 8),
+			),
         );
     }
     

@@ -224,6 +224,7 @@ class AIPS_Ajax_Registry {
 		// Settings Ajax
 		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
+		'aips_get_ai_model_catalog'       => 'AIPS_Settings_Ajax',
 
 		// Sources Controller
 		'aips_get_sources'                => 'AIPS_Sources_Controller',

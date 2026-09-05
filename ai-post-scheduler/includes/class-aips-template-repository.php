@@ -188,13 +188,14 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'ai_routing_policy' => isset($data['ai_routing_policy']) ? (is_array($data['ai_routing_policy']) ? wp_json_encode($data['ai_routing_policy']) : sanitize_text_field($data['ai_routing_policy'])) : '',
             'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 
@@ -302,6 +303,11 @@ class AIPS_Template_Repository {
             $update_data['source_group_ids'] = sanitize_text_field($data['source_group_ids']);
             $format[] = '%s';
         }
+
+        if (isset($data['ai_routing_policy'])) {
+			$update_data['ai_routing_policy'] = is_array($data['ai_routing_policy']) ? wp_json_encode($data['ai_routing_policy']) : sanitize_text_field($data['ai_routing_policy']);
+			$format[] = '%s';
+		}
 
         if (array_key_exists('campaign_id', $data)) {
             $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;

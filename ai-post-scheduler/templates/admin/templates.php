@@ -505,8 +505,48 @@ $is_embedded_templates_view = !empty($embedded);
                                 <p class="description"><?php esc_html_e('One image will be chosen at random from the selected media library items.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
-                    </div>
                     
+                    <!-- AI Routing within Step 3 -->
+                    <div class="aips-template-ai-routing" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #dcdcde;">
+                        <h3><?php esc_html_e('AI Routing Overrides', 'ai-post-scheduler'); ?></h3>
+                        <p class="description"><?php esc_html_e('Optionally choose a routing profile and model preferences for this template. Leave fields empty to inherit the global AI settings.', 'ai-post-scheduler'); ?></p>
+                        <div class="aips-form-row">
+                            <label for="ai_routing_profile"><?php esc_html_e('Routing Profile', 'ai-post-scheduler'); ?></label>
+                            <select id="ai_routing_profile" name="ai_routing_profile" class="regular-text">
+                                <?php foreach (AIPS_AI_Routing_Resolver::get_profiles() as $profile_id => $profile) : ?>
+                                    <option value="<?php echo esc_attr($profile_id); ?>"><?php echo esc_html(!empty($profile['label']) ? $profile['label'] . ' (' . $profile_id . ')' : $profile_id); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description"><?php esc_html_e('Select a reusable profile, then optionally refine it below for this template.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        <div class="aips-form-row">
+                            <label for="ai_routing_connector"><?php esc_html_e('Connector Override', 'ai-post-scheduler'); ?></label>
+                            <input type="text" id="ai_routing_connector" class="regular-text" placeholder="Inherit profile connector">
+                            <p class="description"><?php esc_html_e('Optional WordPress AI Client connector ID, such as google, anthropic, or openai.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        <div class="aips-form-row">
+                            <label for="ai_routing_title_model"><?php esc_html_e('Post Title Model', 'ai-post-scheduler'); ?></label>
+                            <input type="text" id="ai_routing_title_model" class="regular-text" placeholder="Inherit global setting">
+                        </div>
+                        <div class="aips-form-row">
+                            <label for="ai_routing_content_model"><?php esc_html_e('Content Model', 'ai-post-scheduler'); ?></label>
+                            <input type="text" id="ai_routing_content_model" class="regular-text" placeholder="Inherit global setting">
+                        </div>
+                        <div class="aips-form-row">
+                            <label for="ai_routing_image_model"><?php esc_html_e('Featured Image Model', 'ai-post-scheduler'); ?></label>
+                            <input type="text" id="ai_routing_image_model" class="regular-text" placeholder="Inherit global setting">
+                            <p class="description"><?php esc_html_e('For the WordPress AI Client, comma-separated model IDs are tried in order.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="ai_routing_fallback_enabled" value="1" checked>
+                                <?php esc_html_e('Allow ordered model fallback', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('When enabled, comma-separated model preferences may fall through to the next model after a model-specific failure.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                    </div>
+                    </div>
+
                     <!-- Step 4: Summary & Post Settings -->
                     <div class="aips-wizard-step-content" data-step="4" style="display: none;">
                         <h3><?php esc_html_e('Review & Post Settings', 'ai-post-scheduler'); ?></h3>

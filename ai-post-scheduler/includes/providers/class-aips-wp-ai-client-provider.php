@@ -299,12 +299,25 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 	/**
 	 * Execute an operation against allowed connectors with sequential failover.
 	 *
-	 * @param callable $operation Receives a connector ID or null for legacy auto-routing.
+	 * @param callable    $operation              Receives a connector ID or null for legacy auto-routing.
+	 * @param string|null $preferred_connector_id Optional template-selected connector.
 	 * @return mixed
 	 * @throws Exception When no connector can complete the operation.
 	 */
-	private function execute_with_connector_failover(callable $operation) {
+	private function execute_with_connector_failover(callable $operation, ?string $preferred_connector_id = null) {
 		$connector_ids = $this->get_routing_connector_ids();
+
+		if ($preferred_connector_id !== null && $preferred_connector_id !== '') {
+			$preferred_connector_id = sanitize_key($preferred_connector_id);
+			$available_connectors = $this->apply_connector_selection($this->get_active_ai_connectors());
+			$preferred_connector = isset($available_connectors[$preferred_connector_id]) ? $available_connectors[$preferred_connector_id] : null;
+			if (!is_array($preferred_connector) || !$this->is_connector_configured($preferred_connector)) {
+				throw new Exception('connector_unavailable: ' . __('The template-selected AI connector is not active or configured.', 'ai-post-scheduler'));
+			}
+			if (!$this->is_connector_cooling_down($preferred_connector_id)) {
+				$connector_ids = array_values(array_unique(array_merge(array($preferred_connector_id), $connector_ids)));
+			}
+		}
 
 		if (empty($connector_ids)) {
 			throw new Exception('no_connector: ' . __('No allowed WordPress AI connector is currently available.', 'ai-post-scheduler'));
@@ -669,6 +682,9 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
         // model may be a comma-separated preference list (primary, fallback, ...).
         if (!empty($params['model'])) {
             $preferences = array_filter(array_map('trim', explode(',', (string) $params['model'])));
+			if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+				$preferences = array_slice($preferences, 0, 1);
+			}
 
             if (!empty($preferences)) {
                 $builder = $this->chain($builder, 'using_model_preference', ...array_values($preferences));
@@ -812,7 +828,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 			}
 
 			return (string) $result;
-		});
+		}, !empty($params['connector_id']) ? (string) $params['connector_id'] : null);
     }
 
     /**
@@ -847,7 +863,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 			$decoded = is_array($result) ? $result : json_decode((string) $result, true);
 
 			return is_array($decoded) ? $decoded : null;
-		});
+		}, !empty($params['connector_id']) ? (string) $params['connector_id'] : null);
     }
 
     /**
@@ -874,7 +890,7 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 			}
 
 			return is_string($result) ? $result : '';
-		});
+		}, !empty($params['connector_id']) ? (string) $params['connector_id'] : null);
     }
 
     /**

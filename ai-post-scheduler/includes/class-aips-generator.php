@@ -56,6 +56,9 @@ class AIPS_Generator {
      */
     private $conversation = null;
 
+	/** @var array Template-level AI routing policy for the active run. */
+	private $current_routing_policy = array();
+
     /**
      * Source-data snapshots selected for the current content prompt.
      *
@@ -140,12 +143,21 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
-        // Snapshot the caller's options for history records. The request options are
-        // mutated below to carry the conversation transcript, which holds the whole
-        // article and must never be serialized into a history row.
+        // Forward the request type so AIPS_AI_Service can calculate max_tokens correctly.
+        // Only set it when the caller has not already provided an explicit token override.
+        if (!isset($options['max_tokens'])) {
+            $options['request_type'] = $log_type;
+        }
+
+		if (!isset($options['routing_policy']) && !empty($this->current_routing_policy)) {
+			$options['routing_policy'] = $this->current_routing_policy;
+		}
+
+        // Snapshot the effective policy for history records. The request options are
+        // mutated below to carry the conversation transcript, which must not be serialized.
         $loggable_options = $options;
 
-        // Log AI request before making the call
+        // Log AI request before making the call.
         if ($this->current_history) {
             $this->current_history->record(
                 'ai_request',
@@ -157,12 +169,6 @@ class AIPS_Generator {
                 null,
                 array('component' => $log_type)
             );
-        }
-
-        // Forward the request type so AIPS_AI_Service can calculate max_tokens correctly.
-        // Only set it when the caller has not already provided an explicit token override.
-        if (!isset($options['max_tokens'])) {
-            $options['request_type'] = $log_type;
         }
 
         // Replay the run's transcript so the model can refer back to text it has
@@ -1060,6 +1066,9 @@ class AIPS_Generator {
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
     private function generate_post_from_context($context) {
+		$this->current_routing_policy = method_exists($context, 'get_ai_routing_policy')
+			? (array) $context->get_ai_routing_policy()
+			: array();
         $generation_start = microtime(true);
         $component_statuses = array(
             'post_title'     => false,
@@ -1108,6 +1117,7 @@ class AIPS_Generator {
 		// Generate and normalize the content.
 		$content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
 		if (is_wp_error($content)) {
+			$this->current_routing_policy = array();
 			return $content;
 		}
 
@@ -1189,6 +1199,7 @@ class AIPS_Generator {
             );
 
             $this->end_conversation();
+            $this->current_routing_policy = array();
 
             return $post_id;
         }
@@ -1315,6 +1326,7 @@ class AIPS_Generator {
         }
 
         $this->end_conversation();
+        $this->current_routing_policy = array();
 
         return $post_id;
     }
@@ -1488,7 +1500,11 @@ class AIPS_Generator {
                 );
             }
 
-            $featured_image_result = $this->image_service->generate_and_upload_featured_image($processed_image_prompt, $title);
+            $featured_image_result = $this->image_service->generate_and_upload_featured_image(
+				$processed_image_prompt,
+				$title,
+				array('routing_policy' => $this->current_routing_policy)
+			);
 
             if (!is_wp_error($featured_image_result)) {
                 $featured_image_id = $featured_image_result;

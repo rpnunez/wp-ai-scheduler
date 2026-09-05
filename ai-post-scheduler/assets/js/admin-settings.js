@@ -52,6 +52,36 @@
 			$('#aips-settings-form').on('submit', AIPS.onSettingsFormSubmit);
 			$(document).on('aips:tabSwitch', AIPS.onSettingsTabSwitch);
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
+			$(document).on('click', '[data-aips-refresh-model-catalog]', AIPS.refreshModelCatalog);
+		},
+
+		/**
+		 * Load the provider model catalog into the relevant datalist.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		refreshModelCatalog: function(e) {
+			var $button = $(e.currentTarget);
+			var capability = $button.attr('data-aips-refresh-model-catalog') || 'text';
+			$button.prop('disabled', true);
+
+			$.post(aipsAjax.ajaxUrl, {
+				action: 'aips_get_ai_model_catalog',
+				nonce: (window.aipsSettingsL10n && aipsSettingsL10n.nonce) ? aipsSettingsL10n.nonce : aipsAjax.nonce,
+				capability: capability,
+				refresh: 1
+			}, function(response) {
+				if (!response || !response.success || !response.data) {
+					return;
+				}
+				var $list = $('#aips-ai-model-catalog-' + capability).empty();
+				(response.data.models || []).forEach(function(model) {
+					$('<option>').attr('value', model.id).attr('label', model.provider_label ? model.provider_label + ': ' + model.label : model.label).appendTo($list);
+				});
+			}).always(function() {
+				$button.prop('disabled', false);
+			});
 		},
 
 		/**

@@ -307,6 +307,11 @@
 			$callsSection.append(
 				$('<h4></h4>').text(t('aiCalls', 'AI calls') + ' (' + calls.length + ')')
 			);
+			if (result.ai_statistics) {
+				$callsSection.append(this.optionsBlock({
+					'Usage summary': result.ai_statistics.estimated_usage || result.ai_statistics
+				}, []));
+			}
 
 			if (!calls.length) {
 				$callsSection.append(
@@ -414,6 +419,20 @@
 			var $condensed = this.optionsBlock(options, ['context', 'instructions']);
 			if ($condensed) {
 				$requestBody.append($condensed);
+			}
+
+			var usage = call.usage || {};
+			var routing = {};
+			['resolved_provider', 'resolved_connector', 'resolved_model'].forEach(function (key) {
+				if (options[key]) {
+					routing[key.replace('resolved_', '')] = options[key];
+				}
+			});
+			if (Object.keys(routing).length || Object.keys(usage).length) {
+				$requestBody.append(this.optionsBlock({
+					'Routing': routing,
+					'Usage': usage
+				}, []));
 			}
 
 			$request.append($requestBody);

@@ -69,6 +69,7 @@ class AIPS_Templates {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'ai_routing_policy' => $this->normalize_ai_routing_policy(isset($data['ai_routing_policy']) ? $data['ai_routing_policy'] : ''),
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
@@ -92,6 +93,16 @@ class AIPS_Templates {
     
     public function delete($id) {
         return $this->repository->delete($id);
+    }
+
+    private function normalize_ai_routing_policy($raw) {
+        $policy = is_array($raw) ? $raw : json_decode((string) $raw, true);
+        if (!is_array($policy)) {
+            return '';
+        }
+
+		$policy['fallback_enabled'] = isset($policy['fallback_enabled']) ? (bool) $policy['fallback_enabled'] : true;
+		return wp_json_encode($policy);
     }
     
     public function get_pending_stats($template_id) {

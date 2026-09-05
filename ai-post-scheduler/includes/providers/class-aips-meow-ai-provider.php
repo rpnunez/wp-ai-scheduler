@@ -18,6 +18,17 @@ if (!defined('ABSPATH')) {
 class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
 
     /**
+     * Errors no other model in the preference list can satisfy either, so trying
+     * the next one only burns another provider call. Mirrors the WordPress AI
+     * Client adapter's failover policy.
+     */
+    private const NON_FALLBACK_CODES = array(
+        'content_policy_violation',
+        'context_length_exceeded',
+        'invalid_request_error',
+    );
+
+    /**
      * @var mixed Cached AI Engine instance (the global $mwai).
      */
     private $ai_engine = null;
@@ -77,7 +88,11 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
         $native = array();
 
         if (!empty($params['model'])) {
-            $native['model'] = $params['model'];
+			$model = (string) $params['model'];
+			if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+				$model = trim(explode(',', $model)[0]);
+			}
+			$native['model'] = $model;
         }
 
         // Translate canonical env_id to Meow's native envId parameter.
@@ -111,6 +126,42 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
         }
 
         return $native;
+    }
+
+    /**
+     * Whether a failure should be retried against the next ordered model.
+     *
+     * @param Exception $exception Provider exception.
+     * @param array     $params    Request parameters.
+     * @return bool
+     */
+    private function should_try_next_model(Exception $exception, array $params): bool {
+        if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+            return false;
+        }
+
+        return !in_array($this->extract_error_code($exception->getMessage()), self::NON_FALLBACK_CODES, true);
+    }
+
+    /**
+     * Return the ordered model list for a request. Meow accepts one model per
+     * query, so the adapter performs fallback attempts at this boundary.
+     */
+    private function model_preferences(array $params): array {
+        if (empty($params['model'])) {
+            return array('');
+        }
+
+        $models = array_values(array_filter(array_map('trim', explode(',', (string) $params['model']))));
+        if (empty($models)) {
+            return array('');
+        }
+
+        if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+            return array($models[0]);
+        }
+
+        return $models;
     }
 
     /**
@@ -161,7 +212,27 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
             throw new Exception(__('AI Engine plugin is not available.', 'ai-post-scheduler'));
         }
 
-        return (string) $ai->simpleTextQuery($prompt, $this->map_params($params));
+        $last_exception = null;
+        foreach ($this->model_preferences($params) as $model) {
+            $attempt = $params;
+            if ($model !== '') {
+                $attempt['model'] = $model;
+            }
+            try {
+                return (string) $ai->simpleTextQuery($prompt, $this->map_params($attempt));
+            } catch (Exception $exception) {
+                $last_exception = $exception;
+                if (!$this->should_try_next_model($exception, $params)) {
+                    throw $exception;
+                }
+            }
+        }
+
+        if ($last_exception instanceof Exception) {
+            throw $last_exception;
+        }
+
+        throw new Exception(__('AI Engine returned no text response.', 'ai-post-scheduler'));
     }
 
     /**
@@ -199,9 +270,27 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
             $json_params['env_id'] = $params['env_id'];
         }
 
-        $result = $ai->simpleJsonQuery($prompt, $json_params);
+        $last_exception = null;
+        foreach ($this->model_preferences($params) as $model) {
+            if ($model !== '') {
+                $json_params['model'] = $model;
+            }
+            try {
+                $result = $ai->simpleJsonQuery($prompt, $json_params);
+                return is_array($result) ? $result : null;
+            } catch (Exception $exception) {
+                $last_exception = $exception;
+                if (!$this->should_try_next_model($exception, $params)) {
+                    throw $exception;
+                }
+            }
+        }
 
-        return is_array($result) ? $result : null;
+        if ($last_exception instanceof Exception) {
+            throw $last_exception;
+        }
+
+        return null;
     }
 
     /**
@@ -215,7 +304,27 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
         }
 
         // Historically the image path passed the caller options straight through.
-        $image = $ai->simpleImageQuery($prompt, $params);
+        $image = null;
+        $last_exception = null;
+        foreach ($this->model_preferences($params) as $model) {
+            $attempt = $params;
+            if ($model !== '') {
+                $attempt['model'] = $model;
+            }
+            try {
+                $image = $ai->simpleImageQuery($prompt, $attempt);
+                break;
+            } catch (Exception $exception) {
+                $last_exception = $exception;
+                if (!$this->should_try_next_model($exception, $params)) {
+                    throw $exception;
+                }
+            }
+        }
+
+        if ($image === null && $last_exception instanceof Exception) {
+            throw $last_exception;
+        }
 
         // Some engines return an array of URLs; unwrap the first.
         if (is_array($image)) {

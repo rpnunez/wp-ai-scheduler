@@ -22,6 +22,25 @@
     Object.assign(AIPS, {
         generatedPostPreviewMap: {},
 
+        getTemplateRoutingPolicy: function() {
+            var overrides = {};
+            var titleModel = $('#ai_routing_title_model').val();
+            var contentModel = $('#ai_routing_content_model').val();
+            var imageModel = $('#ai_routing_image_model').val();
+            var connector = $('#ai_routing_connector').val();
+
+            if (titleModel) { overrides.title_model = titleModel; }
+            if (contentModel) { overrides.content_model = contentModel; }
+            if (imageModel) { overrides.image_model = imageModel; }
+            if (connector) { overrides.connector = connector; }
+
+            return {
+                profile: $('#ai_routing_profile').val() || 'site_default',
+                overrides: overrides,
+                fallback_enabled: $('#ai_routing_fallback_enabled').is(':checked')
+            };
+        },
+
         /**
          * Refresh a specific content panel dynamically to avoid a full page reload.
          *
@@ -704,6 +723,14 @@
                         $('#post_quantity').val(t.post_quantity || 1);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
                         $('#image_prompt').val(t.image_prompt || '');
+                        var routingPolicy = {};
+                        try { routingPolicy = t.ai_routing_policy ? JSON.parse(t.ai_routing_policy) : {}; } catch (routingError) { routingPolicy = {}; }
+                        $('#ai_routing_profile').val(routingPolicy.profile || 'site_default');
+                        $('#ai_routing_title_model').val(routingPolicy.overrides && routingPolicy.overrides.title_model ? routingPolicy.overrides.title_model : '');
+                        $('#ai_routing_content_model').val(routingPolicy.overrides && routingPolicy.overrides.content_model ? routingPolicy.overrides.content_model : '');
+                        $('#ai_routing_image_model').val(routingPolicy.overrides && routingPolicy.overrides.image_model ? routingPolicy.overrides.image_model : '');
+                        $('#ai_routing_connector').val(routingPolicy.overrides && routingPolicy.overrides.connector ? routingPolicy.overrides.connector : '');
+                        $('#ai_routing_fallback_enabled').prop('checked', routingPolicy.fallback_enabled !== false);
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
@@ -905,6 +932,7 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    ai_routing_policy: JSON.stringify(AIPS.getTemplateRoutingPolicy()),
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -983,6 +1011,7 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    ai_routing_policy: JSON.stringify(AIPS.getTemplateRoutingPolicy()),
                     is_active: 0 // Save as inactive draft
                 },
                 success: function(response) {

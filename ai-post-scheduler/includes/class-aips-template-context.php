@@ -107,6 +107,17 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the optional template-level AI routing policy.
+	 *
+	 * @return array
+	 */
+	public function get_ai_routing_policy() {
+		$raw = isset($this->template->ai_routing_policy) ? $this->template->ai_routing_policy : '';
+		$policy = is_array($raw) ? $raw : json_decode((string) $raw, true);
+		return is_array($policy) ? $policy : array();
+	}
+
+	/**
 	 * Check if featured image generation is enabled.
 	 *
 	 * @return bool True if enabled.
