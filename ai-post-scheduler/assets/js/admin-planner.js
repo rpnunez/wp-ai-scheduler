@@ -156,8 +156,19 @@
          * visibility) and updates every `.selection-count` element.
          */
         updateSelectionCount: function() {
-            var count = $('.topic-checkbox:checked').length;
+            var count = $('.topic-checkbox:visible:checked').length;
             $('.selection-count').text(count + ' selected');
+
+            // Keep "Select All" checkbox in sync
+            var $selectAll = $('#check-all-topics');
+            var visibleCheckboxes = $('.topic-checkbox:visible');
+            var checkedVisibleCheckboxes = visibleCheckboxes.filter(':checked');
+
+            if (visibleCheckboxes.length > 0) {
+                $selectAll.prop('checked', visibleCheckboxes.length === checkedVisibleCheckboxes.length);
+            } else {
+                $selectAll.prop('checked', false);
+            }
         },
 
         /**

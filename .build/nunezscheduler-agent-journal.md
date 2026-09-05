@@ -301,3 +301,9 @@ Outcome: Flow improvement for navigating the Generated Posts lists
 **Improvement:** Optimized the search clear behavior by replacing text buttons (`Clear Search` or `Clear`) with standard accessible dashicon icons (`dashicons-dismiss`). This improves workflow flow/efficiency by standardizing the UI, reducing visual clutter, and aligning with the rest of the recent dashboard improvements, all while preserving proper `aria-label` accessibility.
 **Files Modified:** ai-post-scheduler/templates/admin/affiliate-links.php, ai-post-scheduler/templates/admin/structures.php, ai-post-scheduler/templates/admin/authors.php, ai-post-scheduler/templates/admin/schedule.php, ai-post-scheduler/templates/admin/post-slices.php, ai-post-scheduler/templates/admin/sources.php, ai-post-scheduler/templates/admin/planner.php, ai-post-scheduler/templates/admin/research.php, ai-post-scheduler/templates/admin/taxonomy.php, ai-post-scheduler/templates/admin/voices.php, ai-post-scheduler/templates/admin/internal-links.php, ai-post-scheduler/templates/admin/author-topics.php, ai-post-scheduler/templates/admin/sections.php, ai-post-scheduler/templates/admin/templates.php
 **Outcome:** Enhances the administrative flow by standardizing the search clear buttons across all tables into icon-only buttons, making the interface cleaner and more intuitive.
+
+## 2025-01-20 - Research Planner Optimization
+Target Feature: Research Planner
+Improvement: Ensured 'Select All' checkbox properly syncs with currently visible/filtered checkboxes when searching for topics, improving bulk action UX during search.
+Files Modified: ai-post-scheduler/assets/js/admin-planner.js
+Outcome: Users can now reliably use 'Select All' alongside the search filter without accidentally selecting hidden/unrelated topics.
