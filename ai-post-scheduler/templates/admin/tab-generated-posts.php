@@ -23,6 +23,8 @@
  * @var array $grouped_posts
  * @var int $current_page
  * @var array $pagination
+ * @var array $selectable_post_types
+ * @var string $post_type_filter
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -33,6 +35,8 @@ if (!defined('ABSPATH')) {
 }
 
 $active_status = isset($active_status) ? $active_status : '';
+$post_type_filter = isset($post_type_filter) ? $post_type_filter : '';
+$selectable_post_types = isset($selectable_post_types) ? $selectable_post_types : array();
 $current_group_by = isset($current_group_by) ? $current_group_by : 'campaign';
 $current_view_mode = isset($current_view_mode) ? $current_view_mode : 'grouped';
 $current_per_page = isset($current_per_page) ? $current_per_page : 20;
@@ -143,6 +147,18 @@ $current_per_page = isset($current_per_page) ? $current_per_page : 20;
 			</select>
 			<?php endif; ?>
 
+			<!-- Post Type Filter -->
+			<?php if (!empty($selectable_post_types)): ?>
+			<select name="post_type" id="aips-filter-post-type" class="aips-form-select">
+				<option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
+				<?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+				<option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
+					<?php echo esc_html($post_type_info['label']); ?>
+				</option>
+				<?php endforeach; ?>
+			</select>
+			<?php endif; ?>
+
 			<!-- Post Status / State Filter -->
 			<select name="post_status" id="aips-filter-status" class="aips-form-select">
 				<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
@@ -158,8 +174,8 @@ $current_per_page = isset($current_per_page) ? $current_per_page : 20;
 				<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 			</button>
 
-			<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id) || !empty($active_status) || !empty($search_query)): ?>
-			<a href="<?php echo esc_url($controller->build_generated_posts_page_url(1, array('author_id' => 0, 'template_id' => 0, 'campaign_id' => 0, 'post_status' => '', 's' => ''))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost">
+			<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id) || !empty($active_status) || !empty($post_type_filter) || !empty($search_query)): ?>
+			<a href="<?php echo esc_url($controller->build_generated_posts_page_url(1, array('author_id' => 0, 'template_id' => 0, 'campaign_id' => 0, 'post_status' => '', 'post_type' => '', 's' => ''))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost">
 				<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 				<?php esc_html_e('Reset Filters', 'ai-post-scheduler'); ?>
 			</a>
@@ -629,7 +645,7 @@ $current_per_page = isset($current_per_page) ? $current_per_page : 20;
 			<h3 class="aips-empty-state-title"><?php esc_html_e('No Content Found', 'ai-post-scheduler'); ?></h3>
 			<p class="aips-empty-state-description"><?php esc_html_e('No generated content matches your current filter criteria. Try adjusting or clearing your filters.', 'ai-post-scheduler'); ?></p>
 			<div class="aips-empty-state-actions">
-				<a href="<?php echo esc_url($controller->build_generated_posts_page_url(1, array('author_id' => 0, 'template_id' => 0, 'campaign_id' => 0, 'post_status' => '', 's' => ''))); ?>" class="aips-btn aips-btn-primary">
+				<a href="<?php echo esc_url($controller->build_generated_posts_page_url(1, array('author_id' => 0, 'template_id' => 0, 'campaign_id' => 0, 'post_status' => '', 'post_type' => '', 's' => ''))); ?>" class="aips-btn aips-btn-primary">
 					<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 					<?php esc_html_e('Clear All Filters', 'ai-post-scheduler'); ?>
 				</a>

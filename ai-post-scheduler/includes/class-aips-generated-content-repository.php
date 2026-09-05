@@ -121,6 +121,7 @@ class AIPS_Generated_Content_Repository implements AIPS_Generated_Content_Reposi
 			'template_id' => 0,
 			'campaign_id' => 0,
 			'status'      => '',
+			'post_type'   => '',
 			'orderby'     => 'h.created_at',
 			'order'       => 'DESC',
 		);
@@ -161,6 +162,13 @@ class AIPS_Generated_Content_Repository implements AIPS_Generated_Content_Reposi
 		if (!empty($params['campaign_id'])) {
 			$where[] = 'h.campaign_id = %d';
 			$values[] = (int) $params['campaign_id'];
+		}
+
+		// Post type filter (history row first, falling back to the linked post)
+		if (!empty($params['post_type'])) {
+			$where[] = '(h.post_type = %s OR (h.post_type IS NULL AND p.post_type = %s))';
+			$values[] = sanitize_key($params['post_type']);
+			$values[] = sanitize_key($params['post_type']);
 		}
 
 		// Status / State filter

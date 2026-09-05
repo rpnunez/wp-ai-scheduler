@@ -97,6 +97,7 @@ class AIPS_Generated_Posts_Controller {
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 		$campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
 		$post_status = isset($_GET['post_status']) ? sanitize_key($_GET['post_status']) : '';
+		$post_type_filter = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
 		$group_by = isset($_GET['group_by']) ? sanitize_key($_GET['group_by']) : 'campaign';
 		$view_mode = isset($_GET['view_mode']) ? sanitize_key($_GET['view_mode']) : 'grouped';
 
@@ -113,6 +114,7 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 			'campaign_id' => $campaign_id,
 			'post_status' => $post_status,
+			'post_type'   => $post_type_filter,
 			'group_by'    => $group_by,
 			'view_mode'   => $view_mode,
 			'per_page'    => $per_page,
@@ -131,6 +133,7 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 			'campaign_id' => $campaign_id,
 			'status'      => $post_status,
+			'post_type'   => $post_type_filter,
 		));
 		
 		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
@@ -402,6 +405,7 @@ class AIPS_Generated_Posts_Controller {
 			'template_id'     => !empty($state['template_id']) ? $state['template_id'] : false,
 			'campaign_id'     => !empty($state['campaign_id']) ? $state['campaign_id'] : false,
 			'post_status'     => !empty($state['post_status']) ? $state['post_status'] : false,
+			'post_type'       => !empty($state['post_type']) ? $state['post_type'] : false,
 			'group_by'        => (!empty($state['group_by']) && $state['group_by'] !== 'campaign') ? $state['group_by'] : false,
 			'view_mode'       => (!empty($state['view_mode']) && $state['view_mode'] !== 'grouped') ? $state['view_mode'] : false,
 			'per_page'        => (!empty($state['per_page']) && (int) $state['per_page'] !== 20) ? $state['per_page'] : false,

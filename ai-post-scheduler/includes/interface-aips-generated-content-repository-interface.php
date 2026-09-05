@@ -48,6 +48,7 @@ interface AIPS_Generated_Content_Repository_Interface {
 	 *     @type int    $template_id Filter by template ID. Default 0.
 	 *     @type int    $campaign_id Filter by campaign ID. Default 0.
 	 *     @type string $status      Filter by state ('all', 'publish', 'future', 'draft', 'incomplete'). Default empty.
+	 *     @type string $post_type   Filter by post type slug. Default empty.
 	 *     @type string $orderby     Column to sort by. Default 'created_at'.
 	 *     @type string $order       Sort direction ('ASC' or 'DESC'). Default 'DESC'.
 	 * }
