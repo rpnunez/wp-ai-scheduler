@@ -292,7 +292,7 @@ class AIPS_Cache_Monitor_Controller extends AIPS_Ajax_Controller_Base {
 	public function ajax_flush_all(): void {
 		$this->verify_nonce_and_cap('aips_cache_monitor_action');
 
-		$confirmed = !empty($_POST['confirmed']); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$confirmed = !empty($_POST['confirmed']) && filter_var(wp_unslash($_POST['confirmed']), FILTER_VALIDATE_BOOLEAN); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if (!$confirmed) {
 			AIPS_Ajax_Response::error(
 				__('Flush all requires explicit confirmation.', 'ai-post-scheduler'),

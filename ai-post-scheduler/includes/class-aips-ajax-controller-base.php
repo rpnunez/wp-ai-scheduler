@@ -55,6 +55,22 @@ abstract class AIPS_Ajax_Controller_Base {
 	}
 
 	/**
+	 * Unregister declared AJAX actions from WordPress wp_ajax_* hooks.
+	 *
+	 * Useful for testing teardown or dynamic controller resets.
+	 *
+	 * @return void
+	 */
+	public function unregister_actions(): void {
+		foreach ($this->actions as $action => $method) {
+			$action_name = is_int($action) ? (string) $method : (string) $action;
+			$method_name = (string) $method;
+
+			remove_action('wp_ajax_' . $action_name, array($this, $method_name));
+		}
+	}
+
+	/**
 	 * Get the list of registered action names for this controller.
 	 *
 	 * @return array<string>

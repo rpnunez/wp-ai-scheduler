@@ -89,6 +89,20 @@ class Test_AIPS_Ajax_Controller_Base extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that unregister_actions removes declared action hooks.
+	 */
+	public function test_unregister_actions_removes_hooks() {
+		$controller = new AIPS_Test_Stub_Controller();
+
+		$this->assertNotFalse(has_action('wp_ajax_aips_stub_action_one', array($controller, 'ajax_action_one')));
+
+		$controller->unregister_actions();
+
+		$this->assertFalse(has_action('wp_ajax_aips_stub_action_one', array($controller, 'ajax_action_one')));
+		$this->assertFalse(has_action('wp_ajax_aips_stub_action_two', array($controller, 'ajax_action_two')));
+	}
+
+	/**
 	 * Test that verify_request rejects invalid nonce with standard error shape.
 	 */
 	public function test_verify_request_invalid_nonce_returns_error() {

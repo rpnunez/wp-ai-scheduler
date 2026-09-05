@@ -185,7 +185,7 @@ class AIPS_Affiliate_Links_Controller extends AIPS_Ajax_Controller_Base {
 		$this->verify_request();
 
 		$id      = absint( isset( $_POST['id'] ) ? wp_unslash( $_POST['id'] ) : 0 );
-		$enabled = isset( $_POST['enabled'] ) ? (bool) wp_unslash( $_POST['enabled'] ) : false;
+		$enabled = isset( $_POST['enabled'] ) ? filter_var( wp_unslash( $_POST['enabled'] ), FILTER_VALIDATE_BOOLEAN ) : false;
 
 		if ( ! $id ) {
 			AIPS_Ajax_Response::error( array( 'message' => __( 'Invalid ID.', 'ai-post-scheduler' ) ) );
@@ -221,8 +221,6 @@ class AIPS_Affiliate_Links_Controller extends AIPS_Ajax_Controller_Base {
 	// Helpers
 	// -------------------------------------------------------------------------
 
-
-
 	/**
 	 * Extract and sanitize mapping data from $_POST.
 	 *
@@ -233,13 +231,13 @@ class AIPS_Affiliate_Links_Controller extends AIPS_Ajax_Controller_Base {
 			'tag'                => isset( $_POST['tag'] )                ? sanitize_text_field( wp_unslash( $_POST['tag'] ) )                : '',
 			'label'              => isset( $_POST['label'] )              ? sanitize_text_field( wp_unslash( $_POST['label'] ) )              : '',
 			'affiliate_url'      => isset( $_POST['affiliate_url'] )      ? esc_url_raw( wp_unslash( $_POST['affiliate_url'] ) )              : '',
-			'enabled'            => isset( $_POST['enabled'] )            ? (bool) wp_unslash( $_POST['enabled'] )                           : true,
+			'enabled'            => isset( $_POST['enabled'] )            ? filter_var( wp_unslash( $_POST['enabled'] ), FILTER_VALIDATE_BOOLEAN ) : true,
 			'cta_html'           => isset( $_POST['cta_html'] )           ? wp_kses_post( wp_unslash( $_POST['cta_html'] ) )                  : '',
 			'cta_position'       => isset( $_POST['cta_position'] )       ? sanitize_text_field( wp_unslash( $_POST['cta_position'] ) )       : 'append',
 			'cta_heading'        => isset( $_POST['cta_heading'] )        ? sanitize_text_field( wp_unslash( $_POST['cta_heading'] ) )        : '',
 			'cta_match_text'     => isset( $_POST['cta_match_text'] )     ? sanitize_text_field( wp_unslash( $_POST['cta_match_text'] ) )     : '',
 			'cta_max_insertions' => isset( $_POST['cta_max_insertions'] ) ? absint( wp_unslash( $_POST['cta_max_insertions'] ) )              : 1,
-			'use_ai_injection'   => isset( $_POST['use_ai_injection'] )   ? (bool) wp_unslash( $_POST['use_ai_injection'] )                  : false,
+			'use_ai_injection'   => isset( $_POST['use_ai_injection'] )   ? filter_var( wp_unslash( $_POST['use_ai_injection'] ), FILTER_VALIDATE_BOOLEAN ) : false,
 		);
 	}
 }

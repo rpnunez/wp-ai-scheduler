@@ -122,6 +122,36 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test the convert_class_name_to_trait_filename helper method
+	 */
+	public function test_convert_class_name_to_trait_filename_helper() {
+		$this->assertEquals(
+			'trait-aips-ajax-guard.php',
+			AIPS_Autoloader::convert_class_name_to_trait_filename('AIPS_Ajax_Guard')
+		);
+
+		$this->assertEquals(
+			'trait-aips-cacheable-repository.php',
+			AIPS_Autoloader::convert_class_name_to_trait_filename('AIPS_Cacheable_Repository')
+		);
+	}
+
+	/**
+	 * Test the convert_class_name_to_interface_filename helper method
+	 */
+	public function test_convert_class_name_to_interface_filename_helper() {
+		$this->assertEquals(
+			'interface-aips-history-service.php',
+			AIPS_Autoloader::convert_class_name_to_interface_filename('AIPS_History_Service')
+		);
+
+		$this->assertEquals(
+			'interface-aips-ai-service.php',
+			AIPS_Autoloader::convert_class_name_to_interface_filename('AIPS_AI_Service')
+		);
+	}
+
+	/**
 	 * Test that autoloader handles interface files
 	 */
 	public function test_autoloader_handles_interface_files() {
