@@ -35,6 +35,19 @@ class AIPS_Operations_Insights_Controller {
 		$recommended_actions = $this->build_recommended_actions($failure_reasons, $retry_counts);
 		$telemetry_enabled = AIPS_Telemetry::is_enabled();
 
+		// Optional: if a correlation_id is provided, fetch recent history items for it
+		$correlation_id = '';
+		$correlation_history = null;
+		if (isset($_GET['correlation_id'])) {
+			$correlation_id = sanitize_text_field(wp_unslash($_GET['correlation_id']));
+			$correlation_history = $this->history_repository->get_history(array(
+				'correlation_id' => $correlation_id,
+				'per_page' => 50,
+				'page' => 1,
+				'fields' => 'list',
+			));
+		}
+
 		include AIPS_PLUGIN_DIR . 'templates/admin/operations-insights.php';
 	}
 

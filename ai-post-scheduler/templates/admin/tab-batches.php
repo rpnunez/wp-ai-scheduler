@@ -14,9 +14,13 @@ if (!defined('ABSPATH')) {
         </a>
     </p>
 
+    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="aips-batches-form">
+    <?php wp_nonce_field('aips_cancel_batch_run_bulk'); ?>
+    <input type="hidden" name="action" value="aips_cancel_batch_run_bulk" />
     <table class="widefat striped">
         <thead>
             <tr>
+                <th><input type="checkbox" id="aips-select-all-batches" /></th>
                 <th><?php esc_html_e('Batch UUID', 'ai-post-scheduler'); ?></th>
                 <th><?php esc_html_e('Schedule ID', 'ai-post-scheduler'); ?></th>
                 <th><?php esc_html_e('Correlation ID', 'ai-post-scheduler'); ?></th>
@@ -34,9 +38,10 @@ if (!defined('ABSPATH')) {
             <?php else : ?>
                 <?php foreach ($batch_runs as $run) : ?>
                     <tr>
+                        <td><input type="checkbox" name="batch_ids[]" value="<?php echo esc_attr((int) $run->id); ?>" class="aips-batch-checkbox" /></td>
                         <td><?php echo esc_html(isset($run->batch_uuid) ? $run->batch_uuid : ''); ?></td>
                         <td><?php echo esc_html(isset($run->schedule_id) ? $run->schedule_id : ''); ?></td>
-                        <td><?php echo esc_html(isset($run->correlation_id) ? $run->correlation_id : ''); ?></td>
+                        <td><?php if (!empty($run->correlation_id)) : ?><a href="<?php echo esc_url( add_query_arg( array('tab' => 'insights', 'correlation_id' => $run->correlation_id), admin_url('admin.php?page=' . AIPS_Diagnostics_Controller::PAGE_SLUG) ) ); ?>"><?php echo esc_html($run->correlation_id); ?></a><?php else : echo ''; endif; ?></td>
                         <td><?php echo esc_html(isset($run->status) ? $run->status : ''); ?></td>
                         <td><?php echo esc_html((isset($run->completed) ? (int) $run->completed : 0) . ' / ' . (isset($run->total) ? (int) $run->total : 0)); ?></td>
                         <td><?php echo esc_html(isset($run->resume_index) ? (int) $run->resume_index : ''); ?></td>
@@ -56,4 +61,20 @@ if (!defined('ABSPATH')) {
             <?php endif; ?>
         </tbody>
     </table>
+
+    <p style="margin-top:8px;">
+        <button type="submit" class="button aips-btn aips-btn-danger" onclick="return confirm('<?php echo esc_js(__('Are you sure you want to cancel selected batch runs?', 'ai-post-scheduler')); ?>');"><?php esc_html_e('Cancel Selected', 'ai-post-scheduler'); ?></button>
+    </p>
+    </form>
 </div>
+
+<script type="text/javascript">
+(function(){
+    var selectAll = document.getElementById('aips-select-all-batches');
+    if (!selectAll) return;
+    selectAll.addEventListener('change', function(){
+        var checkboxes = document.querySelectorAll('.aips-batch-checkbox');
+        for (var i=0;i<checkboxes.length;i++) { checkboxes[i].checked = selectAll.checked; }
+    });
+})();
+</script>

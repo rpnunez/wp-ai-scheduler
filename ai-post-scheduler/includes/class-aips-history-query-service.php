@@ -233,6 +233,12 @@ class AIPS_History_Query_Service {
             $where_args[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
         }
 
+        // Optional correlation_id filter for targeted lookups (e.g., from Diagnostics view)
+        if (!empty($args['correlation_id'])) {
+            $where_clauses[] = "h.correlation_id = %s";
+            $where_args[] = sanitize_text_field($args['correlation_id']);
+        }
+
         $where_sql = implode(' AND ', $where_clauses);
 
         // Validate orderby and order

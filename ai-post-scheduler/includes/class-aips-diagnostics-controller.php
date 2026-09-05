@@ -22,6 +22,7 @@ class AIPS_Diagnostics_Controller {
 	 */
 	public function __construct() {
 		add_action('admin_post_aips_cancel_batch_run', array($this, 'handle_cancel_batch_run'));
+		add_action('admin_post_aips_cancel_batch_run_bulk', array($this, 'handle_cancel_batch_run_bulk'));
 	}
 
 
@@ -325,6 +326,35 @@ class AIPS_Diagnostics_Controller {
 		$repo->update_batch_run_status($batch_id, 'cancelled');
 
 		// Redirect back to the Diagnostics Batches tab.
+		wp_safe_redirect($this->get_tab_url('batches'));
+		exit;
+	}
+
+	/**
+	 * Bulk cancel handler.
+	 *
+	 * @return void
+	 */
+	public function handle_cancel_batch_run_bulk() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have permission to perform this action.', 'ai-post-scheduler'));
+		}
+
+		check_admin_referer('aips_cancel_batch_run_bulk');
+
+		$ids = isset($_POST['batch_ids']) && is_array($_POST['batch_ids']) ? array_map('absint', $_POST['batch_ids']) : array();
+		if (empty($ids)) {
+			wp_safe_redirect($this->get_tab_url('batches'));
+			exit;
+		}
+
+		$repo = new AIPS_Schedule_Repository();
+		foreach ($ids as $id) {
+			if ($id > 0) {
+				$repo->update_batch_run_status($id, 'cancelled');
+			}
+		}
+
 		wp_safe_redirect($this->get_tab_url('batches'));
 		exit;
 	}

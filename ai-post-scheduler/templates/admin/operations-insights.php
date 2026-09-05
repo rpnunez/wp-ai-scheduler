@@ -55,6 +55,25 @@ if (!defined('ABSPATH')) {
 		<button class="button" name="format" value="csv"><?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?></button>
 		<button class="button button-primary" name="format" value="json"><?php esc_html_e('Export JSON', 'ai-post-scheduler'); ?></button>
 	</form>
+
+	<?php if (!empty($correlation_id) && is_array($correlation_history)) : ?>
+		<h2><?php esc_html_e('History for correlation', 'ai-post-scheduler'); ?> <?php echo esc_html($correlation_id); ?></h2>
+		<?php if (empty($correlation_history['items'])) : ?>
+			<p><?php esc_html_e('No history entries found for this correlation id.', 'ai-post-scheduler'); ?></p>
+		<?php else : ?>
+			<table class="widefat striped"><thead><tr><th><?php esc_html_e('Time', 'ai-post-scheduler'); ?></th><th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th><th><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th><th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th><th><?php esc_html_e('Error', 'ai-post-scheduler'); ?></th></tr></thead><tbody>
+			<?php foreach ($correlation_history['items'] as $h) : ?>
+				<tr>
+					<td><?php echo esc_html(isset($h->created_at) ? $h->created_at : ''); ?></td>
+					<td><?php echo esc_html(isset($h->status) ? $h->status : ''); ?></td>
+					<td><?php echo esc_html(isset($h->post_id) ? $h->post_id : ''); ?></td>
+					<td><?php echo esc_html(isset($h->generated_title) ? $h->generated_title : ''); ?></td>
+					<td><?php echo esc_html(isset($h->error_message) ? $h->error_message : ''); ?></td>
+				</tr>
+			<?php endforeach; ?>
+			</tbody></table>
+		<?php endif; ?>
+	<?php endif; ?>
 <?php if (empty($embedded)) : ?>
 </div>
 <?php endif; ?>
