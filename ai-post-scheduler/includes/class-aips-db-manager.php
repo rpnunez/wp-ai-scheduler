@@ -17,6 +17,7 @@ class AIPS_DB_Manager {
         'aips_trending_topics',
         'aips_authors',
         'aips_post_slices',
+        'aips_schedule_batch_runs',
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
@@ -97,6 +98,7 @@ class AIPS_DB_Manager {
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
+        $table_schedule_batch_runs  = $tables['aips_schedule_batch_runs'];
         $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
         $table_cache_index          = $tables['aips_cache_index'];
         $table_cache_events         = $tables['aips_cache_events'];
@@ -736,6 +738,25 @@ class AIPS_DB_Manager {
             KEY niche_idx (niche),
             KEY overall_score_idx (overall_score),
             KEY created_at_idx (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_schedule_batch_runs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            batch_uuid varchar(36) NOT NULL,
+            schedule_id bigint(20) NOT NULL,
+            correlation_id varchar(36) DEFAULT NULL,
+            status varchar(32) NOT NULL DEFAULT 'pending',
+            total int(11) NOT NULL DEFAULT 0,
+            completed int(11) NOT NULL DEFAULT 0,
+            resume_index int(11) NOT NULL DEFAULT 0,
+            post_ids longtext DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY batch_uuid (batch_uuid),
+            KEY schedule_id (schedule_id),
+            KEY status (status),
+            KEY created_at (created_at)
         ) $charset_collate;";
 
         return $sql;

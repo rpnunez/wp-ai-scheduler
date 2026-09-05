@@ -171,9 +171,17 @@ class AIPS_Batch_Queue_Service {
 	 *   [ schedule_id, start_index, batch_size, total_quantity, correlation_id ]
 	 *
 	 * @param int    $schedule_id    Schedule ID.
-	 * @param int    $post_quantity  Total posts the schedule should generate.
+	 * @param int    $post_quantity  Posts to dispatch in this call. When resuming an
+	 *                               interrupted batch this is the remaining count, not
+	 *                               the schedule's original total.
 	 * @param int    $base_timestamp Unix timestamp when the schedule was triggered.
 	 * @param string $correlation_id Correlation ID for tracing (may be empty string).
+	 * @param array  $options {
+	 *     Optional resume positioning.
+	 *
+	 *     @type int $index_offset   Absolute index the first slice starts at (default 0).
+	 *     @type int $total_override Total reported to the hook instead of $post_quantity.
+	 * }
 	 * @return array|WP_Error{
 	 *   num_batches: int,
 	 *   posts_per_batch: int,
@@ -185,25 +193,123 @@ class AIPS_Batch_Queue_Service {
 		int $schedule_id,
 		int $post_quantity,
 		int $base_timestamp,
-		string $correlation_id = ''
+		string $correlation_id = '',
+		array $options = array()
 	) {
+		$batch_options = array(
+			'prefix_args'     => array( $schedule_id ),
+			'base_timestamp'  => $this->normalize_base_timestamp( $base_timestamp ),
+			'context'         => 'schedule',
+			'correlation_id'  => $correlation_id,
+		);
+
+		if ( isset( $options['index_offset'] ) ) {
+			$batch_options['index_offset'] = max( 0, (int) $options['index_offset'] );
+		}
+
+		if ( isset( $options['total_override'] ) ) {
+			$batch_options['total_override'] = max( 0, (int) $options['total_override'] );
+		}
+
 		$result = $this->job_scheduler->schedule_batched(
 			self::HOOK,
 			$post_quantity,
-			array(
-				'prefix_args'     => array( $schedule_id ),
-				'base_timestamp'  => $this->normalize_base_timestamp( $base_timestamp ),
-				'context'         => 'schedule',
-				'correlation_id'  => $correlation_id,
-			)
+			$batch_options
 		);
 
 		if (is_wp_error($result)) {
 			return $result;
 		}
 
+		// When dispatching schedule-specific batches, create a canonical batch_run
+		// row so the resume path can rely on a first-class DB record instead of
+		// ad-hoc JSON stored in the schedule row.
+		try {
+			$schedule_id_for_row = isset($batch_options['prefix_args'][0]) ? (int) $batch_options['prefix_args'][0] : 0;
+			$index_offset = isset($batch_options['index_offset']) ? (int) $batch_options['index_offset'] : 0;
+			$total_override = isset($batch_options['total_override']) ? $batch_options['total_override'] : null;
+
+			if ($schedule_id_for_row > 0) {
+				$total = $total_override !== null ? (int) $total_override : ($post_quantity + $index_offset);
+				$completed = $index_offset;
+
+				if ($total > 0 && $completed < $total) {
+					// Use WordPress UUID when available; fallback to a unique md5 id.
+					$batch_uuid = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : md5(uniqid((string) $schedule_id_for_row, true));
+					$repo = null;
+					if (class_exists('AIPS_Schedule_Repository')) {
+						$repo = AIPS_Schedule_Repository::instance();
+					}
+
+					if ($repo && method_exists($repo, 'create_batch_run')) {
+						$created = $repo->create_batch_run($schedule_id_for_row, $batch_uuid, $total, $completed, $completed, array(), 'pending', $correlation_id);
+						if ($created) {
+							$this->logger->log(
+								sprintf('Created batch_run %s for schedule %d (total=%d, completed=%d, correlation=%s)', $batch_uuid, $schedule_id_for_row, $total, $completed, $correlation_id),
+								'info',
+								array('schedule_id' => $schedule_id_for_row, 'batch_uuid' => $batch_uuid, 'correlation_id' => $correlation_id)
+							);
+						}
+					}
+				}
+			}
+		} catch (Exception $e) {
+			// Don't let batch-run bookkeeping break dispatch; log and continue.
+			$this->logger->log('Batch queue: failed to create batch_run row — ' . $e->getMessage(), 'warning');
+		}
+
 		// Convert to legacy format
 		return $result->to_array();
+	}
+
+	/**
+	 * Cancel every queued batch slice belonging to one schedule.
+	 *
+	 * A terminated batch leaves its remaining slices sitting in the cron table.
+	 * They no-op only for as long as the schedule's run_state stays terminal, so
+	 * they must be cleared before a resumed run puts that run_state back to
+	 * 'batch_processing' — otherwise the stale slices and the resumed slices
+	 * would both generate posts.
+	 *
+	 * @param int $schedule_id Schedule ID whose queued slices should be cancelled.
+	 * @return int Number of events unscheduled.
+	 */
+	public function clear_pending_slices( int $schedule_id ): int {
+		$cron = _get_cron_array();
+
+		if ( ! is_array( $cron ) ) {
+			return 0;
+		}
+
+		$cleared = 0;
+
+		foreach ( $cron as $timestamp => $hooks ) {
+			if ( ! isset( $hooks[ self::HOOK ] ) || ! is_array( $hooks[ self::HOOK ] ) ) {
+				continue;
+			}
+
+			foreach ( $hooks[ self::HOOK ] as $event ) {
+				$args = isset( $event['args'] ) && is_array( $event['args'] ) ? $event['args'] : array();
+
+				// Args layout is [ schedule_id, start_index, batch_size, total, correlation_id ].
+				if ( empty( $args ) || (int) $args[0] !== $schedule_id ) {
+					continue;
+				}
+
+				if ( wp_unschedule_event( (int) $timestamp, self::HOOK, $args ) !== false ) {
+					$cleared++;
+				}
+			}
+		}
+
+		if ( $cleared > 0 ) {
+			$this->logger->log(
+				sprintf( 'Cleared %d queued batch slice(s) for schedule %d.', $cleared, $schedule_id ),
+				'info'
+			);
+		}
+
+		return $cleared;
 	}
 
 	/**

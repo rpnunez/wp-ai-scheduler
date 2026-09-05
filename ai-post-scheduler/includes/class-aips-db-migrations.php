@@ -183,13 +183,110 @@ class AIPS_DB_Migrations {
 
 		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
 			$this->migrate_to_3_6_5();
-    }
-    
+	}
+
+		// New migration: convert legacy schedule.batch_progress / run_state JSON
+		// into the new aips_schedule_batch_runs table as first-class rows.
+		if ( version_compare( $from_version, '3.6.6', '<' ) ) {
+			$this->migrate_to_3_6_6();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
 		AIPS_Config::get_instance()->set_option( 'aips_db_version', AIPS_VERSION );
 		$this->logger->log( 'Database upgraded from version ' . $from_version . ' to ' . AIPS_VERSION, 'info' );
+	}
+
+	/**
+	 * Migration to 3.6.6 — backfill aips_schedule_batch_runs from legacy JSON.
+	 *
+	 * This migration is intentionally conservative:
+	 *  - It only inserts a batch_run row for a schedule that has no existing
+	 *    pending/running batch_run rows.
+	 *  - It prefers a run_state resumable cursor when present, falling back to
+	 *    batch_progress only when run_state is absent.
+	 *  - Inserted rows use a generated batch_uuid and status 'pending' so they
+	 *    can be picked up by the existing resume sweep immediately after upgrade.
+	 */
+	private function migrate_to_3_6_6() {
+		global $wpdb;
+		$table_runs = $wpdb->prefix . 'aips_schedule_batch_runs';
+		$table_schedule = $wpdb->prefix . 'aips_schedule';
+
+		// If the target table does not exist yet, bail — dbDelta will create it.
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_runs ) ) !== $table_runs ) {
+			return;
+		}
+
+		$rows = $wpdb->get_results( "SELECT id, run_state, batch_progress FROM {$table_schedule} WHERE (run_state IS NOT NULL AND run_state <> '') OR (batch_progress IS NOT NULL AND batch_progress <> '')" );
+		$inserted = 0;
+		$now = AIPS_DateTime::now()->timestamp();
+
+		foreach ( $rows as $r ) {
+			$schedule_id = (int) $r->id;
+
+			// Skip if a pending or running batch_run already exists for this schedule.
+			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table_runs} WHERE schedule_id = %d AND status IN ('pending','running') LIMIT 1", $schedule_id ) );
+			if ( $exists ) {
+				continue;
+			}
+
+			$runstate = null;
+			if ( ! empty( $r->run_state ) ) {
+				$decoded = json_decode( $r->run_state, true );
+				if ( is_array( $decoded ) && ! empty( $decoded['resumable'] ) && isset( $decoded['resume_index'] ) && isset( $decoded['total'] ) ) {
+					$runstate = $decoded;
+				}
+			}
+
+			$bp = null;
+			if ( ! $runstate && ! empty( $r->batch_progress ) ) {
+				$decoded_bp = json_decode( $r->batch_progress, true );
+				if ( is_array( $decoded_bp ) && isset( $decoded_bp['completed'] ) && isset( $decoded_bp['total'] ) ) {
+					$bp = $decoded_bp;
+				}
+			}
+
+			$candidate = null;
+			if ( $runstate ) {
+				$completed = max( 0, (int) $runstate['resume_index'] );
+				$total = max( 0, (int) $runstate['total'] );
+				$post_ids = isset( $runstate['post_ids'] ) && is_array( $runstate['post_ids'] ) ? $runstate['post_ids'] : array();
+				$correlation_id = isset( $runstate['correlation_id'] ) ? (string) $runstate['correlation_id'] : null;
+				$candidate = compact( 'completed', 'total', 'post_ids', 'correlation_id' );
+			} elseif ( $bp ) {
+				$completed = max( 0, (int) $bp['completed'] );
+				$total = max( 0, (int) $bp['total'] );
+				$post_ids = isset( $bp['post_ids'] ) && is_array( $bp['post_ids'] ) ? $bp['post_ids'] : array();
+				$correlation_id = isset( $bp['correlation_id'] ) ? (string) $bp['correlation_id'] : null;
+				if ( $total > 0 && $completed < $total ) {
+					$candidate = compact( 'completed', 'total', 'post_ids', 'correlation_id' );
+				}
+			}
+
+			if ( $candidate && $candidate['total'] > 0 && $candidate['completed'] < $candidate['total'] ) {
+				$batch_uuid = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : md5( uniqid( (string) $schedule_id, true ) );
+				$result = $wpdb->insert( $table_runs, array(
+					'batch_uuid' => $batch_uuid,
+					'schedule_id' => $schedule_id,
+					'correlation_id' => $candidate['correlation_id'],
+					'status' => 'pending',
+					'total' => $candidate['total'],
+					'completed' => $candidate['completed'],
+					'resume_index' => $candidate['completed'],
+					'post_ids' => ! empty( $candidate['post_ids'] ) ? wp_json_encode( $candidate['post_ids'] ) : null,
+					'created_at' => $now,
+					'updated_at' => $now,
+				) );
+
+				if ( $result !== false ) {
+					$inserted++;
+				}
+			}
+		}
+
+		$this->logger->log( 'migrate_to_3_6_6: inserted ' . $inserted . ' batch_run row(s)', 'info' );
 	}
 
 	/**
