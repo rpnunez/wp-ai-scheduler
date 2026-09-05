@@ -50,6 +50,109 @@
 			this.setupStickyAnchors();
 			this.setupClickListeners();
 			this.setupAdBlockRecovery();
+			this.setupReferralRibbons();
+		},
+
+		/**
+		 * Setup interactive Referral Ribbons: 1-click "Copy Code" button and impression tracking.
+		 */
+		setupReferralRibbons: function () {
+			var self = this;
+			var ribbons = document.querySelectorAll('.aips-referral-ribbon');
+			if (!ribbons.length) {
+				return;
+			}
+
+			// 1. Copy Code Button handler with clipboard API and fallback
+			document.addEventListener('click', function (e) {
+				var copyBtn = e.target.closest('.aips-btn-copy-code');
+				if (!copyBtn) {
+					return;
+				}
+
+				e.preventDefault();
+				e.stopPropagation();
+
+				var code = copyBtn.getAttribute('data-code') || '';
+				if (!code) {
+					return;
+				}
+
+				var copyTextSpan = copyBtn.querySelector('.aips-copy-text');
+				var origText = copyTextSpan ? copyTextSpan.textContent : 'Copy Code';
+
+				var notifyCopied = function () {
+					copyBtn.classList.add('aips-copied');
+					if (copyTextSpan) {
+						copyTextSpan.textContent = 'Copied!';
+					}
+					setTimeout(function () {
+						copyBtn.classList.remove('aips-copied');
+						if (copyTextSpan) {
+							copyTextSpan.textContent = origText;
+						}
+					}, 2000);
+				};
+
+				if (navigator.clipboard && navigator.clipboard.writeText) {
+					navigator.clipboard.writeText(code).then(notifyCopied).catch(function () {
+						self.fallbackCopyText(code, notifyCopied);
+					});
+				} else {
+					self.fallbackCopyText(code, notifyCopied);
+				}
+			});
+
+			// 2. Track Referral Ribbon impressions via IntersectionObserver
+			if (typeof IntersectionObserver !== 'undefined') {
+				var ribbonObserver = new IntersectionObserver(function (entries) {
+					entries.forEach(function (entry) {
+						if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+							var target = entry.target;
+							var programId = target.getAttribute('data-program-id') || 0;
+							var postId = target.getAttribute('data-post-id') || 0;
+							var obsKey = 'ref_' + programId + '_' + postId;
+
+							if (!self._recordedImpressions.has(obsKey)) {
+								self._recordedImpressions.add(obsKey);
+								self.enqueueEvent({
+									slot_id: 0,
+									post_id: parseInt(postId, 10),
+									campaign_id: parseInt(programId, 10),
+									event_type: 'impression',
+									device_type: self.detectDevice()
+								});
+							}
+							ribbonObserver.unobserve(target);
+						}
+					});
+				}, { threshold: [0.5] });
+
+				ribbons.forEach(function (r) {
+					ribbonObserver.observe(r);
+				});
+			}
+		},
+
+		/**
+		 * Fallback textarea execCommand copy method.
+		 */
+		fallbackCopyText: function (text, callback) {
+			var textArea = document.createElement('textarea');
+			textArea.value = text;
+			textArea.style.position = 'fixed';
+			textArea.style.top = '-9999px';
+			textArea.style.left = '-9999px';
+			document.body.appendChild(textArea);
+			textArea.focus();
+			textArea.select();
+			try {
+				document.execCommand('copy');
+				if (typeof callback === 'function') {
+					callback();
+				}
+			} catch (err) {}
+			document.body.removeChild(textArea);
 		},
 
 		/**
@@ -443,20 +546,20 @@
 			var self = this;
 			document.addEventListener('click', function (e) {
 				var target = e.target;
-				var container = target.closest('.aips-ad-container, .aips-sponsor-card, .aips-sponsor-disclosure');
+				var container = target.closest('.aips-ad-container, .aips-sponsor-card, .aips-sponsor-disclosure, .aips-referral-ribbon');
 				if (!container) {
 					return;
 				}
 
 				// Check if clicked an anchor or button
 				var link = target.closest('a, button');
-				if (!link || link.classList.contains('aips-anchor-close')) {
+				if (!link || link.classList.contains('aips-anchor-close') || link.classList.contains('aips-btn-copy-code')) {
 					return;
 				}
 
 				var slotId = container.getAttribute('data-slot-id') || 0;
 				var postId = container.getAttribute('data-post-id') || 0;
-				var campaignId = container.getAttribute('data-campaign-id') || 0;
+				var campaignId = container.getAttribute('data-campaign-id') || container.getAttribute('data-program-id') || 0;
 
 				self.recordClick(slotId, postId, campaignId);
 			}, true);

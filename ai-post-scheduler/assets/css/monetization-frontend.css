@@ -284,3 +284,143 @@
 	cursor: pointer;
 }
 
+/* ==========================================================================
+   Referral Promo Ribbons & Discount Callout Boxes
+   ========================================================================== */
+.aips-referral-ribbon {
+	margin: 28px 0;
+	clear: both;
+	background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+	border: 1px solid #cbd5e1;
+	border-left: 4px solid #10b981;
+	border-radius: 8px;
+	padding: 18px 22px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+	position: relative;
+	box-sizing: border-box;
+}
+
+.aips-referral-inner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.aips-referral-badge-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	margin-bottom: -4px;
+}
+
+.aips-referral-badge {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	background: #10b981;
+	color: #ffffff;
+	padding: 2px 8px;
+	border-radius: 4px;
+	line-height: 1.4;
+}
+
+.aips-referral-network {
+	font-size: 11px;
+	color: #64748b;
+	font-weight: 600;
+}
+
+.aips-referral-content {
+	flex: 1 1 280px;
+}
+
+.aips-referral-title {
+	margin: 4px 0;
+	font-size: 17px;
+	font-weight: 700;
+	color: #0f172a;
+	line-height: 1.3;
+}
+
+.aips-referral-desc {
+	margin: 2px 0 0 0;
+	font-size: 13.5px;
+	color: #475569;
+	line-height: 1.4;
+}
+
+.aips-referral-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.aips-promo-code-wrap {
+	display: inline-flex;
+	align-items: center;
+	background: #ffffff;
+	border: 1px dashed #059669;
+	border-radius: 6px;
+	padding: 3px 3px 3px 10px;
+}
+
+.aips-promo-code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 13.5px;
+	font-weight: 700;
+	color: #047857;
+	letter-spacing: 0.75px;
+	margin-right: 8px;
+	user-select: all;
+}
+
+.aips-btn-copy-code {
+	background: #ecfdf5;
+	color: #047857;
+	border: 1px solid #a7f3d0;
+	border-radius: 4px;
+	padding: 5px 10px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	line-height: 1.2;
+}
+
+.aips-btn-copy-code:hover {
+	background: #10b981;
+	color: #ffffff;
+	border-color: #059669;
+}
+
+.aips-btn-copy-code.aips-copied {
+	background: #047857;
+	color: #ffffff;
+	border-color: #047857;
+}
+
+.aips-referral-cta {
+	display: inline-flex;
+	align-items: center;
+	background: #0f172a;
+	color: #ffffff !important;
+	text-decoration: none !important;
+	font-weight: 600;
+	font-size: 13.5px;
+	padding: 8px 16px;
+	border-radius: 6px;
+	transition: background 0.15s ease, transform 0.1s ease;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.aips-referral-cta:hover {
+	background: #1e293b;
+	transform: translateY(-1px);
+}
+
+

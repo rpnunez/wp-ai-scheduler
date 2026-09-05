@@ -286,6 +286,19 @@ class AIPS_Admin_Assets {
 			AIPS_VERSION,
 			true
 		);
+
+		wp_enqueue_script(
+			'aips-referral-card-block',
+			AIPS_PLUGIN_URL . 'assets/js/blocks/referral-card-block.js',
+			array(
+				'wp-blocks',
+				'wp-element',
+				'wp-components',
+				'wp-i18n',
+			),
+			AIPS_VERSION,
+			true
+		);
 	}
 
 	/**

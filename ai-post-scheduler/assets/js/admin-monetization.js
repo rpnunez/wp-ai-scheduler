@@ -20,6 +20,7 @@
 		chartInstance: null,
 		slotsMap: {},
 		campaignsMap: {},
+		referralsMap: {},
 
 		/**
 		 * Bootstrap module.
@@ -37,12 +38,19 @@
 						self.campaignsMap[c.id] = c;
 					});
 				}
+				if (Array.isArray(window.aipsMonetizationInitialData.referrals)) {
+					window.aipsMonetizationInitialData.referrals.forEach(function (r) {
+						self.referralsMap[r.id] = r;
+					});
+				}
 			}
 
 			this.bindTabs();
 			this.bindEngineSettings();
 			this.bindSlotActions();
 			this.bindCampaignActions();
+			this.bindReferralActions();
+			this.bindNetworkProfiles();
 			this.bindAnalyticsActions();
 
 			// Auto load analytics if starting on analytics tab
@@ -465,6 +473,231 @@
 						};
 
 						var rowHtml = AIPS.Templates.render('aips-tmpl-sponsor-campaign-row', rowData);
+						$tbody.append(rowHtml);
+					});
+				}
+			});
+		},
+
+		/**
+		 * Referral Partner Program events: add, edit, save, delete, toggle, and filter.
+		 */
+		bindReferralActions: function () {
+			var self = this;
+
+			// Add Referral Modal
+			$('#aips-btn-add-referral').on('click', function () {
+				$('#aips-modal-referral-title').text(self.config.i18n.addReferralTitle || 'Add Partner Referral Program');
+				$('#aips-form-referral')[0].reset();
+				$('#aips-referral-id').val('0');
+				$('#aips-modal-referral').fadeIn(150);
+			});
+
+			// Close Modal
+			$('#aips-modal-referral .aips-modal-close, #aips-modal-referral .aips-modal-cancel, #aips-modal-referral .aips-modal-backdrop').on('click', function () {
+				$('#aips-modal-referral').fadeOut(120);
+			});
+
+			// Edit Referral Modal
+			$(document).on('click', '.aips-btn-edit-referral', function () {
+				var refId = $(this).data('id');
+				var ref = self.referralsMap[refId];
+				if (!ref) {
+					var raw = $(this).data('referral');
+					if (typeof raw === 'string') {
+						try { ref = JSON.parse(raw); } catch (e) {}
+					} else if (typeof raw === 'object') {
+						ref = raw;
+					}
+				}
+				if (!ref) { return; }
+
+				$('#aips-modal-referral-title').text(self.config.i18n.editReferralTitle || 'Edit Referral Program');
+				$('#aips-referral-id').val(ref.id);
+				$('#aips-referral-name').val(ref.partner_name);
+				$('#aips-referral-network').val(ref.network || 'direct');
+				$('#aips-referral-slug').val(ref.slug || '');
+				$('#aips-referral-url').val(ref.referral_url);
+				$('#aips-referral-code').val(ref.promo_code || '');
+				$('#aips-referral-commission').val(ref.commission_rate || '');
+				$('#aips-referral-discount').val(ref.discount_description || '');
+				$('#aips-referral-keywords').val(ref.keywords || '');
+				$('#aips-referral-categories').val(ref.categories || '');
+				$('#aips-referral-expires').val(ref.expires_at ? ref.expires_at.split(' ')[0] : '');
+
+				$('#aips-modal-referral').fadeIn(150);
+			});
+
+			// Save Referral Form
+			$('#aips-form-referral').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-referral');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_referral_program&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						$('#aips-modal-referral').fadeOut(120);
+						self.refreshReferralsList();
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving referral program.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+
+			// Delete Referral
+			$(document).on('click', '.aips-btn-delete-referral', function () {
+				if (!confirm(self.config.i18n.confirmDeleteReferral || 'Are you sure you want to delete this referral program?')) {
+					return;
+				}
+
+				var refId = $(this).data('id');
+				var $row = $('tr[data-referral-id="' + refId + '"]');
+
+				$.post(ajaxurl, {
+					action: 'aips_delete_referral_program',
+					id: refId,
+					nonce: self.config.nonce
+				}, function (res) {
+					if (res.success) {
+						$row.fadeOut(200, function () { $(this).remove(); });
+						delete self.referralsMap[refId];
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error deleting referral program.');
+					}
+				});
+			});
+
+			// Toggle Referral Status
+			$(document).on('click', '.aips-referral-toggle', function () {
+				var $btn = $(this);
+				var refId = $btn.data('id');
+
+				$btn.prop('disabled', true);
+				$.post(ajaxurl, {
+					action: 'aips_toggle_referral_program',
+					id: refId,
+					nonce: self.config.nonce
+				}, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						var isNowActive = res.data.status === 'active';
+						$btn.text(isNowActive ? 'Active' : 'Paused');
+						if (isNowActive) {
+							$btn.addClass('button-primary');
+						} else {
+							$btn.removeClass('button-primary');
+						}
+						if (self.referralsMap[refId]) {
+							self.referralsMap[refId].status = res.data.status;
+						}
+					}
+				});
+			});
+
+			// Filtering
+			$('#aips-filter-referral-network, #aips-filter-referral-status').on('change', function () {
+				self.refreshReferralsList();
+			});
+
+			var searchTimeout = null;
+			$('#aips-search-referrals').on('input', function () {
+				clearTimeout(searchTimeout);
+				searchTimeout = setTimeout(function () {
+					self.refreshReferralsList();
+				}, 250);
+			});
+		},
+
+		/**
+		 * Network Profiles Collapsible Panel and AJAX saving.
+		 */
+		bindNetworkProfiles: function () {
+			var self = this;
+
+			$('#aips-btn-toggle-network-profiles').on('click', function () {
+				$('#aips-network-profiles-panel').slideToggle(180);
+			});
+
+			$('#aips-form-network-profiles').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-network-profiles');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_affiliate_network_profiles&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						alert(res.data && res.data.message ? res.data.message : 'Network profiles saved successfully.');
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving network profiles.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+		},
+
+		/**
+		 * Refresh referrals list via AIPS.Templates.
+		 */
+		refreshReferralsList: function () {
+			var self = this;
+			var network = $('#aips-filter-referral-network').val() || '';
+			var status = $('#aips-filter-referral-status').val() || '';
+			var search = $('#aips-search-referrals').val() || '';
+
+			$.post(ajaxurl, {
+				action: 'aips_get_referral_programs',
+				network: network,
+				status: status,
+				search: search,
+				nonce: self.config.nonce
+			}, function (res) {
+				if (res.success && res.data.programs) {
+					var $tbody = $('#aips-tbody-referrals');
+					$tbody.empty();
+
+					if (!res.data.programs.length) {
+						$tbody.append('<tr class="no-items"><td colspan="7">No partner referral programs match filter criteria.</td></tr>');
+						return;
+					}
+
+					var cloakingPrefix = $('#aips-setting-cloaking-prefix').val() || 'go';
+
+					res.data.programs.forEach(function (ref) {
+						self.referralsMap[ref.id] = ref;
+
+						var rowData = {
+							id: ref.id,
+							partner_name: ref.partner_name,
+							networkLabel: ref.network ? (ref.network.charAt(0).toUpperCase() + ref.network.slice(1)) : 'Direct',
+							commission_rate: ref.commission_rate || '',
+							commissionHidden: ref.commission_rate ? '' : 'aips-hidden',
+							promo_code: ref.promo_code || '',
+							promoHidden: ref.promo_code ? '' : 'aips-hidden',
+							discount_description: ref.discount_description || '',
+							discountHidden: ref.discount_description ? '' : 'aips-hidden',
+							cloaking_prefix: cloakingPrefix,
+							slug: ref.slug,
+							cloaked_url: self.config.homeUrl ? (self.config.homeUrl + '/' + cloakingPrefix + '/' + ref.slug + '/') : ('/' + cloakingPrefix + '/' + ref.slug + '/'),
+							referral_url: ref.referral_url,
+							keywords: ref.keywords || '',
+							kwHidden: ref.keywords ? '' : 'aips-hidden',
+							categories: ref.categories || '',
+							catHidden: ref.categories ? '' : 'aips-hidden',
+							statusLabel: ref.status === 'active' ? 'Active' : 'Paused',
+							activeClass: ref.status === 'active' ? 'button-primary' : ''
+						};
+
+						var rowHtml = AIPS.Templates.render('aips-tmpl-referral-row', rowData);
 						$tbody.append(rowHtml);
 					});
 				}

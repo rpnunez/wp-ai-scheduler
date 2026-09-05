@@ -31,6 +31,11 @@ class AIPS_Monetization_Controller {
 	private $telemetry_repo;
 
 	/**
+	 * @var AIPS_Referral_Programs_Repository
+	 */
+	private $referrals_repo;
+
+	/**
 	 * @var AIPS_Config
 	 */
 	private $config;
@@ -39,12 +44,14 @@ class AIPS_Monetization_Controller {
 		?AIPS_Ad_Slots_Repository $slots_repo = null,
 		?AIPS_Sponsor_Campaigns_Repository $campaigns_repo = null,
 		?AIPS_Monetization_Telemetry_Repository $telemetry_repo = null,
+		?AIPS_Referral_Programs_Repository $referrals_repo = null,
 		?AIPS_Config $config = null
 	) {
 		$container            = AIPS_Container::get_instance();
 		$this->slots_repo     = $slots_repo ?: ( $container->has( AIPS_Ad_Slots_Repository::class ) ? $container->make( AIPS_Ad_Slots_Repository::class ) : new AIPS_Ad_Slots_Repository() );
 		$this->campaigns_repo = $campaigns_repo ?: ( $container->has( AIPS_Sponsor_Campaigns_Repository::class ) ? $container->make( AIPS_Sponsor_Campaigns_Repository::class ) : new AIPS_Sponsor_Campaigns_Repository() );
 		$this->telemetry_repo = $telemetry_repo ?: ( $container->has( AIPS_Monetization_Telemetry_Repository::class ) ? $container->make( AIPS_Monetization_Telemetry_Repository::class ) : new AIPS_Monetization_Telemetry_Repository() );
+		$this->referrals_repo = $referrals_repo ?: ( $container->has( AIPS_Referral_Programs_Repository::class ) ? $container->make( AIPS_Referral_Programs_Repository::class ) : new AIPS_Referral_Programs_Repository() );
 		$this->config         = $config ?: AIPS_Config::get_instance();
 
 		// Register AJAX actions
@@ -58,6 +65,13 @@ class AIPS_Monetization_Controller {
 		add_action( 'wp_ajax_aips_toggle_sponsor_campaign', array( $this, 'ajax_toggle_sponsor_campaign' ) );
 		add_action( 'wp_ajax_aips_get_monetization_analytics', array( $this, 'ajax_get_monetization_analytics' ) );
 		add_action( 'wp_ajax_aips_save_monetization_engine_settings', array( $this, 'ajax_save_engine_settings' ) );
+
+		// Referral Partner Programs & Networks AJAX actions
+		add_action( 'wp_ajax_aips_get_referral_programs', array( $this, 'ajax_get_referral_programs' ) );
+		add_action( 'wp_ajax_aips_save_referral_program', array( $this, 'ajax_save_referral_program' ) );
+		add_action( 'wp_ajax_aips_delete_referral_program', array( $this, 'ajax_delete_referral_program' ) );
+		add_action( 'wp_ajax_aips_toggle_referral_program', array( $this, 'ajax_toggle_referral_program' ) );
+		add_action( 'wp_ajax_aips_save_affiliate_network_profiles', array( $this, 'ajax_save_affiliate_network_profiles' ) );
 	}
 
 	/**
@@ -68,9 +82,11 @@ class AIPS_Monetization_Controller {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ai-post-scheduler' ) );
 		}
 
-		$slots     = $this->slots_repo->get_all();
-		$campaigns = $this->campaigns_repo->get_all();
-		$summary   = $this->telemetry_repo->get_summary();
+		$slots            = $this->slots_repo->get_all();
+		$campaigns        = $this->campaigns_repo->get_all();
+		$referrals        = $this->referrals_repo->get_all();
+		$network_profiles = $this->config->get_affiliate_network_profiles();
+		$summary          = $this->telemetry_repo->get_summary();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/monetization.php';
 	}
@@ -318,6 +334,163 @@ class AIPS_Monetization_Controller {
 
 		AIPS_Ajax_Response::success( array(
 			'message' => __( 'Monetization engine settings saved successfully.', 'ai-post-scheduler' ),
+		) );
+	}
+
+	/**
+	 * AJAX: Get all referral programs.
+	 */
+	public function ajax_get_referral_programs() {
+		$this->verify_request();
+
+		$args = array();
+		if ( ! empty( $_POST['network'] ) ) {
+			$args['network'] = sanitize_key( wp_unslash( $_POST['network'] ) );
+		}
+		if ( ! empty( $_POST['status'] ) ) {
+			$args['status'] = sanitize_key( wp_unslash( $_POST['status'] ) );
+		}
+		if ( ! empty( $_POST['search'] ) ) {
+			$args['search'] = sanitize_text_field( wp_unslash( $_POST['search'] ) );
+		}
+
+		$programs = $this->referrals_repo->get_all( $args );
+		AIPS_Ajax_Response::success( array( 'programs' => $programs ) );
+	}
+
+	/**
+	 * AJAX: Save or update referral program.
+	 */
+	public function ajax_save_referral_program() {
+		$this->verify_request();
+
+		$data = array(
+			'id'                   => isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0,
+			'partner_name'         => isset( $_POST['partner_name'] ) ? sanitize_text_field( wp_unslash( $_POST['partner_name'] ) ) : '',
+			'network'              => isset( $_POST['network'] ) ? sanitize_key( wp_unslash( $_POST['network'] ) ) : 'direct',
+			'referral_url'         => isset( $_POST['referral_url'] ) ? esc_url_raw( wp_unslash( $_POST['referral_url'] ) ) : '',
+			'slug'                 => isset( $_POST['slug'] ) ? sanitize_title( wp_unslash( $_POST['slug'] ) ) : '',
+			'promo_code'           => isset( $_POST['promo_code'] ) ? sanitize_text_field( wp_unslash( $_POST['promo_code'] ) ) : '',
+			'discount_description' => isset( $_POST['discount_description'] ) ? sanitize_text_field( wp_unslash( $_POST['discount_description'] ) ) : '',
+			'commission_rate'      => isset( $_POST['commission_rate'] ) ? sanitize_text_field( wp_unslash( $_POST['commission_rate'] ) ) : '',
+			'keywords'             => isset( $_POST['keywords'] ) ? sanitize_text_field( wp_unslash( $_POST['keywords'] ) ) : '',
+			'categories'           => isset( $_POST['categories'] ) ? sanitize_text_field( wp_unslash( $_POST['categories'] ) ) : '',
+			'status'               => isset( $_POST['status'] ) && in_array( $_POST['status'], array( 'active', 'paused' ), true ) ? sanitize_key( $_POST['status'] ) : 'active',
+			'expires_at'           => ! empty( $_POST['expires_at'] ) ? sanitize_text_field( wp_unslash( $_POST['expires_at'] ) ) : null,
+		);
+
+		if ( empty( $data['partner_name'] ) ) {
+			AIPS_Ajax_Response::error( __( 'Partner program name is required.', 'ai-post-scheduler' ) );
+		}
+
+		if ( empty( $data['referral_url'] ) || ! wp_http_validate_url( $data['referral_url'] ) ) {
+			AIPS_Ajax_Response::error( __( 'A valid destination referral URL is required.', 'ai-post-scheduler' ) );
+		}
+
+		$result = $this->referrals_repo->save( $data );
+		if ( false === $result ) {
+			AIPS_Ajax_Response::error( __( 'Failed to save referral program.', 'ai-post-scheduler' ) );
+		}
+
+		$saved = $this->referrals_repo->get_by_id( is_int( $result ) ? $result : $data['id'] );
+
+		AIPS_Ajax_Response::success( array(
+			'message' => __( 'Referral program saved successfully.', 'ai-post-scheduler' ),
+			'program' => $saved,
+		) );
+	}
+
+	/**
+	 * AJAX: Delete a referral program.
+	 */
+	public function ajax_delete_referral_program() {
+		$this->verify_request();
+
+		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+		if ( ! $id ) {
+			AIPS_Ajax_Response::error( __( 'Invalid referral program ID.', 'ai-post-scheduler' ) );
+		}
+
+		$deleted = $this->referrals_repo->delete( $id );
+		if ( ! $deleted ) {
+			AIPS_Ajax_Response::error( __( 'Failed to delete referral program.', 'ai-post-scheduler' ) );
+		}
+
+		AIPS_Ajax_Response::success( array(
+			'message' => __( 'Referral program deleted successfully.', 'ai-post-scheduler' ),
+		) );
+	}
+
+	/**
+	 * AJAX: Toggle active/paused status of a referral program.
+	 */
+	public function ajax_toggle_referral_program() {
+		$this->verify_request();
+
+		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+		if ( ! $id ) {
+			AIPS_Ajax_Response::error( __( 'Invalid referral program ID.', 'ai-post-scheduler' ) );
+		}
+
+		$toggled = $this->referrals_repo->toggle_status( $id );
+		if ( ! $toggled ) {
+			AIPS_Ajax_Response::error( __( 'Failed to toggle status.', 'ai-post-scheduler' ) );
+		}
+
+		$program = $this->referrals_repo->get_by_id( $id );
+
+		AIPS_Ajax_Response::success( array(
+			'status'  => $program ? $program['status'] : 'paused',
+			'message' => __( 'Program status updated successfully.', 'ai-post-scheduler' ),
+		) );
+	}
+
+	/**
+	 * AJAX: Save affiliate network profiles settings.
+	 */
+	public function ajax_save_affiliate_network_profiles() {
+		$this->verify_request();
+
+		$raw_profiles = isset( $_POST['profiles'] ) ? (array) $_POST['profiles'] : array();
+		$existing     = $this->config->get_affiliate_network_profiles();
+		$updated      = array();
+
+		$supported = AIPS_Referral_Programs_Repository::SUPPORTED_NETWORKS;
+
+		foreach ( $supported as $network ) {
+			$net_data = isset( $raw_profiles[ $network ] ) && is_array( $raw_profiles[ $network ] ) ? $raw_profiles[ $network ] : array();
+			$base     = isset( $existing[ $network ] ) && is_array( $existing[ $network ] ) ? $existing[ $network ] : array();
+
+			$updated[ $network ] = array(
+				'name'             => sanitize_text_field( $base['name'] ?? ucfirst( $network ) ),
+				'enabled'          => ! empty( $net_data['enabled'] ),
+				'subid_param'      => sanitize_key( $net_data['subid_param'] ?? $base['subid_param'] ?? 'subid' ),
+				'subid_template'   => sanitize_text_field( $net_data['subid_template'] ?? $base['subid_template'] ?? '{post_id}' ),
+				'custom_params'    => sanitize_text_field( $net_data['custom_params'] ?? $base['custom_params'] ?? '' ),
+			);
+
+			if ( isset( $net_data['tag'] ) ) {
+				$updated[ $network ]['tag'] = sanitize_text_field( $net_data['tag'] );
+			}
+			if ( isset( $net_data['affiliate_id'] ) ) {
+				$updated[ $network ]['affiliate_id'] = sanitize_text_field( $net_data['affiliate_id'] );
+			}
+			if ( isset( $net_data['merchant_id'] ) ) {
+				$updated[ $network ]['merchant_id'] = sanitize_text_field( $net_data['merchant_id'] );
+			}
+			if ( isset( $net_data['publisher_id'] ) ) {
+				$updated[ $network ]['publisher_id'] = sanitize_text_field( $net_data['publisher_id'] );
+			}
+			if ( isset( $net_data['media_partner_id'] ) ) {
+				$updated[ $network ]['media_partner_id'] = sanitize_text_field( $net_data['media_partner_id'] );
+			}
+		}
+
+		$this->config->set_affiliate_network_profiles( $updated );
+
+		AIPS_Ajax_Response::success( array(
+			'message'  => __( 'Affiliate network profiles saved successfully.', 'ai-post-scheduler' ),
+			'profiles' => $updated,
 		) );
 	}
 }

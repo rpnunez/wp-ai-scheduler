@@ -309,7 +309,7 @@ class AIPS_Link_Cloaking_Service {
 		$query_args = array();
 
 		// 1. Network Profile Affiliate ID / Tag (if configured and not already present)
-		$affiliate_id = trim( (string) ( $profile['affiliate_id'] ?? '' ) );
+		$affiliate_id = trim( (string) ( $profile['affiliate_id'] ?? $profile['tag'] ?? $profile['publisher_id'] ?? $profile['media_partner_id'] ?? '' ) );
 		if ( ! empty( $affiliate_id ) ) {
 			if ( 'amazon' === $network && false === strpos( $url, 'tag=' ) ) {
 				$query_args['tag'] = $affiliate_id;

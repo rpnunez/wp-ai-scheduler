@@ -353,6 +353,11 @@ class AIPS_Ajax_Registry {
 		'aips_toggle_sponsor_campaign'         => 'AIPS_Monetization_Controller',
 		'aips_get_monetization_analytics'      => 'AIPS_Monetization_Controller',
 		'aips_save_monetization_engine_settings'=> 'AIPS_Monetization_Controller',
+		'aips_get_referral_programs'           => 'AIPS_Monetization_Controller',
+		'aips_save_referral_program'           => 'AIPS_Monetization_Controller',
+		'aips_delete_referral_program'         => 'AIPS_Monetization_Controller',
+		'aips_toggle_referral_program'         => 'AIPS_Monetization_Controller',
+		'aips_save_affiliate_network_profiles' => 'AIPS_Monetization_Controller',
 	);
 
 	/**

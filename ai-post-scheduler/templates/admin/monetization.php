@@ -115,7 +115,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<script>
 		window.aipsMonetizationInitialData = {
 			slots: <?php echo wp_json_encode( $slots ); ?>,
-			campaigns: <?php echo wp_json_encode( $campaigns ); ?>
+			campaigns: <?php echo wp_json_encode( $campaigns ); ?>,
+			referrals: <?php echo wp_json_encode( $referrals ); ?>,
+			networkProfiles: <?php echo wp_json_encode( $network_profiles ); ?>
 		};
 	</script>
 
@@ -132,6 +134,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<a href="#tab-affiliates" class="nav-tab" data-tab="affiliates">
 			<span class="dashicons dashicons-admin-links"></span>
 			<?php esc_html_e( 'Affiliate Links', 'ai-post-scheduler' ); ?>
+		</a>
+		<a href="#tab-referrals" class="nav-tab" data-tab="referrals">
+			<span class="dashicons dashicons-share"></span>
+			<?php esc_html_e( 'Referrals & Affiliate Networks', 'ai-post-scheduler' ); ?>
 		</a>
 		<a href="#tab-analytics" class="nav-tab" data-tab="analytics">
 			<span class="dashicons dashicons-chart-line"></span>
@@ -301,7 +307,181 @@ if ( ! defined( 'ABSPATH' ) ) {
 			?>
 		</div>
 
-		<!-- TAB 4: Analytics -->
+		<!-- TAB 4: Referrals & Affiliate Networks -->
+		<div id="tab-referrals" class="aips-tab-panel">
+			<div class="aips-tab-header">
+				<div class="aips-tab-header-text">
+					<h2><?php esc_html_e( 'Partner Referral Programs & Affiliate Networks', 'ai-post-scheduler' ); ?></h2>
+					<p class="description"><?php esc_html_e( 'Manage partner coupon/promo codes, network profiles, and high-converting automated in-article discount ribbons.', 'ai-post-scheduler' ); ?></p>
+				</div>
+				<div class="aips-tab-header-actions" style="display:flex; gap:10px;">
+					<button type="button" class="button button-secondary" id="aips-btn-toggle-network-profiles">
+						<span class="dashicons dashicons-networking" style="vertical-align:text-bottom;"></span>
+						<?php esc_html_e( 'Network Profiles', 'ai-post-scheduler' ); ?>
+					</button>
+					<button type="button" class="button button-primary" id="aips-btn-add-referral">
+						<span class="dashicons dashicons-plus-alt2"></span>
+						<?php esc_html_e( 'Add Referral Program', 'ai-post-scheduler' ); ?>
+					</button>
+				</div>
+			</div>
+
+			<!-- Network Profiles Configuration Box (Collapsible) -->
+			<div id="aips-network-profiles-panel" style="display: none; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:20px; margin-bottom:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+				<h3 style="margin-top:0; margin-bottom:12px; font-size:16px; display:flex; align-items:center; gap:8px;">
+					<span class="dashicons dashicons-networking"></span>
+					<?php esc_html_e( 'Global Affiliate Network Profiles & SubID Tracking Defaults', 'ai-post-scheduler' ); ?>
+				</h3>
+				<p class="description" style="margin-bottom:16px;">
+					<?php esc_html_e( 'Configure default affiliate IDs and subID tokens ({post_id}, {slug}, {date}, {category}) for automatic URL generation.', 'ai-post-scheduler' ); ?>
+				</p>
+				<form id="aips-form-network-profiles">
+					<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-bottom:16px;">
+						<?php
+						$networks_catalog = array(
+							'amazon'     => array( 'title' => 'Amazon Associates', 'id_field' => 'tag', 'id_label' => 'Associate Store Tag', 'placeholder' => 'mystore-20' ),
+							'shareasale' => array( 'title' => 'ShareASale', 'id_field' => 'affiliate_id', 'id_label' => 'Affiliate ID (u=)', 'placeholder' => '1234567' ),
+							'cj'         => array( 'title' => 'CJ Affiliate', 'id_field' => 'publisher_id', 'id_label' => 'Publisher/Website ID', 'placeholder' => '9876543' ),
+							'impact'     => array( 'title' => 'Impact', 'id_field' => 'media_partner_id', 'id_label' => 'Media Partner ID', 'placeholder' => '54321' ),
+							'awin'       => array( 'title' => 'Awin', 'id_field' => 'publisher_id', 'id_label' => 'Publisher ID (awinaffid=)', 'placeholder' => '456789' ),
+							'rakuten'    => array( 'title' => 'Rakuten Advertising', 'id_field' => 'affiliate_id', 'id_label' => 'Member/Affiliate ID', 'placeholder' => '102030' ),
+							'direct'     => array( 'title' => 'Direct / In-House Partner', 'id_field' => 'affiliate_id', 'id_label' => 'Default Referral ID', 'placeholder' => 'mybrandref' ),
+						);
+						foreach ( $networks_catalog as $net_key => $net_info ) :
+							$prof = $network_profiles[ $net_key ] ?? array();
+							?>
+							<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px;">
+								<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+									<strong><?php echo esc_html( $net_info['title'] ); ?></strong>
+									<label style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">
+										<input type="checkbox" name="profiles[<?php echo esc_attr( $net_key ); ?>][enabled]" value="1" <?php checked( ! empty( $prof['enabled'] ) ); ?> />
+										<span><?php esc_html_e( 'Enabled', 'ai-post-scheduler' ); ?></span>
+									</label>
+								</div>
+								<div style="margin-bottom:6px;">
+									<label style="font-size:11px; display:block; color:#475569;"><?php echo esc_html( $net_info['id_label'] ); ?></label>
+									<input type="text" name="profiles[<?php echo esc_attr( $net_key ); ?>][<?php echo esc_attr( $net_info['id_field'] ); ?>]" value="<?php echo esc_attr( $prof[ $net_info['id_field'] ] ?? ( $prof['affiliate_id'] ?? '' ) ); ?>" class="regular-text" style="width:100%;" placeholder="<?php echo esc_attr( $net_info['placeholder'] ); ?>" />
+								</div>
+								<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+									<div>
+										<label style="font-size:11px; display:block; color:#475569;"><?php esc_html_e( 'SubID Query Param', 'ai-post-scheduler' ); ?></label>
+										<input type="text" name="profiles[<?php echo esc_attr( $net_key ); ?>][subid_param]" value="<?php echo esc_attr( $prof['subid_param'] ?? 'subid' ); ?>" style="width:100%;" />
+									</div>
+									<div>
+										<label style="font-size:11px; display:block; color:#475569;"><?php esc_html_e( 'SubID Template', 'ai-post-scheduler' ); ?></label>
+										<input type="text" name="profiles[<?php echo esc_attr( $net_key ); ?>][subid_template]" value="<?php echo esc_attr( $prof['subid_template'] ?? '{post_id}' ); ?>" style="width:100%;" />
+									</div>
+								</div>
+							</div>
+						<?php endforeach; ?>
+					</div>
+					<div style="display:flex; justify-content:flex-end;">
+						<button type="submit" class="button button-primary" id="aips-btn-save-network-profiles">
+							<?php esc_html_e( 'Save Network Profiles', 'ai-post-scheduler' ); ?>
+						</button>
+					</div>
+				</form>
+			</div>
+
+			<!-- Filter Bar -->
+			<div class="aips-filter-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:#f8fafc; padding:10px 14px; border:1px solid #e2e8f0; border-radius:6px;">
+				<div style="display:flex; gap:10px; align-items:center;">
+					<label for="aips-filter-referral-network" class="screen-reader-text"><?php esc_html_e( 'Filter by Network', 'ai-post-scheduler' ); ?></label>
+					<select id="aips-filter-referral-network">
+						<option value=""><?php esc_html_e( 'All Networks', 'ai-post-scheduler' ); ?></option>
+						<?php foreach ( AIPS_Referral_Programs_Repository::SUPPORTED_NETWORKS as $net ) : ?>
+							<option value="<?php echo esc_attr( $net ); ?>"><?php echo esc_html( ucfirst( $net ) ); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<label for="aips-filter-referral-status" class="screen-reader-text"><?php esc_html_e( 'Filter by Status', 'ai-post-scheduler' ); ?></label>
+					<select id="aips-filter-referral-status">
+						<option value=""><?php esc_html_e( 'All Statuses', 'ai-post-scheduler' ); ?></option>
+						<option value="active"><?php esc_html_e( 'Active Only', 'ai-post-scheduler' ); ?></option>
+						<option value="paused"><?php esc_html_e( 'Paused Only', 'ai-post-scheduler' ); ?></option>
+					</select>
+				</div>
+				<div>
+					<input type="search" id="aips-search-referrals" placeholder="<?php esc_attr_e( 'Search programs or promo code…', 'ai-post-scheduler' ); ?>" style="min-width:220px;" />
+				</div>
+			</div>
+
+			<!-- Programs Table -->
+			<table class="wp-list-table widefat fixed striped table-view-list" id="aips-table-referrals">
+				<thead>
+					<tr>
+						<th scope="col" style="width: 70px;"><?php esc_html_e( 'Status', 'ai-post-scheduler' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Partner Program', 'ai-post-scheduler' ); ?></th>
+						<th scope="col" style="width: 120px;"><?php esc_html_e( 'Network', 'ai-post-scheduler' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Promo Code & Discount', 'ai-post-scheduler' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Cloaked Link / Destination', 'ai-post-scheduler' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Keywords / Categories', 'ai-post-scheduler' ); ?></th>
+						<th scope="col" style="width: 140px; text-align: right;"><?php esc_html_e( 'Actions', 'ai-post-scheduler' ); ?></th>
+					</tr>
+				</thead>
+				<tbody id="aips-tbody-referrals">
+					<?php if ( empty( $referrals ) ) : ?>
+						<tr class="no-items">
+							<td class="colspanchange" colspan="7"><?php esc_html_e( 'No partner referral programs created yet.', 'ai-post-scheduler' ); ?></td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $referrals as $ref ) : ?>
+							<tr data-referral-id="<?php echo esc_attr( $ref['id'] ); ?>">
+								<td>
+									<button type="button" class="button button-small aips-referral-toggle <?php echo 'active' === $ref['status'] ? 'button-primary' : ''; ?>" data-id="<?php echo esc_attr( $ref['id'] ); ?>">
+										<?php echo 'active' === $ref['status'] ? esc_html__( 'Active', 'ai-post-scheduler' ) : esc_html__( 'Paused', 'ai-post-scheduler' ); ?>
+									</button>
+								</td>
+								<td>
+									<strong><?php echo esc_html( $ref['partner_name'] ); ?></strong>
+									<?php if ( ! empty( $ref['commission_rate'] ) ) : ?>
+										<div class="description" style="font-size:11px;"><?php echo esc_html( $ref['commission_rate'] ); ?></div>
+									<?php endif; ?>
+								</td>
+								<td>
+									<span class="aips-badge aips-badge-type"><?php echo esc_html( ucfirst( $ref['network'] ) ); ?></span>
+								</td>
+								<td>
+									<?php if ( ! empty( $ref['promo_code'] ) ) : ?>
+										<code><?php echo esc_html( $ref['promo_code'] ); ?></code>
+									<?php endif; ?>
+									<?php if ( ! empty( $ref['discount_description'] ) ) : ?>
+										<div style="font-size:12px; color:#475569;"><?php echo esc_html( $ref['discount_description'] ); ?></div>
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php
+									$cloaking_pfx = AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' );
+									$cloaked_url  = home_url( '/' . $cloaking_pfx . '/' . $ref['slug'] . '/' );
+									?>
+									<a href="<?php echo esc_url( $cloaked_url ); ?>" target="_blank" rel="noopener" style="font-weight:600;">/<?php echo esc_html( $cloaking_pfx . '/' . $ref['slug'] ); ?>/</a>
+									<div class="description" style="font-size:11px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+										&rarr; <?php echo esc_html( $ref['referral_url'] ); ?>
+									</div>
+								</td>
+								<td>
+									<?php if ( ! empty( $ref['keywords'] ) ) : ?>
+										<span class="aips-badge aips-badge-kw"><?php echo esc_html( $ref['keywords'] ); ?></span>
+									<?php endif; ?>
+									<?php if ( ! empty( $ref['categories'] ) ) : ?>
+										<div style="font-size:11px; color:#64748b; margin-top:2px;"><?php echo esc_html( $ref['categories'] ); ?></div>
+									<?php endif; ?>
+								</td>
+								<td style="text-align: right;">
+									<button type="button" class="button button-small aips-btn-edit-referral" data-id="<?php echo esc_attr( $ref['id'] ); ?>">
+										<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
+									</button>
+									<button type="button" class="button button-small button-link-delete aips-btn-delete-referral" data-id="<?php echo esc_attr( $ref['id'] ); ?>">
+										<?php esc_html_e( 'Delete', 'ai-post-scheduler' ); ?>
+									</button>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+		</div>
+
+		<!-- TAB 5: Analytics -->
 		<div id="tab-analytics" class="aips-tab-panel">
 			<div class="aips-tab-header">
 				<div class="aips-tab-header-text">
@@ -571,6 +751,80 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	</div>
 
+	<!-- Modal: Add/Edit Referral Program -->
+	<div id="aips-modal-referral" class="aips-modal" style="display: none;">
+		<div class="aips-modal-backdrop"></div>
+		<div class="aips-modal-content" style="max-width: 600px;">
+			<div class="aips-modal-header">
+				<h3 id="aips-modal-referral-title"><?php esc_html_e( 'Partner Referral Program Configuration', 'ai-post-scheduler' ); ?></h3>
+				<button type="button" class="aips-modal-close">&times;</button>
+			</div>
+			<form id="aips-form-referral">
+				<input type="hidden" name="id" id="aips-referral-id" value="0" />
+				<div class="aips-modal-body">
+					<div class="aips-form-row">
+						<label for="aips-referral-name"><?php esc_html_e( 'Partner / Program Name', 'ai-post-scheduler' ); ?> <span class="required">*</span></label>
+						<input type="text" name="partner_name" id="aips-referral-name" class="regular-text" required placeholder="NordVPN, Canva, Bluehost, etc." />
+					</div>
+					<div class="aips-form-row aips-row-flex">
+						<div>
+							<label for="aips-referral-network"><?php esc_html_e( 'Affiliate Network Provider', 'ai-post-scheduler' ); ?></label>
+							<select name="network" id="aips-referral-network">
+								<option value="direct"><?php esc_html_e( 'Direct / In-House Partner', 'ai-post-scheduler' ); ?></option>
+								<option value="amazon"><?php esc_html_e( 'Amazon Associates', 'ai-post-scheduler' ); ?></option>
+								<option value="shareasale"><?php esc_html_e( 'ShareASale', 'ai-post-scheduler' ); ?></option>
+								<option value="cj"><?php esc_html_e( 'CJ Affiliate', 'ai-post-scheduler' ); ?></option>
+								<option value="impact"><?php esc_html_e( 'Impact', 'ai-post-scheduler' ); ?></option>
+								<option value="awin"><?php esc_html_e( 'Awin', 'ai-post-scheduler' ); ?></option>
+								<option value="rakuten"><?php esc_html_e( 'Rakuten Advertising', 'ai-post-scheduler' ); ?></option>
+							</select>
+						</div>
+						<div>
+							<label for="aips-referral-slug"><?php esc_html_e( 'Cloaked URL Slug', 'ai-post-scheduler' ); ?></label>
+							<input type="text" name="slug" id="aips-referral-slug" class="regular-text" placeholder="<?php esc_attr_e( 'auto-generated if empty', 'ai-post-scheduler' ); ?>" />
+						</div>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-referral-url"><?php esc_html_e( 'Destination Referral / Affiliate URL', 'ai-post-scheduler' ); ?> <span class="required">*</span></label>
+						<input type="url" name="referral_url" id="aips-referral-url" class="large-text" required placeholder="https://nordvpn.com/?coupon=SAVE70" />
+					</div>
+					<div class="aips-form-row aips-row-flex">
+						<div>
+							<label for="aips-referral-code"><?php esc_html_e( 'Coupon / Promo Code', 'ai-post-scheduler' ); ?></label>
+							<input type="text" name="promo_code" id="aips-referral-code" class="regular-text" placeholder="SAVE70" />
+						</div>
+						<div>
+							<label for="aips-referral-commission"><?php esc_html_e( 'Commission Rate / Note', 'ai-post-scheduler' ); ?></label>
+							<input type="text" name="commission_rate" id="aips-referral-commission" class="regular-text" placeholder="40% recurring or $60 CPA" />
+						</div>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-referral-discount"><?php esc_html_e( 'Discount / Offer Headline', 'ai-post-scheduler' ); ?></label>
+						<input type="text" name="discount_description" id="aips-referral-discount" class="large-text" placeholder="<?php esc_attr_e( 'Get 70% off 2-year plans plus 3 months free', 'ai-post-scheduler' ); ?>" />
+					</div>
+					<div class="aips-form-row aips-row-flex">
+						<div>
+							<label for="aips-referral-keywords"><?php esc_html_e( 'Matching Keywords (comma-separated)', 'ai-post-scheduler' ); ?></label>
+							<input type="text" name="keywords" id="aips-referral-keywords" class="regular-text" placeholder="vpn, security, privacy" />
+						</div>
+						<div>
+							<label for="aips-referral-categories"><?php esc_html_e( 'Matching Categories (comma-separated)', 'ai-post-scheduler' ); ?></label>
+							<input type="text" name="categories" id="aips-referral-categories" class="regular-text" placeholder="Tech, Security, Hosting" />
+						</div>
+					</div>
+					<div class="aips-form-row">
+						<label for="aips-referral-expires"><?php esc_html_e( 'Expiry Date (Optional)', 'ai-post-scheduler' ); ?></label>
+						<input type="date" name="expires_at" id="aips-referral-expires" />
+					</div>
+				</div>
+				<div class="aips-modal-footer">
+					<button type="button" class="button aips-modal-cancel"><?php esc_html_e( 'Cancel', 'ai-post-scheduler' ); ?></button>
+					<button type="submit" class="button button-primary" id="aips-btn-save-referral"><?php esc_html_e( 'Save Referral Program', 'ai-post-scheduler' ); ?></button>
+				</div>
+			</form>
+		</div>
+	</div>
+
 </div>
 
 <!-- Client-side HTML Templates via AIPS.Templates -->
@@ -621,6 +875,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
 			</button>
 			<button type="button" class="button button-small button-link-delete aips-btn-delete-campaign" data-id="{{id}}">
+				<?php esc_html_e( 'Delete', 'ai-post-scheduler' ); ?>
+			</button>
+		</td>
+	</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-referral-row">
+	<tr data-referral-id="{{id}}">
+		<td>
+			<button type="button" class="button button-small aips-referral-toggle {{activeClass}}" data-id="{{id}}">
+				{{statusLabel}}
+			</button>
+		</td>
+		<td>
+			<strong>{{partner_name}}</strong>
+			<div class="description {{commissionHidden}}" style="font-size:11px;">{{commission_rate}}</div>
+		</td>
+		<td>
+			<span class="aips-badge aips-badge-type">{{networkLabel}}</span>
+		</td>
+		<td>
+			<code class="{{promoHidden}}">{{promo_code}}</code>
+			<div class="{{discountHidden}}" style="font-size:12px; color:#475569;">{{discount_description}}</div>
+		</td>
+		<td>
+			<a href="{{cloaked_url}}" target="_blank" rel="noopener" style="font-weight:600;">/{{cloaking_prefix}}/{{slug}}/</a>
+			<div class="description" style="font-size:11px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+				&rarr; {{referral_url}}
+			</div>
+		</td>
+		<td>
+			<span class="aips-badge aips-badge-kw {{kwHidden}}">{{keywords}}</span>
+			<div class="{{catHidden}}" style="font-size:11px; color:#64748b; margin-top:2px;">{{categories}}</div>
+		</td>
+		<td style="text-align: right;">
+			<button type="button" class="button button-small aips-btn-edit-referral" data-id="{{id}}">
+				<?php esc_html_e( 'Edit', 'ai-post-scheduler' ); ?>
+			</button>
+			<button type="button" class="button button-small button-link-delete aips-btn-delete-referral" data-id="{{id}}">
 				<?php esc_html_e( 'Delete', 'ai-post-scheduler' ); ?>
 			</button>
 		</td>

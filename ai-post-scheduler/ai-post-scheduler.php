@@ -529,6 +529,14 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Ad_Slots_Repository::class),
                 $container->make(AIPS_Sponsor_Campaigns_Repository::class),
                 $container->make(AIPS_Monetization_Telemetry_Repository::class),
+                $container->make(AIPS_Referral_Programs_Repository::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_Referral_Delivery_Service::class, function( $container ) {
+            return new AIPS_Referral_Delivery_Service(
+                $container->make(AIPS_Referral_Programs_Repository::class),
                 $container->make(AIPS_Config::class)
             );
         });
@@ -680,6 +688,9 @@ final class AI_Post_Scheduler {
 
         // Monetization & Ad Frontend integration (the_content filter, shortcode, viewability)
         new AIPS_Ad_Frontend();
+
+        // Referral & Partner Programs Delivery (in-content ribbon, shortcode [aips_referral], block)
+        AIPS_Container::get_instance()->make(AIPS_Referral_Delivery_Service::class);
 
         // Link Cloaking Service (rewrite rules, query vars, 307 redirects)
         AIPS_Container::get_instance()->make(AIPS_Link_Cloaking_Service::class);
