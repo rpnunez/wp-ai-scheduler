@@ -416,14 +416,6 @@
 #aips-history-logs-modal .aips-history-drawer-panel { width:max(70vw,480px) !important; max-width:none !important; height:100vh; margin:0 0 0 auto !important; border-radius:0 !important; display:flex; flex-direction:column; animation:aips-drawer-in .18s ease-out; }
 .aips-history-drawer-panel .aips-modal-body { overflow:auto; flex:1; }
 @keyframes aips-drawer-in { from { transform:translateX(30px); opacity:.7; } to { transform:translateX(0); opacity:1; } }
-/* Processing row group */
-.aips-history-group-header-row { background:var(--aips-gray-50); cursor:pointer; user-select:none; }
-.aips-history-group-header-row:hover { background:var(--aips-gray-100); }
-.aips-history-group-header-cell { padding:8px 12px !important; }
-.aips-history-group-header-inner { display:flex; align-items:center; gap:8px; }
-.aips-history-group-toggle-icon { display:inline-block; transition:transform .2s ease; font-size:10px; color:var(--aips-gray-500); }
-.aips-history-group-header-row.is-expanded .aips-history-group-toggle-icon { transform:rotate(90deg); }
-.aips-history-group-member-row td { border-left:3px solid rgba(34,113,177,0.4) !important; padding-left:14px !important; }
 .aips-history-detail-tabs { display:flex; gap:4px; border-bottom:1px solid var(--aips-gray-200); margin:0 0 18px; overflow-x:auto; }
 .aips-history-detail-tab { border:0; border-bottom:2px solid transparent; background:transparent; cursor:pointer; padding:10px 12px; color:var(--aips-gray-600); font-weight:600; white-space:nowrap; }
 .aips-history-detail-tab.is-active { border-bottom-color:var(--aips-primary); color:var(--aips-primary); }
@@ -441,6 +433,90 @@
 .aips-history-ai-call-card details { padding:10px 12px; border-top:1px solid var(--aips-gray-200); }
 .aips-history-ai-call-card pre { max-height:320px; overflow:auto; white-space:pre-wrap; }
 @media (max-width: 782px) { .aips-history-overview { grid-template-columns:repeat(2,1fr); } .aips-history-table .column-type { display:none; } .aips-history-advanced-filters { align-items:stretch; flex-direction:column; } }
+
+/* History Table Contiguous Grouping */
+.aips-history-group-header {
+    background: var(--aips-gray-100, #f0f0f1);
+    border-top: 1px solid var(--aips-gray-300, #dcdcde);
+    border-bottom: 1px solid var(--aips-gray-300, #dcdcde);
+    border-left: 4px solid var(--aips-primary, #2271b1);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.aips-history-group-header:hover {
+    background: var(--aips-gray-200, #e0e0e0);
+}
+.aips-history-group-header .column-title {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+.aips-group-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.aips-history-group-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    margin: 0;
+    color: var(--aips-gray-600);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+.aips-history-group-toggle:hover {
+    background: var(--aips-gray-200);
+    color: var(--aips-primary);
+}
+.aips-group-chevron {
+    transition: transform 0.15s ease;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+.aips-group-count-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+}
+.aips-group-subtitle {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--aips-gray-500);
+    margin-left: 26px;
+}
+.aips-group-status-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+.aips-history-group-child {
+    background: #fbfbfc;
+    border-left: 4px solid rgba(34, 113, 177, 0.25);
+    transition: background 0.15s ease;
+}
+.aips-history-group-child:hover {
+    background: var(--aips-gray-100, #f0f0f1);
+}
+.aips-history-group-child .column-title {
+    padding-left: 32px !important;
+}
+.aips-group-child-indent {
+    display: inline-block;
+    color: var(--aips-primary, #2271b1);
+    opacity: 0.65;
+    margin-right: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: middle;
+}
 
 .aips-date-range-group {
     display: flex;

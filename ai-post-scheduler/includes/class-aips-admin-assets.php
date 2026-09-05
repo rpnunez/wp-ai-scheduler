@@ -183,7 +183,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_cache_monitor_assets();
 		}
 
-		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test') || $this->is_diagnostics_tab($page, 'stress-test-history')) {
+		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
 			$this->enqueue_stress_test_assets();
 		}
 
@@ -1388,6 +1388,8 @@ class AIPS_Admin_Assets {
                 'summaryChangedError'  => __('Run ended with an error', 'ai-post-scheduler'),
                 'summaryChangedNone'   => __('No major content changes detected', 'ai-post-scheduler'),
                 'editPostLabel'        => __('Edit', 'ai-post-scheduler'),
+                'clickToExpand'        => __('Click to expand %d items', 'ai-post-scheduler'),
+                'clickToCollapse'      => __('Click to collapse', 'ai-post-scheduler'),
                 'filterAll'            => __('All', 'ai-post-scheduler'),
                 'filterByType'         => __('Filter:', 'ai-post-scheduler'),
                 'typeLabels'           => AIPS_History_Type::get_all_types(),
