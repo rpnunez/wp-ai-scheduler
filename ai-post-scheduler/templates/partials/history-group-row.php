@@ -19,7 +19,7 @@ $first_date = isset($group['first_date']) ? (string) $group['first_date'] : '';
 $last_date = isset($group['last_date']) ? (string) $group['last_date'] : '';
 $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $group['post_types'] : array();
 ?>
-<tr class="aips-history-group-header" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="false">
+<tr class="aips-history-group-header" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="true">
     <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-group-<?php echo esc_attr($group_id); ?>">
             <?php echo esc_html(sprintf(_n('Select %1$d item in %2$s group', 'Select all %1$d items in %2$s group', $count, 'ai-post-scheduler'), $count, $label)); ?>
@@ -28,13 +28,13 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
     </th>
     <td class="column-title">
         <div class="aips-group-title-row">
-            <button type="button" class="aips-history-group-toggle" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf(_n('Expand %1$d %2$s run', 'Expand %1$d %2$s runs', $count, 'ai-post-scheduler'), $count, $label)); ?>">
-                <span class="dashicons dashicons-arrow-right-alt2 aips-group-chevron" aria-hidden="true"></span>
+            <button type="button" class="aips-history-group-toggle" data-group-id="<?php echo esc_attr($group_id); ?>" aria-expanded="true" aria-label="<?php echo esc_attr(sprintf(_n('Collapse %1$d %2$s run', 'Collapse %1$d %2$s runs', $count, 'ai-post-scheduler'), $count, $label)); ?>">
+                <span class="dashicons dashicons-arrow-down-alt2 aips-group-chevron" aria-hidden="true"></span>
             </button>
             <strong class="aips-history-title aips-group-title-text"><?php echo esc_html($label); ?></strong>
             <span class="aips-badge aips-badge-neutral aips-group-count-badge"><?php echo esc_html(sprintf(_n('%d run', '%d runs', $count, 'ai-post-scheduler'), $count)); ?></span>
         </div>
-        <span class="aips-history-subtitle aips-group-subtitle"><?php echo esc_html(sprintf(_n('Click to expand %d item', 'Click to expand %d items', $count, 'ai-post-scheduler'), $count)); ?></span>
+        <span class="aips-history-subtitle aips-group-subtitle"><?php esc_html_e('Click to collapse', 'ai-post-scheduler'); ?></span>
     </td>
     <td class="column-post-type">
         <?php if (!empty($post_types)): ?>
