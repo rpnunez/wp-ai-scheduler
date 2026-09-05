@@ -1,0 +1,162 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/telemetry.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Loading…": [
+        "Cargando…"
+      ],
+      "Refreshing…": [
+        "Actualizando…"
+      ],
+      "Refresh": [
+        "Actualizar"
+      ],
+      "Request failed. Please try again.": [
+        "La solicitud falló. Por favor, inténtelo de nuevo."
+      ],
+      "No telemetry records found for the selected range.": [
+        "No se encontraron registros de telemetría para el rango seleccionado."
+      ],
+      "View Details": [
+        "Ver Detalles"
+      ],
+      "Telemetry Details #%s": [
+        "Detalles de Telemetría #%s"
+      ],
+      "Loading telemetry details…": [
+        "Cargando detalles de telemetría…"
+      ],
+      "ID": [
+        "ID"
+      ],
+      "Type": [
+        "Tipo"
+      ],
+      "Page": [
+        "Página"
+      ],
+      "Categories": [
+        "Categorías"
+      ],
+      "Method": [
+        "Método"
+      ],
+      "User ID": [
+        "ID de Usuario"
+      ],
+      "Events": [
+        "Eventos"
+      ],
+      "Cache Calls": [
+        "Llamadas de Caché"
+      ],
+      "Cache Hits": [
+        "Aciertos de Caché"
+      ],
+      "Cache Misses": [
+        "Fallos de Caché"
+      ],
+      "Queries": [
+        "Consultas"
+      ],
+      "Slow Queries": [
+        "Consultas Lentas"
+      ],
+      "Duplicate Queries": [
+        "Consultas Duplicadas"
+      ],
+      "Peak Memory": [
+        "Pico de Memoria"
+      ],
+      "Elapsed": [
+        "Transcurrido"
+      ],
+      "Inserted At": [
+        "Insertado en"
+      ],
+      "No payload was stored for this telemetry row.": [
+        "No se almacenó ninguna carga útil para esta fila de telemetría."
+      ],
+      "Raw Payload JSON": [
+        "JSON de Carga Útil sin Procesar"
+      ],
+      "Review the structured payload summaries above, or expand the raw JSON below for the original object.": [
+        "Revise los resúmenes de carga útil estructurados anteriores, o expanda el JSON sin procesar a continuación para ver el objeto original."
+      ],
+      "Expand": [
+        "Expandir"
+      ],
+      "Collapse": [
+        "Contraer"
+      ],
+      "Cache Summary": [
+        "Resumen de Caché"
+      ],
+      "Cache activity grouped by operation and result.": [
+        "Actividad de caché agrupada por operación y resultado."
+      ],
+      "Query Summary": [
+        "Resumen de Consultas"
+      ],
+      "Query totals, slow queries, and duplicate query counts.": [
+        "Totales de consultas, consultas lentas y recuentos de consultas duplicadas."
+      ],
+      "Event Summary": [
+        "Resumen de Eventos"
+      ],
+      "High-level telemetry counts grouped by bucket and event type.": [
+        "Conteos de telemetría de alto nivel agrupados por categoría y tipo de evento."
+      ],
+      "The full event list can be long. Expand to inspect each nested event object.": [
+        "La lista completa de eventos puede ser larga. Expanda para inspeccionar cada objeto de evento anidado."
+      ],
+      "Event %s": [
+        "Evento %s"
+      ],
+      "Item %s": [
+        "Elemento %s"
+      ],
+      "Failed to load telemetry details. Please try again.": [
+        "Error al cargar los detalles de telemetría. Por favor, inténtelo de nuevo."
+      ],
+      "%s records": [
+        "%s registros"
+      ],
+      "Page %1$s of %2$s": [
+        "Página %1$s de %2$s"
+      ],
+      "Chart library failed to load.": [
+        "Error al cargar la librería de gráficos."
+      ],
+      "Queries Executed per Day": [
+        "Consultas Ejecutadas por Día"
+      ],
+      "Peak Memory per Day": [
+        "Pico de Memoria por Día"
+      ],
+      "Peak Memory (MB)": [
+        "Pico de Memoria (MB)"
+      ],
+      "Average Elapsed Time per Day": [
+        "Tiempo Transcurrido Promedio por Día"
+      ],
+      "Average Elapsed (ms)": [
+        "Tiempo Promedio (ms)"
+      ],
+      "Requests Logged per Day": [
+        "Solicitudes Registradas por Día"
+      ],
+      "Requests": [
+        "Solicitudes"
+      ]
+    }
+  }
+}

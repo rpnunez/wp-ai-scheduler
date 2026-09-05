@@ -10,6 +10,11 @@
 
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	var currentReport = null;
 	var isRunning = false;
@@ -35,7 +40,7 @@
 			});
 
 			if (modules.length === 0) {
-				alert(aipsAuditorL10n.selectAtLeastOneModule || 'Please select at least one audit module.');
+				alert(__("Please select at least one audit module.", 'ai-post-scheduler') || 'Please select at least one audit module.');
 				return;
 			}
 
@@ -109,7 +114,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_save_author_topic',
-					nonce: aipsAuditorL10n.nonce,
+					nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 					author_id: authorId,
 					topic: topic,
 					status: 'approved'
@@ -117,7 +122,7 @@
 				success: function (res) {
 					$btn.prop('disabled', false);
 					if (res && res.success) {
-						alert(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!');
+						alert(__("Topic successfully added to Author Persona!", 'ai-post-scheduler') || 'Topic successfully added to Author Persona!');
 						$('#aips-add-to-author-modal').hide();
 					} else {
 						alert(res && res.data && res.data.message ? res.data.message : 'Error saving topic.');
@@ -136,7 +141,7 @@
 			var topic = $(this).data('topic') || '';
 			if (!topic) return;
 
-			if (confirm(aipsAuditorL10n.confirmGeneratePost || 'Generate post immediately for topic: "' + topic + '"?')) {
+			if (confirm(__("Generate post immediately for this topic?", 'ai-post-scheduler') || 'Generate post immediately for topic: "' + topic + '"?')) {
 				window.location.href = 'admin.php?page=aips-templates&generate_topic=' + encodeURIComponent(topic);
 			}
 		});
@@ -151,7 +156,7 @@
 		$('#aips-auditor-progress-container').slideDown(200);
 		$('#aips-auditor-results-container').hide();
 
-		updateProgress(5, 1, aipsAuditorL10n.step1Text || 'Step 1/4: Ingesting and profiling content library...');
+		updateProgress(5, 1, __("Step 1/4: Ingesting and profiling content library...", 'ai-post-scheduler') || 'Step 1/4: Ingesting and profiling content library...');
 
 		// Step 1: Scan Library
 		$.ajax({
@@ -159,7 +164,7 @@
 			type: 'POST',
 			data: {
 				action: 'aips_auditor_scan_step',
-				nonce: aipsAuditorL10n.nonce,
+				nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 				limit: limit,
 				offset: 0
 			},
@@ -170,7 +175,7 @@
 				}
 
 				var fingerprints = res1.data.fingerprints || [];
-				updateProgress(25, 2, aipsAuditorL10n.step2Text || 'Step 2/4: Constructing link graph & entity clusters...');
+				updateProgress(25, 2, __("Step 2/4: Constructing link graph & entity clusters...", 'ai-post-scheduler') || 'Step 2/4: Constructing link graph & entity clusters...');
 
 				// Step 2: Build Graph & Clusters
 				$.ajax({
@@ -178,7 +183,7 @@
 					type: 'POST',
 					data: {
 						action: 'aips_auditor_graph_step',
-						nonce: aipsAuditorL10n.nonce,
+						nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 						fingerprints: fingerprints
 					},
 					success: function (res2) {
@@ -189,11 +194,11 @@
 
 						var linkGraph = res2.data.link_graph || {};
 						var entityClusters = res2.data.entity_clusters || {};
-						updateProgress(50, 3, aipsAuditorL10n.step3Text || 'Step 3/4: Running AI intelligence modules...');
+						updateProgress(50, 3, __("Step 3/4: Running AI intelligence modules...", 'ai-post-scheduler') || 'Step 3/4: Running AI intelligence modules...');
 
 						// Step 3: Execute Modules in Sequence
 						runModulesSequence(niche, fingerprints, linkGraph, entityClusters, modules, function (executedModules) {
-							updateProgress(85, 4, aipsAuditorL10n.step4Text || 'Step 4/4: Synthesizing health scorecard & saving...');
+							updateProgress(85, 4, __("Step 4/4: Synthesizing health scorecard & saving...", 'ai-post-scheduler') || 'Step 4/4: Synthesizing health scorecard & saving...');
 
 							// Step 4: Synthesize & Save
 							$.ajax({
@@ -201,7 +206,7 @@
 								type: 'POST',
 								data: {
 									action: 'aips_auditor_synthesize_step',
-									nonce: aipsAuditorL10n.nonce,
+									nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 									niche: niche,
 									fingerprints: fingerprints,
 									link_graph: linkGraph,
@@ -214,7 +219,7 @@
 										return;
 									}
 
-									updateProgress(100, 4, aipsAuditorL10n.completeText || 'Audit complete!');
+									updateProgress(100, 4, __("Audit complete!", 'ai-post-scheduler') || 'Audit complete!');
 									currentReport = res4.data.report;
 
 									setTimeout(function () {
@@ -250,14 +255,14 @@
 
 			var mod = modules[index];
 			var progressPct = 50 + Math.round(((index + 1) / modules.length) * 30);
-			updateProgress(progressPct, 3, (aipsAuditorL10n.runningModule || 'Analyzing') + ': ' + formatModuleName(mod) + '...');
+			updateProgress(progressPct, 3, (__("Analyzing", 'ai-post-scheduler') || 'Analyzing') + ': ' + formatModuleName(mod) + '...');
 
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
 					action: 'aips_auditor_analyze_step',
-					nonce: aipsAuditorL10n.nonce,
+					nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 					niche: niche,
 					module: mod,
 					fingerprints: fingerprints,
@@ -303,7 +308,7 @@
 		isRunning = false;
 		$('#aips-run-audit-btn').prop('disabled', false);
 		$('#aips-auditor-progress-container').slideUp(200);
-		var msg = (res && res.data && res.data.message) ? res.data.message : (aipsAuditorL10n.auditError || 'An error occurred during the audit.');
+		var msg = (res && res.data && res.data.message) ? res.data.message : (__("An error occurred during the audit.", 'ai-post-scheduler') || 'An error occurred during the audit.');
 		alert(msg);
 	}
 
@@ -324,13 +329,13 @@
 		$badge.removeClass('aips-badge-good aips-badge-warning aips-badge-danger');
 
 		if (overall >= 80) {
-			$badge.addClass('aips-badge-good').text(aipsAuditorL10n.badgeGood || 'Strong Standing');
+			$badge.addClass('aips-badge-good').text(__("Strong Standing", 'ai-post-scheduler') || 'Strong Standing');
 		} else if (overall >= 60) {
 			$circle.addClass('tier-warning');
-			$badge.addClass('aips-badge-warning').text(aipsAuditorL10n.badgeWarning || 'Moderate Gaps');
+			$badge.addClass('aips-badge-warning').text(__("Moderate Gaps", 'ai-post-scheduler') || 'Moderate Gaps');
 		} else {
 			$circle.addClass('tier-danger');
-			$badge.addClass('aips-badge-danger').text(aipsAuditorL10n.badgeDanger || 'Action Required');
+			$badge.addClass('aips-badge-danger').text(__("Action Required", 'ai-post-scheduler') || 'Action Required');
 		}
 
 		// Sub-scores
@@ -339,7 +344,7 @@
 		$('#aips-score-cannibalization').text((scorecard.cannibalization_score || 0) + '/100');
 		$('#aips-score-gaps').text((scorecard.gap_score || 0) + '/100');
 
-		$('#aips-audit-timestamp').text((aipsAuditorL10n.auditedAt || 'Audited:') + ' ' + (report.audited_at || 'Just now'));
+		$('#aips-audit-timestamp').text((__("Audited:", 'ai-post-scheduler') || 'Audited:') + ' ' + (report.audited_at || 'Just now'));
 
 		// Takeaways
 		var takeaways = scorecard.key_takeaways || [];
@@ -364,18 +369,18 @@
 		$('#aips-count-badge-gaps').text(gaps.length);
 
 		if (gaps.length === 0) {
-			$('#aips-gaps-table-container').html('<p class="description">' + (aipsAuditorL10n.noGapsFound || 'No major content gaps identified.') + '</p>');
+			$('#aips-gaps-table-container').html('<p class="description">' + (__("No major content gaps identified.", 'ai-post-scheduler') || 'No major content gaps identified.') + '</p>');
 			return;
 		}
 
 		var html = '<table class="aips-findings-table">';
 		html += '<thead><tr>';
-		html += '<th>' + (aipsAuditorL10n.thTopic || 'Missing Topic') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thPriority || 'Priority') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thType || 'Type') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thIntent || 'Intent') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thReason || 'Strategic Reason & Angle') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thActions || 'Actions') + '</th>';
+		html += '<th>' + (__("Missing Topic", 'ai-post-scheduler') || 'Missing Topic') + '</th>';
+		html += '<th>' + (__("Priority", 'ai-post-scheduler') || 'Priority') + '</th>';
+		html += '<th>' + (__("Type", 'ai-post-scheduler') || 'Type') + '</th>';
+		html += '<th>' + (__("Intent", 'ai-post-scheduler') || 'Intent') + '</th>';
+		html += '<th>' + (__("Strategic Reason & Angle", 'ai-post-scheduler') || 'Strategic Reason & Angle') + '</th>';
+		html += '<th>' + (__("Actions", 'ai-post-scheduler') || 'Actions') + '</th>';
 		html += '</tr></thead><tbody>';
 
 		gaps.forEach(function (g) {
@@ -404,7 +409,7 @@
 		$('#aips-count-badge-cannibalization').text(conflicts.length);
 
 		if (conflicts.length === 0) {
-			$('#aips-cannibalization-container').html('<p class="description">' + (aipsAuditorL10n.noConflictsFound || 'No keyword cannibalization conflicts detected across your published articles.') + '</p>');
+			$('#aips-cannibalization-container').html('<p class="description">' + (__("No keyword cannibalization conflicts detected across your published articles.", 'ai-post-scheduler') || 'No keyword cannibalization conflicts detected across your published articles.') + '</p>');
 			return;
 		}
 
@@ -429,16 +434,16 @@
 		$('#aips-count-badge-decay').text(recs.length);
 
 		if (recs.length === 0) {
-			$('#aips-decay-container').html('<p class="description">' + (aipsAuditorL10n.noDecayFound || 'All evaluated content is fresh and within healthy word count thresholds.') + '</p>');
+			$('#aips-decay-container').html('<p class="description">' + (__("All evaluated content is fresh and within healthy word count thresholds.", 'ai-post-scheduler') || 'All evaluated content is fresh and within healthy word count thresholds.') + '</p>');
 			return;
 		}
 
 		var html = '<table class="aips-findings-table">';
 		html += '<thead><tr>';
-		html += '<th>' + (aipsAuditorL10n.thPost || 'Post Title') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thUrgency || 'Urgency') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thRefreshPlan || 'Refresh Checklist & Actions') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thActions || 'Actions') + '</th>';
+		html += '<th>' + (__("Post Title", 'ai-post-scheduler') || 'Post Title') + '</th>';
+		html += '<th>' + (__("Urgency", 'ai-post-scheduler') || 'Urgency') + '</th>';
+		html += '<th>' + (__("Refresh Checklist & Actions", 'ai-post-scheduler') || 'Refresh Checklist & Actions') + '</th>';
+		html += '<th>' + (__("Actions", 'ai-post-scheduler') || 'Actions') + '</th>';
 		html += '</tr></thead><tbody>';
 
 		recs.forEach(function (r) {
@@ -463,16 +468,16 @@
 		$('#aips-count-badge-links').text(suggestions.length || orphans.length);
 
 		if (suggestions.length === 0 && orphans.length === 0) {
-			$('#aips-links-container').html('<p class="description">' + (aipsAuditorL10n.noLinkGapsFound || 'Internal link connectivity is strong with no orphan articles.') + '</p>');
+			$('#aips-links-container').html('<p class="description">' + (__("Internal link connectivity is strong with no orphan articles.", 'ai-post-scheduler') || 'Internal link connectivity is strong with no orphan articles.') + '</p>');
 			return;
 		}
 
 		var html = '<table class="aips-findings-table">';
 		html += '<thead><tr>';
-		html += '<th>' + (aipsAuditorL10n.thOrphan || 'Orphan Article') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thTargetSource || 'Suggested Source Article') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thAnchorRationale || 'Anchor & Silo Rationale') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thActions || 'Actions') + '</th>';
+		html += '<th>' + (__("Orphan Article", 'ai-post-scheduler') || 'Orphan Article') + '</th>';
+		html += '<th>' + (__("Suggested Source Article", 'ai-post-scheduler') || 'Suggested Source Article') + '</th>';
+		html += '<th>' + (__("Anchor & Silo Rationale", 'ai-post-scheduler') || 'Anchor & Silo Rationale') + '</th>';
+		html += '<th>' + (__("Actions", 'ai-post-scheduler') || 'Actions') + '</th>';
 		html += '</tr></thead><tbody>';
 
 		suggestions.forEach(function (s) {
@@ -493,16 +498,16 @@
 		$('#aips-count-badge-trends').text(trends.length);
 
 		if (trends.length === 0) {
-			$('#aips-trends-container').html('<p class="description">' + (aipsAuditorL10n.noTrendsFound || 'No new external industry trends uncovered from active sources.') + '</p>');
+			$('#aips-trends-container').html('<p class="description">' + (__("No new external industry trends uncovered from active sources.", 'ai-post-scheduler') || 'No new external industry trends uncovered from active sources.') + '</p>');
 			return;
 		}
 
 		var html = '<table class="aips-findings-table">';
 		html += '<thead><tr>';
-		html += '<th>' + (aipsAuditorL10n.thTrend || 'Industry Trend') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thSourceSnippet || 'Source Evidence') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thAngle || 'Recommended Angle') + '</th>';
-		html += '<th>' + (aipsAuditorL10n.thActions || 'Actions') + '</th>';
+		html += '<th>' + (__("Industry Trend", 'ai-post-scheduler') || 'Industry Trend') + '</th>';
+		html += '<th>' + (__("Source Evidence", 'ai-post-scheduler') || 'Source Evidence') + '</th>';
+		html += '<th>' + (__("Recommended Angle", 'ai-post-scheduler') || 'Recommended Angle') + '</th>';
+		html += '<th>' + (__("Actions", 'ai-post-scheduler') || 'Actions') + '</th>';
 		html += '</tr></thead><tbody>';
 
 		trends.forEach(function (t) {
@@ -524,7 +529,7 @@
 			type: 'POST',
 			data: {
 				action: 'aips_auditor_get_latest',
-				nonce: aipsAuditorL10n.nonce
+				nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce))
 			},
 			success: function (res) {
 				if (res && res.success && res.data && res.data.audit && res.data.audit.report) {
@@ -545,7 +550,7 @@
 			type: 'POST',
 			data: {
 				action: 'aips_auditor_get_history',
-				nonce: aipsAuditorL10n.nonce,
+				nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 				limit: 20
 			},
 			success: function (res) {
@@ -577,7 +582,7 @@
 							type: 'POST',
 							data: {
 								action: 'aips_auditor_get_audit',
-								nonce: aipsAuditorL10n.nonce,
+								nonce: ((window.aipsAuditorConfig && aipsAuditorConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAuditorL10n && aipsAuditorL10n.nonce)),
 								id: histId
 							},
 							success: function (histRes) {

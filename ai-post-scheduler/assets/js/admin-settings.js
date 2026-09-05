@@ -8,6 +8,11 @@
  */
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -71,12 +76,12 @@
 			}
 			$submit = $submit.first();
 			var defaultLabel = $submit.is('input') ? $submit.val() : $submit.text();
-			var savingLabel = (window.aipsSettingsL10n && aipsSettingsL10n.saving) ? aipsSettingsL10n.saving : 'Saving...';
+			var savingLabel = (window.aipsSettingsL10n && __("Saving…", 'ai-post-scheduler')) ? __("Saving…", 'ai-post-scheduler') : 'Saving...';
 			var settings = AIPS.collectSettingsPayload($activeTab);
 
 			if ($.isEmptyObject(settings)) {
 				AIPS.Utilities.showToast(
-					(window.aipsSettingsL10n && aipsSettingsL10n.payloadError) ? aipsSettingsL10n.payloadError : 'No settings were found to save.',
+					(window.aipsSettingsL10n && __("No settings were found to save.", 'ai-post-scheduler')) ? __("No settings were found to save.", 'ai-post-scheduler') : 'No settings were found to save.',
 					'warning'
 				);
 				return;
@@ -101,18 +106,18 @@
 			}).done(function(response) {
 				if (response && response.success) {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveSuccess) ? aipsSettingsL10n.saveSuccess : 'Settings saved successfully.'),
+						(response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && __("Settings saved successfully.", 'ai-post-scheduler')) ? __("Settings saved successfully.", 'ai-post-scheduler') : 'Settings saved successfully.'),
 						'success'
 					);
 					return;
 				}
 
 				AIPS.Utilities.showToast(
-					(response && response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.'),
+					(response && response.data && response.data.message) ? response.data.message : ((window.aipsSettingsL10n && __("Failed to save settings.", 'ai-post-scheduler')) ? __("Failed to save settings.", 'ai-post-scheduler') : 'Failed to save settings.'),
 					'error'
 				);
 			}).fail(function(xhr) {
-				var message = (window.aipsSettingsL10n && aipsSettingsL10n.saveError) ? aipsSettingsL10n.saveError : 'Failed to save settings.';
+				var message = (window.aipsSettingsL10n && __("Failed to save settings.", 'ai-post-scheduler')) ? __("Failed to save settings.", 'ai-post-scheduler') : 'Failed to save settings.';
 				if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
 					message = xhr.responseJSON.data.message;
 				}

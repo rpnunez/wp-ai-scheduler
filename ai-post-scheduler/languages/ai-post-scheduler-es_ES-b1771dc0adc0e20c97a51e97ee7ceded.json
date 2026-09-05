@@ -1,0 +1,33 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/ai-assistance.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Suggesting...": [
+        "Sugiriendo..."
+      ],
+      "AI suggestion applied.": [
+        "Sugerencia de IA aplicada."
+      ],
+      "Could not get AI suggestion. Please try again.": [
+        "No se pudo obtener la sugerencia de IA. Por favor, inténtelo de nuevo."
+      ],
+      "Loading...": [
+        "Cargando..."
+      ],
+      "No AI suggestions found for this field yet.": [
+        "Aún no se encontraron sugerencias de IA para este campo."
+      ],
+      "Value applied from history.": [
+        "Valor aplicado desde el historial."
+      ]
+    }
+  }
+}

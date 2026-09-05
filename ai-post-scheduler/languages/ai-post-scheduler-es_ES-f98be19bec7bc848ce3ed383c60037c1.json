@@ -1,0 +1,258 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Unable to load schedule status.": [
+        "No se puede cargar el estado de las programaciones."
+      ],
+      "Post Generation": [
+        "Generación de Entradas"
+      ],
+      "Author Topics": [
+        "Temas de Autor"
+      ],
+      "Author Posts": [
+        "Entradas de Autor"
+      ],
+      "Active schedules": [
+        "Programaciones activas"
+      ],
+      "Upcoming in next 24h": [
+        "Próximas en las siguientes 24h"
+      ],
+      "Queue depth:": [
+        "Profundidad de la cola:"
+      ],
+      "Bulk failed:": [
+        "Fallidos por lote:"
+      ],
+      "No schedule runs in next 24h.": [
+        "No schedule runs in next 24h."
+      ],
+      "No queue events in next 24h.": [
+        "No queue events in next 24h."
+      ],
+      "Last error detected in bulk jobs.": [
+        "Último error detectado en tareas por lotes."
+      ],
+      "View history": [
+        "Ver historial"
+      ],
+      "System status": [
+        "Estado del sistema"
+      ],
+      "Retry jobs are pending.": [
+        "Hay tareas de reintento pendientes."
+      ],
+      "Notifications": [
+        "Notificaciones"
+      ],
+      "Telemetry": [
+        "Telemetría"
+      ],
+      "%d schedule(s) are overdue.": [
+        "%d programación(es) están vencidas."
+      ],
+      "An error occurred. Please try again.": [
+        "Se ha producido un error. Por favor, inténtelo de nuevo."
+      ],
+      "No, cancel": [
+        "No, cancelar"
+      ],
+      "Yes, delete": [
+        "Sí, eliminar"
+      ],
+      "Saving...": [
+        "Guardando..."
+      ],
+      "Template Name is required.": [
+        "El nombre de la plantilla es obligatorio."
+      ],
+      "Draft saved successfully.": [
+        "Borrador guardado correctamente."
+      ],
+      "Content Prompt is required.": [
+        "La instrucción de contenido es obligatoria."
+      ],
+      "Generating...": [
+        "Generando..."
+      ],
+      "Generation failed.": [
+        "La generación falló."
+      ],
+      "No Voice (Use Default)": [
+        "Sin Voz (Usar Predeterminada)"
+      ],
+      "Add New Voice": [
+        "Añadir Nueva Voz"
+      ],
+      "Edit Voice": [
+        "Editar Voz"
+      ],
+      "Are you sure you want to delete this voice?": [
+        "¿Está seguro de que desea eliminar esta voz?"
+      ],
+      "Add New Schedule": [
+        "Añadir Nueva Programación"
+      ],
+      "Edit Schedule": [
+        "Editar Programación"
+      ],
+      "Clone Schedule": [
+        "Clonar Programación"
+      ],
+      "Schedule saved successfully.": [
+        "Programación guardada correctamente."
+      ],
+      "Are you sure you want to delete this schedule?": [
+        "¿Está seguro de que desea eliminar esta programación?"
+      ],
+      "Failed to load history.": [
+        "Error al cargar el historial."
+      ],
+      "Please select at least one schedule.": [
+        "Por favor, seleccione al menos una programación."
+      ],
+      "Are you sure you want to delete 1 schedule?": [
+        "¿Está seguro de que desea eliminar 1 programación?"
+      ],
+      "Are you sure you want to delete %d schedules?": [
+        "¿Está seguro de que desea eliminar %d programaciones?"
+      ],
+      "This will generate an estimated 1 post. Are you sure?": [
+        "Esto generará un estimado de 1 entrada. ¿Está seguro?"
+      ],
+      "This will generate an estimated %d posts. Are you sure?": [
+        "Esto generará un estimado de %d entradas. ¿Está seguro?"
+      ],
+      "Run Schedules Now": [
+        "Ejecutar Programaciones Ahora"
+      ],
+      "Cancel": [
+        "Cancelar"
+      ],
+      "Yes, run now": [
+        "Sí, ejecutar ahora"
+      ],
+      "This will run 1 schedule. Are you sure?": [
+        "Esto ejecutará 1 programación. ¿Está seguro?"
+      ],
+      "This will run %d schedules. Are you sure?": [
+        "Esto ejecutará %d programaciones. ¿Está seguro?"
+      ],
+      "Failed to delete schedules.": [
+        "Error al eliminar las programaciones."
+      ],
+      "Bulk run failed.": [
+        "La ejecución por lotes falló."
+      ],
+      "Please select a bulk action.": [
+        "Por favor, seleccione una acción por lotes."
+      ],
+      "None of the selected schedules can be deleted.": [
+        "Ninguna de las programaciones seleccionadas se puede eliminar."
+      ],
+      "The following schedules will be deleted:": [
+        "Se eliminarán las siguientes programaciones:"
+      ],
+      "%d selected schedule(s) cannot be deleted and will be skipped.": [
+        "%d programación(es) seleccionada(s) no se pueden eliminar y se omitirán."
+      ],
+      "This action cannot be undone. Continue?": [
+        "Esta acción no se puede deshacer. ¿Continuar?"
+      ],
+      "Delete Schedules": [
+        "Eliminar Programaciones"
+      ],
+      "An error occurred.": [
+        "Se ha producido un error."
+      ],
+      "How should this manual run affect the schedule?": [
+        "¿Cómo debería afectar esta ejecución manual a la programación?"
+      ],
+      "Run Now": [
+        "Ejecutar Ahora"
+      ],
+      "Run now, independently from schedule": [
+        "Ejecutar ahora, independientemente de la programación"
+      ],
+      "Run next scheduled run now and advance": [
+        "Ejecutar la próxima ejecución programada ahora y avanzar"
+      ],
+      "Active": [
+        "Activo"
+      ],
+      "Inactive": [
+        "Inactivo"
+      ],
+      "Failed to save structure.": [
+        "Error al guardar la estructura."
+      ],
+      "Failed to load structure.": [
+        "Error al cargar la estructura."
+      ],
+      "Are you sure you want to delete this structure?": [
+        "¿Está seguro de que desea eliminar esta estructura?"
+      ],
+      "Failed to delete structure.": [
+        "Error al eliminar la estructura."
+      ],
+      "Failed to save prompt section.": [
+        "Error al guardar la sección de instrucción."
+      ],
+      "Failed to load prompt section.": [
+        "Error al cargar la sección de instrucción."
+      ],
+      "Are you sure you want to delete this prompt section?": [
+        "¿Está seguro de que desea eliminar esta sección de instrucción?"
+      ],
+      "Failed to delete prompt section.": [
+        "Error al eliminar la sección de instrucción."
+      ],
+      "Auto-generate from content": [
+        "Generar automáticamente desde el contenido"
+      ],
+      "None": [
+        "Ninguno"
+      ],
+      "Yes (%s)": [
+        "Yes (%s)"
+      ],
+      "No": [
+        "No"
+      ],
+      "No title": [
+        "Sin título"
+      ],
+      "Now": [
+        "Ahora"
+      ],
+      "Use Default": [
+        "Usar Predeterminado"
+      ],
+      "Yes": [
+        "Sí"
+      ],
+      "Click to copy": [
+        "Haga clic para copiar"
+      ],
+      "Example Topic": [
+        "Tema de Ejemplo"
+      ],
+      "Failed to generate preview. Please check that all required fields are filled.": [
+        "Error al generar la vista previa. Compruebe que todos los campos obligatorios estén llenos."
+      ],
+      "An error occurred while generating the preview. Please check your network connection and try again.": [
+        "Se produjo un error al generar la vista previa. Verifique su conexión de red e inténtelo de nuevo."
+      ]
+    }
+  }
+}

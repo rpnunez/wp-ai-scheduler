@@ -1,0 +1,123 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-research.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "An error occurred during research.": [
+        "Se produjo un error durante la investigación."
+      ],
+      "Top 5 Topics:": [
+        "Los 5 Temas Principales:"
+      ],
+      "topics saved for": [
+        "temas guardados para"
+      ],
+      "No topics match your search criteria.": [
+        "Ningún tema coincide con sus criterios de búsqueda."
+      ],
+      "Your research library is empty.": [
+        "Su biblioteca de investigación está vacía."
+      ],
+      "Clear Filters": [
+        "Limpiar Filtros"
+      ],
+      "Clear Search": [
+        "Limpiar Búsqueda"
+      ],
+      "Start Research": [
+        "Iniciar Investigación"
+      ],
+      "New": [
+        "New"
+      ],
+      "Scheduled": [
+        "Programado"
+      ],
+      "Generated": [
+        "Generated"
+      ],
+      "Delete": [
+        "Eliminar"
+      ],
+      "No Topics Found": [
+        "No se Encontraron Temas"
+      ],
+      "Delete this topic?": [
+        "¿Eliminar este tema?"
+      ],
+      "Please select at least one topic to schedule.": [
+        "Por favor, seleccione al menos un tema para programar."
+      ],
+      "An error occurred during scheduling.": [
+        "Se produjo un error durante la programación."
+      ],
+      "Generate Ideas": [
+        "Generar Ideas"
+      ],
+      "Generating...": [
+        "Generando..."
+      ],
+      "Loading posts...": [
+        "Cargando entradas..."
+      ],
+      "Posts Generated from Topic": [
+        "Entradas Generadas a partir del Tema"
+      ],
+      "Error loading posts.": [
+        "Error al cargar entradas."
+      ],
+      "No posts found.": [
+        "No posts found."
+      ],
+      "Edit Post": [
+        "Editar Entrada"
+      ],
+      "View Post": [
+        "Ver Entrada"
+      ],
+      "Not published": [
+        "No publicado"
+      ],
+      "Post ID": [
+        "ID de Entrada"
+      ],
+      "Post Title": [
+        "Título de la Entrada"
+      ],
+      "Date Generated": [
+        "Fecha de Generación"
+      ],
+      "Date Published": [
+        "Fecha de Publicación"
+      ],
+      "Actions": [
+        "Acciones"
+      ],
+      "Generate %d post(s) immediately from selected topics?": [
+        "¿Generar %d entrada(s) inmediatamente a partir de los temas seleccionados?"
+      ],
+      "Please select a template before generating.": [
+        "Por favor, seleccione una plantilla antes de generar."
+      ],
+      "Generate": [
+        "Generar"
+      ],
+      "Generating Posts": [
+        "Generando Entradas"
+      ],
+      "Please wait while your posts are being generated. This may take a few minutes.": [
+        "Por favor, espere mientras se generan sus entradas. Esto puede tomar unos minutos."
+      ],
+      "Error generating selected topics.": [
+        "Error al generar los temas seleccionados."
+      ]
+    }
+  }
+}

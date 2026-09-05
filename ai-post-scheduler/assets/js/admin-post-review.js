@@ -9,6 +9,11 @@
  */
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -200,22 +205,22 @@
 			var postId = $btn.data('post-id');
 			var $row   = $btn.closest('tr');
 
-			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
+			AIPS.Utilities.confirm(__("Are you sure you want to publish this post?", 'ai-post-scheduler'), 'Notice', [
 				{ label: 'No, cancel',   className: 'aips-btn aips-btn-primary' },
 				{ label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.loading || 'Publishing...');
+					AIPS.Utilities.setButtonLoading($btn, __("Loading...", 'ai-post-scheduler') || 'Publishing...');
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 						type: 'POST',
 						data: {
 							action:  'aips_publish_post',
 							post_id: postId,
-							nonce:   aipsPostReviewL10n.nonce,
+							nonce:   ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 						},
 						success: function (response) {
 							if (response.success) {
-								var rawMsg  = response.data.message || aipsPostReviewL10n.publishSuccess;
+								var rawMsg  = response.data.message || __("Post published successfully!", 'ai-post-scheduler');
 								var safeMsg = $('<div>').text(rawMsg).html();
 								if (response.data.post_id) {
 									var editUrl  = 'post.php?post=' + encodeURIComponent(response.data.post_id) + '&action=edit';
@@ -230,12 +235,12 @@
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+								AIPS.Utilities.showToast(response.data.message || __("Failed to publish post.", 'ai-post-scheduler'), 'error');
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
+							AIPS.Utilities.showToast(__("Failed to publish post.", 'ai-post-scheduler'), 'error');
 							AIPS.Utilities.resetButton($btn);
 						},
 					});
@@ -256,35 +261,35 @@
 			var historyId = $btn.data('history-id');
 			var $row      = $btn.closest('tr');
 
-			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
+			AIPS.Utilities.confirm(__("Are you sure you want to delete this post? This action cannot be undone.", 'ai-post-scheduler'), 'Notice', [
 				{ label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
 				{ label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.deleting || 'Deleting...');
+					AIPS.Utilities.setButtonLoading($btn, __("Deleting...", 'ai-post-scheduler') || 'Deleting...');
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 						type: 'POST',
 						data: {
 							action:     'aips_delete_draft_post',
 							post_id:    postId,
 							history_id: historyId,
-							nonce:      aipsPostReviewL10n.nonce,
+							nonce:      ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
+								AIPS.Utilities.showToast(response.data.message || __("Post deleted successfully!", 'ai-post-scheduler'), 'success');
 								$row.fadeOut(400, function () {
 									$(this).remove();
 									AIPS.PostReview.updateDraftCount();
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+								AIPS.Utilities.showToast(response.data.message || __("Failed to delete post.", 'ai-post-scheduler'), 'error');
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
+							AIPS.Utilities.showToast(__("Failed to delete post.", 'ai-post-scheduler'), 'error');
 							AIPS.Utilities.resetButton($btn);
 						},
 					});
@@ -304,22 +309,22 @@
 			var historyId = $btn.data('history-id');
 			var $row      = $btn.closest('tr');
 
-			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
+			AIPS.Utilities.confirm(__("Are you sure you want to regenerate this post? The current post will be deleted.", 'ai-post-scheduler'), 'Notice', [
 				{ label: 'No, cancel',      className: 'aips-btn aips-btn-primary' },
 				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.regenerating || 'Regenerating...');
+					AIPS.Utilities.setButtonLoading($btn, __("Regenerating...", 'ai-post-scheduler') || 'Regenerating...');
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 						type: 'POST',
 						data: {
 							action:     'aips_regenerate_post',
 							history_id: historyId,
-							nonce:      aipsPostReviewL10n.nonce,
+							nonce:      ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg = response.data.message || aipsPostReviewL10n.regenerateSuccess;
+								var msg = response.data.message || __("Post regeneration started!", 'ai-post-scheduler');
 								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
 								$row.fadeOut(400, function () {
 									$(this).remove();
@@ -327,12 +332,12 @@
 									AIPS.PostReview.checkEmptyState();
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+								AIPS.Utilities.showToast(response.data.message || __("Failed to regenerate post.", 'ai-post-scheduler'), 'error');
 								AIPS.Utilities.resetButton($btn);
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
+							AIPS.Utilities.showToast(__("Failed to regenerate post.", 'ai-post-scheduler'), 'error');
 							AIPS.Utilities.resetButton($btn);
 						},
 					});
@@ -360,7 +365,7 @@
 
 			var checkedBoxes = $('.aips-post-checkbox:checked');
 			if (checkedBoxes.length === 0) {
-				AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
+				AIPS.Utilities.showToast(__("Please select at least one post.", 'ai-post-scheduler'), 'warning');
 				return;
 			}
 
@@ -416,7 +421,7 @@
 		 */
 		bulkPublish: function (checkedBoxes) {
 			var count      = checkedBoxes.length;
-			var confirmMsg = aipsPostReviewL10n.confirmBulkPublish.replace('%d', count);
+			var confirmMsg = __("Are you sure you want to publish %d selected post(s)?", 'ai-post-scheduler').replace('%d', count);
 
 			AIPS.Utilities.confirm(confirmMsg, 'Notice', [
 				{ label: 'No, cancel',   className: 'aips-btn aips-btn-primary' },
@@ -427,16 +432,16 @@
 					});
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 						type: 'POST',
 						data: {
 							action:   'aips_bulk_publish_posts',
 							post_ids: postIds,
-							nonce:    aipsPostReviewL10n.nonce,
+							nonce:    ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
+								var msg = __("%d posts published successfully!", 'ai-post-scheduler').replace('%d', response.data.count || count);
 								AIPS.Utilities.showToast(msg, 'success');
 								checkedBoxes.each(function () {
 									$(this).closest('tr').fadeOut(400, function () {
@@ -446,11 +451,11 @@
 									});
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+								AIPS.Utilities.showToast(response.data.message || __("Failed to publish post.", 'ai-post-scheduler'), 'error');
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
+							AIPS.Utilities.showToast(__("Failed to publish post.", 'ai-post-scheduler'), 'error');
 						},
 					});
 				} },
@@ -470,7 +475,7 @@
 		 */
 		bulkDelete: function (checkedBoxes) {
 			var count      = checkedBoxes.length;
-			var confirmMsg = aipsPostReviewL10n.confirmBulkDelete.replace('%d', count);
+			var confirmMsg = __("Are you sure you want to delete %d selected post(s)? This action cannot be undone.", 'ai-post-scheduler').replace('%d', count);
 
 			AIPS.Utilities.confirm(confirmMsg, 'Notice', [
 				{ label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
@@ -484,16 +489,16 @@
 					});
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 						type: 'POST',
 						data: {
 							action: 'aips_bulk_delete_draft_posts',
 							items:  items,
-							nonce:  aipsPostReviewL10n.nonce,
+							nonce:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 						},
 						success: function (response) {
 							if (response.success) {
-								var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
+								var msg = __("%d posts deleted successfully!", 'ai-post-scheduler').replace('%d', response.data.count || count);
 								AIPS.Utilities.showToast(msg, 'success');
 								checkedBoxes.each(function () {
 									$(this).closest('tr').fadeOut(400, function () {
@@ -503,11 +508,11 @@
 									});
 								});
 							} else {
-								AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+								AIPS.Utilities.showToast(response.data.message || __("Failed to delete post.", 'ai-post-scheduler'), 'error');
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
+							AIPS.Utilities.showToast(__("Failed to delete post.", 'ai-post-scheduler'), 'error');
 						},
 					});
 				} },
@@ -527,7 +532,7 @@
 		 */
 		bulkRegenerate: function (checkedBoxes) {
 			var count      = checkedBoxes.length;
-			var confirmMsg = aipsPostReviewL10n.confirmBulkRegenerate.replace('%d', count);
+			var confirmMsg = __("Are you sure you want to regenerate %d selected post(s)? The current posts will be deleted.", 'ai-post-scheduler').replace('%d', count);
 
 			AIPS.Utilities.confirm(confirmMsg, 'Notice', [
 				{ label: 'No, cancel',      className: 'aips-btn aips-btn-primary' },
@@ -541,17 +546,17 @@
 					});
 
 					$.ajax({
-						url:  aipsPostReviewL10n.ajaxUrl,
+						url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 						type: 'POST',
 						data: {
 							action: 'aips_bulk_regenerate_posts',
 							items:  items,
-							nonce:  aipsPostReviewL10n.nonce,
+							nonce:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 						},
 						success: function (response) {
 							if (response && response.success) {
 								var successCount = (response.data && typeof response.data.success_count !== 'undefined') ? response.data.success_count : count;
-								var msg          = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', successCount);
+								var msg          = __("%d posts regeneration started!", 'ai-post-scheduler').replace('%d', successCount);
 								AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
 
 								var successIds = [];
@@ -583,16 +588,16 @@
 								});
 
 								if (response.data && response.data.failed_count) {
-									var failMsg = aipsPostReviewL10n.bulkRegeneratePartialFailure || aipsPostReviewL10n.regenerateError;
+									var failMsg = aipsPostReviewL10n.bulkRegeneratePartialFailure || __("Failed to regenerate post.", 'ai-post-scheduler');
 									failMsg = failMsg.replace('%d', response.data.failed_count);
 									AIPS.Utilities.showToast(failMsg, 'warning');
 								}
 							} else {
-								AIPS.Utilities.showToast((response && response.data && response.data.message) || aipsPostReviewL10n.regenerateError, 'error');
+								AIPS.Utilities.showToast((response && response.data && response.data.message) || __("Failed to regenerate post.", 'ai-post-scheduler'), 'error');
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
+							AIPS.Utilities.showToast(__("Failed to regenerate post.", 'ai-post-scheduler'), 'error');
 						},
 					});
 				} },
@@ -622,19 +627,19 @@
 			var headerTitle      = modal.find('.aips-modal-header h2');
 
 			contentContainer.show().html(AIPS.Templates.render('aips-tmpl-preview-loading', {
-				message: aipsPostReviewL10n.loadingPreview || 'Loading preview...',
+				message: __("Loading preview...", 'ai-post-scheduler') || 'Loading preview...',
 			}));
 			iframe.hide().attr('src', '');
-			headerTitle.text(aipsPostReviewL10n.previewTitle || 'Post Preview');
+			headerTitle.text(__("Post Preview", 'ai-post-scheduler') || 'Post Preview');
 			modal.show();
 
 			$.ajax({
-				url:  aipsPostReviewL10n.ajaxUrl,
+				url:  ((window.aipsPostReviewConfig && aipsPostReviewConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsPostReviewL10n && aipsPostReviewL10n.ajaxUrl)),
 				type: 'POST',
 				data: {
 					action:  'aips_get_post_preview',
 					post_id: postId,
-					nonce:   aipsPostReviewL10n.nonce,
+					nonce:   ((window.aipsPostReviewConfig && aipsPostReviewConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsPostReviewL10n && aipsPostReviewL10n.nonce)),
 				},
 				success: function (response) {
 					if (response.success) {
@@ -671,11 +676,11 @@
 
 						contentContainer.html(html);
 					} else {
-						contentContainer.html('<div class="notice notice-error inline"><p>' + (response.data.message || aipsPostReviewL10n.previewError) + '</p></div>');
+						contentContainer.html('<div class="notice notice-error inline"><p>' + (response.data.message || __("Failed to load preview.", 'ai-post-scheduler')) + '</p></div>');
 					}
 				},
 				error: function () {
-					contentContainer.html('<div class="notice notice-error inline"><p>' + (aipsPostReviewL10n.previewError || 'Failed to load preview.') + '</p></div>');
+					contentContainer.html('<div class="notice notice-error inline"><p>' + (__("Failed to load preview.", 'ai-post-scheduler') || 'Failed to load preview.') + '</p></div>');
 				},
 			});
 		},
@@ -718,8 +723,8 @@
 				if ($('.aips-empty-state').length === 0) {
 					var emptyStateHtml = '<div class="aips-empty-state">' +
 						'<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>' +
-						'<h3>' + (aipsPostReviewL10n.noDraftPosts || 'No Draft Posts') + '</h3>' +
-						'<p>' + (aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.') + '</p>' +
+						'<h3>' + (__("No Draft Posts", 'ai-post-scheduler') || 'No Draft Posts') + '</h3>' +
+						'<p>' + (__("There are no draft posts waiting for review.", 'ai-post-scheduler') || 'There are no draft posts waiting for review.') + '</p>' +
 						'</div>';
 					$('#aips-post-review-form').after(emptyStateHtml);
 				} else {

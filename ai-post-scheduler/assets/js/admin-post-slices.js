@@ -9,6 +9,11 @@
  */
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -52,7 +57,7 @@
 			e.preventDefault();
 			this.currentSliceId = 0;
 			this.resetForm();
-			$('#aips-post-slice-modal').find('.aips-modal-title').text(aipsPostSlicesL10n.addNewSlice);
+			$('#aips-post-slice-modal').find('.aips-modal-title').text(__("Add New Post Slice", 'ai-post-scheduler'));
 			$('#aips-post-slice-modal').show();
 			$('#aips-post-slice-name').trigger('focus');
 		},
@@ -78,7 +83,7 @@
 			$('#aips-post-slice-sort-order').val($row.data('sort-order') || 0);
 			$('#aips-post-slice-is-active').prop('checked', parseInt($row.data('active'), 10) === 1);
 
-			$('#aips-post-slice-modal').find('.aips-modal-title').text(aipsPostSlicesL10n.editSlice);
+			$('#aips-post-slice-modal').find('.aips-modal-title').text(__("Edit Post Slice", 'ai-post-scheduler'));
 			$('#aips-post-slice-modal').show();
 			$('#aips-post-slice-name').trigger('focus');
 		},
@@ -131,13 +136,13 @@
 			var name = $('#aips-post-slice-name').val().trim();
 
 			if (!name) {
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.nameRequired, 'error');
+				AIPS.Utilities.showToast(__("A post slice name is required.", 'ai-post-scheduler'), 'error');
 				$('#aips-post-slice-name').trigger('focus');
 				return;
 			}
 
 			var $btn = $('#aips-save-post-slice-btn');
-			$btn.prop('disabled', true).text(aipsPostSlicesL10n.saving);
+			$btn.prop('disabled', true).text(__("Saving...", 'ai-post-scheduler'));
 
 			var self = this;
 			$.post(aipsAjax.ajaxUrl, {
@@ -149,10 +154,10 @@
 				sort_order:  parseInt($('#aips-post-slice-sort-order').val(), 10) || 0,
 				is_active:   $('#aips-post-slice-is-active').is(':checked') ? 1 : 0,
 			}, function (response) {
-				$btn.prop('disabled', false).text(aipsPostSlicesL10n.saveSlice);
+				$btn.prop('disabled', false).text(__("Save Post Slice", 'ai-post-scheduler'));
 
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.saveFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to save post slice.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
@@ -160,8 +165,8 @@
 				$('#aips-post-slice-modal').hide();
 				self.refreshPage();
 			}).fail(function () {
-				$btn.prop('disabled', false).text(aipsPostSlicesL10n.saveSlice);
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.saveFailed, 'error');
+				$btn.prop('disabled', false).text(__("Save Post Slice", 'ai-post-scheduler'));
+				AIPS.Utilities.showToast(__("Failed to save post slice.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -176,7 +181,7 @@
 
 			var id = parseInt($(e.currentTarget).data('id'), 10);
 
-			if (!confirm(aipsPostSlicesL10n.deleteConfirm)) {
+			if (!confirm(__("Are you sure you want to delete this post slice?", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -187,14 +192,14 @@
 				slice_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.deleteFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to delete post slice.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.deleteFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to delete post slice.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -220,14 +225,14 @@
 				is_active: newStatus,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.toggleFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to update post slice status.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.toggleFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to update post slice status.", 'ai-post-scheduler'), 'error');
 			});
 		},
 

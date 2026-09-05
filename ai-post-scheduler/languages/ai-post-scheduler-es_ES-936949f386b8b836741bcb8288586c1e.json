@@ -1,0 +1,87 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-post-review.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Are you sure you want to publish this post?": [
+        "¿Está seguro de que desea publicar esta entrada?"
+      ],
+      "Loading...": [
+        "Cargando..."
+      ],
+      "Post published successfully!": [
+        "Post published successfully!"
+      ],
+      "Failed to publish post.": [
+        "Error al publicar la entrada."
+      ],
+      "Are you sure you want to delete this post? This action cannot be undone.": [
+        "¿Está seguro de que desea eliminar esta entrada? Esta acción no se puede deshacer."
+      ],
+      "Deleting...": [
+        "Eliminando..."
+      ],
+      "Post deleted successfully!": [
+        "¡Entrada eliminada correctamente!"
+      ],
+      "Failed to delete post.": [
+        "Error al eliminar la entrada."
+      ],
+      "Are you sure you want to regenerate this post? The current post will be deleted.": [
+        "¿Está seguro de que desea regenerar esta entrada? La entrada actual será eliminada."
+      ],
+      "Regenerating...": [
+        "Regenerando..."
+      ],
+      "Post regeneration started!": [
+        "¡Regeneración de entrada iniciada!"
+      ],
+      "Failed to regenerate post.": [
+        "Error al regenerar la entrada."
+      ],
+      "Please select at least one post.": [
+        "Por favor, seleccione al menos una entrada."
+      ],
+      "Are you sure you want to publish %d selected post(s)?": [
+        "¿Está seguro de que desea publicar %d entrada(s) seleccionada(s)?"
+      ],
+      "%d posts published successfully!": [
+        "¡%d entradas publicadas correctamente!"
+      ],
+      "Are you sure you want to delete %d selected post(s)? This action cannot be undone.": [
+        "¿Está seguro de que desea eliminar %d entrada(s) seleccionada(s)? Esta acción no se puede deshacer."
+      ],
+      "%d posts deleted successfully!": [
+        "¡%d entradas eliminadas correctamente!"
+      ],
+      "Are you sure you want to regenerate %d selected post(s)? The current posts will be deleted.": [
+        "¿Está seguro de que desea regenerar %d entrada(s) seleccionada(s)? Las entradas actuales serán eliminadas."
+      ],
+      "%d posts regeneration started!": [
+        "¡Regeneración de %d entradas iniciada!"
+      ],
+      "Loading preview...": [
+        "Cargando vista previa..."
+      ],
+      "Post Preview": [
+        "Vista Previa de la Entrada"
+      ],
+      "Failed to load preview.": [
+        "Error al cargar la vista previa."
+      ],
+      "No Draft Posts": [
+        "No Hay Entradas en Borrador"
+      ],
+      "There are no draft posts waiting for review.": [
+        "No hay entradas en borrador esperando revisión."
+      ]
+    }
+  }
+}

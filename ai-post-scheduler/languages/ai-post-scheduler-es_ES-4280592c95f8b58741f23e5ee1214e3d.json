@@ -1,0 +1,69 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/cache-monitor.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Never": [
+        "Nunca"
+      ],
+      "Request failed. Please try again.": [
+        "La solicitud falló. Por favor, inténtelo de nuevo."
+      ],
+      "This will flush ALL plugin-owned cache. Are you absolutely sure?": [
+        "Esto vaciará TODA la caché propiedad del plugin. ¿Está absolutamente seguro?"
+      ],
+      "Flush All Plugin Cache": [
+        "Vaciar Toda la Caché del Plugin"
+      ],
+      "Confirm Flush": [
+        "Confirmar Vaciado"
+      ],
+      "Flush Cache Group": [
+        "Vaciar Grupo de Caché"
+      ],
+      "Flush Group": [
+        "Vaciar Grupo"
+      ],
+      "Loading…": [
+        "Cargando…"
+      ],
+      "Preview": [
+        "Vista previa"
+      ],
+      "No entries selected.": [
+        "No se seleccionaron entradas."
+      ],
+      "No operations found.": [
+        "No se encontraron operaciones."
+      ],
+      "Select cache entry": [
+        "Seleccionar entrada de caché"
+      ],
+      "Inspect": [
+        "Inspeccionar"
+      ],
+      "Delete": [
+        "Eliminar"
+      ],
+      "No entries found.": [
+        "No se encontraron entradas."
+      ],
+      "Prev": [
+        "Anterior"
+      ],
+      "Next": [
+        "Siguiente"
+      ],
+      "No events found.": [
+        "No se encontraron eventos."
+      ]
+    }
+  }
+}

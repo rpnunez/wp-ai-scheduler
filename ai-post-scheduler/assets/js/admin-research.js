@@ -1,5 +1,10 @@
 (function($) {
     'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
     window.AIPS = window.AIPS || {};
     var AIPS = window.AIPS;
@@ -90,7 +95,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
+                    AIPS.Utilities.showToast(__("An error occurred during research.", 'ai-post-scheduler'), 'error');
                 },
                 complete: function() {
                     $submit.prop('disabled', false).removeClass('is-loading');
@@ -142,7 +147,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
+                    AIPS.Utilities.showToast(__("An error occurred during research.", 'ai-post-scheduler'), 'error');
                 },
                 complete: function() {
                     $submit.prop('disabled', false).removeClass('is-loading');
@@ -177,7 +182,7 @@
                 }).join('');
 
                 topTopicsBlockHtml = AIPS.Templates.renderRaw('aips-tmpl-research-top-topics-block', {
-                    top_topics_label: esc(aipsResearchL10n.topTopics),
+                    top_topics_label: esc(__("Top 5 Topics:", 'ai-post-scheduler')),
                     items_html: itemsHtml
                 });
             }
@@ -185,7 +190,7 @@
             var html = AIPS.Templates
                 ? AIPS.Templates.renderRaw('aips-tmpl-research-results-summary', {
                     saved_count: esc(data.saved_count),
-                    topics_saved: esc(aipsResearchL10n.topicsSaved),
+                    topics_saved: esc(__("topics saved for", 'ai-post-scheduler')),
                     niche: esc(data.niche),
                     top_topics_block_html: topTopicsBlockHtml
                 })
@@ -257,13 +262,13 @@
             if (!topics || topics.length === 0) {
                 if (AIPS.Templates) {
                     html = AIPS.Templates.render('aips-tmpl-research-empty-state', {
-                        title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
-                        description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                        title: isFiltered ? __("No topics match your search criteria.", 'ai-post-scheduler') : (__("Your research library is empty.", 'ai-post-scheduler') || __("No topics match your search criteria.", 'ai-post-scheduler')),
+                        description: isFiltered ? __("No topics match your search criteria.", 'ai-post-scheduler') : (__("Your research library is empty.", 'ai-post-scheduler') || __("No topics match your search criteria.", 'ai-post-scheduler')),
                         button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
                         button_class: isFiltered ? 'aips-btn-secondary' : 'aips-btn-primary',
                         button_label: isFiltered
-                            ? (aipsResearchL10n.clearFilters || aipsResearchL10n.clearSearch || 'Clear Filters')
-                            : (aipsResearchL10n.startResearch || 'Start Research')
+                            ? (__("Clear Filters", 'ai-post-scheduler') || __("Clear Search", 'ai-post-scheduler') || 'Clear Filters')
+                            : (__("Start Research", 'ai-post-scheduler') || 'Start Research')
                     });
                 }
 
@@ -295,9 +300,9 @@
 
                     var statusLabel = (topic.status || 'new').toLowerCase();
                     var statusLabelText = {
-                        'new': aipsResearchL10n.statusNew || 'New',
-                        'scheduled': aipsResearchL10n.statusScheduled || 'Scheduled',
-                        'generated': aipsResearchL10n.statusGenerated || 'Generated'
+                        'new': __("New", 'ai-post-scheduler') || 'New',
+                        'scheduled': __("Scheduled", 'ai-post-scheduler') || 'Scheduled',
+                        'generated': __("Generated", 'ai-post-scheduler') || 'Generated'
                     }[statusLabel] || statusLabel;
                     var statusChipHtml = AIPS.Templates.render('aips-tmpl-research-topic-status-chip', {
                         status: esc(statusLabel),
@@ -315,14 +320,14 @@
                         niche: esc(topic.niche),
                         keywords_html: keywordsHtml,
                         researched_at: esc(AIPS.DateTime.formatRelative(topic.researched_at)),
-                        delete_label: esc(aipsResearchL10n.delete)
+                        delete_label: esc(__("Delete", 'ai-post-scheduler'))
                     });
                 }).join('');
 
                 var searchEmptyHtml = AIPS.Templates.render('aips-tmpl-research-topics-search-empty', {
-                    title: aipsResearchL10n.noTopicsFoundTitle,
-                    description: aipsResearchL10n.noTopicsFound,
-                    clear_label: aipsResearchL10n.clearSearch
+                    title: __("No Topics Found", 'ai-post-scheduler'),
+                    description: __("No topics match your search criteria.", 'ai-post-scheduler'),
+                    clear_label: __("Clear Search", 'ai-post-scheduler')
                 });
 
                 html = AIPS.Templates.renderRaw('aips-tmpl-research-topics-table', {
@@ -437,7 +442,7 @@
             var $el = $(e.currentTarget);
             var topicId = $el.data('id');
 
-            AIPS.Utilities.confirm(aipsResearchL10n.deleteTopicConfirm, 'Notice', [
+            AIPS.Utilities.confirm(__("Delete this topic?", 'ai-post-scheduler'), 'Notice', [
                 { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 {
                     label: 'Yes, delete',
@@ -473,7 +478,7 @@
             e.preventDefault();
 
             if (AIPS.researchSelectedTopics.length === 0) {
-                AIPS.Utilities.showToast(aipsResearchL10n.selectTopicSchedule, 'warning');
+                AIPS.Utilities.showToast(__("Please select at least one topic to schedule.", 'ai-post-scheduler'), 'warning');
                 return;
             }
 
@@ -509,7 +514,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast(aipsResearchL10n.schedulingError, 'error');
+                    AIPS.Utilities.showToast(__("An error occurred during scheduling.", 'ai-post-scheduler'), 'error');
                 },
                 complete: function() {
                     $submit.prop('disabled', false).removeClass('is-loading');
@@ -630,7 +635,7 @@
                         missing_topic: gap.missing_topic,
                         reason: gap.reason,
                         search_intent: gap.search_intent,
-                        generate_ideas_label: (aipsResearchL10n.generateIdeas || 'Generate Ideas')
+                        generate_ideas_label: (__("Generate Ideas", 'ai-post-scheduler') || 'Generate Ideas')
                     }));
                 } else {
                     var cardHtml = '';
@@ -640,7 +645,7 @@
                     cardHtml += '<p class="aips-gap-reason">' + AIPS.Utilities.escapeHtml(gap.reason) + '</p>';
                     cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.Utilities.escapeHtml(gap.search_intent) + '</p>';
                     cardHtml += '<div class="aips-gap-actions">';
-                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.Utilities.escapeAttribute(gap.missing_topic) + '">' + (aipsResearchL10n.generateIdeas || 'Generate Ideas') + '</button>';
+                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.Utilities.escapeAttribute(gap.missing_topic) + '">' + (__("Generate Ideas", 'ai-post-scheduler') || 'Generate Ideas') + '</button>';
                     cardHtml += '</div></div>';
                     $grid.append(cardHtml);
                 }
@@ -661,7 +666,7 @@
             var topic = $btn.data('topic');
             var niche = $('#gap-niche').val();
 
-            AIPS.Utilities.setButtonLoading($btn, aipsResearchL10n.generatingIdeas || 'Generating...');
+            AIPS.Utilities.setButtonLoading($btn, __("Generating...", 'ai-post-scheduler') || 'Generating...');
 
             $.ajax({
                 url: ajaxurl,
@@ -707,7 +712,7 @@
                 return;
             }
 
-            $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.loadingPosts || 'Loading posts...') + '</p>');
+            $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (__("Loading posts...", 'ai-post-scheduler') || 'Loading posts...') + '</p>');
             $('#aips-trending-topic-posts-modal').fadeIn();
 
             AIPS.loadTrendingTopicPosts(topicId);
@@ -734,18 +739,18 @@
                             : '';
 
                         $('#aips-trending-topic-posts-modal').find('.aips-modal-title').text(
-                            (aipsResearchL10n.postsGeneratedFrom || 'Posts Generated from Topic') + ': ' + topicTitle
+                            (__("Posts Generated from Topic", 'ai-post-scheduler') || 'Posts Generated from Topic') + ': ' + topicTitle
                         );
 
                         AIPS.renderTrendingTopicPosts(response.data.posts || []);
                     } else {
                         $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html(
-                            '<p>' + (response.data && response.data.message ? response.data.message : (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.')) + '</p>'
+                            '<p>' + (response.data && response.data.message ? response.data.message : (__("Error loading posts.", 'ai-post-scheduler') || 'Error loading posts.')) + '</p>'
                         );
                     }
                 },
                 error: function() {
-                    $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.') + '</p>');
+                    $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (__("Error loading posts.", 'ai-post-scheduler') || 'Error loading posts.') + '</p>');
                 }
             });
         },
@@ -757,7 +762,7 @@
          */
         renderTrendingTopicPosts: function(posts) {
             if (!posts || posts.length === 0) {
-                $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.noPostsFound || 'No posts found.') + '</p>');
+                $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (__("No posts found.", 'ai-post-scheduler') || 'No posts found.') + '</p>');
                 return;
             }
 
@@ -766,27 +771,27 @@
             var rowsHtml = posts.map(function(post) {
                 var actionsHtml = '';
                 if (post.edit_url) {
-                    actionsHtml += '<a href="' + esc(post.edit_url) + '" class="button" target="_blank" rel="noopener noreferrer">' + esc(aipsResearchL10n.editPost || 'Edit Post') + '</a> ';
+                    actionsHtml += '<a href="' + esc(post.edit_url) + '" class="button" target="_blank" rel="noopener noreferrer">' + esc(__("Edit Post", 'ai-post-scheduler') || 'Edit Post') + '</a> ';
                 }
                 if (post.post_url && post.post_status === 'publish') {
-                    actionsHtml += '<a href="' + esc(post.post_url) + '" class="button" target="_blank" rel="noopener noreferrer">' + esc(aipsResearchL10n.viewPost || 'View Post') + '</a>';
+                    actionsHtml += '<a href="' + esc(post.post_url) + '" class="button" target="_blank" rel="noopener noreferrer">' + esc(__("View Post", 'ai-post-scheduler') || 'View Post') + '</a>';
                 }
 
                 return AIPS.Templates.renderRaw('aips-tmpl-research-topic-post-row', {
                     post_id: esc(post.post_id || ''),
                     post_title: esc(post.post_title || ''),
                     date_generated: esc(post.date_generated || ''),
-                    date_published: esc(post.date_published || (aipsResearchL10n.notPublished || 'Not published')),
+                    date_published: esc(post.date_published || (__("Not published", 'ai-post-scheduler') || 'Not published')),
                     actions: actionsHtml
                 });
             }).join('');
 
             var tableHtml = AIPS.Templates.renderRaw('aips-tmpl-research-topic-posts-table', {
-                id_label: esc(aipsResearchL10n.postId || 'Post ID'),
-                title_label: esc(aipsResearchL10n.postTitle || 'Post Title'),
-                generated_label: esc(aipsResearchL10n.dateGenerated || 'Date Generated'),
-                published_label: esc(aipsResearchL10n.datePublished || 'Date Published'),
-                actions_label: esc(aipsResearchL10n.actions || 'Actions'),
+                id_label: esc(__("Post ID", 'ai-post-scheduler') || 'Post ID'),
+                title_label: esc(__("Post Title", 'ai-post-scheduler') || 'Post Title'),
+                generated_label: esc(__("Date Generated", 'ai-post-scheduler') || 'Date Generated'),
+                published_label: esc(__("Date Published", 'ai-post-scheduler') || 'Date Published'),
+                actions_label: esc(__("Actions", 'ai-post-scheduler') || 'Actions'),
                 rows: rowsHtml
             });
 
@@ -882,7 +887,7 @@
             }
 
             var count = AIPS.researchSelectedTopics.length;
-            var message = aipsResearchL10n.confirmGenerationMessage.replace('%d', count);
+            var message = __("Generate %d post(s) immediately from selected topics?", 'ai-post-scheduler').replace('%d', count);
             $('#aips-generate-now-count-message').text(message);
             $('#aips-generate-now-template').val('');
             $('#aips-generate-now-modal').fadeIn();
@@ -902,14 +907,14 @@
             var templateId = $('#aips-generate-now-template').val();
 
             if (!templateId) {
-                AIPS.Utilities.showToast(aipsResearchL10n.selectTemplateRequired, 'error');
+                AIPS.Utilities.showToast(__("Please select a template before generating.", 'ai-post-scheduler'), 'error');
                 return;
             }
 
             $('#aips-generate-now-modal').fadeOut();
 
             var $btn = $('#aips-generate-selected-topics');
-            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + aipsResearchL10n.generatingButton);
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + __("Generating...", 'ai-post-scheduler'));
 
             AIPS.runResearchBulkGenerateWithProgress($btn, {
                 action: 'aips_generate_trending_topics_bulk',
@@ -970,9 +975,9 @@
             var topicCount = AIPS.researchSelectedTopics.length;
             var MIN_PROGRESS_SECONDS = 10;
             var totalSeconds = Math.max(perPostSeconds * topicCount, MIN_PROGRESS_SECONDS);
-            var buttonDefaultText = aipsResearchL10n.generateSelected;
-            var progressTitle = aipsResearchL10n.generatingPostsTitle;
-            var progressMessage = aipsResearchL10n.generatingPostsMessage;
+            var buttonDefaultText = __("Generate", 'ai-post-scheduler');
+            var progressTitle = __("Generating Posts", 'ai-post-scheduler');
+            var progressMessage = __("Please wait while your posts are being generated. This may take a few minutes.", 'ai-post-scheduler');
 
             var progressBar = AIPS.Utilities.showProgressBar({
                 title: progressTitle,
@@ -994,7 +999,7 @@
                     } else {
                         var errorMessage = response.data && response.data.message
                             ? response.data.message
-                            : aipsResearchL10n.generateError;
+                            : __("Error generating selected topics.", 'ai-post-scheduler');
 
                         progressBar.complete(errorMessage, 'error');
                         setTimeout(function() {
@@ -1003,7 +1008,7 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    var fallbackError = error ? error : aipsResearchL10n.generateError;
+                    var fallbackError = error ? error : __("Error generating selected topics.", 'ai-post-scheduler');
                     progressBar.complete(fallbackError, 'error');
                     setTimeout(function() {
                         AIPS.Utilities.showToast('Error: ' + fallbackError, 'error');

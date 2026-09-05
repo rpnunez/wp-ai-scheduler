@@ -1,0 +1,42 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/campaigns.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Failed to update campaign.": [
+        "Error al actualizar la campaña."
+      ],
+      "Network error. Please try again.": [
+        "Error de red. Por favor, inténtelo de nuevo."
+      ],
+      "Duplicate this campaign? The copy will be created in a paused state.": [
+        "¿Duplicar esta campaña? La copia se creará en estado pausado."
+      ],
+      "Failed to duplicate campaign.": [
+        "Error al duplicar la campaña."
+      ],
+      "Archive this campaign? It will be hidden from the active campaigns list.": [
+        "¿Archivar esta campaña? Se ocultará de la lista de campañas activas."
+      ],
+      "Failed to archive campaign.": [
+        "Error al archivar la campaña."
+      ],
+      "Failed to restore campaign.": [
+        "Error al restaurar la campaña."
+      ],
+      "Delete this campaign? This removes the campaign and its owned template/schedule rows.": [
+        "¿Eliminar esta campaña? Esto elimina la campaña y sus filas de plantilla/programación asociadas."
+      ],
+      "Failed to delete campaign.": [
+        "Error al eliminar la campaña."
+      ]
+    }
+  }
+}

@@ -7,6 +7,11 @@
 
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -93,7 +98,7 @@
 					method: 'POST',
 					data: {
 						action: 'aips_search_posts',
-						nonce: aipsTaxonomyL10n.nonce,
+						nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 						search_term: searchTerm
 					},
 					success: function(response) {
@@ -198,24 +203,24 @@
 			var generationPrompt = $('#generation_prompt').val();
 
 			if (!taxonomyType) {
-				alert(aipsTaxonomyL10n.selectTaxonomyType);
+				alert(__("Please select a taxonomy type.", 'ai-post-scheduler'));
 				return;
 			}
 
 			if (this.selectedPostIds.length === 0) {
-				alert(aipsTaxonomyL10n.selectPost);
+				alert(__("Please select at least one post.", 'ai-post-scheduler'));
 				return;
 			}
 
 			var submitBtn = $('#generate-taxonomy-submit-btn');
-			submitBtn.prop('disabled', true).text(aipsTaxonomyL10n.generating);
+			submitBtn.prop('disabled', true).text(__("Generating...", 'ai-post-scheduler'));
 
 			$.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
 					action: 'aips_generate_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 					taxonomy_type: taxonomyType,
 					generation_prompt: generationPrompt,
 					base_post_ids: this.selectedPostIds
@@ -227,11 +232,11 @@
 						this.closeModal({ preventDefault: function() {} });
 						this.loadTaxonomyItems(this.currentTab);
 					} else {
-						alert(response.data.message || aipsTaxonomyL10n.generationFailed);
+						alert(response.data.message || __("Generation failed.", 'ai-post-scheduler'));
 					}
 				}.bind(this),
 				complete: function() {
-					submitBtn.prop('disabled', false).text(aipsTaxonomyL10n.generate);
+					submitBtn.prop('disabled', false).text(__("Generate", 'ai-post-scheduler'));
 				}
 			});
 		},
@@ -269,7 +274,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_get_taxonomy_items',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 					taxonomy_type: taxonomyType
 				},
 				success: function(response) {
@@ -396,7 +401,7 @@
 
 			var action = $('.aips-bulk-action-select').val();
 			if (!action) {
-				alert(aipsTaxonomyL10n.selectAction);
+				alert(__("Please select an action.", 'ai-post-scheduler'));
 				return;
 			}
 
@@ -406,13 +411,13 @@
 			});
 
 			if (itemIds.length === 0) {
-				alert(aipsTaxonomyL10n.selectItem);
+				alert(__("Please select at least one item.", 'ai-post-scheduler'));
 				return;
 			}
 
 			var ajaxAction = action === 'generate_terms' ? 'aips_bulk_create_taxonomy_terms' : 'aips_bulk_' + action + '_taxonomy';
 			var actionLabel = action === 'generate_terms' ? 'generate terms for' : action;
-			var confirmMsg = aipsTaxonomyL10n.confirmBulkAction.replace('%s', actionLabel).replace('%d', itemIds.length);
+			var confirmMsg = __("Are you sure you want to %s %d items?", 'ai-post-scheduler').replace('%s', actionLabel).replace('%d', itemIds.length);
 
 			if (!confirm(confirmMsg)) {
 				return;
@@ -423,7 +428,7 @@
 				method: 'POST',
 				data: {
 					action: ajaxAction,
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 					item_ids: itemIds
 				},
 				success: function(response) {
@@ -432,7 +437,7 @@
 						this.updateStats(response.data.stats || null);
 						this.loadTaxonomyItems(this.currentTab);
 					} else {
-						alert(response.data.message || aipsTaxonomyL10n.actionFailed);
+						alert(response.data.message || __("Action failed.", 'ai-post-scheduler'));
 					}
 				}.bind(this)
 			});
@@ -468,7 +473,7 @@
 		deleteTaxonomy: function(e) {
 			e.preventDefault();
 
-			if (!confirm(aipsTaxonomyL10n.confirmDelete)) {
+			if (!confirm(__("Are you sure you want to delete this item?", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -479,7 +484,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_delete_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 					item_id: itemId
 				},
 				success: function(response) {
@@ -487,7 +492,7 @@
 						this.updateStats(response.data.stats || null);
 						this.loadTaxonomyItems(this.currentTab);
 					} else {
-						alert(response.data.message || aipsTaxonomyL10n.deleteFailed);
+						alert(response.data.message || __("Delete failed.", 'ai-post-scheduler'));
 					}
 				}.bind(this)
 			});
@@ -501,7 +506,7 @@
 		createTerm: function(e) {
 			e.preventDefault();
 
-			if (!confirm(aipsTaxonomyL10n.confirmCreateTerm)) {
+			if (!confirm(__("Create this term in WordPress?", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -512,7 +517,7 @@
 				method: 'POST',
 				data: {
 					action: 'aips_create_taxonomy_term',
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 					item_id: itemId
 				},
 				success: function(response) {
@@ -521,7 +526,7 @@
 						this.updateStats(response.data.stats || null);
 						this.loadTaxonomyItems(this.currentTab);
 					} else {
-						alert(response.data.message || aipsTaxonomyL10n.termCreationFailed);
+						alert(response.data.message || __("Term creation failed.", 'ai-post-scheduler'));
 					}
 				}.bind(this)
 			});
@@ -539,7 +544,7 @@
 				method: 'POST',
 				data: {
 					action: action,
-					nonce: aipsTaxonomyL10n.nonce,
+					nonce: ((window.aipsTaxonomyConfig && aipsTaxonomyConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsTaxonomyL10n && aipsTaxonomyL10n.nonce)),
 					item_id: itemId
 				},
 				success: function(response) {
@@ -547,7 +552,7 @@
 						this.updateStats(response.data.stats || null);
 						this.loadTaxonomyItems(this.currentTab);
 					} else {
-						alert(response.data.message || aipsTaxonomyL10n.updateFailed);
+						alert(response.data.message || __("Update failed.", 'ai-post-scheduler'));
 					}
 				}.bind(this)
 			});
@@ -623,7 +628,7 @@
 		 */
 		updateResultCountLabel: function(count) {
 			var normalizedCount = Number(count || 0);
-			var label = normalizedCount === 1 ? aipsTaxonomyL10n.item : aipsTaxonomyL10n.items;
+			var label = normalizedCount === 1 ? __("item", 'ai-post-scheduler') : __("items", 'ai-post-scheduler');
 
 			$('#aips-taxonomy-result-count').text(normalizedCount + ' ' + label);
 		}

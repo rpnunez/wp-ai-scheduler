@@ -1,0 +1,105 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-dashboard.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Start Date cannot be after End Date.": [
+        "Start Date cannot be after End Date."
+      ],
+      "Failed to fetch dashboard data.": [
+        "Failed to fetch dashboard data."
+      ],
+      "An error occurred while fetching dashboard data.": [
+        "An error occurred while fetching dashboard data."
+      ],
+      "Are you sure you want to publish this post now?": [
+        "Are you sure you want to publish this post now?"
+      ],
+      "Publishing...": [
+        "Publicando..."
+      ],
+      "Completed": [
+        "Completado"
+      ],
+      "Failed to publish post.": [
+        "Error al publicar la entrada."
+      ],
+      "Publish Now": [
+        "Publish Now"
+      ],
+      "An error occurred while publishing the post.": [
+        "An error occurred while publishing the post."
+      ],
+      "Approved": [
+        "Approved"
+      ],
+      "Failed to approve topic.": [
+        "Failed to approve topic."
+      ],
+      "An error occurred while approving the topic.": [
+        "An error occurred while approving the topic."
+      ],
+      "Rejected": [
+        "Rechazado"
+      ],
+      "Failed to reject topic.": [
+        "Failed to reject topic."
+      ],
+      "An error occurred while rejecting the topic.": [
+        "An error occurred while rejecting the topic."
+      ],
+      "Running...": [
+        "Ejecutando..."
+      ],
+      "Automated run triggered successfully!": [
+        "Automated run triggered successfully!"
+      ],
+      "Run Now": [
+        "Ejecutar Ahora"
+      ],
+      "Failed to trigger schedule.": [
+        "Failed to trigger schedule."
+      ],
+      "An error occurred while triggering the schedule.": [
+        "An error occurred while triggering the schedule."
+      ],
+      "Chart library failed to load.": [
+        "Error al cargar la librería de gráficos."
+      ],
+      "AI Calls": [
+        "AI Calls"
+      ],
+      "AI Errors": [
+        "AI Errors"
+      ],
+      "AI Calls & Errors by Day": [
+        "AI Calls & Errors by Day"
+      ],
+      "Failed": [
+        "Fallido"
+      ],
+      "Post Generations by Day": [
+        "Generaciones de Entradas por Día"
+      ],
+      "Topics Generated": [
+        "Temas Generados"
+      ],
+      "Topic Generations by Day": [
+        "Generaciones de Temas por Día"
+      ],
+      "Error Rate (%)": [
+        "Tasa de Error (%)"
+      ],
+      "AI Error Rate (%)": [
+        "Tasa de Error de IA (%)"
+      ]
+    }
+  }
+}

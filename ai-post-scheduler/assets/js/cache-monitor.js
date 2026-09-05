@@ -17,6 +17,11 @@
  */
 (function ( $ ) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -25,8 +30,8 @@
 
 	// Nonces are embedded as data attributes on action buttons/elements
 	// and can also be read from the page-level JS vars added by the controller's render_page().
-	var READ_NONCE   = ( window.aipsCacheMonitor && window.aipsCacheMonitor.nonce )       || '';
-	var ACTION_NONCE = ( window.aipsCacheMonitor && window.aipsCacheMonitor.actionNonce ) || '';
+	var READ_NONCE   = ( window.aipsCacheMonitor && ((window.aipsCacheMonitorConfig && aipsCacheMonitorConfig.nonce) || (window.aipsCacheMonitor && ((window.aipsCacheMonitorConfig && aipsCacheMonitorConfig.nonce) || (window.aipsCacheMonitor && aipsCacheMonitor.nonce)))) )       || '';
+	var ACTION_NONCE = ( window.aipsCacheMonitor && ((window.aipsCacheMonitorConfig && aipsCacheMonitorConfig.actionNonce) || (window.aipsCacheMonitor && ((window.aipsCacheMonitorConfig && aipsCacheMonitorConfig.actionNonce) || (window.aipsCacheMonitor && aipsCacheMonitor.actionNonce)))) ) || '';
 
 	// -----------------------------------------------------------------------
 	// Utility helpers
@@ -53,7 +58,7 @@
 	 */
 	function formatTs( ts ) {
 		ts = parseInt( ts, 10 );
-		if ( ! ts ) { return aipsCacheMonitor.i18n.never || 'Never'; }
+		if ( ! ts ) { return __("Never", 'ai-post-scheduler') || 'Never'; }
 		return new Date( ts * 1000 ).toLocaleString();
 	}
 
@@ -131,7 +136,7 @@
 			}
 		} ).fail( function () {
 			$btn.prop( 'disabled', false );
-			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
+			AIPS.Utilities.showToast( __("Request failed. Please try again.", 'ai-post-scheduler') || 'Request failed.', 'error' );
 			} );
 	} );
 
@@ -141,13 +146,13 @@
 
 		$( document ).on( 'click', '.aips-cache-flush-all-btn', function () {
 		var actionNonce = $( this ).data( 'nonce' ) || ACTION_NONCE;
-		var confirmMsg  = aipsCacheMonitor.i18n.confirmFlushAll || 'This will flush ALL plugin-owned cache. Are you sure?';
+		var confirmMsg  = __("This will flush ALL plugin-owned cache. Are you absolutely sure?", 'ai-post-scheduler') || 'This will flush ALL plugin-owned cache. Are you sure?';
 
 		AIPS.Utilities.confirm(
 			confirmMsg,
-			aipsCacheMonitor.i18n.flushAllTitle || 'Flush All Plugin Cache',
+			__("Flush All Plugin Cache", 'ai-post-scheduler') || 'Flush All Plugin Cache',
 			[ {
-				label:     aipsCacheMonitor.i18n.confirmBtn || 'Confirm Flush',
+				label:     __("Confirm Flush", 'ai-post-scheduler') || 'Confirm Flush',
 				className: 'aips-btn-danger',
 				action:    function () {
 					$.post( ajaxUrl, {
@@ -178,9 +183,9 @@
 
 		AIPS.Utilities.confirm(
 			confirmMsg,
-			aipsCacheMonitor.i18n.flushGroupTitle || 'Flush Cache Group',
+			__("Flush Cache Group", 'ai-post-scheduler') || 'Flush Cache Group',
 			[ {
-				label:     aipsCacheMonitor.i18n.flushGroupBtn || 'Flush Group',
+				label:     __("Flush Group", 'ai-post-scheduler') || 'Flush Group',
 				className: 'aips-btn-danger',
 				action:    function () {
 					$.post( ajaxUrl, {
@@ -284,7 +289,7 @@
 		var hash = $( this ).data( 'hash' );
 
 		$( '#aips-cache-inspect-modal' ).show();
-		$( '#aips-cache-inspect-body' ).html( '<p>' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</p>' );
+		$( '#aips-cache-inspect-body' ).html( '<p>' + esc( __("Loading…", 'ai-post-scheduler') || 'Loading…' ) + '</p>' );
 
 		$.post( ajaxUrl, {
 			action:   'aips_cache_monitor_inspect',
@@ -297,7 +302,7 @@
 			}
 
 			var d           = res.data;
-			var expiresFmt  = d.expires_at > 0 ? formatTs( d.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
+			var expiresFmt  = d.expires_at > 0 ? formatTs( d.expires_at ) : ( __("Never", 'ai-post-scheduler') || 'Never' );
 			var ttlRemFmt   = d.ttl_remaining !== null && d.ttl_remaining !== undefined ? d.ttl_remaining + 's' : 'N/A';
 
 			var html = '<dl class="aips-dl">';
@@ -315,7 +320,7 @@
 			html += '</dl>';
 
 			if ( d.preview !== null && d.preview !== undefined ) {
-				html += '<h4>' + esc( aipsCacheMonitor.i18n.preview || 'Preview' ) + '</h4>';
+				html += '<h4>' + esc( __("Preview", 'ai-post-scheduler') || 'Preview' ) + '</h4>';
 				if ( d.preview_note ) {
 					html += '<p style="font-style:italic;margin-bottom:6px;">' + esc( d.preview_note ) + '</p>';
 				}
@@ -375,7 +380,7 @@
 			} );
 
 		if ( ! hashes.length ) {
-			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.noneSelected || 'No entries selected.', 'warning' );
+			AIPS.Utilities.showToast( __("No entries selected.", 'ai-post-scheduler') || 'No entries selected.', 'warning' );
 			return;
 		}
 
@@ -406,7 +411,7 @@
 		};
 
 		$( '#aips-ops-tbody' ).html(
-			'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
+			'<tr><td colspan="6">' + esc( __("Loading…", 'ai-post-scheduler') || 'Loading…' ) + '</td></tr>'
 		);
 
 		$.post( ajaxUrl, params ).done( function ( res ) {
@@ -427,7 +432,7 @@
 				} );
 
 			if ( ! html ) {
-				html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noOps || 'No operations found.' ) + '</td></tr>';
+				html = '<tr><td colspan="6">' + esc( __("No operations found.", 'ai-post-scheduler') || 'No operations found.' ) + '</td></tr>';
 			}
 			$( '#aips-ops-tbody' ).html( html );
 		} );
@@ -488,7 +493,7 @@
 			}
 		} ).fail( function () {
 			$btn.prop( 'disabled', false );
-			AIPS.Utilities.showToast( aipsCacheMonitor.i18n.requestFailed || 'Request failed.', 'error' );
+			AIPS.Utilities.showToast( __("Request failed. Please try again.", 'ai-post-scheduler') || 'Request failed.', 'error' );
 		} );
 		} );
 		},
@@ -505,7 +510,7 @@
 			} );
 
 			$( '#aips-cache-entries-tbody' ).html(
-				'<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
+				'<tr><td colspan="10">' + esc( __("Loading…", 'ai-post-scheduler') || 'Loading…' ) + '</td></tr>'
 			);
 
 			$.post( ajaxUrl, params ).done( function ( res ) {
@@ -518,16 +523,16 @@
 				var html = '';
 
 				$.each( rows, function ( i, row ) {
-					var expiresFmt = row.expires_at > 0 ? formatTs( row.expires_at ) : ( aipsCacheMonitor.i18n.never || 'Never' );
+					var expiresFmt = row.expires_at > 0 ? formatTs( row.expires_at ) : ( __("Never", 'ai-post-scheduler') || 'Never' );
 					var rowStyle   = row.is_expired ? ' style="opacity:0.55;"' : '';
 
 					html += '<tr data-hash="' + escAttr( row.key_hash ) + '"' + rowStyle + '>';
-					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" aria-label="' + escAttr( aipsCacheMonitor.i18n.selectEntry || 'Select entry' ) + '" /></td>';
+					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" aria-label="' + escAttr( __("Select cache entry", 'ai-post-scheduler') || 'Select entry' ) + '" /></td>';
 					html += '<td class="cell-primary">';
 					html += '<code class="aips-key-hash" title="' + escAttr( row.key_hash ) + '">' + esc( row.key_hash.substring( 0, 12 ) + '…' ) + '</code>';
 					html += '<div class="row-actions">';
-					html += '<span><a href="#" class="aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</a></span> | ';
-					html += '<span class="delete"><a href="#" class="aips-cache-delete-link" style="color:#a00;" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.delete || 'Delete' ) + '</a></span>';
+					html += '<span><a href="#" class="aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( __("Inspect", 'ai-post-scheduler') || 'Inspect' ) + '</a></span> | ';
+					html += '<span class="delete"><a href="#" class="aips-cache-delete-link" style="color:#a00;" data-hash="' + escAttr( row.key_hash ) + '">' + esc( __("Delete", 'ai-post-scheduler') || 'Delete' ) + '</a></span>';
 					html += '</div>';
 					html += '</td>';
 					html += '<td>' + esc( row.cache_group ) + '</td>';
@@ -537,12 +542,12 @@
 					html += '<td><small>' + esc( row.value_type ) + '</small></td>';
 					html += '<td>' + formatBytes( row.value_size ) + '</td>';
 					html += '<td>' + esc( expiresFmt ) + '</td>';
-					html += '<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( aipsCacheMonitor.i18n.inspect || 'Inspect' ) + '</button></td>';
+					html += '<td><button class="aips-btn aips-btn-sm aips-btn-ghost aips-cache-inspect-link" data-hash="' + escAttr( row.key_hash ) + '">' + esc( __("Inspect", 'ai-post-scheduler') || 'Inspect' ) + '</button></td>';
 					html += '</tr>';
 				} );
 
 				if ( ! html ) {
-					html = '<tr><td colspan="10">' + esc( aipsCacheMonitor.i18n.noEntries || 'No entries found.' ) + '</td></tr>';
+					html = '<tr><td colspan="10">' + esc( __("No entries found.", 'ai-post-scheduler') || 'No entries found.' ) + '</td></tr>';
 				}
 
 				$( '#aips-cache-entries-tbody' ).html( html );
@@ -555,10 +560,10 @@
 				if ( totalPages > 1 ) {
 					pagHtml = '<span class="aips-pag-info">' + esc( 'Page ' + currentPage + ' / ' + totalPages + ' (' + res.data.total + ' total)' ) + '</span> ';
 					if ( currentPage > 1 ) {
-						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( aipsCacheMonitor.i18n.prev || 'Prev' ) + '</button> ';
+						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-prev">&laquo; ' + esc( __("Prev", 'ai-post-scheduler') || 'Prev' ) + '</button> ';
 					}
 					if ( currentPage < totalPages ) {
-						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-next">' + esc( aipsCacheMonitor.i18n.next || 'Next' ) + ' &raquo;</button>';
+						pagHtml += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-entries-next">' + esc( __("Next", 'ai-post-scheduler') || 'Next' ) + ' &raquo;</button>';
 					}
 				}
 				$( '#aips-cache-entries-pagination' ).html( pagHtml );
@@ -576,7 +581,7 @@
 			};
 
 			$( '#aips-events-tbody' ).html(
-				'<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.loading || 'Loading…' ) + '</td></tr>'
+				'<tr><td colspan="6">' + esc( __("Loading…", 'ai-post-scheduler') || 'Loading…' ) + '</td></tr>'
 			);
 
 			$.post( ajaxUrl, params ).done( function ( res ) {
@@ -597,7 +602,7 @@
 				} );
 
 				if ( ! html ) {
-					html = '<tr><td colspan="6">' + esc( aipsCacheMonitor.i18n.noEvents || 'No events found.' ) + '</td></tr>';
+					html = '<tr><td colspan="6">' + esc( __("No events found.", 'ai-post-scheduler') || 'No events found.' ) + '</td></tr>';
 				}
 				$( '#aips-events-tbody' ).html( html );
 			} );

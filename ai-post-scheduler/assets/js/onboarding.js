@@ -1,4 +1,9 @@
 jQuery(document).ready(function ($) {
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 	function showNotice(type, message) {
 		var $wrap = $('#aips-onboarding-notice');
 		var cls = type === 'success' ? 'notice notice-success' : type === 'warning' ? 'notice notice-warning' : 'notice notice-error';
@@ -145,7 +150,7 @@ jQuery(document).ready(function ($) {
 	});
 
 	$('#aips-onboarding-skip').on('click', function () {
-		if (!window.confirm(aipsOnboardingL10n.confirmSkipOnboarding || 'Skip the Onboarding Wizard? You can restart it later from System Status.')) {
+		if (!window.confirm(__("Skip the Onboarding Wizard? You can restart it later from System Status.", 'ai-post-scheduler') || 'Skip the Onboarding Wizard? You can restart it later from System Status.')) {
 			return;
 		}
 		ajax('aips_onboarding_skip', {}, function (err, out) {
