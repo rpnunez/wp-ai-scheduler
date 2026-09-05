@@ -45,10 +45,10 @@ The Unified Monetization Hub consolidates four website revenue pillars (In-Conte
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | M1: Backend Foundation (Schema, Migration, Config, Repository & Cloaking) | `AIPS_DB_Manager`, `AIPS_DB_Migrations::migrate_to_3_7_2()`, `AIPS_Config`, `AIPS_Referral_Programs_Repository`, `AIPS_Container`, `AIPS_Link_Cloaking_Service`, version bump 3.7.2 | none | IN_PROGRESS |
-| 2 | M2: Central Monetization Hub Admin UI & AJAX Controller | `monetization.php` 5 tabs, `AIPS_Monetization_Controller`, `AIPS_Ajax_Registry`, `admin-monetization.js`, modal CRUD, `AIPS.Templates` | M1 | PLANNED |
-| 3 | M3: In-Content Delivery Engine, Shortcode, Block & Copy Code | `the_content` injection, `[aips_referral]`, Gutenberg block, `monetization-frontend.js`, CSS ribbon, impression telemetry | M1 | PLANNED |
-| 4 | M4: E2E Integration & Acceptance Verification | Full verification against acceptance criteria, static syntax checks, audit pass | M2, M3 | PLANNED |
+| 1 | M1: Backend Foundation (Schema, Migration, Config, Repository & Cloaking) | `AIPS_DB_Manager`, `AIPS_DB_Migrations::migrate_to_3_7_2()`, `AIPS_Config`, `AIPS_Referral_Programs_Repository`, `AIPS_Container`, `AIPS_Link_Cloaking_Service`, version bump 3.7.2 | none | COMPLETED |
+| 2 | M2: Central Monetization Hub Admin UI & AJAX Controller | `monetization.php` 5 tabs, `AIPS_Monetization_Controller`, `AIPS_Ajax_Registry`, `admin-monetization.js`, modal CRUD, `AIPS.Templates` | M1 | COMPLETED |
+| 3 | M3: In-Content Delivery Engine, Shortcode, Block & Copy Code | `the_content` injection, `[aips_referral]`, Gutenberg block, `monetization-frontend.js`, CSS ribbon, impression telemetry | M1 | COMPLETED |
+| 4 | M4: E2E Integration & Acceptance Verification | Full verification against acceptance criteria, static syntax checks, audit pass | M2, M3 | COMPLETED |
 
 ## Interface Contracts
 
