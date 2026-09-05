@@ -19,40 +19,42 @@ class AIPS_Studio_Controller {
 	public const PAGE_SLUG = 'aips-studio';
 
 	/**
-	 * Available Studio sections.
+	 * Get available Studio sections with localized metadata.
 	 *
-	 * @var array<string, array{label:string, icon:string, description:string, action_label:string, action_class:string}>
+	 * @return array<string, array{label:string, icon:string, description:string, action_label:string, action_class:string}>
 	 */
-	public const SECTIONS = array(
-		'templates' => array(
-			'label'        => 'Templates',
-			'icon'         => 'dashicons-media-document',
-			'description'  => 'Create and configure AI post generation templates, prompt strategies, and format guidelines.',
-			'action_label' => 'Add Template',
-			'action_class' => 'aips-btn aips-btn-primary aips-add-template-btn',
-		),
-		'voices' => array(
-			'label'        => 'Voices',
-			'icon'         => 'dashicons-megaphone',
-			'description'  => 'Define brand personality, tone of voice, stylistic rules, and custom excerpt guidelines.',
-			'action_label' => 'Add Voice',
-			'action_class' => 'aips-btn aips-btn-primary aips-add-voice-btn',
-		),
-		'structures' => array(
-			'label'        => 'Article Structures',
-			'icon'         => 'dashicons-editor-ol',
-			'description'  => 'Build reusable article frameworks, required section outlines, and heading constraints.',
-			'action_label' => 'Add Structure',
-			'action_class' => 'aips-btn aips-btn-primary aips-add-structure-btn',
-		),
-		'post-slices' => array(
-			'label'        => 'Post Slices',
-			'icon'         => 'dashicons-grid-view',
-			'description'  => 'Manage modular content blocks, dynamic CTAs, and automated slice insertions.',
-			'action_label' => 'Add Slice',
-			'action_class' => 'aips-btn aips-btn-primary aips-add-slice-btn',
-		),
-	);
+	public static function get_sections(): array {
+		return array(
+			'templates' => array(
+				'label'        => __('Templates', 'ai-post-scheduler'),
+				'icon'         => 'dashicons-media-document',
+				'description'  => __('Create and configure AI post generation templates, prompt strategies, and format guidelines.', 'ai-post-scheduler'),
+				'action_label' => __('Add Template', 'ai-post-scheduler'),
+				'action_class' => 'aips-btn aips-btn-primary aips-add-template-btn',
+			),
+			'voices' => array(
+				'label'        => __('Voices', 'ai-post-scheduler'),
+				'icon'         => 'dashicons-megaphone',
+				'description'  => __('Define brand personality, tone of voice, stylistic rules, and custom excerpt guidelines.', 'ai-post-scheduler'),
+				'action_label' => __('Add Voice', 'ai-post-scheduler'),
+				'action_class' => 'aips-btn aips-btn-primary aips-add-voice-btn',
+			),
+			'structures' => array(
+				'label'        => __('Article Structures', 'ai-post-scheduler'),
+				'icon'         => 'dashicons-editor-ol',
+				'description'  => __('Build reusable article frameworks, required section outlines, and heading constraints.', 'ai-post-scheduler'),
+				'action_label' => __('Add Structure', 'ai-post-scheduler'),
+				'action_class' => 'aips-btn aips-btn-primary aips-add-structure-btn',
+			),
+			'post-slices' => array(
+				'label'        => __('Post Slices', 'ai-post-scheduler'),
+				'icon'         => 'dashicons-grid-view',
+				'description'  => __('Manage modular content blocks, dynamic CTAs, and automated slice insertions.', 'ai-post-scheduler'),
+				'action_label' => __('Add Slice', 'ai-post-scheduler'),
+				'action_class' => 'aips-btn aips-btn-primary aips-add-slice-btn',
+			),
+		);
+	}
 
 	/**
 	 * Get the currently requested Studio section key (or empty for Launchpad).
@@ -67,7 +69,8 @@ class AIPS_Studio_Controller {
 			$raw = sanitize_key(wp_unslash($_GET['section']));
 		}
 
-		if (array_key_exists($raw, self::SECTIONS)) {
+		$sections = self::get_sections();
+		if (array_key_exists($raw, $sections)) {
 			return $raw;
 		}
 
@@ -190,6 +193,8 @@ class AIPS_Studio_Controller {
 	 * @return void
 	 */
 	public function render_section_content(string $section) {
+		$embedded = true;
+
 		switch ($section) {
 			case 'templates':
 				$templates_handler = new AIPS_Templates();
@@ -198,15 +203,23 @@ class AIPS_Studio_Controller {
 
 			case 'voices':
 				$voices_handler = new AIPS_Voices();
+				$voices = $voices_handler->get_all(false);
 				include AIPS_PLUGIN_DIR . 'templates/admin/voices.php';
 				break;
 
 			case 'structures':
 				$structures_handler = new AIPS_Structures_Controller();
+				$repo = new AIPS_Article_Structure_Repository();
+				$structures = $repo->get_all(false);
+				$section_repo = new AIPS_Prompt_Sections_Repository();
+				$sections = $section_repo->get_all(false);
 				include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
 				break;
 
 			case 'post-slices':
+				$slices_repo = new AIPS_Post_Slices_Repository();
+				$post_slices = $slices_repo->get_all();
+				$post_slice_counts = $slices_repo->get_counts();
 				include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
 				break;
 		}

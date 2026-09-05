@@ -25,7 +25,9 @@ if (!isset($post_slice_counts) || !is_array($post_slice_counts)) {
 $total_count    = isset($post_slice_counts['total']) ? (int) $post_slice_counts['total'] : count($post_slices);
 $active_count   = isset($post_slice_counts['active']) ? (int) $post_slice_counts['active'] : 0;
 $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_counts['inactive'] : 0;
+$is_embedded_slices_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_slices_view): ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container aips-post-slices-page">
 		<div class="aips-page-header">
@@ -44,6 +46,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<div class="aips-post-slices-summary" aria-label="<?php esc_attr_e('Post slice counts', 'ai-post-scheduler'); ?>">
 			<div class="aips-post-slices-summary-card">
@@ -186,8 +189,10 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 				</div>
 			<?php endif; ?>
 		</div>
+<?php if (!$is_embedded_slices_view): ?>
 	</div>
 </div>
+<?php endif; ?>
 
 <div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">

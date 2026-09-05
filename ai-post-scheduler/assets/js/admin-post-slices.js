@@ -31,7 +31,7 @@
 		 * @return {void}
 		 */
 		bindEvents: function () {
-			$(document).on('click', '#aips-add-post-slice-btn, #aips-add-post-slice-empty-btn', this.openAddModal.bind(this));
+			$(document).on('click', '#aips-add-post-slice-btn, #aips-add-post-slice-empty-btn, .aips-add-slice-btn', this.openAddModal.bind(this));
 			$(document).on('click', '.aips-edit-post-slice', this.openEditModal.bind(this));
 			$(document).on('click', '#aips-save-post-slice-btn', this.saveSlice.bind(this));
 			$(document).on('click', '.aips-delete-post-slice', this.deleteSlice.bind(this));

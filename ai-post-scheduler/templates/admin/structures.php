@@ -12,7 +12,9 @@ if (!isset($structures) || !is_array($structures)) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+$is_embedded_structures_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_structures_view): ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<!-- Page Header -->
@@ -34,6 +36,7 @@ if (!isset($sections) || !is_array($sections)) {
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<!-- Tab Navigation -->
 		<div class="aips-tab-nav">
@@ -331,8 +334,10 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 		</div>
 	</div>
+<?php if (!$is_embedded_structures_view): ?>
 	</div><!-- .aips-page-container -->
 </div><!-- .wrap -->
+<?php endif; ?>
 
 <?php /* HTML templates used by AIPS.Templates.renderRaw() in admin.js */ ?>
 

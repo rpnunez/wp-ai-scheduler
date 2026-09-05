@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 /** @var string $active_section */
 /** @var array<string, array{total:int, active:int}> $stats */
 
-$sections = AIPS_Studio_Controller::SECTIONS;
+$sections = AIPS_Studio_Controller::get_sections();
 ?>
 
 <div class="wrap aips-wrap aips-studio-wrap">
@@ -88,7 +88,7 @@ $sections = AIPS_Studio_Controller::SECTIONS;
 						<span class="aips-breadcrumb-current"><?php echo esc_html($current_sec['label']); ?></span>
 					</div>
 
-					<!-- Section Quick Switcher -->
+					<!-- Section Quick Switcher & Actions -->
 					<div class="aips-workspace-controls">
 						<div class="aips-switcher-pills">
 							<a href="<?php echo esc_url($studio_controller->get_section_url('')); ?>" class="aips-pill-btn" title="<?php esc_attr_e('Launchpad Overview', 'ai-post-scheduler'); ?>">
@@ -101,6 +101,21 @@ $sections = AIPS_Studio_Controller::SECTIONS;
 								</a>
 							<?php endforeach; ?>
 						</div>
+
+						<?php if (!empty($current_sec['action_label'])) : ?>
+							<div class="aips-workspace-actions" style="margin-left: 12px; display: inline-flex; gap: 8px;">
+								<button type="button" class="<?php echo esc_attr($current_sec['action_class']); ?>">
+									<span class="dashicons dashicons-plus-alt2"></span>
+									<?php echo esc_html($current_sec['action_label']); ?>
+								</button>
+								<?php if ('structures' === $active_section) : ?>
+									<button type="button" class="aips-btn aips-btn-secondary aips-add-section-btn">
+										<span class="dashicons dashicons-plus-alt2"></span>
+										<?php esc_html_e('Add Section', 'ai-post-scheduler'); ?>
+									</button>
+								<?php endif; ?>
+							</div>
+						<?php endif; ?>
 					</div>
 				</div>
 			</div>

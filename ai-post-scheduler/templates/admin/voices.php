@@ -2,7 +2,9 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+$is_embedded_voices_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_voices_view): ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -22,6 +24,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
+<?php endif; ?>
 
         <!-- Content Panel -->
         <div class="aips-content-panel">
@@ -127,7 +130,10 @@ if (!defined('ABSPATH')) {
                 <?php endif; ?>
             </div>
         </div>
+<?php if (!$is_embedded_voices_view): ?>
     </div>
+</div>
+<?php endif; ?>
     
     <div id="aips-voice-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
@@ -176,4 +182,3 @@ if (!defined('ABSPATH')) {
             </div>
         </div>
     </div>
-</div>
