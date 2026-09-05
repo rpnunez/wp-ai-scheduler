@@ -95,9 +95,28 @@
          */
         renderTopics: function(topics, append) {
             var html = '';
-            topics.forEach(function(topic) {
-                html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topic });
-            });
+            var seenTopics = [];
+            if (append) {
+                $('#topics-list .topic-text-input').each(function() {
+                    var val = $(this).val();
+                    if (val) {
+                        seenTopics.push(val.trim().toLowerCase());
+                    }
+                });
+            }
+
+            if (Array.isArray(topics)) {
+                topics.forEach(function(topic) {
+                    var topicStr = (typeof topic === 'string' ? topic : (topic !== null && topic !== undefined ? String(topic) : '')).trim();
+                    if (!topicStr) return;
+                    var normalizedTopic = topicStr.toLowerCase();
+
+                    if (seenTopics.indexOf(normalizedTopic) === -1) {
+                        html += AIPS.Templates.render('aips-tmpl-planner-topic-item', { topic: topicStr });
+                        seenTopics.push(normalizedTopic);
+                    }
+                });
+            }
 
             if (append) {
                 $('#topics-list').append(html);
