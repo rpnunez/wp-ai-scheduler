@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="aips-filter-left">
 					<label class="screen-reader-text" for="aips-afl-search"><?php esc_html_e( 'Search mappings:', 'ai-post-scheduler' ); ?></label>
 					<input type="search" id="aips-afl-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search by tag or label…', 'ai-post-scheduler' ); ?>" style="min-width:240px;">
-					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e( 'Clear', 'ai-post-scheduler' ); ?></button>
+					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 		</div>

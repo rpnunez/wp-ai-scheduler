@@ -1027,6 +1027,14 @@ final class AI_Post_Scheduler {
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
 
+        // Ensure Seeder admin hooks are registered when developer mode is enabled
+        // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
+        if ( AIPS_Config::get_instance()->get_option('aips_developer_mode') ) {
+            // Lazy instantiate the Seeder admin class so its admin_enqueue_scripts
+            // hook is available on Diagnostics/Dev Tools pages.
+            new AIPS_Seeder_Admin();
+        }
+
     }
 
     /**

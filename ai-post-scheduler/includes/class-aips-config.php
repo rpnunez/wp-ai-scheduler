@@ -218,6 +218,7 @@ class AIPS_Config {
             'aips_embeddings_model'                    => 'text-embedding-3-small',
             'aips_embeddings_env_id'                   => '',
             'aips_embeddings_dimensions'               => 1536,
+            'aips_indexer_verbose_history'             => false,
             'aips_indexer_post_types'                  => array('post'),
             'aips_indexer_similarity_threshold'        => 0.65,
             'aips_auto_index_on_publish'               => true,
