@@ -121,6 +121,25 @@ if (!defined('ABSPATH')) {
 			</div>
 		</div>
 
+		<!-- SEO & INTERNAL LINKS HEALTH -->
+		<div class="aips-dashboard-section-title aips-margin-top-large" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+			<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+				<span class="dashicons dashicons-networking"></span>
+				<h2 style="margin:0;"><?php esc_html_e('SEO Link Health & Orphan Monitor', 'ai-post-scheduler'); ?></h2>
+				<span class="aips-section-meta"><?php esc_html_e('Site-wide crawl depth, internal linking distribution, and orphan mitigation.', 'ai-post-scheduler'); ?></span>
+			</div>
+			<a href="<?php echo esc_url(admin_url('admin.php?page=aips-content-indexer#visualizer')); ?>" class="aips-btn aips-btn-secondary aips-btn-sm">
+				<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+				<?php esc_html_e('Explore Link Graph', 'ai-post-scheduler'); ?>
+			</a>
+		</div>
+
+		<?php
+		if (class_exists('AIPS_SEO_Link_Metrics_Component')) {
+			AIPS_SEO_Link_Metrics_Component::render_summary_cards();
+		}
+		?>
+
 		<!-- 2. DETAIL SECTION -->
 		<div class="aips-dashboard-section-title aips-margin-top-large">
 			<span class="dashicons dashicons-list-view"></span>

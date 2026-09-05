@@ -354,3 +354,69 @@
 .aips-risk-high   { background: #fee2e2; color: #b91c1c; }
 .aips-risk-medium { background: #fef3c7; color: #b45309; }
 .aips-risk-low    { background: #e0f2fe; color: #0369a1; }
+
+/* Content Indexer Tab Navigation */
+.aips-indexer-page .aips-tab-nav {
+	display: flex;
+	gap: 4px;
+	margin: 0 0 16px 0;
+	padding: 0;
+	list-style: none;
+	border-bottom: 1px solid #ccd0d4;
+}
+
+.aips-indexer-page .aips-tab-nav .aips-tab-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 18px;
+	text-decoration: none;
+	font-size: 13px;
+	font-weight: 500;
+	color: #50575e;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	background: transparent;
+	border-top: none;
+	border-left: none;
+	border-right: none;
+	cursor: pointer;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aips-indexer-page .aips-tab-nav .aips-tab-link:hover {
+	color: #2271b1;
+}
+
+.aips-indexer-page .aips-tab-nav .aips-tab-link.active {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+}
+
+.aips-indexer-page .aips-tab-nav .aips-tab-link .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	line-height: 18px;
+}
+
+/* Content Indexer Tab Content Panels */
+.aips-indexer-page .aips-tab-content {
+	display: none;
+	background: transparent !important;
+	padding: 0 !important;
+	min-height: 0 !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+.aips-indexer-page .aips-tab-content.active {
+	display: block;
+}
+
+.aips-indexer-page .aips-tab-content > .aips-content-panel,
+.aips-indexer-page .aips-tab-content > form > .aips-content-panel {
+	margin-top: 0;
+}
+

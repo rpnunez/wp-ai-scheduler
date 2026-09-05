@@ -114,14 +114,36 @@ class AIPS_Internal_Link_Inserter_Service {
 		}
 
 		$source_post = get_post($suggestion->source_post_id);
-		$target_post = get_post($suggestion->target_post_id);
-
 		if (!$source_post) {
 			return new WP_Error(
 				'source_not_found',
 				__('Source post not found.', 'ai-post-scheduler')
 			);
 		}
+
+		$anchor_text = !empty($suggestion->anchor_text) ? $suggestion->anchor_text : '';
+
+		return $this->find_insertion_locations_for_text(
+			$source_post->post_content,
+			$suggestion->target_post_id,
+			$anchor_text,
+			self::NUM_LOCATIONS_TO_REQUEST,
+			(int) $suggestion->id
+		);
+	}
+
+	/**
+	 * Ask AI to identify insertion locations in arbitrary text for a target post.
+	 *
+	 * @param string $source_content    Raw or plain text content from draft or post.
+	 * @param int    $target_post_id    Target post ID.
+	 * @param string $anchor_text       Optional anchor text preference.
+	 * @param int    $num_locations     Number of locations to request.
+	 * @param int    $suggestion_id     Optional suggestion ID for logging.
+	 * @return array|WP_Error Array with locations and counts, or WP_Error on failure.
+	 */
+	public function find_insertion_locations_for_text($source_content, $target_post_id, $anchor_text = '', $num_locations = self::NUM_LOCATIONS_TO_REQUEST, $suggestion_id = 0) {
+		$target_post = get_post(absint($target_post_id));
 
 		if (!$target_post) {
 			return new WP_Error(
@@ -130,46 +152,46 @@ class AIPS_Internal_Link_Inserter_Service {
 			);
 		}
 
-		$post_content       = $source_post->post_content;
-		$plain_text_content = $this->normalize_content($post_content);
+		$plain_text_content = $this->normalize_content($source_content);
 
 		if (empty($plain_text_content)) {
 			return new WP_Error(
 				'empty_content',
-				__('The source post has no content to link from.', 'ai-post-scheduler')
+				__('The source content has no text to link from.', 'ai-post-scheduler')
 			);
 		}
 
 		$plain_text_content = $this->truncate_prompt_content($plain_text_content, 1400);
 
 		$target_url  = get_permalink($target_post->ID);
-		$anchor_text = !empty($suggestion->anchor_text) ? $suggestion->anchor_text : $target_post->post_title;
 		$post_title  = $target_post->post_title;
+		$anchor_text = !empty($anchor_text) ? $anchor_text : $post_title;
 
-		$prompt = $this->build_prompt($plain_text_content, $post_title, $anchor_text, $target_url, self::NUM_LOCATIONS_TO_REQUEST);
-		$max_tokens = $this->calculate_max_tokens($prompt, self::NUM_LOCATIONS_TO_REQUEST);
+		$num_locations = max(1, min(5, (int) $num_locations));
+		$prompt        = $this->build_prompt($plain_text_content, $post_title, $anchor_text, $target_url, $num_locations);
+		$max_tokens    = $this->calculate_max_tokens($prompt, $num_locations);
 
 		$this->logger->log(
 			sprintf(
-				'Finding insertion locations for suggestion #%d (source=%d, target=%d)',
-				(int) $suggestion->id,
-				(int) $suggestion->source_post_id,
-				(int) $suggestion->target_post_id
+				'Finding insertion locations for target=%d (suggestion #%d)',
+				(int) $target_post->ID,
+				(int) $suggestion_id
 			),
 			'info'
 		);
+
 		$ai_result = $this->ai_service->generate_json_from_text(
 			$prompt,
 			array(
-				'max_tokens'  => $max_tokens,
+				'max_tokens' => $max_tokens,
 			)
 		);
 
 		if (is_wp_error($ai_result)) {
 			$this->logger->log(
 				sprintf(
-					'Internal link inserter: JSON parse failed for suggestion #%d — %s',
-					(int) $suggestion->id,
+					'Internal link inserter: JSON parse failed for target #%d — %s',
+					(int) $target_post->ID,
 					$ai_result->get_error_message()
 				),
 				'error'
@@ -180,23 +202,25 @@ class AIPS_Internal_Link_Inserter_Service {
 
 		$raw_count = is_array($ai_result) ? count($ai_result) : 0;
 		$locations = $this->validate_locations($ai_result);
-
-		$locations = array_slice($locations, 0, self::NUM_LOCATIONS_TO_REQUEST);
+		$locations = array_slice($locations, 0, $num_locations);
 
 		if (empty($locations)) {
 			$this->logger->log(
 				sprintf(
-					'Internal link inserter: suggestion #%d returned 0 valid insertion locations.',
-					(int) $suggestion->id
+					'Internal link inserter: target #%d returned 0 valid insertion locations.',
+					(int) $target_post->ID
 				),
 				'info'
 			);
 		}
 
 		return array(
-			'locations'   => $locations,
-			'raw_count'   => $raw_count,
-			'valid_count' => count($locations),
+			'locations'         => $locations,
+			'raw_count'         => $raw_count,
+			'valid_count'       => count($locations),
+			'target_id'         => (int) $target_post->ID,
+			'target_title'      => $target_post->post_title,
+			'target_url'        => $target_url,
 		);
 	}
 

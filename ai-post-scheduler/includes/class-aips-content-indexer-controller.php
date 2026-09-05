@@ -187,6 +187,28 @@ class AIPS_Content_Indexer_Controller {
 
 		$graph = $this->related_service->get_graph_data_for_post($post_id, $limit, $min_similarity);
 
+		if (!empty($graph['nodes']) && class_exists('AIPS_SEO_Link_Metrics_Component')) {
+			$node_post_ids = array();
+			foreach ($graph['nodes'] as $node) {
+				if (!empty($node['raw_id'])) {
+					$node_post_ids[] = (int) $node['raw_id'];
+				}
+			}
+			if (!empty($node_post_ids)) {
+				AIPS_SEO_Link_Metrics_Component::prime_batch_counts($node_post_ids);
+				foreach ($graph['nodes'] as &$n_ref) {
+					if (!empty($n_ref['raw_id'])) {
+						$m = AIPS_SEO_Link_Metrics_Component::get_post_metrics((int) $n_ref['raw_id']);
+						$n_ref['inbound_count']  = $m['inbound_count'];
+						$n_ref['outbound_count'] = $m['outbound_count'];
+						$n_ref['is_orphan']      = $m['is_orphan'];
+						$n_ref['equity_tier']    = $m['equity_tier'];
+					}
+				}
+				unset($n_ref);
+			}
+		}
+
 		AIPS_Ajax_Response::success(array(
 			'post_id' => $post_id,
 			'graph'   => $graph,

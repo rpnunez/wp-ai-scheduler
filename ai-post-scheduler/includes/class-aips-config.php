@@ -234,6 +234,13 @@ class AIPS_Config {
             'aips_deduplication_mode'                  => 'warn',
             'aips_deduplication_threshold'             => 0.85,
             'aips_generation_inject_related_context'   => true,
+            // Semantic Link Inserter & Link Graph
+            'aips_links_similarity_threshold'          => 0.60,
+            'aips_links_max_suggestions'               => 5,
+            'aips_link_graph_show_post_metrics'        => true,
+            'aips_link_graph_show_card_badges'         => true,
+            'aips_link_graph_enable_opportunity_sort'  => true,
+            'aips_link_graph_enable_visual_modal'      => false,
         );
     }
     

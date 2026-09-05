@@ -141,21 +141,49 @@
 		 * Tab switching.
 		 */
 		initTabs: function () {
+			var self = this;
+
+			// Check for direct URL hash on load
+			var initialHash = window.location.hash ? window.location.hash.replace('#', '') : '';
+			if (initialHash && $('#' + initialHash + '-tab').length) {
+				self.switchTab(initialHash);
+			}
+
 			$('.aips-tab-link').on('click', function (e) {
 				e.preventDefault();
 				var tab = $(this).data('tab');
-
-				$('.aips-tab-link').removeClass('active');
-				$('.aips-tab-content').removeClass('active');
-
-				$(this).addClass('active');
-				$('#' + tab + '-tab').addClass('active');
-
-				if (tab === 'visualizer' && window.AIPS.ContentIndexer.graphData) {
-					window.AIPS.ContentIndexer.renderSvgGraph(window.AIPS.ContentIndexer.graphData);
+				if (tab) {
+					self.switchTab(tab);
+					if (history.replaceState) {
+						history.replaceState(null, null, '#' + tab);
+					} else {
+						window.location.hash = '#' + tab;
+					}
 				}
 			});
 		},
+
+		/**
+		 * Switch to a specific tab by key.
+		 *
+		 * @param {string} tab Tab identifier.
+		 */
+		switchTab: function (tab) {
+			if (!tab || !$('#' + tab + '-tab').length) {
+				return;
+			}
+
+			$('.aips-tab-link').removeClass('active');
+			$('.aips-tab-link[data-tab="' + tab + '"]').addClass('active');
+
+			$('.aips-indexer-page .aips-tab-content').removeClass('active').hide().attr('aria-hidden', 'true');
+			$('#' + tab + '-tab').addClass('active').show().attr('aria-hidden', 'false');
+
+			if (tab === 'visualizer' && this.graphData) {
+				this.renderSvgGraph(this.graphData);
+			}
+		},
+
 
 		/**
 		 * Start / Resume backfill indexing.
@@ -494,6 +522,27 @@
 				$('#aips-drawer-view-link').attr('href', node.view_url).show();
 			} else {
 				$('#aips-drawer-view-link').hide();
+			}
+
+			// Internal Link Graph Metrics
+			if (node.inbound_count !== undefined) {
+				$('#aips-drawer-inbound-cnt').text(node.inbound_count);
+				$('#aips-drawer-outbound-cnt').text(node.outbound_count || 0);
+
+				if (node.is_orphan) {
+					$('#aips-drawer-orphan-pill').show();
+					$('#aips-drawer-hub-pill').hide();
+				} else if (node.inbound_count >= 5) {
+					$('#aips-drawer-hub-pill').show();
+					$('#aips-drawer-orphan-pill').hide();
+				} else {
+					$('#aips-drawer-orphan-pill').hide();
+					$('#aips-drawer-hub-pill').hide();
+				}
+
+				$('#aips-drawer-link-metrics').show();
+			} else {
+				$('#aips-drawer-link-metrics').hide();
 			}
 
 			$('#aips-drawer-focus-btn').data('raw-id', node.raw_id);

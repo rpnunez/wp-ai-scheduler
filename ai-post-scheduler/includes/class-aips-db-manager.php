@@ -37,6 +37,7 @@ class AIPS_DB_Manager {
         'aips_cache_events',
         'aips_integration_field_mappings',
         'aips_content_audits',
+        'aips_content_links',
     );
 
     public function __construct() {
@@ -102,6 +103,7 @@ class AIPS_DB_Manager {
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
+        $table_content_links        = $tables['aips_content_links'];
 
         $sql = array();
 
@@ -554,6 +556,21 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY similarity_score (similarity_score),
             UNIQUE KEY source_target (source_post_id, target_post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_content_links (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) unsigned NOT NULL,
+            target_id bigint(20) unsigned NOT NULL,
+            anchor_text varchar(255) DEFAULT '',
+            link_url varchar(500) NOT NULL,
+            post_type varchar(50) DEFAULT 'post',
+            created_at datetime NOT NULL,
+            updated_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            KEY source_idx (source_id),
+            KEY target_idx (target_id),
+            KEY source_target_idx (source_id, target_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_affiliate_links (

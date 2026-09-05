@@ -492,6 +492,24 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger_Interface::class)
             );
         });
+
+        // Register AIPS_Content_Links_Repository
+        $container->singleton(AIPS_Content_Links_Repository::class, function( $container ) {
+            return new AIPS_Content_Links_Repository();
+        });
+
+        // Register AIPS_Link_Graph_Service
+        $container->singleton(AIPS_Link_Graph_Service::class, function( $container ) {
+            return new AIPS_Link_Graph_Service(
+                $container->make(AIPS_Content_Links_Repository::class),
+                $container->make(AIPS_Editor_Registry::class)
+            );
+        });
+
+        // Register AIPS_Editor_Registry
+        $container->singleton(AIPS_Editor_Registry::class, function( $container ) {
+            return new AIPS_Editor_Registry();
+        });
     }
 
     /**
@@ -620,13 +638,48 @@ final class AI_Post_Scheduler {
             if (!is_object($post) || !isset($post->post_status)) {
                 return;
             }
+            // Ignore revisions, autosaves, and the DOING_AUTOSAVE constant: WordPress
+            // fires save_post for every autosave/revision write, and treating those as
+            // real edits would issue needless DELETEs against wp_aips_content_links on
+            // every keystroke autosave and re-index post revisions.
+            if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+                return;
+            }
+            if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+                return;
+            }
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
+            if ('publish' === $post->post_status) {
+                AIPS_Container::get_instance()->make(AIPS_Link_Graph_Service::class)->index_post_links($post_id);
+            } else {
+                // If status changed away from publish (draft, pending), purge its outbound links from graph
+                AIPS_Container::get_instance()->make(AIPS_Content_Links_Repository::class)->sync_post_links($post_id, array());
+            }
         }, 10, 2);
+
+        // Remove links from graph on post trashing or permanent deletion
+        add_action('trashed_post', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Content_Links_Repository::class)->delete_by_post($post_id);
+        });
+        add_action('untrashed_post', function ($post_id) {
+            $post = get_post($post_id);
+            if ($post && 'publish' === $post->post_status) {
+                AIPS_Container::get_instance()->make(AIPS_Link_Graph_Service::class)->index_post_links($post_id);
+            }
+        });
+        add_action('deleted_post', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Content_Links_Repository::class)->delete_by_post($post_id);
+        });
 
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // REST API routes for block editor integrations
+        add_action('rest_api_init', function () {
+            (new AIPS_REST_Editor_Controller())->register_routes();
+        });
     }
 
     /**
@@ -957,6 +1010,12 @@ final class AI_Post_Scheduler {
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
 
+        // Editor Sidebar Meta-Box (Classic Editor & post edit screens)
+        new AIPS_Editor_Meta_Box();
+
+        // Native WordPress post/page list columns & orphan filter (edit.php)
+        new AIPS_Post_List_Columns();
+      
         // Ensure Seeder admin hooks are registered when developer mode is enabled
         // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
         if ( AIPS_Config::get_instance()->get_option('aips_developer_mode') ) {
@@ -964,7 +1023,6 @@ final class AI_Post_Scheduler {
             // hook is available on Diagnostics/Dev Tools pages.
             new AIPS_Seeder_Admin();
         }
-
     }
 
     /**
