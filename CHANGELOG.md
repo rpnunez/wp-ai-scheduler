@@ -1,3 +1,11 @@
+## [3.6.6] - 2026-09-04
+
+### Added
+- **Content Indexing History:** Added domain filtering, optional verbose embedding logs, and collapsible contiguous activity groups with bulk selection.
+
+### Fixed
+- **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
+
 ## [3.6.5] - 2026-08-28
 - **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 
