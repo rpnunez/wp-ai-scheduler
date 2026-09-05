@@ -91,7 +91,9 @@ class AIPS_Dashboard_Controller {
 		$completed_in_period = isset( $summary_stats['completed'] ) ? (int) $summary_stats['completed'] : 0;
 		$failed_in_period = isset( $summary_stats['failed'] ) ? (int) $summary_stats['failed'] : 0;
 		$partial_in_period = isset( $summary_stats['partial'] ) ? (int) $summary_stats['partial'] : 0;
-		$success_rate_in_period = $total_in_period > 0 ? round( ( $completed_in_period / $total_in_period ) * 100, 1 ) : 100.0;
+		// Rate is over resolved attempts (completed + failed + partial), not
+		// every history row in the range — in-flight rows are not outcomes.
+		$success_rate_in_period = AIPS_Outcome_Rate::success_rate( $completed_in_period, $failed_in_period, $partial_in_period, 100.0 );
 
 		$schedules_run_in_period = $dashboard_repo->get_schedules_run_count( $from_ts, $to_ts );
 
@@ -330,7 +332,9 @@ class AIPS_Dashboard_Controller {
 		$completed_in_period = isset($summary_stats['completed']) ? (int) $summary_stats['completed'] : 0;
 		$failed_in_period = isset($summary_stats['failed']) ? (int) $summary_stats['failed'] : 0;
 		$partial_in_period = isset($summary_stats['partial']) ? (int) $summary_stats['partial'] : 0;
-		$success_rate_in_period = $total_in_period > 0 ? round(($completed_in_period / $total_in_period) * 100, 1) : 100.0;
+		// Rate is over resolved attempts (completed + failed + partial), not
+		// every history row in the range — in-flight rows are not outcomes.
+		$success_rate_in_period = AIPS_Outcome_Rate::success_rate($completed_in_period, $failed_in_period, $partial_in_period, 100.0);
 
 		// Schedules Executed in period
 		$schedules_run_in_period = $dashboard_repo->get_schedules_run_count($from_ts, $to_ts);
