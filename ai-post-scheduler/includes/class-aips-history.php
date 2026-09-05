@@ -6,8 +6,7 @@ if (!defined('ABSPATH')) {
 /**
  * Handles history management for AI post generation runs.
  *
- * Registers history-related AJAX endpoints and coordinates history
- * retrieval, export, stats, and admin page rendering.
+ * Coordinates history retrieval, stats, and admin page rendering.
  */
 class AIPS_History {
 
@@ -22,20 +21,12 @@ class AIPS_History {
     private $repository;
 
     /**
-     * Initialize history handler dependencies and AJAX hooks.
+     * Initialize history handler dependencies.
      *
      * @return void
      */
     public function __construct() {
         $this->repository = new AIPS_History_Repository();
-        
-        add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
-        add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
-        add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
-        add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
-        add_action('wp_ajax_aips_get_history_modal_html', array($this, 'ajax_get_history_modal_html'));
-        add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
-        add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
     }
 
     /**
@@ -92,229 +83,65 @@ class AIPS_History {
     }
 
     /**
-     * AJAX handler to bulk delete selected history records.
+     * Retrieve paginated history records.
      *
-     * @return void
+     * @param array $args Query arguments.
+     * @return array
      */
-    public function ajax_bulk_delete_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
-
-        if (!current_user_can('manage_options')) {
-            AIPS_Ajax_Response::permission_denied();
-        }
-
-        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
-
-        if (empty($ids)) {
-            AIPS_Ajax_Response::error(__('No items selected.', 'ai-post-scheduler'));
-        }
-
-        do_action('aips_history_before_delete', $ids);
-
-        $result = $this->repository->delete_bulk($ids);
-
-        if ($result === false) {
-            AIPS_Ajax_Response::error(__('Failed to delete items.', 'ai-post-scheduler'));
-        }
-
-        do_action('aips_history_deleted', $ids);
-
-        AIPS_Ajax_Response::success(array(), __('Selected items deleted successfully.', 'ai-post-scheduler'));
+    public function get_history($args = array()) {
+        return $this->repository->get_history($args);
     }
 
     /**
-     * AJAX handler to export history records as CSV.
+     * Get aggregate history statistics.
      *
-     * @return void
+     * @return array
      */
-    public function ajax_export_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
-
-        if (!current_user_can('manage_options')) {
-            AIPS_Ajax_Response::permission_denied();
-        }
-
-        $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
-        $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
-        $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
-        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
-        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
-        $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
-        $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
-
-        // Get max records limit from configuration
-        $config = AIPS_Config::get_instance();
-        $max_records = (int) $config->get_option('history_export_max_records', 10000);
-
-        // Fetch all matching records
-        $history = $this->get_history(array(
-            'page' => 1,
-            'per_page' => $max_records,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'domain' => $domain_filter,
-            'actor' => $actor_filter,
-            'post_type' => $post_type_filter,
-            'correlation_id' => $correlation_id,
-            'date_from' => $date_from,
-            'date_to' => $date_to,
-        ));
-
-        $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
-        $filename = sanitize_file_name($filename);
-
-        $output = fopen('php://output', 'w');
-        if ($output === false) {
-            AIPS_Ajax_Response::error(__('Failed to open output stream for CSV export.', 'ai-post-scheduler'));
-        }
-
-        if (!headers_sent()) {
-            header('Content-Type: text/csv; charset=utf-8');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-        }
-
-        // Add BOM for Excel compatibility
-        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-
-        // Headers
-        fputcsv($output, array(
-            'ID',
-            'Date',
-            'Title',
-            'Status',
-            'History Type',
-            'Post ID',
-            'Error Message'
-        ));
-
-        if (!empty($history['items'])) {
-            foreach ($history['items'] as $item) {
-                fputcsv($output, array(
-                    $item->id,
-                    $item->created_at,
-                    $this->sanitize_csv_cell($item->generated_title),
-                    $item->status,
-                    $this->sanitize_csv_cell(self::get_creation_method_label((string) $item->creation_method)),
-                    $item->post_id,
-                    $this->sanitize_csv_cell($item->error_message)
-                ));
-            }
-        }
-
-        fclose($output);
-        exit;
+    public function get_stats() {
+        return $this->repository->get_stats();
     }
 
     /**
-     * AJAX handler to return details for a single history item.
+     * Get statistics for a specific template.
      *
-     * @return void
+     * @param int $template_id Template ID.
+     * @return array
      */
-    public function ajax_get_history_details() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
-        
-        if (!current_user_can('manage_options')) {
-            AIPS_Ajax_Response::permission_denied();
-        }
-        
-        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
-        
-        if (!$history_id) {
-            AIPS_Ajax_Response::error(__('Invalid history ID.', 'ai-post-scheduler'));
-        }
-        
-        $history_item = $this->repository->get_by_id($history_id);
-        
-        if (!$history_item) {
-            AIPS_Ajax_Response::error(__('History item not found.', 'ai-post-scheduler'));
-        }
-        
-        $generation_log = array();
-        if (!empty($history_item->generation_log)) {
-            $generation_log = json_decode($history_item->generation_log, true);
-        }
-        
-        $response = array(
-            'id' => $history_item->id,
-            'status' => $history_item->status,
-            'created_at' => $history_item->created_at,
-            'completed_at' => $history_item->completed_at,
-            'generated_title' => $history_item->generated_title,
-            'generated_content' => $history_item->generated_content,
-            'prompt' => $history_item->prompt,
-            'post_id' => $history_item->post_id,
-            'error_message' => $history_item->error_message,
-            'generation_log' => $generation_log,
-        );
-        
-        AIPS_Ajax_Response::success($response);
+    public function get_template_stats($template_id) {
+        return $this->repository->get_template_stats($template_id);
     }
 
     /**
-     * Build a normalized modal payload for a history container.
+     * Get statistics for all templates.
      *
-     * Centralizes log normalization, AI request/response pairing, filter counts,
-     * and JSON tree preparation so both modal entry points render the same data.
-     *
-     * @param object $history_item History container row with attached log rows.
-     * @param bool   $format_dates Whether to format created/completed times for display.
-     * @return array<string,mixed>
+     * @return array
      */
-    private function prepare_history_modal_view_data($history_item, $format_dates = false) {
-        $logs = $this->normalize_history_logs(isset($history_item->log) ? $history_item->log : array());
-        $container = $this->build_history_modal_container($history_item, $format_dates);
-        $analysis = $this->analyze_history_modal_summary($container, $logs);
-        $container = $this->finalize_history_modal_container($container, $analysis);
-        $container_id = isset($container['id']) ? (int) $container['id'] : 0;
-        $detail_id_prefix = 'aips-log-detail-' . $container_id . '-' . (int) (microtime(true) * 1000000) . '-' . mt_rand(1000, 9999);
-        $display_logs = $this->build_history_display_logs($logs, $detail_id_prefix);
-        $filter_counts = $this->build_history_filter_counts($display_logs);
+    public function get_all_template_stats() {
+        return $this->repository->get_all_template_stats();
+    }
 
-        return array(
-            'container' => $container,
-            'logs' => $logs,
-            'display_logs' => $display_logs,
-            'filter_counts' => $filter_counts,
+    /**
+     * Format a duration for the History summary UI.
+     *
+     * @param int|null $duration_seconds Duration in seconds.
+     * @return string
+     */
+    public function format_duration_for_display($duration_seconds) {
+        if ($duration_seconds === null) {
+            return '';
+        }
+
+        if ($duration_seconds < 60) {
+            return sprintf(__('%d seconds', 'ai-post-scheduler'), $duration_seconds);
+        }
+
+        return sprintf(
+            __('%d min %d sec', 'ai-post-scheduler'),
+            intdiv((int) $duration_seconds, 60),
+            ((int) $duration_seconds) % 60
         );
     }
-
-    /**
-     * Convert the base container + derived analysis into the final modal payload.
-     *
-     * @param array<string,mixed> $container Base container metadata.
-     * @param array<string,mixed> $analysis  Derived summary analysis.
-     * @return array<string,mixed>
-     */
-    private function finalize_history_modal_container($container, $analysis) {
-        return array(
-            'id' => isset($container['id']) ? (int) $container['id'] : 0,
-            'header_title' => $this->build_history_modal_header_title($container),
-            'status' => isset($container['status']) ? (string) $container['status'] : '',
-            'status_class' => isset($container['status_class']) ? (string) $container['status_class'] : '',
-            'header_actions' => $this->build_history_modal_header_actions($container),
-            'summary_lines' => $this->build_history_summary_lines($analysis),
-            'summary_meta' => $this->build_history_summary_meta($container),
-            'detail_cards' => $this->build_history_detail_cards($container),
-            'root_issue' => !empty($container['error_message']) ? (string) $container['error_message'] : '',
-            'suggested_action' => $this->build_history_suggested_action($container),
-            'diagnostic_text' => $this->build_history_diagnostic_text($container, $analysis),
-        );
-    }
-
-    /**
-     * Derive high-level summary insights from the container and its logs.
-     *
-     * @param array<string,mixed>               $container Prepared container payload.
-     * @param array<int,array<string,mixed>>    $logs      Normalized logs.
-     * @return array<string,string>
-     */
+  
     private function analyze_history_modal_summary($container, $logs) {
         $text = strtolower(((string) $container['creation_method']) . ' ' . ((string) $container['template_name']));
         if (strpos($text, 'content_index') !== false || strpos($text, 'content index') !== false) {
@@ -432,403 +259,7 @@ class AIPS_History {
         return null;
     }
 
-    /**
-     * Build the modal header title shown above the log content.
-     *
-     * @param array<string,mixed> $container Base container metadata.
-     * @return string
-     */
-    private function build_history_modal_header_title($container) {
-        $id = isset($container['id']) ? (int) $container['id'] : 0;
-        $title = isset($container['generated_title']) ? trim((string) $container['generated_title']) : '';
-
-        if ($title !== '') {
-            return $title . ' #' . $id;
-        }
-
-        return __('History Details', 'ai-post-scheduler') . ($id > 0 ? ' #' . $id : '');
-    }
-
-    /**
-     * Build top-of-modal action links.
-     *
-     * @param array<string,mixed> $container Base container metadata.
-     * @return array<int,array<string,string>>
-     */
-    private function build_history_modal_header_actions($container) {
-        $actions = array();
-
-        if (!empty($container['post_url'])) {
-            $actions[] = array(
-                'label' => !empty($container['post_id'])
-                    ? sprintf(__('View Post (ID: %d)', 'ai-post-scheduler'), (int) $container['post_id'])
-                    : __('View Post', 'ai-post-scheduler'),
-                'url' => (string) $container['post_url'],
-            );
-        }
-
-        if (!empty($container['post_edit_url'])) {
-            $actions[] = array(
-                'label' => __('Edit', 'ai-post-scheduler'),
-                'url' => (string) $container['post_edit_url'],
-            );
-        }
-
-        return $actions;
-    }
-
-    /**
-     * Build the combined Summary section lines.
-     *
-     * @param array<string,mixed> $analysis Derived analysis payload.
-     * @return array<int,array<string,string>>
-     */
-    private function build_history_summary_lines($analysis) {
-        $lines = array();
-
-        if (!empty($analysis['outcome_label'])) {
-            $lines[] = array(
-                'label' => __('Outcome', 'ai-post-scheduler'),
-                'value' => (string) $analysis['outcome_label'],
-            );
-        }
-
-        if (!empty($analysis['what_happened'])) {
-            $lines[] = array(
-                'label' => __('What happened', 'ai-post-scheduler'),
-                'value' => (string) $analysis['what_happened'],
-            );
-        }
-
-        if (!empty($analysis['what_changed'])) {
-            $lines[] = array(
-                'label' => __('What changed', 'ai-post-scheduler'),
-                'value' => (string) $analysis['what_changed'],
-            );
-        }
-
-        return $lines;
-    }
-
-    /**
-     * Build stacked Summary metadata values.
-     *
-     * @param array<string,mixed> $container Final base container metadata.
-     * @return array<int,array<string,string>>
-     */
-    private function build_history_summary_meta($container) {
-        $items = array();
-
-        if (!empty($container['created_at'])) {
-            $items[] = array(
-                'label' => __('Created', 'ai-post-scheduler'),
-                'value' => (string) $container['created_at'],
-            );
-        }
-
-        if (!empty($container['duration_label'])) {
-            $items[] = array(
-                'label' => __('Duration', 'ai-post-scheduler'),
-                'value' => (string) $container['duration_label'],
-            );
-        }
-
-        return $items;
-    }
-
-    /**
-     * Build the remaining detail cards shown beneath Summary.
-     *
-     * @param array<string,mixed> $container Base container metadata.
-     * @return array<int,array<string,string>>
-     */
-    private function build_history_detail_cards($container) {
-        $cards = array();
-
-        if (!empty($container['template_name'])) {
-            $cards[] = array(
-                'label' => __('Template', 'ai-post-scheduler'),
-                'value' => (string) $container['template_name'],
-                'class' => '',
-            );
-        }
-
-        if (!empty($container['creation_method'])) {
-            $cards[] = array(
-                'label' => __('Method', 'ai-post-scheduler'),
-                'value' => ucfirst(str_replace('_', ' ', (string) $container['creation_method'])),
-                'class' => '',
-            );
-        }
-
-        foreach (array(
-            'actor_type' => __('Actor', 'ai-post-scheduler'),
-            'topic_id' => __('Topic ID', 'ai-post-scheduler'),
-            'completed_at' => __('Completed', 'ai-post-scheduler'),
-            'correlation_id' => __('Correlation ID', 'ai-post-scheduler'),
-            'id' => __('Container ID', 'ai-post-scheduler'),
-        ) as $key => $label) {
-            if (!empty($container[$key])) {
-                $cards[] = array(
-                    'label' => $label,
-                    'value' => (string) $container[$key],
-                    'class' => '',
-                );
-            }
-        }
-
-        if (!empty($container['post_id']) && empty($container['post_url']) && empty($container['post_edit_url'])) {
-            $cards[] = array(
-                'label' => __('Post ID', 'ai-post-scheduler'),
-                'value' => (string) $container['post_id'],
-                'class' => '',
-            );
-        }
-
-        if (!empty($container['error_message'])) {
-            $cards[] = array(
-                'label' => __('Error', 'ai-post-scheduler'),
-                'value' => (string) $container['error_message'],
-                'class' => 'aips-history-summary-item-error',
-            );
-        }
-
-        return $cards;
-    }
-
-    private function build_history_suggested_action($container) {
-        if ($container['status'] === 'failed') {
-            return !empty($container['template_name'])
-                ? __('Review the error and retry this run after correcting its template or AI configuration.', 'ai-post-scheduler')
-                : __('Review the error and technical log before retrying the originating workflow.', 'ai-post-scheduler');
-        }
-        if ($container['status'] === 'processing') {
-            return __('Allow the run to finish; reload History if it remains in progress unexpectedly.', 'ai-post-scheduler');
-        }
-        return '';
-    }
-
-    private function build_history_diagnostic_text($container, $analysis) {
-        $lines = array(
-            sprintf(__('History #%d', 'ai-post-scheduler'), (int) $container['id']),
-            sprintf(__('Status: %s', 'ai-post-scheduler'), (string) $container['status']),
-            sprintf(__('What happened: %s', 'ai-post-scheduler'), (string) $analysis['what_happened']),
-            sprintf(__('What changed: %s', 'ai-post-scheduler'), (string) $analysis['what_changed']),
-        );
-        if (!empty($container['error_message'])) {
-            $lines[] = sprintf(__('Error: %s', 'ai-post-scheduler'), (string) $container['error_message']);
-        }
-        if (!empty($container['correlation_id'])) {
-            $lines[] = sprintf(__('Correlation ID: %s', 'ai-post-scheduler'), (string) $container['correlation_id']);
-        }
-        return implode("\n", $lines);
-    }
-
-    /**
-     * Determine whether the log set contains AI activity.
-     *
-     * @param array<int,array<string,mixed>> $logs Normalized logs.
-     * @return bool
-     */
-    private function history_logs_include_ai_activity($logs) {
-        foreach ($logs as $log) {
-            if ($this->is_ai_request_history_log($log) || $this->is_ai_response_history_log($log)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Recursively scan log detail values for coarse content change indicators.
-     *
-     * @param mixed $value Current value to scan.
-     * @param bool  $saw_title_change
-     * @param bool  $saw_content_change
-     * @param bool  $saw_image_change
-     * @param bool  $saw_published_result
-     * @param bool  $saw_draft_result
-     * @return void
-     */
-    private function scan_history_values_for_changes($value, &$saw_title_change, &$saw_content_change, &$saw_image_change, &$saw_published_result, &$saw_draft_result) {
-        if (is_string($value) && $value !== '') {
-            $normalized = strtolower($value);
-            if (strpos($normalized, 'title') !== false) {
-                $saw_title_change = true;
-            }
-            if (strpos($normalized, 'content') !== false || strpos($normalized, 'body') !== false) {
-                $saw_content_change = true;
-            }
-            if (strpos($normalized, 'featured image') !== false || strpos($normalized, 'image') !== false) {
-                $saw_image_change = true;
-            }
-            if (strpos($normalized, 'publish') !== false) {
-                $saw_published_result = true;
-            }
-            if (strpos($normalized, 'draft') !== false) {
-                $saw_draft_result = true;
-            }
-            return;
-        }
-
-        if (!is_array($value)) {
-            return;
-        }
-
-        foreach ($value as $child) {
-            $this->scan_history_values_for_changes($child, $saw_title_change, $saw_content_change, $saw_image_change, $saw_published_result, $saw_draft_result);
-        }
-    }
-
-    /**
-     * Normalize raw DB log rows into a consistent array structure.
-     *
-     * @param array $raw_logs Raw aips_history_log rows.
-     * @return array<int,array<string,mixed>>
-     */
-    private function normalize_history_logs($raw_logs) {
-        $logs = array();
-
-        foreach ($raw_logs as $log) {
-            $details = array();
-            if (!empty($log->details)) {
-                $decoded = json_decode($log->details, true);
-                if (is_array($decoded)) {
-                    $details = $decoded;
-                }
-            }
-
-            $log_type_label = isset($details['log_subtype']) ? (string) $details['log_subtype'] : '';
-
-            $logs[] = array(
-                'id' => (int) $log->id,
-                'log_type' => $log_type_label,
-                'history_type_id' => (int) $log->history_type_id,
-                'type_label' => AIPS_History_Type::get_label((int) $log->history_type_id),
-                'type_class' => $this->get_history_type_class((int) $log->history_type_id),
-                'timestamp' => isset($log->timestamp) ? (string) $log->timestamp : '',
-                'details' => $details,
-            );
-        }
-
-        return $logs;
-    }
-
-    /**
-     * Build container metadata for the logs modal.
-     *
-     * @param object $history_item  History container row.
-     * @param bool   $format_dates  Whether to convert times to human-readable strings.
-     * @return array<string,mixed>
-     */
-    private function build_history_modal_container($history_item, $format_dates = false) {
-        $duration_seconds = $this->calculate_history_duration_seconds($history_item);
-        $post_id = !empty($history_item->post_id) ? (int) $history_item->post_id : null;
-        $post_urls = $this->build_history_post_urls($post_id);
-        $created_at = isset($history_item->created_at) ? $history_item->created_at : '';
-        if ($format_dates) {
-            $created_at = !empty($created_at) ? AIPS_DateTime::formatRelativeOrAbsolute($created_at) : '';
-        }
-        $completed_at = isset($history_item->completed_at) ? $history_item->completed_at : '';
-        if ($format_dates) {
-            $completed_at = !empty($completed_at) ? AIPS_DateTime::formatRelativeOrAbsolute($completed_at) : '';
-        }
-        $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
-        $actor_type = isset($history_item->actor_type) ? (string) $history_item->actor_type : '';
-        if ($actor_type === '') {
-            $actor_type = strpos($creation_method, 'manual') !== false || strpos($creation_method, 'admin') !== false ? 'admin' : 'system';
-        }
-
-        return array(
-            'id' => (int) $history_item->id,
-            'status' => isset($history_item->status) ? (string) $history_item->status : '',
-            'status_class' => $this->get_history_status_class(isset($history_item->status) ? (string) $history_item->status : ''),
-            'generated_title' => isset($history_item->generated_title) ? $history_item->generated_title : '',
-            'template_name' => isset($history_item->template_name) ? $history_item->template_name : '',
-            'created_at' => $created_at,
-            'error_message' => isset($history_item->error_message) ? $history_item->error_message : '',
-            'post_id' => $post_id,
-            'post_url' => $post_urls['post_url'],
-            'post_edit_url' => $post_urls['post_edit_url'],
-            'creation_method' => $creation_method,
-            'actor_type' => $actor_type,
-            'topic_id' => !empty($history_item->topic_id) ? (int) $history_item->topic_id : null,
-            'correlation_id' => isset($history_item->correlation_id) ? (string) $history_item->correlation_id : '',
-            'completed_at' => $completed_at,
-            'duration_seconds' => $duration_seconds,
-            'duration_label' => $this->format_history_duration_label($duration_seconds),
-        );
-    }
-
-    /**
-     * Calculate duration for a history container from its timestamps.
-     *
-     * @param object $history_item History container row.
-     * @return int|null
-     */
-    private function calculate_history_duration_seconds($history_item) {
-        $start = $this->normalize_history_timestamp_for_math(isset($history_item->created_at) ? $history_item->created_at : null);
-        $end = $this->normalize_history_timestamp_for_math(isset($history_item->completed_at) ? $history_item->completed_at : null);
-
-        if ($start === null || $end === null || $end < $start) {
-            return null;
-        }
-
-        return $end - $start;
-    }
-
-    /**
-     * Convert stored timestamps into a unix timestamp when possible.
-     *
-     * @param mixed $value Raw timestamp value.
-     * @return int|null
-     */
-    private function normalize_history_timestamp_for_math($value) {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            $int_value = (int) $value;
-            if ($int_value > 100000000) {
-                return $int_value;
-            }
-        }
-
-        $parsed = strtotime((string) $value);
-        return $parsed !== false ? $parsed : null;
-    }
-
-    /**
-     * Build post and edit URLs for a linked post.
-     *
-     * @param int|null $post_id Linked post ID.
-     * @return array<string,string|null>
-     */
-    private function build_history_post_urls($post_id) {
-        $post_url = null;
-        $post_edit_url = null;
-
-        if (!empty($post_id)) {
-            $raw_post_url = get_permalink((int) $post_id);
-            if (!empty($raw_post_url)) {
-                $sanitized_post_url = esc_url_raw($raw_post_url);
-                $post_url = !empty($sanitized_post_url) ? $sanitized_post_url : null;
-            }
-
-            $raw_post_edit_url = get_edit_post_link((int) $post_id, 'raw');
-            if (!empty($raw_post_edit_url)) {
-                $sanitized_post_edit_url = esc_url_raw($raw_post_edit_url);
-                $post_edit_url = !empty($sanitized_post_edit_url) ? $sanitized_post_edit_url : null;
-            }
-        }
-
-        return array(
-            'post_url' => $post_url,
-            'post_edit_url' => $post_edit_url,
-        );
-    }
+     
 
     /**
      * Pair AI request/response logs in a single pass and prepare display rows.
@@ -1487,7 +918,7 @@ class AIPS_History {
      * @param string $value The value to sanitize.
      * @return string The sanitized value.
      */
-    private function sanitize_csv_cell($value) {
+    public function sanitize_csv_cell($value) {
         if (empty($value)) {
             return $value;
         }
@@ -1608,7 +1039,7 @@ class AIPS_History {
      * @param array $items Array of history item objects (passed by reference).
      * @return void
      */
-    private function prepare_items_for_display( array &$items ) {
+    public function prepare_items_for_display( array &$items ) {
         $date_format = get_option('date_format');
         $time_format = get_option('time_format');
         $format      = $date_format . ' ' . $time_format;

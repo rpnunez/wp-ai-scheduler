@@ -233,7 +233,8 @@ class Test_History_Template extends WP_UnitTestCase {
         );
         $_REQUEST = $_POST;
 
-        $response = $this->capture_ajax_response(array($history, 'ajax_reload_history'));
+        $controller = new AIPS_History_Ajax_Controller($history, new AIPS_History_Repository());
+        $response = $this->capture_ajax_response(array($controller, 'ajax_reload_history'));
 
         $this->assertIsArray($response);
         $this->assertTrue($response['success']);
