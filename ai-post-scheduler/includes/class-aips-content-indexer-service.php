@@ -114,19 +114,121 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$start_time = microtime(true);
-		$embedding  = $this->embeddings_service->generate_embedding($text);
+		$ai_config  = $this->config->get_ai_config();
+		$configured_model = (string) $this->config->get_option('aips_embeddings_model');
+		if ($configured_model === '') {
+			$configured_model = !empty($ai_config['model']) ? (string) $ai_config['model'] : 'text-embedding-3-small';
+		}
+		$model    = $configured_model;
+		$provider = (string) $this->config->get_option('aips_embeddings_provider');
+		if ($provider === '') {
+			$provider = 'default';
+		}
+
+		// Rich per-step logging (ai_request/ai_response/intermediate activities) can
+		// balloon the history log for large reindex runs, so it is opt-in via setting.
+		$verbose = (bool) $this->config->get_option('aips_indexer_verbose_history', false);
+
+		// Create History container at the start of indexing. Only columns actually
+		// persisted by AIPS_History_Repository::create() are passed; anything else
+		// belongs in individual log entries below.
+		$container = $this->history_service->create('content_indexing', array(
+			'post_id'         => $post_id,
+			'post_type'       => $post->post_type,
+			'generated_title' => $post->post_title,
+			'creation_method' => 'content_indexing',
+			'correlation_id'  => AIPS_Correlation_ID::get(),
+		));
+
+		$container->record(
+			'activity',
+			sprintf(__('Started content indexing for post #%d: "%s"', 'ai-post-scheduler'), $post_id, $post->post_title),
+			array(
+				'post_id'        => $post_id,
+				'post_type'      => $post->post_type,
+				'title'          => $post->post_title,
+				'content_length' => mb_strlen($text),
+			)
+		);
+
+		if ($verbose) {
+			$text_sample = mb_strlen($text) > 400 ? mb_substr($text, 0, 400) . '...' : $text;
+
+			$container->record(
+				'ai_request',
+				sprintf(__('AI request: Sent post #%d content for embedding generation', 'ai-post-scheduler'), $post_id),
+				array(
+					'component'   => 'embeddings',
+					'model'       => $model,
+					'provider'    => $provider,
+					'text_sample' => $text_sample,
+					'text_length' => mb_strlen($text),
+					'post_id'     => $post_id,
+				),
+				null,
+				array('component' => 'embeddings')
+			);
+		}
+
+		$embedding = $this->embeddings_service->generate_embedding($text);
 
 		if (is_wp_error($embedding)) {
+			$duration      = round(microtime(true) - $start_time, 3);
+			$error_message = $embedding->get_error_message();
+
+			$container->record_error(
+				sprintf(__('Embedding generation failed for post #%d: %s', 'ai-post-scheduler'), $post_id, $error_message),
+				array(
+					'post_id'    => $post_id,
+					'error_code' => $embedding->get_error_code(),
+					'duration'   => $duration,
+				),
+				$embedding
+			);
+			$container->complete_failure($error_message);
+
 			$this->logger->log(
-				sprintf('Failed to generate embedding for post %d (%s): %s', $post_id, $post->post_type, $embedding->get_error_message()),
+				sprintf('Failed to generate embedding for post %d (%s): %s', $post_id, $post->post_type, $error_message),
 				'error'
 			);
 			return $embedding;
 		}
 
 		$dimensions = count($embedding);
-		$ai_config  = $this->config->get_ai_config();
-		$model      = !empty($ai_config['model']) ? $ai_config['model'] : 'default';
+		$duration   = round(microtime(true) - $start_time, 3);
+
+		if ($verbose) {
+			$sample_preview = array();
+			for ($i = 0; $i < min(5, $dimensions); $i++) {
+				$sample_preview[] = round($embedding[$i], 6);
+			}
+
+			$container->record(
+				'ai_response',
+				sprintf(
+					/* translators: 1: vector dimensions count, 2: duration seconds. */
+					__('AI response: Received %1$d-dimensional embedding vector in %2$ss', 'ai-post-scheduler'),
+					$dimensions,
+					$duration
+				),
+				null,
+				array(
+					'component'      => 'embeddings',
+					'dimensions'     => $dimensions,
+					'model'          => $model,
+					'provider'       => $provider,
+					'duration'       => $duration,
+					'sample_vector'  => $sample_preview,
+					'vector_summary' => sprintf(
+						/* translators: 1: total dimensions, 2: comma-separated preview values. */
+						__('5 of %1$d dimensions preview: [%2$s, ...]', 'ai-post-scheduler'),
+						$dimensions,
+						implode(', ', $sample_preview)
+					),
+				),
+				array('component' => 'embeddings')
+			);
+		}
 
 		$this->embeddings_repo->upsert(
 			'post',
@@ -138,30 +240,69 @@ class AIPS_Content_Indexer_Service {
 			$post->post_type
 		);
 
-		$duration = round(microtime(true) - $start_time, 3);
+		if ($verbose) {
+			$container->record(
+				'activity',
+				sprintf(
+					/* translators: 1: dimensions, 2: post id. */
+					__('Saved %1$d-dimension vector to embeddings database for post #%2$d', 'ai-post-scheduler'),
+					$dimensions,
+					$post_id
+				),
+				array(
+					'post_id'    => $post_id,
+					'dimensions' => $dimensions,
+					'model'      => $model,
+				)
+			);
+		}
 
-		// Record telemetry via History Service
-		$container = $this->history_service->create('content_indexing', array(
-			'object_type'      => 'post',
-			'object_id'        => $post_id,
-			'object_post_type' => $post->post_type,
-			'title'            => $post->post_title,
-			'model'            => $model,
-			'dimensions'       => $dimensions,
-			'duration'         => $duration,
-		));
+		$rel_count = 0;
+		if ($compute_relationships) {
+			$rel_count = (int) $this->recompute_relationships_for_post($post_id);
+			if ($verbose) {
+				$container->record(
+					'info',
+					sprintf(__('Recomputed top related post relationships (%d matches)', 'ai-post-scheduler'), $rel_count),
+					array(
+						'post_id'             => $post_id,
+						'relationships_saved' => $rel_count,
+					)
+				);
+			}
+		}
+
+		$total_duration = round(microtime(true) - $start_time, 3);
+
+		// complete_success only merges columns whitelisted by the repository update;
+		// dimensions/duration/relationships live in the final activity log entry.
+		$container->record(
+			'activity',
+			sprintf(
+				/* translators: 1: dimensions, 2: total duration seconds, 3: related-post count. */
+				__('Indexed post: %1$d dims, %2$ss, %3$d related', 'ai-post-scheduler'),
+				$dimensions,
+				$total_duration,
+				$rel_count
+			),
+			array(
+				'dimensions'          => $dimensions,
+				'duration'            => $total_duration,
+				'relationships_saved' => $rel_count,
+				'model'               => $model,
+				'provider'            => $provider,
+			)
+		);
+
 		$container->complete_success(array(
-			'status' => 'indexed',
+			'status'          => 'completed',
+			'generated_title' => $post->post_title,
 		));
 
 		$this->logger->log(
-			sprintf('Indexed post %d (%s, %d dims) in %ss.', $post_id, $post->post_type, $dimensions, $duration),
+			sprintf('Indexed post %d (%s, %d dims) in %ss.', $post_id, $post->post_type, $dimensions, $total_duration),
 			'debug'
 		);
-
-		if ($compute_relationships) {
-			$this->recompute_relationships_for_post($post_id);
-		}
 
 		return true;
 	}
@@ -242,16 +383,29 @@ class AIPS_Content_Indexer_Service {
 		$failed      = 0;
 		$new_last_id = $last_post_id;
 
-		foreach ($post_ids as $post_id) {
-			$result = $this->index_post($post_id, true);
+		$correlation_id        = AIPS_Correlation_ID::get();
+		$generated_correlation = false;
+		if (empty($correlation_id)) {
+			$correlation_id        = AIPS_Correlation_ID::generate();
+			$generated_correlation = true;
+		}
 
-			if (is_wp_error($result)) {
-				$failed++;
-			} else {
-				$success++;
+		try {
+			foreach ($post_ids as $post_id) {
+				$result = $this->index_post($post_id, true);
+
+				if (is_wp_error($result)) {
+					$failed++;
+				} else {
+					$success++;
+				}
+
+				$new_last_id = max($new_last_id, $post_id);
 			}
-
-			$new_last_id = max($new_last_id, $post_id);
+		} finally {
+			if ($generated_correlation) {
+				AIPS_Correlation_ID::reset();
+			}
 		}
 
 		$status = $this->get_indexing_status($post_types, $post_status);
@@ -274,19 +428,19 @@ class AIPS_Content_Indexer_Service {
 	 * @param int   $post_id WordPress post ID.
 	 * @param int   $top_k   Number of top neighbors to precompute.
 	 * @param float $min_sim Minimum similarity threshold.
-	 * @return void
+	 * @return int Number of relationships saved.
 	 */
 	public function recompute_relationships_for_post($post_id, $top_k = 15, $min_sim = 0.50) {
 		$post_id = absint($post_id);
 		$source  = $this->embeddings_repo->get_by_post_id($post_id);
 
 		if (!$source || empty($source->embedding)) {
-			return;
+			return 0;
 		}
 
 		$source_vector = json_decode($source->embedding, true);
 		if (!is_array($source_vector)) {
-			return;
+			return 0;
 		}
 
 		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
@@ -308,7 +462,7 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		if (empty($candidate_vectors)) {
-			return;
+			return 0;
 		}
 
 		$neighbors = $this->embeddings_service->find_nearest_neighbors($source_vector, $candidate_vectors, $top_k);
@@ -328,6 +482,7 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$this->relationships_repo->sync_for_source('post', $post_id, $targets, 'related_post');
+		return count($targets);
 	}
 
 	/**

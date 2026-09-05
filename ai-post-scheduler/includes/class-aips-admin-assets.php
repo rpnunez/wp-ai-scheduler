@@ -1388,6 +1388,8 @@ class AIPS_Admin_Assets {
                 'summaryChangedError'  => __('Run ended with an error', 'ai-post-scheduler'),
                 'summaryChangedNone'   => __('No major content changes detected', 'ai-post-scheduler'),
                 'editPostLabel'        => __('Edit', 'ai-post-scheduler'),
+                'clickToExpand'        => __('Click to expand %d items', 'ai-post-scheduler'),
+                'clickToCollapse'      => __('Click to collapse', 'ai-post-scheduler'),
                 'filterAll'            => __('All', 'ai-post-scheduler'),
                 'filterByType'         => __('Filter:', 'ai-post-scheduler'),
                 'typeLabels'           => AIPS_History_Type::get_all_types(),
