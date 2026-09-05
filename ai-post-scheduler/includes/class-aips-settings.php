@@ -250,6 +250,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_embeddings_model'],
 			),
+			'aips_indexer_verbose_history' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_verbose_history'],
+			),
 			'aips_embeddings_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_embeddings_env_id'],
