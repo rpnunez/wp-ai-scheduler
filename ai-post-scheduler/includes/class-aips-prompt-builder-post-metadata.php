@@ -61,7 +61,28 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = "TITLE INSTRUCTIONS:\n" . $title_instructions;
 		}
 
-		$sections[] = "EXCERPT INSTRUCTIONS:\nBetween 40 and 60 words. Write naturally as a human would. Plain text, no formatting.";
+		$excerpt_instructions = "Between 40 and 60 words. Write naturally as a human would. Plain text, no formatting.";
+		if ($context->get_type() === 'template') {
+			$voice_obj = $context->get_voice();
+			if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
+				$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
+			}
+		} elseif ($context->get_type() === 'topic' && method_exists($context, 'get_author')) {
+			$author_obj = $context->get_author();
+			if ($author_obj) {
+				$author_style = array();
+				if (!empty($author_obj->voice_tone)) {
+					$author_style[] = 'Tone: ' . $author_obj->voice_tone;
+				}
+				if (!empty($author_obj->writing_style)) {
+					$author_style[] = 'Writing Style: ' . $author_obj->writing_style;
+				}
+				if (!empty($author_style)) {
+					$excerpt_instructions .= "\n" . implode("\n", $author_style);
+				}
+			}
+		}
+		$sections[] = "EXCERPT INSTRUCTIONS:\n" . $excerpt_instructions;
 
 		if (!empty($image_prompt)) {
 			$sections[] = "FEATURED IMAGE INSTRUCTIONS:\nUsing the template below, produce a finished image generation prompt describing the article's featured image. Substitute every placeholder with a concrete value drawn from the article.\n\n" . $image_prompt;
@@ -71,14 +92,13 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = $this->build_variables_section($ai_variables);
 		}
 
-		$sections[] = $this->build_response_shape($ai_variables, !empty($image_prompt));
-
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
 		if ($feedback_context instanceof AIPS_Post_Feedback_Prompt_Context) {
 			$guidance = $feedback_context->for_component('metadata_turn');
 			if ($guidance !== '') { $prompt .= "\n\n" . $guidance; }
 		}
+		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt));
 
 		/**
 		 * Filters the combined metadata prompt used by conversational generation.
@@ -122,15 +142,18 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			}
 
 			$properties['ai_variables'] = array(
-				'type'       => 'object',
-				'properties' => $variable_properties,
+				'type'                 => 'object',
+				'properties'           => $variable_properties,
+				'required'             => array_values($ai_variables),
+				'additionalProperties' => false,
 			);
 		}
 
 		return array(
 			'type'       => 'object',
 			'properties' => $properties,
-			'required'   => array('title', 'excerpt'),
+			'required'             => array_values(array_filter(array('title', 'excerpt', $include_image ? 'image_prompt' : null, !empty($ai_variables) ? 'ai_variables' : null))),
+			'additionalProperties' => false,
 		);
 	}
 

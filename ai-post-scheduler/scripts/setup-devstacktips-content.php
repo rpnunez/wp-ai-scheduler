@@ -692,7 +692,9 @@ DevStackTips Content Setup
 			}
 		}
 
+		$author_index = 0;
 		foreach ($this->object_data['authors'] as $author_data) {
+			$author_index++;
 			$structure_id = isset($structures[$author_data['structure_name']]) ? $structures[$author_data['structure_name']] : null;
 			$post_category = isset($categories[$author_data['category_name']]) ? $categories[$author_data['category_name']] : 0;
 			$source_group_ids = array();
@@ -700,8 +702,9 @@ DevStackTips Content Setup
 				$source_group_ids[] = $source_groups[$author_data['source_group_name']];
 			}
 
-			$topic_next_run = $interval_calc->calculate_next_run($author_data['topic_generation_frequency'], $now);
-			$post_next_run = $interval_calc->calculate_next_run($author_data['post_generation_frequency'], $now);
+			$stagger = $author_index * 600;
+			$topic_next_run = $interval_calc->calculate_next_run($author_data['topic_generation_frequency'], $now + $stagger);
+			$post_next_run = $interval_calc->calculate_next_run($author_data['post_generation_frequency'], $now + $stagger + 300);
 
 			$author_payload = array(
 				'name' => $author_data['name'],
@@ -2542,7 +2545,7 @@ Tone:
 			array(
 				'template_name' => 'Beginner How-To',
 				'title' => 'Core Monday - Developer Foundations',
-				'frequency' => 'weekly',
+				'frequency' => 'every_monday',
 				'weekday' => 1,
 				'start_time' => '09:00',
 				'is_active' => 1,
@@ -2550,7 +2553,7 @@ Tone:
 			array(
 				'template_name' => 'Intermediate Backend',
 				'title' => 'Core Tuesday - Backend Engineering',
-				'frequency' => 'weekly',
+				'frequency' => 'every_tuesday',
 				'weekday' => 2,
 				'start_time' => '09:00',
 				'is_active' => 1,
@@ -2558,7 +2561,7 @@ Tone:
 			array(
 				'template_name' => 'Security Guide',
 				'title' => 'Core Wednesday - Security First',
-				'frequency' => 'weekly',
+				'frequency' => 'every_wednesday',
 				'weekday' => 3,
 				'start_time' => '09:00',
 				'is_active' => 1,
@@ -2566,7 +2569,7 @@ Tone:
 			array(
 				'template_name' => 'Framework Comparison',
 				'title' => 'Core Thursday - Framework Comparisons',
-				'frequency' => 'weekly',
+				'frequency' => 'every_thursday',
 				'weekday' => 4,
 				'start_time' => '09:00',
 				'is_active' => 1,
@@ -2574,7 +2577,7 @@ Tone:
 			array(
 				'template_name' => 'Developer Tooling',
 				'title' => 'Core Friday - Developer Tooling',
-				'frequency' => 'weekly',
+				'frequency' => 'every_friday',
 				'weekday' => 5,
 				'start_time' => '09:00',
 				'is_active' => 1,
@@ -2582,7 +2585,7 @@ Tone:
 			array(
 				'template_name' => 'AI for Developers',
 				'title' => 'Flex Tuesday PM - AI Workflow Insights',
-				'frequency' => 'weekly',
+				'frequency' => 'every_tuesday',
 				'weekday' => 2,
 				'start_time' => '14:00',
 				'is_active' => 1,
@@ -2590,7 +2593,7 @@ Tone:
 			array(
 				'template_name' => 'Security News',
 				'title' => 'Flex Thursday PM - Security Intelligence Briefing',
-				'frequency' => 'weekly',
+				'frequency' => 'every_thursday',
 				'weekday' => 4,
 				'start_time' => '14:00',
 				'is_active' => 1,
@@ -2598,7 +2601,7 @@ Tone:
 			array(
 				'template_name' => 'PHP Framework Deep Dive',
 				'title' => 'Flex Saturday - PHP Ecosystem Radar',
-				'frequency' => 'weekly',
+				'frequency' => 'every_saturday',
 				'weekday' => 6,
 				'start_time' => '10:00',
 				'is_active' => 1,
@@ -2606,7 +2609,7 @@ Tone:
 			array(
 				'template_name' => 'Architecture Pattern Deep Dive',
 				'title' => 'Core Monday PM - Software Architecture Patterns',
-				'frequency' => 'weekly',
+				'frequency' => 'every_monday',
 				'weekday' => 1,
 				'start_time' => '14:00',
 				'is_active' => 1,
@@ -2614,7 +2617,7 @@ Tone:
 			array(
 				'template_name' => 'Test Strategy & Automation Guide',
 				'title' => 'Core Wednesday PM - Test Strategy & Automation',
-				'frequency' => 'weekly',
+				'frequency' => 'every_wednesday',
 				'weekday' => 3,
 				'start_time' => '14:00',
 				'is_active' => 1,
@@ -2622,7 +2625,7 @@ Tone:
 			array(
 				'template_name' => 'Refactoring & Code Smells',
 				'title' => 'Core Friday PM - Refactoring & Code Smells',
-				'frequency' => 'weekly',
+				'frequency' => 'every_friday',
 				'weekday' => 5,
 				'start_time' => '14:00',
 				'is_active' => 1,

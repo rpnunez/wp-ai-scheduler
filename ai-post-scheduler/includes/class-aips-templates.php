@@ -80,6 +80,12 @@ class AIPS_Templates {
             $template_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
         }
 
+        // post_type is write-once: only forwarded when the caller supplied it
+        // (the controller only does so when creating a new template).
+        if (isset($data['post_type'])) {
+            $template_data['post_type'] = sanitize_key($data['post_type']);
+        }
+
         if (!empty($data['id'])) {
             $this->repository->update(absint($data['id']), $template_data);
             return absint($data['id']);
@@ -247,6 +253,7 @@ class AIPS_Templates {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
+        $selectable_post_types = AIPS_Utilities::get_selectable_post_types();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
     }

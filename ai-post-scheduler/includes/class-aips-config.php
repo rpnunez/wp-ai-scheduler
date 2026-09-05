@@ -227,6 +227,27 @@ class AIPS_Config {
             'aips_cache_monitor_full_value_debug_only' => true,
             'aips_cache_monitor_live_refresh_enabled'  => false,
             'aips_cache_monitor_live_refresh_interval' => 30,
+            // Content Indexer & Embeddings
+            'aips_embeddings_provider'                 => '', // '' = auto-detect (Meow preferred)
+            'aips_embeddings_model'                    => 'text-embedding-3-small',
+            'aips_embeddings_env_id'                   => '',
+            'aips_embeddings_dimensions'               => 1536,
+            'aips_indexer_verbose_history'             => false,
+            'aips_indexer_post_types'                  => array('post'),
+            'aips_indexer_similarity_threshold'        => 0.65,
+            'aips_auto_index_on_publish'               => true,
+            // Related Posts
+            'aips_related_posts_enabled'               => true,
+            'aips_related_posts_auto_append'           => false,
+            'aips_related_posts_count'                 => 4,
+            'aips_related_posts_heading'               => 'Related Articles',
+            'aips_related_posts_layout'                => 'grid',
+            'aips_related_posts_show_thumbnails'       => true,
+            'aips_related_posts_show_excerpts'         => true,
+            // Deduplication & Cannibalization Shield
+            'aips_deduplication_mode'                  => 'warn',
+            'aips_deduplication_threshold'             => 0.85,
+            'aips_generation_inject_related_context'   => true,
         );
     }
     

@@ -99,9 +99,14 @@ make down
 
 ### Debugging (VS Code)
 
-1. Start the Docker environment.
-2. Press `F5` in VS Code.
-3. Select `Listen for Xdebug (Docker)`.
+Xdebug is **off by default** for performance. Enable it only when actively debugging:
+
+1. `make xdebug-on` (sets `XDEBUG_MODE=develop,debug` with `trigger`-based startup, rebuilds & restarts `web`).
+2. Press `F5` in VS Code and select `Listen for Xdebug (Docker)`.
+3. Trigger the request (with the Xdebug browser helper, or append `?XDEBUG_TRIGGER=1`).
+4. When finished: `make xdebug-off`.
+
+See [docs/SETUP.md](docs/SETUP.md#xdebug--vs-code-debugging) for the full env-var reference and mode explanations.
 
 ## Testing
 

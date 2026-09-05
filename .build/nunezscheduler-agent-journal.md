@@ -285,3 +285,14 @@ Target Feature: Research Planner
 Improvement: Replaced the non-standard custom two-click soft confirm behavior in the Planner UI with the standardized AIPS.Utilities.confirm modal for improved UI consistency and accessibility.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js, ai-post-scheduler/includes/class-aips-admin-assets.php
 Outcome: Simplifies code maintainability and offers a unified UI flow for user confirmations during content planning.
+## 2026-08-24 - Post Generator Optimization
+**Target Feature:** Post Generator
+**Improvement:** Optimized the search and filter clear buttons in the Generated Posts, Pending Review, and Partial Generations tabs by replacing text buttons with standard dashicon icons, reducing visual clutter and improving UI consistency while preserving full accessibility via aria-labels.
+**Files Modified:** `ai-post-scheduler/templates/admin/tab-generated-posts.php`, `ai-post-scheduler/templates/admin/tab-pending-review.php`, `ai-post-scheduler/templates/admin/tab-partial-generations.php`
+**Outcome:** Improved flow/efficiency and consistency for the Post Generator without expanding scope to unrelated areas.
+
+## 2026-08-27 - Search Clear Flow Optimization
+**Target Feature:** Admin List Tables (Templates, Schedules, Authors, Post Slices, etc.)
+**Improvement:** Optimized the search clear behavior by replacing text buttons (`Clear Search` or `Clear`) with standard accessible dashicon icons (`dashicons-dismiss`). This improves workflow flow/efficiency by standardizing the UI, reducing visual clutter, and aligning with the rest of the recent dashboard improvements, all while preserving proper `aria-label` accessibility.
+**Files Modified:** ai-post-scheduler/templates/admin/affiliate-links.php, ai-post-scheduler/templates/admin/structures.php, ai-post-scheduler/templates/admin/authors.php, ai-post-scheduler/templates/admin/schedule.php, ai-post-scheduler/templates/admin/post-slices.php, ai-post-scheduler/templates/admin/sources.php, ai-post-scheduler/templates/admin/planner.php, ai-post-scheduler/templates/admin/research.php, ai-post-scheduler/templates/admin/taxonomy.php, ai-post-scheduler/templates/admin/voices.php, ai-post-scheduler/templates/admin/internal-links.php, ai-post-scheduler/templates/admin/author-topics.php, ai-post-scheduler/templates/admin/sections.php, ai-post-scheduler/templates/admin/templates.php
+**Outcome:** Enhances the administrative flow by standardizing the search clear buttons across all tables into icon-only buttons, making the interface cleaner and more intuitive.

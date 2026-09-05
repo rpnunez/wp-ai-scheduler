@@ -127,6 +127,8 @@ class AIPS_Prompt_Builder_Post_Content {
 			if ($guidance !== '') { $processed_prompt .= "\n\n" . $guidance; }
 		}
 
+		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
 
@@ -167,6 +169,40 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
 		}
 
+		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
+	}
+
+	/**
+	 * Inject semantically related published articles into prompt context when enabled.
+	 *
+	 * @param string      $prompt Current assembled prompt.
+	 * @param string|null $topic  Target topic.
+	 * @return string
+	 */
+	private function inject_related_context($prompt, $topic) {
+		if (empty($topic) || !AIPS_Config::get_instance()->get_option('aips_generation_inject_related_context', true)) {
+			return $prompt;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if (!$container->has(AIPS_Related_Posts_Service::class)) {
+			return $prompt;
+		}
+
+		$related_service = $container->make(AIPS_Related_Posts_Service::class);
+		$related = $related_service->get_related_posts_for_topic($topic, 3, 0.55);
+
+		if (empty($related)) {
+			return $prompt;
+		}
+
+		$rel_context = "Context & Related Published Articles (you may naturally reference or link to these where relevant):\n";
+		foreach ($related as $rel_post) {
+			$rel_context .= "- \"{$rel_post['title']}\" (URL: {$rel_post['url']})\n";
+		}
+
+		return $prompt . "\n\n" . $rel_context;
 	}
 }

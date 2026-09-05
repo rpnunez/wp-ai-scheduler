@@ -509,6 +509,12 @@
 		/** @type {string} Actor filter value (cron, manual, etc.) */
 		actorFilter: '',
 
+		/** @type {string} Post type filter value (post, page, or a custom post type slug) */
+		postTypeFilter: '',
+
+		/** @type {string} Correlation ID filter for request tracing */
+		correlationId: '',
+
 		/** @type {string} Date range filter start (YYYY-MM-DD format) */
 		dateFrom: '',
 
@@ -546,12 +552,15 @@
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.postTypeFilter = $('#aips-filter-post-type').val() || '';
+			this.correlationId = $('#aips-filter-correlation').val() || '';
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
 			this.bindEvents();
 			this.renderFilterChips();
+			this.groupProcessingRows($('#aips-history-tbody'));
 			this.maybeOpenFromQuery();
 		},
 
@@ -566,6 +575,9 @@
 			// Open logs modal
 			$(document).on('click', '.aips-view-history-logs', this.openLogsModal.bind(this));
 			$(document).on('keydown', '.aips-history-row', this.onHistoryRowKeydown.bind(this));
+
+			// Processing group toggle
+			$(document).on('click', '.aips-history-group-header-row', this.toggleProcessingGroup.bind(this));
 
 			// Collapsible log-detail sections inside the modal
 			$(document).on('click', '.aips-log-toggle', this.toggleLogDetail.bind(this));
@@ -588,6 +600,10 @@
 			// Select-all and individual row checkboxes
 			$(document).on('change', '#aips-cb-select-all', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
+			$(document).on('change', '.aips-history-group-cb', this.onGroupCheckboxChange.bind(this));
+
+			// Group toggle expand/collapse (button is a real <button>, so native Enter/Space works)
+			$(document).on('click', '.aips-history-group-header, .aips-history-group-toggle', this.toggleGroup.bind(this));
 
 			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
@@ -1148,24 +1164,108 @@
 		 * ======================================================================== */
 
 		/**
-		 * Toggle all row checkboxes to match the select-all checkbox state.
+		 * Toggle select-all for all row checkboxes and group checkboxes.
 		 *
 		 * @param {Event} e
 		 */
 		toggleSelectAll: function (e) {
 			var checked = $(e.target).prop('checked');
 			$('.aips-history-cb').prop('checked', checked);
+			$('.aips-history-group-cb').prop('checked', checked).prop('indeterminate', false);
 			this.updateDeleteButton();
 		},
 
 		/**
-		 * Sync the select-all checkbox and Delete Selected button on row change.
+		 * Sync the select-all checkbox, parent group checkboxes, and Delete Selected button on row change.
+		 *
+		 * @param {Event} [e] Optional change event.
 		 */
-		onRowCheckboxChange: function () {
+		onRowCheckboxChange: function (e) {
 			this.updateDeleteButton();
+
+			// If event came from an individual row checkbox, update that row's parent group checkbox
+			if (e && e.target && $(e.target).hasClass('aips-history-cb')) {
+				var groupId = $(e.target).data('group-id');
+				if (groupId) {
+					var $groupCbs      = $('.aips-history-group-child[data-group-id="' + groupId + '"] .aips-history-cb');
+					var $groupHeaderCb = $('#cb-group-' + groupId);
+					var totalInGroup   = $groupCbs.length;
+					var checkedInGroup = $groupCbs.filter(':checked').length;
+
+					if (checkedInGroup === 0) {
+						$groupHeaderCb.prop('checked', false).prop('indeterminate', false);
+					} else if (checkedInGroup === totalInGroup) {
+						$groupHeaderCb.prop('checked', true).prop('indeterminate', false);
+					} else {
+						$groupHeaderCb.prop('checked', false).prop('indeterminate', true);
+					}
+				}
+			}
+
 			var allChecked = $('.aips-history-cb').length > 0
 				&& $('.aips-history-cb:not(:checked)').length === 0;
 			$('#aips-cb-select-all').prop('checked', allChecked);
+		},
+
+		/**
+		 * Handle checkbox change on a group header row to select/deselect all child rows.
+		 *
+		 * @param {Event} e Change event.
+		 */
+		onGroupCheckboxChange: function (e) {
+			var $cb     = $(e.currentTarget);
+			var checked = $cb.prop('checked');
+			var groupId = $cb.data('group-id');
+
+			if (groupId) {
+				$('.aips-history-group-child[data-group-id="' + groupId + '"] .aips-history-cb')
+					.prop('checked', checked);
+			}
+
+			this.onRowCheckboxChange(e);
+		},
+
+		/**
+		 * Toggle expanding or collapsing child rows in a history activity group.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		toggleGroup: function (e) {
+			// Ignore interactions with the row's checkbox, labels, and any nested interactive element,
+			// unless the click landed on the dedicated toggle button.
+			if ($(e.target).closest('input[type="checkbox"], label, a, .aips-row-action-menu, .check-column').length && !$(e.target).closest('.aips-history-group-toggle').length) {
+				return;
+			}
+			e.preventDefault();
+
+			var $header = $(e.currentTarget).closest('.aips-history-group-header');
+			var groupId = $header.data('group-id');
+			if (!groupId) {
+				return;
+			}
+
+			var $children = $('.aips-history-group-child[data-group-id="' + groupId + '"]');
+			var isExpanded = $header.attr('aria-expanded') === 'true';
+
+			if (isExpanded) {
+				$children.hide();
+				$header.attr('aria-expanded', 'false');
+				$header.find('.aips-history-group-toggle').attr('aria-expanded', 'false');
+				$header.find('.aips-group-chevron')
+					.removeClass('dashicons-arrow-down-alt2')
+					.addClass('dashicons-arrow-right-alt2');
+				$header.find('.aips-group-subtitle')
+					.text((aipsHistoryL10n.clickToExpand || 'Click to expand %d items').replace('%d', $children.length));
+			} else {
+				$children.show();
+				$header.attr('aria-expanded', 'true');
+				$header.find('.aips-history-group-toggle').attr('aria-expanded', 'true');
+				$header.find('.aips-group-chevron')
+					.removeClass('dashicons-arrow-right-alt2')
+					.addClass('dashicons-arrow-down-alt2');
+				$header.find('.aips-group-subtitle')
+					.text(aipsHistoryL10n.clickToCollapse || 'Click to collapse');
+			}
 		},
 
 		/**
@@ -1391,6 +1491,8 @@
 					search: self.searchQuery,
 					domain: self.domainFilter,
 					actor: self.actorFilter,
+					post_type: self.postTypeFilter,
+					correlation_id: self.correlationId,
 					date_from: self.dateFrom,
 					date_to: self.dateTo,
 					paged: paged
@@ -1413,6 +1515,7 @@
 					if ($tbody.length) {
 						if (itemsHtml) {
 							$tbody.html(itemsHtml);
+							self.groupProcessingRows($tbody);
 							$('#aips-history-search-no-results').hide();
 						} else {
 							// No results: render a friendly inline empty state.
@@ -1447,7 +1550,7 @@
 					window.history.replaceState({}, '', url.toString());
 
 					// Reset checkboxes and delete button.
-					$('#aips-cb-select-all').prop('checked', false);
+					$('#aips-cb-select-all, .aips-history-group-cb').prop('checked', false).prop('indeterminate', false);
 					self.updateDeleteButton();
 					self.renderFilterChips();
 				},
@@ -1501,13 +1604,15 @@
 			this.statusFilter = $('#aips-filter-status').val() || '';
 			this.domainFilter = $('#aips-filter-domain').val() || '';
 			this.actorFilter = $('#aips-filter-actor').val() || '';
+			this.postTypeFilter = $('#aips-filter-post-type').val() || '';
+			this.correlationId = $('#aips-filter-correlation').val() || '';
 			this.dateFrom = $('#aips-filter-date-from').val() || '';
 			this.dateTo = $('#aips-filter-date-to').val() || '';
 			this.searchQuery = $('#aips-history-search-input').val() || '';
 
 			// Reflect change in the URL without reloading.
 			var url = new URL(window.location.href);
-			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
+			[['status', this.statusFilter], ['domain', this.domainFilter], ['actor', this.actorFilter], ['post_type', this.postTypeFilter], ['correlation_id', this.correlationId], ['date_from', this.dateFrom], ['date_to', this.dateTo]].forEach(function (entry) {
 				if (entry[1]) {
 					url.searchParams.set(entry[0], entry[1]);
 				} else {
@@ -1551,6 +1656,8 @@
 				['status', this.statusFilter, $('#aips-filter-status option:selected').text()],
 				['domain', this.domainFilter, $('#aips-filter-domain option:selected').text()],
 				['actor', this.actorFilter, $('#aips-filter-actor option:selected').text()],
+				['post_type', this.postTypeFilter, $('#aips-filter-post-type option:selected').text()],
+				['correlation_id', this.correlationId, this.correlationId ? 'Correlation: ' + this.correlationId : ''],
 				['date_from', this.dateFrom, this.dateFrom ? 'From ' + this.dateFrom : ''],
 				['date_to', this.dateTo, this.dateTo ? 'To ' + this.dateTo : ''],
 				['search', this.searchQuery, this.searchQuery ? 'Search: ' + this.searchQuery : '']
@@ -1560,7 +1667,7 @@
 			}).join('');
 			if (html) { html += '<button type="button" class="aips-history-clear-filters">Clear all</button>'; }
 			$('#aips-history-filter-chips').html(html);
-			if (this.domainFilter || this.actorFilter || this.dateFrom || this.dateTo) {
+			if (this.domainFilter || this.actorFilter || this.postTypeFilter || this.correlationId || this.dateFrom || this.dateTo) {
 				$('#aips-history-advanced-filters').prop('hidden', false);
 				$('#aips-history-more-filters').attr('aria-expanded', 'true');
 			}
@@ -1569,14 +1676,14 @@
 		removeFilterChip: function (e) {
 			e.preventDefault();
 			var filter = $(e.currentTarget).data('filter');
-			var selectors = { status: '#aips-filter-status', domain: '#aips-filter-domain', actor: '#aips-filter-actor', date_from: '#aips-filter-date-from', date_to: '#aips-filter-date-to', search: '#aips-history-search-input' };
+			var selectors = { status: '#aips-filter-status', domain: '#aips-filter-domain', actor: '#aips-filter-actor', post_type: '#aips-filter-post-type', correlation_id: '#aips-filter-correlation', date_from: '#aips-filter-date-from', date_to: '#aips-filter-date-to', search: '#aips-history-search-input' };
 			$(selectors[filter]).val('');
 			this.applyFilter();
 		},
 
 		clearAllFilters: function (e) {
 			if (e) { e.preventDefault(); }
-			$('#aips-filter-status, #aips-filter-domain, #aips-filter-actor, #aips-filter-date-from, #aips-filter-date-to, #aips-history-search-input').val('');
+			$('#aips-filter-status, #aips-filter-domain, #aips-filter-actor, #aips-filter-post-type, #aips-filter-correlation, #aips-filter-date-from, #aips-filter-date-to, #aips-history-search-input').val('');
 			this.applyFilter();
 		},
 
@@ -1674,6 +1781,8 @@
 			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
 			form.append($('<input type="hidden" name="domain">').val(this.domainFilter));
 			form.append($('<input type="hidden" name="actor">').val(this.actorFilter));
+			form.append($('<input type="hidden" name="post_type">').val(this.postTypeFilter));
+			form.append($('<input type="hidden" name="correlation_id">').val(this.correlationId));
 			form.append($('<input type="hidden" name="date_from">').val(this.dateFrom));
 			form.append($('<input type="hidden" name="date_to">').val(this.dateTo));
 			$('body').append(form);
@@ -1681,11 +1790,109 @@
 			form.remove();
 		},
 
-	};
+		/**
+		 * Group consecutive rows with data-status="processing" in a given tbody into
+		 * collapsible group rows with a badge showing the count.
+		 *
+		 * @param {jQuery} $tbody The tbody element to process.
+		 */
+		groupProcessingRows: function ($tbody) {
+			if (!$tbody || !$tbody.length) {
+				return;
+			}
 
-	/* ---------------------------------------------------------------------- */
-	/* Document ready                                                          */
-	/* ---------------------------------------------------------------------- */
+			// Remove any previously injected group headers so we can re-group cleanly.
+			$tbody.find('.aips-history-group-header-row').remove();
+			$tbody.find('.aips-history-group-member-row').each(function () {
+				$(this).removeClass('aips-history-group-member-row').show();
+			});
+
+			var groupId = 0;
+			var rows    = $tbody.find('tr.aips-history-row');
+			var i       = 0;
+
+			while (i < rows.length) {
+				var $row = $(rows[i]);
+				if ($row.data('status') !== 'processing') {
+					i++;
+					continue;
+				}
+
+				// Collect consecutive processing rows starting at i.
+				var $group = $row;
+				var j      = i + 1;
+				while (j < rows.length && $(rows[j]).data('status') === 'processing') {
+					$group = $group.add(rows[j]);
+					j++;
+				}
+
+				var count = $group.length;
+
+				if (count < 2) {
+					// Single processing row — no group needed.
+					i = j;
+					continue;
+				}
+
+				groupId++;
+				var gid         = 'aips-pg-' + groupId;
+				var headerLabel = (aipsHistoryL10n && aipsHistoryL10n.processingGroup)
+					? aipsHistoryL10n.processingGroup
+					: 'Processing';
+				var toggleLabel = (aipsHistoryL10n && aipsHistoryL10n.expandGroup)
+					? aipsHistoryL10n.expandGroup
+					: 'Show runs';
+
+				var $header = $(
+					'<tr class="aips-history-group-header-row" data-group="' + gid + '">' +
+						'<td colspan="5" class="aips-history-group-header-cell">' +
+							'<div class="aips-history-group-header-inner">' +
+								'<span class="aips-history-group-toggle-icon">&#9658;</span>' +
+								'<span class="aips-badge aips-badge-info">' + headerLabel + '</span>' +
+								'<span class="aips-badge aips-badge-neutral">' + count + '</span>' +
+								'<span class="aips-history-group-toggle-label">' + toggleLabel + '</span>' +
+							'</div>' +
+						'</td>' +
+					'</tr>'
+				);
+
+				$group.addClass('aips-history-group-member-row').attr('data-group', gid).hide();
+				$($group[0]).before($header);
+
+				i = j;
+			}
+		},
+
+		/**
+		 * Toggle the visibility of a processing row group.
+		 *
+		 * @param {Event} e Click event on the group header row.
+		 */
+		toggleProcessingGroup: function (e) {
+			var $header   = $(e.currentTarget);
+			var gid       = $header.data('group');
+			var $members  = $('[data-group="' + gid + '"].aips-history-group-member-row');
+			var expanded  = $header.hasClass('is-expanded');
+			var $label    = $header.find('.aips-history-group-toggle-label');
+			var collapseLabel = (aipsHistoryL10n && aipsHistoryL10n.collapseGroup)
+				? aipsHistoryL10n.collapseGroup
+				: 'Hide runs';
+			var expandLabel   = (aipsHistoryL10n && aipsHistoryL10n.expandGroup)
+				? aipsHistoryL10n.expandGroup
+				: 'Show runs';
+
+			if (expanded) {
+				$members.slideUp(160);
+				$header.removeClass('is-expanded');
+				$label.text(expandLabel);
+			} else {
+				$members.slideDown(160);
+				$header.addClass('is-expanded');
+				$label.text(collapseLabel);
+			}
+		},
+
+	};
 	$(document).ready(function () {
 		AIPS.History.init();
 		AIPS.HistoryModalShared.initStandaloneOpener();
