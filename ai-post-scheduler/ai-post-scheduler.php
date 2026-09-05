@@ -441,6 +441,16 @@ final class AI_Post_Scheduler {
             return new AIPS_System_Status_Diagnostics_Service();
         });
 
+        // Register AIPS_Generator as a transient binding. The generator holds
+        // mutable per-run state (current history container, conversation
+        // transcript, source snapshots), so each caller must receive its own
+        // instance — a shared singleton would bleed state across generations.
+        // Using bind() keeps the historic "new AIPS_Generator() per call site"
+        // semantics while making the class resolvable through the container.
+        $container->bind(AIPS_Generator::class, function( $container ) {
+            return new AIPS_Generator();
+        });
+
         // Register AIPS_Embeddings_Repository
         $container->singleton(AIPS_Embeddings_Repository::class, function( $container ) {
             return new AIPS_Embeddings_Repository();
@@ -777,7 +787,7 @@ final class AI_Post_Scheduler {
                 }
 
                 $topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
-                $generator = new AIPS_Generator();
+                $generator = AIPS_Container::get_instance()->make( AIPS_Generator::class );
 
                 return $generator->generate_post( $template, null, $topic );
             }
@@ -815,7 +825,7 @@ final class AI_Post_Scheduler {
                 }
 
                 $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'cron' );
-                $generator = new AIPS_Generator();
+                $generator = AIPS_Container::get_instance()->make( AIPS_Generator::class );
                 $post_id   = $generator->generate_post( $context );
 
                 if ( is_wp_error( $post_id ) ) {

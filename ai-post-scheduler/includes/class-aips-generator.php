@@ -1188,6 +1188,10 @@ class AIPS_Generator {
                 )
             );
 
+            $this->record_generation_activity($context, 'failed', $post_id->get_error_message(), array(
+                'component' => 'post_creation',
+            ));
+
             $this->end_conversation();
 
             return $post_id;
@@ -1212,7 +1216,7 @@ class AIPS_Generator {
             $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
 
             if (is_wp_error($downgrade_result)) {
-                $this->generation_logger->log(
+                $this->logger->log(
                     'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
                     'error',
                     array('post_id' => $post_id)
@@ -1262,7 +1266,9 @@ class AIPS_Generator {
             )
         );
 
-        // Log activity
+        // Log activity. The canonical cross-reference row (with domain
+        // event_type) is emitted once below for every outcome; the incomplete
+        // branch additionally keeps a 'warning' row for diagnostics.
         if ($generation_incomplete) {
             $this->current_history->record(
                 'warning',
@@ -1285,18 +1291,6 @@ class AIPS_Generator {
                 'component_statuses' => $component_statuses,
             ));
         } else {
-            $this->current_history->record(
-                'activity',
-                sprintf('Post "%s" generated successfully', $title),
-                null,
-                null,
-                array(
-                    'post_id' => $post_id,
-                    'context_type' => $context->get_type(),
-                    'context_id' => $context->get_id(),
-                )
-            );
-
             $this->logger->log('Post generated successfully', 'info', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
@@ -1304,6 +1298,18 @@ class AIPS_Generator {
                 'title' => $title
             ));
         }
+
+        $this->record_generation_activity(
+            $context,
+            $generation_incomplete ? 'partial' : 'success',
+            sprintf('Post "%s" generated successfully', $title),
+            array(
+                'post_id'     => $post_id,
+                'post_title'  => $title,
+                // Reflects any post-hoc draft downgrade applied above.
+                'post_status' => get_post_status($post_id) ?: $initial_post_status,
+            )
+        );
 
         // Trigger hook for other systems to respond to the new post
         // For backward compatibility, extract template if it's a template context
@@ -1317,6 +1323,64 @@ class AIPS_Generator {
         $this->end_conversation();
 
         return $post_id;
+    }
+
+    /**
+     * Record a single canonical "generation activity" cross-reference row on the
+     * current post_generation history container.
+     *
+     * This is the one place a post-generation run advertises a domain-level
+     * `event_type` for consumers such as the per-schedule detail feed
+     * (AIPS_Unified_Schedule_Service::get_logs()), which filters history_log
+     * rows on `details LIKE '%"event_type":"..."%'` and reads event_type/
+     * event_status from the row's `input` block. Emitting it here — on the
+     * container the generator already owns (which carries author_id/topic_id/
+     * template_id) — removes the need for callers to create a second, parallel
+     * history container just to record this activity.
+     *
+     * @param AIPS_Generation_Context $context      Active generation context.
+     * @param string                  $event_status Domain status: 'success', 'partial', or 'failed'.
+     * @param string                  $message      Human-readable activity message.
+     * @param array                   $extra        Additional fields to merge into the input block.
+     * @return void
+     */
+    private function record_generation_activity($context, $event_status, $message, array $extra = array()) {
+        if (!$this->current_history) {
+            return;
+        }
+
+        $event_type = ($context instanceof AIPS_Topic_Context)
+            ? 'author_post_generation'
+            : 'template_post_generation';
+
+        // event_type/event_status live in the input block because that is where
+        // AIPS_Unified_Schedule_Service::format_history_logs() reads them from.
+        $input = array_merge(
+            array(
+                'event_type'   => $event_type,
+                'event_status' => $event_status,
+            ),
+            $extra
+        );
+
+        $context_data = array(
+            'context_type' => $context->get_type(),
+            'context_id'   => $context->get_id(),
+        );
+
+        // Author-based runs carry author identity so the schedule feed's
+        // author join and display have what they need.
+        if ($context instanceof AIPS_Topic_Context) {
+            $author = $context->get_author();
+            if ($author && isset($author->id)) {
+                $context_data['author_id'] = (int) $author->id;
+                if (isset($author->name)) {
+                    $context_data['author_name'] = $author->name;
+                }
+            }
+        }
+
+        $this->current_history->record('activity', $message, $input, null, $context_data);
     }
 
     /**
@@ -1690,6 +1754,10 @@ class AIPS_Generator {
 				'context_type'       => $context->get_type(),
 				'context_id'         => $context->get_id(),
 				'component_statuses' => $component_statuses,
+			));
+
+			$this->record_generation_activity($context, 'failed', $error_message, array(
+				'component' => 'post_content',
 			));
 
 			$this->end_conversation();

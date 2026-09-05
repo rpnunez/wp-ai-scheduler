@@ -3282,6 +3282,8 @@
                         'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
+                        // Canonical event_type emitted by the generator; legacy
+                        // 'topic_post_generation' kept for historical rows.
                         'author_post_generation':    { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                         'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                     };

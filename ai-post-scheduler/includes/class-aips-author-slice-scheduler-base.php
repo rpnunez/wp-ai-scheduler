@@ -42,6 +42,28 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 	protected $job_scheduler;
 
 	/**
+	 * @var AIPS_Generation_Execution_Runner Shared execution harness (correlation
+	 *      ID lifecycle + Throwable→History safety net). Subclasses must set this
+	 *      in their constructor for run_slice() to work.
+	 */
+	protected $runner;
+
+	/**
+	 * Run a single author's generation work inside the shared execution harness.
+	 *
+	 * Centralizes correlation-ID lifecycle and the Throwable→History safety net
+	 * for every author-slice subclass so both the topic-ideation and post
+	 * schedulers behave identically on unexpected failures.
+	 *
+	 * @param callable $work         Generation work for one author.
+	 * @param array    $history_meta  Metadata attached to a Throwable history record.
+	 * @return void
+	 */
+	protected function run_slice(callable $work, array $history_meta): void {
+		$this->runner->run($work, $this->get_history_type(), $history_meta);
+	}
+
+	/**
 	 * Get the cron hook name for this scheduler's slice processing.
 	 *
 	 * @return string The WordPress cron hook name.
