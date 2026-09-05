@@ -158,6 +158,17 @@
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
             $('.selection-count').text(count + ' selected');
+
+            // Keep "Select All" checkbox in sync
+            var $selectAll = $('#check-all-topics');
+            var visibleCheckboxes = $('.topic-checkbox:visible');
+            var checkedVisibleCheckboxes = visibleCheckboxes.filter(':checked');
+
+            if (visibleCheckboxes.length > 0) {
+                $selectAll.prop('checked', visibleCheckboxes.length === checkedVisibleCheckboxes.length);
+            } else {
+                $selectAll.prop('checked', false);
+            }
         },
 
         /**
@@ -260,7 +271,7 @@
          */
         copySelectedTopics: function() {
             var topics = [];
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -334,7 +345,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -423,7 +434,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
