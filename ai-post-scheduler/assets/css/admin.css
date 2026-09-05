@@ -442,6 +442,83 @@
 .aips-history-ai-call-card pre { max-height:320px; overflow:auto; white-space:pre-wrap; }
 @media (max-width: 782px) { .aips-history-overview { grid-template-columns:repeat(2,1fr); } .aips-history-table .column-type { display:none; } .aips-history-advanced-filters { align-items:stretch; flex-direction:column; } }
 
+/* History Table Contiguous Grouping */
+.aips-history-group-header {
+    background: var(--aips-gray-50);
+    border-top: 1px solid var(--aips-gray-200);
+    border-bottom: 1px solid var(--aips-gray-200);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.aips-history-group-header:hover {
+    background: var(--aips-gray-100);
+}
+.aips-history-group-header .column-title {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+.aips-group-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.aips-history-group-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    margin: 0;
+    color: var(--aips-gray-600);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+.aips-history-group-toggle:hover {
+    background: var(--aips-gray-200);
+    color: var(--aips-primary);
+}
+.aips-group-chevron {
+    transition: transform 0.15s ease;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+.aips-group-count-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+}
+.aips-group-subtitle {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--aips-gray-500);
+    margin-left: 26px;
+}
+.aips-group-status-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+.aips-history-group-child {
+    background: #ffffff;
+    transition: background 0.15s ease;
+}
+.aips-history-group-child:hover {
+    background: var(--aips-gray-50);
+}
+.aips-group-child-indent {
+    display: inline-block;
+    color: var(--aips-gray-400);
+    margin-right: 4px;
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: middle;
+}
+
 .aips-date-range-group {
     display: flex;
     align-items: center;
