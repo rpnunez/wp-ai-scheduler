@@ -36,6 +36,7 @@ if (!defined('ABSPATH')) {
 			<a href="#aips-generated-posts" class="aips-tab-link active" data-tab="aips-generated-posts"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
 			<a href="#aips-partial-generations" class="aips-tab-link" data-tab="aips-partial-generations"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></a>
 			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-content-indexer" class="aips-tab-link" data-tab="aips-content-indexer"><?php esc_html_e('Content Indexer', 'ai-post-scheduler'); ?></a>
 		</div>
 
 		<!-- Tab 1: Generated Posts -->
@@ -56,6 +57,17 @@ if (!defined('ABSPATH')) {
 		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
 			<div class="aips-content-panel">
 				<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-pending-review.php'; ?>
+			</div>
+		</div>
+
+		<!-- Tab 4: Content Indexer -->
+		<div id="aips-content-indexer-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
+			<div class="aips-content-panel">
+				<?php
+				$embedded = true;
+				$indexer_controller = new AIPS_Content_Indexer_Controller();
+				$indexer_controller->render_page();
+				?>
 			</div>
 		</div>
 	</div>

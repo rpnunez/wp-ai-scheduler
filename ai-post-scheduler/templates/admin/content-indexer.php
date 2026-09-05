@@ -24,8 +24,10 @@ $percent     = isset($status['percent']) ? (int) $status['percent'] : 0;
 $topic_count = isset($stats['topics']) ? (int) $stats['topics'] : 0;
 $active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default (AI Engine)';
 $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : 1536;
+$is_embedded_indexer = !empty($embedded);
 ?>
 
+<?php if (!$is_embedded_indexer) : ?>
 <div class="wrap aips-wrap aips-indexer-page">
 	<div class="aips-page-container">
 
@@ -548,5 +550,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			</form>
 		</div>
 
+<?php if (!$is_embedded_indexer) : ?>
 	</div><!-- /.aips-page-container -->
 </div><!-- /.aips-wrap -->
+<?php endif; ?>

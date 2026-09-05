@@ -5948,3 +5948,359 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	margin-top: 2px;
 	line-height: 1.3;
 }
+
+
+/* ==========================================================================
+   Studio Launchpad & Workspace Component Styles
+   ========================================================================== */
+
+.aips-studio-wrap .aips-page-header {
+	margin-bottom: var(--aips-space-6);
+}
+
+.aips-launchpad-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: var(--aips-space-5);
+	margin-bottom: var(--aips-space-8);
+}
+
+.aips-launchpad-card {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-lg);
+	padding: var(--aips-space-6);
+	box-shadow: var(--aips-shadow-sm);
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	transition: transform var(--aips-transition-base), box-shadow var(--aips-transition-base), border-color var(--aips-transition-base);
+	position: relative;
+	overflow: hidden;
+}
+
+.aips-launchpad-card:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--aips-shadow-md);
+	border-color: var(--aips-primary);
+}
+
+.aips-launchpad-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: var(--aips-gray-300);
+	transition: background var(--aips-transition-base);
+}
+
+.aips-card-templates::before { background: #2271b1; }
+.aips-card-voices::before { background: #7c3aed; }
+.aips-card-structures::before { background: #059669; }
+.aips-card-post-slices::before { background: #d97706; }
+
+.aips-card-header {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--aips-space-4);
+	margin-bottom: var(--aips-space-3);
+}
+
+.aips-card-icon-wrap {
+	width: 48px;
+	height: 48px;
+	border-radius: var(--aips-radius-md);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.aips-card-templates .aips-card-icon-wrap { background: rgba(34, 113, 177, 0.1); color: #2271b1; }
+.aips-card-voices .aips-card-icon-wrap { background: rgba(124, 58, 237, 0.1); color: #7c3aed; }
+.aips-card-structures .aips-card-icon-wrap { background: rgba(5, 150, 105, 0.1); color: #059669; }
+.aips-card-post-slices .aips-card-icon-wrap { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+
+.aips-card-icon-wrap .dashicons {
+	font-size: 26px;
+	width: 26px;
+	height: 26px;
+}
+
+.aips-card-title-group {
+	flex: 1;
+}
+
+.aips-card-title {
+	font-size: var(--aips-text-lg);
+	font-weight: var(--aips-font-bold);
+	color: var(--aips-gray-900);
+	margin: 0 0 var(--aips-space-1);
+	line-height: var(--aips-leading-tight);
+}
+
+.aips-card-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-1);
+}
+
+.aips-card-desc {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-600);
+	line-height: var(--aips-leading-normal);
+	margin: 0 0 var(--aips-space-5);
+	flex: 1;
+}
+
+.aips-card-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: var(--aips-space-4);
+	border-top: 1px solid var(--aips-gray-100);
+}
+
+.aips-card-btn-open {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+	width: 100%;
+	justify-content: center;
+}
+
+/* Studio Workspace Focused View */
+.aips-workspace-header {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-4) var(--aips-space-5);
+	margin-bottom: var(--aips-space-5);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-workspace-header-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--aips-space-3);
+}
+
+.aips-breadcrumb-trail {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	font-size: var(--aips-text-base);
+}
+
+.aips-breadcrumb-root {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+	color: var(--aips-primary);
+	text-decoration: none;
+	font-weight: var(--aips-font-medium);
+}
+
+.aips-breadcrumb-root:hover {
+	color: var(--aips-primary-hover);
+}
+
+.aips-breadcrumb-sep {
+	color: var(--aips-gray-400);
+}
+
+.aips-breadcrumb-current {
+	font-weight: var(--aips-font-bold);
+	color: var(--aips-gray-900);
+}
+
+.aips-switcher-pills {
+	display: inline-flex;
+	align-items: center;
+	background: var(--aips-gray-50);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-full);
+	padding: 3px;
+	gap: 2px;
+}
+
+.aips-pill-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	border-radius: var(--aips-radius-full);
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-medium);
+	color: var(--aips-gray-600);
+	text-decoration: none;
+	transition: background var(--aips-transition-fast), color var(--aips-transition-fast);
+}
+
+.aips-pill-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.aips-pill-btn:hover {
+	background: var(--aips-gray-200);
+	color: var(--aips-gray-900);
+}
+
+.aips-pill-btn.active {
+	background: var(--aips-primary);
+	color: var(--aips-white);
+}
+
+/* ==========================================================================
+   Automations Vertical Sidebar Rail Component Styles
+   ========================================================================== */
+
+.aips-rail-layout {
+	display: grid;
+	grid-template-columns: 260px minmax(0, 1fr);
+	gap: var(--aips-space-5);
+	align-items: start;
+}
+
+.aips-rail-sidebar {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	box-shadow: var(--aips-shadow-sm);
+	padding: var(--aips-space-2);
+	position: sticky;
+	top: 40px;
+}
+
+.aips-rail-nav {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.aips-rail-nav li {
+	margin: 0;
+	padding: 0;
+}
+
+.aips-rail-item {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-3) var(--aips-space-4);
+	border-radius: var(--aips-radius-base);
+	color: var(--aips-gray-700);
+	text-decoration: none;
+	transition: background var(--aips-transition-fast), color var(--aips-transition-fast);
+	position: relative;
+}
+
+.aips-rail-item:hover {
+	background: var(--aips-gray-50);
+	color: var(--aips-gray-900);
+}
+
+.aips-rail-item.active {
+	background: var(--aips-primary-light);
+	color: var(--aips-primary);
+	font-weight: var(--aips-font-semibold);
+}
+
+.aips-rail-item.active::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 6px;
+	bottom: 6px;
+	width: 3px;
+	background: var(--aips-primary);
+	border-radius: 0 2px 2px 0;
+}
+
+.aips-rail-icon {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+	color: var(--aips-gray-500);
+	flex-shrink: 0;
+	transition: color var(--aips-transition-fast);
+}
+
+.aips-rail-item.active .aips-rail-icon {
+	color: var(--aips-primary);
+}
+
+.aips-rail-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.aips-rail-title {
+	font-size: var(--aips-text-sm);
+	line-height: var(--aips-leading-tight);
+}
+
+.aips-rail-desc {
+	font-size: var(--aips-text-2xs);
+	color: var(--aips-gray-400);
+	margin-top: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-weight: var(--aips-font-normal);
+}
+
+.aips-rail-arrow {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: var(--aips-gray-300);
+	opacity: 0;
+	transform: translateX(-4px);
+	transition: opacity var(--aips-transition-fast), transform var(--aips-transition-fast);
+}
+
+.aips-rail-item:hover .aips-rail-arrow,
+.aips-rail-item.active .aips-rail-arrow {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.aips-rail-item.active .aips-rail-arrow {
+	color: var(--aips-primary);
+}
+
+.aips-rail-main {
+	min-width: 0;
+}
+
+/* Responsive adjustment for Rail */
+@media screen and (max-width: 960px) {
+	.aips-rail-layout {
+		grid-template-columns: 1fr;
+	}
+	.aips-rail-sidebar {
+		position: static;
+	}
+	.aips-rail-nav {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+	.aips-rail-nav li {
+		flex: 1 1 calc(50% - 4px);
+	}
+	.aips-rail-desc {
+		display: none;
+	}
+}

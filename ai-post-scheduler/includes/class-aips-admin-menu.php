@@ -44,7 +44,7 @@ class AIPS_Admin_Menu {
             30
         );
 
-        // Dashboard (top level)
+        // 1. Dashboard
         add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
@@ -54,6 +54,7 @@ class AIPS_Admin_Menu {
             array($this, 'render_dashboard_page')
         );
 
+        // 2. Automations
         add_submenu_page(
             'ai-post-scheduler',
             __('Automations', 'ai-post-scheduler'),
@@ -63,61 +64,17 @@ class AIPS_Admin_Menu {
             array($this, 'render_automations_page')
         );
 
-        add_submenu_page(
-            null,
-            __('Templates', 'ai-post-scheduler'),
-            __('Templates', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-templates',
-            array($this, 'render_templates_page')
-        );
-
+        // 3. Studio
         add_submenu_page(
             'ai-post-scheduler',
-            __('Voices', 'ai-post-scheduler'),
-            __('Voices', 'ai-post-scheduler'),
+            __('Studio', 'ai-post-scheduler'),
+            __('Studio', 'ai-post-scheduler'),
             'manage_options',
-            'aips-voices',
-            array($this, 'render_voices_page')
+            'aips-studio',
+            array($this, 'render_studio_page')
         );
 
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Article Structures', 'ai-post-scheduler'),
-            __('Article Structures', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-structures',
-            array($this, 'render_structures_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Authors', 'ai-post-scheduler'),
-            __('Authors', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-authors',
-            array($this, 'render_authors_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Post Slices', 'ai-post-scheduler'),
-            __('Post Slices', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-post-slices',
-            array($this, 'render_post_slices_page')
-        );
-
-        // Author Topics page - hidden from menu navigation, accessible via URL.
-        add_submenu_page(
-            null,
-            __('Author Topics', 'ai-post-scheduler'),
-            __('Author Topics', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-author-topics',
-            array($this, 'render_author_topics_page')
-        );
-
+        // 4. Research
         add_submenu_page(
             'ai-post-scheduler',
             __('Research', 'ai-post-scheduler'),
@@ -127,24 +84,47 @@ class AIPS_Admin_Menu {
             array($this, 'render_research_page')
         );
 
+        // 5. Content
         add_submenu_page(
-            null,
-            __('Schedule', 'ai-post-scheduler'),
-            __('Schedule', 'ai-post-scheduler'),
+            'ai-post-scheduler',
+            __('Content', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
             'manage_options',
-            'aips-schedule',
-            array($this, 'render_schedule_page')
+            'aips-generated-posts',
+            array($this, 'render_generated_posts_page')
         );
 
+        // 6. History
         add_submenu_page(
-            null,
-            __('Campaigns', 'ai-post-scheduler'),
-            __('Campaigns', 'ai-post-scheduler'),
+            'ai-post-scheduler',
+            __('History', 'ai-post-scheduler'),
+            __('History', 'ai-post-scheduler'),
             'manage_options',
-            'aips-campaigns',
-            array($this, 'render_campaigns_page')
+            'aips-history',
+            array($this, 'render_history_page')
         );
 
+        // 7. Settings
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Settings', 'ai-post-scheduler'),
+            __('Settings', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-settings',
+            array($this, 'render_settings_page')
+        );
+
+        // 8. Diagnostics
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Diagnostics', 'ai-post-scheduler'),
+            __('Diagnostics', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-diagnostics',
+            array($this, 'render_diagnostics_page')
+        );
+
+        // Hidden child pages accessible directly via URL / redirects
         add_submenu_page(
             null,
             __('Campaign Wizard', 'ai-post-scheduler'),
@@ -163,103 +143,13 @@ class AIPS_Admin_Menu {
             array($this, 'render_campaign_detail_page')
         );
 
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Schedule Calendar', 'ai-post-scheduler'),
-            __('Schedule Calendar', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-schedule-calendar',
-            array($this, 'render_schedule_calendar_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Content', 'ai-post-scheduler'),
-            __('Content', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-generated-posts',
-            array($this, 'render_generated_posts_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('History', 'ai-post-scheduler'),
-            __('History', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-history',
-            array($this, 'render_history_page')
-        );
         add_submenu_page(
             null,
-            __('Sources', 'ai-post-scheduler'),
-            __('Sources', 'ai-post-scheduler'),
+            __('Author Topics', 'ai-post-scheduler'),
+            __('Author Topics', 'ai-post-scheduler'),
             'manage_options',
-            'aips-sources',
-            array($this, 'render_sources_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('View Source Data', 'ai-post-scheduler'),
-            __('View Source Data', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-source-data',
-            array($this, 'render_source_data_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Taxonomy', 'ai-post-scheduler'),
-            __('Taxonomy', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-taxonomy',
-            array($this, 'render_taxonomy_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Internal Links', 'ai-post-scheduler'),
-            __('Internal Links', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-internal-links',
-            array($this, 'render_internal_links_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Content Indexer', 'ai-post-scheduler'),
-            __('Content Indexer', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-content-indexer',
-            array($this, 'render_content_indexer_page')
-        );
-
-        add_submenu_page(
-            null,
-            __('Affiliate Links', 'ai-post-scheduler'),
-            __('Affiliate Links', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-affiliate-links',
-            array($this, 'render_affiliate_links_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Settings', 'ai-post-scheduler'),
-            __('Settings', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-settings',
-            array($this, 'render_settings_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Diagnostics', 'ai-post-scheduler'),
-            __('Diagnostics', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-diagnostics',
-            array($this, 'render_diagnostics_page')
+            'aips-author-topics',
+            array($this, 'render_author_topics_page')
         );
 
         add_submenu_page(
@@ -445,6 +335,16 @@ class AIPS_Admin_Menu {
     }
 
     /**
+     * Render the Studio page.
+     *
+     * @return void
+     */
+    public function render_studio_page() {
+        $controller = new AIPS_Studio_Controller();
+        $controller->render_page();
+    }
+
+    /**
      * Render the Voices management page.
      *
      * Delegates rendering to the AIPS_Voices class.
@@ -506,17 +406,6 @@ class AIPS_Admin_Menu {
     public function render_campaign_detail_page() {
         $controller = new AIPS_Campaigns_Controller();
         $controller->render_detail_page();
-    }
-
-    /**
-     * Render the Schedule Calendar page.
-     *
-     * Includes the schedule calendar template file.
-     *
-     * @return void
-     */
-    public function render_schedule_calendar_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
     }
 
     /**

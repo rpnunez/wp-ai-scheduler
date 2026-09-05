@@ -9,7 +9,9 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+$is_embedded_affiliate_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_affiliate_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 
@@ -28,6 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<!-- Filter Bar -->
 		<div class="aips-content-panel" style="margin-bottom:20px;">
@@ -76,8 +79,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 		</div>
 
+<?php if (!$is_embedded_affiliate_view) : ?>
 	</div><!-- /.aips-page-container -->
 </div><!-- /.wrap -->
+<?php endif; ?>
 
 <!-- Create / Edit Modal -->
 <div id="aips-afl-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-afl-modal-title">

@@ -248,36 +248,36 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Automations consolidates core automation pages into one visible submenu.
+	 * Test that primary submenu contains exactly the 8 core items.
 	 */
-	public function test_automations_submenu_replaces_visible_automation_tools() {
-		global $submenu, $_registered_pages;
+	public function test_primary_submenu_has_exact_core_items() {
+		global $submenu;
 
-		$submenu           = array();
-		$_registered_pages = array();
-
+		$submenu = array();
 		$this->admin_menu->add_menu_pages();
 
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
-		$this->assertContains(
+		$expected_core_pages = array(
+			'ai-post-scheduler',
 			'aips-automations',
-			$submenu_pages,
-			'Automations should be visible in the primary submenu.'
+			'aips-studio',
+			'aips-research',
+			'aips-generated-posts',
+			'aips-history',
+			'aips-settings',
+			'aips-diagnostics',
 		);
 
-		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
-			$this->assertNotContains(
-				$hidden_page,
-				$submenu_pages,
-				$hidden_page . ' should be hidden from the primary submenu.'
-			);
-			$this->assertArrayHasKey(
-				'admin_page_' . $hidden_page,
-				$_registered_pages,
-				$hidden_page . ' should remain registered for direct admin.php?page= access.'
-			);
-		}
+		$this->assertEquals($expected_core_pages, $submenu_pages, 'Primary submenu should contain exactly the 8 core hubs.');
+	}
+
+	/**
+	 * Studio rendering is delegated to a controller and template.
+	 */
+	public function test_studio_controller_and_template_exist() {
+		$this->assertTrue(class_exists('AIPS_Studio_Controller'));
+		$this->assertFileExists(AIPS_PLUGIN_DIR . 'templates/admin/studio.php');
 	}
 
 	/**
