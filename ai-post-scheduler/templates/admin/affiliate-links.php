@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="aips-filter-left">
 					<label class="screen-reader-text" for="aips-afl-search"><?php esc_html_e( 'Search mappings:', 'ai-post-scheduler' ); ?></label>
 					<input type="search" id="aips-afl-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search by tag or label…', 'ai-post-scheduler' ); ?>" style="min-width:240px;">
-					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e( 'Clear', 'ai-post-scheduler' ); ?></button>
+					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 		</div>
@@ -212,7 +212,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		}
 		var rows = items.map(function(item) {
 			var enabledToggle = '<label class="aips-toggle" title="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
-				+ '<input type="checkbox" class="aips-afl-toggle" data-id="' + item.id + '"' + (item.enabled == 1 ? ' checked' : '') + '>'
+				+ '<input type="checkbox" class="aips-afl-toggle" data-id="' + item.id + '"' + (item.enabled == 1 ? ' checked' : '') + ' aria-label="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
+				+ '<span class="screen-reader-text"><?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?></span>'
 				+ '<span class="aips-toggle-slider"></span></label>';
 			var aiIcon = item.use_ai_injection == 1
 				? '<span class="dashicons dashicons-yes-alt" style="color:#00a32a;" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'

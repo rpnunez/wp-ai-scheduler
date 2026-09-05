@@ -53,6 +53,7 @@ class AIPS_History {
             'author_topic_generation' => __( 'Author Topics', 'ai-post-scheduler' ),
             'author_post_generation'  => __( 'Author Posts', 'ai-post-scheduler' ),
             'author_embeddings'       => __( 'Author Embeddings', 'ai-post-scheduler' ),
+            'content_indexing'        => __( 'Content Indexing', 'ai-post-scheduler' ),
             'post_generation'         => __( 'Post Generation', 'ai-post-scheduler' ),
             'bulk_generate'           => __( 'Bulk Generation', 'ai-post-scheduler' ),
             'bulk_generate_now'       => __( 'Bulk Generation', 'ai-post-scheduler' ),
@@ -141,6 +142,8 @@ class AIPS_History {
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
         $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
+        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
 
@@ -156,6 +159,8 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
+            'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
         ));
@@ -312,7 +317,9 @@ class AIPS_History {
      */
     private function analyze_history_modal_summary($container, $logs) {
         $text = strtolower(((string) $container['creation_method']) . ' ' . ((string) $container['template_name']));
-        if (strpos($text, 'research') !== false) {
+        if (strpos($text, 'content_index') !== false || strpos($text, 'content index') !== false) {
+            $what_happened = __('Content indexing', 'ai-post-scheduler');
+        } elseif (strpos($text, 'research') !== false) {
             $what_happened = __('Research run', 'ai-post-scheduler');
         } elseif (strpos($text, 'embedding') !== false) {
             $what_happened = __('Embeddings processing', 'ai-post-scheduler');
@@ -326,7 +333,7 @@ class AIPS_History {
                 : __('Automation task', 'ai-post-scheduler');
         }
 
-        $outcome = $container['status'] === 'completed'
+        $outcome = in_array($container['status'], array('completed', 'indexed'), true)
             ? __('Success', 'ai-post-scheduler')
             : ($container['status'] === 'failed'
                 ? __('Failed', 'ai-post-scheduler')
@@ -337,13 +344,33 @@ class AIPS_History {
         $saw_image_change = false;
         $saw_published_result = false;
         $saw_draft_result = false;
+        $saw_embedding = false;
+        $saw_relationships = false;
+        $embedding_dims = 0;
 
         foreach ($logs as $log) {
             $details = !empty($log['details']) && is_array($log['details']) ? $log['details'] : array();
+            if (!empty($details['dimensions'])) {
+                $saw_embedding = true;
+                $embedding_dims = (int) $details['dimensions'];
+            }
+            if (!empty($details['relationships_saved'])) {
+                $saw_relationships = true;
+            }
             $this->scan_history_values_for_changes($details, $saw_title_change, $saw_content_change, $saw_image_change, $saw_published_result, $saw_draft_result);
         }
 
         $changes = array();
+        if ($saw_embedding) {
+            if ($embedding_dims > 0) {
+                $changes[] = sprintf(__('Generated %d-dimension vector', 'ai-post-scheduler'), $embedding_dims);
+            } else {
+                $changes[] = __('Generated embedding vector', 'ai-post-scheduler');
+            }
+        }
+        if ($saw_relationships) {
+            $changes[] = __('Recomputed related posts', 'ai-post-scheduler');
+        }
         if ($saw_title_change) {
             $changes[] = __('Title updated', 'ai-post-scheduler');
         }
@@ -936,12 +963,16 @@ class AIPS_History {
      * @return string
      */
     private function get_history_status_class($status) {
-        if ($status === 'completed') {
+        if ($status === 'completed' || $status === 'indexed') {
             return 'aips-badge-success';
         }
 
         if ($status === 'failed') {
             return 'aips-badge-error';
+        }
+
+        if ($status === 'processing') {
+            return 'aips-badge-info';
         }
 
         return 'aips-badge-neutral';
@@ -1281,6 +1312,8 @@ class AIPS_History {
         $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $domain_filter = isset($_POST['domain']) ? sanitize_key(wp_unslash($_POST['domain'])) : '';
         $actor_filter = isset($_POST['actor']) ? sanitize_key(wp_unslash($_POST['actor'])) : '';
+        $post_type_filter = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
+        $correlation_id = isset($_POST['correlation_id']) ? sanitize_text_field(wp_unslash($_POST['correlation_id'])) : '';
         $date_from = isset($_POST['date_from']) ? sanitize_text_field(wp_unslash($_POST['date_from'])) : '';
         $date_to = isset($_POST['date_to']) ? sanitize_text_field(wp_unslash($_POST['date_to'])) : '';
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
@@ -1291,6 +1324,8 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
+            'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
@@ -1298,13 +1333,7 @@ class AIPS_History {
 
         $this->prepare_items_for_display($history['items']);
 
-        ob_start();
-        if (!empty($history['items'])) {
-            foreach ($history['items'] as $item) {
-                include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
-            }
-        }
-        $items_html = ob_get_clean();
+        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items']) : '';
 
         ob_start();
         $this->render_pagination_html($history, $status_filter, $search_query);
@@ -1451,6 +1480,8 @@ class AIPS_History {
         $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
         $domain_filter = isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '';
         $actor_filter = isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '';
+        $post_type_filter = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
+        $correlation_id = isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '';
         $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
         $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
 
@@ -1460,6 +1491,8 @@ class AIPS_History {
             'search' => $search_query,
             'domain' => $domain_filter,
             'actor' => $actor_filter,
+            'post_type' => $post_type_filter,
+            'correlation_id' => $correlation_id,
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
@@ -1470,6 +1503,7 @@ class AIPS_History {
 
         // Pass handler to template for helper methods
         $history_handler = $this;
+        $selectable_post_types = AIPS_Utilities::get_selectable_post_types();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }
@@ -1571,5 +1605,123 @@ class AIPS_History {
                 }
             }
         }
+    }
+
+    /**
+     * Group contiguous history items sharing the same creation method.
+     *
+     * Clusters runs of 2 or more adjacent items of the same activity type into
+     * a collapsed group structure for cleaner list presentation.
+     *
+     * @param array $items List of prepared history item objects.
+     * @return array Array of group descriptors and individual item wrappers.
+     */
+    public function group_contiguous_items( array $items ): array {
+        if ( empty( $items ) ) {
+            return array();
+        }
+
+        $grouped = array();
+        $count   = count( $items );
+        $i       = 0;
+        $group_index = 1;
+
+        while ( $i < $count ) {
+            $current_item   = $items[ $i ];
+            $current_method = ! empty( $current_item->creation_method ) ? (string) $current_item->creation_method : 'post_generation';
+
+            // Look ahead for identical consecutive methods
+            $j = $i + 1;
+            while ( $j < $count ) {
+                $next_method = ! empty( $items[ $j ]->creation_method ) ? (string) $items[ $j ]->creation_method : 'post_generation';
+                if ( $next_method !== $current_method ) {
+                    break;
+                }
+                $j++;
+            }
+
+            $run_length = $j - $i;
+
+            if ( $run_length >= 2 ) {
+                $slice      = array_slice( $items, $i, $run_length );
+                $completed  = 0;
+                $failed     = 0;
+                $post_types = array();
+                $ids        = array();
+
+                foreach ( $slice as $item ) {
+                    $ids[] = (int) $item->id;
+                    if ( $item->status === 'completed' || $item->status === 'indexed' ) {
+                        $completed++;
+                    } elseif ( $item->status === 'failed' ) {
+                        $failed++;
+                    }
+                    if ( ! empty( $item->post_type ) && ! in_array( $item->post_type, $post_types, true ) ) {
+                        $post_types[] = $item->post_type;
+                    }
+                }
+
+                $first_item = $slice[0];
+                $last_item  = $slice[ $run_length - 1 ];
+
+                $first_date = ! empty( $first_item->relative_date ) ? (string) $first_item->relative_date : '';
+                $last_date  = ! empty( $last_item->relative_date ) ? (string) $last_item->relative_date : '';
+
+                $grouped[] = array(
+                    'is_group'        => true,
+                    'group_id'        => 'grp_' . $group_index . '_' . $first_item->id,
+                    'method'          => $current_method,
+                    'label'           => self::get_creation_method_label( $current_method ),
+                    'count'           => $run_length,
+                    'items'           => $slice,
+                    'completed_count' => $completed,
+                    'failed_count'    => $failed,
+                    'post_types'      => $post_types,
+                    'ids'             => $ids,
+                    'first_date'      => $first_date,
+                    'last_date'       => $last_date,
+                );
+
+                $group_index++;
+                $i = $j;
+            } else {
+                $grouped[] = array(
+                    'is_group' => false,
+                    'item'     => $current_item,
+                );
+                $i++;
+            }
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * Render the table rows HTML (with contiguous grouping) for a list of items.
+     *
+     * @param array $items Prepared history item objects.
+     * @return string HTML of rows.
+     */
+    public function render_table_rows_html( array $items ): string {
+        $grouped_entries = $this->group_contiguous_items( $items );
+
+        ob_start();
+        foreach ( $grouped_entries as $entry ) {
+            if ( $entry['is_group'] ) {
+                $group = $entry;
+                include AIPS_PLUGIN_DIR . 'templates/partials/history-group-row.php';
+                foreach ( $entry['items'] as $item ) {
+                    $is_child_row = true;
+                    $group_id     = $entry['group_id'];
+                    include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
+                }
+            } else {
+                $is_child_row = false;
+                $group_id     = '';
+                $item         = $entry['item'];
+                include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
+            }
+        }
+        return (string) ob_get_clean();
     }
 }

@@ -371,7 +371,10 @@ class AIPS_Generated_Posts_Controller {
 		// Get authors for filter dropdown
 		$authors_repository = new AIPS_Authors_Repository();
 		$authors = $authors_repository->get_all();
-		
+
+		// Get selectable post types for filter dropdown
+		$selectable_post_types = AIPS_Utilities::get_selectable_post_types();
+
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
 		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;

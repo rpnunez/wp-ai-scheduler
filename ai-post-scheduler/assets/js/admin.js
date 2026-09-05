@@ -235,6 +235,7 @@
             $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
+            $(document).on('change', '#template_post_type', this.toggleTemplatePostTypeFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
@@ -276,8 +277,12 @@
             $(document).on('click', '.aips-run-now-schedule', this.runNowSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-save-schedule-wizard', this.saveScheduleWizard);
-            $(document).on('change', '#schedule_frequency', this.onScheduleFrequencyChange);
             $(document).on('click', '.aips-schedule-day-btn', this.onScheduleDayPick);
+            $(document).on('click', '.aips-cadence-tab', this.onScheduleCadenceTabClick);
+            $(document).on('click', '.aips-hourly-step-btn', this.onScheduleHourlyStepPick);
+            $(document).on('click', '.aips-monthly-day-btn', this.onScheduleMonthlyDayPick);
+            $(document).on('click', '.aips-time-chip', this.onScheduleTimeChipPick);
+            $(document).on('change input', '#schedule_builder_time, #schedule_builder_date, #schedule_builder_interval_val, #schedule_builder_interval_unit', this.onScheduleBuilderInputChange);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
             $(document).on('click', '.aips-view-schedule-history', this.viewScheduleHistory);
@@ -629,6 +634,9 @@
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
+            $('#template_post_type').val('post').prop('disabled', false);
+            $('#template_post_type_locked_notice').hide();
+            AIPS.toggleTemplatePostTypeFields();
             AIPS.setMediaSelection([]);
             AIPS.toggleImagePrompt();
             // Reset AI Variables panel
@@ -699,6 +707,9 @@
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
+                        $('#template_post_type').val(t.post_type || 'post').prop('disabled', true);
+                        $('#template_post_type_locked_notice').show();
+                        AIPS.toggleTemplatePostTypeFields();
                         $('#post_status').val(t.post_status);
                         $('#post_category').val(selectedCategories);
                         $('#post_tags').val(t.post_tags);
@@ -788,12 +799,11 @@
         },
 
         /**
-         * Delete a template using a two-click soft-confirm pattern.
+         * Delete a template.
          *
-         * The first click changes the button label to "Click again to confirm"
-         * and sets a 3-second auto-reset timer. The second click (within the
-         * window) sends the `aips_delete_template` AJAX action and removes the
-         * table row on success.
+         * Confirms deletion using the standard AIPS.Utilities.confirm modal.
+         * On confirm, sends the `aips_delete_template` AJAX action and removes
+         * the table row on success.
          *
          * @param {Event} e - Click event from an `.aips-delete-template` element.
          */
@@ -803,56 +813,36 @@
             var id = $btn.data('id');
             var $row = $btn.closest('tr');
 
-            // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteTemplateConfirm || 'Are you sure you want to delete this template?', 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: aipsAdminL10n.confirmDeleteButton || 'Delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
 
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
-                return;
-            }
-
-            // Confirmed, proceed with deletion
-            AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                        // Reset button state on error
-                        $btn.text($btn.data('original-text'));
-                        $btn.removeClass('aips-confirm-delete');
-                        $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                    // Reset button state on error
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                    $btn.prop('disabled', false);
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_template',
+                            nonce: aipsAjax.nonce,
+                            template_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || 'Failed to delete template.', 'error');
+                                AIPS.Utilities.resetButton($btn);
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain || 'Failed to delete template.', 'error');
+                            AIPS.Utilities.resetButton($btn);
+                        }
+                    });
+                }}
+            ]);
         },
 
         /**
@@ -903,6 +893,7 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
@@ -980,6 +971,7 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
@@ -999,6 +991,12 @@
                         if (response.data && response.data.template_id) {
                             $('#template_id').val(response.data.template_id);
                             AIPS.lastSavedTemplateId = response.data.template_id;
+
+                            // post_type is write-once server-side as of this save;
+                            // lock the field so the UI doesn't imply it's still changeable.
+                            $('#template_post_type').prop('disabled', true);
+                            $('#template_post_type_locked_notice').show();
+                            AIPS.toggleTemplatePostTypeFields();
                         }
 
                         AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
@@ -1436,53 +1434,315 @@
          *
          * @param {string} frequency
          */
-        applyScheduleFrequencyToForm: function(frequency) {
-            var dayMatch = /^every_(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/.exec(frequency || '');
-            AIPS.resetScheduleDayPicker();
+        /**
+         * Reset the Schedule "Repeat on" day picker to Monday.
+         */
+        resetScheduleDayPicker: function() {
+            $('.aips-schedule-day-btn').removeClass('active');
+            $('#schedule_repeat_day').val('monday');
+            $('.aips-schedule-day-btn[data-day="monday"]').addClass('active');
+        },
+
+        /**
+         * Apply a `frequency` value to the Schedule Builder form.
+         *
+         * @param {string} frequency
+         * @param {string|number|null} nextRun
+         */
+        applyScheduleFrequencyToForm: function(frequency, nextRun) {
+            AIPS.initScheduleBuilder(frequency, nextRun);
+        },
+
+        /**
+         * Initialize the Schedule & Cadence Builder with data.
+         *
+         * @param {string} frequency
+         * @param {string|number|null} nextRun
+         */
+        initScheduleBuilder: function(frequency, nextRun) {
+            frequency = frequency || 'weekly';
+            var cadence = 'weekly';
+            var repeatDay = 'monday';
+            var timeValue = '09:00';
+            var targetDate = '';
+
+            // Detect Day-specific weekly: every_monday ... every_sunday
+            var dayMatch = /^every_(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/.exec(frequency);
             if (dayMatch) {
-                var day = dayMatch[1];
-                $('#schedule_frequency').val('weekly');
-                $('#schedule_repeat_day').val(day);
-                $('.aips-schedule-day-btn[data-day="' + day + '"]').removeClass('aips-btn-secondary').addClass('aips-btn-primary');
-                $('#aips-schedule-repeat-on-row').show();
+                cadence = 'weekly';
+                repeatDay = dayMatch[1];
+            } else if (frequency === 'weekly') {
+                cadence = 'weekly';
+                repeatDay = 'monday';
+            } else if (frequency === 'daily') {
+                cadence = 'daily';
+            } else if (frequency === 'hourly' || frequency === 'every_2_hours' || frequency === 'every_4_hours' || frequency === 'every_6_hours' || frequency === 'every_12_hours') {
+                cadence = 'hourly';
+            } else if (frequency === 'monthly') {
+                cadence = 'monthly';
+            } else if (frequency === 'once') {
+                cadence = 'once';
             } else {
-                $('#schedule_frequency').val(frequency);
-                $('#aips-schedule-repeat-on-row').toggle(frequency === 'weekly');
+                cadence = 'advanced';
             }
+
+            // Parse time from nextRun if available
+            if (nextRun) {
+                var offsetSeconds = (typeof aipsScheduleL10n !== 'undefined' && aipsScheduleL10n.gmtOffsetSeconds) ? aipsScheduleL10n.gmtOffsetSeconds : 0;
+                var dt = AIPS.DateTime ? AIPS.DateTime.parse(nextRun) : new Date(nextRun);
+                if (dt) {
+                    var localTs = dt.getTime() + (offsetSeconds * 1000);
+                    var siteDate = new Date(localTs);
+                    var pad = function(n) { return n < 10 ? '0' + n : n; };
+                    timeValue = pad(siteDate.getUTCHours()) + ':' + pad(siteDate.getUTCMinutes());
+                    targetDate = siteDate.getUTCFullYear() + '-' + pad(siteDate.getUTCMonth() + 1) + '-' + pad(siteDate.getUTCDate());
+
+                    if (!dayMatch && cadence === 'weekly') {
+                        var dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        repeatDay = dayNames[siteDate.getUTCDay()];
+                    }
+                }
+            } else {
+                var now = new Date();
+                var dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                repeatDay = dayNames[now.getDay()];
+                var pad = function(n) { return n < 10 ? '0' + n : n; };
+                targetDate = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+            }
+
+            // Set active cadence tab
+            $('.aips-cadence-tab').removeClass('active').attr('aria-selected', 'false');
+            $('.aips-cadence-tab[data-cadence="' + cadence + '"]').addClass('active').attr('aria-selected', 'true');
+
+            // Show matching pane
+            $('.aips-cadence-pane').hide();
+            $('#aips-pane-' + cadence).show();
+
+            // Set repeat day
+            $('#schedule_repeat_day').val(repeatDay);
+            $('.aips-schedule-day-btn').removeClass('active');
+            $('.aips-schedule-day-btn[data-day="' + repeatDay + '"]').addClass('active');
+
+            // Set hourly step button
+            if (cadence === 'hourly') {
+                $('.aips-hourly-step-btn').removeClass('active');
+                $('.aips-hourly-step-btn[data-freq="' + frequency + '"]').addClass('active');
+            }
+
+            // Set time input & preset chips
+            $('#schedule_builder_time').val(timeValue);
+            $('.aips-time-chip').removeClass('active');
+            $('.aips-time-chip[data-time="' + timeValue + '"]').addClass('active');
+
+            // Set date input for one-time
+            if (targetDate) {
+                $('#schedule_builder_date').val(targetDate);
+            }
+
+            $('#aips-builder-time-row').toggle(cadence !== 'hourly');
+
+            AIPS.updateScheduleBuilderSummary();
         },
 
-        /**
-         * Show/hide the "Repeat on" day picker when the Frequency select changes.
-         *
-         * @param {Event} e - Change event from `#schedule_frequency`.
-         */
-        onScheduleFrequencyChange: function(e) {
-            if ($(this).val() === 'weekly') {
-                $('#aips-schedule-repeat-on-row').show();
-            } else {
-                AIPS.resetScheduleDayPicker();
-            }
+        onScheduleCadenceTabClick: function(e) {
+            e.preventDefault();
+            var $tab = $(this);
+            var cadence = $tab.data('cadence');
+
+            $('.aips-cadence-tab').removeClass('active').attr('aria-selected', 'false');
+            $tab.addClass('active').attr('aria-selected', 'true');
+
+            $('.aips-cadence-pane').hide();
+            $('#aips-pane-' + cadence).show();
+
+            $('#aips-builder-time-row').toggle(cadence !== 'hourly');
+
+            AIPS.updateScheduleBuilderSummary();
         },
 
-        /**
-         * Single-select a day-of-week button in the "Repeat on" picker.
-         *
-         * @param {Event} e - Click event from an `.aips-schedule-day-btn` element.
-         */
         onScheduleDayPick: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            $('.aips-schedule-day-btn').removeClass('aips-btn-primary').addClass('aips-btn-secondary');
-            $btn.removeClass('aips-btn-secondary').addClass('aips-btn-primary');
+            $('.aips-schedule-day-btn').removeClass('active');
+            $btn.addClass('active');
             $('#schedule_repeat_day').val($btn.data('day'));
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleHourlyStepPick: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $('.aips-hourly-step-btn').removeClass('active');
+            $btn.addClass('active');
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleMonthlyDayPick: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $('.aips-monthly-day-btn').removeClass('active');
+            $btn.addClass('active');
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleTimeChipPick: function(e) {
+            e.preventDefault();
+            var $chip = $(this);
+            var timeVal = $chip.data('time');
+            $('.aips-time-chip').removeClass('active');
+            $chip.addClass('active');
+            $('#schedule_builder_time').val(timeVal);
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleBuilderInputChange: function(e) {
+            var timeVal = $('#schedule_builder_time').val();
+            $('.aips-time-chip').removeClass('active');
+            $('.aips-time-chip[data-time="' + timeVal + '"]').addClass('active');
+            AIPS.updateScheduleBuilderSummary();
         },
 
         /**
-         * Open the schedule wizard in "Add New" mode.
-         *
-         * Resets the wizard form, initialises the wizard to step 1, and shows
-         * the schedule wizard modal. Falls back to the legacy modal if the
-         * wizard modal is not present on the page.
+         * Update the Live Summary Card and sync backend form fields.
+         */
+        updateScheduleBuilderSummary: function() {
+            var cadence = $('.aips-cadence-tab.active').data('cadence') || 'weekly';
+            var timeStr = $('#schedule_builder_time').val() || '09:00';
+            var offsetSeconds = (typeof aipsScheduleL10n !== 'undefined' && aipsScheduleL10n.gmtOffsetSeconds) ? aipsScheduleL10n.gmtOffsetSeconds : 0;
+
+            // Format human time: 09:00 -> 9:00 AM
+            var timeParts = timeStr.split(':');
+            var hours = parseInt(timeParts[0], 10) || 0;
+            var minutes = parseInt(timeParts[1], 10) || 0;
+            var ampm = hours >= 12 ? 'PM' : 'AM';
+            var dispHours = hours % 12 || 12;
+            var dispMinutes = minutes < 10 ? '0' + minutes : minutes;
+            var formattedTime = dispHours + ':' + dispMinutes + ' ' + ampm;
+
+            var pad = function(n) { return n < 10 ? '0' + n : n; };
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            var dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+            // Current site time representation
+            var now = new Date();
+            var nowUtcTs = now.getTime() + (now.getTimezoneOffset() * 60000);
+            var siteNow = new Date(nowUtcTs + (offsetSeconds * 1000));
+
+            var heading = '';
+            var subtext = '';
+            var finalFrequency = 'weekly';
+            var startTimeFormatted = '';
+
+            if (cadence === 'weekly') {
+                var dayKey = $('#schedule_repeat_day').val() || 'monday';
+                var dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                var targetDayIdx = dayKeys.indexOf(dayKey);
+                if (targetDayIdx === -1) { targetDayIdx = 1; }
+
+                var curDayIdx = siteNow.getDay();
+                var daysAhead = (targetDayIdx - curDayIdx + 7) % 7;
+
+                // If same day, check if time has already passed today
+                var curMinutes = siteNow.getHours() * 60 + siteNow.getMinutes();
+                var targetMinutes = hours * 60 + minutes;
+                if (daysAhead === 0 && curMinutes >= targetMinutes) {
+                    daysAhead = 7;
+                }
+
+                var nextExecDate = new Date(siteNow.getTime() + (daysAhead * 86400000));
+                var dateStr = monthNames[nextExecDate.getMonth()] + ' ' + nextExecDate.getDate() + ', ' + nextExecDate.getFullYear();
+                var dayName = dayNamesFull[targetDayIdx];
+
+                heading = 'Every ' + dayName + ' at ' + formattedTime;
+                var countdown = daysAhead === 0 ? 'today' : (daysAhead === 1 ? 'tomorrow' : 'in ' + daysAhead + ' days');
+                subtext = 'First run: ' + dayName + ', ' + dateStr + ' at ' + formattedTime + ' (' + countdown + ')';
+
+                finalFrequency = 'every_' + dayKey;
+                startTimeFormatted = nextExecDate.getFullYear() + '-' + pad(nextExecDate.getMonth() + 1) + '-' + pad(nextExecDate.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'daily') {
+                var curMinutes = siteNow.getHours() * 60 + siteNow.getMinutes();
+                var targetMinutes = hours * 60 + minutes;
+                var isTomorrow = curMinutes >= targetMinutes;
+                var nextExecDate = new Date(siteNow.getTime() + (isTomorrow ? 86400000 : 0));
+                var dateStr = monthNames[nextExecDate.getMonth()] + ' ' + nextExecDate.getDate() + ', ' + nextExecDate.getFullYear();
+
+                heading = 'Every Day at ' + formattedTime;
+                var countdown = isTomorrow ? 'tomorrow' : 'today';
+                subtext = 'First run: ' + dateStr + ' at ' + formattedTime + ' (' + countdown + ')';
+
+                finalFrequency = 'daily';
+                startTimeFormatted = nextExecDate.getFullYear() + '-' + pad(nextExecDate.getMonth() + 1) + '-' + pad(nextExecDate.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'hourly') {
+                var hourlyFreq = $('.aips-hourly-step-btn.active').data('freq') || 'hourly';
+                finalFrequency = hourlyFreq;
+                var stepLabels = {
+                    'hourly': 'Every 1 Hour',
+                    'every_2_hours': 'Every 2 Hours',
+                    'every_4_hours': 'Every 4 Hours',
+                    'every_6_hours': 'Every 6 Hours',
+                    'every_12_hours': 'Every 12 Hours'
+                };
+                heading = stepLabels[hourlyFreq] || 'Every Hour';
+                subtext = 'Starts immediately on next recurring cron interval.';
+                startTimeFormatted = '';
+
+            } else if (cadence === 'monthly') {
+                var monthDayType = $('.aips-monthly-day-btn.active').data('month-day') || '1';
+                var targetDayNum = 1;
+                var typeLabel = '1st of the month';
+
+                if (monthDayType === '15') {
+                    targetDayNum = 15;
+                    typeLabel = '15th of the month';
+                } else if (monthDayType === 'last') {
+                    targetDayNum = new Date(siteNow.getFullYear(), siteNow.getMonth() + 1, 0).getDate();
+                    typeLabel = 'last day of the month';
+                }
+
+                heading = 'Monthly on the ' + typeLabel + ' at ' + formattedTime;
+                var nextMonth = siteNow.getMonth();
+                if (siteNow.getDate() > targetDayNum || (siteNow.getDate() === targetDayNum && (siteNow.getHours() * 60 + siteNow.getMinutes()) >= (hours * 60 + minutes))) {
+                    nextMonth++;
+                }
+                var nextExecDate = new Date(siteNow.getFullYear(), nextMonth, targetDayNum);
+                var dateStr = monthNames[nextExecDate.getMonth()] + ' ' + nextExecDate.getDate() + ', ' + nextExecDate.getFullYear();
+                subtext = 'First run: ' + dateStr + ' at ' + formattedTime;
+
+                finalFrequency = 'monthly';
+                startTimeFormatted = nextExecDate.getFullYear() + '-' + pad(nextExecDate.getMonth() + 1) + '-' + pad(nextExecDate.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'once') {
+                var inputDate = $('#schedule_builder_date').val();
+                if (!inputDate) {
+                    var tomorrow = new Date(siteNow.getTime() + 86400000);
+                    inputDate = tomorrow.getFullYear() + '-' + pad(tomorrow.getMonth() + 1) + '-' + pad(tomorrow.getDate());
+                    $('#schedule_builder_date').val(inputDate);
+                }
+                heading = 'One-Time Execution';
+                subtext = 'Runs once on ' + inputDate + ' at ' + formattedTime + ' and completes.';
+                finalFrequency = 'once';
+                startTimeFormatted = inputDate + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'advanced') {
+                var intervalVal = parseInt($('#schedule_builder_interval_val').val(), 10) || 1;
+                var intervalUnit = $('#schedule_builder_interval_unit').val() || 'days';
+                heading = 'Custom: Every ' + intervalVal + ' ' + intervalUnit + ' at ' + formattedTime;
+                subtext = 'Runs repeatedly every ' + intervalVal + ' ' + intervalUnit + '.';
+                finalFrequency = (intervalUnit === 'weeks' && intervalVal === 1) ? 'weekly' : (intervalUnit === 'days' && intervalVal === 1 ? 'daily' : 'daily');
+                startTimeFormatted = siteNow.getFullYear() + '-' + pad(siteNow.getMonth() + 1) + '-' + pad(siteNow.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+            }
+
+            $('#aips-summary-card-title').text(heading);
+            $('#aips-summary-card-subtitle').text(subtext);
+
+            $('#schedule_frequency').val(finalFrequency);
+            $('#schedule_start_time').val(startTimeFormatted);
+        },
+
+        /**
+         * Open the schedule modal in "Add New" mode.
          *
          * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
          */
@@ -1490,11 +1750,10 @@
             e.preventDefault();
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
-                // Fallback to legacy modal if wizard not present
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
-                AIPS.resetScheduleDayPicker();
-                $('#aips-schedule-modal').find('.aips-modal-title').text('Add New Schedule');
+                AIPS.initScheduleBuilder('weekly', null);
+                $('#aips-schedule-modal').find('.aips-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -1506,8 +1765,7 @@
         },
 
         /**
-         * Opens the schedule wizard pre-filled with the existing schedule's data
-         * so the user can modify it in-place without deleting and recreating.
+         * Opens the schedule modal pre-filled with the existing schedule's data.
          *
          * @param {Event} e - Click event from the edit button.
          */
@@ -1527,21 +1785,16 @@
 
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
-                // Fallback to legacy modal
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val(scheduleId);
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
-                AIPS.applyScheduleFrequencyToForm(frequency);
+                AIPS.initScheduleBuilder(frequency, nextRun);
                 $('#schedule_topic').val(topic || '');
                 $('#article_structure_id').val(articleStructureId || '');
                 $('#rotation_pattern').val(rotationPattern || '');
                 $('#schedule_is_active').prop('checked', isActive == 1);
-                if (nextRun) {
-                    var offsetSeconds = (typeof aipsScheduleL10n !== 'undefined') ? aipsScheduleL10n.gmtOffsetSeconds : 0;
-                    $('#schedule_start_time').val(AIPS.DateTime.toLocalInputValue(nextRun, offsetSeconds));
-                }
-                $('#aips-schedule-modal').find('.aips-modal-title').text('Edit Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text(aipsScheduleL10n.editSchedule || 'Edit Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -1572,18 +1825,13 @@
         },
 
         /**
-         * Copy an existing schedule's settings into the wizard in "Add New" mode.
-         *
-         * Reads all schedule data from the row's `data-*` attributes, populates
-         * the wizard form fields (leaving `schedule_id` and `start_time` blank
-         * so a new schedule is created), and shows the wizard titled "Clone Schedule".
+         * Copy an existing schedule's settings into the modal in "Add New" mode.
          *
          * @param {Event} e - Click event from an `.aips-clone-schedule` element.
          */
         cloneSchedule: function(e) {
             e.preventDefault();
 
-            // Get data from the row
             var $row = $(this).closest('tr');
             var templateId = $row.data('template-id');
             var scheduleTitle = $row.data('title');
@@ -1594,26 +1842,21 @@
 
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
-                // Fallback to legacy modal
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
-                AIPS.applyScheduleFrequencyToForm(frequency);
+                AIPS.initScheduleBuilder(frequency, null);
                 $('#schedule_topic').val(topic);
                 $('#article_structure_id').val(articleStructureId);
                 $('#rotation_pattern').val(rotationPattern);
-                $('#schedule_start_time').val('');
-                $('#aips-schedule-modal').find('.aips-modal-title').text('Clone Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text(aipsScheduleL10n.cloneSchedule || 'Clone Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
 
-            // Reset wizard form and clear ID (new schedule)
             $('#aips-schedule-wizard-form')[0].reset();
             $('#sw_schedule_id').val('');
-
-            // Populate wizard form
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
             $('#sw_schedule_frequency').val(frequency);
@@ -1630,9 +1873,6 @@
         /**
          * Validate and save the schedule form via AJAX.
          *
-         * Runs HTML5 form validation before submitting. Sends the
-         * `aips_save_schedule` AJAX action and reloads the page on success.
-         *
          * @param {Event} e - Click event from an `.aips-save-schedule` element.
          */
         saveSchedule: function(e) {
@@ -1643,18 +1883,13 @@
 
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
-
                 return;
             }
 
             AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
-            // "Weekly" + a selected day maps to the day-specific backend frequency
-            // (e.g. 'every_monday') so the existing recurrence math is reused unchanged.
-            var repeatDay = $('#schedule_repeat_day').val();
-            var frequency = ($('#schedule_frequency').val() === 'weekly' && repeatDay)
-                ? 'every_' + repeatDay
-                : $('#schedule_frequency').val();
+            var frequency = $('#schedule_frequency').val() || 'weekly';
+            var startTime = $('#schedule_start_time').val() || '';
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1666,7 +1901,7 @@
                     schedule_title: $('#schedule_title').val(),
                     template_id: $('#schedule_template').val(),
                     frequency: frequency,
-                    start_time: $('#schedule_start_time').val(),
+                    start_time: startTime,
                     topic: $('#schedule_topic').val(),
                     article_structure_id: $('#article_structure_id').val(),
                     rotation_pattern: $('#rotation_pattern').val(),
@@ -3047,6 +3282,7 @@
                         'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
+                        'author_post_generation':    { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                         'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                     };
                     var defaultIcon = { icon: 'dashicons-info', cls: '' };
@@ -3126,6 +3362,27 @@
             } else {
                 $('.aips-image-source-ai').show();
             }
+        },
+
+        /**
+         * Show/hide the Categories and Tags rows based on whether the
+         * currently-selected template post type supports those taxonomies.
+         *
+         * A custom post type isn't guaranteed to support the built-in
+         * 'category'/'post_tag' taxonomies, and assigning them anyway would
+         * silently create orphaned term relationships. Reads the support
+         * flags from `aipsTemplatesL10n.postTypeTaxonomySupport`, localized
+         * per post type alongside the rest of the Templates page strings.
+         *
+         * Bound to the `change` event on `#template_post_type`, and also
+         * called directly after setting its value in openTemplateModal()/editTemplate().
+         */
+        toggleTemplatePostTypeFields: function() {
+            var postType = $('#template_post_type').val();
+            var support = (aipsTemplatesL10n.postTypeTaxonomySupport || {})[postType] || {};
+
+            $('#post_category_row').toggle(!!support.supports_category);
+            $('#post_tags_row').toggle(!!support.supports_post_tag);
         },
 
         /**
