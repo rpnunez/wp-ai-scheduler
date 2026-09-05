@@ -17,6 +17,7 @@ if (!defined('ABSPATH')) {
     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="aips-batches-form">
     <?php wp_nonce_field('aips_cancel_batch_run_bulk'); ?>
     <input type="hidden" name="action" value="aips_cancel_batch_run_bulk" />
+    <input type="hidden" id="aips-ajax-nonce" value="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>" />
     <table class="widefat striped">
         <thead>
             <tr>
@@ -110,7 +111,43 @@ if (!defined('ABSPATH')) {
     });
 
     modalCancel.addEventListener('click', function(){ modal.style.display = 'none'; });
-    modalConfirm.addEventListener('click', function(){ form.submit(); });
+    modalConfirm.addEventListener('click', function(){
+        // AJAX bulk cancel
+        var checkboxes = document.querySelectorAll('.aips-batch-checkbox');
+        var ids = [];
+        for (var i=0;i<checkboxes.length;i++) { if (checkboxes[i].checked) { ids.push(checkboxes[i].value); } }
+        if (ids.length === 0) {
+            alert('<?php echo esc_js(__('Please select one or more batch runs to cancel.', 'ai-post-scheduler')); ?>');
+            return;
+        }
+
+        var nonce = document.getElementById('aips-ajax-nonce').value;
+        var ajaxUrl = '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
+        var data = new FormData();
+        data.append('action', 'aips_cancel_batch_run_ajax');
+        data.append('_ajax_nonce', nonce);
+        for (var j=0;j<ids.length;j++) { data.append('batch_ids[]', ids[j]); }
+
+        modalConfirm.disabled = true;
+        modalConfirm.textContent = '<?php echo esc_js(__('Cancelling...', 'ai-post-scheduler')); ?>';
+
+        fetch(ajaxUrl, { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(resp){ return resp.json(); })
+            .then(function(json){
+                if (json && json.success) {
+                    // Reload to reflect changes
+                    window.location.reload();
+                } else {
+                    modalConfirm.disabled = false;
+                    modalConfirm.textContent = '<?php echo esc_js(__('Confirm Cancel', 'ai-post-scheduler')); ?>';
+                    alert(json && json.data && json.data.message ? json.data.message : '<?php echo esc_js(__('Failed to cancel batch runs.', 'ai-post-scheduler')); ?>');
+                }
+            }).catch(function(err){
+                modalConfirm.disabled = false;
+                modalConfirm.textContent = '<?php echo esc_js(__('Confirm Cancel', 'ai-post-scheduler')); ?>';
+                alert('<?php echo esc_js(__('Network error or server error while cancelling batch runs.', 'ai-post-scheduler')); ?>');
+            });
+    });
 
     // Close modal when clicking outside the modal content
     modal.addEventListener('click', function(e){ if (e.target === modal) { modal.style.display = 'none'; } });

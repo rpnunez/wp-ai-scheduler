@@ -23,6 +23,39 @@ class AIPS_Diagnostics_Controller {
 	public function __construct() {
 		add_action('admin_post_aips_cancel_batch_run', array($this, 'handle_cancel_batch_run'));
 		add_action('admin_post_aips_cancel_batch_run_bulk', array($this, 'handle_cancel_batch_run_bulk'));
+		add_action('wp_ajax_aips_cancel_batch_run_ajax', array($this, 'ajax_cancel_batch_run'));
+	}
+
+	/**
+	 * AJAX handler to cancel batch runs.
+	 * Expects 'batch_ids' array and a nonce 'aips_ajax_nonce'.
+	 * Returns JSON success/failure.
+	 *
+	 * @return void
+	 */
+	public function ajax_cancel_batch_run() {
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied', 'ai-post-scheduler')));
+		}
+
+		check_ajax_referer('aips_ajax_nonce');
+
+		$ids = isset($_POST['batch_ids']) && is_array($_POST['batch_ids']) ? array_map('absint', $_POST['batch_ids']) : array();
+		if (empty($ids)) {
+			wp_send_json_error(array('message' => __('No batch IDs provided', 'ai-post-scheduler')));
+		}
+
+		$repo = new AIPS_Schedule_Repository();
+		$updated = 0;
+		foreach ($ids as $id) {
+			if ($id > 0) {
+				if ($repo->update_batch_run_status($id, 'cancelled')) {
+					$updated++;
+				}
+			}
+		}
+
+		wp_send_json_success(array('updated' => $updated));
 	}
 
 
