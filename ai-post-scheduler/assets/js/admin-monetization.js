@@ -1,0 +1,828 @@
+/**
+ * Admin Monetization Hub JavaScript Module
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.0
+ */
+
+(function ($) {
+	'use strict';
+
+	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
+
+	/**
+	 * @namespace AIPS.Monetization
+	 */
+	AIPS.Monetization = {
+
+		config: window.aipsMonetizationAdminConfig || {},
+		chartInstance: null,
+		slotsMap: {},
+		campaignsMap: {},
+		referralsMap: {},
+
+		/**
+		 * Bootstrap module.
+		 */
+		init: function () {
+			var self = this;
+			if (window.aipsMonetizationInitialData) {
+				if (Array.isArray(window.aipsMonetizationInitialData.slots)) {
+					window.aipsMonetizationInitialData.slots.forEach(function (s) {
+						self.slotsMap[s.id] = s;
+					});
+				}
+				if (Array.isArray(window.aipsMonetizationInitialData.campaigns)) {
+					window.aipsMonetizationInitialData.campaigns.forEach(function (c) {
+						self.campaignsMap[c.id] = c;
+					});
+				}
+				if (Array.isArray(window.aipsMonetizationInitialData.referrals)) {
+					window.aipsMonetizationInitialData.referrals.forEach(function (r) {
+						self.referralsMap[r.id] = r;
+					});
+				}
+			}
+
+			this.bindTabs();
+			this.bindEngineSettings();
+			this.bindSlotActions();
+			this.bindCampaignActions();
+			this.bindReferralActions();
+			this.bindNetworkProfiles();
+			this.bindAnalyticsActions();
+
+			// Auto load analytics if starting on analytics tab
+			if (window.location.hash === '#tab-analytics') {
+				this.loadAnalytics();
+			}
+		},
+
+		/**
+		 * Engine Settings Toggle and Submission
+		 */
+		bindEngineSettings: function () {
+			var self = this;
+
+			$('#aips-btn-toggle-engine-settings').on('click', function () {
+				$('#aips-engine-settings-panel').slideToggle(180);
+			});
+
+			$('#aips-setting-cloaking-prefix').on('input', function () {
+				var prefix = $(this).val().trim() || 'go';
+				$('#aips-preview-cloaking-path').text('/' + prefix + '/{slug}');
+			});
+
+			$('#aips-form-engine-settings').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-engine-settings');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_monetization_engine_settings&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						alert(res.data && res.data.message ? res.data.message : 'Engine settings saved successfully.');
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving engine settings.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+		},
+
+		/**
+		 * Tab switching.
+		 */
+		bindTabs: function () {
+			var self = this;
+			$('#aips-monetization-tabs .nav-tab').on('click', function (e) {
+				e.preventDefault();
+				var targetTab = $(this).data('tab');
+
+				$('#aips-monetization-tabs .nav-tab').removeClass('nav-tab-active');
+				$(this).addClass('nav-tab-active');
+
+				$('.aips-tab-panel').removeClass('aips-tab-active');
+				$('#tab-' + targetTab).addClass('aips-tab-active');
+
+				window.location.hash = 'tab-' + targetTab;
+
+				if (targetTab === 'analytics') {
+					self.loadAnalytics();
+				}
+			});
+
+			// Activate tab on initial page load if hash exists
+			if (window.location.hash) {
+				var hashTab = window.location.hash.replace('#tab-', '');
+				var $tabLink = $('#aips-monetization-tabs .nav-tab[data-tab="' + hashTab + '"]');
+				if ($tabLink.length) {
+					$tabLink.trigger('click');
+				}
+			}
+		},
+
+		/**
+		 * Ad Slot events: add, edit, save, delete, toggle.
+		 */
+		bindSlotActions: function () {
+			var self = this;
+
+			// Open Add Slot Modal
+			$('#aips-btn-add-slot').on('click', function () {
+				$('#aips-modal-slot-title').text(self.config.i18n.addSlotTitle || 'Add Ad Slot');
+				$('#aips-form-slot')[0].reset();
+				$('#aips-slot-id').val('0');
+				$('#aips-wrap-paragraph-offset').show();
+				$('#aips-wrap-anchor-options').hide();
+				$('#aips-slot-auto-refresh').prop('checked', false);
+				$('#aips-slot-anchor-dismissible').prop('checked', true);
+				$('#aips-modal-slot').fadeIn(150);
+			});
+
+			// Position change toggles offset field and anchor options
+			$('#aips-slot-position').on('change', function () {
+				var val = $(this).val();
+				if (val === 'after_paragraph') {
+					$('#aips-wrap-paragraph-offset').slideDown(120);
+				} else {
+					$('#aips-wrap-paragraph-offset').slideUp(120);
+				}
+
+				if (val === 'sticky_bottom_anchor') {
+					$('#aips-wrap-anchor-options').slideDown(120);
+				} else {
+					$('#aips-wrap-anchor-options').slideUp(120);
+				}
+			});
+
+			// Close Modal
+			$('#aips-modal-slot .aips-modal-close, #aips-modal-slot .aips-modal-cancel, #aips-modal-slot .aips-modal-backdrop').on('click', function () {
+				$('#aips-modal-slot').fadeOut(120);
+			});
+
+			// Edit Slot
+			$(document).on('click', '.aips-btn-edit-slot', function () {
+				var slotId = $(this).data('id');
+				var slot = self.slotsMap[slotId];
+				if (!slot) {
+					var raw = $(this).data('slot');
+					if (typeof raw === 'string') {
+						try { slot = JSON.parse(raw); } catch (e) {}
+					} else if (typeof raw === 'object') {
+						slot = raw;
+					}
+				}
+
+				if (!slot) { return; }
+
+				$('#aips-modal-slot-title').text(self.config.i18n.editSlotTitle || 'Edit Ad Slot');
+				$('#aips-slot-id').val(slot.id);
+				$('#aips-slot-name').val(slot.name);
+				$('#aips-slot-type').val(slot.slot_type);
+				$('#aips-slot-code').val(slot.code || '');
+				$('#aips-slot-position').val(slot.position).trigger('change');
+				$('#aips-slot-paragraph-offset').val(slot.paragraph_offset || 2);
+				$('#aips-slot-min-words').val(slot.min_word_count || 300);
+				$('#aips-slot-device').val(slot.device_targeting || 'all');
+				$('#aips-slot-priority').val(slot.priority || 10);
+				$('#aips-slot-classes').val(slot.css_classes || '');
+
+				// Anchor & Refresh attributes
+				$('#aips-slot-auto-refresh').prop('checked', parseInt(slot.auto_refresh, 10) === 1);
+				$('#aips-slot-refresh-interval').val(slot.refresh_interval || 30);
+				$('#aips-slot-max-refreshes').val(slot.max_refreshes || 5);
+				$('#aips-slot-anchor-trigger').val(slot.anchor_trigger || 'scroll_depth');
+				$('#aips-slot-anchor-scroll-depth').val(slot.anchor_scroll_depth || 25);
+				$('#aips-slot-anchor-dismissible').prop('checked', parseInt(slot.anchor_dismissible, 10) !== 0);
+
+				$('#aips-modal-slot').fadeIn(150);
+			});
+
+			// Save Slot Form
+			$('#aips-form-slot').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-slot');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_ad_slot&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						$('#aips-modal-slot').fadeOut(120);
+						self.refreshSlotsList();
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving slot.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+
+			// Delete Slot
+			$(document).on('click', '.aips-btn-delete-slot', function () {
+				if (!confirm(self.config.i18n.confirmDeleteSlot || 'Are you sure you want to delete this ad slot?')) {
+					return;
+				}
+
+				var slotId = $(this).data('id');
+				var $row = $('tr[data-slot-id="' + slotId + '"]');
+
+				$.post(ajaxurl, {
+					action: 'aips_delete_ad_slot',
+					id: slotId,
+					nonce: self.config.nonce
+				}, function (res) {
+					if (res.success) {
+						$row.fadeOut(200, function () { $(this).remove(); });
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error deleting slot.');
+					}
+				});
+			});
+
+			// Toggle Slot Status
+			$(document).on('click', '.aips-slot-toggle', function () {
+				var $btn = $(this);
+				var slotId = $btn.data('id');
+
+				$btn.prop('disabled', true);
+				$.post(ajaxurl, {
+					action: 'aips_toggle_ad_slot',
+					id: slotId,
+					nonce: self.config.nonce
+				}, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						var isNowActive = res.data.status === 'active';
+						$btn.text(isNowActive ? 'Active' : 'Paused');
+						if (isNowActive) {
+							$btn.addClass('button-primary');
+						} else {
+							$btn.removeClass('button-primary');
+						}
+					}
+				});
+			});
+		},
+
+		/**
+		 * Refresh slots table using AIPS.Templates.
+		 */
+		refreshSlotsList: function () {
+			var self = this;
+			$.post(ajaxurl, {
+				action: 'aips_get_ad_slots',
+				nonce: self.config.nonce
+			}, function (res) {
+				if (res.success && res.data.slots) {
+					var $tbody = $('#aips-tbody-slots');
+					$tbody.empty();
+
+					if (!res.data.slots.length) {
+						$tbody.append('<tr class="no-items"><td colspan="7">No ad slots configured.</td></tr>');
+						return;
+					}
+
+					res.data.slots.forEach(function (slot) {
+						self.slotsMap[slot.id] = slot;
+						var placementDesc = '';
+						if (slot.position === 'after_paragraph') {
+							placementDesc = 'After Paragraph ' + slot.paragraph_offset + ' (Min words: ' + slot.min_word_count + ')';
+						} else if (slot.position === 'mid_content') {
+							placementDesc = 'Mid-Content (50% depth, Min words: ' + slot.min_word_count + ')';
+						} else if (slot.position === 'end_of_post') {
+							placementDesc = 'End of Post / Conclusion';
+						} else if (slot.position === 'sticky_bottom_anchor') {
+							placementDesc = 'Sticky Bottom Anchor (' + (slot.anchor_trigger || 'scroll_depth') + ')';
+						} else {
+							placementDesc = 'Custom Shortcode / Block Only';
+						}
+
+						var rowData = {
+							id: slot.id,
+							name: slot.name,
+							slot_type: slot.slot_type,
+							css_classes: slot.css_classes || '',
+							cssClassHidden: slot.css_classes ? '' : 'aips-hidden',
+							placementDescription: placementDesc,
+							deviceLabel: slot.device_targeting ? slot.device_targeting.charAt(0).toUpperCase() + slot.device_targeting.slice(1) : 'All',
+							priority: slot.priority,
+							statusLabel: slot.status === 'active' ? 'Active' : 'Paused',
+							activeClass: slot.status === 'active' ? 'button-primary' : ''
+						};
+
+						var rowHtml = AIPS.Templates.render('aips-tmpl-ad-slot-row', rowData);
+						$tbody.append(rowHtml);
+					});
+				}
+			});
+		},
+
+		/**
+		 * Sponsor Campaign events: add, edit, save, delete, toggle.
+		 */
+		bindCampaignActions: function () {
+			var self = this;
+
+			$('#aips-btn-add-campaign').on('click', function () {
+				$('#aips-modal-campaign-title').text(self.config.i18n.addCampaignTitle || 'Add Sponsor Campaign');
+				$('#aips-form-campaign')[0].reset();
+				$('#aips-campaign-id').val('0');
+				$('#aips-modal-campaign').fadeIn(150);
+			});
+
+			$('#aips-modal-campaign .aips-modal-close, #aips-modal-campaign .aips-modal-cancel, #aips-modal-campaign .aips-modal-backdrop').on('click', function () {
+				$('#aips-modal-campaign').fadeOut(120);
+			});
+
+			$(document).on('click', '.aips-btn-edit-campaign', function () {
+				var campId = $(this).data('id');
+				var camp = self.campaignsMap[campId];
+				if (!camp) {
+					var raw = $(this).data('campaign');
+					if (typeof raw === 'string') {
+						try { camp = JSON.parse(raw); } catch (e) {}
+					} else if (typeof raw === 'object') {
+						camp = raw;
+					}
+				}
+				if (!camp) { return; }
+
+				$('#aips-modal-campaign-title').text(self.config.i18n.editCampaignTitle || 'Edit Sponsor Campaign');
+				$('#aips-campaign-id').val(camp.id);
+				$('#aips-campaign-brand').val(camp.brand_name);
+				$('#aips-campaign-url').val(camp.target_url);
+				$('#aips-campaign-logo').val(camp.logo_url || '');
+				$('#aips-campaign-cta').val(camp.cta_text || '');
+				$('#aips-campaign-keywords').val(camp.keywords || '');
+				$('#aips-campaign-disclosure').val(camp.disclosure_text || '');
+				$('#aips-campaign-start').val(camp.start_date || '');
+				$('#aips-campaign-end').val(camp.end_date || '');
+
+				$('#aips-modal-campaign').fadeIn(150);
+			});
+
+			$('#aips-form-campaign').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-campaign');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_sponsor_campaign&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						$('#aips-modal-campaign').fadeOut(120);
+						self.refreshCampaignsList();
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving campaign.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+
+			$(document).on('click', '.aips-btn-delete-campaign', function () {
+				if (!confirm(self.config.i18n.confirmDeleteCampaign || 'Are you sure you want to delete this sponsor campaign?')) {
+					return;
+				}
+
+				var campId = $(this).data('id');
+				var $row = $('tr[data-campaign-id="' + campId + '"]');
+
+				$.post(ajaxurl, {
+					action: 'aips_delete_sponsor_campaign',
+					id: campId,
+					nonce: self.config.nonce
+				}, function (res) {
+					if (res.success) {
+						$row.fadeOut(200, function () { $(this).remove(); });
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error deleting campaign.');
+					}
+				});
+			});
+
+			$(document).on('click', '.aips-campaign-toggle', function () {
+				var $btn = $(this);
+				var campId = $btn.data('id');
+
+				$btn.prop('disabled', true);
+				$.post(ajaxurl, {
+					action: 'aips_toggle_sponsor_campaign',
+					id: campId,
+					nonce: self.config.nonce
+				}, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						var isNowActive = res.data.status === 'active';
+						$btn.text(isNowActive ? 'Active' : 'Paused');
+						if (isNowActive) {
+							$btn.addClass('button-primary');
+						} else {
+							$btn.removeClass('button-primary');
+						}
+					}
+				});
+			});
+		},
+
+		/**
+		 * Refresh campaigns list via AIPS.Templates.
+		 */
+		refreshCampaignsList: function () {
+			var self = this;
+			$.post(ajaxurl, {
+				action: 'aips_get_sponsor_campaigns',
+				nonce: self.config.nonce
+			}, function (res) {
+				if (res.success && res.data.campaigns) {
+					var $tbody = $('#aips-tbody-campaigns');
+					$tbody.empty();
+
+					if (!res.data.campaigns.length) {
+						$tbody.append('<tr class="no-items"><td colspan="6">No sponsor campaigns created yet.</td></tr>');
+						return;
+					}
+
+					res.data.campaigns.forEach(function (camp) {
+						self.campaignsMap[camp.id] = camp;
+						var start = camp.start_date || 'Immediately';
+						var end = camp.end_date || 'Ongoing';
+
+						var rowData = {
+							id: camp.id,
+							brand_name: camp.brand_name,
+							logo_url: camp.logo_url || '',
+							logoHidden: camp.logo_url ? '' : 'aips-hidden',
+							target_url: camp.target_url,
+							keywords: camp.keywords || '',
+							kwHidden: camp.keywords ? '' : 'aips-hidden',
+							duration: start + ' → ' + end,
+							statusLabel: camp.status === 'active' ? 'Active' : 'Paused',
+							activeClass: camp.status === 'active' ? 'button-primary' : ''
+						};
+
+						var rowHtml = AIPS.Templates.render('aips-tmpl-sponsor-campaign-row', rowData);
+						$tbody.append(rowHtml);
+					});
+				}
+			});
+		},
+
+		/**
+		 * Referral Partner Program events: add, edit, save, delete, toggle, and filter.
+		 */
+		bindReferralActions: function () {
+			var self = this;
+
+			// Add Referral Modal
+			$('#aips-btn-add-referral').on('click', function () {
+				$('#aips-modal-referral-title').text(self.config.i18n.addReferralTitle || 'Add Partner Referral Program');
+				$('#aips-form-referral')[0].reset();
+				$('#aips-referral-id').val('0');
+				$('#aips-modal-referral').fadeIn(150);
+			});
+
+			// Close Modal
+			$('#aips-modal-referral .aips-modal-close, #aips-modal-referral .aips-modal-cancel, #aips-modal-referral .aips-modal-backdrop').on('click', function () {
+				$('#aips-modal-referral').fadeOut(120);
+			});
+
+			// Edit Referral Modal
+			$(document).on('click', '.aips-btn-edit-referral', function () {
+				var refId = $(this).data('id');
+				var ref = self.referralsMap[refId];
+				if (!ref) {
+					var raw = $(this).data('referral');
+					if (typeof raw === 'string') {
+						try { ref = JSON.parse(raw); } catch (e) {}
+					} else if (typeof raw === 'object') {
+						ref = raw;
+					}
+				}
+				if (!ref) { return; }
+
+				$('#aips-modal-referral-title').text(self.config.i18n.editReferralTitle || 'Edit Referral Program');
+				$('#aips-referral-id').val(ref.id);
+				$('#aips-referral-name').val(ref.partner_name);
+				$('#aips-referral-network').val(ref.network || 'direct');
+				$('#aips-referral-slug').val(ref.slug || '');
+				$('#aips-referral-url').val(ref.referral_url);
+				$('#aips-referral-code').val(ref.promo_code || '');
+				$('#aips-referral-commission').val(ref.commission_rate || '');
+				$('#aips-referral-discount').val(ref.discount_description || '');
+				$('#aips-referral-keywords').val(ref.keywords || '');
+				$('#aips-referral-categories').val(ref.categories || '');
+				$('#aips-referral-expires').val(ref.expires_at ? ref.expires_at.split(' ')[0] : '');
+
+				$('#aips-modal-referral').fadeIn(150);
+			});
+
+			// Save Referral Form
+			$('#aips-form-referral').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-referral');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_referral_program&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						$('#aips-modal-referral').fadeOut(120);
+						self.refreshReferralsList();
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving referral program.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+
+			// Delete Referral
+			$(document).on('click', '.aips-btn-delete-referral', function () {
+				if (!confirm(self.config.i18n.confirmDeleteReferral || 'Are you sure you want to delete this referral program?')) {
+					return;
+				}
+
+				var refId = $(this).data('id');
+				var $row = $('tr[data-referral-id="' + refId + '"]');
+
+				$.post(ajaxurl, {
+					action: 'aips_delete_referral_program',
+					id: refId,
+					nonce: self.config.nonce
+				}, function (res) {
+					if (res.success) {
+						$row.fadeOut(200, function () { $(this).remove(); });
+						delete self.referralsMap[refId];
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error deleting referral program.');
+					}
+				});
+			});
+
+			// Toggle Referral Status
+			$(document).on('click', '.aips-referral-toggle', function () {
+				var $btn = $(this);
+				var refId = $btn.data('id');
+
+				$btn.prop('disabled', true);
+				$.post(ajaxurl, {
+					action: 'aips_toggle_referral_program',
+					id: refId,
+					nonce: self.config.nonce
+				}, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						var isNowActive = res.data.status === 'active';
+						$btn.text(isNowActive ? 'Active' : 'Paused');
+						if (isNowActive) {
+							$btn.addClass('button-primary');
+						} else {
+							$btn.removeClass('button-primary');
+						}
+						if (self.referralsMap[refId]) {
+							self.referralsMap[refId].status = res.data.status;
+						}
+					}
+				});
+			});
+
+			// Filtering
+			$('#aips-filter-referral-network, #aips-filter-referral-status').on('change', function () {
+				self.refreshReferralsList();
+			});
+
+			var searchTimeout = null;
+			$('#aips-search-referrals').on('input', function () {
+				clearTimeout(searchTimeout);
+				searchTimeout = setTimeout(function () {
+					self.refreshReferralsList();
+				}, 250);
+			});
+		},
+
+		/**
+		 * Network Profiles Collapsible Panel and AJAX saving.
+		 */
+		bindNetworkProfiles: function () {
+			var self = this;
+
+			$('#aips-btn-toggle-network-profiles').on('click', function () {
+				$('#aips-network-profiles-panel').slideToggle(180);
+			});
+
+			$('#aips-form-network-profiles').on('submit', function (e) {
+				e.preventDefault();
+				var $btn = $('#aips-btn-save-network-profiles');
+				$btn.prop('disabled', true);
+
+				var formData = $(this).serialize() + '&action=aips_save_affiliate_network_profiles&nonce=' + self.config.nonce;
+
+				$.post(ajaxurl, formData, function (res) {
+					$btn.prop('disabled', false);
+					if (res.success) {
+						alert(res.data && res.data.message ? res.data.message : 'Network profiles saved successfully.');
+					} else {
+						alert(res.data && res.data.message ? res.data.message : 'Error saving network profiles.');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false);
+					alert('Network error.');
+				});
+			});
+		},
+
+		/**
+		 * Refresh referrals list via AIPS.Templates.
+		 */
+		refreshReferralsList: function () {
+			var self = this;
+			var network = $('#aips-filter-referral-network').val() || '';
+			var status = $('#aips-filter-referral-status').val() || '';
+			var search = $('#aips-search-referrals').val() || '';
+
+			$.post(ajaxurl, {
+				action: 'aips_get_referral_programs',
+				network: network,
+				status: status,
+				search: search,
+				nonce: self.config.nonce
+			}, function (res) {
+				if (res.success && res.data.programs) {
+					var $tbody = $('#aips-tbody-referrals');
+					$tbody.empty();
+
+					if (!res.data.programs.length) {
+						$tbody.append('<tr class="no-items"><td colspan="7">No partner referral programs match filter criteria.</td></tr>');
+						return;
+					}
+
+					var cloakingPrefix = $('#aips-setting-cloaking-prefix').val() || 'go';
+
+					res.data.programs.forEach(function (ref) {
+						self.referralsMap[ref.id] = ref;
+
+						var rowData = {
+							id: ref.id,
+							partner_name: ref.partner_name,
+							networkLabel: ref.network ? (ref.network.charAt(0).toUpperCase() + ref.network.slice(1)) : 'Direct',
+							commission_rate: ref.commission_rate || '',
+							commissionHidden: ref.commission_rate ? '' : 'aips-hidden',
+							promo_code: ref.promo_code || '',
+							promoHidden: ref.promo_code ? '' : 'aips-hidden',
+							discount_description: ref.discount_description || '',
+							discountHidden: ref.discount_description ? '' : 'aips-hidden',
+							cloaking_prefix: cloakingPrefix,
+							slug: ref.slug,
+							cloaked_url: self.config.homeUrl ? (self.config.homeUrl + '/' + cloakingPrefix + '/' + ref.slug + '/') : ('/' + cloakingPrefix + '/' + ref.slug + '/'),
+							referral_url: ref.referral_url,
+							keywords: ref.keywords || '',
+							kwHidden: ref.keywords ? '' : 'aips-hidden',
+							categories: ref.categories || '',
+							catHidden: ref.categories ? '' : 'aips-hidden',
+							statusLabel: ref.status === 'active' ? 'Active' : 'Paused',
+							activeClass: ref.status === 'active' ? 'button-primary' : ''
+						};
+
+						var rowHtml = AIPS.Templates.render('aips-tmpl-referral-row', rowData);
+						$tbody.append(rowHtml);
+					});
+				}
+			});
+		},
+
+		/**
+		 * Analytics loading & chart rendering.
+		 */
+		bindAnalyticsActions: function () {
+			var self = this;
+			$('#aips-btn-refresh-analytics, #aips-analytics-range').on('change click', function () {
+				self.loadAnalytics();
+			});
+		},
+
+		loadAnalytics: function () {
+			var self = this;
+			var days = $('#aips-analytics-range').val() || 14;
+
+			$.post(ajaxurl, {
+				action: 'aips_get_monetization_analytics',
+				days: days,
+				nonce: self.config.nonce
+			}, function (res) {
+				if (res.success && res.data) {
+					var data = res.data;
+
+					// Update cards
+					$('#aips-stat-impressions').text(Number(data.summary.impressions || 0).toLocaleString());
+					$('#aips-stat-clicks').text(Number(data.summary.clicks || 0).toLocaleString());
+					$('#aips-stat-ctr').text((data.summary.ctr || 0) + '%');
+					$('#aips-stat-refreshes').text(Number(data.summary.refreshes || 0).toLocaleString());
+					$('#aips-stat-adblock').text((data.summary.ad_block_rate || 0) + '%');
+
+					// Render Chart
+					self.renderChart(data.trends);
+
+					// Render Top Posts via AIPS.Templates
+					var $topTbody = $('#aips-tbody-top-posts');
+					$topTbody.empty();
+					if (data.top && data.top.length) {
+						data.top.forEach(function (p) {
+							$topTbody.append(AIPS.Templates.render('aips-tmpl-top-post-row', p));
+						});
+					} else {
+						$topTbody.append('<tr><td colspan="4">No post traffic recorded yet.</td></tr>');
+					}
+
+					// Render Slot Breakdown via AIPS.Templates
+					var $slotTbody = $('#aips-tbody-slot-stats');
+					$slotTbody.empty();
+					if (data.slots && data.slots.length) {
+						data.slots.forEach(function (s) {
+							$slotTbody.append(AIPS.Templates.render('aips-tmpl-slot-stat-row', s));
+						});
+					} else {
+						$slotTbody.append('<tr><td colspan="4">No slot impressions recorded yet.</td></tr>');
+					}
+				}
+			});
+		},
+
+		renderChart: function (trends) {
+			if (!trends || !trends.length || typeof Chart === 'undefined') {
+				return;
+			}
+
+			var labels = trends.map(function (t) { return t.date; });
+			var impressions = trends.map(function (t) { return t.impressions; });
+			var clicks = trends.map(function (t) { return t.clicks; });
+
+			var ctx = document.getElementById('aips-monetization-chart');
+			if (!ctx) { return; }
+
+			if (this.chartInstance) {
+				this.chartInstance.destroy();
+			}
+
+			this.chartInstance = new Chart(ctx, {
+				type: 'line',
+				data: {
+					labels: labels,
+					datasets: [
+						{
+							label: 'Impressions (Viewable)',
+							data: impressions,
+							borderColor: '#3b82f6',
+							backgroundColor: 'rgba(59, 130, 246, 0.08)',
+							borderWidth: 2,
+							tension: 0.3,
+							fill: true
+						},
+						{
+							label: 'Clicks',
+							data: clicks,
+							borderColor: '#10b981',
+							backgroundColor: 'rgba(16, 185, 129, 0.08)',
+							borderWidth: 2,
+							tension: 0.3,
+							fill: true
+						}
+					]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					scales: {
+						y: {
+							beginAtZero: true,
+							ticks: { precision: 0 }
+						}
+					},
+					plugins: {
+						legend: { position: 'top' }
+					}
+				}
+			});
+		}
+	};
+
+	$(document).ready(function () {
+		if ($('.aips-monetization-wrap').length) {
+			AIPS.Monetization.init();
+		}
+	});
+
+})(jQuery);

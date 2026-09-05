@@ -29,6 +29,10 @@ class AIPS_DB_Manager {
         'aips_relationships',
         'aips_internal_links',
         'aips_affiliate_links',
+        'aips_ad_slots',
+        'aips_sponsor_campaigns',
+        'aips_monetization_events',
+        'aips_referral_programs',
         'aips_cache',
         'aips_telemetry',
         'aips_ai_assistance',
@@ -94,6 +98,10 @@ class AIPS_DB_Manager {
         $table_relationships        = $tables['aips_relationships'];
         $table_internal_links       = $tables['aips_internal_links'];
         $table_affiliate_links      = $tables['aips_affiliate_links'];
+        $table_ad_slots             = $tables['aips_ad_slots'];
+        $table_sponsor_campaigns    = $tables['aips_sponsor_campaigns'];
+        $table_monetization_events  = $tables['aips_monetization_events'];
+        $table_referral_programs    = $tables['aips_referral_programs'];
         $table_cache                = $tables['aips_cache'];
         $table_telemetry            = $tables['aips_telemetry'];
         $table_ai_assistance        = $tables['aips_ai_assistance'];
@@ -558,6 +566,7 @@ class AIPS_DB_Manager {
 
         $sql[] = "CREATE TABLE $table_affiliate_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
+            slug varchar(100) DEFAULT NULL,
             tag varchar(255) NOT NULL,
             label varchar(255) NOT NULL DEFAULT '',
             affiliate_url text NOT NULL,
@@ -571,8 +580,92 @@ class AIPS_DB_Manager {
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
+            KEY slug (slug),
             KEY tag (tag),
             KEY enabled (enabled)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_ad_slots (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            slot_type varchar(50) NOT NULL DEFAULT 'custom_html',
+            code longtext,
+            position varchar(50) NOT NULL DEFAULT 'after_paragraph',
+            paragraph_offset int(11) NOT NULL DEFAULT 2,
+            min_word_count int(11) NOT NULL DEFAULT 300,
+            device_targeting varchar(50) NOT NULL DEFAULT 'all',
+            auto_refresh tinyint(1) NOT NULL DEFAULT 0,
+            refresh_interval int(11) NOT NULL DEFAULT 30,
+            max_refreshes int(11) NOT NULL DEFAULT 5,
+            anchor_trigger varchar(32) NOT NULL DEFAULT 'scroll_depth',
+            anchor_scroll_depth int(11) NOT NULL DEFAULT 15,
+            anchor_dismissible tinyint(1) NOT NULL DEFAULT 1,
+            status varchar(20) NOT NULL DEFAULT 'active',
+            priority int(11) NOT NULL DEFAULT 10,
+            css_classes varchar(255) DEFAULT '',
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY status (status),
+            KEY position (position),
+            KEY priority (priority)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_sponsor_campaigns (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            brand_name varchar(255) NOT NULL,
+            logo_url text DEFAULT NULL,
+            target_url text NOT NULL,
+            cta_text varchar(255) DEFAULT '',
+            disclosure_text text DEFAULT NULL,
+            category_ids text DEFAULT NULL,
+            keywords text DEFAULT NULL,
+            start_date date DEFAULT NULL,
+            end_date date DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'active',
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY status (status),
+            KEY start_end_date (start_date, end_date)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_monetization_events (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            slot_id bigint(20) NOT NULL DEFAULT 0,
+            campaign_id bigint(20) NOT NULL DEFAULT 0,
+            post_id bigint(20) NOT NULL DEFAULT 0,
+            event_type varchar(20) NOT NULL DEFAULT 'impression',
+            device_type varchar(20) NOT NULL DEFAULT 'desktop',
+            event_date date NOT NULL,
+            event_count int(11) NOT NULL DEFAULT 1,
+            PRIMARY KEY  (id),
+            UNIQUE KEY event_unique (slot_id, campaign_id, post_id, event_type, device_type, event_date),
+            KEY event_date (event_date),
+            KEY slot_id (slot_id),
+            KEY post_id (post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_referral_programs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            network_provider varchar(50) NOT NULL DEFAULT 'direct',
+            referral_url text NOT NULL,
+            slug varchar(100) DEFAULT NULL,
+            promo_code varchar(100) DEFAULT '',
+            discount_offer varchar(255) DEFAULT '',
+            commission_notes varchar(255) DEFAULT '',
+            category_ids text DEFAULT NULL,
+            keywords text DEFAULT NULL,
+            expiry_date date DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'active',
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY slug (slug),
+            KEY network_provider (network_provider),
+            KEY status (status),
+            KEY expiry_date (expiry_date)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache (

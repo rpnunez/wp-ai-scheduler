@@ -246,6 +246,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Monetization', 'ai-post-scheduler'),
+            __('Monetization', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-monetization',
+            array($this, 'render_monetization_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -796,6 +805,16 @@ class AIPS_Admin_Menu {
      */
     public function render_affiliate_links_page() {
         $controller = new AIPS_Affiliate_Links_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the Monetization Hub page.
+     *
+     * @return void
+     */
+    public function render_monetization_page() {
+        $controller = new AIPS_Monetization_Controller();
         $controller->render_page();
     }
 

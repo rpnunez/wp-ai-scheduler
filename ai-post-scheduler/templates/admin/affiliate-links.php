@@ -103,6 +103,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 
 			<div class="aips-form-group">
+				<label class="aips-form-label" for="aips-afl-slug"><?php esc_html_e( 'Cloaked URL Slug', 'ai-post-scheduler' ); ?></label>
+				<input type="text" id="aips-afl-slug" class="aips-form-input" placeholder="<?php esc_attr_e( 'e.g. namecheap (optional, auto-generated)', 'ai-post-scheduler' ); ?>">
+				<p class="aips-form-help"><?php printf( esc_html__( 'When link cloaking is enabled, redirects via %s', 'ai-post-scheduler' ), '<code>' . esc_html( home_url( '/' . sanitize_title( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ) . '/{slug}/' ) ) . '</code>' ); ?></p>
+			</div>
+
+			<div class="aips-form-group">
 				<label class="aips-form-label" for="aips-afl-url"><?php esc_html_e( 'Affiliate URL', 'ai-post-scheduler' ); ?> <span class="required">*</span></label>
 				<input type="url" id="aips-afl-url" class="aips-form-input" placeholder="https://…">
 			</div>
@@ -210,6 +216,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 			tbody.html('<tr><td colspan="7" style="text-align:center;padding:24px;"><?php echo esc_js( __( 'No mappings found. Click "Add Mapping" to create one.', 'ai-post-scheduler' ) ); ?></td></tr>');
 			return;
 		}
+		var cloakingPrefix = '<?php echo esc_js( sanitize_title( AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_prefix', 'go' ) ) ); ?>';
+		var cloakingEnabled = <?php echo AIPS_Config::get_instance()->get_option( 'aips_link_cloaking_enabled', true ) ? 'true' : 'false'; ?>;
+		var homeUrl = '<?php echo esc_js( home_url() ); ?>';
+
 		var rows = items.map(function(item) {
 			var enabledToggle = '<label class="aips-toggle" title="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
 				+ '<input type="checkbox" class="aips-afl-toggle" data-id="' + item.id + '"' + (item.enabled == 1 ? ' checked' : '') + ' aria-label="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
@@ -219,8 +229,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 				? '<span class="dashicons dashicons-yes-alt" style="color:#00a32a;" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'
 				: '<span style="color:#ccc;">—</span>';
 			var shortUrl = item.affiliate_url.length > 40 ? item.affiliate_url.substring(0, 40) + '…' : item.affiliate_url;
+			var slugBadge = (cloakingEnabled && item.slug)
+				? '<div style="margin-top:3px;"><a href="' + homeUrl + '/' + cloakingPrefix + '/' + item.slug + '/" target="_blank" rel="noopener" style="font-size:11px;color:#2563eb;text-decoration:none;"><span class="dashicons dashicons-admin-links" style="font-size:14px;width:14px;height:14px;vertical-align:text-bottom;"></span> /' + cloakingPrefix + '/' + item.slug + '/</a></div>'
+				: '';
+
 			return '<tr data-id="' + item.id + '">'
-				+ '<td><code>' + $('<span>').text('#' + item.tag).html() + '</code></td>'
+				+ '<td><code>' + $('<span>').text('#' + item.tag).html() + '</code>' + slugBadge + '</td>'
 				+ '<td>' + $('<span>').text(item.label).html() + '</td>'
 				+ '<td><a href="' + $('<span>').text(item.affiliate_url).html() + '" target="_blank" rel="noopener">' + $('<span>').text(shortUrl).html() + '</a></td>'
 				+ '<td>' + (positionLabels[item.cta_position] || item.cta_position) + '</td>'
@@ -250,6 +264,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		$('#aips-afl-id').val(isEdit ? item.id : '');
 		$('#aips-afl-tag').val(isEdit ? item.tag : '');
 		$('#aips-afl-label').val(isEdit ? item.label : '');
+		$('#aips-afl-slug').val(isEdit ? (item.slug || '') : '');
 		$('#aips-afl-url').val(isEdit ? item.affiliate_url : '');
 		$('#aips-afl-enabled').prop('checked', !isEdit || item.enabled == 1);
 		$('#aips-afl-cta-html').val(isEdit ? item.cta_html : '');
@@ -305,6 +320,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		var data = {
 			tag:                $('#aips-afl-tag').val(),
 			label:              $('#aips-afl-label').val(),
+			slug:               $('#aips-afl-slug').val(),
 			affiliate_url:      $('#aips-afl-url').val(),
 			enabled:            $('#aips-afl-enabled').is(':checked') ? 1 : 0,
 			cta_html:           $('#aips-afl-cta-html').val(),

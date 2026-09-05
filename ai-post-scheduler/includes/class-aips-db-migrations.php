@@ -183,7 +183,19 @@ class AIPS_DB_Migrations {
 
 		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
 			$this->migrate_to_3_6_5();
-    }
+		}
+
+		if ( version_compare( $from_version, '3.7.0', '<' ) ) {
+			$this->migrate_to_3_7_0();
+		}
+
+		if ( version_compare( $from_version, '3.7.1', '<' ) ) {
+			$this->migrate_to_3_7_1();
+		}
+
+		if ( version_compare( $from_version, '3.7.2', '<' ) ) {
+			$this->migrate_to_3_7_2();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1270,5 +1282,187 @@ class AIPS_DB_Migrations {
 		$wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		$this->logger->log( 'Migration 3.6.5: Consolidated aips_post_embeddings into aips_embeddings and dropped legacy table.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.0.
+	 *
+	 * Seeds initial baseline ad slots if table is empty.
+	 */
+	private function migrate_to_3_7_0() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_ad_slots';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( 0 === $count ) {
+			$now = time();
+			$wpdb->insert(
+				$table,
+				array(
+					'name'             => 'In-Article Paragraph 2 Ad',
+					'slot_type'        => 'custom_html',
+					'code'             => '<div style="background:#f8f9fa; border:1px dashed #cbd5e1; padding:20px; text-align:center; color:#64748b; font-size:14px;">[Advertisement: In-Article Ad Unit]</div>',
+					'position'         => 'after_paragraph',
+					'paragraph_offset' => 2,
+					'min_word_count'   => 300,
+					'device_targeting' => 'all',
+					'status'           => 'inactive',
+					'priority'         => 10,
+					'css_classes'      => 'aips-ad-inline',
+					'created_at'       => $now,
+					'updated_at'       => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%d', '%d' )
+			);
+
+			$wpdb->insert(
+				$table,
+				array(
+					'name'             => 'End of Article Ad',
+					'slot_type'        => 'custom_html',
+					'code'             => '<div style="background:#f8f9fa; border:1px dashed #cbd5e1; padding:20px; text-align:center; color:#64748b; font-size:14px;">[Advertisement: Bottom Ad Unit]</div>',
+					'position'         => 'end_of_post',
+					'paragraph_offset' => 0,
+					'min_word_count'   => 200,
+					'device_targeting' => 'all',
+					'status'           => 'inactive',
+					'priority'         => 20,
+					'css_classes'      => 'aips-ad-bottom',
+					'created_at'       => $now,
+					'updated_at'       => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%d', '%d' )
+			);
+		}
+
+		$this->logger->log( 'Migration 3.7.0: Initialized Monetization Hub tables and seeded default ad slots.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.1.
+	 *
+	 * Upgrades schema for Smart Ad Refresh, Sticky Bottom Anchors, and Link Cloaking.
+	 */
+	private function migrate_to_3_7_1() {
+		global $wpdb;
+		$table_ad_slots  = $wpdb->prefix . 'aips_ad_slots';
+		$table_aff_links = $wpdb->prefix . 'aips_affiliate_links';
+
+		// Re-run install_tables() to add any missing columns via dbDelta
+		AIPS_DB_Manager::install_tables();
+
+		// Check and add sticky bottom anchor sample if not already present
+		$has_anchor = (int) $wpdb->get_var(
+			$wpdb->prepare( "SELECT COUNT(*) FROM `{$table_ad_slots}` WHERE position = %s", 'sticky_bottom_anchor' )
+		);
+
+		if ( 0 === $has_anchor ) {
+			$now = time();
+			$wpdb->insert(
+				$table_ad_slots,
+				array(
+					'name'                => 'Sticky Bottom Anchor Ad',
+					'slot_type'           => 'custom_html',
+					'code'                => '<div style="background:#1e293b; color:#ffffff; padding:12px 20px; text-align:center; font-size:13px; border-radius:6px;">[Advertisement: High-Impact Sticky Anchor Unit]</div>',
+					'position'            => 'sticky_bottom_anchor',
+					'paragraph_offset'    => 0,
+					'min_word_count'      => 100,
+					'device_targeting'    => 'all',
+					'auto_refresh'        => 1,
+					'refresh_interval'    => 30,
+					'max_refreshes'       => 5,
+					'anchor_trigger'      => 'smart_scroll',
+					'anchor_scroll_depth' => 15,
+					'anchor_dismissible'  => 1,
+					'status'              => 'paused',
+					'priority'            => 50,
+					'css_classes'         => 'aips-anchor-bar',
+					'created_at'          => $now,
+					'updated_at'          => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%d' )
+			);
+		}
+
+		// Populate empty slugs in affiliate links
+		$links_without_slug = $wpdb->get_results( "SELECT id, tag, label FROM `{$table_aff_links}` WHERE slug IS NULL OR slug = ''" );
+		if ( ! empty( $links_without_slug ) ) {
+			foreach ( $links_without_slug as $link ) {
+				$slug = sanitize_title( $link->label ?: $link->tag );
+				if ( empty( $slug ) ) {
+					$slug = 'link-' . $link->id;
+				}
+				$wpdb->update(
+					$table_aff_links,
+					array( 'slug' => $slug ),
+					array( 'id' => $link->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.1: Configured Smart Ad Refresh, Sticky Anchors, and Affiliate Link Cloaking.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.2.
+	 *
+	 * Establishes wp_aips_referral_programs table schema, configures default
+	 * affiliate network profiles option, and seeds an initial sample partner referral program.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_2() {
+		global $wpdb;
+		$table_referrals = $wpdb->prefix . 'aips_referral_programs';
+
+		// Apply Layer-1 schema changes via dbDelta to create or update wp_aips_referral_programs.
+		AIPS_DB_Manager::install_tables();
+
+		// Verify table exists before executing queries.
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_referrals ) );
+		if ( $table_exists === $table_referrals ) {
+			// Seed default active referral program if table is empty.
+			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table_referrals}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( 0 === $count ) {
+				$now = time();
+				$wpdb->insert(
+					$table_referrals,
+					array(
+						'name'             => 'WP Engine Hosting',
+						'network_provider' => 'shareasale',
+						'referral_url'     => 'https://shareasale.com/r.cfm?b=12345&u=67890',
+						'slug'             => 'wp-engine-deal',
+						'promo_code'       => 'SAVE20',
+						'discount_offer'   => 'Get 4 months free + 20% off with code SAVE20',
+						'commission_notes' => '$200 CPA or 20% recurring',
+						'category_ids'     => '',
+						'keywords'         => 'hosting, wordpress, cloud, managed hosting, speed',
+						'status'           => 'active',
+						'created_at'       => $now,
+						'updated_at'       => $now,
+					),
+					array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
+				);
+			}
+		}
+
+		// Initialize default affiliate network profiles option if not present or empty in DB.
+		$profiles = AIPS_Config::get_instance()->get_option( 'aips_affiliate_network_profiles' );
+		if ( empty( $profiles ) ) {
+			$defaults = AIPS_Config::get_instance()->get_default_options();
+			$network_profiles = isset( $defaults['aips_affiliate_network_profiles'] )
+				? $defaults['aips_affiliate_network_profiles']
+				: array();
+			AIPS_Config::get_instance()->set_option( 'aips_affiliate_network_profiles', $network_profiles );
+		}
+
+		$this->logger->log( 'Migration 3.7.2: Initialized wp_aips_referral_programs schema, seeded sample partner program, and configured network profiles.', 'info' );
 	}
 }

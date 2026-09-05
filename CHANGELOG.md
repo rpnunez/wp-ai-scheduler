@@ -1,3 +1,70 @@
+## [3.7.2] - 2026-09-04
+
+### Added
+- **Referral & Partner Programs Management Engine**:
+  - New dedicated database table `wp_aips_referral_programs` managing partner programs, direct deals, network providers, custom promo/coupon codes, discount descriptions, and commission notes.
+  - Full administrative CRUD interface in Monetization Hub with interactive modal editing, search filtering, and live status toggles.
+- **Affiliate Network Profiles Configuration**:
+  - Centralized network profile settings for Amazon Associates, ShareASale, CJ Affiliate, Impact, Awin, Rakuten Advertising, and Direct/In-House partners.
+  - Automated subID tracking parameter template decoration supporting `{post_id}`, `{slug}`, `{date}`, `{author_id}`, and `{category}` tokens.
+- **Automated In-Content Promo Ribbon Delivery Engine**:
+  - Contextual auto-injection of high-converting discount callout ribbons into AI-generated posts based on matched category, tag, or content keywords.
+  - Interactive 1-click "Copy Code" button with visual feedback and clipboard fallback.
+  - Native shortcode `[aips_referral id="..."]` and Gutenberg block `aips/referral-card`.
+- **Cloaked Referral Redirection & Telemetry**:
+  - Integrated referral redirection via `/{prefix}/{slug}/` with strict HTTP 307 temporary redirects and `X-Robots-Tag: noindex, nofollow, noarchive` headers.
+  - Real-time click and viewable impression telemetry aggregation in `wp_aips_monetization_events`.
+- **Unified 5-Tab Monetization Hub**:
+  - Consolidated 5-tab admin layout (Ad Slots, Sponsor Campaigns, Affiliate Links, Referrals & Networks, Analytics).
+- **Database Schema Migration (`migrate_to_3_7_2`)**:
+  - Automatic table provisioning for `wp_aips_referral_programs` via dbDelta.
+  - Default network profile options initialization and sample partner program seeding.
+
+## [3.7.1] - 2026-09-04
+
+### Added
+- **Smart Ad Refresh Engine**:
+  - Compliance-first auto-refresh conforming to AdSense, Mediavine, and Raptive policies.
+  - IntersectionObserver monitoring triggers refreshes only when ad slots are >50% visible in the active viewport AND user activity (mouse, touch, keydown, scroll) has been observed within the past 30 seconds.
+  - Automatic pause when the browser tab is hidden or backgrounded.
+  - Granular slot configuration: interval setting (30s, 45s, 60s, 90s, 120s) and session refresh cap (3, 5, 10 refreshes) with telemetry logging (`smart_refresh`).
+- **High-RPM Sticky Bottom Anchors**:
+  - Dedicated `sticky_bottom_anchor` position type formatted for mobile and desktop screens.
+  - Configurable display triggers: `scroll_depth` (% scroll trigger), `immediate`, and `smart_scroll` (auto-hides on upward reading scroll).
+  - User dismissible controls (✕) with session persistence.
+- **Three-Tier Ad-Block Recovery Suite**:
+  - Non-intrusive client-side bait element detection (`#aips-adblock-bait`).
+  - Tier 1: Silent Fallback to house/direct sponsor campaigns without breaking layout or aesthetics.
+  - Tier 2: Polite Soft Notice toast banner with customizable messaging requesting whitelist/support.
+  - Tier 3: Content Dimmer below paragraph 3 politely prompting reader support.
+  - Telemetry logging for `ad_block_detected` events and detection rate calculation in analytics.
+- **Affiliate Link Cloaking & 307 Temporary Redirect Engine**:
+  - Dedicated URL cloaking service using clean rewrite rules (`/{prefix}/{slug}/`, default `/go/`).
+  - Strict HTTP 307 temporary redirects with `X-Robots-Tag: noindex, nofollow, noarchive` headers.
+  - Automated link rewriting for contextual affiliate links with outbound conversion tracking.
+- **Monetization Engine Settings Admin Panel**:
+  - Slide-out quick configuration panel in the Monetization Hub.
+  - Global toggles for Smart Ad Refresh, Ad-Block Recovery modes, Fallback Campaign mapping, and Link Cloaking prefixes with instant rewrite flushing.
+  - Real-time telemetry cards for Smart Refreshes and Ad-Block Detection Rate in the Analytics dashboard.
+- **Database Schema Migration (`migrate_to_3_7_1`)**:
+  - Added `slug` column to `wp_aips_affiliate_links` with unique index.
+  - Added `auto_refresh`, `refresh_interval`, `max_refreshes`, `anchor_trigger`, `anchor_scroll_depth`, and `anchor_dismissible` columns to `wp_aips_ad_slots`.
+  - Automatic migration runner and default sticky anchor seeding.
+
+## [3.7.0] - 2026-09-04
+
+### Added
+- **Monetization Hub & In-Content Ad Placement Engine**: Complete revenue infrastructure under **AI Post Scheduler → Monetization Hub** with 4 tabs:
+  - **Ad Slots & Display Units**: Dynamic in-article ad slot configuration supporting custom HTML/JS, shortcodes, and auto-insertion by paragraph offset, 50% depth mid-content, or post conclusion.
+  - **Direct Sponsor Campaigns & FTC Disclosures**: Direct sponsor and advertiser deals management with automated keyword/category matching, custom call-to-action badges, and automated FTC compliance notices.
+  - **Affiliate Links Inserter**: Embedded management of affiliate merchants, keyword triggers, and contextual AI callout placement.
+  - **Revenue & Telemetry Analytics**: Real-time aggregated viewable impressions, ad clicks, CTR calculations, and Chart.js daily telemetry visualization.
+- **Gutenberg Ad Unit Block (`aips/ad-unit`)**: Native editor block allowing manual placement of pre-configured ad slots or custom embed snippets anywhere in article drafts, with server-side render callbacks.
+- **Post Editor Monetization Sidebar**: Real-time commercial intent analysis (Transactional, Commercial Investigation, Informational) with projected RPM tiering, sponsor campaign overriding, and per-post ad suppression controls.
+- **AI Directives for Commercial Revenue**: Context-aware prompt injection that instructs AI content generation engines to craft high-converting recommendation sections and seamless sponsor brand integration without sounding promotional.
+- **Frontend Telemetry Beacon & GA4 Integration**: Privacy-preserving `IntersectionObserver` beacon reporting viewable impressions (>50% visible for >=1s) and clicks to REST endpoint `/aips/v1/monetization/track` and pushing standard events to `window.dataLayer` for Google Analytics 4.
+- **Database Schema Migration (`migrate_to_3_7_0`)**: Added `wp_aips_ad_slots`, `wp_aips_sponsor_campaigns`, and `wp_aips_monetization_telemetry` tables with proper indexes.
+
 ## [3.6.5] - 2026-08-28
 
 ### Added

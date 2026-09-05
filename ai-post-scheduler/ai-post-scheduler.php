@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.6.6
+ * Version: 3.7.2
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.6.6');
+    define('AIPS_VERSION', '3.7.2');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -492,6 +492,64 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger_Interface::class)
             );
         });
+
+        // Register Monetization Hub Repositories & Services
+        $container->singleton(AIPS_Affiliate_Links_Repository::class, function() {
+            return new AIPS_Affiliate_Links_Repository();
+        });
+
+        $container->singleton(AIPS_Ad_Slots_Repository::class, function() {
+            return new AIPS_Ad_Slots_Repository();
+        });
+
+        $container->singleton(AIPS_Sponsor_Campaigns_Repository::class, function() {
+            return new AIPS_Sponsor_Campaigns_Repository();
+        });
+
+        $container->singleton(AIPS_Referral_Programs_Repository::class, function() {
+            return new AIPS_Referral_Programs_Repository();
+        });
+
+        $container->singleton(AIPS_Monetization_Telemetry_Repository::class, function() {
+            return new AIPS_Monetization_Telemetry_Repository();
+        });
+
+        $container->singleton(AIPS_Ad_Injection_Service::class, function() {
+            return new AIPS_Ad_Injection_Service();
+        });
+
+        $container->singleton(AIPS_Monetization_AI_Service::class, function( $container ) {
+            return new AIPS_Monetization_AI_Service(
+                $container->make(AIPS_Sponsor_Campaigns_Repository::class)
+            );
+        });
+
+        $container->singleton(AIPS_Monetization_Controller::class, function( $container ) {
+            return new AIPS_Monetization_Controller(
+                $container->make(AIPS_Ad_Slots_Repository::class),
+                $container->make(AIPS_Sponsor_Campaigns_Repository::class),
+                $container->make(AIPS_Monetization_Telemetry_Repository::class),
+                $container->make(AIPS_Referral_Programs_Repository::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_Referral_Delivery_Service::class, function( $container ) {
+            return new AIPS_Referral_Delivery_Service(
+                $container->make(AIPS_Referral_Programs_Repository::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        $container->singleton(AIPS_Link_Cloaking_Service::class, function( $container ) {
+            return new AIPS_Link_Cloaking_Service(
+                $container->make(AIPS_Config::class),
+                $container->make(AIPS_Affiliate_Links_Repository::class),
+                $container->make(AIPS_Sponsor_Campaigns_Repository::class),
+                $container->make(AIPS_Monetization_Telemetry_Repository::class),
+                $container->make(AIPS_Referral_Programs_Repository::class)
+            );
+        });
     }
 
     /**
@@ -627,6 +685,18 @@ final class AI_Post_Scheduler {
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
         );
+
+        // Monetization & Ad Frontend integration (the_content filter, shortcode, viewability)
+        new AIPS_Ad_Frontend();
+
+        // Referral & Partner Programs Delivery (in-content ribbon, shortcode [aips_referral], block)
+        AIPS_Container::get_instance()->make(AIPS_Referral_Delivery_Service::class);
+
+        // Link Cloaking Service (rewrite rules, query vars, 307 redirects)
+        AIPS_Container::get_instance()->make(AIPS_Link_Cloaking_Service::class);
+
+        // REST Monetization Controller (editor sidebar, blocks, and telemetry tracking)
+        new AIPS_REST_Monetization_Controller();
     }
 
     /**

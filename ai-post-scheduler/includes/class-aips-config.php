@@ -234,6 +234,71 @@ class AIPS_Config {
             'aips_deduplication_mode'                  => 'warn',
             'aips_deduplication_threshold'             => 0.85,
             'aips_generation_inject_related_context'   => true,
+            // Monetization & Ad Placements
+            'aips_monetization_enabled'                => true,
+            'aips_ad_telemetry_enabled'                => true,
+            'aips_ad_ga4_datalayer_enabled'            => true,
+            'aips_default_ftc_disclosure'              => 'This post contains sponsored content and/or affiliate links. We may earn a commission on qualifying purchases at no extra cost to you.',
+            'aips_ad_refresh_enabled'                  => true,
+            'aips_adblock_recovery_mode'               => 'silent_fallback',
+            'aips_adblock_notice_text'                 => 'We notice you are using an ad blocker. Please consider supporting our free content by disabling your ad blocker.',
+            'aips_adblock_fallback_campaign_id'        => 0,
+            'aips_link_cloaking_enabled'               => true,
+            'aips_link_cloaking_prefix'                => 'go',
+            // Referral & Affiliate Network Profiles
+            'aips_affiliate_network_profiles'          => array(
+                'amazon'     => array(
+                    'name'            => 'Amazon Associates',
+                    'enabled'         => false,
+                    'tag'             => '',
+                    'subid_param'     => 'ascsubtag',
+                    'subid_template'  => '{post_id}',
+                ),
+                'shareasale' => array(
+                    'name'            => 'ShareASale',
+                    'enabled'         => false,
+                    'affiliate_id'    => '',
+                    'merchant_id'     => '',
+                    'subid_param'     => 'afftrack',
+                    'subid_template'  => '{post_id}',
+                ),
+                'cj'         => array(
+                    'name'            => 'CJ Affiliate',
+                    'enabled'         => false,
+                    'publisher_id'    => '',
+                    'subid_param'     => 'sid',
+                    'subid_template'  => '{post_id}',
+                ),
+                'impact'     => array(
+                    'name'             => 'Impact',
+                    'enabled'          => false,
+                    'media_partner_id' => '',
+                    'subid_param'      => 'subId1',
+                    'subid_template'   => '{post_id}',
+                ),
+                'awin'       => array(
+                    'name'            => 'Awin',
+                    'enabled'         => false,
+                    'publisher_id'    => '',
+                    'subid_param'     => 'clickref',
+                    'subid_template'  => '{post_id}',
+                ),
+                'rakuten'    => array(
+                    'name'            => 'Rakuten Advertising',
+                    'enabled'         => false,
+                    'affiliate_id'    => '',
+                    'subid_param'     => 'u1',
+                    'subid_template'  => '{post_id}',
+                ),
+                'direct'     => array(
+                    'name'            => 'Direct / In-House',
+                    'enabled'         => true,
+                    'subid_param'     => 'subid',
+                    'subid_template'  => '{post_id}',
+                ),
+            ),
+            'aips_referral_delivery_enabled'           => true,
+            'aips_referral_placement_position'         => 'mid_content',
         );
     }
     
@@ -623,6 +688,26 @@ class AIPS_Config {
             'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
             'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
+    }
+
+    /**
+     * Get affiliate network profiles configuration.
+     *
+     * @return array Network profiles indexed by network slug.
+     */
+    public function get_affiliate_network_profiles() {
+        return $this->get_option('aips_affiliate_network_profiles', array());
+    }
+
+    /**
+     * Get a specific affiliate network profile configuration.
+     *
+     * @param string $network Network slug (amazon, shareasale, cj, impact, awin, rakuten, direct).
+     * @return array|null Network profile config array or null if not found.
+     */
+    public function get_affiliate_network_profile($network) {
+        $profiles = $this->get_affiliate_network_profiles();
+        return isset($profiles[$network]) ? $profiles[$network] : null;
     }
     
     // ========================================

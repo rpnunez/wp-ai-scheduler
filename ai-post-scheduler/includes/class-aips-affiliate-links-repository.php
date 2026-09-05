@@ -145,18 +145,52 @@ class AIPS_Affiliate_Links_Repository {
 	}
 
 	/**
+	 * Get mapping by slug (or tag fallback).
+	 *
+	 * @param string $slug Slug or tag string.
+	 * @return object|null
+	 */
+	public function get_by_slug( $slug ) {
+		$slug = sanitize_title( $slug );
+		if ( empty( $slug ) ) {
+			return null;
+		}
+
+		$row = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->table} WHERE slug = %s LIMIT 1",
+				$slug
+			)
+		);
+
+		if ( ! $row ) {
+			// Fallback: match tag directly
+			$row = $this->wpdb->get_row(
+				$this->wpdb->prepare(
+					"SELECT * FROM {$this->table} WHERE LOWER(tag) = %s LIMIT 1",
+					strtolower( $slug )
+				)
+			);
+		}
+
+		return $row;
+	}
+
+	/**
 	 * Insert a new affiliate link mapping.
 	 *
 	 * @param array $data Mapping data. Keys: tag, label, affiliate_url, enabled,
 	 *                    cta_html, cta_position, cta_heading, cta_match_text,
-	 *                    cta_max_insertions, use_ai_injection.
+	 *                    cta_max_insertions, use_ai_injection, slug.
 	 * @return int|false Inserted row ID or false on failure.
 	 */
 	public function insert( array $data ) {
 		$now    = AIPS_DateTime::now()->timestamp();
+		$slug   = ! empty( $data['slug'] ) ? sanitize_title( $data['slug'] ) : sanitize_title( $data['label'] ?? ( $data['tag'] ?? '' ) );
 		$result = $this->wpdb->insert(
 			$this->table,
 			array(
+				'slug'                 => $slug,
 				'tag'                  => sanitize_text_field( $data['tag'] ?? '' ),
 				'label'                => sanitize_text_field( $data['label'] ?? '' ),
 				'affiliate_url'        => esc_url_raw( $data['affiliate_url'] ?? '' ),
@@ -170,7 +204,7 @@ class AIPS_Affiliate_Links_Repository {
 				'created_at'           => $now,
 				'updated_at'           => $now,
 			),
-			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
 		);
 
 		return $result ? $this->wpdb->insert_id : false;
@@ -188,6 +222,7 @@ class AIPS_Affiliate_Links_Repository {
 		$format = array( '%d' );
 
 		$map = array(
+			'slug'               => array( 'sanitize_title', '%s' ),
 			'tag'                => array( 'sanitize_text_field', '%s' ),
 			'label'              => array( 'sanitize_text_field', '%s' ),
 			'affiliate_url'      => array( 'esc_url_raw', '%s' ),
