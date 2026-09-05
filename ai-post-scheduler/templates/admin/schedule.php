@@ -23,7 +23,6 @@ foreach ($campaign_options as $campaign_option) {
 
 $preselect_template_id  = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
-$is_embedded_schedule_view = !empty($embedded);
 
 $date_format = get_option('date_format') . ' ' . get_option('time_format');
 
@@ -156,33 +155,6 @@ if (!function_exists('aips_datetime_from_db_value')) {
 	}
 }
 ?>
-<?php if (!$is_embedded_schedule_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Schedules', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('All scheduled processes — template post generation, author topic generation, and author post generation — in one view.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<?php if (!empty($templates)): ?>
-					<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
-						<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
-					</button>
-					<?php else: ?>
-					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-media-document"></span>
-						<?php esc_html_e('Create Template First', 'ai-post-scheduler'); ?>
-					</a>
-					<?php endif; ?>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
 			<div class="aips-panel-body">
 				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
@@ -575,11 +547,6 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			</div>
 			<?php endif; ?>
 		</div><!-- /.aips-content-panel -->
-
-<?php if (!$is_embedded_schedule_view) : ?>
-	</div><!-- /.aips-page-container -->
-</div><!-- /.wrap -->
-<?php endif; ?>
 
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->

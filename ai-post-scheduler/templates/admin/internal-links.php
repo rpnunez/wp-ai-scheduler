@@ -26,36 +26,7 @@ $count_pending  = isset($link_counts['pending'])  ? (int) $link_counts['pending'
 $count_accepted = isset($link_counts['accepted']) ? (int) $link_counts['accepted'] : 0;
 $count_rejected = isset($link_counts['rejected']) ? (int) $link_counts['rejected'] : 0;
 $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted'] : 0;
-$is_embedded_internal_links_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_internal_links_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Internal Links', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Automatically discover related content and generate internal link suggestions using semantic similarity.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-content-indexer')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-networking"></span>
-						<?php esc_html_e('Content Indexer & Graph', 'ai-post-scheduler'); ?>
-					</a>
-					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-database-import"></span>
-						<?php esc_html_e('Index Posts', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" id="aips-clear-index-btn" class="aips-btn aips-btn-ghost aips-btn-danger">
-						<span class="dashicons dashicons-trash"></span>
-						<?php esc_html_e('Clear Index', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-<?php endif; ?>
-		</div>
 
 		<!-- Status Cards -->
 		<div class="aips-stats-row" style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
@@ -203,11 +174,6 @@ $is_embedded_internal_links_view = !empty($embedded);
 				</div>
 			</div>
 		</div><!-- /#generate-tab -->
-
-<?php if (!$is_embedded_internal_links_view) : ?>
-	</div><!-- /.aips-page-container -->
-</div><!-- /.wrap -->
-<?php endif; ?>
 
 <!-- Insert Link Modal -->
 <div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">

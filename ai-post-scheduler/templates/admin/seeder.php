@@ -3,19 +3,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<?php if (empty($embedded)) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Database Seeder', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Generate test data to quickly populate your database with AI-generated templates, schedules, and content for testing purposes.', 'ai-post-scheduler'); ?></p>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<!-- Content Panel -->
 		<div class="aips-content-panel">
@@ -80,7 +67,3 @@ if (!defined('ABSPATH')) {
 <div id="aips-seeder-log" style="background: #f0f0f1; padding: 15px; border: 1px solid #c3c4c7; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.6;"></div>
 </div>
 </div>
-<?php if (empty($embedded)) : ?>
-</div>
-</div>
-<?php endif; ?>

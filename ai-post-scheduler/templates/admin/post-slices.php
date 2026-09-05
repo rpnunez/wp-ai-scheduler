@@ -25,28 +25,7 @@ if (!isset($post_slice_counts) || !is_array($post_slice_counts)) {
 $total_count    = isset($post_slice_counts['total']) ? (int) $post_slice_counts['total'] : count($post_slices);
 $active_count   = isset($post_slice_counts['active']) ? (int) $post_slice_counts['active'] : 0;
 $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_counts['inactive'] : 0;
-$is_embedded_slices_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_slices_view): ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container aips-post-slices-page">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Post Slices', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Define reusable editorial styles that rotate into title and content prompts so generated posts vary by angle, framing, examples, and emphasis.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-post-slice-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Post Slice', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<div class="aips-post-slices-summary" aria-label="<?php esc_attr_e('Post slice counts', 'ai-post-scheduler'); ?>">
 			<div class="aips-post-slices-summary-card">
@@ -189,10 +168,6 @@ $is_embedded_slices_view = !empty($embedded);
 				</div>
 			<?php endif; ?>
 		</div>
-<?php if (!$is_embedded_slices_view): ?>
-	</div>
-</div>
-<?php endif; ?>
 
 <div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">

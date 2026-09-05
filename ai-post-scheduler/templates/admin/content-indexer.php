@@ -24,41 +24,7 @@ $percent     = isset($status['percent']) ? (int) $status['percent'] : 0;
 $topic_count = isset($stats['topics']) ? (int) $stats['topics'] : 0;
 $active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default (AI Engine)';
 $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : 1536;
-$is_embedded_indexer = !empty($embedded);
 ?>
-
-<?php if (!$is_embedded_indexer) : ?>
-<div class="wrap aips-wrap aips-indexer-page">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-networking" style="font-size:28px;width:28px;height:28px;vertical-align:middle;margin-right:8px;color:#2271b1;"></span>
-						<?php esc_html_e('Content Indexer & Semantic Intelligence', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Centralized semantic vector store for backfilling existing posts, exploring relationship graphs, detecting duplicate content, and powering related posts.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-database-import"></span>
-						<span class="btn-text"><?php esc_html_e('Start Backfill Scan', 'ai-post-scheduler'); ?></span>
-					</button>
-					<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary" style="display:none;">
-						<span class="dashicons dashicons-controls-pause"></span>
-						<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" id="aips-clear-index-btn" class="aips-btn aips-btn-ghost aips-btn-danger">
-						<span class="dashicons dashicons-trash"></span>
-						<?php esc_html_e('Clear Index', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
 
 		<!-- Dimension Mismatch Notice -->
 		<?php if (!empty($dimension_mismatch)) : ?>
@@ -549,8 +515,3 @@ $is_embedded_indexer = !empty($embedded);
 				</div>
 			</form>
 		</div>
-
-<?php if (!$is_embedded_indexer) : ?>
-	</div><!-- /.aips-page-container -->
-</div><!-- /.aips-wrap -->
-<?php endif; ?>

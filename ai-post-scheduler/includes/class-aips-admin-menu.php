@@ -352,8 +352,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_voices_page() {
-        $voices_handler = new AIPS_Voices();
-        $voices_handler->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-studio&section=voices'));
+        exit;
     }
 
     /**
@@ -364,8 +364,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_templates_page() {
-        $templates_handler = new AIPS_Templates();
-        $templates_handler->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-studio&section=templates'));
+        exit;
     }
 
     /**
@@ -376,7 +376,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_schedule_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=schedules'));
+        exit;
     }
 
     /**
@@ -427,7 +428,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_authors_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=authors'));
+        exit;
     }
 
     /**
@@ -436,11 +438,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_post_slices_page() {
-        $post_slices_repo   = AIPS_Post_Slices_Repository::instance();
-        $post_slices        = $post_slices_repo->get_all(false);
-        $post_slice_counts  = $post_slices_repo->get_counts();
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/post-slices.php';
+        wp_safe_redirect(admin_url('admin.php?page=aips-studio&section=slices'));
+        exit;
     }
 
     /**
@@ -452,7 +451,17 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_author_topics_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
+        $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
+        $url = add_query_arg(
+            array(
+                'page'      => 'aips-automations',
+                'tab'       => 'author-topics',
+                'author_id' => $author_id,
+            ),
+            admin_url('admin.php')
+        );
+        wp_safe_redirect($url);
+        exit;
     }
 
     /**
@@ -473,13 +482,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_structures_page() {
-        $structure_repo = new AIPS_Article_Structure_Repository();
-        $section_repo = new AIPS_Prompt_Section_Repository();
-
-        $structures = $structure_repo->get_all(false);
-        $sections = $section_repo->get_all(false);
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
+        wp_safe_redirect(admin_url('admin.php?page=aips-studio&section=structures'));
+        exit;
     }
 
     /**
@@ -519,8 +523,8 @@ class AIPS_Admin_Menu {
     }
 
     public function render_operations_insights_page() {
-        $controller = new AIPS_Operations_Insights_Controller();
-        $controller->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=insights'));
+        exit;
     }
 
     /**
@@ -529,8 +533,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_telemetry_page() {
-        $controller = new AIPS_Telemetry_Controller();
-        $controller->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=telemetry'));
+        exit;
     }
 
     /**
@@ -541,34 +545,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_sources_page() {
-        $repo    = new AIPS_Sources_Repository();
-        $sources = $repo->get_all(false);
-
-        // Build source group name map: term_id => name (avoid per-row get_term calls in the template).
-        $source_groups = get_terms(array(
-            'taxonomy'   => 'aips_source_group',
-            'hide_empty' => false,
-        ));
-        if (is_wp_error($source_groups)) {
-            $source_groups = array();
-        }
-        $source_group_name_map = array();
-        foreach ($source_groups as $group) {
-            $source_group_name_map[(int) $group->term_id] = $group->name;
-        }
-
-        // Build source → term IDs map: source_id => int[] (one query, not N queries).
-        $all_source_ids = array_map(function ($s) { return (int) $s->id; }, $sources);
-        $source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
-
-        // Build source → fetch-data map for the Content status column (latest row per source).
-        $data_repo             = new AIPS_Sources_Data_Repository();
-        $source_fetch_data_map = $data_repo->get_by_source_ids( $all_source_ids );
-
-        // Build source → archived content count map for the Content column badge.
-        $source_content_count_map = $data_repo->get_counts_by_source_ids( $all_source_ids );
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=sources'));
+        exit;
     }
 
     /**
@@ -635,8 +613,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_seeder_page() {
-        $seeder_admin = new AIPS_Seeder_Admin();
-        $seeder_admin->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=seeder'));
+        exit;
     }
 
     /**
@@ -645,8 +623,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_cache_monitor_page() {
-        $controller = new AIPS_Cache_Monitor_Controller();
-        $controller->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=cache-monitor'));
+        exit;
     }
 
     /**
@@ -657,8 +635,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_status_page() {
-        $status_handler = new AIPS_System_Status();
-        $status_handler->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=status'));
+        exit;
     }
 
     /**
@@ -669,8 +647,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_stress_test_page() {
-        $controller = new AIPS_Stress_Test_Controller();
-        $controller->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=stress-test'));
+        exit;
     }
 
     /**
@@ -681,11 +659,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_dev_tools_page() {
-        // AIPS_Dev_Tools is instantiated in init if admin, but we need to call render_page on an instance.
-        // Since we don't have a global instance registry accessible easily here, we'll instantiate it on demand.
-        // It's a lightweight class, mostly for AJAX and rendering.
-        $dev_tools = new AIPS_Dev_Tools();
-        $dev_tools->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=dev-tools'));
+        exit;
     }
 
     /**
@@ -696,7 +671,8 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_taxonomy_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
+        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=taxonomy'));
+        exit;
     }
 
     /**
@@ -708,28 +684,13 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_affiliate_links_page() {
-        $controller = new AIPS_Affiliate_Links_Controller();
-        $controller->render_page();
+        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=affiliate-links'));
+        exit;
     }
 
     public function render_internal_links_page() {
-        global $aips_internal_links_controller;
-
-        if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-            try {
-                $aips_internal_links_controller->render_page();
-                return;
-            } catch (Throwable $throwable) {
-                echo '<div class="notice notice-error"><p>' .
-                    esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
-                '</p></div>';
-                return;
-            }
-        }
-
-        echo '<div class="notice notice-error"><p>' .
-            esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
-        '</p></div>';
+        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=internal-links'));
+        exit;
     }
 
     public function render_content_indexer_page() {

@@ -397,7 +397,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_schedules_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
 	}
 
@@ -408,7 +407,7 @@ class AIPS_Automations_Controller {
 	 */
 	private function render_campaigns_tab() {
 		$controller = new AIPS_Campaigns_Controller();
-		$controller->render_page(true);
+		$controller->render_page();
 	}
 
 	/**
@@ -417,7 +416,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_authors_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
 	}
 
@@ -451,7 +449,6 @@ class AIPS_Automations_Controller {
 		$source_fetch_data_map = $data_repo->get_by_source_ids($all_source_ids);
 		$source_content_count_map = $data_repo->get_counts_by_source_ids($all_source_ids);
 
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
 	}
 
@@ -461,7 +458,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_monetization_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/affiliate-links.php';
 	}
 
@@ -475,7 +471,7 @@ class AIPS_Automations_Controller {
 
 		if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
 			try {
-				$aips_internal_links_controller->render_page(true);
+				$aips_internal_links_controller->render_page();
 				return;
 			} catch (Throwable $throwable) {
 				echo '<div class="notice notice-error"><p>' .
@@ -496,7 +492,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_taxonomy_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
 	}
 
@@ -506,7 +501,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_author_topics_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
 	}
 

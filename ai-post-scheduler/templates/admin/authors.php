@@ -1,63 +1,33 @@
 <?php
+/**
+ * Authors Admin Partial Template
+ *
+ * @package AI_Post_Scheduler
+ */
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Get authors - only instantiate repository when needed
-$authors_repository = null;
-$topics_repository = null;
-$logs_repository = null;
-$structures_repository = null;
-$authors = array();
-$article_structures = array();
+$authors_repository = new AIPS_Authors_Repository();
+$authors = $authors_repository->get_all();
 
-$current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-$is_embedded_authors_view = !empty($embedded);
-
-if ($current_page === 'aips-authors' || $is_embedded_authors_view) {
-    $authors_repository = new AIPS_Authors_Repository();
-    $authors = $authors_repository->get_all();
-
-    if (!empty($authors)) {
-        $topics_repository = new AIPS_Author_Topics_Repository();
-        $logs_repository = new AIPS_Author_Topic_Logs_Repository();
-        // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
-        $feedback_repository = new AIPS_Feedback_Repository();
-        $author_ids = array_map(function($a) { return $a->id; }, $authors);
-        $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
-    }
-
-    // Load article structures for the dropdown
-    $structures_repository = new AIPS_Article_Structure_Repository();
-    $article_structures = $structures_repository->get_all(true); // Get active structures only
+if (!empty($authors)) {
+    $topics_repository = new AIPS_Author_Topics_Repository();
+    $logs_repository = new AIPS_Author_Topic_Logs_Repository();
+    // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
+    $feedback_repository = new AIPS_Feedback_Repository();
+    $author_ids = array_map(function($a) { return $a->id; }, $authors);
+    $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
 }
+
+// Load article structures for the dropdown
+$structures_repository = new AIPS_Article_Structure_Repository();
+$article_structures = $structures_repository->get_all(true); // Get active structures only
 
 // Site-wide content settings used to pre-fill the Author Suggestions modal
 $site_ctx = AIPS_Site_Context::get();
 ?>
-<?php if (!$is_embedded_authors_view) : ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
-                        <span class="dashicons dashicons-lightbulb"></span>
-                        <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
-                    </button>
-                    <button class="aips-btn aips-btn-primary aips-add-author-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
-                        <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-<?php endif; ?>
-        </div>
 
         <!-- Add tabs for Authors List and Generation Queue -->
         <div class="aips-tab-nav">
@@ -376,10 +346,6 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
         </div>
-<?php if (!$is_embedded_authors_view) : ?>
-    </div><!-- .aips-page-container -->
-</div><!-- .wrap.aips-wrap -->
-<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">

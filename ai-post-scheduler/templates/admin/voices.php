@@ -1,33 +1,21 @@
 <?php
+/**
+ * Voices Admin Partial Template
+ *
+ * @package AI_Post_Scheduler
+ */
+
 if (!defined('ABSPATH')) {
     exit;
 }
-$is_embedded_voices_view = !empty($embedded);
-?>
-<?php if (!$is_embedded_voices_view): ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description">
-                        <?php esc_html_e('Define consistent tone and style templates for AI-generated content.', 'ai-post-scheduler'); ?>
-                    </p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-voice-btn">
-                        <span class="dashicons dashicons-plus-alt2"></span>
-                        <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-<?php endif; ?>
 
-        <!-- Content Panel -->
-        <div class="aips-content-panel">
+if (!isset($voices) || !is_array($voices)) {
+    $voices = array();
+}
+?>
+
+<!-- Content Panel -->
+<div class="aips-content-panel">
             <div class="aips-voices-container">
                 <?php if (!empty($voices)): ?>
                 <!-- Filter Bar -->
@@ -130,10 +118,6 @@ $is_embedded_voices_view = !empty($embedded);
                 <?php endif; ?>
             </div>
         </div>
-<?php if (!$is_embedded_voices_view): ?>
-    </div>
-</div>
-<?php endif; ?>
     
     <div id="aips-voice-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">

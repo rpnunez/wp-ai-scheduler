@@ -24,12 +24,10 @@ class AIPS_Dev_Tools {
      *
      * @return void
      */
-    public function render_page($embedded = false) {
+    public function render_page() {
         if (!AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             wp_die(esc_html__('Developer Mode is currently disabled.', 'ai-post-scheduler'));
         }
-
-        $embedded = (bool) $embedded;
 
         include AIPS_PLUGIN_DIR . 'templates/admin/dev-tools.php';
     }

@@ -193,8 +193,6 @@ class AIPS_Studio_Controller {
 	 * @return void
 	 */
 	public function render_section_content(string $section) {
-		$embedded = true;
-
 		switch ($section) {
 			case 'templates':
 				$templates_handler = new AIPS_Templates();

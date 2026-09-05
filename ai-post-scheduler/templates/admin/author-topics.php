@@ -14,23 +14,14 @@ if (!defined('ABSPATH')) {
 }
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-$is_embedded_author_topics_view = !empty($embedded);
 $authors_page_url = AIPS_Admin_Menu_Helper::get_page_url('authors');
 
 if (!$author_id) {
 	?>
-	<?php if (!$is_embedded_author_topics_view) : ?>
-	<div class="wrap aips-wrap">
-		<div class="aips-page-container">
-	<?php endif; ?>
-		<div class="notice notice-error"><p>
-			<?php esc_html_e('Invalid author ID.', 'ai-post-scheduler'); ?>
-			<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
-		</p></div>
-	<?php if (!$is_embedded_author_topics_view) : ?>
-		</div>
-	</div>
-	<?php endif; ?>
+	<div class="notice notice-error"><p>
+		<?php esc_html_e('Invalid author ID.', 'ai-post-scheduler'); ?>
+		<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
+	</p></div>
 	<?php
 	return;
 }
@@ -40,18 +31,10 @@ $author = $authors_repository->get_by_id($author_id);
 
 if (!$author) {
 	?>
-	<?php if (!$is_embedded_author_topics_view) : ?>
-	<div class="wrap aips-wrap">
-		<div class="aips-page-container">
-	<?php endif; ?>
-		<div class="notice notice-error"><p>
-			<?php esc_html_e('Author not found.', 'ai-post-scheduler'); ?>
-			<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
-		</p></div>
-	<?php if (!$is_embedded_author_topics_view) : ?>
-		</div>
-	</div>
-	<?php endif; ?>
+	<div class="notice notice-error"><p>
+		<?php esc_html_e('Author not found.', 'ai-post-scheduler'); ?>
+		<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
+	</p></div>
 	<?php
 	return;
 }
@@ -62,49 +45,6 @@ $status_counts      = $topics_repository->get_status_counts($author_id);
 $total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'] + $status_counts['posts_generated'];
 $posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
-<?php if (!$is_embedded_author_topics_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-<?php endif; ?>
-<?php if (!$is_embedded_author_topics_view) : ?>
-		<!-- Breadcrumb -->
-		<nav class="aips-breadcrumb" aria-label="<?php esc_attr_e('Breadcrumb', 'ai-post-scheduler'); ?>">
-			<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></a>
-			<span class="aips-breadcrumb-sep" aria-hidden="true">&rsaquo;</span>
-			<span><?php echo esc_html($author->name); ?></span>
-		</nav>
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<?php
-						/* translators: %s: author name */
-						printf(esc_html__('Topics: %s', 'ai-post-scheduler'), esc_html($author->name));
-						?>
-					</h1>
-					<p class="aips-page-description">
-						<?php echo esc_html($author->field_niche); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<a href="<?php echo esc_url($authors_page_url); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-edit"></span>
-						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
-					</a>
-					<button class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
-						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
-					</button>
-					<a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-admin-post"></span>
-						<?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?>
-					</a>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<!-- Author Stats -->
 		<div class="aips-author-topics-stats">
@@ -205,10 +145,6 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				?>
 			</span>
 		</div>
-<?php if (!$is_embedded_author_topics_view) : ?>
-	</div>
-</div>
-<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">

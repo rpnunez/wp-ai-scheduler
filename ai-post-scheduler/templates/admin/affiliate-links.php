@@ -1,6 +1,6 @@
 <?php
 /**
- * Affiliate Links Admin Page
+ * Affiliate Links Admin Partial Template
  *
  * @package AI_Post_Scheduler
  * @since 3.1.0
@@ -9,28 +9,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-$is_embedded_affiliate_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_affiliate_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e( 'Affiliate Links', 'ai-post-scheduler' ); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e( 'Map post tags to affiliate URLs and configure CTA block injection into generated posts.', 'ai-post-scheduler' ); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" id="aips-afl-add-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e( 'Add Mapping', 'ai-post-scheduler' ); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<!-- Filter Bar -->
 		<div class="aips-content-panel" style="margin-bottom:20px;">
@@ -78,11 +57,6 @@ $is_embedded_affiliate_view = !empty($embedded);
 				</div>
 			</div>
 		</div>
-
-<?php if (!$is_embedded_affiliate_view) : ?>
-	</div><!-- /.aips-page-container -->
-</div><!-- /.wrap -->
-<?php endif; ?>
 
 <!-- Create / Edit Modal -->
 <div id="aips-afl-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-afl-modal-title">

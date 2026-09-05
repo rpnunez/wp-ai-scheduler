@@ -36,37 +36,7 @@ if (!isset($source_group_name_map) || !is_array($source_group_name_map)) {
 if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 	$source_term_ids_map = array();
 }
-$is_embedded_sources_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_sources_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Trusted Sources', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Add URLs that the AI should reference and cite when generating post content. Assign Sources to Source Groups to allow Authors and Templates to selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-source-data')); ?>">
-						<span class="dashicons dashicons-archive"></span>
-						<?php esc_html_e('View Source Data', 'ai-post-scheduler'); ?>
-					</a>
-					<button type="button" class="aips-btn aips-btn-secondary" id="aips-manage-source-groups-btn">
-						<span class="dashicons dashicons-category"></span>
-						<?php esc_html_e('Manage Groups', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Source', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-<?php endif; ?>
-		</div>
-
 		<div class="aips-content-panel">
 			<?php if (!empty($sources)): ?>
 
@@ -257,11 +227,6 @@ $is_embedded_sources_view = !empty($embedded);
 			</div>
 			<?php endif; ?>
 		</div>
-
-<?php if (!$is_embedded_sources_view) : ?>
-	</div><!-- .aips-page-container -->
-</div><!-- .wrap -->
-<?php endif; ?>
 
 <!-- Add / Edit Source Modal -->
 <div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">

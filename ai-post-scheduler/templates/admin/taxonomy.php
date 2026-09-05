@@ -17,29 +17,7 @@ $repository = new AIPS_Taxonomy_Repository();
 $status_counts = $repository->get_status_counts();
 $total_items = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] +
 	$status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
-$is_embedded_taxonomy_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_taxonomy_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Taxonomy', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Generate and manage AI-powered categories and tags based on your existing posts', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-primary aips-generate-taxonomy" id="aips-open-generate-modal">
-						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<!-- Taxonomy Stats -->
 		<div class="aips-author-topics-stats">
@@ -125,10 +103,6 @@ $is_embedded_taxonomy_view = !empty($embedded);
 				?>
 			</span>
 		</div>
-<?php if (!$is_embedded_taxonomy_view) : ?>
-	</div>
-</div>
-<?php endif; ?>
 
 <!-- Generate Taxonomy Modal -->
 <div id="aips-generate-taxonomy-modal" class="aips-modal" style="display: none;">

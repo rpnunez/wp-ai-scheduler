@@ -1,28 +1,14 @@
 <?php
+/**
+ * Templates partial template for Studio.
+ *
+ * @package AI_Post_Scheduler
+ */
+
 if (!defined('ABSPATH')) {
     exit;
 }
-$is_embedded_templates_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_templates_view): ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Post Templates', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Create and manage AI post generation templates with custom prompts and settings.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-template-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
-                        <?php esc_html_e('Add Template', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-<?php endif; ?>
         <?php if (!empty($templates)): ?>
         <!-- Content Panel with Filter Bar -->
         <div class="aips-content-panel">
@@ -218,10 +204,6 @@ $is_embedded_templates_view = !empty($embedded);
             </div>
         </div>
         <?php endif; ?>
-<?php if (!$is_embedded_templates_view): ?>
-    </div>
-</div>
-<?php endif; ?>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
     <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="4">
@@ -933,4 +915,3 @@ $is_embedded_templates_view = !empty($embedded);
             </td>
         </tr>
     </script>
-</div>

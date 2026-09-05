@@ -1,4 +1,10 @@
 <?php
+/**
+ * Article Structures partial template for Studio.
+ *
+ * @package AI_Post_Scheduler
+ */
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -12,32 +18,7 @@ if (!isset($structures) || !is_array($structures)) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
-$is_embedded_structures_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_structures_view): ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Define how your AI-generated content is organized with customizable article structures and sections.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" class="aips-btn aips-btn-secondary aips-add-section-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Structure Section', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" class="aips-btn aips-btn-primary aips-add-structure-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add New Structure', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
-
 		<!-- Tab Navigation -->
 		<div class="aips-tab-nav">
 			<a href="#aips-structures" class="aips-tab-link active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
@@ -334,10 +315,6 @@ $is_embedded_structures_view = !empty($embedded);
 			</div>
 		</div>
 	</div>
-<?php if (!$is_embedded_structures_view): ?>
-	</div><!-- .aips-page-container -->
-</div><!-- .wrap -->
-<?php endif; ?>
 
 <?php /* HTML templates used by AIPS.Templates.renderRaw() in admin.js */ ?>
 

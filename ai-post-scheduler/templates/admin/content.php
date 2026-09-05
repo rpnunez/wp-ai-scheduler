@@ -64,7 +64,6 @@ if (!defined('ABSPATH')) {
 		<div id="aips-content-indexer-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
 			<div class="aips-content-panel">
 				<?php
-				$embedded = true;
 				$indexer_controller = new AIPS_Content_Indexer_Controller();
 				$indexer_controller->render_page();
 				?>

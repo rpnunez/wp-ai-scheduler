@@ -14,11 +14,10 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		return ob_get_clean();
 	}
 
-	public function test_system_status_template_omits_page_shell_when_embedded() {
+	public function test_system_status_template_renders_as_partial() {
 		$output = $this->render_template(
 			'system-status.php',
 			array(
-				'embedded'       => true,
 				'system_info'    => array(
 					'wordpress' => array(
 						'version' => array(
@@ -36,12 +35,10 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		$this->assertStringContainsString('class="aips-status-page"', $output);
 	}
 
-	public function test_seeder_template_omits_page_shell_when_embedded() {
+	public function test_seeder_template_renders_as_partial() {
 		$output = $this->render_template(
 			'seeder.php',
-			array(
-				'embedded' => true,
-			)
+			array()
 		);
 
 		$this->assertStringNotContainsString('class="wrap aips-wrap"', $output);
@@ -49,11 +46,10 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		$this->assertStringContainsString('id="aips-seeder-form"', $output);
 	}
 
-	public function test_operations_insights_template_omits_page_shell_when_embedded() {
+	public function test_operations_insights_template_renders_as_partial() {
 		$output = $this->render_template(
 			'operations-insights.php',
 			array(
-				'embedded'            => true,
 				'days'                => 14,
 				'telemetry_enabled'   => true,
 				'history_trend'       => array(),
@@ -69,11 +65,10 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		$this->assertStringContainsString('Export JSON', $output);
 	}
 
-	public function test_telemetry_template_omits_page_shell_when_embedded() {
+	public function test_telemetry_template_renders_as_partial() {
 		$output = $this->render_template(
 			'telemetry.php',
 			array(
-				'embedded'       => true,
 				'start_date'     => '2026-01-01',
 				'end_date'       => '2026-01-31',
 				'per_page'       => 25,
@@ -90,12 +85,10 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		$this->assertStringContainsString('id="aips-telemetry-panel"', $output);
 	}
 
-	public function test_dev_tools_template_omits_page_shell_when_embedded() {
+	public function test_dev_tools_template_renders_as_partial() {
 		$output = $this->render_template(
 			'dev-tools.php',
-			array(
-				'embedded' => true,
-			)
+			array()
 		);
 
 		$this->assertStringNotContainsString('class="wrap aips-wrap"', $output);
