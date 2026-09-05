@@ -325,26 +325,24 @@ class AIPS_Schedule_Processor {
         $repo = $this->repository;
         $target_run = null;
         $correlation = (string) AIPS_Correlation_ID::get();
-        if (method_exists($repo, 'get_batch_runs_for_schedule')) {
-            $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+        $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+        foreach ($runs as $run) {
+            if (!empty($correlation) && isset($run->correlation_id) && $run->correlation_id === $correlation && in_array($run->status, array('pending','running'), true)) {
+                $target_run = $run;
+                break;
+            }
+        }
+        if (!$target_run) {
             foreach ($runs as $run) {
-                if (!empty($correlation) && isset($run->correlation_id) && $run->correlation_id === $correlation && in_array($run->status, array('pending','running'), true)) {
+                if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
                     $target_run = $run;
                     break;
                 }
             }
-            if (!$target_run) {
-                foreach ($runs as $run) {
-                    if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
-                        $target_run = $run;
-                        break;
-                    }
-                }
-            }
+        }
 
-            if ($target_run && method_exists($repo, 'update_batch_run_status')) {
-                $repo->update_batch_run_status($target_run->id, 'running');
-            }
+        if ($target_run) {
+            $repo->update_batch_run_status($target_run->id, 'running');
         }
 
         $successful_post_ids = array();
@@ -401,15 +399,11 @@ class AIPS_Schedule_Processor {
 
             // Mark canonical batch_run as partial/failed when present.
             $repo = $this->repository;
-            if (method_exists($repo, 'get_batch_runs_for_schedule')) {
-                $runs = $repo->get_batch_runs_for_schedule($schedule_id);
-                foreach ($runs as $run) {
-                    if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
-                        if (method_exists($repo, 'update_batch_run_status')) {
-                            $repo->update_batch_run_status($run->id, $total_completed > 0 ? 'partial' : 'failed');
-                        }
-                        break;
-                    }
+            $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+            foreach ($runs as $run) {
+                if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+                    $repo->update_batch_run_status($run->id, $total_completed > 0 ? 'partial' : 'failed');
+                    break;
                 }
             }
 
@@ -458,15 +452,11 @@ class AIPS_Schedule_Processor {
             // Ensure canonical batch_run (if present) is marked completed as a backup
             // in case the tracker did not find the row above.
             $repo = $this->repository;
-            if (method_exists($repo, 'get_batch_runs_for_schedule')) {
-                $runs = $repo->get_batch_runs_for_schedule($schedule_id);
-                foreach ($runs as $run) {
-                    if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
-                        if (method_exists($repo, 'update_batch_run_status')) {
-                            $repo->update_batch_run_status($run->id, 'completed');
-                        }
-                        break;
-                    }
+            $runs = $repo->get_batch_runs_for_schedule($schedule_id);
+            foreach ($runs as $run) {
+                if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+                    $repo->update_batch_run_status($run->id, 'completed');
+                    break;
                 }
             }
 

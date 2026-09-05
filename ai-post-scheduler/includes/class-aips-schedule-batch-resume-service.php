@@ -135,7 +135,7 @@ class AIPS_Schedule_Batch_Resume_Service {
             // information in Phase 1 of the migration away from ad-hoc JSON blobs.
             $is_resumable = $this->is_resumable($run_state);
 
-            if (!$is_resumable && method_exists($this->repository, 'get_batch_runs_for_schedule')) {
+            if (!$is_resumable) {
                 $runs = $this->repository->get_batch_runs_for_schedule($schedule_id);
                 foreach ($runs as $run) {
                     // Consider pending or running runs as resumable candidates.

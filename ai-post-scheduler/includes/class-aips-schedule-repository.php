@@ -789,6 +789,18 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     }
 
     /**
+     * Get all active (pending/running/partial) batch runs across schedules.
+     *
+     * @param int $limit Maximum number of rows to return.
+     * @return array
+     */
+    public function get_active_batch_runs($limit = 100) {
+        $table = $this->wpdb->prefix . 'aips_schedule_batch_runs';
+        $limit = max(1, absint($limit));
+        return $this->wpdb->get_results($this->wpdb->prepare("SELECT * FROM {$table} WHERE status IN ('pending','running','partial') ORDER BY updated_at DESC LIMIT %d", $limit));
+    }
+
+    /**
      * Get a batch run by its UUID.
      *
      * @param string $batch_uuid

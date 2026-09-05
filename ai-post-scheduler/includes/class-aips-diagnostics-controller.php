@@ -63,6 +63,10 @@ class AIPS_Diagnostics_Controller {
 			);
 		}
 
+		$tabs['batches'] = array(
+			'label' => __('Batches', 'ai-post-scheduler'),
+		);
+
 		$tabs['stress-test'] = array(
 			'label' => __('Stress Test', 'ai-post-scheduler'),
 		);
@@ -120,7 +124,7 @@ class AIPS_Diagnostics_Controller {
 	public static function is_tab_available($tab) {
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
-		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor', 'stress-test', 'stress-test-history'), true)) {
+		if (in_array($tab, array('status', 'seeder', 'insights', 'cache-monitor', 'batches', 'stress-test', 'stress-test-history'), true)) {
 			return true;
 		}
 
@@ -173,6 +177,9 @@ class AIPS_Diagnostics_Controller {
 			case 'cache-monitor':
 				$this->render_cache_monitor_tab();
 				break;
+			case 'batches':
+				$this->render_batches_tab();
+				break;
 			case 'stress-test':
 				$this->render_stress_test_tab();
 				break;
@@ -200,6 +207,18 @@ class AIPS_Diagnostics_Controller {
 	private function render_status_tab() {
 		$status_handler = new AIPS_System_Status();
 		$status_handler->render_page(true);
+	}
+
+	/**
+	 * Render the Batches tab.
+	 *
+	 * @return void
+	 */
+	private function render_batches_tab() {
+		$repo = new AIPS_Schedule_Repository();
+		$limit = 200;
+		$batch_runs = $repo->get_active_batch_runs($limit);
+		include AIPS_PLUGIN_DIR . 'templates/admin/tab-batches.php';
 	}
 
 	/**

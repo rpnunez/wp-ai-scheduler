@@ -76,29 +76,25 @@ class AIPS_Job_Progress_Tracker {
 				// back to the legacy schedule.batch_progress storage.
 				$repo = $this->repository;
 
-				if (method_exists($repo, 'get_batch_runs_for_schedule')) {
-					$runs = $repo->get_batch_runs_for_schedule($schedule_id);
-					$target_run = null;
-					foreach ($runs as $run) {
-						if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
-							$target_run = $run;
-							break;
-						}
+				$runs = $repo->get_batch_runs_for_schedule($schedule_id);
+				$target_run = null;
+				foreach ($runs as $run) {
+					if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+						$target_run = $run;
+						break;
 					}
+				}
 
-					if ($target_run) {
-						$completed = isset($progress['completed']) ? (int) $progress['completed'] : 0;
-						$resume_index = isset($progress['last_index']) ? (int) $progress['last_index'] : 0;
-						$post_ids = isset($progress['post_ids']) && is_array($progress['post_ids']) ? $progress['post_ids'] : array();
-						$ok = true;
-						if (method_exists($repo, 'update_batch_run_progress')) {
-							$ok = $repo->update_batch_run_progress($target_run->id, $completed, $resume_index) && $ok;
-						}
-						if (!empty($post_ids) && method_exists($repo, 'append_post_ids_to_batch_run')) {
-							$ok = $repo->append_post_ids_to_batch_run($target_run->id, $post_ids) && $ok;
-						}
-						return (bool) $ok;
+				if ($target_run) {
+					$completed = isset($progress['completed']) ? (int) $progress['completed'] : 0;
+					$resume_index = isset($progress['last_index']) ? (int) $progress['last_index'] : 0;
+					$post_ids = isset($progress['post_ids']) && is_array($progress['post_ids']) ? $progress['post_ids'] : array();
+					$ok = true;
+					$ok = $repo->update_batch_run_progress($target_run->id, $completed, $resume_index) && $ok;
+					if (!empty($post_ids)) {
+						$ok = $repo->append_post_ids_to_batch_run($target_run->id, $post_ids) && $ok;
 					}
+					return (bool) $ok;
 				}
 
 				// Fallback: legacy schedule.batch_progress storage
@@ -109,7 +105,7 @@ class AIPS_Job_Progress_Tracker {
 					isset($progress['last_index']) ? (int) $progress['last_index'] : 0,
 					isset($progress['post_ids']) && is_array($progress['post_ids']) ? $progress['post_ids'] : array()
 				);
-			}
+				}
 		}
 
 		// For non-schedule jobs, we'd need a different storage mechanism
@@ -137,39 +133,37 @@ class AIPS_Job_Progress_Tracker {
 			if ($schedule_id > 0) {
 				// Prefer canonical batch_runs when available.
 				$repo = $this->repository;
-				if (method_exists($repo, 'get_batch_runs_for_schedule')) {
-					$runs = $repo->get_batch_runs_for_schedule($schedule_id);
-					foreach ($runs as $run) {
-						if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
-							$post_ids = array();
-							if (!empty($run->post_ids)) {
-								$decoded = json_decode($run->post_ids, true);
-								if (is_array($decoded)) {
-									$post_ids = $decoded;
-								}
-							}
-
-							return array(
-								'completed' => isset($run->completed) ? (int) $run->completed : 0,
-								'total' => isset($run->total) ? (int) $run->total : 0,
-								'last_index' => isset($run->resume_index) ? (int) $run->resume_index : 0,
-								'post_ids' => $post_ids,
-							);
+		$runs = $repo->get_batch_runs_for_schedule($schedule_id);
+		foreach ($runs as $run) {
+				if (isset($run->status) && in_array($run->status, array('pending','running'), true)) {
+					$post_ids = array();
+					if (!empty($run->post_ids)) {
+						$decoded = json_decode($run->post_ids, true);
+						if (is_array($decoded)) {
+							$post_ids = $decoded;
 						}
 					}
+
+					return array(
+						'completed' => isset($run->completed) ? (int) $run->completed : 0,
+						'total' => isset($run->total) ? (int) $run->total : 0,
+						'last_index' => isset($run->resume_index) ? (int) $run->resume_index : 0,
+						'post_ids' => $post_ids,
+					);
 				}
+		}
 
-				// Fallback to legacy schedule.batch_progress storage
-				$schedule = $this->repository->get_by_id($schedule_id);
+		// Fallback to legacy schedule.batch_progress storage
+		$schedule = $this->repository->get_by_id($schedule_id);
 
-				if ($schedule && !empty($schedule->batch_progress)) {
-					$saved = json_decode($schedule->batch_progress, true);
+		if ($schedule && !empty($schedule->batch_progress)) {
+				$saved = json_decode($schedule->batch_progress, true);
 
-					if (is_array($saved)) {
-						return $saved;
-					}
+				if (is_array($saved)) {
+					return $saved;
 				}
-			}
+		}
+		}
 		}
 
 		return null;
