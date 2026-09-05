@@ -206,12 +206,9 @@ A persona-driven content pipeline where AI authors generate topic ideas, users a
 - Processes up to a configured batch size per cron run
 
 ### Unified Schedule View (`AIPS_Unified_Schedule_Service`)
-Aggregates all schedule types (template, author topics, author posts) into one normalized list for the Schedule admin page. Fields across types are normalized for display.
+Aggregates all schedule types (template, author topics, author posts) into one normalized list for the Schedule admin page. Fields across types are normalized for display. `get_all_grouped()` additionally collapses a persona's topic-generation and post-generation rows into a single `author_workflow` row carrying both as stages, which is what the Schedule admin page renders.
 
-### Schedule Calendar
-Visual calendar showing upcoming scheduled generation runs.
-
-**Admin pages:** AI Post Scheduler → Schedule, AI Post Scheduler → Schedule Calendar
+**Admin pages:** AI Post Scheduler → Schedule
 
 ---
 

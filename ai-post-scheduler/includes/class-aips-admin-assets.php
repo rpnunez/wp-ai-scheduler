@@ -39,7 +39,6 @@ class AIPS_Admin_Assets {
 	private const PAGE_SCHEDULE = 'aips-schedule';
 	private const PAGE_CAMPAIGNS = 'aips-campaigns';
 	private const PAGE_CAMPAIGN_WIZARD = 'aips-campaign-wizard';
-	private const PAGE_SCHEDULE_CALENDAR = 'aips-schedule-calendar';
 	private const PAGE_RESEARCH = 'aips-research';
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
 	private const PAGE_HISTORY = 'aips-history';
@@ -109,7 +108,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_structures_assets();
 		}
 
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if (self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -132,10 +131,6 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
-		}
-
-        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
-			$this->enqueue_schedule_calendar_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -1299,25 +1294,6 @@ class AIPS_Admin_Assets {
             ));
     }
 
-    /**
-     * Enqueue assets for the schedule-calendar page.
-     */
-    private function enqueue_schedule_calendar_assets() {
-            wp_enqueue_style(
-                'aips-calendar-style',
-                AIPS_PLUGIN_URL . 'assets/css/calendar.css',
-                array(),
-                AIPS_VERSION
-            );
-
-            wp_enqueue_script(
-                'aips-calendar-script',
-                AIPS_PLUGIN_URL . 'assets/js/calendar.js',
-                array('jquery', 'aips-admin-script'),
-                AIPS_VERSION,
-                true
-            );
-    }
 
     /**
      * Enqueue assets for the history page.

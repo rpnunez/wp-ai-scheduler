@@ -92,7 +92,6 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 			'AIPS_Post_Slices_Controller',
 			'AIPS_AI_Edit_Controller',
 			'AIPS_Generated_Posts_Controller',
-			'AIPS_Calendar_Controller',
 			'AIPS_Structures_Controller',
 			'AIPS_Prompt_Sections_Controller',
 			'AIPS_Research_Controller',
