@@ -186,6 +186,8 @@ return array(
     'AIPS_Prompt_Builder_Post_Featured_Image' => $baseDir . '/includes/class-aips-prompt-builder-post-featured-image.php',
     'AIPS_Prompt_Builder_Post_Metadata' => $baseDir . '/includes/class-aips-prompt-builder-post-metadata.php',
     'AIPS_Prompt_Builder_Post_Title' => $baseDir . '/includes/class-aips-prompt-builder-post-title.php',
+    'AIPS_Prompt_Builder_Section' => $baseDir . '/includes/interface-aips-prompt-builder-section.php',
+    'AIPS_Prompt_Builder_Section_Base' => $baseDir . '/includes/class-aips-prompt-builder-section-base.php',
     'AIPS_Prompt_Builder_Taxonomy' => $baseDir . '/includes/class-aips-prompt-builder-taxonomy.php',
     'AIPS_Prompt_Builder_Topic' => $baseDir . '/includes/class-aips-prompt-builder-topic.php',
     'AIPS_Prompt_Section_Repository' => $baseDir . '/includes/class-aips-prompt-section-repository.php',

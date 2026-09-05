@@ -20,12 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for post excerpt generation.
  */
-class AIPS_Prompt_Builder_Post_Excerpt {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
+class AIPS_Prompt_Builder_Post_Excerpt extends AIPS_Prompt_Builder_Section_Base {
 
 	/** @var AIPS_Content_Digest */
 	private $content_digest;
@@ -35,7 +30,8 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 * @param AIPS_Content_Digest|null      $content_digest Optional stateless content digest.
 	 */
 	public function __construct($template_processor = null, $content_digest = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+		parent::__construct($template_processor);
+
 		$this->content_digest = $content_digest ?: new AIPS_Content_Digest();
 	}
 
@@ -106,7 +102,7 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 */
 	public function build_instructions($voice, $topic) {
 		if ($voice && !empty($voice->excerpt_instructions)) {
-			return $this->template_processor->process($voice->excerpt_instructions, $topic);
+			return $this->get_template_processor()->process($voice->excerpt_instructions, $topic);
 		}
 
 		return null;
