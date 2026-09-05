@@ -41,7 +41,6 @@ class AIPS_Admin_Menu_Helper {
 		'settings'             => 'aips-settings',
 		'onboarding'           => 'aips-onboarding',
 		'history'              => 'aips-history',
-		'seeder'               => 'aips-seeder',
 		'dev_tools'            => 'aips-dev-tools',
 		'diagnostics'          => 'aips-diagnostics',
 		'automations'          => 'aips-automations',
