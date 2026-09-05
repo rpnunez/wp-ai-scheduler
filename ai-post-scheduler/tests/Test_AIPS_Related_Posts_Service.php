@@ -88,4 +88,32 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 		$html = $this->service->render_related_posts_html( $p1 );
 		$this->assertEmpty( $html );
 	}
+
+	/**
+	 * Test get_related_posts_for_topic pre-primes post caches safely.
+	 */
+	public function test_get_related_posts_for_topic_cache_priming() {
+		$p1 = wp_insert_post( array( 'post_title' => 'Topic Article', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$this->embeddings_repo->upsert( 'post', $p1, array( 0.1, 0.2, 0.3 ), 'text-embedding-3-small' );
+
+		$stub_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$stub_service->method( 'generate_embedding' )->willReturn( array( 0.1, 0.2, 0.3 ) );
+		$stub_service->method( 'find_nearest_neighbors' )->willReturn( array(
+			array( 'id' => $p1, 'similarity' => 0.95 ),
+			array( 'id' => 0, 'similarity' => 0.80 ),
+		) );
+
+		$service = new AIPS_Related_Posts_Service(
+			$this->relationships_repo,
+			$this->embeddings_repo,
+			$stub_service
+		);
+
+		$results = $service->get_related_posts_for_topic( 'Topic Article', 2, 0.50 );
+		$this->assertCount( 1, $results );
+		$this->assertEquals( 'Topic Article', $results[0]['title'] );
+	}
 }

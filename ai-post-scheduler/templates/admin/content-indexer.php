@@ -235,7 +235,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					<div id="aips-node-drawer" class="aips-node-drawer" style="display:none;">
 						<div class="aips-node-drawer-header">
 							<h4 id="aips-drawer-title"><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></h4>
-							<button type="button" id="aips-drawer-close" class="aips-btn aips-btn-ghost aips-btn-sm">&times;</button>
+							<button type="button" id="aips-drawer-close" class="aips-btn aips-btn-ghost aips-btn-sm" aria-label="<?php esc_attr_e('Close drawer', 'ai-post-scheduler'); ?>">&times;</button>
 						</div>
 						<div class="aips-node-drawer-body">
 							<div class="aips-node-stat-badge" id="aips-drawer-sim-badge">

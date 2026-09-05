@@ -158,30 +158,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Seeder is a dev/test-data tool and must be disabled (unregistered) by default.
+	 * The standalone Seeder admin page has been retired; the Seed Configuration
+	 * UI now lives inside Diagnostics -> Dev Tools.
 	 */
-	public function test_seeder_page_is_not_registered_by_default() {
-		global $submenu, $_registered_pages;
-
-		$submenu           = array();
-		$_registered_pages = array();
-
-		update_option('aips_developer_mode', false);
-		AIPS_Config::get_instance()->flush_option_cache();
-
-		$this->admin_menu->add_menu_pages();
-
-		$this->assertArrayNotHasKey(
-			'admin_page_aips-seeder',
-			$_registered_pages,
-			'Seeder should not be registered when Developer Mode is disabled.'
-		);
-	}
-
-	/**
-	 * Seeder becomes reachable once Developer Mode is enabled.
-	 */
-	public function test_seeder_page_is_registered_when_developer_mode_enabled() {
+	public function test_standalone_seeder_page_is_never_registered() {
 		global $submenu, $_registered_pages;
 
 		$submenu           = array();
@@ -192,10 +172,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
-		$this->assertArrayHasKey(
+		$this->assertArrayNotHasKey(
 			'admin_page_aips-seeder',
 			$_registered_pages,
-			'Seeder should be registered for direct admin.php?page= access when Developer Mode is enabled.'
+			'The standalone Seeder page must not be registered; Seeder UI lives under Dev Tools.'
 		);
 
 		update_option('aips_developer_mode', false);
