@@ -332,6 +332,12 @@ class AIPS_Ajax_Registry {
 		'aips_affiliate_links_toggle'        => 'AIPS_Affiliate_Links_Controller',
 		'aips_affiliate_links_inject_post'   => 'AIPS_Affiliate_Links_Controller',
 
+		// Generated Posts Controller
+		'aips_get_post_session'              => 'AIPS_Generated_Posts_Controller',
+		'aips_get_session_json'              => 'AIPS_Generated_Posts_Controller',
+		'aips_download_session_json'         => 'AIPS_Generated_Posts_Controller',
+		'aips_update_post_status'            => 'AIPS_Generated_Posts_Controller',
+		'aips_bulk_generated_posts_action'   => 'AIPS_Generated_Posts_Controller',
 		// Content Indexer Controller
 		'aips_indexer_get_status'              => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_process_batch'           => 'AIPS_Content_Indexer_Controller',
@@ -342,6 +348,7 @@ class AIPS_Ajax_Registry {
 		'aips_indexer_search_posts'            => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_fetch_meow_environments' => 'AIPS_Content_Indexer_Controller',
 	);
+
 
 	/**
 	 * Get the controller class name for a given AJAX action.

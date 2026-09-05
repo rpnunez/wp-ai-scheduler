@@ -134,4 +134,10 @@ interface AIPS_History_Repository_Interface {
 	 * @return bool
 	 */
 	public function post_has_history_and_completed($post_id);
+	/**
+	 * Fetch summary KPI metrics for generated posts.
+	 *
+	 * @return array
+	 */
+	public function get_generated_posts_kpis();
 }

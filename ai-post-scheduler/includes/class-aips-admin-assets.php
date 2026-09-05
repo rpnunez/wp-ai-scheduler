@@ -1182,6 +1182,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the generated-posts page.
      */
     private function enqueue_generated_posts_assets() {
+            // Enqueue Generated Posts dedicated style
+            wp_enqueue_style(
+                'aips-admin-generated-posts',
+                AIPS_PLUGIN_URL . 'assets/css/admin-generated-posts.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
             // Enqueue View Session module (shared functionality)
             wp_enqueue_script(
                 'aips-admin-view-session',

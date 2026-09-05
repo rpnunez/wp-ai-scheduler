@@ -213,6 +213,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
+     * Fetch summary KPI metrics for generated posts.
+     *
+     * @return array
+     */
+    public function get_generated_posts_kpis() {
+        return AIPS_Generated_Content_Repository::instance()->get_content_kpis();
+    }
+
+    /**
      * Fetch recent stress-test runs from history.
      *
      * @param int $limit Maximum rows to return.
