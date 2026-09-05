@@ -75,6 +75,7 @@ class AIPS_Post_Review_Repository {
 			'page' => 1,
 			'search' => '',
 			'template_id' => 0,
+			'post_type' => '',
 			'orderby' => 'created_at',
 			'order' => 'DESC',
 		);
@@ -97,6 +98,14 @@ class AIPS_Post_Review_Repository {
 		if (!empty($args['template_id'])) {
 			$where_clauses[] = "h.template_id = %d";
 			$where_args[] = $args['template_id'];
+		}
+
+		if (!empty($args['post_type'])) {
+			// Filter on the joined wp_posts row rather than h.post_type: the
+			// post always exists here (INNER JOIN on post_status = 'draft'),
+			// so this is authoritative regardless of history backfill timing.
+			$where_clauses[] = "p.post_type = %s";
+			$where_args[] = sanitize_key($args['post_type']);
 		}
 
 		if (!empty($args['search'])) {

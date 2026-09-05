@@ -740,6 +740,19 @@ class AIPS_Campaigns_Repository {
 	}
 
 	/**
+	 * Invalidate cache for a specific campaign or all campaigns.
+	 *
+	 * @param int $campaign_id Optional campaign ID. If omitted or 0, invalidates all campaigns.
+	 * @return void
+	 */
+	public function flush_campaign_cache($campaign_id = 0) {
+		$campaign_id = absint($campaign_id);
+		$context     = $campaign_id > 0 ? array('campaign_id' => $campaign_id) : array();
+
+		$this->invalidate_cache_domain('campaign', $context, 'campaign_flushed');
+	}
+
+	/**
 	 * Create a campaign parent row.
 	 *
 	 * @param array $data Campaign data.

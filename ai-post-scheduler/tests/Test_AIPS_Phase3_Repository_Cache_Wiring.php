@@ -48,17 +48,6 @@ class Test_AIPS_Phase3_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 	public function migrated_repository_provider() {
 		return array(
-			'post_embeddings' => array(
-				'AIPS_Post_Embeddings_Repository',
-				'aips_post_embeddings',
-				'post_embeddings',
-				array(
-					'post_embeddings.get_by_post_id',
-					'post_embeddings.get_by_post_ids',
-					'post_embeddings.get_all_indexed_post_ids',
-					'post_embeddings.count',
-				),
-			),
 			'internal_links' => array(
 				'AIPS_Internal_Links_Repository',
 				'aips_internal_links',
