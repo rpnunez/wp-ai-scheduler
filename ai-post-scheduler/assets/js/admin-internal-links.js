@@ -11,6 +11,11 @@
 
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -183,7 +188,7 @@
 		 * @param {Event} e Click event from `#aips-clear-index-btn`.
 		 */
 		onClearIndexClick: function (e) {
-			if (!window.confirm(aipsInternalLinksL10n.confirmClearIndex)) {
+			if (!window.confirm(__("Clear the entire index and all suggestions? This cannot be undone.", 'ai-post-scheduler'))) {
 				return;
 			}
 			this.clearIndex();
@@ -233,7 +238,7 @@
 		 * @param {Event} e Click event from an `.aips-il-delete-btn` element.
 		 */
 		onDeleteClick: function (e) {
-			if (!window.confirm(aipsInternalLinksL10n.confirmDelete)) {
+			if (!window.confirm(__("Delete this suggestion? This cannot be undone.", 'ai-post-scheduler'))) {
 				return;
 			}
 			var $btn = $(e.currentTarget);
@@ -416,12 +421,12 @@
 			var $tbody = $('#aips-suggestions-tbody');
 
 			$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-loading', {
-				message: aipsInternalLinksL10n.loading,
+				message: __("Loading…", 'ai-post-scheduler'),
 			}));
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:   'aips_internal_links_get_suggestions',
-				nonce:    aipsInternalLinksL10n.nonce,
+				nonce:    ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				page:     self.currentPage,
 				per_page: self.perPage,
 				status:   self.currentStatus,
@@ -429,7 +434,7 @@
 			}, function (response) {
 				if (!response.success) {
 					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-						message: aipsInternalLinksL10n.errorLoading,
+						message: __("Error loading suggestions.", 'ai-post-scheduler'),
 					}));
 					return;
 				}
@@ -438,7 +443,7 @@
 
 				if (!data.items || data.items.length === 0) {
 					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-						message: aipsInternalLinksL10n.noSuggestions,
+						message: __("No suggestions found. Run indexing and generate suggestions to see results.", 'ai-post-scheduler'),
 					}));
 					self.renderPagination(0, 0);
 					return;
@@ -452,7 +457,7 @@
 				self.renderPagination(data.total, data.total_pages);
 			}).fail(function () {
 				$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
-					message: aipsInternalLinksL10n.errorLoading,
+					message: __("Error loading suggestions.", 'ai-post-scheduler'),
 				}));
 			});
 		},
@@ -491,23 +496,23 @@
 			if (item.status === 'pending') {
 				actions += AIPS.Templates.render('aips-tmpl-il-actions-pending', {
 					id:           item.id,
-					acceptLabel:  aipsInternalLinksL10n.acceptAction,
-					rejectLabel:  aipsInternalLinksL10n.rejectAction,
+					acceptLabel:  __("Accept suggestion", 'ai-post-scheduler'),
+					rejectLabel:  __("Reject suggestion", 'ai-post-scheduler'),
 				});
 			}
 
 			if (item.status === 'accepted') {
 				actions += AIPS.Templates.render('aips-tmpl-il-actions-accepted', {
 					id:          item.id,
-					insertLabel: aipsInternalLinksL10n.insertLink,
+					insertLabel: __("Insert Link", 'ai-post-scheduler'),
 				});
 			}
 
 			actions += AIPS.Templates.render('aips-tmpl-il-actions-edit-delete', {
 				id:          item.id,
 				anchor:      item.anchor_text || '',
-				editLabel:   aipsInternalLinksL10n.editAnchorText,
-				deleteLabel: aipsInternalLinksL10n.deleteSuggestion,
+				editLabel:   __("Edit anchor text", 'ai-post-scheduler'),
+				deleteLabel: __("Delete suggestion", 'ai-post-scheduler'),
 			});
 
 			return AIPS.Templates.renderRaw('aips-tmpl-il-suggestion-row', {
@@ -584,11 +589,11 @@
 			var self = this;
 			var $btn = $('#aips-start-indexing-btn');
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.loading);
+			$btn.prop('disabled', true).text(__("Loading…", 'ai-post-scheduler'));
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_start_indexing',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 			}, function (response) {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
 					label: self.originalIndexText,
@@ -599,7 +604,7 @@
 					setTimeout(function () { self.refreshStatus(); }, 2000);
 				} else {
 					AIPS.Utilities.showToast(
-					(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
+					(response.data && response.data.message) || __("Embeddings are not available. Please configure AI Engine.", 'ai-post-scheduler'),
 					'error'
 					);
 				}
@@ -618,7 +623,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_clear_index',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 			}, function (response) {
 				if (response.success) {
 					AIPS.Utilities.showToast(response.data.message, 'success');
@@ -645,16 +650,16 @@
 			var $feedback   = $('#aips-gen-feedback');
 
 			if (!postId) {
-				self.showGenerateFeedback(aipsInternalLinksL10n.invalidPostId, 'error');
+				self.showGenerateFeedback(__("Please enter a valid post ID.", 'ai-post-scheduler'), 'error');
 				return;
 			}
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.generating);
+			$btn.prop('disabled', true).text(__("Generating…", 'ai-post-scheduler'));
 			$feedback.hide();
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:          'aips_internal_links_generate_suggestions',
-				nonce:           aipsInternalLinksL10n.nonce,
+				nonce:           ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				post_id:         postId,
 				max_suggestions: maxSugg || 5,
 				threshold:       threshold || 0.70,
@@ -676,7 +681,7 @@
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
 					label: self.originalGenerateText,
 				}));
-				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
+				self.showGenerateFeedback(__("Request failed. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -690,16 +695,16 @@
 			var $feedback = $('#aips-gen-feedback');
 
 			if (!postId) {
-				self.showGenerateFeedback(aipsInternalLinksL10n.invalidPostId, 'error');
+				self.showGenerateFeedback(__("Please enter a valid post ID.", 'ai-post-scheduler'), 'error');
 				return;
 			}
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.reindexing);
+			$btn.prop('disabled', true).text(__("Re-indexing…", 'ai-post-scheduler'));
 			$feedback.hide();
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_internal_links_reindex_post',
-				nonce:   aipsInternalLinksL10n.nonce,
+				nonce:   ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				post_id: postId,
 			}, function (response) {
 				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
@@ -735,7 +740,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_update_status',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				id:     id,
 				status: status,
 			}, function (response) {
@@ -743,9 +748,9 @@
 					// Reload to reflect updated status and re-render actions
 					self.loadSuggestions();
 					self.refreshStatus();
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdated, 'success');
+					AIPS.Utilities.showToast(__("Status updated.", 'ai-post-scheduler'), 'success');
 				} else {
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.statusUpdateFailed, 'error');
+					AIPS.Utilities.showToast(__("Failed to update status.", 'ai-post-scheduler'), 'error');
 				}
 			});
 		},
@@ -761,14 +766,14 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_delete',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				id:     id,
 			}, function (response) {
 				if (response.success) {
 					$row.fadeOut(200, function () { $(this).remove(); });
 					self.refreshStatus();
 				} else {
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.errorDeleting, 'error');
+					AIPS.Utilities.showToast(__("Error deleting suggestion.", 'ai-post-scheduler'), 'error');
 				}
 			});
 		},
@@ -785,7 +790,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:      'aips_internal_links_update_anchor',
-				nonce:       aipsInternalLinksL10n.nonce,
+				nonce:       ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				id:          id,
 				anchor_text: anchorText,
 			}, function (response) {
@@ -796,9 +801,9 @@
 					$('tr[data-id="' + id + '"] .aips-il-anchor-cell').text(anchorText);
 					// Update data attribute on edit button
 					$('tr[data-id="' + id + '"] .aips-il-edit-anchor-btn').data('anchor', anchorText);
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
+					AIPS.Utilities.showToast(__("Anchor text updated.", 'ai-post-scheduler'), 'success');
 				} else {
-					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdateFailed, 'error');
+					AIPS.Utilities.showToast(__("Failed to update anchor text.", 'ai-post-scheduler'), 'error');
 				}
 			});
 		},
@@ -813,7 +818,7 @@
 		refreshStatus: function () {
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_get_status',
-				nonce:  aipsInternalLinksL10n.nonce,
+				nonce:  ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 			}, function (response) {
 				if (!response.success) { return; }
 
@@ -848,10 +853,10 @@
 		 */
 		getStatusLabel: function (status) {
 			var map = {
-				pending:  aipsInternalLinksL10n.pending,
-				accepted: aipsInternalLinksL10n.accepted,
-				rejected: aipsInternalLinksL10n.rejected,
-				inserted: aipsInternalLinksL10n.inserted,
+				pending:  __("Pending", 'ai-post-scheduler'),
+				accepted: __("Accepted", 'ai-post-scheduler'),
+				rejected: __("Rejected", 'ai-post-scheduler'),
+				inserted: __("Inserted", 'ai-post-scheduler'),
 			};
 			return map[status] || status;
 		},
@@ -898,13 +903,13 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:        'aips_internal_links_get_post_for_insertion',
-				nonce:         aipsInternalLinksL10n.nonce,
+				nonce:         ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				suggestion_id: suggestionId,
 			}, function (response) {
 				if (!response.success) {
 					$('#aips-insert-suggestions-list').html(
 						AIPS.Templates.render('aips-tmpl-il-notice-error', {
-							message: (response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed,
+							message: (response.data && response.data.message) || __("Failed to load post data. Please try again.", 'ai-post-scheduler'),
 						})
 					);
 					$('#aips-insert-modal').find('.aips-modal-content-body').html('');
@@ -929,7 +934,7 @@
 			}).fail(function () {
 				$('#aips-insert-suggestions-list').html(
 					AIPS.Templates.render('aips-tmpl-il-notice-error', {
-						message: aipsInternalLinksL10n.loadingFailed,
+						message: __("Failed to load post data. Please try again.", 'ai-post-scheduler'),
 					})
 				);
 				$('#aips-insert-modal').find('.aips-modal-content-body').html('');
@@ -948,7 +953,7 @@
 
 			if (!suggestions || suggestions.length === 0) {
 				$list.html(AIPS.Templates.render('aips-tmpl-il-notice-muted', {
-					message: aipsInternalLinksL10n.noInsertSuggestions,
+					message: __("No accepted suggestions found for this post.", 'ai-post-scheduler'),
 				}));
 				return;
 			}
@@ -977,12 +982,12 @@
 				items += AIPS.Templates.renderRaw('aips-tmpl-il-insert-suggestion', {
 					suggestionId:            suggestionId,
 					title:                   AIPS.Templates.escape(title),
-					anchorLabel:             AIPS.Templates.escape(aipsInternalLinksL10n.anchorLabel),
+					anchorLabel:             AIPS.Templates.escape(__("Anchor", 'ai-post-scheduler')),
 					anchor:                  AIPS.Templates.escape(anchor),
 					score:                   score,
 					targetLinkHtml:          targetLinkHtml,
-					insertBtn:               AIPS.Templates.escape(aipsInternalLinksL10n.insertBtn),
-					insertionLocationsLabel: AIPS.Templates.escape(aipsInternalLinksL10n.insertionLocationsLabel),
+					insertBtn:               AIPS.Templates.escape(__("Get Suggestions", 'ai-post-scheduler')),
+					insertionLocationsLabel: AIPS.Templates.escape(__("Insertion Locations", 'ai-post-scheduler')),
 				});
 			});
 
@@ -1005,7 +1010,7 @@
 
 			$panel.show();
 			$list.html(AIPS.Templates.render('aips-tmpl-il-notice-muted', {
-				message: aipsInternalLinksL10n.findingLocations,
+				message: __("Finding insertion locations…", 'ai-post-scheduler'),
 			}));
 			$count.text('');
 			$spinner.addClass('is-active');
@@ -1013,7 +1018,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:        'aips_internal_links_find_insert_locations',
-				nonce:         aipsInternalLinksL10n.nonce,
+				nonce:         ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				suggestion_id: suggestionId,
 			}, function (response) {
 				$spinner.removeClass('is-active');
@@ -1021,7 +1026,7 @@
 
 				if (!response.success) {
 					$list.html(AIPS.Templates.render('aips-tmpl-il-notice-error', {
-						message: (response.data && response.data.message) || aipsInternalLinksL10n.locationsFailed,
+						message: (response.data && response.data.message) || __("Failed to find insertion locations. Please try again.", 'ai-post-scheduler'),
 					}));
 					$count.text('');
 					return;
@@ -1045,7 +1050,7 @@
 				$spinner.removeClass('is-active');
 				$button.prop('disabled', false);
 				$list.html(AIPS.Templates.render('aips-tmpl-il-notice-error', {
-					message: aipsInternalLinksL10n.locationsFailed,
+					message: __("Failed to find insertion locations. Please try again.", 'ai-post-scheduler'),
 				}));
 				$count.text('');
 			});
@@ -1072,11 +1077,11 @@
 			if (!locations || locations.length === 0) {
 				var detailMessage = aiReturnedCount > 0
 					? AIPS.InternalLinks.formatAiReturnedLabel(aiReturnedCount)
-					: aipsInternalLinksL10n.zeroSuggestionsReturned;
+					: __("0 valid suggestions", 'ai-post-scheduler');
 
 				$list.html(AIPS.Templates.render('aips-tmpl-il-no-locations', {
 					zeroReturned: detailMessage,
-					noLocations:  aiReturnedCount > 0 ? aipsInternalLinksL10n.invalidLocationsHint : aipsInternalLinksL10n.noLocations,
+					noLocations:  aiReturnedCount > 0 ? __("The AI responded, but its suggestions rewrote the source text instead of bracketing an existing phrase.", 'ai-post-scheduler') : __("No valid insertion locations could be shown for this suggestion.", 'ai-post-scheduler'),
 				}));
 				return;
 			}
@@ -1090,21 +1095,21 @@
 
 				var reasonHtml = reason
 					? AIPS.Templates.render('aips-tmpl-il-location-reason', {
-						reasonLabel: aipsInternalLinksL10n.reasonLabel,
+						reasonLabel: __("Reason", 'ai-post-scheduler'),
 						reason:      reason,
 					})
 					: '';
 
 				html += AIPS.Templates.renderRaw('aips-tmpl-il-location-card', {
-					optionLabel:          AIPS.Templates.escape(aipsInternalLinksL10n.optionLabel),
+					optionLabel:          AIPS.Templates.escape(__("Option", 'ai-post-scheduler')),
 					num:                  num,
 					reasonHtml:           reasonHtml,
-					withLinkLabel:        AIPS.Templates.escape(aipsInternalLinksL10n.withLinkLabel),
+					withLinkLabel:        AIPS.Templates.escape(__("With link inserted", 'ai-post-scheduler')),
 					preview:              preview,
 					suggestionId:         parseInt(suggestionId, 10),
 					matchRaw:             AIPS.Templates.escape(loc.match_snippet || ''),
 					replaceRaw:           AIPS.Templates.escape(loc.replacement_snippet || ''),
-					applyBtn:             AIPS.Templates.escape(aipsInternalLinksL10n.applyBtn),
+					applyBtn:             AIPS.Templates.escape(__("Apply", 'ai-post-scheduler')),
 				});
 			});
 
@@ -1119,7 +1124,7 @@
 		 * @return {string} Human-readable summary.
 		 */
 		formatCountLabel: function (validCount, aiReturnedCount) {
-			var template = aipsInternalLinksL10n.returnedCountLabel || 'Showing %1$d valid of %2$d AI suggestions';
+			var template = __("Showing %1$d valid of %2$d AI suggestions", 'ai-post-scheduler') || 'Showing %1$d valid of %2$d AI suggestions';
 
 			return template
 				.replace('%1$d', String(validCount))
@@ -1133,7 +1138,7 @@
 		 * @return {string} Human-readable summary.
 		 */
 		formatAiReturnedLabel: function (aiReturnedCount) {
-			var template = aipsInternalLinksL10n.aiSuggestionsReturned || 'AI returned %d suggestion(s)';
+			var template = __("AI returned %d suggestion(s)", 'ai-post-scheduler') || 'AI returned %d suggestion(s)';
 
 			return template.replace('%d', String(aiReturnedCount));
 		},
@@ -1171,7 +1176,7 @@
 			for (var i = 0; i < this._pendingInsertions.length; i++) {
 				if (this._pendingInsertions[i].suggestionId === suggestionId) {
 					AIPS.Utilities.showToast(
-						aipsInternalLinksL10n.alreadyApplied || 'Already applied.',
+						__("This suggestion has already been applied to the preview.", 'ai-post-scheduler') || 'Already applied.',
 						'info'
 					);
 					return;
@@ -1181,7 +1186,7 @@
 			// Guard: match snippet must be present in the plain-text preview.
 			if (this._previewPlainText.indexOf(matchSnippet) === -1) {
 				AIPS.Utilities.showToast(
-					aipsInternalLinksL10n.snippetNotFound || 'Text not found in content preview.',
+					__("The selected text was not found in the content preview.", 'ai-post-scheduler') || 'Text not found in content preview.',
 					'error'
 				);
 				return;
@@ -1212,7 +1217,7 @@
 			// Mark this Apply button as applied.
 			$btn.prop('disabled', true).html(
 				'<span class="dashicons dashicons-yes" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> ' +
-				AIPS.Templates.escape(aipsInternalLinksL10n.applied || 'Applied')
+				AIPS.Templates.escape(__("Link inserted successfully.", 'ai-post-scheduler') || 'Applied')
 			);
 		},
 
@@ -1229,7 +1234,7 @@
 			if (!html) {
 				$('#aips-insert-modal').find('.aips-modal-content-body').html(
 					AIPS.Templates.render('aips-tmpl-il-notice-muted', {
-						message: aipsInternalLinksL10n.noContent,
+						message: __("(No content)", 'ai-post-scheduler'),
 					})
 				);
 				return;
@@ -1265,8 +1270,8 @@
 					before:       before,
 					anchor:       anchor,
 					after:        after,
-					editLabel:    aipsInternalLinksL10n.editInsertedLink || 'Edit anchor',
-					undoLabel:    aipsInternalLinksL10n.removeInsertedLink || 'Remove link',
+					editLabel:    __("Edit anchor", 'ai-post-scheduler') || 'Edit anchor',
+					undoLabel:    __("Remove link", 'ai-post-scheduler') || 'Remove link',
 				});
 
 				// Replace only the first occurrence (avoids regex/$ issues).
@@ -1303,7 +1308,7 @@
 			// Re-enable Apply buttons that belong to this suggestion.
 			$('.aips-il-apply-location-btn[data-suggestion-id="' + suggestionId + '"]')
 				.prop('disabled', false)
-				.text(aipsInternalLinksL10n.applyBtn);
+				.text(__("Apply", 'ai-post-scheduler'));
 
 			if (this._pendingInsertions.length === 0) {
 				$('#aips-update-post-btn').prop('disabled', true);
@@ -1337,7 +1342,7 @@
 
 			this.renderPreviewContent();
 			$('#aips-anchor-modal').hide();
-			AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');
+			AIPS.Utilities.showToast(__("Anchor text updated.", 'ai-post-scheduler'), 'success');
 		},
 
 		/**
@@ -1352,8 +1357,8 @@
 			}
 
 			var template = n === 1
-				? (aipsInternalLinksL10n.pendingCountSingle || '%d pending insertion')
-				: (aipsInternalLinksL10n.pendingCountPlural || '%d pending insertions');
+				? (__("%d pending insertion", 'ai-post-scheduler') || '%d pending insertion')
+				: (__("%d pending insertions", 'ai-post-scheduler') || '%d pending insertions');
 
 			$('#aips-pending-count').text(template.replace('%d', String(n)));
 		},
@@ -1375,7 +1380,7 @@
 
 			$btn.prop('disabled', true).html(
 				'<span class="dashicons dashicons-update" aria-hidden="true" style="vertical-align:middle;margin-top:-2px;"></span> ' +
-				AIPS.Templates.escape(aipsInternalLinksL10n.updating || 'Updating…')
+				AIPS.Templates.escape(__("Updating…", 'ai-post-scheduler') || 'Updating…')
 			);
 
 			var insertions = [];
@@ -1391,7 +1396,7 @@
 
 			$.post(aipsAjax.ajaxUrl, {
 				action:     'aips_internal_links_apply_bulk_insertions',
-				nonce:      aipsInternalLinksL10n.nonce,
+				nonce:      ((window.aipsInternalLinksConfig && aipsInternalLinksConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsInternalLinksL10n && aipsInternalLinksL10n.nonce)),
 				insertions: JSON.stringify(insertions),
 			}, function (response) {
 				$btn.prop('disabled', false).html(originalBtnHtml);
@@ -1400,7 +1405,7 @@
 					self._pendingInsertions = [];
 					$('#aips-insert-modal').hide();
 					AIPS.Utilities.showToast(
-						response.data.message || aipsInternalLinksL10n.applied,
+						response.data.message || __("Link inserted successfully.", 'ai-post-scheduler'),
 						'success'
 					);
 
@@ -1412,13 +1417,13 @@
 					self.refreshStatus();
 				} else {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || aipsInternalLinksL10n.updateFailed,
+						(response.data && response.data.message) || __("Failed to update post. Please try again.", 'ai-post-scheduler'),
 						'error'
 					);
 				}
 			}).fail(function () {
 				$btn.prop('disabled', false).html(originalBtnHtml);
-				AIPS.Utilities.showToast(aipsInternalLinksL10n.updateFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to update post. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 	};

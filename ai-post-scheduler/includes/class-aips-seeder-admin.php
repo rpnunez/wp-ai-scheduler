@@ -27,10 +27,12 @@ class AIPS_Seeder_Admin {
         wp_enqueue_script(
             'aips-admin-seeder',
             AIPS_PLUGIN_URL . 'assets/js/admin-seeder.js',
-            array('jquery', 'aips-admin-script'), // Depends on core admin script
+            array('jquery', 'wp-i18n', 'aips-admin-script'),
             AIPS_VERSION,
             true
         );
+
+        wp_set_script_translations('aips-admin-seeder', 'ai-post-scheduler', AIPS_PLUGIN_DIR . 'languages');
     }
 
     public function render_page($embedded = false) {

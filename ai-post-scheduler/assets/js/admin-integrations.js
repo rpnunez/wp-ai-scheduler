@@ -22,6 +22,11 @@
  */
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -100,11 +105,11 @@
 				$select.empty();
 
 				if (!integrations.length) {
-					$select.append($('<option>', { value: '', text: aipsIntegrationsL10n.noneAvailable }));
+					$select.append($('<option>', { value: '', text: __("No supported plugins detected on this site.", 'ai-post-scheduler') }));
 					return;
 				}
 
-				$select.append($('<option>', { value: '', text: aipsIntegrationsL10n.selectIntegration }));
+				$select.append($('<option>', { value: '', text: __("Select an integration…", 'ai-post-scheduler') }));
 				integrations.forEach(function (integration) {
 					$select.append($('<option>', {
 						value: integration.id,
@@ -119,7 +124,7 @@
 					$select.val(previousIntegrationId).trigger('change');
 				}
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+				AIPS.Utilities.showToast(__("An error occurred. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -171,7 +176,7 @@
 
 			if (!integrationId) {
 				$groupSelect.prop('disabled', true).empty()
-					.append($('<option>', { value: '', text: aipsIntegrationsL10n.selectIntegrationFirst }));
+					.append($('<option>', { value: '', text: __("Select an integration first", 'ai-post-scheduler') }));
 				return;
 			}
 
@@ -190,11 +195,11 @@
 				$groupSelect.prop('disabled', false).empty();
 
 				if (!groups.length) {
-					$groupSelect.append($('<option>', { value: '', text: aipsIntegrationsL10n.noGroupsFound }));
+					$groupSelect.append($('<option>', { value: '', text: __("No field groups found for this post type.", 'ai-post-scheduler') }));
 					return;
 				}
 
-				$groupSelect.append($('<option>', { value: '', text: aipsIntegrationsL10n.selectFieldGroup }));
+				$groupSelect.append($('<option>', { value: '', text: __("Select a field group…", 'ai-post-scheduler') }));
 				groups.forEach(function (group) {
 					$groupSelect.append($('<option>', { value: group.id, text: group.label }));
 				});
@@ -209,7 +214,7 @@
 					$groupSelect.val(groups[0].id).trigger('change');
 				}
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+				AIPS.Utilities.showToast(__("An error occurred. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -250,7 +255,7 @@
 
 				$tbody.html(rows.join(''));
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+				AIPS.Utilities.showToast(__("An error occurred. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -282,14 +287,14 @@
 				checked_attr: checked ? 'checked' : '',
 				disabled_attr: supported ? '' : 'disabled',
 				prompt_value: saved.custom_prompt || field.instructions || '',
-				prompt_placeholder: aipsIntegrationsL10n.promptPlaceholder,
+				prompt_placeholder: __("Optional: custom instructions for this field. Leave blank to use the field's own help text.", 'ai-post-scheduler'),
 				unsupported_class: supported ? '' : 'aips-integration-field-unsupported',
 				// Plain text only — AIPS.Templates.render() HTML-escapes every
 				// value, so the note is a static <p> in the row template with
 				// its text/visibility driven by these two tokens rather than
 				// injected as a raw HTML string.
 				unsupported_note_style: supported ? 'display:none;' : '',
-				unsupported_note_text: supported ? '' : aipsIntegrationsL10n.unsupportedFieldType
+				unsupported_note_text: supported ? '' : __("This field type is not yet supported for AI generation.", 'ai-post-scheduler')
 			});
 		},
 
@@ -332,17 +337,17 @@
 		 */
 		_buildCustomFieldRow: function (savedMapping) {
 			var html = AIPS.Templates.render('aips-tmpl-integration-custom-field-row', {
-				customKeyPlaceholder: aipsIntegrationsL10n.customKeyPlaceholder,
-				shapeShortText: aipsIntegrationsL10n.shapeShortText,
-				shapeLongText: aipsIntegrationsL10n.shapeLongText,
-				shapeHtml: aipsIntegrationsL10n.shapeHtml,
-				prompt_placeholder: aipsIntegrationsL10n.promptPlaceholder,
-				removeLabel: aipsIntegrationsL10n.removeField
+				customKeyPlaceholder: __("e.g. contact_phone_number", 'ai-post-scheduler'),
+				shapeShortText: __("Short Text", 'ai-post-scheduler'),
+				shapeLongText: __("Long Text", 'ai-post-scheduler'),
+				shapeHtml: __("HTML", 'ai-post-scheduler'),
+				prompt_placeholder: __("Optional: custom instructions for this field. Leave blank to use the field's own help text.", 'ai-post-scheduler'),
+				removeLabel: __("Remove", 'ai-post-scheduler')
 			});
 			var $row = $($.trim(html));
 			var $keySelect = $row.find('.aips-integration-field-key-select');
 
-			$keySelect.append($('<option>', { value: '', text: aipsIntegrationsL10n.selectFieldPlaceholder }));
+			$keySelect.append($('<option>', { value: '', text: __("Select a field…", 'ai-post-scheduler') }));
 			this._availableFields.forEach(function (field) {
 				$keySelect.append($('<option>', {
 					value: field.key,
@@ -352,7 +357,7 @@
 					'data-instructions': field.instructions || ''
 				}));
 			});
-			$keySelect.append($('<option>', { value: '__custom__', text: aipsIntegrationsL10n.customFieldKeyOption }));
+			$keySelect.append($('<option>', { value: '__custom__', text: __("Custom meta key…", 'ai-post-scheduler') }));
 
 			if (savedMapping) {
 				var matchesDiscoveredField = this._availableFields.some(function (field) {
@@ -432,7 +437,7 @@
 			var groupId = $('#aips-integration-group-select').val();
 
 			if (!templateId || !integrationId || !groupId) {
-				AIPS.Utilities.showToast(aipsIntegrationsL10n.selectGroupFirst, 'warning');
+				AIPS.Utilities.showToast(__("Select an integration and field group first.", 'ai-post-scheduler'), 'warning');
 				return;
 			}
 
@@ -462,7 +467,7 @@
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.loadSavedMappings(templateId);
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+				AIPS.Utilities.showToast(__("An error occurred. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -517,7 +522,7 @@
 					fieldLabel = fieldKey;
 
 					if (!fieldKey || !CUSTOM_FIELD_KEY_PATTERN.test(fieldKey)) {
-						AIPS.Utilities.showToast(aipsIntegrationsL10n.invalidCustomKey, 'warning');
+						AIPS.Utilities.showToast(__("Meta key may only contain letters, numbers, and underscores.", 'ai-post-scheduler'), 'warning');
 						invalid = true;
 						return;
 					}

@@ -1,0 +1,18 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/onboarding.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Skip the Onboarding Wizard? You can restart it later from System Status.": [
+        "¿Omitir el Asistente de Incorporación? Puede reiniciarlo más tarde desde Estado del Sistema."
+      ]
+    }
+  }
+}

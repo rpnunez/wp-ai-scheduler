@@ -5,6 +5,11 @@
  */
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -67,15 +72,15 @@
 		 */
 		showModeSelectionModal: function() {
 			AIPS.Utilities.showModal({
-				heading: aipsCampaignWizardL10n.aiModeTitle,
-				message: aipsCampaignWizardL10n.aiModeMessage,
+				heading: __("Choose Campaign Setup Mode", 'ai-post-scheduler'),
+				message: __("Would you like Guided AI Setup to prefill your campaign fields, or configure everything manually?", 'ai-post-scheduler'),
 				buttons: [
 					{
-						label: aipsCampaignWizardL10n.advancedModeTitle,
+						label: __("Advanced Mode", 'ai-post-scheduler'),
 						className: 'aips-btn aips-btn-secondary',
 					},
 					{
-						label: aipsCampaignWizardL10n.aiModeButton,
+						label: __("Guided AI Setup", 'ai-post-scheduler'),
 						className: 'aips-btn aips-btn-primary',
 						action: AIPS.CampaignWizard.showAiIntakeModal,
 					},
@@ -108,65 +113,65 @@
 				: {};
 
 			AIPS.Utilities.showModal({
-				heading: aipsCampaignWizardL10n.aiFormTitle,
+				heading: __("Guided AI Setup", 'ai-post-scheduler'),
 				fields: [
 					{
 						name: 'topic_niche',
-						label: aipsCampaignWizardL10n.topicNicheLabel,
+						label: __("Topic / Niche", 'ai-post-scheduler'),
 						type: 'text',
 						required: true,
 						value: defaults.topic_niche || '',
-						description: aipsCampaignWizardL10n.topicNicheExample,
+						description: __("Example: WordPress SEO for local businesses", 'ai-post-scheduler'),
 					},
 					{
 						name: 'target_audience',
-						label: aipsCampaignWizardL10n.targetAudienceLabel,
+						label: __("Target Audience", 'ai-post-scheduler'),
 						type: 'text',
 						required: true,
 						value: defaults.target_audience || '',
-						description: aipsCampaignWizardL10n.targetAudienceExample,
+						description: __("Example: Small business owners with limited technical knowledge", 'ai-post-scheduler'),
 					},
 					{
 						name: 'content_tone',
-						label: aipsCampaignWizardL10n.contentToneLabel,
+						label: __("Content Tone", 'ai-post-scheduler'),
 						type: 'select',
 						required: true,
 						options: [
-							{ value: 'conversational', label: aipsCampaignWizardL10n.toneConversational },
-							{ value: 'professional', label: aipsCampaignWizardL10n.toneProfessional },
-							{ value: 'technical', label: aipsCampaignWizardL10n.toneTechnical },
-							{ value: 'friendly', label: aipsCampaignWizardL10n.toneFriendly },
+							{ value: 'conversational', label: __("Conversational", 'ai-post-scheduler') },
+							{ value: 'professional', label: __("Professional", 'ai-post-scheduler') },
+							{ value: 'technical', label: __("Technical", 'ai-post-scheduler') },
+							{ value: 'friendly', label: __("Friendly", 'ai-post-scheduler') },
 						],
 						value: defaults.content_tone || 'conversational',
 					},
 					{
 						name: 'publishing_goal',
-						label: aipsCampaignWizardL10n.publishingGoalLabel,
+						label: __("Publishing Goal", 'ai-post-scheduler'),
 						type: 'text',
 						required: true,
 						value: defaults.publishing_goal || '',
-						description: aipsCampaignWizardL10n.publishingGoalExample,
+						description: __("Example: Drive organic traffic and convert readers to consultation bookings", 'ai-post-scheduler'),
 					},
 					{
 						name: 'output_style',
-						label: aipsCampaignWizardL10n.outputStyleLabel,
+						label: __("Template Output Style", 'ai-post-scheduler'),
 						type: 'select',
 						required: true,
 						options: [
-							{ value: 'educational_tutorial', label: aipsCampaignWizardL10n.outputStyleEducational },
-							{ value: 'listicle', label: aipsCampaignWizardL10n.outputStyleListicle },
-							{ value: 'comparison', label: aipsCampaignWizardL10n.outputStyleComparison },
-							{ value: 'how_to_guide', label: aipsCampaignWizardL10n.outputStyleHowTo },
-							{ value: 'opinion_editorial', label: aipsCampaignWizardL10n.outputStyleOpinion },
-							{ value: 'faq_based', label: aipsCampaignWizardL10n.outputStyleFaq },
-							{ value: 'case_study_style', label: aipsCampaignWizardL10n.outputStyleCaseStudy },
-							{ value: 'news_analysis', label: aipsCampaignWizardL10n.outputStyleNews },
+							{ value: 'educational_tutorial', label: __("Educational/tutorial", 'ai-post-scheduler') },
+							{ value: 'listicle', label: __("Listicle", 'ai-post-scheduler') },
+							{ value: 'comparison', label: __("Comparison", 'ai-post-scheduler') },
+							{ value: 'how_to_guide', label: __("How-to guide", 'ai-post-scheduler') },
+							{ value: 'opinion_editorial', label: __("Opinion/editorial", 'ai-post-scheduler') },
+							{ value: 'faq_based', label: __("FAQ-based", 'ai-post-scheduler') },
+							{ value: 'case_study_style', label: __("Case-study style", 'ai-post-scheduler') },
+							{ value: 'news_analysis', label: __("News analysis", 'ai-post-scheduler') },
 						],
 						value: defaults.output_style || 'how_to_guide',
 					},
 					{
 						name: 'frequency',
-						label: aipsCampaignWizardL10n.preferredFrequencyLabel,
+						label: __("Preferred Post Frequency", 'ai-post-scheduler'),
 						type: 'select',
 						required: true,
 						options: frequencyOptions,
@@ -174,7 +179,7 @@
 					},
 					{
 						name: 'post_type',
-						label: aipsCampaignWizardL10n.postTypeLabel,
+						label: __("Post Type", 'ai-post-scheduler'),
 						type: 'select',
 						required: true,
 						options: postTypeOptions,
@@ -183,11 +188,11 @@
 				],
 				buttons: [
 					{
-						label: aipsCampaignWizardL10n.cancelButton,
+						label: __("Cancel", 'ai-post-scheduler'),
 						className: 'aips-btn aips-btn-secondary',
 					},
 					{
-						label: aipsCampaignWizardL10n.aiGenerateButton,
+						label: __("Generate Campaign", 'ai-post-scheduler'),
 						className: 'aips-btn aips-btn-primary',
 						submit: true,
 						action: AIPS.CampaignWizard.onAiIntakeSubmit,
@@ -203,7 +208,7 @@
 		 * @return {void}
 		 */
 		onAiIntakeSubmit: function(formData) {
-			AIPS.CampaignWizard.showNotice('info', aipsCampaignWizardL10n.aiGeneratingMessage);
+			AIPS.CampaignWizard.showNotice('info', __("Generating campaign fields with AI…", 'ai-post-scheduler'));
 
 			AIPS.CampaignWizard.sendAiAssistAjax(formData, function(err, out) {
 				if (err) {
@@ -216,7 +221,7 @@
 					draft: out.draft || {},
 					summary: out.summary || {},
 					preview: out.preview || {},
-					message: out.message || aipsCampaignWizardL10n.aiSuccessMessage,
+					message: out.message || __("Campaign fields filled in by AI — review and adjust as needed.", 'ai-post-scheduler'),
 				};
 				AIPS.CampaignWizard.renderStrategyPreview(AIPS.CampaignWizard.pendingAiResult);
 			});
@@ -421,7 +426,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_campaign_wizard_ai_generate',
-					nonce: this.sanitizePlainText(aipsCampaignWizardL10n.campaignWizardAIGenerateNonce),
+					nonce: this.sanitizePlainText(((window.aipsCampaignWizardConfig && aipsCampaignWizardConfig.campaignWizardAIGenerateNonce) || (window.aipsCampaignWizardL10n && aipsCampaignWizardL10n.campaignWizardAIGenerateNonce))),
 					intake: JSON.stringify(this.sanitizeAiIntake(intake)),
 				},
 			})
@@ -462,8 +467,8 @@
 		 */
 		renderStrategyPreview: function(aiResult) {
 			var preview = aiResult && aiResult.preview ? aiResult.preview : {};
-			$('#aips-ai-strategy-preview-title').text(aipsCampaignWizardL10n.strategyPreviewTitle);
-			$('#aips-ai-strategy-preview-message').text(aipsCampaignWizardL10n.strategyPreviewMessage);
+			$('#aips-ai-strategy-preview-title').text(__("Campaign Strategy Preview", 'ai-post-scheduler'));
+			$('#aips-ai-strategy-preview-message').text(__("Review the proposed plan before applying it to your wizard fields.", 'ai-post-scheduler'));
 
 			$('#aips-ai-preview-campaign-name').text(this.sanitizePlainText(preview.campaign_name || ''));
 			$('#aips-ai-preview-audience').text(this.sanitizePlainText(preview.audience || ''));
@@ -494,7 +499,7 @@
 
 			if (!safeItems.length) {
 				$(document.createElement('li'))
-					.text(aipsCampaignWizardL10n.previewNoData)
+					.text(__("No preview details were returned by AI.", 'ai-post-scheduler'))
 					.appendTo($list);
 				return;
 			}
@@ -524,14 +529,14 @@
 		 */
 		getSelectiveApplyFields: function() {
 			return [
-				{ name: 'campaign_name', label: aipsCampaignWizardL10n.previewCampaignName },
-				{ name: 'content_goal', label: aipsCampaignWizardL10n.previewContentAngle },
-				{ name: 'post_type', label: aipsCampaignWizardL10n.postTypeLabel },
-				{ name: 'prompt_template', label: aipsCampaignWizardL10n.promptTemplateLabel },
-				{ name: 'title_prompt', label: aipsCampaignWizardL10n.titlePromptLabel },
-				{ name: 'frequency', label: aipsCampaignWizardL10n.previewCadence },
-				{ name: 'review_policy', label: aipsCampaignWizardL10n.reviewPolicyLabel },
-				{ name: 'campaign_mode', label: aipsCampaignWizardL10n.campaignModeLabel },
+				{ name: 'campaign_name', label: __("Campaign Name", 'ai-post-scheduler') },
+				{ name: 'content_goal', label: __("Content angle", 'ai-post-scheduler') },
+				{ name: 'post_type', label: __("Post Type", 'ai-post-scheduler') },
+				{ name: 'prompt_template', label: __("Prompt Template", 'ai-post-scheduler') },
+				{ name: 'title_prompt', label: __("Title Prompt", 'ai-post-scheduler') },
+				{ name: 'frequency', label: __("Posting cadence", 'ai-post-scheduler') },
+				{ name: 'review_policy', label: __("Review Policy", 'ai-post-scheduler') },
+				{ name: 'campaign_mode', label: __("Campaign Mode", 'ai-post-scheduler') },
 			];
 		},
 
@@ -549,7 +554,7 @@
 			var draft = this.pendingAiResult.draft;
 			var payload = draft;
 			if ($.isArray(keys) && !keys.length) {
-				this.showNotice('error', aipsCampaignWizardL10n.previewSelectRequired);
+				this.showNotice('error', __("Select at least one field to apply.", 'ai-post-scheduler'));
 				return;
 			}
 			if ($.isArray(keys) && keys.length) {
@@ -563,7 +568,7 @@
 
 			this.populateFieldsFromAi(payload);
 			this.renderSummary(this.pendingAiResult.summary || this.getPayload());
-			this.showNotice('success', this.pendingAiResult.message || aipsCampaignWizardL10n.aiSuccessMessage);
+			this.showNotice('success', this.pendingAiResult.message || __("Campaign fields filled in by AI — review and adjust as needed.", 'ai-post-scheduler'));
 			this.hideStrategyPreview();
 			this.showStep(0);
 		},
@@ -592,7 +597,7 @@
 				return;
 			}
 
-			AIPS.CampaignWizard.showNotice('info', aipsCampaignWizardL10n.regeneratingMessage || aipsCampaignWizardL10n.aiGeneratingMessage);
+			AIPS.CampaignWizard.showNotice('info', __("Regenerating campaign strategy…", 'ai-post-scheduler') || __("Generating campaign fields with AI…", 'ai-post-scheduler'));
 			AIPS.CampaignWizard.sendAiAssistAjax(AIPS.CampaignWizard.pendingAiResult.intake, function(err, out) {
 				if (err) {
 					AIPS.CampaignWizard.showNotice('error', err.message);
@@ -604,7 +609,7 @@
 					draft: out.draft || {},
 					summary: out.summary || {},
 					preview: out.preview || {},
-					message: out.message || aipsCampaignWizardL10n.aiSuccessMessage,
+					message: out.message || __("Campaign fields filled in by AI — review and adjust as needed.", 'ai-post-scheduler'),
 				};
 				AIPS.CampaignWizard.renderStrategyPreview(AIPS.CampaignWizard.pendingAiResult);
 			});
@@ -640,15 +645,15 @@
 			});
 
 			AIPS.Utilities.showModal({
-				heading: aipsCampaignWizardL10n.previewSelectHeading,
+				heading: __("Select fields to apply", 'ai-post-scheduler'),
 				fields: fields,
 				buttons: [
 					{
-						label: aipsCampaignWizardL10n.cancelButton,
+						label: __("Cancel", 'ai-post-scheduler'),
 						className: 'aips-btn aips-btn-secondary',
 					},
 					{
-						label: aipsCampaignWizardL10n.previewApplyButton,
+						label: __("Apply selected fields", 'ai-post-scheduler'),
 						className: 'aips-btn aips-btn-primary',
 						submit: true,
 						action: function(formData) {
@@ -944,7 +949,7 @@
 		onFinalizeClick: function(e) {
 			e.preventDefault();
 
-			var message = aipsCampaignWizardL10n.confirmFinalize || 'Create this campaign and schedule it now?';
+			var message = __("Create this campaign and schedule it now?", 'ai-post-scheduler') || 'Create this campaign and schedule it now?';
 			var cancelLabel = aipsAdminL10n.confirmCancelButton || 'Cancel';
 
 			AIPS.Utilities.confirm(message, 'Confirm', [
@@ -985,7 +990,7 @@
 
 			AIPS.CampaignWizard.showNotice(
 				'success',
-				out.message || aipsCampaignWizardL10n.created || 'Campaign created.'
+				out.message || __("Campaign created.", 'ai-post-scheduler') || 'Campaign created.'
 			);
 
 			if (out.redirect_url) {

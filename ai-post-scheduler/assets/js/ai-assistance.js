@@ -11,6 +11,11 @@
 
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -220,7 +225,7 @@
 			var originalLabel = $label.text();
 			$label.text(
 				(typeof aipsAIAssistanceL10n !== 'undefined')
-					? aipsAIAssistanceL10n.suggesting
+					? __("Suggesting...", 'ai-post-scheduler')
 					: 'Suggesting\u2026'
 			);
 
@@ -228,7 +233,7 @@
 				ajaxurl,
 				{
 					action:            'aips_ai_field_assist',
-					nonce:             (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.nonce : '',
+					nonce:             (typeof aipsAIAssistanceL10n !== 'undefined') ? ((window.aipsAIAssistanceConfig && aipsAIAssistanceConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIAssistanceL10n && aipsAIAssistanceL10n.nonce)) : '',
 					form_context:      self.formContext,
 					field_key:         fieldId,
 					field_name:        fieldConfig.fieldName,
@@ -252,14 +257,14 @@
 
 						if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
 							AIPS.Utilities.showToast(
-								(typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.suggested : 'AI suggestion applied.',
+								(typeof aipsAIAssistanceL10n !== 'undefined') ? __("AI suggestion applied.", 'ai-post-scheduler') : 'AI suggestion applied.',
 								'success'
 							);
 						}
 					} else {
 						var errMsg = (response.data && response.data.message)
 							? response.data.message
-							: ((typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.errorSuggesting : 'Could not get AI suggestion.');
+							: ((typeof aipsAIAssistanceL10n !== 'undefined') ? __("Could not get AI suggestion. Please try again.", 'ai-post-scheduler') : 'Could not get AI suggestion.');
 
 						if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
 							AIPS.Utilities.showToast(errMsg, 'error');
@@ -271,7 +276,7 @@
 				$label.text(originalLabel);
 				if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
 					AIPS.Utilities.showToast(
-						(typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.errorSuggesting : 'Could not get AI suggestion.',
+						(typeof aipsAIAssistanceL10n !== 'undefined') ? __("Could not get AI suggestion. Please try again.", 'ai-post-scheduler') : 'Could not get AI suggestion.',
 						'error'
 					);
 				}
@@ -299,8 +304,8 @@
 			var $modal = $('#aips-ai-assist-history-modal');
 			$modal.show();
 			$('#aips-ai-assist-history-field-label').text(fieldName);
-			$('#aips-ai-assist-history-session-tab').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
-			$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.loading : 'Loading\u2026' ) + '</p>');
+			$('#aips-ai-assist-history-session-tab').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? __("Loading...", 'ai-post-scheduler') : 'Loading\u2026' ) + '</p>');
+			$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + ( (typeof aipsAIAssistanceL10n !== 'undefined') ? __("Loading...", 'ai-post-scheduler') : 'Loading\u2026' ) + '</p>');
 
 			// Reset tabs
 			$modal.find('.aips-tab-link[data-tab="aips-ai-assist-history-session"]').addClass('active');
@@ -312,7 +317,7 @@
 				ajaxurl,
 				{
 					action:       'aips_get_field_assist_history',
-					nonce:        (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.nonce : '',
+					nonce:        (typeof aipsAIAssistanceL10n !== 'undefined') ? ((window.aipsAIAssistanceConfig && aipsAIAssistanceConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIAssistanceL10n && aipsAIAssistanceL10n.nonce)) : '',
 					form_context: self.formContext,
 					field_key:    fieldId,
 					session_id:   self.sessionId,
@@ -322,13 +327,13 @@
 						self.renderHistoryTab( '#aips-ai-assist-history-session-tab', response.data.session, fieldId );
 						self.renderHistoryTab( '#aips-ai-assist-history-alltime-tab', response.data.alltime, fieldId );
 					} else {
-						var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
+						var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? __("No AI suggestions found for this field yet.", 'ai-post-scheduler') : 'No AI suggestions found for this field yet.';
 						$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 						$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 					}
 				}
 			).fail(function () {
-				var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
+				var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? __("No AI suggestions found for this field yet.", 'ai-post-scheduler') : 'No AI suggestions found for this field yet.';
 				$('#aips-ai-assist-history-session-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 				$('#aips-ai-assist-history-alltime-tab').html('<p class="description">' + noHistoryMsg + '</p>');
 			});
@@ -349,7 +354,7 @@
 		 */
 		renderHistoryTab: function (selector, records, fieldId) {
 			var $container = $(selector);
-			var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.noHistory : 'No AI suggestions found for this field yet.';
+			var noHistoryMsg = (typeof aipsAIAssistanceL10n !== 'undefined') ? __("No AI suggestions found for this field yet.", 'ai-post-scheduler') : 'No AI suggestions found for this field yet.';
 
 			if (!records || !records.length) {
 				$container.html('<p class="description">' + noHistoryMsg + '</p>');
@@ -394,7 +399,7 @@
 
 			if (typeof AIPS.Utilities !== 'undefined' && AIPS.Utilities.showToast) {
 				AIPS.Utilities.showToast(
-					(typeof aipsAIAssistanceL10n !== 'undefined') ? aipsAIAssistanceL10n.valueApplied : 'Value applied from history.',
+					(typeof aipsAIAssistanceL10n !== 'undefined') ? __("Value applied from history.", 'ai-post-scheduler') : 'Value applied from history.',
 					'success'
 				);
 			}
