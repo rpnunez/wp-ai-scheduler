@@ -63,9 +63,21 @@ if (!defined('ABSPATH')) {
     </table>
 
     <p style="margin-top:8px;">
-        <button type="submit" class="button aips-btn aips-btn-danger" onclick="return confirm('<?php echo esc_js(__('Are you sure you want to cancel selected batch runs?', 'ai-post-scheduler')); ?>');"><?php esc_html_e('Cancel Selected', 'ai-post-scheduler'); ?></button>
+        <button type="button" id="aips-bulk-cancel-button" class="button aips-btn aips-btn-danger"><?php esc_html_e('Cancel Selected', 'ai-post-scheduler'); ?></button>
     </p>
     </form>
+</div>
+
+<!-- Bulk cancel confirmation modal -->
+<div id="aips-bulk-cancel-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.4);">
+    <div style="background:#fff; width:480px; max-width:90%; margin:10% auto; padding:20px; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+        <h3><?php esc_html_e('Confirm cancel selected batch runs', 'ai-post-scheduler'); ?></h3>
+        <p><?php esc_html_e('This will mark the selected batch runs as cancelled and prevent them from being resumed. This action cannot be undone from the UI.', 'ai-post-scheduler'); ?></p>
+        <div style="text-align:right; margin-top:16px;">
+            <button type="button" id="aips-bulk-cancel-cancel" class="button"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+            <button type="button" id="aips-bulk-cancel-confirm" class="button aips-btn aips-btn-danger" style="margin-left:8px;"><?php esc_html_e('Confirm Cancel', 'ai-post-scheduler'); ?></button>
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
@@ -76,5 +88,32 @@ if (!defined('ABSPATH')) {
         var checkboxes = document.querySelectorAll('.aips-batch-checkbox');
         for (var i=0;i<checkboxes.length;i++) { checkboxes[i].checked = selectAll.checked; }
     });
+
+    var bulkButton = document.getElementById('aips-bulk-cancel-button');
+    var modal = document.getElementById('aips-bulk-cancel-modal');
+    var modalCancel = document.getElementById('aips-bulk-cancel-cancel');
+    var modalConfirm = document.getElementById('aips-bulk-cancel-confirm');
+    var form = document.getElementById('aips-batches-form');
+
+    if (!bulkButton || !modal || !modalCancel || !modalConfirm || !form) return;
+
+    bulkButton.addEventListener('click', function(e){
+        // Ensure at least one checkbox is selected
+        var anyChecked = false;
+        var checkboxes = document.querySelectorAll('.aips-batch-checkbox');
+        for (var i=0;i<checkboxes.length;i++) { if (checkboxes[i].checked) { anyChecked = true; break; } }
+        if (!anyChecked) {
+            alert('<?php echo esc_js(__('Please select one or more batch runs to cancel.', 'ai-post-scheduler')); ?>');
+            return;
+        }
+        modal.style.display = 'block';
+    });
+
+    modalCancel.addEventListener('click', function(){ modal.style.display = 'none'; });
+    modalConfirm.addEventListener('click', function(){ form.submit(); });
+
+    // Close modal when clicking outside the modal content
+    modal.addEventListener('click', function(e){ if (e.target === modal) { modal.style.display = 'none'; } });
+
 })();
 </script>
