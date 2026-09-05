@@ -420,3 +420,22 @@ All tables use the WordPress prefix. Schema source of truth: `AIPS_DB_Manager::g
 | `aips_author_topic_logs` | Topic-level history and post linkage |
 | `aips_topic_feedback` | Approval/rejection feedback metadata |
 | `aips_notifications` | Admin toolbar/system notifications |
+| `aips_embeddings` | Unified polymorphic vector store (posts, CPTs, author topics) |
+| `aips_relationships` | Precomputed semantic relationship and cosine similarity matrix |
+
+---
+
+## 13. Semantic Intelligence & Content Indexer (v3.6.5)
+
+- **Polymorphic Vector Store (`wp_aips_embeddings`)**: Stores AI embedding vectors across WordPress posts, custom post types, and author topics with content hashing.
+- **Precomputed Relationship Matrix (`wp_aips_relationships`)**: Sub-millisecond queries for related content without runtime vector math.
+- **Top-Level Content Indexer Suite (`aips-content-indexer`)**:
+  - Interactive SVG force-directed semantic graph visualizer with node drawers.
+  - Progressive chunked backfill scanner with pause/resume and multi-CPT coverage breakdown.
+  - Duplicate & cannibalization clustering audit engine.
+- **Related Posts Presentation Layer**:
+  - `[aips_related_posts]` dynamic shortcode.
+  - `aips/related-posts` Gutenberg block.
+  - Automatic append content filter for single posts.
+- **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma).
+- **Vector Dimension Mismatch Guard**: Flags dimension variance between stored vectors and active models with a one-click guided re-index.

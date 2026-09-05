@@ -227,95 +227,174 @@ class AIPS_Job_Scheduler {
 			);
 		}
 
-		// Parse options
-		$prefix_args = isset($options['prefix_args']) && is_array($options['prefix_args'])
-			? $options['prefix_args']
-			: array();
+		$parsed_options = $this->parse_batched_options($options);
+		$slice_config   = $this->slicer->calculate_slices($item_count, $parsed_options['slice_options']);
 
-		$base_timestamp = isset($options['base_timestamp'])
-			? (int) $options['base_timestamp']
-			: AIPS_DateTime::now()->timestamp();
+		$dispatch_counts = $this->dispatch_batch_slices($hook, $item_count, $parsed_options, $slice_config);
 
-		$context = isset($options['context']) ? $options['context'] : 'default';
-		$slice_options = isset($options['slice_options']) && is_array($options['slice_options'])
+		$this->log_batch_summary($hook, $item_count, $dispatch_counts, $slice_config, $parsed_options['correlation_id']);
+
+		return $this->create_batch_summary($dispatch_counts, $slice_config, $parsed_options['correlation_id']);
+	}
+
+	/**
+	 * Parse and set defaults for batch scheduling options.
+	 *
+	 * @param array $options Raw options array.
+	 * @return array{
+	 *     prefix_args: array,
+	 *     base_timestamp: int,
+	 *     slice_options: array,
+	 *     job_type: string,
+	 *     metadata: array,
+	 *     correlation_id: string,
+	 *     retry_options: array
+	 * } Parsed options with defaults applied.
+	 */
+	private function parse_batched_options(array $options): array {
+		$context                  = isset($options['context']) ? $options['context'] : 'default';
+		$slice_options            = isset($options['slice_options']) && is_array($options['slice_options'])
 			? $options['slice_options']
 			: array();
-
 		$slice_options['context'] = $context;
+		$prefix_args              = isset($options['prefix_args']) && is_array($options['prefix_args'])
+			? $options['prefix_args']
+			: array();
+		$base_timestamp           = isset($options['base_timestamp'])
+			? (int) $options['base_timestamp']
+			: AIPS_DateTime::now()->timestamp();
+		$correlation_id           = isset($options['correlation_id'])
+			? $options['correlation_id']
+			: (string) AIPS_Correlation_ID::get();
 
-		$job_type = isset($options['job_type']) ? $options['job_type'] : 'batched';
-		$metadata = isset($options['metadata']) ? $options['metadata'] : array();
-		$correlation_id = isset($options['correlation_id']) ? $options['correlation_id'] : (string) AIPS_Correlation_ID::get();
-		$retry_options = isset($options['retry_options']) ? $options['retry_options'] : array();
+		return array(
+			'prefix_args'    => $prefix_args,
+			'base_timestamp' => $base_timestamp,
+			'slice_options'  => $slice_options,
+			'job_type'       => isset($options['job_type']) ? $options['job_type'] : 'batched',
+			'metadata'       => isset($options['metadata']) ? $options['metadata'] : array(),
+			'correlation_id' => $correlation_id,
+			'retry_options'  => isset($options['retry_options']) ? $options['retry_options'] : array(),
+		);
+	}
 
-		// Calculate slice configuration
-		$slice_config = $this->slicer->calculate_slices($item_count, $slice_options);
-
-		// Dispatch batch jobs
-		$scheduled_count = 0;
-		$failed_count = 0;
+	/**
+	 * Dispatch individual job slices for a batch.
+	 *
+	 * @param string                   $hook           The cron hook.
+	 * @param int                      $item_count     Total item count.
+	 * @param array                    $parsed_options The parsed options.
+	 * @param AIPS_Slice_Configuration $slice_config   The slice configuration.
+	 * @return array{scheduled: int, failed: int} Dispatch counts.
+	 */
+	private function dispatch_batch_slices(
+		string $hook,
+		int $item_count,
+		array $parsed_options,
+		AIPS_Slice_Configuration $slice_config
+	): array {
+		$dispatch_counts = array(
+			'scheduled' => 0,
+			'failed'    => 0,
+		);
 
 		for ($slice = 0; $slice < $slice_config->get_num_slices(); $slice++) {
-			$start_index = $slice * $slice_config->get_items_per_slice();
-			// Ensure the last batch doesn't exceed total
-			$this_slice_size = min(
-				$slice_config->get_items_per_slice(),
-				$item_count - $start_index
-			);
-
-			// Calculate staggered fire time
-			$delay = (int) round($slice * $slice_config->get_interval_seconds());
-			$fire_at = $base_timestamp + $delay;
-
-			// Build args: [prefix_args..., start_index, slice_size, total_items, correlation_id]
-			$args = array_merge(
-				$prefix_args,
-				array(
-					$start_index,
-					$this_slice_size,
-					$item_count,
-					$correlation_id,
-				)
-			);
-
-			$job = new AIPS_Job_Definition(
-				$job_type,
-				$hook,
-				$args,
-				$fire_at,
-				array_merge($metadata, array(
-					'slice_index' => $slice,
-					'start_index' => $start_index,
-					'slice_size'  => $this_slice_size,
-				)),
-				$correlation_id
-			);
-
-			if ($this->dispatcher->dispatch($job, $retry_options)) {
-				$scheduled_count++;
-			} else {
-				$failed_count++;
-			}
+			$job = $this->create_batch_job($hook, $item_count, $slice, $parsed_options, $slice_config);
+			$count_key = $this->dispatcher->dispatch($job, $parsed_options['retry_options']) ? 'scheduled' : 'failed';
+			$dispatch_counts[$count_key]++;
 		}
 
+		return $dispatch_counts;
+	}
+
+	/**
+	 * Create the job definition for one batch slice.
+	 *
+	 * @param string                   $hook           The cron hook.
+	 * @param int                      $item_count     Total item count.
+	 * @param int                      $slice          Zero-based slice index.
+	 * @param array                    $parsed_options The parsed options.
+	 * @param AIPS_Slice_Configuration $slice_config   The slice configuration.
+	 * @return AIPS_Job_Definition
+	 */
+	private function create_batch_job(
+		string $hook,
+		int $item_count,
+		int $slice,
+		array $parsed_options,
+		AIPS_Slice_Configuration $slice_config
+	): AIPS_Job_Definition {
+		$start_index = $slice * $slice_config->get_items_per_slice();
+		$slice_size  = min($slice_config->get_items_per_slice(), $item_count - $start_index);
+		$delay       = (int) round($slice * $slice_config->get_interval_seconds());
+		$args        = array_merge(
+			$parsed_options['prefix_args'],
+			array($start_index, $slice_size, $item_count, $parsed_options['correlation_id'])
+		);
+
+		return new AIPS_Job_Definition(
+			$parsed_options['job_type'],
+			$hook,
+			$args,
+			$parsed_options['base_timestamp'] + $delay,
+			array_merge($parsed_options['metadata'], array(
+				'slice_index' => $slice,
+				'start_index' => $start_index,
+				'slice_size'  => $slice_size,
+			)),
+			$parsed_options['correlation_id']
+		);
+	}
+
+	/**
+	 * Create the dispatch summary for a batch.
+	 *
+	 * @param array{scheduled: int, failed: int} $dispatch_counts Dispatch counts.
+	 * @param AIPS_Slice_Configuration           $slice_config    The slice configuration.
+	 * @param string                             $correlation_id   The correlation ID.
+	 * @return AIPS_Dispatch_Summary
+	 */
+	private function create_batch_summary(
+		array $dispatch_counts,
+		AIPS_Slice_Configuration $slice_config,
+		string $correlation_id
+	): AIPS_Dispatch_Summary {
+		return new AIPS_Dispatch_Summary(
+			$dispatch_counts['scheduled'],
+			$dispatch_counts['failed'],
+			$slice_config->get_num_slices(),
+			$slice_config,
+			array('correlation_id' => $correlation_id)
+		);
+	}
+
+	/**
+	 * Log the summary of the batched dispatch operation.
+	 *
+	 * @param string                   $hook            The cron hook.
+	 * @param int                      $item_count      Total item count.
+	 * @param array                    $dispatch_counts Result from dispatch_batch_slices.
+	 * @param AIPS_Slice_Configuration $slice_config    The slice configuration.
+	 * @param string                   $correlation_id  The correlation ID.
+	 * @return void
+	 */
+	private function log_batch_summary(
+		string $hook,
+		int $item_count,
+		array $dispatch_counts,
+		AIPS_Slice_Configuration $slice_config,
+		string $correlation_id
+	): void {
 		$this->logger->log(
 			sprintf(
 				'Batched dispatch: scheduled=%d/%d batches, window=%ds, correlation=%s',
-				$scheduled_count,
+				$dispatch_counts['scheduled'],
 				$slice_config->get_num_slices(),
 				$slice_config->get_window_seconds(),
 				$correlation_id
 			),
-			$failed_count > 0 ? 'warning' : 'info',
+			$dispatch_counts['failed'] > 0 ? 'warning' : 'info',
 			array('hook' => $hook, 'item_count' => $item_count)
-		);
-
-		return new AIPS_Dispatch_Summary(
-			$scheduled_count,
-			$failed_count,
-			$slice_config->get_num_slices(),
-			$slice_config,
-			array('correlation_id' => $correlation_id)
 		);
 	}
 
