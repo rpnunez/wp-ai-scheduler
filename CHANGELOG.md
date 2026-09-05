@@ -1,6 +1,17 @@
-## [3.6.5] - 2026-08-28
+## [3.6.6] - 2026-09-04
 
 ### Added
+- **Content Indexing History:** Added domain filtering, optional verbose embedding logs, and collapsible contiguous activity groups with bulk selection.
+
+### Fixed
+- **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
+
+## [3.6.5] - 2026-08-28
+- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
+
+- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
+### Added
+- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 - **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
 - **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
 - **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:

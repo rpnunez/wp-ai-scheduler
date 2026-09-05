@@ -100,6 +100,7 @@ class AIPS_Content_Indexer_Controller {
 			'post_types'               => $post_types,
 			'similarity_threshold'     => (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65),
 			'auto_index_on_publish'    => (bool) $this->config->get_option('aips_auto_index_on_publish', true),
+			'verbose_history'          => (bool) $this->config->get_option('aips_indexer_verbose_history', false),
 			'related_posts_enabled'    => (bool) $this->config->get_option('aips_related_posts_enabled', true),
 			'related_posts_auto_append'=> (bool) $this->config->get_option('aips_related_posts_auto_append', false),
 			'related_posts_count'      => (int) $this->config->get_option('aips_related_posts_count', 4),
@@ -293,6 +294,11 @@ class AIPS_Content_Indexer_Controller {
 		if (isset($_POST['auto_index_on_publish'])) {
 			$auto_index = filter_var($_POST['auto_index_on_publish'], FILTER_VALIDATE_BOOLEAN);
 			update_option('aips_auto_index_on_publish', $auto_index);
+		}
+
+		if (isset($_POST['verbose_history'])) {
+			$verbose_history = filter_var($_POST['verbose_history'], FILTER_VALIDATE_BOOLEAN);
+			update_option('aips_indexer_verbose_history', $verbose_history);
 		}
 
 		if (isset($_POST['related_posts_enabled'])) {

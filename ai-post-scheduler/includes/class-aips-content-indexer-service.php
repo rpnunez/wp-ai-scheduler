@@ -175,17 +175,13 @@ class AIPS_Content_Indexer_Service {
 		if (is_wp_error($embedding)) {
 			$duration      = round(microtime(true) - $start_time, 3);
 			$error_message = $embedding->get_error_message();
-
-			$container->record_error(
-				sprintf(__('Embedding generation failed for post #%d: %s', 'ai-post-scheduler'), $post_id, $error_message),
-				array(
-					'post_id'    => $post_id,
-					'error_code' => $embedding->get_error_code(),
-					'duration'   => $duration,
-				),
-				$embedding
+			$error_details = array(
+				'post_id'    => $post_id,
+				'error_code' => $embedding->get_error_code(),
+				'duration'   => $duration,
 			);
-			$container->complete_failure($error_message);
+
+			$container->complete_failure($error_message, $error_details);
 
 			$this->logger->log(
 				sprintf('Failed to generate embedding for post %d (%s): %s', $post_id, $post->post_type, $error_message),
@@ -230,7 +226,7 @@ class AIPS_Content_Indexer_Service {
 			);
 		}
 
-		$this->embeddings_repo->upsert(
+		$persisted = $this->embeddings_repo->upsert(
 			'post',
 			$post_id,
 			$embedding,
@@ -239,6 +235,31 @@ class AIPS_Content_Indexer_Service {
 			$content_hash,
 			$post->post_type
 		);
+
+		if ($persisted === false) {
+			$error_message = sprintf(
+				/* translators: %d: WordPress post ID. */
+				__('Could not save the embedding vector for post #%d.', 'ai-post-scheduler'),
+				$post_id
+			);
+			$error = new WP_Error('embedding_persistence_failed', $error_message);
+
+			$container->complete_failure(
+				$error_message,
+				array(
+					'post_id'    => $post_id,
+					'dimensions' => $dimensions,
+					'model'      => $model,
+					'provider'   => $provider,
+				)
+			);
+			$this->logger->log(
+				sprintf('Failed to persist embedding for post %d (%s).', $post_id, $post->post_type),
+				'error'
+			);
+
+			return $error;
+		}
 
 		if ($verbose) {
 			$container->record(
@@ -273,25 +294,36 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$total_duration = round(microtime(true) - $start_time, 3);
+		$completion_details = array(
+			'dimensions' => $dimensions,
+			'duration'   => $total_duration,
+			'model'      => $model,
+			'provider'   => $provider,
+		);
+		if ($compute_relationships) {
+			$completion_details['relationships_saved'] = $rel_count;
+		}
 
 		// complete_success only merges columns whitelisted by the repository update;
 		// dimensions/duration/relationships live in the final activity log entry.
-		$container->record(
-			'activity',
-			sprintf(
+		$completion_message = $compute_relationships
+			? sprintf(
 				/* translators: 1: dimensions, 2: total duration seconds, 3: related-post count. */
 				__('Indexed post: %1$d dims, %2$ss, %3$d related', 'ai-post-scheduler'),
 				$dimensions,
 				$total_duration,
 				$rel_count
-			),
-			array(
-				'dimensions'          => $dimensions,
-				'duration'            => $total_duration,
-				'relationships_saved' => $rel_count,
-				'model'               => $model,
-				'provider'            => $provider,
 			)
+			: sprintf(
+				/* translators: 1: dimensions, 2: total duration seconds. */
+				__('Indexed post: %1$d dims, %2$ss', 'ai-post-scheduler'),
+				$dimensions,
+				$total_duration
+			);
+		$container->record(
+			'activity',
+			$completion_message,
+			$completion_details
 		);
 
 		$container->complete_success(array(
