@@ -248,7 +248,11 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		}
 		
 		$wpdb->query('SET FOREIGN_KEY_CHECKS = 1');
-		
+
+		// Bulk writes bypass the feature repositories, so clear plugin cache to
+		// avoid serving pre-import data from repository caches.
+		$this->flush_plugin_cache();
+
 		if ($error_count > 0) {
 			return new WP_Error(
 				'import_errors',

@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Author_Topics_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Author_Topics_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 	
 	/**
 	 * @var string The author_topics table name (with prefix)
@@ -42,7 +47,7 @@ class AIPS_Author_Topics_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_author_topics';
+		$this->table_name = $this->table('aips_author_topics');
 	}
 	
 	/**
@@ -342,7 +347,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects.
 	 */
 	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$logs_table = $this->table('aips_author_topic_logs');
 
 		return $this->cache_read(
 			'author_topics.get_approved_for_generation',
@@ -467,7 +472,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Associative array of bucket => count.
 	 */
 	public function get_status_counts($author_id) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$logs_table = $this->table('aips_author_topic_logs');
 
 		return $this->cache_read(
 			'author_topics.get_status_counts',
@@ -551,7 +556,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects with author info.
 	 */
 	public function get_all_approved_for_queue() {
-		$authors_table = $this->wpdb->prefix . 'aips_authors';
+		$authors_table = $this->table('aips_authors');
 		
 		return $this->cache_read(
 			'author_topics.get_all_approved_for_queue',

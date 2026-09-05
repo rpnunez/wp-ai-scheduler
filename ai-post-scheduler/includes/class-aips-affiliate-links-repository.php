@@ -12,7 +12,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 class AIPS_Affiliate_Links_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var wpdb
@@ -34,7 +44,9 @@ class AIPS_Affiliate_Links_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_affiliate_links';
+		// table() is the AIPS_Repository_Tables trait method; $this->table is the
+		// cached table-name property (PHP keeps method/property names separate).
+		$this->table = $this->table('aips_affiliate_links');
 	}
 
 	/**
@@ -44,11 +56,19 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return object|null Row object or null if not found.
 	 */
 	public function get_by_id( $id ) {
-		return $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE id = %d",
-				absint( $id )
-			)
+		return $this->cache_read(
+			'affiliate_links.get_by_id',
+			array(
+				'id' => absint( $id ),
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table} WHERE id = %d",
+						absint( $id )
+					)
+				);
+			}
 		);
 	}
 
@@ -59,9 +79,17 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return object[]
 	 */
 	public function get_all( $enabled_only = false ) {
-		$where = $enabled_only ? 'WHERE enabled = 1' : '';
-		return $this->wpdb->get_results(
-			"SELECT * FROM {$this->table} {$where} ORDER BY tag ASC" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $this->cache_read(
+			'affiliate_links.get_all',
+			array(
+				'enabled_only' => (bool) $enabled_only,
+			),
+			function() use ( $enabled_only ) {
+				$where = $enabled_only ? 'WHERE enabled = 1' : '';
+				return $this->wpdb->get_results(
+					"SELECT * FROM {$this->table} {$where} ORDER BY tag ASC" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				);
+			}
 		);
 	}
 
@@ -78,14 +106,24 @@ class AIPS_Affiliate_Links_Repository {
 			return array();
 		}
 
-		$placeholders = implode( ', ', array_fill( 0, count( $tags ), '%s' ) );
-		$lower_tags   = array_map( 'strtolower', $tags );
+		$lower_tags = array_map( 'strtolower', $tags );
+		sort( $lower_tags ); // Order-independent result; sort so equal tag sets share a cache key.
 
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE enabled = 1 AND LOWER(tag) IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				...$lower_tags
-			)
+		return $this->cache_read(
+			'affiliate_links.get_enabled_by_tags',
+			array(
+				'tags' => array_values( $lower_tags ),
+			),
+			function() use ( $lower_tags ) {
+				$placeholders = implode( ', ', array_fill( 0, count( $lower_tags ), '%s' ) );
+
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table} WHERE enabled = 1 AND LOWER(tag) IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						...$lower_tags
+					)
+				);
+			}
 		);
 	}
 
@@ -99,27 +137,39 @@ class AIPS_Affiliate_Links_Repository {
 	 */
 	public function get_paginated( $per_page = 20, $page = 1, $search = '' ) {
 		$per_page = max( 1, absint( $per_page ) );
-		$offset   = ( $page - 1 ) * $per_page;
+		$page     = max( 1, absint( $page ) );
 
-		if ( ! empty( $search ) ) {
-			$like = '%' . $this->wpdb->esc_like( $search ) . '%';
-			return $this->wpdb->get_results(
-				$this->wpdb->prepare(
-					"SELECT * FROM {$this->table} WHERE (tag LIKE %s OR label LIKE %s) ORDER BY tag ASC LIMIT %d OFFSET %d",
-					$like,
-					$like,
-					$per_page,
-					$offset
-				)
-			);
-		}
+		return $this->cache_read(
+			'affiliate_links.get_paginated',
+			array(
+				'per_page' => $per_page,
+				'page'     => $page,
+				'search'   => (string) $search,
+			),
+			function() use ( $per_page, $page, $search ) {
+				$offset = ( $page - 1 ) * $per_page;
 
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table} ORDER BY tag ASC LIMIT %d OFFSET %d",
-				$per_page,
-				$offset
-			)
+				if ( ! empty( $search ) ) {
+					$like = '%' . $this->wpdb->esc_like( $search ) . '%';
+					return $this->wpdb->get_results(
+						$this->wpdb->prepare(
+							"SELECT * FROM {$this->table} WHERE (tag LIKE %s OR label LIKE %s) ORDER BY tag ASC LIMIT %d OFFSET %d",
+							$like,
+							$like,
+							$per_page,
+							$offset
+						)
+					);
+				}
+
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table} ORDER BY tag ASC LIMIT %d OFFSET %d",
+						$per_page,
+						$offset
+					)
+				);
+			}
 		);
 	}
 
@@ -130,18 +180,26 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return int
 	 */
 	public function get_paginated_count( $search = '' ) {
-		if ( ! empty( $search ) ) {
-			$like = '%' . $this->wpdb->esc_like( $search ) . '%';
-			return (int) $this->wpdb->get_var(
-				$this->wpdb->prepare(
-					"SELECT COUNT(*) FROM {$this->table} WHERE (tag LIKE %s OR label LIKE %s)",
-					$like,
-					$like
-				)
-			);
-		}
+		return $this->cache_read(
+			'affiliate_links.get_paginated_count',
+			array(
+				'search' => (string) $search,
+			),
+			function() use ( $search ) {
+				if ( ! empty( $search ) ) {
+					$like = '%' . $this->wpdb->esc_like( $search ) . '%';
+					return (int) $this->wpdb->get_var(
+						$this->wpdb->prepare(
+							"SELECT COUNT(*) FROM {$this->table} WHERE (tag LIKE %s OR label LIKE %s)",
+							$like,
+							$like
+						)
+					);
+				}
 
-		return (int) $this->wpdb->get_var( "SELECT COUNT(*) FROM {$this->table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				return (int) $this->wpdb->get_var( "SELECT COUNT(*) FROM {$this->table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			}
+		);
 	}
 
 	/**
@@ -172,6 +230,10 @@ class AIPS_Affiliate_Links_Repository {
 			),
 			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
 		);
+
+		if ( $result ) {
+			$this->invalidate_affiliate_links_cache( $this->wpdb->insert_id, 'affiliate_link_inserted' );
+		}
 
 		return $result ? $this->wpdb->insert_id : false;
 	}
@@ -223,13 +285,19 @@ class AIPS_Affiliate_Links_Repository {
 			$format[]                   = '%d';
 		}
 
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table,
 			$update,
 			array( 'id' => absint( $id ) ),
 			$format,
 			array( '%d' )
 		);
+
+		if ( $result ) {
+			$this->invalidate_affiliate_links_cache( $id, 'affiliate_link_updated' );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -240,7 +308,7 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return int|false
 	 */
 	public function set_enabled( $id, $enabled ) {
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table,
 			array(
 				'enabled'    => (int) (bool) $enabled,
@@ -250,6 +318,12 @@ class AIPS_Affiliate_Links_Repository {
 			array( '%d', '%d' ),
 			array( '%d' )
 		);
+
+		if ( $result ) {
+			$this->invalidate_affiliate_links_cache( $id, 'affiliate_link_enabled_toggled' );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -259,11 +333,17 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return int|false
 	 */
 	public function delete( $id ) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table,
 			array( 'id' => absint( $id ) ),
 			array( '%d' )
 		);
+
+		if ( $result ) {
+			$this->invalidate_affiliate_links_cache( $id, 'affiliate_link_deleted' );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -272,7 +352,13 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return int|false
 	 */
 	public function delete_all() {
-		return $this->wpdb->query( "DELETE FROM {$this->table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$result = $this->wpdb->query( "DELETE FROM {$this->table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( $result ) {
+			$this->invalidate_affiliate_links_cache( 0, 'affiliate_links_deleted_all' );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -283,5 +369,80 @@ class AIPS_Affiliate_Links_Repository {
 	 */
 	private function sanitize_position( $position ) {
 		return in_array( $position, self::VALID_POSITIONS, true ) ? $position : 'append';
+	}
+
+	/**
+	 * Return the repository cache group for affiliate-link reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_affiliate_links';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for affiliate-link reads.
+	 *
+	 * All reads are over the affiliate-links table alone (no external joins), so
+	 * every cached read carries the broad `affiliate_links` tag that every write
+	 * invalidates.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'affiliate_links.get_by_id' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'affiliate_links', 'affiliate_link:{id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single affiliate-link mapping reads by ID.',
+			),
+			'affiliate_links.get_all' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'affiliate_links' ),
+				'description' => 'Cache affiliate-link mapping list reads.',
+			),
+			'affiliate_links.get_enabled_by_tags' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'affiliate_links' ),
+				'description' => 'Cache tag-matched enabled mapping reads used during CTA injection.',
+			),
+			'affiliate_links.get_paginated' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'affiliate_links' ),
+				'description' => 'Cache paginated admin list reads.',
+			),
+			'affiliate_links.get_paginated_count' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'affiliate_links' ),
+				'description' => 'Cache paginated admin list counts.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate affiliate-link read caches after a write.
+	 *
+	 * Bumps the broad `affiliate_links` tag (present on every cached read) plus an
+	 * optional id-scoped tag when a single mapping is affected.
+	 *
+	 * @param int    $id Mapping ID, or 0 when unknown/bulk.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_affiliate_links_cache( $id, $reason ) {
+		$tags = array( 'affiliate_links' );
+
+		$id = absint( $id );
+		if ( $id > 0 ) {
+			$tags[] = 'affiliate_link:' . $id;
+		}
+
+		$this->invalidate_cache_tags( $tags, (string) $reason );
 	}
 }

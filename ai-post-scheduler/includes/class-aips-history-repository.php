@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
     require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+    require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_History_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     use AIPS_Cacheable_Repository;
+    use AIPS_Repository_Tables;
 
     /**
      * @var self|null Singleton instance.
@@ -61,9 +66,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
-        $this->table_name_log = $wpdb->prefix . 'aips_history_log';
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
+        $this->table_name = $this->table('aips_history');
+        $this->table_name_log = $this->table('aips_history_log');
+        $this->schedule_table = $this->table('aips_schedule');
     }
 
     /**
@@ -143,7 +148,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return void
      */
     public function repair_missing_campaign_ids($campaign_id = 0) {
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $templates_table = $this->table('aips_templates');
         $campaign_id = absint($campaign_id);
 
         if ($campaign_id > 0) {
@@ -536,7 +541,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
 
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $templates_table = $this->table('aips_templates');
 
         // Query for items
         $query_args = $where_args;
@@ -661,7 +666,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $orderby_sql = "h.$orderby $order";
         }
 
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $templates_table = $this->table('aips_templates');
         $posts_table = $this->wpdb->posts;
         $postmeta_table = $this->wpdb->postmeta;
 
@@ -1622,8 +1627,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Array of revision objects with id, timestamp, value, history_id
      */
     public function get_component_revisions($post_id, $component_type, $limit = 20) {
-        $history_log_table = $this->wpdb->prefix . 'aips_history_log';
-        $history_table = $this->wpdb->prefix . 'aips_history';
+        $history_log_table = $this->table('aips_history_log');
+        $history_table = $this->table('aips_history');
 
         // Query for AI_RESPONSE logs with matching component in context
         // The context field contains JSON like {"component":"title","post_id":123}

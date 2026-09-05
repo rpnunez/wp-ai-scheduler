@@ -13,6 +13,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+    require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+    require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Trending_Topics_Repository
  *
@@ -20,24 +28,26 @@ if (!defined('ABSPATH')) {
  * Provides CRUD operations and querying capabilities.
  */
 class AIPS_Trending_Topics_Repository {
-    
+    use AIPS_Cacheable_Repository;
+    use AIPS_Repository_Tables;
+
     /**
      * @var wpdb WordPress database instance
      */
     private $wpdb;
-    
+
     /**
      * @var string Trending topics table name
      */
     private $table_name;
-    
+
     /**
      * Initialize the repository.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_trending_topics';
+        $this->table_name = $this->table('aips_trending_topics');
     }
     
     /**
@@ -71,7 +81,13 @@ class AIPS_Trending_Topics_Repository {
         );
         
         $args = wp_parse_args($args, $defaults);
-        
+
+        return $this->cache_read(
+            'trending_topics.get_all',
+            array(
+                'filters' => $args,
+            ),
+            function() use ( $args ) {
         $where = array('1=1');
         $prepare_values = array();
         
@@ -124,8 +140,10 @@ class AIPS_Trending_Topics_Repository {
         if (!empty($prepare_values)) {
             $query = $this->wpdb->prepare($query, $prepare_values);
         }
-        
+
         return $this->wpdb->get_results($query, ARRAY_A);
+            }
+        );
     }
     
     /**
@@ -135,12 +153,20 @@ class AIPS_Trending_Topics_Repository {
      * @return array|null Topic data or null if not found.
      */
     public function get_by_id($id) {
-        $query = $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE id = %d",
-            $id
+        return $this->cache_read(
+            'trending_topics.get_by_id',
+            array(
+                'id' => (int) $id,
+            ),
+            function() use ( $id ) {
+                $query = $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_name} WHERE id = %d",
+                    $id
+                );
+
+                return $this->wpdb->get_row($query, ARRAY_A);
+            }
         );
-        
-        return $this->wpdb->get_row($query, ARRAY_A);
     }
 
     /**
@@ -231,20 +257,30 @@ class AIPS_Trending_Topics_Repository {
      * @return array Array of topic records.
      */
     public function get_by_niche($niche, $limit = 20, $days = 30) {
-        $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
+        return $this->cache_read(
+            'trending_topics.get_by_niche',
+            array(
+                'niche' => (string) $niche,
+                'limit' => (int) $limit,
+                'days'  => (int) $days,
+            ),
+            function() use ( $niche, $limit, $days ) {
+                $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
 
-        $query = $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} 
-            WHERE niche = %s 
-            AND researched_at >= %d
-            ORDER BY score DESC, researched_at DESC 
-            LIMIT %d",
-            $niche,
-            $cutoff,
-            $limit
+                $query = $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_name}
+                    WHERE niche = %s
+                    AND researched_at >= %d
+                    ORDER BY score DESC, researched_at DESC
+                    LIMIT %d",
+                    $niche,
+                    $cutoff,
+                    $limit
+                );
+
+                return $this->wpdb->get_results($query, ARRAY_A);
+            }
         );
-        
-        return $this->wpdb->get_results($query, ARRAY_A);
     }
     
     /**
@@ -255,18 +291,27 @@ class AIPS_Trending_Topics_Repository {
      * @return array Array of top topic records.
      */
     public function get_top_topics($count = 10, $days = 7) {
-        $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
+        return $this->cache_read(
+            'trending_topics.get_top_topics',
+            array(
+                'count' => (int) $count,
+                'days'  => (int) $days,
+            ),
+            function() use ( $count, $days ) {
+                $cutoff = AIPS_DateTime::now()->timestamp() - (absint($days) * DAY_IN_SECONDS);
 
-        $query = $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} 
-            WHERE researched_at >= %d
-            ORDER BY score DESC, researched_at DESC 
-            LIMIT %d",
-            $cutoff,
-            $count
+                $query = $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_name}
+                    WHERE researched_at >= %d
+                    ORDER BY score DESC, researched_at DESC
+                    LIMIT %d",
+                    $cutoff,
+                    $count
+                );
+
+                return $this->wpdb->get_results($query, ARRAY_A);
+            }
         );
-        
-        return $this->wpdb->get_results($query, ARRAY_A);
     }
     
     /**
@@ -277,20 +322,29 @@ class AIPS_Trending_Topics_Repository {
      * @return array Array of matching topics.
      */
     public function search($keyword, $limit = 20) {
-        $search_term = '%' . $this->wpdb->esc_like($keyword) . '%';
-        
-        $query = $this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} 
-            WHERE topic LIKE %s OR keywords LIKE %s OR niche LIKE %s
-            ORDER BY score DESC 
-            LIMIT %d",
-            $search_term,
-            $search_term,
-            $search_term,
-            $limit
+        return $this->cache_read(
+            'trending_topics.search',
+            array(
+                'keyword' => (string) $keyword,
+                'limit'   => (int) $limit,
+            ),
+            function() use ( $keyword, $limit ) {
+                $search_term = '%' . $this->wpdb->esc_like($keyword) . '%';
+
+                $query = $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_name}
+                    WHERE topic LIKE %s OR keywords LIKE %s OR niche LIKE %s
+                    ORDER BY score DESC
+                    LIMIT %d",
+                    $search_term,
+                    $search_term,
+                    $search_term,
+                    $limit
+                );
+
+                return $this->wpdb->get_results($query, ARRAY_A);
+            }
         );
-        
-        return $this->wpdb->get_results($query, ARRAY_A);
     }
     
     /**
@@ -446,6 +500,10 @@ class AIPS_Trending_Topics_Repository {
 
         $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
 
+        if ($result !== false) {
+            $this->invalidate_trending_cache(0, 'trending_topics_created_bulk');
+        }
+
         return $result !== false;
     }
     
@@ -510,7 +568,9 @@ class AIPS_Trending_Topics_Repository {
         if ($result === false) {
             return false;
         }
-        
+
+        $this->invalidate_trending_cache($this->wpdb->insert_id, 'trending_topic_created');
+
         return $this->wpdb->insert_id;
     }
     
@@ -562,7 +622,11 @@ class AIPS_Trending_Topics_Repository {
             $format,
             array('%d')
         );
-        
+
+        if ($result !== false) {
+            $this->invalidate_trending_cache($id, 'trending_topic_updated');
+        }
+
         return $result !== false;
     }
 
@@ -598,7 +662,13 @@ class AIPS_Trending_Topics_Repository {
 
         $prepared_query = $this->wpdb->prepare($query, $prepare_values);
 
-        return $this->wpdb->query($prepared_query);
+        $result = $this->wpdb->query($prepared_query);
+
+        if ($result) {
+            $this->invalidate_trending_cache(0, 'trending_topics_status_updated_bulk');
+        }
+
+        return $result;
     }
     
     /**
@@ -613,7 +683,11 @@ class AIPS_Trending_Topics_Repository {
             array('id' => $id),
             array('%d')
         );
-        
+
+        if ($result !== false) {
+            $this->invalidate_trending_cache($id, 'trending_topic_deleted');
+        }
+
         return $result !== false;
     }
     
@@ -629,7 +703,11 @@ class AIPS_Trending_Topics_Repository {
             array('niche' => $niche),
             array('%s')
         );
-        
+
+        if ($result) {
+            $this->invalidate_trending_cache(0, 'trending_topics_deleted_by_niche');
+        }
+
         return $result;
     }
     
@@ -661,7 +739,13 @@ class AIPS_Trending_Topics_Repository {
             $ids
         );
 
-        return $this->wpdb->query($query);
+        $result = $this->wpdb->query($query);
+
+        if ($result) {
+            $this->invalidate_trending_cache(0, 'trending_topics_deleted_bulk');
+        }
+
+        return $result;
     }
     
     /**
@@ -670,37 +754,43 @@ class AIPS_Trending_Topics_Repository {
      * @return array Statistics data.
      */
     public function get_stats() {
-        $stats = array(
-            'total_topics' => 0,
-            'niches_count' => 0,
-            'avg_score' => 0,
-            'recent_research_count' => 0,
+        return $this->cache_read(
+            'trending_topics.get_stats',
+            array(),
+            function() {
+                $stats = array(
+                    'total_topics' => 0,
+                    'niches_count' => 0,
+                    'avg_score' => 0,
+                    'recent_research_count' => 0,
+                );
+
+                // Total topics
+                $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
+                $stats['total_topics'] = absint($total);
+
+                // Unique niches
+                $niches = $this->wpdb->get_var("SELECT COUNT(DISTINCT niche) FROM {$this->table_name}");
+                $stats['niches_count'] = absint($niches);
+
+                // Average score
+                $avg = $this->wpdb->get_var("SELECT AVG(score) FROM {$this->table_name}");
+                $stats['avg_score'] = round(floatval($avg), 2);
+
+                // Recent research (last 7 days)
+                $recent_cutoff = AIPS_DateTime::now()->timestamp() - (7 * DAY_IN_SECONDS);
+                $recent = $this->wpdb->get_var(
+                    $this->wpdb->prepare(
+                        "SELECT COUNT(*) FROM {$this->table_name}
+                        WHERE researched_at >= %d",
+                        $recent_cutoff
+                    )
+                );
+                $stats['recent_research_count'] = absint($recent);
+
+                return $stats;
+            }
         );
-        
-        // Total topics
-        $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
-        $stats['total_topics'] = absint($total);
-        
-        // Unique niches
-        $niches = $this->wpdb->get_var("SELECT COUNT(DISTINCT niche) FROM {$this->table_name}");
-        $stats['niches_count'] = absint($niches);
-        
-        // Average score
-        $avg = $this->wpdb->get_var("SELECT AVG(score) FROM {$this->table_name}");
-        $stats['avg_score'] = round(floatval($avg), 2);
-        
-        // Recent research (last 7 days)
-        $recent_cutoff = AIPS_DateTime::now()->timestamp() - (7 * DAY_IN_SECONDS);
-        $recent = $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} 
-                WHERE researched_at >= %d",
-                $recent_cutoff
-            )
-        );
-        $stats['recent_research_count'] = absint($recent);
-        
-        return $stats;
     }
     
     /**
@@ -758,11 +848,106 @@ class AIPS_Trending_Topics_Repository {
      * @return array Array of niches with counts.
      */
     public function get_niche_list() {
-        $query = "SELECT niche, COUNT(*) as count 
-                  FROM {$this->table_name} 
-                  GROUP BY niche 
-                  ORDER BY count DESC";
-        
-        return $this->wpdb->get_results($query, ARRAY_A);
+        return $this->cache_read(
+            'trending_topics.get_niche_list',
+            array(),
+            function() {
+                $query = "SELECT niche, COUNT(*) as count
+                          FROM {$this->table_name}
+                          GROUP BY niche
+                          ORDER BY count DESC";
+
+                return $this->wpdb->get_results($query, ARRAY_A);
+            }
+        );
+    }
+
+    /**
+     * Return the repository cache group for trending topic reads.
+     *
+     * @return string
+     */
+    protected function repository_cache_group(): string {
+        return 'aips_trending_topics';
+    }
+
+    /**
+     * Return the explicit repository cache policies for trending topic reads.
+     *
+     * Every cached read carries the broad `trending_topics` tag, so bumping it on
+     * any write invalidates all trending-topic read caches (guaranteed
+     * correctness). Reads that join WordPress posts (generated-post counts) and
+     * the `topic_exists` dedup gate are intentionally left uncached, since they
+     * depend on external post state / are write-path correctness gates.
+     *
+     * @return array
+     */
+    protected function repository_cache_policies(): array {
+        return array(
+            'trending_topics.get_all' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics' ),
+                'description' => 'Cache filtered trending-topic list reads.',
+            ),
+            'trending_topics.get_by_id' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics', 'trending_topic:{id}' ),
+                'cache_null'  => false,
+                'description' => 'Cache single trending-topic reads by ID.',
+            ),
+            'trending_topics.get_by_niche' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics' ),
+                'description' => 'Cache per-niche trending-topic reads.',
+            ),
+            'trending_topics.get_top_topics' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics' ),
+                'description' => 'Cache top trending-topic reads.',
+            ),
+            'trending_topics.search' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics' ),
+                'description' => 'Cache trending-topic keyword search reads.',
+            ),
+            'trending_topics.get_stats' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics' ),
+                'description' => 'Cache trending-topic aggregate stats.',
+            ),
+            'trending_topics.get_niche_list' => array(
+                'tier'        => 'medium',
+                'ttl'         => 300,
+                'tags'        => array( 'trending_topics' ),
+                'description' => 'Cache niche list with counts.',
+            ),
+        );
+    }
+
+    /**
+     * Invalidate trending-topic read caches after a write.
+     *
+     * Bumps the broad `trending_topics` tag (present on every cached read) plus an
+     * optional id-scoped tag when a single topic is affected.
+     *
+     * @param int    $id Topic ID, or 0 when unknown/bulk.
+     * @param string $reason Invalidation reason.
+     * @return void
+     */
+    private function invalidate_trending_cache($id, $reason) {
+        $tags = array( 'trending_topics' );
+
+        $id = absint($id);
+        if ($id > 0) {
+            $tags[] = 'trending_topic:' . $id;
+        }
+
+        $this->invalidate_cache_tags($tags, (string) $reason);
     }
 }

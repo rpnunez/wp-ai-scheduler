@@ -15,6 +15,7 @@ class AIPS_Feedback_Repository_Test extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		$this->repository = new AIPS_Feedback_Repository();
 		$this->authors_repository = new AIPS_Authors_Repository();
 		$this->topics_repository = new AIPS_Author_Topics_Repository();
@@ -47,6 +48,7 @@ class AIPS_Feedback_Repository_Test extends WP_UnitTestCase {
 		$wpdb->query($wpdb->prepare("DELETE FROM $topics_table WHERE author_id = %d", $this->test_author_id));
 		$wpdb->query($wpdb->prepare("DELETE FROM $authors_table WHERE id = %d", $this->test_author_id));
 		
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 	

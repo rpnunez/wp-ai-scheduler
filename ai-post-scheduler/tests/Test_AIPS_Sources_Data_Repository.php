@@ -15,6 +15,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		AIPS_DB_Manager::install_tables();
 		$this->repo = new AIPS_Sources_Data_Repository();
 	}
@@ -23,6 +24,7 @@ class Test_AIPS_Sources_Data_Repository extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_sources_data" );
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_sources" );
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

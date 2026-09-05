@@ -13,6 +13,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Telemetry_Repository
  *
@@ -20,6 +28,8 @@ if (!defined('ABSPATH')) {
  * aips_telemetry table.
  */
 class AIPS_Telemetry_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var AIPS_Telemetry_Repository|null Singleton instance.
@@ -43,7 +53,9 @@ class AIPS_Telemetry_Repository {
 		global $wpdb;
 
 		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_telemetry';
+		// table() is the AIPS_Repository_Tables trait method; $this->table is the
+		// cached table-name property (PHP keeps method/property names separate).
+		$this->table = $this->table('aips_telemetry');
 	}
 
 	/**
@@ -352,5 +364,29 @@ class AIPS_Telemetry_Repository {
 			return null;
 		}
 		return json_decode($json, true);
+	}
+
+	/**
+	 * Return the repository cache group for telemetry reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_telemetry';
+	}
+
+	/**
+	 * No cached policies for telemetry reads.
+	 *
+	 * insert() runs on nearly every request (per-request performance recording),
+	 * while all reads are admin-dashboard only. Caching reads would require
+	 * invalidating on that extremely hot write path, thrashing the cache to no
+	 * benefit, so telemetry reads are intentionally left uncached. The trait is
+	 * still adopted for construction/table() standardization.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array();
 	}
 }

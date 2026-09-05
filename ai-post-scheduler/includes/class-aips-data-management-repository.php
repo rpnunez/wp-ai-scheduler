@@ -3,10 +3,20 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Repository for data management import/export persistence.
  */
 class AIPS_Data_Management_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var wpdb
@@ -116,5 +126,30 @@ class AIPS_Data_Management_Repository {
 	 */
 	public function insert_row($full_table_name, $row) {
 		return false !== $this->wpdb->insert($full_table_name, $row);
+	}
+
+	/**
+	 * Return the repository cache group for data-management operations.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_data_management';
+	}
+
+	/**
+	 * No cached policies for data-management operations.
+	 *
+	 * This repository drives export/import/wipe/repair over arbitrary validated
+	 * plugin tables (SELECT *, SHOW CREATE TABLE, TRUNCATE, INSERT, DDL). Every
+	 * operation must run against live data, and the destructive ones must never be
+	 * served from cache, so nothing here is cached. It also operates on fully
+	 * prefixed table names supplied by the service layer, so no table() resolution
+	 * is required. The trait is adopted for construction standardization only.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array();
 	}
 }

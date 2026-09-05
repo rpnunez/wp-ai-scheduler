@@ -12,6 +12,7 @@ class Test_AIPS_Sources extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		$this->repo = new AIPS_Sources_Repository();
 
 		// Ensure the table exists (created via dbDelta during install).
@@ -33,6 +34,7 @@ class Test_AIPS_Sources extends WP_UnitTestCase {
 			delete_option( $key );
 		}
 
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

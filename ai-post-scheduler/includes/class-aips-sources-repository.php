@@ -12,6 +12,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Sources_Repository
  *
@@ -19,6 +27,8 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to the aips_sources table.
  */
 class AIPS_Sources_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var string The sources table name (with prefix).
@@ -41,8 +51,8 @@ class AIPS_Sources_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb         = $wpdb;
-		$this->table_name   = $wpdb->prefix . 'aips_sources';
-		$this->groups_table = $wpdb->prefix . 'aips_source_group_terms';
+		$this->table_name   = $this->table('aips_sources');
+		$this->groups_table = $this->table('aips_source_group_terms');
 	}
 
 	/**
@@ -52,9 +62,17 @@ class AIPS_Sources_Repository {
 	 * @return array Array of source objects.
 	 */
 	public function get_all($active_only = false) {
-		$where = $active_only ? 'WHERE is_active = 1' : '';
-		return $this->wpdb->get_results(
-			"SELECT * FROM {$this->table_name} {$where} ORDER BY created_at ASC"
+		return $this->cache_read(
+			'sources.get_all',
+			array(
+				'active_only' => (bool) $active_only,
+			),
+			function() use ( $active_only ) {
+				$where = $active_only ? 'WHERE is_active = 1' : '';
+				return $this->wpdb->get_results(
+					"SELECT * FROM {$this->table_name} {$where} ORDER BY created_at ASC"
+				);
+			}
 		);
 	}
 
@@ -65,11 +83,19 @@ class AIPS_Sources_Repository {
 	 * @return object|null Source object or null if not found.
 	 */
 	public function get_by_id($id) {
-		return $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE id = %d",
-				$id
-			)
+		return $this->cache_read(
+			'sources.get_by_id',
+			array(
+				'id' => (int) $id,
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE id = %d",
+						$id
+					)
+				);
+			}
 		);
 	}
 
@@ -81,13 +107,19 @@ class AIPS_Sources_Repository {
 	 * @return string[] Array of URL strings.
 	 */
 	public function get_active_urls() {
-		$rows = $this->wpdb->get_results(
-			"SELECT url FROM {$this->table_name} WHERE is_active = 1 ORDER BY created_at ASC"
-		);
+		return $this->cache_read(
+			'sources.get_active_urls',
+			array(),
+			function() {
+				$rows = $this->wpdb->get_results(
+					"SELECT url FROM {$this->table_name} WHERE is_active = 1 ORDER BY created_at ASC"
+				);
 
-		return array_map(function ($row) {
-			return $row->url;
-		}, $rows);
+				return array_map(function ($row) {
+					return $row->url;
+				}, $rows);
+			}
+		);
 	}
 
 	/**
@@ -118,6 +150,10 @@ class AIPS_Sources_Repository {
 		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+
+		if ($result) {
+			$this->invalidate_sources_cache($this->wpdb->insert_id, 'source_created');
+		}
 
 		return $result ? $this->wpdb->insert_id : false;
 	}
@@ -160,13 +196,19 @@ class AIPS_Sources_Repository {
 		$update_data['updated_at'] = AIPS_DateTime::now()->timestamp();
 		$format[]                  = '%d';
 
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table_name,
 			$update_data,
 			array('id' => $id),
 			$format,
 			array('%d')
-		) !== false;
+		);
+
+		if ($result !== false) {
+			$this->invalidate_sources_cache($id, 'source_updated');
+		}
+
+		return $result !== false;
 	}
 
 	/**
@@ -176,11 +218,17 @@ class AIPS_Sources_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function delete($id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table_name,
 			array('id' => $id),
 			array('%d')
-		) !== false;
+		);
+
+		if ($result !== false) {
+			$this->invalidate_sources_cache($id, 'source_deleted');
+		}
+
+		return $result !== false;
 	}
 
 	/**
@@ -237,16 +285,24 @@ class AIPS_Sources_Repository {
 	 * @return int[] Array of term IDs.
 	 */
 	public function get_source_term_ids($source_id) {
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT term_id FROM {$this->groups_table} WHERE source_id = %d",
-				$source_id
-			)
-		);
+		return $this->cache_read(
+			'sources.get_source_term_ids',
+			array(
+				'source_id' => (int) $source_id,
+			),
+			function() use ( $source_id ) {
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT term_id FROM {$this->groups_table} WHERE source_id = %d",
+						$source_id
+					)
+				);
 
-		return array_map(function ($row) {
-			return (int) $row->term_id;
-		}, $rows);
+				return array_map(function ($row) {
+					return (int) $row->term_id;
+				}, $rows);
+			}
+		);
 	}
 
 	/**
@@ -261,27 +317,37 @@ class AIPS_Sources_Repository {
 		}
 
 		$source_ids   = array_map('intval', $source_ids);
-		$placeholders = implode(',', array_fill(0, count($source_ids), '%d'));
+		sort($source_ids); // Order-independent result map; sort so equal sets share a cache key.
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT source_id, term_id FROM {$this->groups_table} WHERE source_id IN ($placeholders)",
-				...$source_ids
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $this->cache_read(
+			'sources.get_term_ids_for_sources',
+			array(
+				'source_ids' => array_values($source_ids),
+			),
+			function() use ( $source_ids ) {
+				$placeholders = implode(',', array_fill(0, count($source_ids), '%d'));
 
-		$map = array();
-		foreach ($rows as $row) {
-			$sid = (int) $row->source_id;
-			if (!isset($map[$sid])) {
-				$map[$sid] = array();
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT source_id, term_id FROM {$this->groups_table} WHERE source_id IN ($placeholders)",
+						...$source_ids
+					)
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+				$map = array();
+				foreach ($rows as $row) {
+					$sid = (int) $row->source_id;
+					if (!isset($map[$sid])) {
+						$map[$sid] = array();
+					}
+					$map[$sid][] = (int) $row->term_id;
+				}
+				return $map;
 			}
-			$map[$sid][] = (int) $row->term_id;
-		}
-		return $map;
+		);
 	}
 
 	/**
@@ -311,6 +377,8 @@ class AIPS_Sources_Repository {
 				);
 			}
 		}
+
+		$this->invalidate_sources_cache($source_id, 'source_terms_updated');
 	}
 
 	/**
@@ -325,25 +393,37 @@ class AIPS_Sources_Repository {
 			return array();
 		}
 
-		$placeholders = implode(',', array_fill(0, count($term_ids), '%d'));
-		$active_clause = $active_only ? 'AND s.is_active = 1' : '';
+		$term_ids = array_map('intval', $term_ids);
+		sort($term_ids); // Order-independent result; sort so equal sets share a cache key.
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$query = $this->wpdb->prepare(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			"SELECT DISTINCT s.url FROM {$this->table_name} s
-			INNER JOIN {$this->groups_table} sgt ON sgt.source_id = s.id
-			WHERE sgt.term_id IN ($placeholders) $active_clause
-			ORDER BY s.created_at ASC",
-			...$term_ids
+		return $this->cache_read(
+			'sources.get_urls_by_group_term_ids',
+			array(
+				'term_ids'    => array_values($term_ids),
+				'active_only' => (bool) $active_only,
+			),
+			function() use ( $term_ids, $active_only ) {
+				$placeholders = implode(',', array_fill(0, count($term_ids), '%d'));
+				$active_clause = $active_only ? 'AND s.is_active = 1' : '';
+
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$query = $this->wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT DISTINCT s.url FROM {$this->table_name} s
+					INNER JOIN {$this->groups_table} sgt ON sgt.source_id = s.id
+					WHERE sgt.term_id IN ($placeholders) $active_clause
+					ORDER BY s.created_at ASC",
+					...$term_ids
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+				$rows = $this->wpdb->get_results($query);
+
+				return array_map(function ($row) {
+					return $row->url;
+				}, $rows);
+			}
 		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-
-		$rows = $this->wpdb->get_results($query);
-
-		return array_map(function ($row) {
-			return $row->url;
-		}, $rows);
 	}
 
 	/**
@@ -358,6 +438,8 @@ class AIPS_Sources_Repository {
 			array('source_id' => $source_id),
 			array('%d')
 		);
+
+		$this->invalidate_sources_cache($source_id, 'source_terms_deleted');
 	}
 
 	// -------------------------------------------------------------------------
@@ -426,13 +508,19 @@ class AIPS_Sources_Repository {
 		$data['updated_at'] = AIPS_DateTime::now()->timestamp();
 		$format[]           = '%d';
 
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table_name,
 			$data,
 			array( 'id' => absint( $id ) ),
 			$format,
 			array( '%d' )
-		) !== false;
+		);
+
+		if ( $result !== false ) {
+			$this->invalidate_sources_cache( $id, 'source_fetch_schedule_updated' );
+		}
+
+		return $result !== false;
 	}
 
 	/**
@@ -484,6 +572,8 @@ class AIPS_Sources_Repository {
 			$format,
 			array( '%d' )
 		);
+
+		$this->invalidate_sources_cache( $id, 'source_updated_after_fetch' );
 	}
 
 	/**
@@ -501,20 +591,121 @@ class AIPS_Sources_Repository {
 			return array();
 		}
 
-		$placeholders  = implode( ',', array_fill( 0, count( $term_ids ), '%d' ) );
-		$active_clause = $active_only ? 'AND s.is_active = 1' : '';
+		$term_ids = array_map( 'intval', $term_ids );
+		sort( $term_ids ); // Order-independent result; sort so equal sets share a cache key.
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$query = $this->wpdb->prepare(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			"SELECT DISTINCT s.* FROM {$this->table_name} s
-			INNER JOIN {$this->groups_table} sgt ON sgt.source_id = s.id
-			WHERE sgt.term_id IN ($placeholders) $active_clause
-			ORDER BY s.created_at ASC",
-			...$term_ids
+		return $this->cache_read(
+			'sources.get_by_group_term_ids',
+			array(
+				'term_ids'    => array_values( $term_ids ),
+				'active_only' => (bool) $active_only,
+			),
+			function() use ( $term_ids, $active_only ) {
+				$placeholders  = implode( ',', array_fill( 0, count( $term_ids ), '%d' ) );
+				$active_clause = $active_only ? 'AND s.is_active = 1' : '';
+
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$query = $this->wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT DISTINCT s.* FROM {$this->table_name} s
+					INNER JOIN {$this->groups_table} sgt ON sgt.source_id = s.id
+					WHERE sgt.term_id IN ($placeholders) $active_clause
+					ORDER BY s.created_at ASC",
+					...$term_ids
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+				return $this->wpdb->get_results( $query );
+			}
 		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+	}
 
-		return $this->wpdb->get_results( $query );
+	/**
+	 * Return the repository cache group for source reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_sources';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for source reads.
+	 *
+	 * Every cached read carries the broad `sources` tag, so bumping it on any
+	 * write (to either aips_sources or aips_source_group_terms) invalidates all
+	 * source read caches. The cron-driven fetch-due query and the url_exists dedup
+	 * gate are intentionally left uncached.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'sources.get_all' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources' ),
+				'description' => 'Cache source list reads (all / active-only).',
+			),
+			'sources.get_by_id' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources', 'source:{id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single-source reads by ID.',
+			),
+			'sources.get_active_urls' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources' ),
+				'description' => 'Cache the active source URL list used by prompt building.',
+			),
+			'sources.get_source_term_ids' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources', 'source:{source_id}' ),
+				'description' => 'Cache the source-group term IDs for a single source.',
+			),
+			'sources.get_term_ids_for_sources' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources' ),
+				'description' => 'Cache bulk source-group term ID reads.',
+			),
+			'sources.get_urls_by_group_term_ids' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources' ),
+				'description' => 'Cache group-filtered active URL reads used by prompt building.',
+			),
+			'sources.get_by_group_term_ids' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources' ),
+				'description' => 'Cache group-filtered source row reads.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate source read caches after a write.
+	 *
+	 * Bumps the broad `sources` tag (present on every cached read) plus an
+	 * optional id-scoped tag when a single source is affected. Covers writes to
+	 * both aips_sources and aips_source_group_terms.
+	 *
+	 * @param int    $source_id Source ID, or 0 when unknown/bulk.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_sources_cache($source_id, $reason) {
+		$tags = array( 'sources' );
+
+		$source_id = absint($source_id);
+		if ($source_id > 0) {
+			$tags[] = 'source:' . $source_id;
+		}
+
+		$this->invalidate_cache_tags($tags, (string) $reason);
 	}
 }

@@ -15,8 +15,13 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 class AIPS_Campaigns_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var self|null
@@ -84,11 +89,11 @@ class AIPS_Campaigns_Repository {
 		global $wpdb;
 
 		$this->wpdb = $wpdb;
-		$this->campaigns_table = $wpdb->prefix . 'aips_campaigns';
-		$this->templates_table = $wpdb->prefix . 'aips_templates';
-		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
-		$this->history_table = $wpdb->prefix . 'aips_history';
-		$this->history_log_table = $wpdb->prefix . 'aips_history_log';
+		$this->campaigns_table = $this->table('aips_campaigns');
+		$this->templates_table = $this->table('aips_templates');
+		$this->schedule_table = $this->table('aips_schedule');
+		$this->history_table = $this->table('aips_history');
+		$this->history_log_table = $this->table('aips_history_log');
 		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
 		$this->schedule_repository = $schedule_repository ?: AIPS_Schedule_Repository::instance();
 	}

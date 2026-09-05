@@ -14,6 +14,7 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		
 		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
 		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
@@ -29,6 +30,7 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	}
 	
 	public function tearDown(): void {
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

@@ -12,12 +12,22 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Taxonomy_Repository
  *
  * Repository for managing AI-generated taxonomy items in the database.
  */
 class AIPS_Taxonomy_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var wpdb WordPress database object
@@ -35,7 +45,7 @@ class AIPS_Taxonomy_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_taxonomy';
+		$this->table_name = $this->table('aips_taxonomy');
 	}
 
 	/**
@@ -45,11 +55,19 @@ class AIPS_Taxonomy_Repository {
 	 * @return array Array of taxonomy items.
 	 */
 	public function get_by_type($taxonomy_type) {
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE taxonomy_type = %s ORDER BY created_at DESC",
-				$taxonomy_type
-			)
+		return $this->cache_read(
+			'taxonomy.get_by_type',
+			array(
+				'taxonomy_type' => (string) $taxonomy_type,
+			),
+			function() use ( $taxonomy_type ) {
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE taxonomy_type = %s ORDER BY created_at DESC",
+						$taxonomy_type
+					)
+				);
+			}
 		);
 	}
 
@@ -61,12 +79,21 @@ class AIPS_Taxonomy_Repository {
 	 * @return array Array of taxonomy items.
 	 */
 	public function get_by_status_and_type($status, $taxonomy_type) {
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE status = %s AND taxonomy_type = %s ORDER BY created_at DESC",
-				$status,
-				$taxonomy_type
-			)
+		return $this->cache_read(
+			'taxonomy.get_by_status_and_type',
+			array(
+				'status'        => (string) $status,
+				'taxonomy_type' => (string) $taxonomy_type,
+			),
+			function() use ( $status, $taxonomy_type ) {
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE status = %s AND taxonomy_type = %s ORDER BY created_at DESC",
+						$status,
+						$taxonomy_type
+					)
+				);
+			}
 		);
 	}
 
@@ -77,11 +104,19 @@ class AIPS_Taxonomy_Repository {
 	 * @return object|null Taxonomy item object or null.
 	 */
 	public function get_by_id($id) {
-		return $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE id = %d",
-				$id
-			)
+		return $this->cache_read(
+			'taxonomy.get_by_id',
+			array(
+				'id' => (int) $id,
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE id = %d",
+						$id
+					)
+				);
+			}
 		);
 	}
 
@@ -120,6 +155,10 @@ class AIPS_Taxonomy_Repository {
 			$format
 		);
 
+		if ($result) {
+			$this->invalidate_taxonomy_cache($this->wpdb->insert_id, 'taxonomy_inserted');
+		}
+
 		return $result ? $this->wpdb->insert_id : false;
 	}
 
@@ -135,13 +174,19 @@ class AIPS_Taxonomy_Repository {
 			$data['updated_at'] = AIPS_DateTime::now()->timestamp();
 		}
 
-		return (bool) $this->wpdb->update(
+		$result = (bool) $this->wpdb->update(
 			$this->table_name,
 			$data,
 			array('id' => $id),
 			null,
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_taxonomy_cache($id, 'taxonomy_updated');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -165,11 +210,17 @@ class AIPS_Taxonomy_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function delete($id) {
-		return (bool) $this->wpdb->delete(
+		$result = (bool) $this->wpdb->delete(
 			$this->table_name,
 			array('id' => $id),
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_taxonomy_cache($id, 'taxonomy_deleted');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -178,6 +229,10 @@ class AIPS_Taxonomy_Repository {
 	 * @return array Associative array with counts.
 	 */
 	public function get_status_counts() {
+		return $this->cache_read(
+			'taxonomy.get_status_counts',
+			array(),
+			function() {
 		$results = $this->wpdb->get_results(
 			"SELECT taxonomy_type, status, COUNT(*) as count
 			FROM {$this->table_name}
@@ -214,6 +269,8 @@ class AIPS_Taxonomy_Repository {
 		}
 
 		return $counts;
+			}
+		);
 	}
 
 	/**
@@ -224,18 +281,101 @@ class AIPS_Taxonomy_Repository {
 	 * @return array Array of matching taxonomy items.
 	 */
 	public function search($search_term, $taxonomy_type = '') {
-		$sql = "SELECT * FROM {$this->table_name} WHERE name LIKE %s";
-		$params = array('%' . $this->wpdb->esc_like($search_term) . '%');
+		return $this->cache_read(
+			'taxonomy.search',
+			array(
+				'search_term'   => (string) $search_term,
+				'taxonomy_type' => (string) $taxonomy_type,
+			),
+			function() use ( $search_term, $taxonomy_type ) {
+				$sql = "SELECT * FROM {$this->table_name} WHERE name LIKE %s";
+				$params = array('%' . $this->wpdb->esc_like($search_term) . '%');
 
-		if (!empty($taxonomy_type)) {
-			$sql .= " AND taxonomy_type = %s";
-			$params[] = $taxonomy_type;
+				if (!empty($taxonomy_type)) {
+					$sql .= " AND taxonomy_type = %s";
+					$params[] = $taxonomy_type;
+				}
+
+				$sql .= " ORDER BY created_at DESC";
+
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare($sql, $params)
+				);
+			}
+		);
+	}
+
+	/**
+	 * Return the repository cache group for taxonomy reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_taxonomy';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for taxonomy reads.
+	 *
+	 * All reads are over the taxonomy table alone, so every cached read carries the
+	 * broad `taxonomy` tag that every write invalidates.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'taxonomy.get_by_type' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'taxonomy' ),
+				'description' => 'Cache taxonomy reads by type.',
+			),
+			'taxonomy.get_by_status_and_type' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'taxonomy' ),
+				'description' => 'Cache taxonomy reads by status + type.',
+			),
+			'taxonomy.get_by_id' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'taxonomy', 'taxonomy:{id}' ),
+				'cache_null'  => false,
+				'description' => 'Cache single taxonomy item reads by ID.',
+			),
+			'taxonomy.get_status_counts' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'taxonomy' ),
+				'description' => 'Cache taxonomy status-count rollups.',
+			),
+			'taxonomy.search' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'taxonomy' ),
+				'description' => 'Cache taxonomy name search reads.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate taxonomy read caches after a write.
+	 *
+	 * Bumps the broad `taxonomy` tag (present on every cached read) plus an
+	 * optional id-scoped tag when a single item is affected.
+	 *
+	 * @param int    $id Taxonomy item ID, or 0 when unknown.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_taxonomy_cache($id, $reason) {
+		$tags = array( 'taxonomy' );
+
+		$id = absint($id);
+		if ($id > 0) {
+			$tags[] = 'taxonomy:' . $id;
 		}
 
-		$sql .= " ORDER BY created_at DESC";
-
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare($sql, $params)
-		);
+		$this->invalidate_cache_tags($tags, (string) $reason);
 	}
 }
