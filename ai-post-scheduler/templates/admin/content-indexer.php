@@ -460,6 +460,17 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 								</td>
 							</tr>
 							<tr>
+								<th scope="row"><?php esc_html_e('Verbose History Logging', 'ai-post-scheduler'); ?></th>
+								<td>
+									<input type="hidden" name="verbose_history" value="false">
+									<label>
+										<input type="checkbox" name="verbose_history" value="true" <?php checked($settings['verbose_history']); ?>>
+										<?php esc_html_e('Record embedding request metadata, response previews, and relationship details in History.', 'ai-post-scheduler'); ?>
+									</label>
+									<p class="description"><?php esc_html_e('Leave disabled for large reindex runs to limit History log volume.', 'ai-post-scheduler'); ?></p>
+								</td>
+							</tr>
+							<tr>
 								<th scope="row"><?php esc_html_e('Related Posts Similarity Threshold', 'ai-post-scheduler'); ?></th>
 								<td>
 									<input type="number" step="0.05" min="0.40" max="0.95" name="similarity_threshold" value="<?php echo esc_attr($settings['similarity_threshold']); ?>" class="small-text">
