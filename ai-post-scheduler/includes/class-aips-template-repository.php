@@ -195,7 +195,7 @@ class AIPS_Template_Repository {
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 

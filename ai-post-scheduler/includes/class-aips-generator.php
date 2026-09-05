@@ -149,7 +149,7 @@ class AIPS_Generator {
             $options['request_type'] = $log_type;
         }
 
-		if (!isset($options['routing_policy']) && isset($this->current_routing_policy)) {
+		if (!isset($options['routing_policy']) && !empty($this->current_routing_policy)) {
 			$options['routing_policy'] = $this->current_routing_policy;
 		}
 
@@ -1117,6 +1117,7 @@ class AIPS_Generator {
 		// Generate and normalize the content.
 		$content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
 		if (is_wp_error($content)) {
+			$this->current_routing_policy = array();
 			return $content;
 		}
 

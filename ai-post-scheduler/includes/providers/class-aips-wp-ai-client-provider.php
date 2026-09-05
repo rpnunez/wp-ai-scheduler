@@ -310,7 +310,8 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 		if ($preferred_connector_id !== null && $preferred_connector_id !== '') {
 			$preferred_connector_id = sanitize_key($preferred_connector_id);
 			$available_connectors = $this->apply_connector_selection($this->get_active_ai_connectors());
-			if (!isset($available_connectors[$preferred_connector_id]) || !$this->is_connector_configured($available_connectors[$preferred_connector_id])) {
+			$preferred_connector = isset($available_connectors[$preferred_connector_id]) ? $available_connectors[$preferred_connector_id] : null;
+			if (!is_array($preferred_connector) || !$this->is_connector_configured($preferred_connector)) {
 				throw new Exception('connector_unavailable: ' . __('The template-selected AI connector is not active or configured.', 'ai-post-scheduler'));
 			}
 			if (!$this->is_connector_cooling_down($preferred_connector_id)) {

@@ -18,6 +18,17 @@ if (!defined('ABSPATH')) {
 class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
 
     /**
+     * Errors no other model in the preference list can satisfy either, so trying
+     * the next one only burns another provider call. Mirrors the WordPress AI
+     * Client adapter's failover policy.
+     */
+    private const NON_FALLBACK_CODES = array(
+        'content_policy_violation',
+        'context_length_exceeded',
+        'invalid_request_error',
+    );
+
+    /**
      * @var mixed Cached AI Engine instance (the global $mwai).
      */
     private $ai_engine = null;
@@ -118,6 +129,21 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
     }
 
     /**
+     * Whether a failure should be retried against the next ordered model.
+     *
+     * @param Exception $exception Provider exception.
+     * @param array     $params    Request parameters.
+     * @return bool
+     */
+    private function should_try_next_model(Exception $exception, array $params): bool {
+        if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+            return false;
+        }
+
+        return !in_array($this->extract_error_code($exception->getMessage()), self::NON_FALLBACK_CODES, true);
+    }
+
+    /**
      * Return the ordered model list for a request. Meow accepts one model per
      * query, so the adapter performs fallback attempts at this boundary.
      */
@@ -196,7 +222,7 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
                 return (string) $ai->simpleTextQuery($prompt, $this->map_params($attempt));
             } catch (Exception $exception) {
                 $last_exception = $exception;
-                if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+                if (!$this->should_try_next_model($exception, $params)) {
                     throw $exception;
                 }
             }
@@ -254,7 +280,7 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
                 return is_array($result) ? $result : null;
             } catch (Exception $exception) {
                 $last_exception = $exception;
-                if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+                if (!$this->should_try_next_model($exception, $params)) {
                     throw $exception;
                 }
             }
@@ -290,7 +316,7 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
                 break;
             } catch (Exception $exception) {
                 $last_exception = $exception;
-                if (isset($params['routing_fallback_enabled']) && !$params['routing_fallback_enabled']) {
+                if (!$this->should_try_next_model($exception, $params)) {
                     throw $exception;
                 }
             }

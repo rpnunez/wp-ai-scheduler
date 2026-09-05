@@ -1149,7 +1149,7 @@ class AIPS_Settings_UI {
 	 */
 	public function sanitize_ai_routing_profiles($value) {
 		if (is_string($value)) {
-			$value = json_decode(wp_unslash($value), true);
+			$value = json_decode($value, true);
 		}
 
 		if (!is_array($value)) {
@@ -1190,7 +1190,7 @@ class AIPS_Settings_UI {
 	/** Sanitize optional model pricing JSON. */
 	public function sanitize_ai_model_pricing($value) {
 		if (is_string($value)) {
-			$value = json_decode(wp_unslash($value), true);
+			$value = json_decode($value, true);
 		}
 		if (!is_array($value)) {
 			return array();

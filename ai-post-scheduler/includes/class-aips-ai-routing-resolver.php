@@ -43,10 +43,6 @@ class AIPS_AI_Routing_Resolver {
 			? sanitize_key($profile['connector'])
 			: (!empty($profile['provider']) && !in_array($profile['provider'], array('meow', 'wp_ai_client'), true) ? sanitize_key($profile['provider']) : '');
 
-		if ($connector === '' && !empty($ai_config['connector'])) {
-			$connector = sanitize_key($ai_config['connector']);
-		}
-
 		$result = array(
 			'connector' => $connector,
 			'model' => $model,
@@ -54,15 +50,22 @@ class AIPS_AI_Routing_Resolver {
 			'source' => $model !== '' ? ($overrides !== array() ? 'template_override_or_profile' : 'profile_or_global') : 'provider_default',
 		);
 
-		foreach (array('connector', 'model') as $key) {
-			if (isset($explicit[$key]) && (string) $explicit[$key] !== '') {
-				$result[$key] = sanitize_text_field((string) $explicit[$key]);
-				$result['source'] = 'explicit_request';
-			}
-		}
 		if (!empty($overrides['connector'])) {
 			$result['connector'] = sanitize_key((string) $overrides['connector']);
-			$result['source'] = 'explicit_request';
+			$result['source'] = 'template_override_or_profile';
+		}
+
+		// Explicit call options stay authoritative and are therefore applied last.
+		// 'connector_id' is the canonical key used by AIPS_AI_Service.
+		$explicit_keys = array('connector' => array('connector', 'connector_id'), 'model' => array('model'));
+		foreach ($explicit_keys as $result_key => $option_keys) {
+			foreach ($option_keys as $option_key) {
+				if (isset($explicit[$option_key]) && (string) $explicit[$option_key] !== '') {
+					$result[$result_key] = sanitize_text_field((string) $explicit[$option_key]);
+					$result['source'] = 'explicit_request';
+					break;
+				}
+			}
 		}
 
 		return $result;
@@ -78,10 +81,17 @@ class AIPS_AI_Routing_Resolver {
 		$profiles = is_array($stored) ? $stored : array();
 
 		if (!isset($profiles['site_default'])) {
-			$profiles['site_default'] = array(
-				'label' => __('Site Default', 'ai-post-scheduler'),
-				'provider' => '',
-				'fallback_enabled' => true,
+			// site_default must come first: the template form's profile <select>
+			// falls back to its first option after a native form reset.
+			$profiles = array_merge(
+				array(
+					'site_default' => array(
+						'label' => __('Site Default', 'ai-post-scheduler'),
+						'provider' => '',
+						'fallback_enabled' => true,
+					),
+				),
+				$profiles
 			);
 		}
 
@@ -89,8 +99,12 @@ class AIPS_AI_Routing_Resolver {
 	}
 
 	private static function value_for_request(array $source, $request_type) {
+		// Profiles use '<type>_model'; AIPS_Config::get_ai_config() uses 'model_<type>'
+		// (and 'image_model'). Both shapes are accepted so the same lookup can read
+		// either source.
 		$keys = array(
 			$request_type . '_model',
+			'model_' . $request_type,
 			$request_type === 'image' ? 'image_model' : 'model',
 		);
 

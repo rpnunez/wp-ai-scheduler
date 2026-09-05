@@ -501,7 +501,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 			$params['routing_fallback_enabled'] = !empty($resolved['fallback_enabled']);
 		}
 
-		if (!$explicit_image_model && !isset($params['model']) && !empty($ai_config['image_model'])) {
+		if (!$explicit_image_model && empty($params['model']) && !empty($ai_config['image_model'])) {
 			$params['model'] = $ai_config['image_model'];
 		}
 
@@ -642,6 +642,9 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
     private function prepare_options($options, $prompt = '') {
         $ai_config = AIPS_Config::get_instance()->get_ai_config();
 		$routing_policy = isset($options['routing_policy']) && is_array($options['routing_policy']) ? $options['routing_policy'] : array();
+		// Only genuinely caller-supplied options are "explicit" for routing purposes;
+		// the site defaults merged in below must not masquerade as an explicit request.
+		$caller_options = is_array($options) ? $options : array();
 
         $default_options = array(
             'model'       => $ai_config['model'],
@@ -671,7 +674,7 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
         }
 
 		if (!$explicit_model && !empty($routing_policy)) {
-			$resolved = AIPS_AI_Routing_Resolver::resolve($routing_policy, $request_type, $options);
+			$resolved = AIPS_AI_Routing_Resolver::resolve($routing_policy, $request_type, $caller_options);
 			if (!empty($resolved['model'])) {
 				$options['model'] = $resolved['model'];
 			}
