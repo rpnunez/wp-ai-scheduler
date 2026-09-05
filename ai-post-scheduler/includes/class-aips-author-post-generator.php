@@ -479,6 +479,9 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				))
 			);
 
+			// Always record author's last run timestamp on successful generation.
+			$this->authors_repository->update_post_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
+
 			// The activity/history record (including the canonical
 			// author_post_generation row the schedule feed reads) is emitted by
 			// AIPS_Generator on its post_generation container.
@@ -555,11 +558,10 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		$ran_at = AIPS_DateTime::now()->timestamp();
+		$base_run = !empty($author->post_generation_next_run) ? (int) $author->post_generation_next_run : AIPS_DateTime::now()->timestamp();
 
-		// Advance from the actual execution time so weekly/daily schedules do
-		// not appear to "run today, then run again in only a few days".
-		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $ran_at);
+		// Advance from the scheduled slot to preserve phase and time-of-day.
+		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $base_run);
 		
 		$this->authors_repository->update_post_generation_schedule($author->id, $next_run);
 		

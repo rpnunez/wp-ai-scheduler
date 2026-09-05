@@ -165,15 +165,12 @@ class AIPS_Template_Processor {
      */
     public function parse_ai_variables_response($response, $ai_variables) {
         $values = array();
-        
-        // Clean up the response - remove any markdown code block formatting
-        $response = trim($response);
-        $response = preg_replace('/^```(?:json)?\s*/i', '', $response);
-        $response = preg_replace('/\s*```$/', '', $response);
-        $response = trim($response);
-        
-        // Try to parse as JSON
-        $decoded = json_decode($response, true);
+
+        $decoded = AIPS_JSON_Extractor::decode_json_response($response);
+
+        if (is_wp_error($decoded)) {
+            return $values;
+        }
         
         if (is_array($decoded)) {
             foreach ($ai_variables as $var_name) {

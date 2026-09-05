@@ -74,7 +74,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-author-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                     </div>
                 </div>
 
@@ -290,10 +290,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Found', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('No authors match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
-                            <button type="button" class="aips-btn aips-btn-primary aips-clear-author-search-btn">
-                                <span class="dashicons dashicons-dismiss"></span>
-                                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-                            </button>
+                            <button type="button" class="aips-btn aips-btn-ghost aips-clear-author-search-btn" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                         </div>
                     </div>
                 </div>
@@ -336,9 +333,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-queue-search"><?php esc_html_e('Search Queue Topics:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-queue-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search queue topics...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;">
-                            <?php esc_html_e('Clear', 'ai-post-scheduler'); ?>
-                        </button>
+                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                     </div>
                 </div>
 
@@ -727,7 +722,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-topics-table">
     <thead>
         <tr>
-            <th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+            <th class="check-column"><input type="checkbox" class="aips-select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
             <th class="column-topic">{{topicDetails}}</th>
             <th class="column-generated">{{generatedAtLabel}}</th>
             <th class="column-actions">{{actionsLabel}}</th>
@@ -741,7 +736,7 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-topic-row">
 <tr data-topic-id="{{id}}">
-    <th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+    <th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></th>
     <td class="topic-title-cell column-topic">
         <div class="aips-topic-row">
             {{expandBtn}}
@@ -812,7 +807,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-feedback-table">
     <thead>
         <tr>
-            <th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+            <th class="check-column"><input type="checkbox" class="aips-select-all-feedback" aria-label="<?php esc_attr_e('Select all feedback', 'ai-post-scheduler'); ?>"></th>
             <th class="column-topic">{{topicLabel}}</th>
             <th class="column-action">{{actionLabel}}</th>
             <th class="column-reason">{{reasonLabel}}</th>
@@ -828,7 +823,7 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-feedback-row">
 <tr>
-    <th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}"></th>
+    <th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select feedback', 'ai-post-scheduler'); ?>"></th>
     <td>{{topicTitle}}</td>
     <td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
     <td>{{reason}}</td>
@@ -896,7 +891,7 @@ $site_ctx = AIPS_Site_Context::get();
 <table class="aips-table aips-queue-table">
     <thead>
         <tr>
-            <th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>
+            <th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all" aria-label="<?php esc_attr_e('Select all queued topics', 'ai-post-scheduler'); ?>"></th>
             <th scope="col">{{titleLabel}}</th>
             <th scope="col">{{authorLabel}}</th>
             <th scope="col">{{fieldLabel}}</th>
@@ -911,7 +906,7 @@ $site_ctx = AIPS_Site_Context::get();
 
 <script type="text/html" id="aips-tmpl-queue-row">
 <tr>
-    <td><input type="checkbox" class="aips-queue-topic-checkbox" value="{{id}}"></td>
+    <td><input type="checkbox" class="aips-queue-topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select queued topic', 'ai-post-scheduler'); ?>"></td>
     <td><span class="cell-primary">{{title}}</span></td>
     <td>{{author}}</td>
     <td>{{field}}</td>

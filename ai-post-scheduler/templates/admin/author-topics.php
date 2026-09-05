@@ -169,7 +169,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 
@@ -279,7 +279,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <table class="aips-table aips-topics-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
 			<th class="column-topic">{{topicDetails}}</th>
 			<th class="column-date">{{generatedAtLabel}}</th>
 			{{secondaryDateHeader}}
@@ -294,7 +294,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 <script type="text/html" id="aips-tmpl-topic-row">
 <tr data-topic-id="{{id}}">
-	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></th>
 	<td class="topic-title-cell column-topic">
 		<div class="aips-topic-row">
 			{{expandBtn}}
@@ -389,7 +389,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <table class="aips-table aips-feedback-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback" aria-label="<?php esc_attr_e('Select all feedback', 'ai-post-scheduler'); ?>"></th>
 			<th class="column-topic">{{topicLabel}}</th>
 			<th class="column-action">{{actionLabel}}</th>
 			<th class="column-reason">{{reasonLabel}}</th>
@@ -405,7 +405,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 <script type="text/html" id="aips-tmpl-feedback-row">
 <tr>
-	<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}"></th>
+	<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select feedback', 'ai-post-scheduler'); ?>"></th>
 	<td>{{topicTitle}}</td>
 	<td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
 	<td>{{reason}}</td>
