@@ -171,6 +171,78 @@ class Test_AIPS_Batch_Queue_Service extends WP_UnitTestCase {
 		$this->assertCount(5, $events, 'Expected 5 batch events for 10 posts with default config.');
 	}
 
+	/** A resumed dispatch offsets start_index and reports the original total. */
+	public function test_dispatch_with_resume_options_offsets_indexes_and_total() {
+		$schedule_id = 4242;
+
+		// Resuming a 30-post batch that already completed 12.
+		$this->service->dispatch($schedule_id, 18, time(), 'resume-corr', array(
+			'index_offset'   => 12,
+			'total_override' => 30,
+		));
+
+		$scheduled = _get_cron_array();
+		$events    = array();
+
+		foreach ($scheduled as $ts => $hooks) {
+			if (!isset($hooks[AIPS_Batch_Queue_Service::HOOK])) {
+				continue;
+			}
+			foreach ($hooks[AIPS_Batch_Queue_Service::HOOK] as $job) {
+				if ($job['args'][0] === $schedule_id) {
+					$events[] = $job['args'];
+				}
+			}
+		}
+
+		$this->assertNotEmpty($events, 'Expected resumed batch events to be scheduled.');
+
+		$start_indexes = array();
+		$sizes         = 0;
+
+		foreach ($events as $args) {
+			$start_indexes[] = $args[1];
+			$sizes          += $args[2];
+			// Every slice must report the batch's original total, not the remainder.
+			$this->assertSame(30, $args[3], 'Resumed slice reported the remaining count as the total.');
+		}
+
+		sort($start_indexes);
+
+		// The first resumed slice picks up exactly where the interrupted run stopped.
+		$this->assertSame(12, $start_indexes[0]);
+		// And the slices together cover only the remaining posts.
+		$this->assertSame(18, $sizes);
+		$this->assertLessThan(30, max($start_indexes) + 1);
+	}
+
+	/** clear_pending_slices removes only the target schedule's queued slices. */
+	public function test_clear_pending_slices_only_clears_the_given_schedule() {
+		$keep_id  = 7001;
+		$clear_id = 7002;
+
+		$this->service->dispatch($keep_id, 10, time(), 'keep');
+		$this->service->dispatch($clear_id, 10, time(), 'clear');
+
+		$cleared = $this->service->clear_pending_slices($clear_id);
+
+		$this->assertGreaterThan(0, $cleared);
+
+		$remaining = array();
+
+		foreach (_get_cron_array() as $hooks) {
+			if (!isset($hooks[AIPS_Batch_Queue_Service::HOOK])) {
+				continue;
+			}
+			foreach ($hooks[AIPS_Batch_Queue_Service::HOOK] as $job) {
+				$remaining[] = (int) $job['args'][0];
+			}
+		}
+
+		$this->assertNotContains($clear_id, $remaining, 'Target schedule still has queued slices.');
+		$this->assertContains($keep_id, $remaining, 'Unrelated schedule lost its queued slices.');
+	}
+
 	/** The first batch fires at or very near base_timestamp (no delay). */
 	public function test_dispatch_first_batch_fires_immediately() {
 		$schedule_id   = 99;

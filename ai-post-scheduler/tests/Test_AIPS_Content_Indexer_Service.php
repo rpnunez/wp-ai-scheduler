@@ -76,6 +76,160 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test a failed embedding write cannot be reported as a successful indexing run.
+	 */
+	public function test_index_post_returns_error_when_embedding_persistence_fails() {
+		$post_id = wp_insert_post( array(
+			'post_title'   => 'Alpha Article',
+			'post_content' => 'This is alpha content about WordPress AI scheduling.',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		$embeddings_repo = $this->createMock( AIPS_Embeddings_Repository::class );
+		$embeddings_repo->method( 'get_by_post_id' )->willReturn( null );
+		$embeddings_repo->method( 'upsert' )->willReturn( false );
+
+		$embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$embeddings_service->method( 'generate_embedding' )->willReturn( array( 1.0, 0.0 ) );
+
+		$history_container = new class {
+			public $record_errors = array();
+			public $failures = array();
+			public $successes = array();
+
+			public function record() {}
+
+			public function record_error($message, $details = array(), $error = null) {
+				$this->record_errors[] = compact('message', 'details', 'error');
+			}
+
+			public function complete_failure($message, $details = array()) {
+				$this->failures[] = compact('message', 'details');
+			}
+
+			public function complete_success($details = array()) {
+				$this->successes[] = $details;
+			}
+		};
+
+		$history_service = $this->createMock( AIPS_History_Service_Interface::class );
+		$history_service->method( 'create' )->willReturn( $history_container );
+
+		$service = new AIPS_Content_Indexer_Service(
+			$embeddings_repo,
+			$this->relationships_repo,
+			$embeddings_service,
+			$history_service
+		);
+
+		$result = $service->index_post( $post_id, false );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'embedding_persistence_failed', $result->get_error_code() );
+		$this->assertCount( 1, $history_container->failures );
+		$this->assertCount( 0, $history_container->successes );
+		$this->assertCount( 0, $history_container->record_errors );
+	}
+
+	/**
+	 * Test an embedding API failure produces one History error entry.
+	 */
+	public function test_index_post_records_embedding_failure_once() {
+		$post_id = wp_insert_post( array(
+			'post_title'   => 'Alpha Article',
+			'post_content' => 'This is alpha content about WordPress AI scheduling.',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		$embeddings_repo = $this->createMock( AIPS_Embeddings_Repository::class );
+		$embeddings_repo->method( 'get_by_post_id' )->willReturn( null );
+
+		$embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$embeddings_service->method( 'generate_embedding' )->willReturn(
+			new WP_Error( 'embedding_failed', 'Embedding request failed.' )
+		);
+
+		$history_container = new class {
+			public $record_errors = array();
+			public $failures = array();
+
+			public function record() {}
+
+			public function record_error($message, $details = array(), $error = null) {
+				$this->record_errors[] = compact('message', 'details', 'error');
+			}
+
+			public function complete_failure($message, $details = array()) {
+				$this->failures[] = compact('message', 'details');
+			}
+		};
+
+		$history_service = $this->createMock( AIPS_History_Service_Interface::class );
+		$history_service->method( 'create' )->willReturn( $history_container );
+
+		$service = new AIPS_Content_Indexer_Service(
+			$embeddings_repo,
+			$this->relationships_repo,
+			$embeddings_service,
+			$history_service
+		);
+
+		$result = $service->index_post( $post_id, false );
+
+		$this->assertWPError( $result );
+		$this->assertCount( 1, $history_container->failures );
+		$this->assertCount( 0, $history_container->record_errors );
+	}
+
+	/**
+	 * Test the final History entry does not claim relationships were recomputed when disabled.
+	 */
+	public function test_index_post_omits_relationship_metrics_when_computation_is_disabled() {
+		$post_id = wp_insert_post( array(
+			'post_title'   => 'Alpha Article',
+			'post_content' => 'This is alpha content about WordPress AI scheduling.',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		$embeddings_repo = $this->createMock( AIPS_Embeddings_Repository::class );
+		$embeddings_repo->method( 'get_by_post_id' )->willReturn( null );
+		$embeddings_repo->method( 'upsert' )->willReturn( 1 );
+
+		$embeddings_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$embeddings_service->method( 'generate_embedding' )->willReturn( array( 1.0, 0.0 ) );
+
+		$history_container = new class {
+			public $records = array();
+
+			public function record($type, $message, $input = null, $output = null, $context = array()) {
+				$this->records[] = compact('type', 'message', 'input', 'output', 'context');
+			}
+
+			public function complete_success() {}
+		};
+
+		$history_service = $this->createMock( AIPS_History_Service_Interface::class );
+		$history_service->method( 'create' )->willReturn( $history_container );
+
+		$service = new AIPS_Content_Indexer_Service(
+			$embeddings_repo,
+			$this->relationships_repo,
+			$embeddings_service,
+			$history_service
+		);
+
+		$result = $service->index_post( $post_id, false );
+		$final_record = end( $history_container->records );
+
+		$this->assertTrue( $result );
+		$this->assertArrayNotHasKey( 'relationships_saved', $final_record['input'] );
+		$this->assertStringNotContainsString( 'related', $final_record['message'] );
+	}
+
+	/**
 	 * Test continuous sync on_post_save.
 	 */
 	public function test_on_post_save_indexes_and_removes_on_trash() {

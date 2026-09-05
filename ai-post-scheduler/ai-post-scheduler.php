@@ -679,6 +679,12 @@ final class AI_Post_Scheduler {
             );
         }, 10, 5);
 
+        // Resume large batches that the "Prevent AI Generation" setting stopped
+        // part-way through. Queued once when that setting is switched back off.
+        add_action('aips_resume_terminated_batches', function() {
+            AIPS_Scheduler::instance()->resume_terminated_batches();
+        });
+
         // Lazy-resolve the author-topics scheduler only when its hook fires.
         add_action('aips_generate_author_topics', function() {
             AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
