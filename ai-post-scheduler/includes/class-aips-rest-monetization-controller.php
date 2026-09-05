@@ -341,6 +341,10 @@ class AIPS_REST_Monetization_Controller extends WP_REST_Controller {
 			}
 
 			$campaign_id = absint( $event['campaign_id'] ?? 0 );
+			if ( $campaign_id > 0 && ! $this->campaigns_repo->get_by_id( $campaign_id ) ) {
+				$campaign_id = 0;
+			}
+
 			$device_type = sanitize_key( $event['device_type'] ?? 'desktop' );
 			if ( ! in_array( $device_type, array( 'desktop', 'mobile', 'tablet' ), true ) ) {
 				$device_type = 'desktop';
