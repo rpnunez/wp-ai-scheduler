@@ -88,19 +88,11 @@
                 }
 
                 var d = resp.data;
-                var escapeHtml = function(value) {
-                    return String(value || '')
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/\"/g, '&quot;')
-                        .replace(/'/g, '&#39;');
-                };
-
                 var typeLabels = {
                     template_schedule: aipsScheduleL10n.typeTemplateLabel,
                     author_topic_gen: aipsScheduleL10n.typeAuthorTopicLabel,
-                    author_post_gen: aipsScheduleL10n.typeAuthorPostLabel
+                    author_post_gen: aipsScheduleL10n.typeAuthorPostLabel,
+                    author_workflow: aipsScheduleL10n.typeAuthorWorkflowLabel
                 };
 
                 var queueTotal = 0;
@@ -139,9 +131,9 @@
                 ];
 
                 var cardsHtml = cards.map(function(card) {
-                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + escapeHtml(card.tone) + '">' +
-                        '<div class="aips-schedule-status-card-label">' + escapeHtml(card.label) + '</div>' +
-                        '<div class="aips-schedule-status-card-value">' + escapeHtml(card.value) + '</div>' +
+                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + AIPS.Utilities.escapeHtml(card.tone) + '">' +
+                        '<div class="aips-schedule-status-card-label">' + AIPS.Utilities.escapeHtml(card.label) + '</div>' +
+                        '<div class="aips-schedule-status-card-value">' + AIPS.Utilities.escapeHtml(card.value) + '</div>' +
                     '</div>';
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
@@ -151,34 +143,36 @@
                 }).slice(0, 12).map(function(item) {
                     var typeLabel = typeLabels[item.type] || item.type || '';
                     var dt = new Date(item.timestamp * 1000);
+                    dt.setSeconds(0, 0);
                     return '<div class="aips-schedule-status-event">' +
                         '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
+                            '<span class="aips-badge aips-badge-neutral">' + AIPS.Utilities.escapeHtml(typeLabel) + '</span>' +
+                            '<span class="aips-schedule-status-event-time">' + AIPS.Utilities.escapeHtml(dt.toLocaleString()) + '</span>' +
                         '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
+                        '<div class="aips-schedule-status-event-title">' + AIPS.Utilities.escapeHtml(item.title || item.cron_hook || '') + '</div>' +
                     '</div>';
                 });
 
                 $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
+                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
                 );
 
                 var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
                     return a.timestamp - b.timestamp;
                 }).slice(0, 12).map(function(item) {
                     var dt = new Date(item.timestamp * 1000);
+                    dt.setSeconds(0, 0);
                     return '<div class="aips-schedule-status-event">' +
                         '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
+                            '<span class="aips-badge aips-badge-neutral">' + AIPS.Utilities.escapeHtml(item.hook || '') + '</span>' +
+                            '<span class="aips-schedule-status-event-time">' + AIPS.Utilities.escapeHtml(dt.toLocaleString()) + '</span>' +
                         '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
+                        '<div class="aips-schedule-status-event-title">' + AIPS.Utilities.escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
                     '</div>';
                 });
 
                 $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
+                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
                 );
 
                 var warnings = [];

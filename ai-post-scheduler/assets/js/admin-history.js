@@ -598,8 +598,14 @@
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
 			$(document).on('change', '.aips-history-group-cb', this.onGroupCheckboxChange.bind(this));
 
-			// Group toggle expand/collapse (button is a real <button>, so native Enter/Space works)
-			$(document).on('click', '.aips-history-group-header, .aips-history-group-toggle', this.toggleGroup.bind(this));
+			// Group toggle expand/collapse. Bound to the header row only: the
+			// toggle button lives inside that row, so a two-selector delegated
+			// binding fires once per matching ancestor on the propagation path
+			// — collapsing and instantly re-expanding, which made the chevron
+			// button look inert. toggleGroup already whitelists clicks that
+			// land on the button. (It is a real <button>, so Enter/Space still
+			// produce a click that bubbles to this handler.)
+			$(document).on('click', '.aips-history-group-header', this.toggleGroup.bind(this));
 
 			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));

@@ -84,6 +84,9 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		public function get_history($args = array()) {
 			return array('items' => array(), 'total' => 0);
 		}
+		public function get_partial_generations($args = array()) {
+			return array('items' => array(), 'total' => 0);
+		}
 		public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
 			return array();
 		}

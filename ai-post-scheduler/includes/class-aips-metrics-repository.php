@@ -142,7 +142,8 @@ class AIPS_Metrics_Repository {
 	 *     @type int   $successful                  Completed (success) count.
 	 *     @type int   $failed                      Failed count.
 	 *     @type int   $partial                     Partial (incomplete) count.
-	 *     @type float $success_rate                Success rate percentage (0–100).
+	 *     @type int   $resolved                    Records that reached a terminal outcome.
+	 *     @type float $success_rate                Success rate percentage (0–100), over resolved records.
 	 *     @type float $failure_rate                Failure rate percentage (0–100).
 	 *     @type int   $avg_duration_seconds        Average generation duration (seconds).
 	 *     @type int   $p50_duration_seconds        Median generation duration (seconds).
@@ -171,14 +172,19 @@ class AIPS_Metrics_Repository {
 				$recent_outcomes       = $this->get_recent_outcomes( 10 );
 
 				$total = $counts['total'];
+				// Rates are computed over records that reached a terminal
+				// outcome, not over every row in the window: in-flight rows
+				// would otherwise drag the reported rate toward zero.
+				$resolved = AIPS_Outcome_Rate::resolved( $counts['completed'], $counts['failed'], $counts['partial'] );
 				return array(
 					'window_days'             => $window_days,
 					'total'                   => $total,
+					'resolved'                => $resolved,
 					'successful'              => $counts['completed'],
 					'failed'                  => $counts['failed'],
 					'partial'                 => $counts['partial'],
-					'success_rate'            => $total > 0 ? round( ( $counts['completed'] / $total ) * 100, 1 ) : 0.0,
-					'failure_rate'            => $total > 0 ? round( ( $counts['failed'] / $total ) * 100, 1 ) : 0.0,
+					'success_rate'            => AIPS_Outcome_Rate::success_rate( $counts['completed'], $counts['failed'], $counts['partial'] ),
+					'failure_rate'            => AIPS_Outcome_Rate::failure_rate( $counts['completed'], $counts['failed'], $counts['partial'] ),
 					'avg_duration_seconds'    => $durations['avg'],
 					'p50_duration_seconds'    => $durations['p50'],
 					'p95_duration_seconds'    => $durations['p95'],

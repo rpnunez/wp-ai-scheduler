@@ -115,7 +115,7 @@ class AIPS_Schedule_Controller {
         // Build schedule timeline from the same unified source the table uses,
         // so the strip matches "Next Run" values shown to operators.
         $unified_service = new AIPS_Unified_Schedule_Service();
-        $all_schedules = $unified_service->get_all('', false);
+        $all_schedules = $unified_service->get_all_grouped('', false);
         $timeline = array();
         $active_schedules = 0;
         $overdue_schedules = 0;
@@ -802,6 +802,26 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::success(array(
                 'message'  => sprintf(
                     _n('%d post generated successfully from author topics!', '%d posts generated successfully from author topics!', count($post_ids), 'ai-post-scheduler'),
+                    count($post_ids)
+                ),
+                'post_ids' => $post_ids,
+                'post_id'  => $post_id,
+                'edit_url' => $edit_url,
+            ));
+        } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW) {
+            $topics = isset($result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC]) ? $result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC] : array();
+            $posts  = isset($result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST]) ? $result[AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST] : array();
+
+            $topic_count = is_array($topics) ? count($topics) : 0;
+            $post_ids    = is_array($posts) ? array_values(array_filter(array_map('absint', $posts))) : array();
+            $post_id     = !empty($post_ids) ? $post_ids[0] : 0;
+            $edit_url    = 1 === count($post_ids) && $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
+
+            AIPS_Ajax_Response::success(array(
+                'message'  => sprintf(
+                    /* translators: 1: number of topics generated, 2: number of posts generated */
+                    __('Workflow executed — %1$d topics and %2$d posts generated.', 'ai-post-scheduler'),
+                    $topic_count,
                     count($post_ids)
                 ),
                 'post_ids' => $post_ids,

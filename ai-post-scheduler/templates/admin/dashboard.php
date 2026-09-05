@@ -101,7 +101,7 @@ if (!defined('ABSPATH')) {
 					<span class="aips-stat-label"><?php esc_html_e('AI Requests & Calls', 'ai-post-scheduler'); ?></span>
 					<strong class="aips-stat-value"><?php echo esc_html($ai_calls_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
-						<?php echo sprintf(__('Error Rate: %s%% (%d errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
+						<?php echo sprintf(__('Error Rate: %s%% (%d AI call errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
 					</span>
 				</div>
 			</div>
@@ -478,6 +478,7 @@ if (!defined('ABSPATH')) {
 										'template_schedule' => __('Template', 'ai-post-scheduler'),
 										'author_topic_gen'  => __('Topic Gen', 'ai-post-scheduler'),
 										'author_post_gen'   => __('Post Gen', 'ai-post-scheduler'),
+										'author_workflow'   => __('Author Workflow', 'ai-post-scheduler'),
 									);
 									$type_label = isset($type_labels[$type_key]) ? $type_labels[$type_key] : esc_html__('Schedule', 'ai-post-scheduler');
 									?>

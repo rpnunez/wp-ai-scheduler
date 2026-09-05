@@ -239,7 +239,6 @@
     font-size: var(--aips-text-xs);
     font-weight: var(--aips-font-semibold);
     letter-spacing: 0.02em;
-    text-transform: uppercase;
     color: var(--aips-gray-500);
 }
 
@@ -530,7 +529,7 @@
 }
 
 .aips-date-range-sep {
-    color: var(--aips-gray-400, #a7aaad);
+    color: var(--aips-gray-400, #787c82);
 }
 
 /* Pagination tablenav inside content panels.
@@ -4625,8 +4624,42 @@
     font-weight: 600;
 }
 
+/* Author workflow stage list (schedules table, Frequency column).
+   Two stages of one persona, shown inside its row rather than as sibling rows. */
+.aips-stage-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    border-left: 2px solid #dcdcde;
+}
+
+.aips-stage-item {
+    padding: 2px 0 2px 8px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #646970;
+}
+
+.aips-stage-item.is-paused {
+    color: #787c82;
+}
+
+.aips-stage-label {
+    display: block;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.aips-stage-meta {
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* Dimmed, but still legible: opacity .6 over gray-500 computed to roughly
+   #a2a5a9 (~2.6:1), under the 4.5:1 WCAG 2.2 SC 1.4.3 floor. gray-400 is
+   4.63:1 and stays visibly lighter than the gray-500 of .cell-meta. */
 .aips-muted {
-    opacity: .6;
+    color: var(--aips-gray-400);
 }
 
 /* Unified schedule table: checkbox column width */
