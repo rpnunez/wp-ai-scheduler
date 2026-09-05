@@ -623,6 +623,14 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
+        // Embeddings repository cache: reads that join wp_posts are invalidated
+        // when posts change status, type, or are deleted through native WP flows
+        // that never touch the repository. Registered in every request context
+        // because post transitions happen in admin, REST, cron, and frontend.
+        (new AIPS_Embeddings_Cache_Invalidator(
+            AIPS_Container::get_instance()->make(AIPS_Embeddings_Repository::class)
+        ))->register();
+
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
