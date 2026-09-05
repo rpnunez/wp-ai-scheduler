@@ -93,27 +93,15 @@ class AIPS_Admin_Assets {
 			$this->enqueue_authors_assets($hook);
 		}
 
-        if (self::PAGE_STUDIO === $page || $this->hook_contains($hook, self::PAGE_STUDIO)) {
+        if (
+            self::PAGE_STUDIO === $page
+            || $this->hook_contains($hook, self::PAGE_STUDIO)
+            || in_array($page, array(self::PAGE_TEMPLATES, self::PAGE_VOICES, self::PAGE_STRUCTURES, self::PAGE_POST_SLICES), true)
+        ) {
 			$this->enqueue_templates_assets();
 			$this->enqueue_voices_assets();
 			$this->enqueue_structures_assets();
 			$this->enqueue_post_slices_assets();
-		}
-
-        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
-			$this->enqueue_post_slices_assets();
-		}
-
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES)) {
-			$this->enqueue_templates_assets();
-		}
-
-        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
-			$this->enqueue_voices_assets();
-		}
-
-        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
-			$this->enqueue_structures_assets();
 		}
 
         if (self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) {

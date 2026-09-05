@@ -487,20 +487,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Prompt Sections page.
-     *
-     * Fetches prompt sections and passes them to the template.
-     *
-     * @return void
-     */
-    public function render_prompt_sections_page() {
-        $section_repo = new AIPS_Prompt_Section_Repository();
-        $sections = $section_repo->get_all(false);
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
-    }
-
-    /**
      * Render the History page.
      *
      * Delegates rendering to the AIPS_History class.
