@@ -51,7 +51,20 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_resume_schedule_batch', array($this, 'ajax_resume_schedule_batch'));
     }
 
+    /**
+     * AJAX read-model for the Schedules "Health & Statistics" strip.
+     *
+     * Aggregates everything the strip renders into a single JSON payload:
+     * per-family next-run timestamps, the near-term cron queue depth/timeline,
+     * the unified schedule timeline (active/paused/overdue counts), 24h
+     * generation output, bulk-job status, rate-limiter state, an overall health
+     * tone, and quick-link URLs. The result is cached for 60s because it fans
+     * out across cron, the unified schedule service, and the history repository.
+     *
+     * @return void Emits a JSON response via AIPS_Ajax_Response and exits.
+     */
     public function ajax_get_schedule_status_read_model() {
+        // Security gate: valid nonce + manage_options. Both helpers exit on failure.
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
         }
@@ -59,6 +72,8 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Unauthorized.', 'ai-post-scheduler'));
         }
 
+        // Serve the cached payload when warm — this endpoint is polled on every
+        // Automations-tab load and the assembly below is comparatively expensive.
         $cache = AIPS_Cache_Factory::make();
         $cache_key = 'aips_schedule_status_strip_v2';
         $cached = $cache->get($cache_key);
@@ -66,17 +81,22 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::success($cached);
         }
 
+        // The three schedule "families" and the WP-Cron hook that fires each one.
+        // Used both for the per-family next-run lookup and the last-success scan.
         $families = array(
             AIPS_Unified_Schedule_Service::TYPE_TEMPLATE => 'aips_generate_scheduled_posts',
             AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC => 'aips_generate_author_topics',
             AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST => 'aips_generate_author_posts',
         );
 
+        // Next scheduled fire time per family (null when the hook is unscheduled).
         $next_runs = array();
         foreach ($families as $family => $hook) {
             $next_runs[$family] = wp_next_scheduled($hook) ?: null;
         }
 
+        // Background worker/queue hooks whose backlog feeds the "Queue & Resilience"
+        // tile. Each is tracked so a stuck slice or retry storm is visible.
         $queue_hooks = array(
             'aips_process_schedule_batch',
             'aips_process_author_topics_slice',
@@ -87,6 +107,10 @@ class AIPS_Schedule_Controller {
             'aips_process_author_embeddings',
             'aips_index_posts_batch',
         );
+        // Walk the raw WP-Cron array once and, for every queue hook scheduled
+        // within the next 24h, accumulate a per-hook depth ($queue_depth) and a
+        // flat, timestamped event list ($queue_timeline). A single cron timestamp
+        // can hold multiple events for the same hook, so depth counts each event.
         $queue_depth = array_fill_keys($queue_hooks, 0);
         $queue_timeline = array();
         $now = time();
@@ -94,6 +118,7 @@ class AIPS_Schedule_Controller {
         $cron = _get_cron_array();
         if (is_array($cron)) {
             foreach ($cron as $timestamp => $hooks) {
+                // Cron is time-ordered; skip anything beyond the 24h window.
                 if ((int) $timestamp > $next_24h) {
                     continue;
                 }
@@ -101,6 +126,7 @@ class AIPS_Schedule_Controller {
                     if (!isset($hooks[$hook])) {
                         continue;
                     }
+                    // Each entry under $hooks[$hook] is one scheduled invocation.
                     $count = is_array($hooks[$hook]) ? count($hooks[$hook]) : 0;
                     $queue_depth[$hook] += $count;
                     $queue_timeline[] = array(
@@ -118,28 +144,38 @@ class AIPS_Schedule_Controller {
         $all_schedules = $unified_service->get_all('', false);
         $timeline = array();
         $active_schedules = 0;
+        $paused_schedules = 0;
         $overdue_schedules = 0;
 
         foreach ($all_schedules as $schedule) {
+            // Tally active vs. paused across every schedule regardless of timing.
             $is_active = !empty($schedule['is_active']);
             if ($is_active) {
                 $active_schedules++;
+            } else {
+                $paused_schedules++;
             }
 
+            // Only active schedules with a real next-run time can appear on the
+            // timeline; paused or never-scheduled rows are counted but skipped.
             $next_run = isset($schedule['next_run']) ? (int) $schedule['next_run'] : 0;
             if (!$is_active || $next_run <= 0) {
                 continue;
             }
 
+            // Past-due active schedules are surfaced as an overdue count (a health
+            // signal), not as an upcoming timeline entry.
             if ($next_run < $now) {
                 $overdue_schedules++;
                 continue;
             }
 
+            // Beyond the 24h window: not overdue, just not shown on the strip.
             if ($next_run > $next_24h) {
                 continue;
             }
 
+            // Remaining schedules fire within the next 24h — add to the timeline.
             $timeline[] = array(
                 'id' => isset($schedule['id']) ? (int) $schedule['id'] : 0,
                 'type' => isset($schedule['type']) ? (string) $schedule['type'] : '',
@@ -149,13 +185,40 @@ class AIPS_Schedule_Controller {
             );
         }
 
+        // Present nearest-first so the JS can treat element 0 as the next run.
         usort($timeline, function ($a, $b) {
             return (int) $a['timestamp'] - (int) $b['timestamp'];
         });
 
+        // 24-hour generation output metrics: scan recent history and split into
+        // completed vs. failed, then derive a success rate for the output tile.
+        // Defaults to 100% when there were no runs so the tile reads cleanly.
+        $stats_24h_completed = 0;
+        $stats_24h_failed    = 0;
+        if ($this->history_repository) {
+            $since_24h = gmdate('Y-m-d H:i:s', $now - DAY_IN_SECONDS);
+            $history_24h = $this->history_repository->get_history(array(
+                'date_from' => $since_24h,
+                'per_page'  => 500,
+            ));
+            foreach ($history_24h as $h_item) {
+                if ('completed' === $h_item->status) {
+                    $stats_24h_completed++;
+                } elseif ('failed' === $h_item->status) {
+                    $stats_24h_failed++;
+                }
+            }
+        }
+        $total_24h_runs = $stats_24h_completed + $stats_24h_failed;
+        $success_rate_24h = $total_24h_runs > 0 ? round(($stats_24h_completed / $total_24h_runs) * 100) : 100;
+
+        // Bulk-batch backlog/failures — feeds both the queue metrics and the
+        // health tone (any failed bulk job escalates health to critical below).
         $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
         $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
 
+        // Timestamp of the most recent completed run per family (null if none),
+        // used to show operators when each pipeline last produced a post.
         $last_success = array();
         foreach ($families as $family => $hook) {
             $runs = $this->history_repository->get_history(array(
@@ -179,6 +242,18 @@ class AIPS_Schedule_Controller {
             }
         }
 
+        // Overall health tone, escalating by severity: overdue schedules raise a
+        // warning; any failed bulk job overrides that to critical. The JS maps
+        // this state string to the badge shown in the "Schedule Health" tile.
+        $health_state = 'healthy';
+        if ($overdue_schedules > 0) {
+            $health_state = 'warning';
+        }
+        if (!empty($bulk_counts['failed']) && $bulk_counts['failed'] > 0) {
+            $health_state = 'critical';
+        }
+
+        // Assemble the read-model consumed by initScheduleStatusStrip() in admin.js.
         $payload = array(
             'next_runs' => $next_runs,
             'timeline' => $timeline,
@@ -187,9 +262,16 @@ class AIPS_Schedule_Controller {
             'bulk_jobs' => $bulk_counts,
             'schedule_counts' => array(
                 'active' => $active_schedules,
+                'paused' => $paused_schedules,
                 'upcoming_24h' => count($timeline),
                 'overdue' => $overdue_schedules,
             ),
+            'output_24h' => array(
+                'completed'    => $stats_24h_completed,
+                'failed'       => $stats_24h_failed,
+                'success_rate' => $success_rate_24h,
+            ),
+            'health_state' => $health_state,
             'last_success' => $last_success,
             'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
             'last_error' => $bulk_counts['failed'] > 0,

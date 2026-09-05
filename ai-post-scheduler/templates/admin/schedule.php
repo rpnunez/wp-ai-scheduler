@@ -183,22 +183,58 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			</div>
 		</div>
 <?php endif; ?>
-		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
-			<div class="aips-panel-body">
-				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
-				<div class="aips-schedule-status-columns">
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
+		<div id="aips-schedule-status-strip" class="aips-schedule-status-strip">
+			<div class="aips-schedule-status-bar">
+				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary">
+					<span class="aips-schedule-status-loading"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></span>
 				</div>
-				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
+				<div class="aips-schedule-status-actions">
+					<button type="button" id="aips-schedule-timeline-toggle" class="aips-btn aips-btn-secondary aips-btn-sm aips-timeline-toggle-btn" aria-expanded="false" style="display:none;">
+						<span class="dashicons dashicons-calendar-alt"></span>
+						<span class="aips-timeline-toggle-text"><?php esc_html_e('Upcoming Runs', 'ai-post-scheduler'); ?></span>
+						<span class="aips-badge aips-badge-neutral aips-timeline-count-badge">0</span>
+						<span class="dashicons dashicons-arrow-down-alt2 aips-toggle-icon"></span>
+					</button>
+				</div>
+			</div>
+			<div id="aips-schedule-timeline-drawer" class="aips-schedule-timeline-drawer" style="display:none;">
+				<div class="aips-drawer-inner">
+					<h3 class="aips-drawer-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
+					<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
+				</div>
+			</div>
+			<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
+		</div>
+
+		<?php // Client-side templates for the schedule status strip (rendered by AIPS.Templates in admin.js). ?>
+		<script type="text/html" id="aips-tmpl-schedule-status-tile">
+		<div class="aips-status-tile">
+			<div class="aips-status-tile-icon"><span class="dashicons {{icon}}"></span></div>
+			<div class="aips-status-tile-content">
+				<div class="aips-status-tile-label">{{label}}</div>
+				<div class="aips-status-tile-value" title="{{valueTitle}}">{{value}}</div>
+				<div class="aips-status-tile-sub">{{sub}}</div>
 			</div>
 		</div>
+		</script>
+
+		<script type="text/html" id="aips-tmpl-schedule-health-badge">
+		<span class="aips-health-badge {{stateClass}}"><span class="aips-status-dot"></span> {{stateLabel}}</span>
+		</script>
+
+		<script type="text/html" id="aips-tmpl-schedule-timeline-event">
+		<div class="aips-schedule-status-event">
+			<div class="aips-schedule-status-event-top">
+				<span class="aips-badge aips-badge-neutral">{{typeLabel}}</span>
+				<span class="aips-schedule-status-event-time">{{time}}</span>
+			</div>
+			<div class="aips-schedule-status-event-title">{{title}}</div>
+		</div>
+		</script>
+
+		<script type="text/html" id="aips-tmpl-schedule-timeline-empty">
+		<div class="aips-schedule-status-empty">{{message}}</div>
+		</script>
 
 		<!-- Tabbed Navigation -->
 		<div class="aips-tabs">

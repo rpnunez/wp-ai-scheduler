@@ -88,14 +88,6 @@
                 }
 
                 var d = resp.data;
-                var escapeHtml = function(value) {
-                    return String(value || '')
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/\"/g, '&quot;')
-                        .replace(/'/g, '&#39;');
-                };
 
                 var typeLabels = {
                     template_schedule: aipsScheduleL10n.typeTemplateLabel,
@@ -109,76 +101,111 @@
                 });
 
                 var counts = d.schedule_counts || {};
+                var output24h = d.output_24h || { completed: 0, failed: 0, success_rate: 100 };
                 var rateLimiter = d.rate_limiter || { enabled: false, remaining: 0, max_requests: 0 };
-                var cards = [
+                var healthState = d.health_state || 'healthy';
+
+                // Find next upcoming run
+                var sortedTimeline = (d.timeline || []).sort(function(a, b) {
+                    return a.timestamp - b.timestamp;
+                });
+                var nextRunItem = sortedTimeline.length > 0 ? sortedTimeline[0] : null;
+                var nextRunTitle = nextRunItem ? (nextRunItem.title || nextRunItem.cron_hook || '—') : 'No runs scheduled';
+                var nextRunTimeStr = '—';
+                if (nextRunItem) {
+                    var diffSec = nextRunItem.timestamp - Math.floor(Date.now() / 1000);
+                    if (diffSec <= 0) {
+                        nextRunTimeStr = 'Past due';
+                    } else if (diffSec < 3600) {
+                        nextRunTimeStr = 'In ' + Math.max(1, Math.ceil(diffSec / 60)) + 'm';
+                    } else {
+                        var hrs = Math.floor(diffSec / 3600);
+                        var mins = Math.floor((diffSec % 3600) / 60);
+                        nextRunTimeStr = 'In ' + hrs + 'h ' + (mins > 0 ? mins + 'm' : '');
+                    }
+                }
+
+                // Resolve the operational health badge (rendered from the
+                // #aips-tmpl-schedule-health-badge template). Anything other than
+                // 'healthy'/'warning' is treated as critical, matching the server's
+                // health_state values.
+                var esc = AIPS.Templates.escape;
+                var healthBadgeMap = {
+                    healthy: { stateClass: 'aips-health-healthy', stateLabel: 'System Operational' },
+                    warning: { stateClass: 'aips-health-warning', stateLabel: 'Attention Needed' },
+                    critical: { stateClass: 'aips-health-critical', stateLabel: 'System Issue' }
+                };
+                var healthBadgeHtml = AIPS.Templates.render(
+                    'aips-tmpl-schedule-health-badge',
+                    healthBadgeMap[healthState] || healthBadgeMap.critical
+                );
+
+                // Each tile's `subHtml` is trusted HTML: either the health badge
+                // (already rendered/escaped above) or a pre-escaped text fragment.
+                // The tile itself is composed with renderRaw so `sub` passes through
+                // untouched; the other tokens are escaped here before insertion.
+                var tiles = [
                     {
-                        label: aipsScheduleL10n.activeSchedulesLabel,
-                        value: parseInt(counts.active || 0, 10),
-                        tone: 'neutral'
+                        label: 'Schedule Health',
+                        value: (counts.active || 0) + ' Active',
+                        subHtml: (counts.paused || 0) > 0 ? esc(counts.paused + ' Paused') : healthBadgeHtml,
+                        icon: 'dashicons-calendar-alt'
                     },
                     {
-                        label: aipsScheduleL10n.upcomingSchedulesLabel,
-                        value: parseInt(counts.upcoming_24h || 0, 10),
-                        tone: 'success'
+                        label: 'Next Scheduled Run',
+                        value: nextRunTitle,
+                        subHtml: esc(nextRunTimeStr),
+                        icon: 'dashicons-clock'
                     },
                     {
-                        label: aipsScheduleL10n.queueDepthLabel,
-                        value: queueTotal,
-                        tone: 'info'
+                        label: '24h Generation Output',
+                        value: (output24h.completed || 0) + ' Posts',
+                        subHtml: esc(output24h.failed > 0 ? (output24h.failed + ' Failed') : (output24h.success_rate + '% Success Rate')),
+                        icon: 'dashicons-chart-line'
                     },
                     {
-                        label: rateLimiter.enabled ? 'Rate Limit Remaining' : 'Rate Limiting',
-                        value: rateLimiter.enabled ? (rateLimiter.remaining + ' / ' + rateLimiter.max_requests) : 'Disabled',
-                        tone: rateLimiter.enabled && rateLimiter.remaining === 0 ? 'error' : (rateLimiter.enabled ? 'success' : 'neutral')
-                    },
-                    {
-                        label: aipsScheduleL10n.bulkFailedLabel,
-                        value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
-                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                        label: 'Queue & Resilience',
+                        value: queueTotal > 0 ? (queueTotal + ' Pending') : 'Queue Idle',
+                        subHtml: esc(rateLimiter.enabled ? ('Rate Limit: ' + rateLimiter.remaining + '/' + rateLimiter.max_requests) : 'Rate Limiting: Off'),
+                        icon: 'dashicons-admin-generic'
                     }
                 ];
 
-                var cardsHtml = cards.map(function(card) {
-                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + escapeHtml(card.tone) + '">' +
-                        '<div class="aips-schedule-status-card-label">' + escapeHtml(card.label) + '</div>' +
-                        '<div class="aips-schedule-status-card-value">' + escapeHtml(card.value) + '</div>' +
-                    '</div>';
+                var tilesHtml = tiles.map(function(tile) {
+                    return AIPS.Templates.renderRaw('aips-tmpl-schedule-status-tile', {
+                        icon: esc(tile.icon),
+                        label: esc(tile.label),
+                        value: esc(tile.value),
+                        valueTitle: esc(tile.value),
+                        sub: tile.subHtml
+                    });
                 });
-                $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
-                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var typeLabel = typeLabels[item.type] || item.type || '';
+                $('#aips-schedule-status-summary').html(tilesHtml.join(''));
+
+                // Handle timeline toggle button & count badge
+                var timelineCount = sortedTimeline.length;
+                var $toggleBtn = $('#aips-schedule-timeline-toggle');
+                if (timelineCount > 0) {
+                    $toggleBtn.find('.aips-timeline-count-badge').text(timelineCount);
+                    $toggleBtn.css('display', 'inline-flex');
+                } else {
+                    $toggleBtn.hide();
+                }
+
+                var scheduleTimelineItems = sortedTimeline.slice(0, 12).map(function(item) {
                     var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
-                    '</div>';
+                    return AIPS.Templates.render('aips-tmpl-schedule-timeline-event', {
+                        typeLabel: typeLabels[item.type] || item.type || '',
+                        time: dt.toLocaleString(),
+                        title: item.title || item.cron_hook || ''
+                    });
                 });
 
                 $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
-                );
-
-                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var dt = new Date(item.timestamp * 1000);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
-                    '</div>';
-                });
-
-                $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
+                    scheduleTimelineItems.length
+                        ? scheduleTimelineItems.join('')
+                        : AIPS.Templates.render('aips-tmpl-schedule-timeline-empty', { message: aipsScheduleL10n.noScheduleRunsNext24h })
                 );
 
                 var warnings = [];
@@ -193,6 +220,19 @@
                 }
                 $('#aips-schedule-status-warnings').html(warnings.join(''));
             });
+        },
+
+        toggleScheduleTimelineDrawer: function(e) {
+            if (e && e.preventDefault) {
+                e.preventDefault();
+            }
+            var $btn = $('#aips-schedule-timeline-toggle');
+            var $drawer = $('#aips-schedule-timeline-drawer');
+            var isExpanded = $btn.attr('aria-expanded') === 'true';
+
+            $drawer.slideToggle(200);
+            $btn.attr('aria-expanded', isExpanded ? 'false' : 'true');
+            $btn.find('.aips-toggle-icon').toggleClass('dashicons-arrow-down-alt2', isExpanded).toggleClass('dashicons-arrow-up-alt2', !isExpanded);
         },
 
         /**
@@ -224,6 +264,7 @@
          * Each handler is a named method on the AIPS object.
          */
         bindEvents: function() {
+            $(document).on('click', '#aips-schedule-timeline-toggle', this.toggleScheduleTimelineDrawer);
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
             $(document).on('click', '.aips-clone-template', this.cloneTemplate);
