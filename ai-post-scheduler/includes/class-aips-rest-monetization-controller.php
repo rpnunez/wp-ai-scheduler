@@ -120,7 +120,7 @@ class AIPS_REST_Monetization_Controller extends WP_REST_Controller {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'track_events' ),
-					'permission_callback' => '__return_true',
+					'permission_callback' => array( $this, 'check_telemetry_permission' ),
 				),
 			)
 		);
@@ -250,25 +250,117 @@ class AIPS_REST_Monetization_Controller extends WP_REST_Controller {
 	}
 
 	/**
+	 * Verify that the telemetry request has a valid token and isn't rate-limited.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return bool|WP_Error
+	 */
+	public function check_telemetry_permission( $request ) {
+		$token = $request->get_header( 'X-AIPS-Telemetry-Token' )
+			?: $request->get_header( 'X-WP-Nonce' )
+			?: $request->get_param( 'token' )
+			?: $request->get_param( '_wpnonce' );
+
+		if ( empty( $token ) ) {
+			$json = $request->get_json_params();
+			if ( is_array( $json ) && ! empty( $json['token'] ) ) {
+				$token = $json['token'];
+			}
+		}
+
+		if ( empty( $token ) || ( ! wp_verify_nonce( $token, 'aips_monetization_telemetry' ) && ! wp_verify_nonce( $token, 'wp_rest' ) ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				__( 'Invalid or missing telemetry verification token.', 'ai-post-scheduler' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		// Rate limiting protection per IP (max 120 requests / min)
+		$client_ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? 'unknown' ) );
+		$rate_key  = 'aips_tel_rate_' . md5( $client_ip );
+		$hits      = (int) get_transient( $rate_key );
+		if ( $hits >= 120 ) {
+			return new WP_Error(
+				'rest_rate_limited',
+				__( 'Too many telemetry requests. Please slow down.', 'ai-post-scheduler' ),
+				array( 'status' => 429 )
+			);
+		}
+		set_transient( $rate_key, $hits + 1, MINUTE_IN_SECONDS );
+
+		return true;
+	}
+
+	/**
 	 * Record batch telemetry events from frontend beacon.
 	 *
 	 * @param WP_REST_Request $request
 	 * @return WP_REST_Response
 	 */
 	public function track_events( $request ) {
-		$params = $request->get_json_params();
-		$events = ( is_array( $params ) && ! empty( $params['events'] ) && is_array( $params['events'] ) ) 
+		$params     = $request->get_json_params();
+		$raw_events = ( is_array( $params ) && ! empty( $params['events'] ) && is_array( $params['events'] ) ) 
 			? $params['events'] 
 			: array();
 
-		if ( empty( $events ) ) {
+		if ( empty( $raw_events ) ) {
 			return rest_ensure_response( array( 'recorded' => 0 ) );
 		}
 
 		// Cap max batch size to 50 to prevent DoS
-		$events = array_slice( $events, 0, 50 );
+		$raw_events = array_slice( $raw_events, 0, 50 );
 
-		$recorded = $this->telemetry_repo->record_events_batch( $events );
+		$valid_types      = AIPS_Monetization_Telemetry_Repository::VALID_EVENT_TYPES;
+		$validated_events = array();
+
+		foreach ( $raw_events as $event ) {
+			if ( ! is_array( $event ) ) {
+				continue;
+			}
+
+			$event_type = sanitize_key( $event['event_type'] ?? 'impression' );
+			if ( ! in_array( $event_type, $valid_types, true ) ) {
+				continue;
+			}
+
+			$slot_id = absint( $event['slot_id'] ?? 0 );
+			if ( $slot_id > 0 ) {
+				$slot = $this->slots_repo->get_by_id( $slot_id );
+				if ( ! $slot ) {
+					$slot_id = 0;
+				}
+			}
+
+			$post_id = absint( $event['post_id'] ?? 0 );
+			if ( $post_id > 0 ) {
+				$post_status = get_post_status( $post_id );
+				if ( 'publish' !== $post_status ) {
+					$post_id = 0;
+				}
+			}
+
+			$campaign_id = absint( $event['campaign_id'] ?? 0 );
+			$device_type = sanitize_key( $event['device_type'] ?? 'desktop' );
+			if ( ! in_array( $device_type, array( 'desktop', 'mobile', 'tablet' ), true ) ) {
+				$device_type = 'desktop';
+			}
+
+			$validated_events[] = array(
+				'slot_id'     => $slot_id,
+				'post_id'     => $post_id,
+				'campaign_id' => $campaign_id,
+				'event_type'  => $event_type,
+				'device_type' => $device_type,
+				'count'       => 1,
+			);
+		}
+
+		if ( empty( $validated_events ) ) {
+			return rest_ensure_response( array( 'recorded' => 0 ) );
+		}
+
+		$recorded = $this->telemetry_repo->record_events_batch( $validated_events );
 
 		return rest_ensure_response( array(
 			'success'  => true,

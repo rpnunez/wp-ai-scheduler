@@ -657,17 +657,26 @@
 			var payload = this._eventQueue.slice();
 			this._eventQueue = [];
 
+			var token = this.config.telemetryToken || this.config.nonce || '';
+			var url = this.config.restUrl;
+			if (token) {
+				url += (url.indexOf('?') === -1 ? '?' : '&') + '_wpnonce=' + encodeURIComponent(token) + '&token=' + encodeURIComponent(token);
+			}
+
+			var bodyData = JSON.stringify({ events: payload, token: token });
+
 			if (navigator.sendBeacon) {
-				var blob = new Blob([JSON.stringify({ events: payload })], { type: 'application/json' });
-				navigator.sendBeacon(this.config.restUrl, blob);
+				var blob = new Blob([bodyData], { type: 'application/json' });
+				navigator.sendBeacon(url, blob);
 			} else {
-				fetch(this.config.restUrl, {
+				fetch(url, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'X-WP-Nonce': this.config.nonce || ''
+						'X-WP-Nonce': token,
+						'X-AIPS-Telemetry-Token': token
 					},
-					body: JSON.stringify({ events: payload }),
+					body: bodyData,
 					keepalive: true
 				}).catch(function () {});
 			}

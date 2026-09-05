@@ -288,11 +288,14 @@ class AIPS_Monetization_Controller {
 	public function ajax_get_monetization_analytics() {
 		$this->verify_request();
 
-		$days    = isset( $_POST['days'] ) ? absint( $_POST['days'] ) : 14;
-		$summary = $this->telemetry_repo->get_summary();
+		$days       = isset( $_POST['days'] ) ? max( 1, min( 90, absint( $_POST['days'] ) ) ) : 14;
+		$start_date = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+		$end_date   = current_time( 'Y-m-d' );
+
+		$summary = $this->telemetry_repo->get_summary( $start_date, $end_date );
 		$trends  = $this->telemetry_repo->get_daily_trends( $days );
-		$top     = $this->telemetry_repo->get_top_posts( 10 );
-		$slots   = $this->telemetry_repo->get_slot_breakdown();
+		$top     = $this->telemetry_repo->get_top_posts( 10, $start_date, $end_date );
+		$slots   = $this->telemetry_repo->get_slot_breakdown( $start_date, $end_date );
 
 		AIPS_Ajax_Response::success( array(
 			'summary' => $summary,

@@ -57,7 +57,7 @@ class AIPS_Ad_Injection_Service {
 			if ( in_array( $slot_id, $suppressed_slot_ids, true ) ) {
 				continue;
 			}
-			$min_words = ! empty( $slot->min_word_count ) ? (int) $slot->min_word_count : self::DEFAULT_MIN_WORDS;
+			$min_words = ( isset( $slot->min_word_count ) && '' !== $slot->min_word_count ) ? (int) $slot->min_word_count : self::DEFAULT_MIN_WORDS;
 			if ( $word_count < $min_words ) {
 				continue;
 			}

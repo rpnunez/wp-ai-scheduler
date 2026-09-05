@@ -211,25 +211,45 @@ class AIPS_Monetization_Telemetry_Repository {
 	/**
 	 * Get top performing posts by impressions & clicks.
 	 *
-	 * @param int $limit Max posts.
+	 * @param int    $limit      Max posts.
+	 * @param string $start_date Optional start date YYYY-MM-DD.
+	 * @param string $end_date   Optional end date YYYY-MM-DD.
 	 * @return array
 	 */
-	public function get_top_posts( $limit = 10 ) {
+	public function get_top_posts( $limit = 10, $start_date = '', $end_date = '' ) {
 		$limit = max( 1, min( 50, absint( $limit ) ) );
 
-		$results = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT post_id,
-					SUM(CASE WHEN event_type = 'impression' THEN event_count ELSE 0 END) as impressions,
-					SUM(CASE WHEN event_type = 'click' THEN event_count ELSE 0 END) as clicks
-				FROM {$this->table}
-				WHERE post_id > 0
-				GROUP BY post_id
-				ORDER BY impressions DESC
-				LIMIT %d",
-				$limit
-			)
-		);
+		if ( ! empty( $start_date ) && ! empty( $end_date ) ) {
+			$results = $this->wpdb->get_results(
+				$this->wpdb->prepare(
+					"SELECT post_id,
+						SUM(CASE WHEN event_type = 'impression' THEN event_count ELSE 0 END) as impressions,
+						SUM(CASE WHEN event_type = 'click' THEN event_count ELSE 0 END) as clicks
+					FROM {$this->table}
+					WHERE post_id > 0 AND event_date BETWEEN %s AND %s
+					GROUP BY post_id
+					ORDER BY impressions DESC
+					LIMIT %d",
+					$start_date,
+					$end_date,
+					$limit
+				)
+			);
+		} else {
+			$results = $this->wpdb->get_results(
+				$this->wpdb->prepare(
+					"SELECT post_id,
+						SUM(CASE WHEN event_type = 'impression' THEN event_count ELSE 0 END) as impressions,
+						SUM(CASE WHEN event_type = 'click' THEN event_count ELSE 0 END) as clicks
+					FROM {$this->table}
+					WHERE post_id > 0
+					GROUP BY post_id
+					ORDER BY impressions DESC
+					LIMIT %d",
+					$limit
+				)
+			);
+		}
 
 		$data = array();
 		foreach ( $results as $row ) {
@@ -254,20 +274,40 @@ class AIPS_Monetization_Telemetry_Repository {
 	/**
 	 * Get slot performance breakdown.
 	 *
+	 * @param string $start_date Optional start date YYYY-MM-DD.
+	 * @param string $end_date   Optional end date YYYY-MM-DD.
 	 * @return array
 	 */
-	public function get_slot_breakdown() {
+	public function get_slot_breakdown( $start_date = '', $end_date = '' ) {
 		$slots_table = $this->wpdb->prefix . 'aips_ad_slots';
-		$results = $this->wpdb->get_results(
-			"SELECT m.slot_id, s.name as slot_name, s.slot_type, s.position,
-				SUM(CASE WHEN m.event_type = 'impression' THEN m.event_count ELSE 0 END) as impressions,
-				SUM(CASE WHEN m.event_type = 'click' THEN m.event_count ELSE 0 END) as clicks
-			FROM {$this->table} m
-			LEFT JOIN {$slots_table} s ON m.slot_id = s.id
-			WHERE m.slot_id > 0
-			GROUP BY m.slot_id
-			ORDER BY impressions DESC"
-		);
+
+		if ( ! empty( $start_date ) && ! empty( $end_date ) ) {
+			$results = $this->wpdb->get_results(
+				$this->wpdb->prepare(
+					"SELECT m.slot_id, s.name as slot_name, s.slot_type, s.position,
+						SUM(CASE WHEN m.event_type = 'impression' THEN m.event_count ELSE 0 END) as impressions,
+						SUM(CASE WHEN m.event_type = 'click' THEN m.event_count ELSE 0 END) as clicks
+					FROM {$this->table} m
+					LEFT JOIN {$slots_table} s ON m.slot_id = s.id
+					WHERE m.slot_id > 0 AND m.event_date BETWEEN %s AND %s
+					GROUP BY m.slot_id
+					ORDER BY impressions DESC",
+					$start_date,
+					$end_date
+				)
+			);
+		} else {
+			$results = $this->wpdb->get_results(
+				"SELECT m.slot_id, s.name as slot_name, s.slot_type, s.position,
+					SUM(CASE WHEN m.event_type = 'impression' THEN m.event_count ELSE 0 END) as impressions,
+					SUM(CASE WHEN m.event_type = 'click' THEN m.event_count ELSE 0 END) as clicks
+				FROM {$this->table} m
+				LEFT JOIN {$slots_table} s ON m.slot_id = s.id
+				WHERE m.slot_id > 0
+				GROUP BY m.slot_id
+				ORDER BY impressions DESC"
+			);
+		}
 
 		$data = array();
 		foreach ( $results as $row ) {

@@ -56,7 +56,15 @@ class AIPS_Ad_Frontend {
 	private function init_hooks() {
 		add_filter( 'the_content', array( $this, 'filter_content' ), 15 );
 		add_shortcode( 'aips_ad', array( $this, 'render_shortcode' ) );
-		add_action( 'init', array( $this, 'register_block' ) );
+
+		if ( did_action( 'init' ) ) {
+			$this->register_block();
+			$this->register_meta();
+		} else {
+			add_action( 'init', array( $this, 'register_block' ) );
+			add_action( 'init', array( $this, 'register_meta' ) );
+		}
+
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_footer', array( $this, 'render_adblock_bait' ) );
 	}
@@ -95,6 +103,7 @@ class AIPS_Ad_Frontend {
 				array(
 					'restUrl'             => esc_url_raw( rest_url( 'aips/v1/monetization/track' ) ),
 					'nonce'               => wp_create_nonce( 'wp_rest' ),
+					'telemetryToken'      => wp_create_nonce( 'aips_monetization_telemetry' ),
 					'ga4Enabled'          => (bool) $this->config->get_option( 'aips_ad_ga4_datalayer_enabled', true ),
 					'telemetryEnabled'    => true,
 					'adRefreshEnabled'    => (bool) $this->config->get_option( 'aips_ad_refresh_enabled', true ),
@@ -156,7 +165,7 @@ class AIPS_Ad_Frontend {
 		$campaign = null;
 		$campaign_id = (int) get_post_meta( $post_id, '_aips_sponsor_campaign_id', true );
 		if ( $campaign_id > 0 ) {
-			$campaign = $this->campaigns_repo->get_by_id( $campaign_id );
+			$campaign = $this->campaigns_repo->get_active_by_id( $campaign_id );
 		}
 
 		// Auto-match sponsor campaign if not explicitly assigned
@@ -210,7 +219,7 @@ class AIPS_Ad_Frontend {
 		if ( $post_id > 0 ) {
 			$campaign_id = (int) get_post_meta( $post_id, '_aips_sponsor_campaign_id', true );
 			if ( $campaign_id > 0 ) {
-				$campaign = $this->campaigns_repo->get_by_id( $campaign_id );
+				$campaign = $this->campaigns_repo->get_active_by_id( $campaign_id );
 			}
 		}
 
@@ -244,6 +253,70 @@ class AIPS_Ad_Frontend {
 	}
 
 	/**
+	 * Register post meta for block editor / REST API persistence.
+	 */
+	public function register_meta() {
+		if ( ! function_exists( 'register_post_meta' ) ) {
+			return;
+		}
+
+		$auth_callback = function() {
+			return current_user_can( 'edit_posts' );
+		};
+
+		register_post_meta(
+			'post',
+			'_aips_disable_ads',
+			array(
+				'show_in_rest'  => true,
+				'single'        => true,
+				'type'          => 'string',
+				'auth_callback' => $auth_callback,
+			)
+		);
+
+		register_post_meta(
+			'post',
+			'_aips_sponsor_campaign_id',
+			array(
+				'show_in_rest'  => true,
+				'single'        => true,
+				'type'          => 'integer',
+				'auth_callback' => $auth_callback,
+			)
+		);
+
+		register_post_meta(
+			'post',
+			'_aips_suppressed_slots',
+			array(
+				'show_in_rest'  => array(
+					'schema' => array(
+						'type'  => 'array',
+						'items' => array(
+							'type' => 'integer',
+						),
+					),
+				),
+				'single'        => true,
+				'type'          => 'array',
+				'auth_callback' => $auth_callback,
+			)
+		);
+
+		register_post_meta(
+			'post',
+			'_aips_disable_referrals',
+			array(
+				'show_in_rest'  => true,
+				'single'        => true,
+				'type'          => 'string',
+				'auth_callback' => $auth_callback,
+			)
+		);
+	}
+
+	/**
 	 * Render callback for aips/ad-unit block.
 	 *
 	 * @param array $attributes
@@ -269,7 +342,7 @@ class AIPS_Ad_Frontend {
 				if ( $post_id > 0 ) {
 					$campaign_id = (int) get_post_meta( $post_id, '_aips_sponsor_campaign_id', true );
 					if ( $campaign_id > 0 ) {
-						$campaign = $this->campaigns_repo->get_by_id( $campaign_id );
+						$campaign = $this->campaigns_repo->get_active_by_id( $campaign_id );
 					}
 				}
 				return $this->injection_service->render_ad_slot( $slot, $post_id, $campaign );

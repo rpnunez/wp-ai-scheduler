@@ -124,6 +124,7 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+		$processed_prompt = $this->inject_monetization_directives($processed_prompt, $topic);
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}

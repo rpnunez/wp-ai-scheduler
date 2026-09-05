@@ -98,7 +98,11 @@ class AIPS_Link_Cloaking_Service {
 	 * Initialize rewrite and redirection hooks.
 	 */
 	public function init_hooks() {
-		add_action( 'init', array( $this, 'register_rewrites' ) );
+		if ( did_action( 'init' ) ) {
+			$this->register_rewrites();
+		} else {
+			add_action( 'init', array( $this, 'register_rewrites' ) );
+		}
 		add_filter( 'query_vars', array( $this, 'register_query_vars' ) );
 		add_action( 'template_redirect', array( $this, 'handle_redirect' ) );
 	}

@@ -42,7 +42,12 @@ class AIPS_Referral_Delivery_Service {
 	private function init_hooks() {
 		add_filter( 'the_content', array( $this, 'filter_content' ), 16 );
 		add_shortcode( 'aips_referral', array( $this, 'render_shortcode' ) );
-		add_action( 'init', array( $this, 'register_block' ) );
+
+		if ( did_action( 'init' ) ) {
+			$this->register_block();
+		} else {
+			add_action( 'init', array( $this, 'register_block' ) );
+		}
 	}
 
 	/**

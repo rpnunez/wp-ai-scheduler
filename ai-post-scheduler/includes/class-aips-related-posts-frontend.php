@@ -46,7 +46,12 @@ class AIPS_Related_Posts_Frontend {
 		add_filter('the_content', array($this, 'filter_content'));
 		add_shortcode('aips_related_posts', array($this, 'render_shortcode'));
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
-		add_action('init', array($this, 'register_block'));
+
+		if (did_action('init')) {
+			$this->register_block();
+		} else {
+			add_action('init', array($this, 'register_block'));
+		}
 	}
 
 	/**

@@ -46,6 +46,39 @@ class AIPS_Sponsor_Campaigns_Repository {
 	}
 
 	/**
+	 * Check if a specific campaign is currently active (status active and within start/end dates).
+	 *
+	 * @param object|null $campaign
+	 * @return bool
+	 */
+	public function is_campaign_active( $campaign ) {
+		if ( ! $campaign || empty( $campaign->status ) || 'active' !== $campaign->status ) {
+			return false;
+		}
+
+		$today = current_time( 'Y-m-d' );
+		if ( ! empty( $campaign->start_date ) && $campaign->start_date > $today ) {
+			return false;
+		}
+		if ( ! empty( $campaign->end_date ) && $campaign->end_date < $today ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get an active campaign by ID (must be active and within start/end dates).
+	 *
+	 * @param int $id Campaign ID.
+	 * @return object|null
+	 */
+	public function get_active_by_id( $id ) {
+		$campaign = $this->get_by_id( $id );
+		return $this->is_campaign_active( $campaign ) ? $campaign : null;
+	}
+
+	/**
 	 * Get all campaigns.
 	 *
 	 * @param bool $active_only
@@ -136,9 +169,9 @@ class AIPS_Sponsor_Campaigns_Repository {
 			$end_date = null;
 		}
 
-		$record = array(
-			'name'            => sanitize_text_field( $data['name'] ?? '' ),
-			'brand_name'      => sanitize_text_field( $data['brand_name'] ?? '' ),
+		$brand_name = ! empty( $data['brand_name'] ) ? $data['brand_name'] : ( $data['name'] ?? '' );
+		$record     = array(
+			'brand_name'      => sanitize_text_field( $brand_name ),
 			'logo_url'        => esc_url_raw( $data['logo_url'] ?? '' ),
 			'target_url'      => esc_url_raw( $data['target_url'] ?? '' ),
 			'cta_text'        => sanitize_text_field( $data['cta_text'] ?? '' ),
@@ -151,7 +184,7 @@ class AIPS_Sponsor_Campaigns_Repository {
 			'updated_at'      => $now,
 		);
 
-		$formats = array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' );
+		$formats = array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' );
 
 		if ( $id > 0 ) {
 			$result = $this->wpdb->update(
