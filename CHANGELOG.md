@@ -10,6 +10,10 @@
 ### Changed
 - **Schedules List:** A persona's topic-generation and post-generation schedules now appear as one `author_workflow` row with both shown as stages, rather than two sibling rows that doubled the apparent schedule count. `AIPS_Unified_Schedule_Service::get_all_grouped()` builds these in the list layer; `get_all()` is unchanged. Row toggle, Run Now, history and the status-strip counts all operate on the grouped row.
 
+### Accessibility
+- **Contrast (WCAG 2.2 SC 1.4.3):** `.aips-muted` dimmed text with `opacity: .6`, which computed to roughly `#a2a5a9` (~2.6:1) — under the 4.5:1 floor. It now sets `--aips-gray-400` (4.63:1), staying visibly lighter than the `.cell-meta` grey without failing. The same fix is applied to the paused-stage rows and the schedules table's cron-hook meta, and the telemetry empty-state italic moves from `#8c8f94` (3.2:1) to `#646970` (5.7:1).
+- **Legibility:** Schedule status tile labels drop `text-transform: uppercase`, matching the sentence case the Dashboard already uses — these are read, not scanned.
+
 ### Removed
 - **Schedule Calendar:** The Schedule Calendar screen has been removed — menu entry, controller, template, assets, its `aips_get_calendar_events` endpoint and its tests. It rendered data the schedules list already shows. It registered no cron events, options, user meta or capabilities, so no upgrade routine is required.
 

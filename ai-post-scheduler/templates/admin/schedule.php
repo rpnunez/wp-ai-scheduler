@@ -388,7 +388,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						</td>
 						<td class="column-type">
 							<?php echo aips_type_badge($sched['type']); // WPCS: XSS ok — output is safe HTML. ?>
-							<div class="cell-meta" style="font-size:11px;margin-top:4px;opacity:.7;">
+							<div class="cell-meta aips-muted" style="font-size:11px;margin-top:4px;">
 								<?php echo esc_html($sched['cron_hook']); ?>
 							</div>
 						</td>

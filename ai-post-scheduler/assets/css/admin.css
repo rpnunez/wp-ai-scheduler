@@ -239,7 +239,6 @@
     font-size: var(--aips-text-xs);
     font-weight: var(--aips-font-semibold);
     letter-spacing: 0.02em;
-    text-transform: uppercase;
     color: var(--aips-gray-500);
 }
 
@@ -530,7 +529,7 @@
 }
 
 .aips-date-range-sep {
-    color: var(--aips-gray-400, #a7aaad);
+    color: var(--aips-gray-400, #787c82);
 }
 
 /* Pagination tablenav inside content panels.
@@ -4642,7 +4641,7 @@
 }
 
 .aips-stage-item.is-paused {
-    opacity: .65;
+    color: #787c82;
 }
 
 .aips-stage-label {
@@ -4656,8 +4655,11 @@
     margin-right: 8px;
 }
 
+/* Dimmed, but still legible: opacity .6 over gray-500 computed to roughly
+   #a2a5a9 (~2.6:1), under the 4.5:1 WCAG 2.2 SC 1.4.3 floor. gray-400 is
+   4.63:1 and stays visibly lighter than the gray-500 of .cell-meta. */
 .aips-muted {
-    opacity: .6;
+    color: var(--aips-gray-400);
 }
 
 /* Unified schedule table: checkbox column width */
