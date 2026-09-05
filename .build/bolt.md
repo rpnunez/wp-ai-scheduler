@@ -39,3 +39,15 @@
 **PR:** ⚡ Bolt: Prevent N+1 queries in Generated Posts controller
 **Learning:** Using `_prime_post_caches` prevents N+1 queries in loops calling `get_post()`.
 **Action:** Pre-fetch post IDs into arrays and use `_prime_post_caches()` before loops.
+## 2026-08-28 - [Batch Template Schedules Lookup]
+**Area:** ai-post-scheduler/includes/class-aips-generated-posts-controller.php
+**Status:** opened PR
+**PR:** To be created
+**Learning:** The Generated Posts Controller list view looped over history items and queried the schedules table for each item's template ID, creating N+1 queries.
+**Action:** When gathering data for list views where the underlying repository returns multiple items with foreign keys, fetch all foreign keys into an array and use an `IN()` query batch fetching method instead of querying individually in the loop.
+## 2026-08-31 - Optimize AIPS_Site_Context get_setting linear search
+**Area:** ai-post-scheduler/includes/class-aips-site-context.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Optimize AIPS_Site_Context get_setting linear search
+**Learning:** Avoid repeated O(n) loops over arrays in static methods called frequently.
+**Action:** Use static variables to cache inverted maps for O(1) lookups.

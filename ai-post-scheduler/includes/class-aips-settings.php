@@ -54,6 +54,37 @@ class AIPS_Settings {
 
 		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
 		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
+
+		// Turning AI generation back on queues a one-off sweep that resumes any
+		// large batch the setting stopped part-way through. The sweep runs on
+		// cron rather than inline so saving settings stays a cheap request.
+		add_action(
+			'update_option_aips_prevent_scheduled_ai_generation',
+			array(__CLASS__, 'maybe_queue_batch_resume'),
+			10,
+			2
+		);
+	}
+
+	/**
+	 * Queue a batch-resume sweep when AI generation is re-enabled.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 * @return void
+	 */
+	public static function maybe_queue_batch_resume($old_value, $new_value) {
+		// Only on the on -> off transition. Saving settings without changing this
+		// option, or switching it on, must not queue anything.
+		if (!(bool) $old_value || (bool) $new_value) {
+			return;
+		}
+
+		if (wp_next_scheduled('aips_resume_terminated_batches')) {
+			return;
+		}
+
+		wp_schedule_single_event(AIPS_DateTime::now()->timestamp() + 60, 'aips_resume_terminated_batches');
 	}
 
 	/**
@@ -151,6 +182,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_env_id'],
 			),
+			'aips_prevent_scheduled_ai_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_prevent_scheduled_ai_generation'],
+			),
 			'aips_max_tokens_limit' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_max_tokens_limit'],
@@ -206,6 +241,38 @@ class AIPS_Settings {
 			'aips_cache_default_ttl' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
+			),
+			'aips_embeddings_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_embeddings_provider'],
+			),
+			'aips_embeddings_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_model'],
+			),
+			'aips_indexer_verbose_history' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_verbose_history'],
+			),
+			'aips_embeddings_env_id' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_env_id'],
+			),
+			'aips_embeddings_dimensions' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_dimensions'],
+			),
+			'aips_indexer_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_indexer_post_types'],
+			),
+			'aips_indexer_similarity_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_similarity_threshold'],
+			),
+			'aips_auto_index_on_publish' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_auto_index_on_publish'],
 			),
 		);
 
@@ -311,6 +378,14 @@ class AIPS_Settings {
             'aips-settings',
             'aips_ai_section'
         );
+
+		add_settings_field(
+			'aips_prevent_scheduled_ai_generation',
+			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
         add_settings_field(
             'aips_max_tokens_limit',
