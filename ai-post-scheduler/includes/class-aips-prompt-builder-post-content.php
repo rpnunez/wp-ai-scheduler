@@ -58,9 +58,9 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @param object|null                    $voice Optional voice object in legacy flows.
 	 * @return string
 	 */
-	public function build($template_or_context, $topic = null, $voice = null) {
+	public function build($template_or_context, $topic = null, $voice = null, $feedback_context = null) {
 		if ($template_or_context instanceof AIPS_Generation_Context) {
-			return $this->build_from_context($template_or_context);
+			return $this->build_from_context($template_or_context, $feedback_context);
 		}
 
 		return $this->build_from_template($template_or_context, $topic, $voice);
@@ -72,7 +72,7 @@ class AIPS_Prompt_Builder_Post_Content {
 	 * @param AIPS_Generation_Context $context Generation context.
 	 * @return string
 	 */
-	private function build_from_context($context) {
+	private function build_from_context($context, $feedback_context = null) {
 		do_action('aips_before_build_content_prompt', $context, null);
 
 		$processed_prompt = $context->get_content_prompt();
@@ -121,6 +121,10 @@ class AIPS_Prompt_Builder_Post_Content {
 		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($context);
 		if (!empty($uniqueness_seed_line_block)) {
 			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
+		}
+		if ($feedback_context instanceof AIPS_Post_Feedback_Prompt_Context) {
+			$guidance = $feedback_context->for_component('content');
+			if ($guidance !== '') { $processed_prompt .= "\n\n" . $guidance; }
 		}
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);

@@ -122,10 +122,19 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 					continue;
 				}
 
+				if (!is_array($rows)) {
+					$error_count++;
+					continue;
+				}
+
 				$full_table_name = $tables[$table_name];
 				$this->repository->truncate_table($full_table_name);
 
 				foreach ($rows as $row) {
+					if (!is_array($row)) {
+						$error_count++;
+						continue;
+					}
 					if (!$this->repository->insert_row($full_table_name, $row)) {
 						$error_count++;
 					} else {

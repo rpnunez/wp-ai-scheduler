@@ -20,6 +20,7 @@ class AIPS_DB_Manager {
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
+        'aips_post_feedback',
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
@@ -85,6 +86,7 @@ class AIPS_DB_Manager {
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_post_feedback  = $tables['aips_post_feedback'];
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
@@ -193,6 +195,8 @@ class AIPS_DB_Manager {
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
+            feedback_enabled tinyint(1) DEFAULT NULL,
+            feedback_config longtext DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -335,6 +339,8 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
+            feedback_enabled tinyint(1) DEFAULT NULL,
+            feedback_config longtext DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -410,6 +416,29 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY reason_category (reason_category),
             KEY source (source),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_post_feedback (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) NOT NULL,
+            history_id bigint(20) DEFAULT NULL,
+            user_id bigint(20) NOT NULL,
+            reaction varchar(16) NOT NULL,
+            reason_category varchar(32) DEFAULT NULL,
+            comment text DEFAULT NULL,
+            content_hash char(64) DEFAULT NULL,
+            author_id bigint(20) DEFAULT NULL,
+            template_id bigint(20) DEFAULT NULL,
+			embedding_text longtext DEFAULT NULL,
+			embedding longtext DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY post_current (post_id, id),
+            KEY reaction_current (reaction, id),
+            KEY author_reaction (author_id, reaction, id),
+            KEY template_reaction (template_id, reaction, id),
+            KEY history_id (history_id),
             KEY created_at (created_at)
         ) $charset_collate;";
 
@@ -847,6 +876,9 @@ class AIPS_DB_Manager {
                 array( 'created_at', false ),
             ),
             'aips_topic_feedback' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_post_feedback' => array(
                 array( 'created_at', false ),
             ),
             'aips_notifications' => array(

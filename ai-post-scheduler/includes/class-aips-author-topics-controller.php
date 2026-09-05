@@ -623,9 +623,13 @@ class AIPS_Author_Topics_Controller {
 		$history->record('activity', __('Post regenerated successfully', 'ai-post-scheduler'), null, null, array(
 			'post_id' => $result,
 			'original_post_id' => $post_id,
+			'predecessor_post_id' => $post_id,
 			'topic_id' => $topic_id
 		));
-		$history->complete_success(array('post_id' => $result));
+		$history->complete_success(array(
+			'post_id' => $result,
+			'predecessor_post_id' => $post_id,
+		));
 
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Post regenerated successfully.', 'ai-post-scheduler'),

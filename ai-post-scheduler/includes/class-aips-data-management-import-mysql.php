@@ -116,6 +116,8 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		}
 		
 		// Validate queries only affect plugin tables
+		// The centralized lifecycle catalog includes append-only audit tables such
+		// as aips_post_feedback, so they receive the same strict table validation.
 		$plugin_tables = AIPS_DB_Manager::get_full_table_names();
 		$plugin_table_names = array_values($plugin_tables);
 		

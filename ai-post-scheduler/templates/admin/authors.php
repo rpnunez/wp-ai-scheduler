@@ -571,6 +571,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
                 </label>
             </div>
+			<?php $feedback_scope_prefix = 'author'; include AIPS_PLUGIN_DIR . 'templates/partials/post-feedback-scope-settings.php'; ?>
 
             <?php
             $author_source_groups = get_terms(array(

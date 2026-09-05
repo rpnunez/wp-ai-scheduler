@@ -64,6 +64,15 @@ if (!defined('ABSPATH')) {
 								<?php endforeach; ?>
 							</select>
 							<?php endif; ?>
+							<?php if (!empty($post_feedback_enabled)): ?>
+							<label class="screen-reader-text" for="aips-filter-feedback"><?php esc_html_e('Filter by feedback', 'ai-post-scheduler'); ?></label>
+							<select name="feedback" id="aips-filter-feedback" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Feedback', 'ai-post-scheduler'); ?></option>
+								<option value="liked" <?php selected($feedback_filter, 'liked'); ?>><?php esc_html_e('Liked', 'ai-post-scheduler'); ?></option>
+								<option value="disliked" <?php selected($feedback_filter, 'disliked'); ?>><?php esc_html_e('Disliked', 'ai-post-scheduler'); ?></option>
+								<option value="unrated" <?php selected($feedback_filter, 'unrated'); ?>><?php esc_html_e('No Feedback', 'ai-post-scheduler'); ?></option>
+							</select>
+							<?php endif; ?>
 							<?php if (!empty($selectable_post_types)): ?>
 							<label class="screen-reader-text" for="aips-filter-post-type-generated"><?php esc_html_e('Filter by Post Type:', 'ai-post-scheduler'); ?></label>
 							<select name="post_type" id="aips-filter-post-type-generated" class="aips-form-select">
@@ -79,8 +88,8 @@ if (!defined('ABSPATH')) {
 								<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id) || !empty($post_type_filter)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id', 'post_type'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
+							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id) || !empty($feedback_filter) || !empty($post_type_filter)): ?>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id', 'feedback', 'post_type'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
@@ -99,21 +108,36 @@ if (!defined('ABSPATH')) {
 
 				<!-- Generated posts table -->
 				<div class="aips-panel-body no-padding">
+					<?php if (!empty($post_feedback_enabled) && !empty($posts_data)): ?>
+					<div class="tablenav top aips-post-feedback-bulk">
+						<select id="aips-post-feedback-bulk-action"><option value=""><?php esc_html_e('Feedback bulk action', 'ai-post-scheduler'); ?></option><option value="liked"><?php esc_html_e('Like', 'ai-post-scheduler'); ?></option><option value="disliked"><?php esc_html_e('Dislike', 'ai-post-scheduler'); ?></option><option value="cleared"><?php esc_html_e('Clear Feedback', 'ai-post-scheduler'); ?></option></select>
+						<span class="aips-post-feedback-bulk-details" hidden>
+							<label class="screen-reader-text" for="aips-post-feedback-bulk-reason"><?php esc_html_e('Feedback reason', 'ai-post-scheduler'); ?></label>
+							<select id="aips-post-feedback-bulk-reason"><option value=""><?php esc_html_e('No reason', 'ai-post-scheduler'); ?></option></select>
+							<label class="screen-reader-text" for="aips-post-feedback-bulk-comment"><?php esc_html_e('Feedback comment', 'ai-post-scheduler'); ?></label>
+							<input type="text" id="aips-post-feedback-bulk-comment" maxlength="2000" placeholder="<?php esc_attr_e('Optional comment', 'ai-post-scheduler'); ?>">
+						</span>
+						<button type="button" id="aips-post-feedback-bulk-apply" class="button"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+					</div>
+					<?php endif; ?>
 					<?php if (!empty($posts_data)): ?>
 					<table class="aips-table">
 						<thead>
 							<tr>
+								<?php if (!empty($post_feedback_enabled)): ?><td class="check-column"><input type="checkbox" id="aips-generated-posts-select-all" aria-label="<?php esc_attr_e('Select all posts', 'ai-post-scheduler'); ?>"></td><?php endif; ?>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+								<?php if (!empty($post_feedback_enabled)): ?><th scope="col"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></th><?php endif; ?>
 							</tr>
 						</thead>
 						<tbody>
 							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
+								<?php if (!empty($post_feedback_enabled)): ?><th class="check-column"><input type="checkbox" class="aips-generated-post-checkbox" value="<?php echo esc_attr($post_data['post_id']); ?>" aria-label="<?php echo esc_attr(sprintf(__('Select %s', 'ai-post-scheduler'), $post_data['title'])); ?>"></th><?php endif; ?>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
@@ -195,6 +219,7 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 								</td>
+								<?php if (!empty($post_feedback_enabled)): ?><td><?php $post_id = $post_data['post_id']; $feedback = $post_data['feedback']; include AIPS_PLUGIN_DIR . 'templates/partials/post-feedback-controls.php'; ?></td><?php endif; ?>
 							</tr>
 							<?php endforeach; ?>
 						</tbody>
@@ -244,12 +269,13 @@ if (!defined('ABSPATH')) {
 					$start = max(1, $current - 3);
 					$end = min($pages, $current + 3);
 					$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $campaign_id, $post_type_filter, $search_query) {
+					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $campaign_id, $feedback_filter, $post_type_filter, $search_query) {
 						return add_query_arg(array_filter(array(
 							'generated_paged' => absint($page_number),
 							'author_id' => $author_id ? $author_id : false,
 							'template_id' => $template_id ? $template_id : false,
 							'campaign_id' => $campaign_id ? $campaign_id : false,
+							'feedback' => $feedback_filter ? $feedback_filter : false,
 							'post_type' => $post_type_filter ? $post_type_filter : false,
 							's' => $search_query ? $search_query : false,
 						)), $base_url);
@@ -298,4 +324,3 @@ if (!defined('ABSPATH')) {
 					</div>
 					<?php endif; ?>
 				</div>
-

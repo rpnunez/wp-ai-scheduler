@@ -271,6 +271,15 @@ For templates configured to generate draft posts:
 ### Post Manager (`AIPS_Post_Manager`)
 Abstraction layer for WordPress post CRUD operations used by the generation pipeline. Legacy alias: `AIPS_Post_Creator`.
 
+### Generated Post Feedback
+- Administrators can Like or Dislike generated posts, optionally choosing a reason and adding an editorial comment; feedback can be changed or cleared while the append-only event history remains auditable.
+- The global master switch is authoritative. When enabled, an Author override supersedes global defaults and a Template override supersedes the Author. Partial weight maps inherit values from the next broader scope.
+- Configurable weights cover Like/Dislike influence, semantic similarity, recency, Author/Template matches, and the global pool, with minimum-sample, similarity, example-count, and prompt-budget guardrails.
+- Similar liked and disliked posts select bounded, taxonomy-derived preference and avoidance guidance. Reason-aware routing keeps SEO feedback out of tone guidance and equivalent component-specific concerns separated.
+- Feedback comments are sanitized and retained for administrators but never copied into AI prompts. Logs retain selected event IDs and counts without copying comments or full source content.
+- Rated-version snapshots are embedded asynchronously with bounded retries. Missing embeddings, insufficient samples, and retrieval failures fail open; disabling the global switch prevents queued and generation-time embedding work.
+- Regenerated output starts unrated and stores `_aips_predecessor_post_id`; the predecessor audit trail is retained. Published or edited feedback remains available, with content-hash drift reducing its influence.
+
 ---
 
 ## 7. Research
@@ -339,7 +348,7 @@ Structured lifecycle logging for all meaningful operations:
 - Schema defined in `AIPS_DB_Manager::get_schema()`; applied via `dbDelta`
 - Version-based upgrade runner in `AIPS_Upgrades`
 - Repair and reinstall tools in System Status
-- Data export (MySQL dump) and import via `AIPS_Data_Management`
+- Data export/import in JSON and MySQL formats via `AIPS_Data_Management`; the centralized table catalog includes the append-only `aips_post_feedback` audit table in backup, restore, repair, reinstall-with-backup, wipe, and deletion operations.
 
 ### Seeder (`AIPS_Seeder_Admin`)
 - Seed demo data (templates, voices, structures, authors) for quick setup

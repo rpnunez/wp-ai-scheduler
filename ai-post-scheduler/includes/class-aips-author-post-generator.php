@@ -661,7 +661,12 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 			'post_status' => 'draft',
 		));
 		
-		// Generate a new post
-		return $this->generate_now($topic_id);
+		// Generate a new, independently rateable post and retain its lineage.
+		$new_post_id = $this->generate_now($topic_id);
+		if (!is_wp_error($new_post_id)) {
+			AIPS_Bulk_Generator_Service::record_regeneration_lineage($new_post_id, $post_id);
+		}
+
+		return $new_post_id;
 	}
 }

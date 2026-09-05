@@ -164,6 +164,31 @@ class AIPS_Post_Review_Repository {
 			'current_page' => $args['page'],
 		);
 	}
+
+	/** Paginate completed generated posts across every WordPress post status. */
+	public function get_generated_posts($args = array()) {
+		$args = wp_parse_args($args, array('page' => 1, 'per_page' => 20, 'feedback' => '', 'search' => '', 'author_id' => 0, 'template_id' => 0, 'campaign_id' => 0));
+		// If the feedback table has not been installed yet (schema migration
+		// pending), fall back to an empty listing rather than joining a missing
+		// table. The caller renders the unfiltered list instead when this returns.
+		$feedback_table = $this->wpdb->prefix . 'aips_post_feedback';
+		if ($this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $feedback_table)) !== $feedback_table) {
+			return array('items' => array(), 'total' => 0, 'pages' => 0, 'current_page' => absint($args['page']));
+		}
+		$where = array("h.status = 'completed'", 'h.post_id IS NOT NULL');
+		$values = array();
+		if ($args['search']) { $where[] = '(h.generated_title LIKE %s OR p.post_title LIKE %s)'; $like = '%' . $this->wpdb->esc_like($args['search']) . '%'; $values[] = $like; $values[] = $like; }
+		foreach (array('author_id', 'template_id', 'campaign_id') as $key) { if (!empty($args[$key])) { $where[] = 'h.' . $key . ' = %d'; $values[] = absint($args[$key]); } }
+		$feedback_join = "LEFT JOIN {$this->wpdb->prefix}aips_post_feedback f ON f.id = (SELECT MAX(f2.id) FROM {$this->wpdb->prefix}aips_post_feedback f2 WHERE f2.post_id = h.post_id)";
+		if ('liked' === $args['feedback'] || 'disliked' === $args['feedback']) { $where[] = 'f.reaction = %s'; $values[] = $args['feedback']; }
+		if ('unrated' === $args['feedback']) { $where[] = "(f.id IS NULL OR f.reaction = 'cleared')"; }
+		$where_sql = implode(' AND ', $where);
+		$total_sql = "SELECT COUNT(*) FROM {$this->table_name} h INNER JOIN {$this->wpdb->posts} p ON p.ID = h.post_id $feedback_join WHERE $where_sql";
+		$total = (int) (empty($values) ? $this->wpdb->get_var($total_sql) : $this->wpdb->get_var($this->wpdb->prepare($total_sql, $values)));
+		$query_values = $values; $query_values[] = max(1, absint($args['per_page'])); $query_values[] = max(0, (absint($args['page']) - 1) * absint($args['per_page']));
+		$sql = "SELECT h.*, p.post_title, p.post_status, f.reaction feedback_reaction, f.reason_category feedback_reason_category, f.comment feedback_comment, f.user_id feedback_user_id, f.created_at feedback_created_at FROM {$this->table_name} h INNER JOIN {$this->wpdb->posts} p ON p.ID = h.post_id $feedback_join WHERE $where_sql ORDER BY h.created_at DESC LIMIT %d OFFSET %d";
+		return array('items' => $this->wpdb->get_results($this->wpdb->prepare($sql, $query_values)), 'total' => $total, 'pages' => (int) ceil($total / max(1, absint($args['per_page']))), 'current_page' => absint($args['page']));
+	}
 	
 	/**
 	 * Get count of draft posts.

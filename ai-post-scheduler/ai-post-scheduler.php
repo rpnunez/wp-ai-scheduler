@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.6.6
+ * Version: 3.6.7
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.6.6');
+    define('AIPS_VERSION', '3.6.7');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -370,6 +370,17 @@ final class AI_Post_Scheduler {
             return AIPS_History_Repository::instance();
         });
 
+		$container->singleton(AIPS_Post_Feedback_Repository::class, function() {
+			return new AIPS_Post_Feedback_Repository();
+		});
+
+		$container->singleton(AIPS_Post_Feedback_Service::class, function($container) {
+			return new AIPS_Post_Feedback_Service(
+				$container->make(AIPS_Post_Feedback_Repository::class),
+				$container->make(AIPS_History_Repository::class)
+			);
+		});
+
 		$container->singleton(AIPS_History_Repository_Interface::class, function( $container ) {
 			return $container->make(AIPS_History_Repository::class);
 		});
@@ -645,6 +656,16 @@ final class AI_Post_Scheduler {
      * @return void
      */
     private function boot_cron() {
+		add_action('aips_index_post_feedback_event', function($event_id, $attempt = 0) {
+			// The global switch is authoritative and is checked before feedback dependencies are resolved.
+			if (!AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) {
+				return;
+			}
+
+			AIPS_Container::get_instance()
+				->make(AIPS_Post_Feedback_Service::class)
+				->process_index_event($event_id, $attempt);
+		}, 10, 2);
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
@@ -950,6 +971,7 @@ final class AI_Post_Scheduler {
 
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
+		new AIPS_Post_Feedback_Editor();
 
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing

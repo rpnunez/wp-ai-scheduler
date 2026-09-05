@@ -64,6 +64,8 @@ class AIPS_Data_Management_Export_JSON extends AIPS_Data_Management_Export {
 		$data = array(
 			'version' => AIPS_VERSION,
 			'exported_at' => AIPS_DateTime::now()->toMysql(),
+			// Identifies append-only audit datasets for restore/privacy tooling.
+			'audit_tables' => array('aips_post_feedback'),
 			'tables' => array(),
 		);
 		

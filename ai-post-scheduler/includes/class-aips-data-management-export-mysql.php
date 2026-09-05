@@ -68,6 +68,7 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 		$sql_dump .= "-- Generated on: " . gmdate('Y-m-d H:i:s') . " GMT\n";
 		$sql_dump .= "-- WordPress Version: " . get_bloginfo('version') . "\n";
 		$sql_dump .= "-- Plugin Version: " . AIPS_VERSION . "\n\n";
+		$sql_dump .= "-- Append-only audit tables, including aips_post_feedback, are included when installed.\n\n";
 		
 		$sql_dump .= "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n";
 		$sql_dump .= "SET time_zone = \"+00:00\";\n\n";

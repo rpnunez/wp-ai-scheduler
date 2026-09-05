@@ -164,6 +164,8 @@ class AIPS_Template_Entry {
 	 * @var string|null
 	 */
 	public readonly ?string $source_group_ids;
+	public readonly ?int $feedback_enabled;
+	public readonly array $feedback_config;
 
 	// -----------------------------------------------------------------------
 	// Constructor (private — use factory methods)
@@ -209,7 +211,9 @@ class AIPS_Template_Entry {
 		int $post_quantity,
 		?int $article_structure_id,
 		bool $include_sources,
-		?string $source_group_ids
+		?string $source_group_ids,
+		?int $feedback_enabled,
+		array $feedback_config
 	) {
 		$this->id                               = $id;
 		$this->name                             = $name;
@@ -229,6 +233,8 @@ class AIPS_Template_Entry {
 		$this->article_structure_id             = $article_structure_id;
 		$this->include_sources                  = $include_sources;
 		$this->source_group_ids                 = $source_group_ids;
+		$this->feedback_enabled                 = $feedback_enabled;
+		$this->feedback_config                  = $feedback_config;
 	}
 
 	// -----------------------------------------------------------------------
@@ -276,7 +282,9 @@ class AIPS_Template_Entry {
 			$post_quantity,
 			$article_structure_id,
 			1 === (int) ($source->include_sources ?? 0),
-			isset($source->source_group_ids) && $source->source_group_ids !== '' ? (string) $source->source_group_ids : null
+			isset($source->source_group_ids) && $source->source_group_ids !== '' ? (string) $source->source_group_ids : null,
+			isset($source->feedback_enabled) && null !== $source->feedback_enabled ? (int) $source->feedback_enabled : null,
+			AIPS_Template_Data::parse_feedback_config($source->feedback_config ?? null)
 		);
 	}
 

@@ -126,6 +126,10 @@ class AIPS_Ajax_Registry {
 		'aips_get_post_session'           => 'AIPS_Generated_Posts_Controller',
 		'aips_get_session_json'           => 'AIPS_Generated_Posts_Controller',
 		'aips_download_session_json'      => 'AIPS_Generated_Posts_Controller',
+		'aips_post_feedback_set'          => 'AIPS_Post_Feedback_Controller',
+		'aips_post_feedback_clear'        => 'AIPS_Post_Feedback_Controller',
+		'aips_post_feedback_get'          => 'AIPS_Post_Feedback_Controller',
+		'aips_post_feedback_bulk'         => 'AIPS_Post_Feedback_Controller',
 
 		// Calendar Controller
 		'aips_get_calendar_events'        => 'AIPS_Calendar_Controller',

@@ -22,6 +22,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Sources: `AIPS_Sources_*` classes and the `aips_source_group` taxonomy.
 - Embeddings & Semantic Intelligence: `AIPS_Embeddings_Repository` (`wp_aips_embeddings`), `AIPS_Relationships_Repository` (`wp_aips_relationships`), `AIPS_Embeddings_Service`, `AIPS_Content_Indexer_Service`, `AIPS_Related_Posts_Service`, `AIPS_Deduplication_Service`, `AIPS_Related_Posts_Frontend`.
 - Content Indexer: `AIPS_Content_Indexer_Controller` (`aips-content-indexer`), interactive semantic graph visualizer, continuous sync on publish, and cannibalization audit.
+- Generated post feedback: `AIPS_Post_Feedback_Repository`, policy resolver, retrieval service, and bounded prompt context. Global enablement is a core kill switch; effective precedence is Template > Author > global, with nullable/partial overrides inheriting. Reactions are append-only events (`liked`, `disliked`, `cleared`) with optional categorized reasons, sanitized comments, content hash, origin IDs, and timestamps. Do not copy a reaction during regeneration; new output is unrated and links to `_aips_predecessor_post_id`.
 - Internal links: `AIPS_Internal_Links_Controller`, services/repository, and the `aips_index_posts_batch` cron.
 - Notifications: registry, senders, templates, event handler, plus `AIPS_Notifications_Repository`.
 - Campaigns, post slices, AI assistance, operations insights, telemetry, taxonomy, onboarding, and diagnostics each have dedicated controllers, repositories, and services.
@@ -39,7 +40,16 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Schema changes go through `AIPS_DB_Manager::get_schema()` and `AIPS_DB_Manager::install_tables()` using `dbDelta`.
 - `AIPS_DB_Migrations::check_and_run()` is the migration entry point; `class-aips-upgrades.php` is a compatibility alias.
 - There is no standalone migrations directory.
-- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/feedback, campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, and bulk batch jobs.
+- Plugin tables include history/logs, templates, schedules, voices, structures, prompt sections, trending topics, authors/topics/logs/topic feedback, generated post feedback (`aips_post_feedback`), campaigns, post slices, notifications, sources/data/groups, taxonomy, embeddings, internal links, cache, telemetry, AI assistance, and bulk batch jobs.
+- `AIPS_DB_Manager::get_full_table_names()` is the central lifecycle catalog used by JSON/MySQL export and import, backup/restore, repair, reinstall, wipe, and drop operations. Keep `aips_post_feedback` in that catalog. Post deletion or trashing must not mutate its audit events; cleanup is explicit and repository-owned.
+
+## Generated post feedback safety and lifecycle
+
+- The feature is opt-in on fresh installs and upgrades. With the master switch off, Author and Template settings are ineffective and generation performs no feedback query, embedding, or prompt mutation.
+- Allowed reason categories are tone/style, originality, relevance, accuracy, structure, depth, engagement, SEO, policy/safety, and other. Free text is untrusted input: retain it for the administrative audit trail but never place it in generation prompts.
+- Retrieval is semantic and weighted by reaction, reason, similarity, recency, scope, and content integrity. It converts selected events into fixed taxonomy-derived guidance under a strict budget; rated-version snapshot embeddings are queued with bounded retries and failures are non-fatal.
+- JSON and MySQL portability include the complete feedback audit table. Reinstall with backup preserves it; reinstall/wipe without preservation removes it. Ordinary post publish, edit, trash, or delete operations retain audit rows.
+- Full regeneration generates while predecessor feedback is still available, records `_aips_predecessor_post_id` on the replacement, includes `predecessor_post_id` in history context, and never clones feedback state.
 
 ## Cron hooks
 

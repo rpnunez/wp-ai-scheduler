@@ -156,6 +156,20 @@ class AIPS_Config {
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
+            // Generated post feedback (opt-in; global switch is authoritative).
+            'aips_post_feedback_enabled'               => false,
+            'aips_post_feedback_like_weight'           => 1.0,
+            'aips_post_feedback_dislike_weight'        => 1.25,
+            'aips_post_feedback_similarity_weight'     => 1.0,
+            'aips_post_feedback_recency_weight'        => 0.35,
+            'aips_post_feedback_author_match_weight'   => 1.25,
+            'aips_post_feedback_template_match_weight' => 1.5,
+            'aips_post_feedback_global_pool_weight'    => 0.5,
+            'aips_post_feedback_max_examples'          => 6,
+            'aips_post_feedback_min_similarity'        => 0.70,
+            'aips_post_feedback_min_samples'           => 1,
+            'aips_post_feedback_prompt_budget_chars'   => 4000,
+            'aips_post_feedback_edited_content_weight' => 0.35,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(

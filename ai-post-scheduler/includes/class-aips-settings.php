@@ -191,6 +191,10 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_similarity_threshold'),
 				'default'           => $defaults['aips_topic_similarity_threshold'],
 			),
+			'aips_post_feedback_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_post_feedback_enabled'],
+			),
 			'aips_enable_cache_system' => array(
 				'sanitize_callback' => array($ui, 'sanitize_enable_cache_system'),
 				'default'           => $defaults['aips_enable_cache_system'],
@@ -240,6 +244,41 @@ class AIPS_Settings {
 				'default'           => $defaults['aips_auto_index_on_publish'],
 			),
 		);
+
+		foreach (array(
+			'aips_post_feedback_like_weight',
+			'aips_post_feedback_dislike_weight',
+			'aips_post_feedback_similarity_weight',
+			'aips_post_feedback_recency_weight',
+			'aips_post_feedback_author_match_weight',
+			'aips_post_feedback_template_match_weight',
+			'aips_post_feedback_global_pool_weight',
+			'aips_post_feedback_min_similarity',
+			'aips_post_feedback_edited_content_weight',
+		) as $option_name) {
+			$default_value = $defaults[$option_name];
+			$maximum = in_array($option_name, array('aips_post_feedback_min_similarity', 'aips_post_feedback_edited_content_weight'), true) ? 1.0 : 10.0;
+			$settings[$option_name] = array(
+				'sanitize_callback' => static function($value) use ($default_value, $maximum) {
+					return is_numeric($value) ? max(0.0, min($maximum, (float) $value)) : $default_value;
+				},
+				'default'           => $defaults[$option_name],
+			);
+		}
+
+		foreach (array(
+			'aips_post_feedback_max_examples'        => array(1, 20),
+			'aips_post_feedback_min_samples'         => array(1, 1000),
+			'aips_post_feedback_prompt_budget_chars' => array(300, 20000),
+		) as $option_name => $bounds) {
+			$default_value = $defaults[$option_name];
+			$settings[$option_name] = array(
+				'sanitize_callback' => static function($value) use ($bounds, $default_value) {
+					return is_numeric($value) ? max($bounds[0], min($bounds[1], (int) $value)) : $default_value;
+				},
+				'default'           => $defaults[$option_name],
+			);
+		}
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
 			$settings[$option_key] = array(
@@ -409,6 +448,22 @@ class AIPS_Settings {
             'aips-settings',
             'aips_feedback_section'
         );
+
+		add_settings_field(
+			'aips_post_feedback_enabled',
+			__('Generated Post Feedback', 'ai-post-scheduler'),
+			array($this->ui, 'post_feedback_enabled_field_callback'),
+			'aips-settings',
+			'aips_feedback_section'
+		);
+
+		add_settings_field(
+			'aips_post_feedback_weights',
+			__('Post Feedback Influence', 'ai-post-scheduler'),
+			array($this->ui, 'post_feedback_weights_field_callback'),
+			'aips-settings',
+			'aips_feedback_section'
+		);
 
         // -----------------------------------------------------------------------
         // Notifications section: Email address + all per-type preferences

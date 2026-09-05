@@ -79,6 +79,10 @@ class AIPS_Admin_Assets {
         if (!$this->is_plugin_admin_page($hook, $page)) {
             if ($this->is_native_post_admin_page($hook)) {
                 $this->enqueue_history_modal_opener_assets();
+				$post_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+				if ($post_id && '1' === (string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATED_POST, true) && AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) {
+					$this->enqueue_post_feedback_assets();
+				}
             }
 			return;
 		}
@@ -445,7 +449,67 @@ class AIPS_Admin_Assets {
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
         ));
+
+        // Only enqueue feedback assets and expose the nonce when the master
+        // switch is on. The native-post branch above already gates on this;
+        // without the same gate every plugin admin page loads unused JS/CSS
+        // and localizes a live nonce for endpoints that will always reject.
+        if (AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled')) {
+            $this->enqueue_post_feedback_assets();
+        }
     }
+
+	/**
+	 * Enqueue generated-post feedback assets and localized UI strings.
+	 *
+	 * The stylesheet extends the main admin stylesheet, while the script uses
+	 * jQuery and integrates with the shared utility module when it is available.
+	 *
+	 * @return void
+	 */
+	private function enqueue_post_feedback_assets() {
+		wp_enqueue_style('aips-admin-post-feedback', AIPS_PLUGIN_URL . 'assets/css/admin-post-feedback.css', array('aips-admin-style'), AIPS_VERSION);
+		wp_enqueue_script('aips-admin-post-feedback', AIPS_PLUGIN_URL . 'assets/js/admin-post-feedback.js', array('jquery'), AIPS_VERSION, true);
+		$liked = array(
+			'tone_style'    => __('Strong tone/style', 'ai-post-scheduler'),
+			'originality'   => __('Original and distinctive', 'ai-post-scheduler'),
+			'relevance'     => __('Highly relevant', 'ai-post-scheduler'),
+			'accuracy'      => __('Accurate and trustworthy', 'ai-post-scheduler'),
+			'structure'     => __('Clear structure', 'ai-post-scheduler'),
+			'depth'         => __('Good depth', 'ai-post-scheduler'),
+			'engagement'    => __('Engaging', 'ai-post-scheduler'),
+			'seo'           => __('Strong SEO', 'ai-post-scheduler'),
+			'policy_safety' => __('Good policy/safety handling', 'ai-post-scheduler'),
+			'other'         => __('Other strength', 'ai-post-scheduler'),
+		);
+		$disliked = array(
+			'tone_style'    => __('Poor tone/style', 'ai-post-scheduler'),
+			'originality'   => __('Too generic', 'ai-post-scheduler'),
+			'relevance'     => __('Off-topic or irrelevant', 'ai-post-scheduler'),
+			'accuracy'      => __('Factually weak', 'ai-post-scheduler'),
+			'structure'     => __('Poor structure', 'ai-post-scheduler'),
+			'depth'         => __('Insufficient depth', 'ai-post-scheduler'),
+			'engagement'    => __('Not engaging', 'ai-post-scheduler'),
+			'seo'           => __('Weak SEO', 'ai-post-scheduler'),
+			'policy_safety' => __('Policy/safety concern', 'ai-post-scheduler'),
+			'other'         => __('Other issue', 'ai-post-scheduler'),
+		);
+		wp_localize_script('aips-admin-post-feedback', 'aipsPostFeedback', array(
+			'ajaxUrl'     => admin_url('admin-ajax.php'),
+			'nonce'       => wp_create_nonce(AIPS_Post_Feedback_Controller::NONCE_ACTION),
+			'reasons'     => array(
+				'liked'    => $liked,
+				'disliked' => $disliked,
+			),
+			'noReason'    => __('No reason', 'ai-post-scheduler'),
+			'saved'       => __('Feedback saved.', 'ai-post-scheduler'),
+			'cleared'     => __('Feedback cleared.', 'ai-post-scheduler'),
+			'error'       => __('Could not update feedback.', 'ai-post-scheduler'),
+			'partial'     => __('Some posts could not be updated.', 'ai-post-scheduler'),
+			'selectPosts' => __('Select posts and a feedback action.', 'ai-post-scheduler'),
+			'maxBulk'     => AIPS_Post_Feedback_Controller::MAX_BULK,
+		));
+	}
 
     /**
      * Enqueue only the assets required for the History modal opener on native

@@ -77,10 +77,15 @@ class AIPS_Generated_Posts_Controller {
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 		$campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
+		$feedback_filter = isset($_GET['feedback']) ? sanitize_key(wp_unslash($_GET['feedback'])) : '';
+		if (!in_array($feedback_filter, array('', 'liked', 'disliked', 'unrated'), true)) {
+			$feedback_filter = '';
+		}
+		$post_feedback_enabled = (bool) AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled');
 		$post_type_filter = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
 
 		// Get completed history entries with post IDs (for Generated Posts tab)
-		$history = $this->history_repository->get_history(array(
+		$history_args = array(
 			'page' => $generated_page,
 			'per_page' => 20,
 			'status' => 'completed',
@@ -90,7 +95,10 @@ class AIPS_Generated_Posts_Controller {
 			'campaign_id' => $campaign_id,
 			'post_type' => $post_type_filter,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
-		));
+		);
+		$history = $feedback_filter && $post_feedback_enabled
+			? $this->post_review_repository->get_generated_posts(array_merge($history_args, array('feedback' => $feedback_filter)))
+			: $this->history_repository->get_history($history_args);
 		
 		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
 		$date_format = get_option('date_format');
@@ -169,6 +177,15 @@ class AIPS_Generated_Posts_Controller {
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
+		}
+		$post_feedback = array();
+		if ($post_feedback_enabled && !empty($posts_data)) {
+			$feedback_service = new AIPS_Post_Feedback_Service();
+			$post_feedback = $feedback_service->get_current_many(array_column($posts_data, 'post_id'));
+			foreach ($posts_data as &$post_data) {
+				$post_data['feedback'] = $post_feedback[$post_data['post_id']] ?? null;
+			}
+			unset($post_data);
 		}
 		
 		// Get draft posts for Post Review tab

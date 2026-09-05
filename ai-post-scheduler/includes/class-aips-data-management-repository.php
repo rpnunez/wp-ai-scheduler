@@ -7,6 +7,11 @@ if (!defined('ABSPATH')) {
  * Repository for data management import/export persistence.
  */
 class AIPS_Data_Management_Repository {
+	/**
+	 * Data management intentionally treats feedback as an append-only audit
+	 * dataset. It is only truncated during an explicit import/wipe/reinstall;
+	 * ordinary WordPress post lifecycle operations never call this repository.
+	 */
 
 	/**
 	 * @var wpdb

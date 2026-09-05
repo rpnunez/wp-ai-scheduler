@@ -630,6 +630,8 @@
         openTemplateModal: function(e) {
             e.preventDefault();
             $('#aips-template-form')[0].reset();
+			$('#template_feedback_enabled').val('inherit');
+			$('#aips-template-form .aips-feedback-overrides').prop('hidden', true);
             $('#template_id').val('');
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
@@ -676,6 +678,10 @@
                 success: function(response) {
                     if (response.success) {
                         var t = response.data.template;
+						$('#template_feedback_enabled').val(t.feedback_enabled === null || t.feedback_enabled === undefined ? 'inherit' : (String(t.feedback_enabled) === '1' ? 'enabled' : 'disabled'));
+						var feedbackConfig = t.feedback_config || {};
+						if (typeof feedbackConfig === 'string') { try { feedbackConfig = JSON.parse(feedbackConfig); } catch (ignore) { feedbackConfig = {}; } }
+						$('#aips-template-form [data-feedback-key]').each(function () { $(this).val(feedbackConfig[$(this).data('feedback-key')] !== undefined ? feedbackConfig[$(this).data('feedback-key')] : ''); });
                         var selectedCategories = [];
                         if (Array.isArray(t.post_category)) {
                             selectedCategories = t.post_category.map(String);

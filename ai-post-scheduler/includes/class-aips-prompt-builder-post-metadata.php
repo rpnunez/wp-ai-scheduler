@@ -49,7 +49,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 *                                              post has no AI-generated featured image.
 	 * @return string
 	 */
-	public function build($context, array $ai_variables = array(), $image_prompt = '') {
+	public function build($context, array $ai_variables = array(), $image_prompt = '', $feedback_context = null) {
 		$topic_str = $context->get_topic();
 		$sections  = array();
 
@@ -94,6 +94,10 @@ class AIPS_Prompt_Builder_Post_Metadata {
 
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
+		if ($feedback_context instanceof AIPS_Post_Feedback_Prompt_Context) {
+			$guidance = $feedback_context->for_component('metadata_turn');
+			if ($guidance !== '') { $prompt .= "\n\n" . $guidance; }
+		}
 		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt));
 
 		/**

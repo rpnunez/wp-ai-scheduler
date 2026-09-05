@@ -239,6 +239,8 @@
 			e.preventDefault();
 			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
+			$('#author_feedback_enabled').val('inherit');
+			$('#aips-author-form .aips-feedback-overrides').prop('hidden', true);
 			$('#author_id').val('');
 
 			// Show form and hide loader
@@ -325,6 +327,10 @@
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
+						$('#author_feedback_enabled').val(author.feedback_enabled === null || author.feedback_enabled === undefined ? 'inherit' : (String(author.feedback_enabled) === '1' ? 'enabled' : 'disabled'));
+						var feedbackConfig = author.feedback_config || {};
+						if (typeof feedbackConfig === 'string') { try { feedbackConfig = JSON.parse(feedbackConfig); } catch (ignore) { feedbackConfig = {}; } }
+						$('#aips-author-form [data-feedback-key]').each(function () { $(this).val(feedbackConfig[$(this).data('feedback-key')] !== undefined ? feedbackConfig[$(this).data('feedback-key')] : ''); });
 
 						// Restore affiliate links setting.
 						$('#author_affiliate_links_enabled').prop('checked', author.affiliate_links_enabled == 1);

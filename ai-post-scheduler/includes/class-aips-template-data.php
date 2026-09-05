@@ -183,6 +183,8 @@ class AIPS_Template_Data {
 	 * @var string
 	 */
 	public readonly string $updated_at;
+	public readonly ?int $feedback_enabled;
+	public readonly array $feedback_config;
 
 	// -----------------------------------------------------------------------
 	// Constructor (private — use from_row())
@@ -234,7 +236,9 @@ class AIPS_Template_Data {
 		?string $source_group_ids,
 		bool $is_active,
 		string $created_at,
-		string $updated_at
+		string $updated_at,
+		?int $feedback_enabled,
+		array $feedback_config
 	) {
 		$this->id                               = $id;
 		$this->name                             = $name;
@@ -257,6 +261,8 @@ class AIPS_Template_Data {
 		$this->is_active                        = $is_active;
 		$this->created_at                       = $created_at;
 		$this->updated_at                       = $updated_at;
+		$this->feedback_enabled                 = $feedback_enabled;
+		$this->feedback_config                  = $feedback_config;
 	}
 
 	// -----------------------------------------------------------------------
@@ -294,8 +300,18 @@ class AIPS_Template_Data {
 			isset( $row->source_group_ids ) && $row->source_group_ids !== '' ? (string) $row->source_group_ids : null,
 			1 === (int) ( $row->is_active ?? 1 ),
 			(string) ( $row->created_at ?? '' ),
-			(string) ( $row->updated_at ?? '' )
+			(string) ( $row->updated_at ?? '' ),
+			isset($row->feedback_enabled) && null !== $row->feedback_enabled ? (int) $row->feedback_enabled : null,
+			self::parse_feedback_config($row->feedback_config ?? null)
 		);
+	}
+
+	public static function parse_feedback_config($value): array {
+		if (is_array($value)) {
+			return $value;
+		}
+		$decoded = json_decode((string) $value, true);
+		return is_array($decoded) ? $decoded : array();
 	}
 
 	// -----------------------------------------------------------------------

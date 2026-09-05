@@ -148,6 +148,11 @@ class AIPS_Authors_Controller {
 				: wp_json_encode(array()),
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
+		if (isset($_POST['feedback_enabled'])) {
+			$data['feedback_enabled'] = AIPS_Post_Feedback_Settings::sanitize_enabled(sanitize_text_field(wp_unslash($_POST['feedback_enabled'])));
+			$feedback_config = AIPS_Post_Feedback_Settings::sanitize_config(isset($_POST['feedback_config']) ? $_POST['feedback_config'] : array());
+			$data['feedback_config'] = empty($feedback_config) ? null : wp_json_encode($feedback_config);
+		}
 		
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {

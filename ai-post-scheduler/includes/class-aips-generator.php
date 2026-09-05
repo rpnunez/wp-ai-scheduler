@@ -47,6 +47,9 @@ class AIPS_Generator {
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
     private $post_metadata_prompt_builder;
+    private $post_feedback_config_resolver;
+    private $post_feedback_retrieval_service;
+    private $post_feedback_prompt_context;
 
     /**
      * @var AIPS_AI_Conversation|null Transcript for the current generation run.
@@ -93,7 +96,9 @@ class AIPS_Generator {
         $post_manager = null,
         ?AIPS_History_Service_Interface $history_service = null,
         $prompt_builder = null,
-        $markdown_parser = null
+        $markdown_parser = null,
+        $post_feedback_config_resolver = null,
+        $post_feedback_retrieval_service = null
     ) {
         $container = AIPS_Container::get_instance();
         $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -108,6 +113,11 @@ class AIPS_Generator {
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
+        $this->post_feedback_config_resolver = $post_feedback_config_resolver ?: new AIPS_Post_Feedback_Config_Resolver();
+        // Retrieval is intentionally lazy: with the authoritative global switch
+        // off, generation must not even construct repository/embedding services.
+        $this->post_feedback_retrieval_service = $post_feedback_retrieval_service;
+        $this->post_feedback_prompt_context = AIPS_Post_Feedback_Prompt_Context::empty();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -275,6 +285,51 @@ class AIPS_Generator {
     private function use_metadata_turn() {
         return $this->conversation !== null
             && (bool) AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+    }
+
+    /**
+     * Resolve optional feedback guidance once for a generation run.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return void
+     */
+    private function prepare_post_feedback($context) {
+        $this->post_feedback_prompt_context = AIPS_Post_Feedback_Prompt_Context::empty();
+
+        try {
+            $policy = $this->post_feedback_config_resolver->resolve($context);
+            if ($policy->is_enabled()) {
+                if (null === $this->post_feedback_retrieval_service) {
+                    $this->post_feedback_retrieval_service = new AIPS_Post_Feedback_Retrieval_Service();
+                }
+                $ranked = $this->post_feedback_retrieval_service->retrieve($context, $policy);
+                $this->post_feedback_prompt_context = AIPS_Post_Feedback_Prompt_Context::from_ranked($ranked, $policy);
+            }
+
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'log',
+                    'Resolved generated post feedback guidance',
+                    null,
+                    null,
+                    array_merge(
+                        array('component' => 'post_feedback', 'enabled' => $policy->is_enabled(), 'scope' => $policy->get_scope()),
+                        $this->post_feedback_prompt_context->get_diagnostics()
+                    )
+                );
+            }
+        } catch (Throwable $error) {
+            $this->logger->log('Post feedback guidance failed open: ' . $error->getMessage(), 'warning');
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'warning',
+                    'Post feedback guidance unavailable; generation continued normally.',
+                    null,
+                    null,
+                    array('component' => 'post_feedback', 'fallback_reason' => 'feedback_error')
+                );
+            }
+        }
     }
 
     /**
@@ -662,9 +717,9 @@ class AIPS_Generator {
         // In a conversation the article is the preceding model turn, so the prompt
         // refers back to it instead of carrying another full copy.
         if ($this->conversation !== null) {
-            $prompt = $this->post_title_prompt_builder->build_followup($context);
+            $prompt = $this->post_title_prompt_builder->build_followup($context, $this->post_feedback_prompt_context);
         } else {
-            $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
+            $prompt = $this->post_title_prompt_builder->build($context, null, null, $content, $this->post_feedback_prompt_context);
         }
 
         // Apply resolved AI variables so that any {{VariableName}} placeholders in the
@@ -713,9 +768,9 @@ class AIPS_Generator {
         // In a conversation the article and title are already turns in the
         // transcript, so neither is pasted back into the prompt.
         if ($this->conversation !== null) {
-            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice, $topic);
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice, $topic, $this->post_feedback_prompt_context);
         } else {
-            $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic, $subject);
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic, $subject, $this->post_feedback_prompt_context);
         }
 
         // Request excerpt from AI service
@@ -754,9 +809,9 @@ class AIPS_Generator {
         // In a conversation the article and title are the two preceding turns, so
         // neither is pasted back into the prompt.
         if ($this->conversation !== null) {
-            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice_obj, $topic_str);
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice_obj, $topic_str, $this->post_feedback_prompt_context);
         } else {
-            $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context, $this->post_feedback_prompt_context);
         }
 
         // Request excerpt from AI service
@@ -848,7 +903,7 @@ class AIPS_Generator {
             )));
         }
 
-        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template);
+        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template, $this->post_feedback_prompt_context);
         $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '');
 
         if ($this->current_history) {
@@ -941,13 +996,14 @@ class AIPS_Generator {
      * @return array|WP_Error Array with title, content, excerpt, and image prompt, or WP_Error.
      */
     public function generate_preview($context) {
+        $this->prepare_post_feedback($context);
         $this->start_conversation();
 
         // Build the full content prompt from context and capture source snapshot usage.
         $this->current_source_snapshots = array();
       
         add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
-        $content_prompt = $this->post_content_prompt_builder->build($context);
+        $content_prompt = $this->post_content_prompt_builder->build($context, null, null, $this->post_feedback_prompt_context);
         remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
 
         // Build contextual instructions
@@ -1100,6 +1156,8 @@ class AIPS_Generator {
             // Fallback if history creation fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
+
+        $this->prepare_post_feedback($context);
 
         // Open a transcript for this run when conversational generation is enabled
         // and the active provider can replay it.
@@ -1625,7 +1683,7 @@ class AIPS_Generator {
 		// Build the full content prompt from context and capture source snapshot usage.
 		$this->current_source_snapshots = array();
 		add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
-		$content_prompt = $this->post_content_prompt_builder->build($context);
+		$content_prompt = $this->post_content_prompt_builder->build($context, null, null, $this->post_feedback_prompt_context);
 		remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
 
 		if ($this->current_history) {

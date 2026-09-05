@@ -192,6 +192,29 @@ class AIPS_Bulk_Generation_Result {
  *                           _doing_it_wrong() and falls back to wp_json_encode().
  */
 class AIPS_Bulk_Generator_Service {
+	/** Post meta key linking regenerated output to the post it replaces. */
+	public const META_PREDECESSOR_POST_ID = '_aips_predecessor_post_id';
+
+	/**
+	 * Record regeneration lineage without copying any feedback state.
+	 *
+	 * Keeping this operation independent of a particular regeneration controller
+	 * gives single, bulk, and Author Topic flows identical semantics.
+	 *
+	 * @param int $new_post_id New generated post ID.
+	 * @param int $predecessor_post_id Post ID that was regenerated.
+	 * @return bool Whether lineage was recorded.
+	 */
+	public static function record_regeneration_lineage($new_post_id, $predecessor_post_id) {
+		$new_post_id         = absint($new_post_id);
+		$predecessor_post_id = absint($predecessor_post_id);
+
+		if (!$new_post_id || !$predecessor_post_id || $new_post_id === $predecessor_post_id) {
+			return false;
+		}
+
+		return false !== update_post_meta($new_post_id, self::META_PREDECESSOR_POST_ID, $predecessor_post_id);
+	}
 
 	/**
 	 * Default item limit when no limit_default option and no filter override are given.
@@ -398,13 +421,20 @@ class AIPS_Bulk_Generator_Service {
 				$success_count++;
 				$post_id_or_ids = is_array( $result ) ? $result : (int) $result;
 				$post_ids[]     = $post_id_or_ids;
+				$record_context = array( 'item' => $item, 'post_id' => $post_id_or_ids );
+				if ( ! is_array( $post_id_or_ids ) && $post_id_or_ids > 0 ) {
+					$predecessor_post_id = absint( get_post_meta( $post_id_or_ids, self::META_PREDECESSOR_POST_ID, true ) );
+					if ( $predecessor_post_id ) {
+						$record_context['predecessor_post_id'] = $predecessor_post_id;
+					}
+				}
 				$history->record(
 					'activity',
 					/* translators: %s: post ID */
 					sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_id_or_ids ) ? implode( ',', $post_id_or_ids ) : $post_id_or_ids ),
 					null,
 					null,
-					array( 'item' => $item, 'post_id' => $post_id_or_ids )
+					$record_context
 				);
 			}
 		}

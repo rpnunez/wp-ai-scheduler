@@ -19,6 +19,7 @@
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
+- **Generated Post Feedback**: Added opt-in Like/Dislike feedback for generated posts with optional reasons/comments, global → Author → Template configuration and weight overrides, semantic prompt guidance for every generation path, editor and Generated Posts controls, append-only audit history, JSON/MySQL portability, and regeneration predecessor lineage without copied reactions.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.
 

@@ -37,8 +37,48 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function feedback_section_callback() {
-        echo '<p>' . esc_html__('Configure how the plugin evaluates and deduplicates generated topic suggestions.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Configure topic evaluation and optional Like/Dislike learning for generated posts.', 'ai-post-scheduler') . '</p>';
     }
+
+	public function sanitize_post_feedback_weight($value) {
+		return min(10.0, max(0.0, (float) $value));
+	}
+
+	public function sanitize_post_feedback_count($value) {
+		return max(1, absint($value));
+	}
+
+	public function post_feedback_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_post_feedback_enabled');
+		?>
+		<input type="hidden" name="aips_post_feedback_enabled" value="0">
+		<label><input type="checkbox" name="aips_post_feedback_enabled" value="1" <?php checked($value); ?>> <?php esc_html_e('Use administrator feedback to guide future generated posts', 'ai-post-scheduler'); ?></label>
+		<p class="description"><?php esc_html_e('This master switch is absolute. When disabled, Author and Template settings cannot enable feedback and no feedback retrieval is performed.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	public function post_feedback_weights_field_callback() {
+		$fields = array(
+			'aips_post_feedback_like_weight'           => array(__('Like influence', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_dislike_weight'        => array(__('Dislike influence', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_similarity_weight'     => array(__('Semantic similarity', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_recency_weight'        => array(__('Recency', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_author_match_weight'   => array(__('Author match', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_template_match_weight' => array(__('Template match', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_global_pool_weight'    => array(__('Global pool', 'ai-post-scheduler'), 0, 10, 0.05),
+			'aips_post_feedback_max_examples'          => array(__('Maximum examples', 'ai-post-scheduler'), 1, 20, 1),
+			'aips_post_feedback_min_similarity'        => array(__('Minimum similarity', 'ai-post-scheduler'), 0, 1, 0.01),
+			'aips_post_feedback_min_samples'           => array(__('Minimum feedback samples', 'ai-post-scheduler'), 1, 1000, 1),
+			'aips_post_feedback_prompt_budget_chars'   => array(__('Prompt budget (characters)', 'ai-post-scheduler'), 300, 20000, 50),
+			'aips_post_feedback_edited_content_weight' => array(__('Edited-content influence', 'ai-post-scheduler'), 0, 1, 0.05),
+		);
+		echo '<div class="aips-post-feedback-settings-grid">';
+		foreach ($fields as $name => $meta) {
+			$value = AIPS_Config::get_instance()->get_option($name);
+			printf('<label for="%1$s">%2$s <input id="%1$s" name="%1$s" type="number" value="%3$s" min="%4$s" max="%5$s" step="%6$s" class="small-text"></label>', esc_attr($name), esc_html($meta[0]), esc_attr($value), esc_attr($meta[1]), esc_attr($meta[2]), esc_attr($meta[3]));
+		}
+		echo '</div><p class="description">' . esc_html__('Template overrides take precedence over Author overrides; unspecified values inherit.', 'ai-post-scheduler') . '</p>';
+	}
 
     /**
      * Render the description for the API keys settings section.

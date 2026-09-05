@@ -46,6 +46,7 @@ Thumbs.db
 *.log
 *.tmp
 /tmp/
+.worktrees/
 node_modules/
 scripts/__pycache__/
 
