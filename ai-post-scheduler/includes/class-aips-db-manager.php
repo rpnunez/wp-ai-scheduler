@@ -105,6 +105,77 @@ class AIPS_DB_Manager {
 
         $sql = array();
 
+        $sql = array_merge($sql, $this->get_history_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_history_log_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_campaigns_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_templates_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_schedule_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_voices_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_structures_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_sections_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_trending_topics_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_authors_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_post_slices_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_author_topics_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_author_topic_logs_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_topic_feedback_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_notifications_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_sources_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_source_group_terms_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_sources_data_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_taxonomy_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_embeddings_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_relationships_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_internal_links_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_affiliate_links_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_cache_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_telemetry_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_ai_assistance_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_bulk_batch_jobs_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_cache_index_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_cache_events_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_integration_field_mappings_schema($tables, $charset_collate));
+
+        $sql = array_merge($sql, $this->get_content_audits_schema($tables, $charset_collate));
+
+        return $sql;
+    }
+
+    /**
+     * Get schema for table_history
+     */
+    private function get_history_schema(array $tables, string $charset_collate): array {
+        $table_history = $tables['aips_history'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
@@ -138,7 +209,15 @@ class AIPS_DB_Manager {
             KEY template_created (template_id, created_at),
             KEY correlation_id (correlation_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_history_log
+     */
+    private function get_history_log_schema(array $tables, string $charset_collate): array {
+        $table_history_log = $tables['aips_history_log'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_history_log (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             history_id bigint(20) NOT NULL,
@@ -154,7 +233,15 @@ class AIPS_DB_Manager {
             KEY event_status (event_status),
             KEY event_type_timestamp (event_type, timestamp)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_campaigns
+     */
+    private function get_campaigns_schema(array $tables, string $charset_collate): array {
+        $table_campaigns = $tables['aips_campaigns'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_campaigns (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -170,7 +257,15 @@ class AIPS_DB_Manager {
             KEY campaign_mode (campaign_mode),
             KEY active_archived (is_active, is_archived)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_templates
+     */
+    private function get_templates_schema(array $tables, string $charset_collate): array {
+        $table_templates = $tables['aips_templates'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_templates (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -199,7 +294,15 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY campaign_id (campaign_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_schedule
+     */
+    private function get_schedule_schema(array $tables, string $charset_collate): array {
+        $table_schedule = $tables['aips_schedule'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_schedule (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             template_id bigint(20) NOT NULL,
@@ -243,7 +346,15 @@ class AIPS_DB_Manager {
             KEY campaign_mode (campaign_mode),
             KEY season_end_date (season_end_date)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_voices
+     */
+    private function get_voices_schema(array $tables, string $charset_collate): array {
+        $table_voices = $tables['aips_voices'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_voices (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -254,7 +365,15 @@ class AIPS_DB_Manager {
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_structures
+     */
+    private function get_structures_schema(array $tables, string $charset_collate): array {
+        $table_structures = $tables['aips_article_structures'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_structures (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -266,7 +385,15 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
 			KEY is_active (is_active)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_sections
+     */
+    private function get_sections_schema(array $tables, string $charset_collate): array {
+        $table_sections = $tables['aips_prompt_sections'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_sections (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -280,7 +407,15 @@ class AIPS_DB_Manager {
             UNIQUE KEY section_key (section_key),
             KEY is_active (is_active)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_trending_topics
+     */
+    private function get_trending_topics_schema(array $tables, string $charset_collate): array {
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_trending_topics (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             niche varchar(255) NOT NULL,
@@ -296,7 +431,15 @@ class AIPS_DB_Manager {
             KEY status_idx (status),
             KEY researched_at_idx (researched_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_authors
+     */
+    private function get_authors_schema(array $tables, string $charset_collate): array {
+        $table_authors = $tables['aips_authors'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_authors (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -348,7 +491,15 @@ class AIPS_DB_Manager {
           KEY topic_generation_next_run (topic_generation_next_run),
           KEY post_generation_next_run (post_generation_next_run)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_post_slices
+     */
+    private function get_post_slices_schema(array $tables, string $charset_collate): array {
+        $table_post_slices = $tables['aips_post_slices'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_post_slices (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -362,7 +513,15 @@ class AIPS_DB_Manager {
             KEY is_active (is_active),
             KEY sort_order (sort_order)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_author_topics
+     */
+    private function get_author_topics_schema(array $tables, string $charset_collate): array {
+        $table_author_topics = $tables['aips_author_topics'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_author_topics (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             author_id bigint(20) NOT NULL,
@@ -381,7 +540,15 @@ class AIPS_DB_Manager {
             KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_author_topic_logs
+     */
+    private function get_author_topic_logs_schema(array $tables, string $charset_collate): array {
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_author_topic_logs (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             author_topic_id bigint(20) NOT NULL,
@@ -397,7 +564,15 @@ class AIPS_DB_Manager {
             KEY action (action),
             KEY created_at (created_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_topic_feedback
+     */
+    private function get_topic_feedback_schema(array $tables, string $charset_collate): array {
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_topic_feedback (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             author_topic_id bigint(20) NOT NULL,
@@ -416,7 +591,15 @@ class AIPS_DB_Manager {
             KEY source (source),
             KEY created_at (created_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_notifications
+     */
+    private function get_notifications_schema(array $tables, string $charset_collate): array {
+        $table_notifications = $tables['aips_notifications'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_notifications (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(100) NOT NULL,
@@ -438,7 +621,15 @@ class AIPS_DB_Manager {
             KEY is_read_created_at (is_read, created_at),
             KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_sources
+     */
+    private function get_sources_schema(array $tables, string $charset_collate): array {
+        $table_sources = $tables['aips_sources'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_sources (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             url varchar(2083) NOT NULL,
@@ -456,7 +647,15 @@ class AIPS_DB_Manager {
             KEY next_fetch_at (next_fetch_at),
             KEY created_at (created_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_source_group_terms
+     */
+    private function get_source_group_terms_schema(array $tables, string $charset_collate): array {
+        $table_source_group_terms = $tables['aips_source_group_terms'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_source_group_terms (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             source_id bigint(20) NOT NULL,
@@ -466,7 +665,15 @@ class AIPS_DB_Manager {
             KEY source_id (source_id),
             KEY term_id (term_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_sources_data
+     */
+    private function get_sources_data_schema(array $tables, string $charset_collate): array {
+        $table_sources_data = $tables['aips_sources_data'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_sources_data (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             source_id bigint(20) NOT NULL,
@@ -491,7 +698,15 @@ class AIPS_DB_Manager {
             KEY fetched_at (fetched_at),
             KEY num_used (num_used)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_taxonomy
+     */
+    private function get_taxonomy_schema(array $tables, string $charset_collate): array {
+        $table_taxonomy = $tables['aips_taxonomy'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_taxonomy (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -508,7 +723,15 @@ class AIPS_DB_Manager {
             KEY term_id (term_id),
             KEY created_at (created_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_embeddings
+     */
+    private function get_embeddings_schema(array $tables, string $charset_collate): array {
+        $table_embeddings = $tables['aips_embeddings'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_embeddings (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             object_type varchar(32) NOT NULL DEFAULT 'post',
@@ -525,7 +748,15 @@ class AIPS_DB_Manager {
             KEY model_dim (model, dimensions),
             KEY indexed_at (indexed_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_relationships
+     */
+    private function get_relationships_schema(array $tables, string $charset_collate): array {
+        $table_relationships = $tables['aips_relationships'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_relationships (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             source_type varchar(32) NOT NULL DEFAULT 'post',
@@ -542,7 +773,15 @@ class AIPS_DB_Manager {
             KEY similarity_idx (similarity),
             KEY updated_at (updated_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_internal_links
+     */
+    private function get_internal_links_schema(array $tables, string $charset_collate): array {
+        $table_internal_links = $tables['aips_internal_links'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_internal_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             source_post_id bigint(20) NOT NULL,
@@ -559,7 +798,15 @@ class AIPS_DB_Manager {
             KEY similarity_score (similarity_score),
             UNIQUE KEY source_target (source_post_id, target_post_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_affiliate_links
+     */
+    private function get_affiliate_links_schema(array $tables, string $charset_collate): array {
+        $table_affiliate_links = $tables['aips_affiliate_links'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_affiliate_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             tag varchar(255) NOT NULL,
@@ -578,7 +825,15 @@ class AIPS_DB_Manager {
             KEY tag (tag),
             KEY enabled (enabled)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_cache
+     */
+    private function get_cache_schema(array $tables, string $charset_collate): array {
+        $table_cache = $tables['aips_cache'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_cache (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             cache_key varchar(191) NOT NULL,
@@ -590,7 +845,15 @@ class AIPS_DB_Manager {
             UNIQUE KEY cache_key_group (cache_key, cache_group),
             KEY expires_at (expires_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_telemetry
+     */
+    private function get_telemetry_schema(array $tables, string $charset_collate): array {
+        $table_telemetry = $tables['aips_telemetry'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_telemetry (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(50) NOT NULL DEFAULT '',
@@ -620,7 +883,15 @@ class AIPS_DB_Manager {
             KEY cache_misses (cache_misses),
             KEY inserted_at (inserted_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_ai_assistance
+     */
+    private function get_ai_assistance_schema(array $tables, string $charset_collate): array {
+        $table_ai_assistance = $tables['aips_ai_assistance'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_ai_assistance (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             session_id varchar(64) NOT NULL,
@@ -637,7 +908,15 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY created_at (created_at)
         ) $charset_collate;";
-      
+        return $sql;
+    }
+
+    /**
+     * Get schema for table_bulk_batch_jobs
+     */
+    private function get_bulk_batch_jobs_schema(array $tables, string $charset_collate): array {
+        $table_bulk_batch_jobs = $tables['aips_bulk_batch_jobs'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
             job_id varchar(36) NOT NULL,
             job_type varchar(100) NOT NULL,
@@ -654,7 +933,15 @@ class AIPS_DB_Manager {
             KEY created_at (created_at),
             KEY status_updated (status, updated_at)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_cache_index
+     */
+    private function get_cache_index_schema(array $tables, string $charset_collate): array {
+        $table_cache_index = $tables['aips_cache_index'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_cache_index (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             cache_key varchar(512) NOT NULL DEFAULT '',
@@ -681,7 +968,15 @@ class AIPS_DB_Manager {
             KEY tier (tier),
             KEY operation_id (operation_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_cache_events
+     */
+    private function get_cache_events_schema(array $tables, string $charset_collate): array {
+        $table_cache_events = $tables['aips_cache_events'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_cache_events (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             event_type varchar(64) NOT NULL DEFAULT '',
@@ -701,7 +996,15 @@ class AIPS_DB_Manager {
             KEY created_at (created_at),
             KEY user_id (user_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_integration_field_mappings
+     */
+    private function get_integration_field_mappings_schema(array $tables, string $charset_collate): array {
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_integration_field_mappings (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             template_id bigint(20) DEFAULT NULL,
@@ -719,7 +1022,15 @@ class AIPS_DB_Manager {
             KEY template_id (template_id),
             KEY integration_id (integration_id)
         ) $charset_collate;";
+        return $sql;
+    }
 
+    /**
+     * Get schema for table_content_audits
+     */
+    private function get_content_audits_schema(array $tables, string $charset_collate): array {
+        $table_content_audits = $tables['aips_content_audits'];
+        $sql = array();
         $sql[] = "CREATE TABLE $table_content_audits (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             niche varchar(255) NOT NULL,
@@ -741,7 +1052,6 @@ class AIPS_DB_Manager {
             KEY overall_score_idx (overall_score),
             KEY created_at_idx (created_at)
         ) $charset_collate;";
-
         return $sql;
     }
 
