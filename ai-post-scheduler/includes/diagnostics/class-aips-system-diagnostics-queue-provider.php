@@ -241,8 +241,8 @@ class AIPS_System_Diagnostics_Queue_Provider implements AIPS_System_Diagnostic_P
 			'status'  => $m['total'] > 0 ? $success_status : 'info',
 			'details' => $m['total'] > 0 ? array(
 				sprintf(
-					__( 'Total: %d | Completed: %d | Failed: %d | Partial: %d', 'ai-post-scheduler' ),
-					$m['total'], $m['successful'], $m['failed'], $m['partial']
+					__( 'Total: %1$d | Completed: %2$d | Failed: %3$d | Partial: %4$d | Terminated: %5$d', 'ai-post-scheduler' ),
+					$m['total'], $m['successful'], $m['failed'], $m['partial'], isset( $m['terminated'] ) ? (int) $m['terminated'] : 0
 				),
 			) : array(),
 		);
