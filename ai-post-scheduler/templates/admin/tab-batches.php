@@ -41,6 +41,16 @@ if (!defined('ABSPATH')) {
                         <td><?php echo esc_html((isset($run->completed) ? (int) $run->completed : 0) . ' / ' . (isset($run->total) ? (int) $run->total : 0)); ?></td>
                         <td><?php echo esc_html(isset($run->resume_index) ? (int) $run->resume_index : ''); ?></td>
                         <td><?php echo esc_html(isset($run->updated_at) ? $run->updated_at : ''); ?></td>
+                        <td>
+                            <?php if (!empty($run->id)) : ?>
+                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;margin:0;padding:0;">
+                                    <?php wp_nonce_field('aips_cancel_batch_run'); ?>
+                                    <input type="hidden" name="action" value="aips_cancel_batch_run" />
+                                    <input type="hidden" name="batch_id" value="<?php echo esc_attr((int) $run->id); ?>" />
+                                    <button type="submit" class="button aips-btn aips-btn-danger" onclick="return confirm('<?php echo esc_js(__('Are you sure you want to cancel this batch run?', 'ai-post-scheduler')); ?>');"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             <?php endif; ?>

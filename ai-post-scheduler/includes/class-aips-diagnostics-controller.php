@@ -18,6 +18,14 @@ class AIPS_Diagnostics_Controller {
 	public const PAGE_SLUG = 'aips-diagnostics';
 
 	/**
+	 * Constructor: register admin actions for Diagnostics page.
+	 */
+	public function __construct() {
+		add_action('admin_post_aips_cancel_batch_run', array($this, 'handle_cancel_batch_run'));
+	}
+
+
+	/**
 	 * Default Diagnostics tab key.
 	 */
 	private const DEFAULT_TAB = 'status';
@@ -290,5 +298,34 @@ class AIPS_Diagnostics_Controller {
 	private function render_dev_tools_tab() {
 		$dev_tools = new AIPS_Dev_Tools();
 		$dev_tools->render_page(true);
+	}
+
+	/**
+	 * Handle admin cancel action for a batch run.
+	 *
+	 * Expects POST with 'batch_id' and nonce 'aips_cancel_batch_run'. Redirects back to the diagnostics page.
+	 *
+	 * @return void
+	 */
+	public function handle_cancel_batch_run() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have permission to perform this action.', 'ai-post-scheduler'));
+		}
+
+		check_admin_referer('aips_cancel_batch_run');
+
+		$batch_id = isset($_POST['batch_id']) ? absint($_POST['batch_id']) : 0;
+		if ($batch_id < 1) {
+			wp_safe_redirect($this->get_tab_url('batches'));
+			exit;
+		}
+
+		$repo = new AIPS_Schedule_Repository();
+		// Mark the batch as cancelled so it won't be considered resumable.
+		$repo->update_batch_run_status($batch_id, 'cancelled');
+
+		// Redirect back to the Diagnostics Batches tab.
+		wp_safe_redirect($this->get_tab_url('batches'));
+		exit;
 	}
 }
