@@ -74,7 +74,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-author-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                     </div>
                 </div>
 
@@ -314,10 +314,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Found', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('No authors match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
-                            <button type="button" class="aips-btn aips-btn-primary aips-clear-author-search-btn">
-                                <span class="dashicons dashicons-dismiss"></span>
-                                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-                            </button>
+                            <button type="button" class="aips-btn aips-btn-ghost aips-clear-author-search-btn" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                         </div>
                     </div>
                 </div>
@@ -360,9 +357,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-queue-search"><?php esc_html_e('Search Queue Topics:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-queue-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search queue topics...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;">
-                            <?php esc_html_e('Clear', 'ai-post-scheduler'); ?>
-                        </button>
+                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                     </div>
                 </div>
 
