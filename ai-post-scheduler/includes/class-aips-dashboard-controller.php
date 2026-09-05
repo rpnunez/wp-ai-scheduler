@@ -356,7 +356,9 @@ class AIPS_Dashboard_Controller {
 		$upcoming_runs_count = $dashboard_repo->get_upcoming_runs_count($next_month_start, $next_month_end);
 
 		$unified_service = new AIPS_Unified_Schedule_Service();
-		$all_schedules    = $unified_service->get_all('', false);
+		// Grouped: a persona's two generation stages are one thing going out,
+		// so they must not occupy two of the five upcoming rows.
+		$all_schedules    = $unified_service->get_all_grouped('', false);
 		$upcoming_schedules = array();
 		foreach ($all_schedules as $s) {
 			if (!empty($s['is_active']) && !empty($s['next_run']) && $s['next_run'] >= $next_month_start) {
