@@ -97,10 +97,11 @@ class AIPS_Author_Topics_Generator {
 	/**
 	 * Generate topics for an author.
 	 *
-	 * @param object $author Author object from database.
+	 * @param object $author               Author object from database.
+	 * @param bool   $apply_auto_approval  Optional. Whether to apply author auto-approval rules. Default true.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
-	public function generate_topics($author) {
+	public function generate_topics($author, $apply_auto_approval = true) {
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
@@ -138,6 +139,11 @@ class AIPS_Author_Topics_Generator {
 		
 		// Flag semantically similar candidates before they reach editorial review.
 		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
+
+		// Apply author auto-approval rules if enabled
+		if ($apply_auto_approval) {
+			$topics = $this->apply_auto_approval_rules($author, $topics);
+		}
 		
 		// Save topics to database
 		$saved_topics = array();
@@ -154,10 +160,39 @@ class AIPS_Author_Topics_Generator {
 				$topic_arr = (array) $topic_obj;
 				$saved_topics[] = $topic_arr;
 
-				$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
-					'topic_id' => $topic_arr['id'],
-					'author_id' => $author->id
-				));
+				$meta = !empty($topic_arr['metadata']) ? json_decode($topic_arr['metadata'], true) : array();
+				$status = isset($topic_arr['status']) ? $topic_arr['status'] : 'pending';
+
+				if ($status === 'approved' && !empty($meta['auto_approved'])) {
+					$this->logs_repository->create(array(
+						'author_topic_id' => $topic_arr['id'],
+						'action'          => 'approved',
+						'user_id'         => null,
+						'notes'           => isset($meta['auto_approval_note']) ? $meta['auto_approval_note'] : sprintf(__('Topic auto-approved via %s policy.', 'ai-post-scheduler'), isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto'),
+						'metadata'        => wp_json_encode(array(
+							'source'   => 'auto_rule',
+							'rule'     => isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto',
+							'reason'   => isset($meta['auto_approval_reason']) ? $meta['auto_approval_reason'] : '',
+						)),
+					));
+				} elseif ($status === 'rejected' && !empty($meta['auto_rejected'])) {
+					$this->logs_repository->create(array(
+						'author_topic_id' => $topic_arr['id'],
+						'action'          => 'rejected',
+						'user_id'         => null,
+						'notes'           => isset($meta['auto_rejection_note']) ? $meta['auto_rejection_note'] : sprintf(__('Topic auto-rejected via %s policy fallback.', 'ai-post-scheduler'), isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto'),
+						'metadata'        => wp_json_encode(array(
+							'source'   => 'auto_rule',
+							'rule'     => isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto',
+							'reason'   => isset($meta['auto_rejection_reason']) ? $meta['auto_rejection_reason'] : '',
+						)),
+					));
+				} else {
+					$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
+						'topic_id' => $topic_arr['id'],
+						'author_id' => $author->id
+					));
+				}
 			}
 
 			// Always record author's topic generation last run timestamp.
@@ -403,6 +438,114 @@ class AIPS_Author_Topics_Generator {
 	 */
 	private function apply_fuzzy_duplicate_flags($author, $topics) {
 		return $this->deduplication_service->evaluate_topics_for_duplicates($topics, $author->id);
+	}
+
+	/**
+	 * Apply author auto-approval rules to generated topics.
+	 *
+	 * Evaluates topics against the author's configured auto-approval policy (all, score, similarity),
+	 * setting status to 'approved' (or fallback 'rejected'/'pending') and enriching metadata.
+	 *
+	 * @param object $author Author object.
+	 * @param array  $topics List of topic arrays.
+	 * @return array Processed topic arrays.
+	 */
+	public function apply_auto_approval_rules($author, array $topics): array {
+		$mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'manual';
+		if ($mode === 'manual') {
+			return $topics;
+		}
+
+		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
+		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
+		$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'pending';
+		$now            = AIPS_DateTime::now()->timestamp();
+
+		foreach ($topics as &$topic) {
+			$meta = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
+			if (!is_array($meta)) {
+				$meta = array();
+			}
+
+			$qualifies = false;
+			$reason    = '';
+			$note      = '';
+
+			switch ($mode) {
+				case 'all':
+					$qualifies = true;
+					$reason    = 'auto_approve_all';
+					$note      = __('Auto-approved: Author policy is set to auto-approve all topics.', 'ai-post-scheduler');
+					break;
+
+				case 'score':
+					$score = isset($topic['score']) ? (int) $topic['score'] : 50;
+					if ($score >= $min_score) {
+						$qualifies = true;
+						$reason    = 'quality_score_threshold_met';
+						$note      = sprintf(__('Auto-approved: Quality score %d met or exceeded minimum threshold of %d.', 'ai-post-scheduler'), $score, $min_score);
+					} else {
+						$qualifies = false;
+						$reason    = 'quality_score_below_threshold';
+						$note      = sprintf(__('Did not qualify: Quality score %d is below minimum threshold of %d.', 'ai-post-scheduler'), $score, $min_score);
+					}
+					$meta['auto_approval_score']     = $score;
+					$meta['auto_approval_min_score'] = $min_score;
+					break;
+
+				case 'similarity':
+					$dup_sim = isset($meta['duplicate_similarity']) ? (float) $meta['duplicate_similarity'] : (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
+					if ($dup_sim < $max_similarity) {
+						$qualifies = true;
+						$reason    = 'similarity_dedupe_guard_passed';
+						$note      = sprintf(__('Auto-approved: Duplicate similarity %.2f%% is below maximum threshold of %.2f%%.', 'ai-post-scheduler'), $dup_sim * 100, $max_similarity * 100);
+					} else {
+						$qualifies = false;
+						$reason    = 'similarity_dedupe_guard_exceeded';
+						$note      = sprintf(__('Did not qualify: Duplicate similarity %.2f%% met or exceeded maximum threshold of %.2f%%.', 'ai-post-scheduler'), $dup_sim * 100, $max_similarity * 100);
+					}
+					$meta['auto_approval_similarity']     = round($dup_sim, 4);
+					$meta['auto_approval_max_similarity'] = round($max_similarity, 4);
+					break;
+
+				default:
+					$qualifies = false;
+					break;
+			}
+
+			if ($qualifies) {
+				$topic['status']              = 'approved';
+				$topic['reviewed_at']         = $now;
+				$topic['reviewed_by']         = 0;
+				$meta['auto_approved']        = true;
+				$meta['auto_approval_rule']   = $mode;
+				$meta['auto_approval_reason'] = $reason;
+				$meta['auto_approval_note']   = $note;
+			} else {
+				if ($fallback === 'rejected') {
+					$topic['status']              = 'rejected';
+					$topic['reviewed_at']         = $now;
+					$topic['reviewed_by']         = 0;
+					$meta['auto_rejected']        = true;
+					$meta['auto_rejection_rule']   = $mode;
+					$meta['auto_rejection_reason'] = $reason;
+					$meta['auto_rejection_note']   = $note;
+				} else {
+					$topic['status']                 = 'pending';
+					$topic['reviewed_at']            = 0;
+					$topic['reviewed_by']            = null;
+					$meta['auto_approval_evaluated'] = true;
+					$meta['auto_approval_rule']      = $mode;
+					$meta['auto_approval_reason']    = $reason;
+					$meta['auto_approval_note']      = $note;
+				}
+			}
+
+			$topic['metadata'] = wp_json_encode($meta);
+		}
+		unset($topic);
+
+		return $topics;
 	}
 	
 	/**

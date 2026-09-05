@@ -51,6 +51,9 @@
 			// Toggle Source Groups panel when Include Sources? checkbox changes.
 			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
 
+			// Toggle Topic Auto-Approval fields when policy changes.
+			$(document).on('change', '#topic_auto_approval_mode', this.toggleAutoApprovalFields.bind(this));
+
 			// Submit Feedback Form
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
 
@@ -241,6 +244,13 @@
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
 
+			// Reset auto-approval fields
+			$('#topic_auto_approval_mode').val('manual');
+			$('#topic_auto_approval_min_score').val('70');
+			$('#topic_auto_approval_max_similarity').val('0.80');
+			$('#topic_auto_approval_fallback').val('pending');
+			this.toggleAutoApprovalFields();
+
 			// Show form and hide loader
 			this.currentAuthorId = null;
 			$('#aips-author-modal-loader').hide();
@@ -260,6 +270,16 @@
 		 */
 		toggleAuthorSourceGroups: function (e) {
 			$('#author-source-groups-selector').toggle($(e.currentTarget).is(':checked'));
+		},
+
+		/**
+		 * Show or hide the Topic Auto-Approval fields based on the selected mode.
+		 */
+		toggleAutoApprovalFields: function () {
+			const mode = $('#topic_auto_approval_mode').val() || 'manual';
+			$('#aips-auto-approval-score-group').toggle(mode === 'score');
+			$('#aips-auto-approval-similarity-group').toggle(mode === 'similarity');
+			$('#aips-auto-approval-fallback-group').toggle(mode !== 'manual');
 		},
 
 		/**
@@ -325,6 +345,13 @@
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
+
+						// Auto-approval configuration
+						$('#topic_auto_approval_mode').val(author.topic_auto_approval_mode || 'manual');
+						$('#topic_auto_approval_min_score').val(author.topic_auto_approval_min_score != null ? author.topic_auto_approval_min_score : 70);
+						$('#topic_auto_approval_max_similarity').val(author.topic_auto_approval_max_similarity != null ? author.topic_auto_approval_max_similarity : '0.80');
+						$('#topic_auto_approval_fallback').val(author.topic_auto_approval_fallback || 'pending');
+						this.toggleAutoApprovalFields();
 
 						// Restore affiliate links setting.
 						$('#author_affiliate_links_enabled').prop('checked', author.affiliate_links_enabled == 1);
