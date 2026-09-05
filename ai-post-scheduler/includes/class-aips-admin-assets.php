@@ -1032,6 +1032,7 @@ class AIPS_Admin_Assets {
                 'typeTemplateLabel'              => __('Post Generation', 'ai-post-scheduler'),
                 'typeAuthorTopicLabel'           => __('Author Topics', 'ai-post-scheduler'),
                 'typeAuthorPostLabel'            => __('Author Posts', 'ai-post-scheduler'),
+                'typeAuthorWorkflowLabel'        => __('Author Workflow', 'ai-post-scheduler'),
                 'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
                 'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
                 /* translators: %d: number of overdue schedules */

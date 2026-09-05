@@ -27,6 +27,18 @@ class AIPS_Unified_Schedule_Service {
 	const TYPE_AUTHOR_POST  = 'author_post_gen';
 
 	/**
+	 * Presentation-only type: one persona's topic and post generation shown as
+	 * a single row with two stages. It has no table of its own — a row of this
+	 * type is always built from the two author rows above.
+	 */
+	const TYPE_AUTHOR_WORKFLOW = 'author_workflow';
+
+	/**
+	 * Stage order within an author workflow.
+	 */
+	const WORKFLOW_STAGES = array( self::TYPE_AUTHOR_TOPIC, self::TYPE_AUTHOR_POST );
+
+	/**
 	 * @var AIPS_Schedule_Repository
 	 */
 	private $schedule_repository;
@@ -86,10 +98,176 @@ class AIPS_Unified_Schedule_Service {
 			$schedules = array_merge($schedules, $this->get_author_post_schedules($include_stats));
 		}
 
-		// Sort by run proximity for better operator UX:
-		// 1) active upcoming schedules (soonest first)
-		// 2) active past-due schedules (least overdue first)
-		// 3) inactive/unscheduled rows (last)
+		$this->sort_by_run_proximity($schedules);
+
+		return $schedules;
+	}
+
+	/**
+	 * Return scheduled processes with each persona's two generation stages
+	 * collapsed into a single row.
+	 *
+	 * Topic generation and post generation are two stages of one thing the
+	 * owner configured once; listing them as sibling rows doubles the apparent
+	 * schedule count. Template schedules pass through untouched.
+	 *
+	 * @param string $type_filter   Optional type constant, including TYPE_AUTHOR_WORKFLOW.
+	 * @param bool   $include_stats Whether to run aggregate stats queries.
+	 * @return array Sorted, normalised rows.
+	 */
+	public function get_all_grouped($type_filter = '', $include_stats = true) {
+		// The workflow type is synthesised here, so it is not a filter the
+		// underlying fetchers understand: ask them for both stage types.
+		$fetch_filter = ($type_filter === self::TYPE_AUTHOR_WORKFLOW) ? '' : $type_filter;
+		$flat = $this->get_all($fetch_filter, $include_stats);
+
+		$rows      = array();
+		$workflows = array();
+
+		foreach ($flat as $row) {
+			$type = isset($row['type']) ? $row['type'] : '';
+
+			if (!in_array($type, self::WORKFLOW_STAGES, true)) {
+				if ($type_filter === self::TYPE_AUTHOR_WORKFLOW) {
+					continue;
+				}
+				$rows[] = $row;
+				continue;
+			}
+
+			$author_id = !empty($row['author_id']) ? (int) $row['author_id'] : (int) $row['id'];
+			if (!isset($workflows[$author_id])) {
+				$workflows[$author_id] = array();
+			}
+			$workflows[$author_id][$type] = $row;
+		}
+
+		foreach ($workflows as $author_id => $stages) {
+			$rows[] = $this->build_workflow_row($author_id, $stages);
+		}
+
+		$this->sort_by_run_proximity($rows);
+
+		return $rows;
+	}
+
+	/**
+	 * Collapse a persona's stage rows into one workflow row.
+	 *
+	 * @param int   $author_id Author ID.
+	 * @param array $stages    Stage rows keyed by stage type.
+	 * @return array Normalised workflow row.
+	 */
+	private function build_workflow_row($author_id, array $stages) {
+		$ordered = array();
+		foreach (self::WORKFLOW_STAGES as $stage_type) {
+			if (isset($stages[$stage_type])) {
+				$ordered[$stage_type] = $stages[$stage_type];
+			}
+		}
+
+		$first = reset($ordered);
+
+		$stage_labels = array(
+			self::TYPE_AUTHOR_TOPIC => __('Stage 1 · Topics', 'ai-post-scheduler'),
+			self::TYPE_AUTHOR_POST  => __('Stage 2 · Posts', 'ai-post-scheduler'),
+		);
+
+		$stage_rows  = array();
+		$next_runs   = array();
+		$last_runs   = array();
+		$frequencies = array();
+		$is_active   = 0;
+		$has_failure = false;
+
+		foreach ($ordered as $stage_type => $stage) {
+			$stage_active   = !empty($stage['is_active']) ? 1 : 0;
+			$stage_next_run = !empty($stage['next_run']) ? (int) $stage['next_run'] : 0;
+			$stage_last_run = !empty($stage['last_run']) ? (int) $stage['last_run'] : 0;
+
+			if ($stage_active) {
+				$is_active = 1;
+				if ($stage_next_run > 0) {
+					$next_runs[] = $stage_next_run;
+				}
+			}
+			if ($stage_last_run > 0) {
+				$last_runs[] = $stage_last_run;
+			}
+			if (!empty($stage['frequency'])) {
+				$frequencies[] = $stage['frequency'];
+			}
+			if (isset($stage['status']) && $stage['status'] === 'failed') {
+				$has_failure = true;
+			}
+
+			$stage_rows[] = array(
+				'type'        => $stage_type,
+				'id'          => (int) $stage['id'],
+				'label'       => isset($stage_labels[$stage_type]) ? $stage_labels[$stage_type] : $stage_type,
+				'frequency'   => isset($stage['frequency']) ? $stage['frequency'] : '',
+				'cron_hook'   => isset($stage['cron_hook']) ? $stage['cron_hook'] : '',
+				'next_run'    => $stage_next_run,
+				'last_run'    => $stage_last_run,
+				'is_active'   => $stage_active,
+				'status'      => isset($stage['status']) ? $stage['status'] : 'inactive',
+				'stats_count' => isset($stage['stats_count']) ? (int) $stage['stats_count'] : 0,
+				'stats_label' => isset($stage['stats_label']) ? $stage['stats_label'] : '',
+			);
+		}
+
+		$unique_frequencies = array_values(array_unique($frequencies));
+
+		$status = 'inactive';
+		if ($has_failure) {
+			$status = 'failed';
+		} elseif ($is_active) {
+			$status = 'active';
+		}
+
+		// The headline count is posts produced; topics are an intermediate
+		// artefact and are reported on the stage row that produces them.
+		$post_stage = isset($ordered[self::TYPE_AUTHOR_POST]) ? $ordered[self::TYPE_AUTHOR_POST] : null;
+		$stats_count = $post_stage ? (int) $post_stage['stats_count'] : 0;
+		$stats_label = $post_stage
+			? $post_stage['stats_label']
+			: _n('post generated', 'posts generated', 0, 'ai-post-scheduler');
+
+		return array(
+			'id'                   => (int) $author_id,
+			'type'                 => self::TYPE_AUTHOR_WORKFLOW,
+			'title'                => isset($first['title']) ? $first['title'] : '',
+			'subtitle'             => isset($first['subtitle']) ? $first['subtitle'] : '',
+			'cron_hook'            => implode(', ', wp_list_pluck($stage_rows, 'cron_hook')),
+			'frequency'            => count($unique_frequencies) === 1 ? $unique_frequencies[0] : '',
+			'mixed_frequency'      => count($unique_frequencies) > 1,
+			'last_run'             => !empty($last_runs) ? max($last_runs) : 0,
+			'next_run'             => !empty($next_runs) ? min($next_runs) : 0,
+			'is_active'            => $is_active,
+			'status'               => $status,
+			'stats_count'          => $stats_count,
+			'stats_label'          => $stats_label,
+			'can_delete'           => false,
+			'history_id'           => null,
+			'author_id'            => (int) $author_id,
+			'author_name'          => isset($first['title']) ? $first['title'] : '',
+			'circuit_state'        => 'closed',
+			'batch_progress'       => null,
+			'has_incomplete_batch' => false,
+			'stages'               => $stage_rows,
+		);
+	}
+
+	/**
+	 * Sort rows by run proximity for better operator UX:
+	 * 1) active upcoming schedules (soonest first)
+	 * 2) active past-due schedules (least overdue first)
+	 * 3) inactive/unscheduled rows (last)
+	 *
+	 * @param array $schedules Rows to sort, by reference.
+	 * @return void
+	 */
+	private function sort_by_run_proximity(array &$schedules) {
 		$now_ts = AIPS_DateTime::now()->timestamp();
 		usort($schedules, function ($a, $b) use ($now_ts) {
 			$a_active = !empty($a['is_active']);
@@ -122,8 +300,6 @@ class AIPS_Unified_Schedule_Service {
 
 			return 0;
 		});
-
-		return $schedules;
 	}
 
 	/**
@@ -147,6 +323,12 @@ class AIPS_Unified_Schedule_Service {
 
 			case self::TYPE_AUTHOR_POST:
 				return $this->authors_repository->update_post_generation_active($id, $is_active);
+
+			case self::TYPE_AUTHOR_WORKFLOW:
+				// One persona, one switch: both stages follow the row toggle.
+				$topic_result = $this->authors_repository->update_topic_generation_active($id, $is_active);
+				$post_result  = $this->authors_repository->update_post_generation_active($id, $is_active);
+				return (false !== $topic_result) && (false !== $post_result);
 
 			default:
 				return false;
@@ -185,6 +367,24 @@ class AIPS_Unified_Schedule_Service {
 				}
 				return $generator->generate_posts_for_author($author, $quantity, 'manual', $advance_schedule);
 
+			case self::TYPE_AUTHOR_WORKFLOW:
+				// Run the stages in order: topics first, so the post stage has
+				// something approved to draw from.
+				$topics = $this->run_now($id, self::TYPE_AUTHOR_TOPIC, null, $advance_schedule);
+				if (is_wp_error($topics)) {
+					return $topics;
+				}
+
+				$posts = $this->run_now($id, self::TYPE_AUTHOR_POST, $quantity, $advance_schedule);
+				if (is_wp_error($posts)) {
+					return $posts;
+				}
+
+				return array(
+					self::TYPE_AUTHOR_TOPIC => $topics,
+					self::TYPE_AUTHOR_POST  => $posts,
+				);
+
 			default:
 				return new WP_Error('invalid_type', __('Invalid schedule type.', 'ai-post-scheduler'));
 		}
@@ -213,6 +413,7 @@ class AIPS_Unified_Schedule_Service {
 
 			case self::TYPE_AUTHOR_TOPIC:
 			case self::TYPE_AUTHOR_POST:
+			case self::TYPE_AUTHOR_WORKFLOW:
 				return new WP_Error(
 					'not_deletable',
 					__('This schedule type cannot be deleted.', 'ai-post-scheduler')
@@ -262,6 +463,15 @@ class AIPS_Unified_Schedule_Service {
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
 					array(AIPS_History_Event_Type::AUTHOR_POST_GENERATION),
+					$limit > 0 ? $limit : 100
+				);
+				return $this->format_history_logs($logs);
+
+			case self::TYPE_AUTHOR_WORKFLOW:
+				// One persona's run history is both stages interleaved by time.
+				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
+					$id,
+					array('author_topic_generation', AIPS_History_Event_Type::AUTHOR_POST_GENERATION),
 					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);

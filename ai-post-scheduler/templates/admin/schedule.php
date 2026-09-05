@@ -6,7 +6,8 @@ if (!defined('ABSPATH')) {
 // Data for the unified schedules page
 $unified_service = new AIPS_Unified_Schedule_Service();
 $type_filter     = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
-$all_schedules   = $unified_service->get_all($type_filter);
+// Grouped: one row per persona, with topic/post generation as stages inside it.
+$all_schedules   = $unified_service->get_all_grouped($type_filter);
 
 // Also fetch template-schedule data needed for the "Add Schedule" modal
 $templates_handler  = new AIPS_Templates();
@@ -55,6 +56,8 @@ if (!function_exists('aips_type_badge')) {
 				return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
 			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
 				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
+			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW:
+				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Workflow', 'ai-post-scheduler') . '</span>';
 		}
 		return '';
 	}
@@ -70,6 +73,9 @@ if (!function_exists('aips_run_output_label')) {
 		}
 		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
 			return __('Generated approved-topic post', 'ai-post-scheduler');
+		}
+		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW) {
+			return __('Most recent run across both stages', 'ai-post-scheduler');
 		}
 		return __('Generated post from template', 'ai-post-scheduler');
 	}
@@ -218,11 +224,8 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>>
 							<?php esc_html_e('Post Generation', 'ai-post-scheduler'); ?>
 						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>>
-							<?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?>
-						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>>
-							<?php esc_html_e('Author Posts', 'ai-post-scheduler'); ?>
+						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW); ?>>
+							<?php esc_html_e('Author Workflows', 'ai-post-scheduler'); ?>
 						</option>
 					</select>
 				</div>
@@ -329,9 +332,11 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						$tab_category = 'all';
 						if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
 							$tab_category = 'content';
-						} elseif ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC || $sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+						} elseif ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_WORKFLOW) {
 							$tab_category = 'author';
 						}
+
+						$stages = isset($sched['stages']) && is_array($sched['stages']) ? $sched['stages'] : array();
 					?>
 					<tr class="aips-unified-row"
 						data-id="<?php echo esc_attr($sched['id']); ?>"
@@ -388,9 +393,29 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							</div>
 						</td>
 						<td class="column-frequency">
+							<?php if (!empty($sched['mixed_frequency'])): ?>
+							<span class="aips-badge aips-badge-neutral"><?php esc_html_e('Mixed', 'ai-post-scheduler'); ?></span>
+							<?php else: ?>
 							<span class="aips-badge aips-badge-info">
 								<?php echo esc_html(aips_frequency_label($sched['frequency'])); ?>
 							</span>
+							<?php endif; ?>
+							<?php if (!empty($stages)): ?>
+							<ul class="aips-stage-list">
+								<?php foreach ($stages as $stage): ?>
+								<li class="aips-stage-item<?php echo empty($stage['is_active']) ? ' is-paused' : ''; ?>">
+									<span class="aips-stage-label"><?php echo esc_html($stage['label']); ?></span>
+									<span class="aips-stage-meta"><?php echo esc_html(aips_frequency_label($stage['frequency'])); ?></span>
+									<span class="aips-stage-meta">
+										<?php echo esc_html(sprintf('%s %s', number_format_i18n($stage['stats_count']), $stage['stats_label'])); ?>
+									</span>
+									<?php if (empty($stage['is_active'])): ?>
+									<span class="aips-stage-meta"><?php esc_html_e('Paused', 'ai-post-scheduler'); ?></span>
+									<?php endif; ?>
+								</li>
+								<?php endforeach; ?>
+							</ul>
+							<?php endif; ?>
 						</td>
 						<td class="column-last-run">
 							<?php if ($last_run_ts): ?>
