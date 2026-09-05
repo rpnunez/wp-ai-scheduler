@@ -20,6 +20,8 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Embeddings_Repository {
 
+	use AIPS_Repository_Tables;
+
 	/**
 	 * @var wpdb WordPress database object.
 	 */
@@ -36,7 +38,9 @@ class AIPS_Embeddings_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_embeddings';
+		// table() is the AIPS_Repository_Tables trait method; $this->table is the
+		// cached prefixed name used inline in SQL below.
+		$this->table = $this->table('aips_embeddings');
 	}
 
 	/**
