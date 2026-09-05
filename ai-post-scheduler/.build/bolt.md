@@ -28,6 +28,12 @@
 **PR:** ⚡ Bolt: Fix N+1 post queries in schedule controller modal data
 **Learning:** Modals processing lists of generated posts need post cache prefetching just like AJAX handlers.
 **Action:** Always pre-fetch WP post caches before loops referencing multiple post IDs.
+## 2026-08-31 - Optimize AIPS_Site_Context get_setting linear search
+**Area:** ai-post-scheduler/includes/class-aips-site-context.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Optimize AIPS_Site_Context get_setting linear search
+**Learning:** Avoid repeated O(n) loops over arrays in static methods called frequently.
+**Action:** Use static variables to cache inverted maps for O(1) lookups.
 ## 2024-06-08 - Fix N+1 queries in Related Posts Service
 **Area:** ai-post-scheduler/includes/class-aips-related-posts-service.php
 **Status:** opened PR

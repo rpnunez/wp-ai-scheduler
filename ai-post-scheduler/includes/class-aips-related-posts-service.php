@@ -112,7 +112,7 @@ class AIPS_Related_Posts_Service {
 			$prefetch_ids[] = (int) $row->target_id;
 		}
 		if (!empty($prefetch_ids) && function_exists('_prime_post_caches')) {
-			_prime_post_caches(array_unique($prefetch_ids), false, true);
+			_prime_post_caches(array_filter(array_unique($prefetch_ids)), false, true);
 		}
 
 		foreach ($rel_rows as $row) {
@@ -181,7 +181,7 @@ class AIPS_Related_Posts_Service {
 						$prefetch_nids[] = (int) $n['id'];
 					}
 					if (!empty($prefetch_nids) && function_exists('_prime_post_caches')) {
-						_prime_post_caches(array_unique($prefetch_nids), false, true);
+						_prime_post_caches(array_filter(array_unique($prefetch_nids)), false, true);
 					}
 
 					foreach ($neighbors as $n) {
@@ -257,7 +257,7 @@ class AIPS_Related_Posts_Service {
 			$prefetch_topic_ids[] = (int) $n['id'];
 		}
 		if (!empty($prefetch_topic_ids) && function_exists('_prime_post_caches')) {
-			_prime_post_caches(array_unique($prefetch_topic_ids), false, true);
+			_prime_post_caches(array_filter(array_unique($prefetch_topic_ids)), false, true);
 		}
 
 		foreach ($neighbors as $n) {

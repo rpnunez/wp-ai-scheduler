@@ -48,10 +48,13 @@ class Test_AIPS_Integration_Registry extends WP_UnitTestCase {
 	}
 
 	public function test_get_available_excludes_unavailable_adapters() {
-		// ACF is not installed in the test environment, so it should not
-		// appear in the available set even though it's registered.
+		add_filter('aips_integrations_registry', function ($map) {
+			$map['unavailable_stub'] = 'AIPS_Test_Unavailable_Integration';
+			return $map;
+		});
+
 		$available = AIPS_Integration_Registry::get_available();
-		$this->assertArrayNotHasKey('acf', $available);
+		$this->assertArrayNotHasKey('unavailable_stub', $available);
 	}
 
 	public function test_get_available_includes_available_third_party_adapter() {
@@ -76,7 +79,7 @@ class Test_AIPS_Integration_Registry extends WP_UnitTestCase {
 	}
 }
 
-if (!class_exists('AIPS_Test_Stub_Integration')) {
+if (!class_exists('AIPS_Test_Stub_Integration', false)) {
 	/**
 	 * Minimal always-available adapter used to exercise the third-party
 	 * registration path (the 'aips_integrations_registry' filter) without
@@ -109,6 +112,18 @@ if (!class_exists('AIPS_Test_Stub_Integration')) {
 		}
 		public function validate_field_key($field_key) {
 			return true;
+		}
+	}
+}
+
+if (!class_exists('AIPS_Test_Unavailable_Integration', false)) {
+	/**
+	 * Unavailable adapter used to verify registry availability filtering
+	 * without relying on globally defined plugin shim functions.
+	 */
+	class AIPS_Test_Unavailable_Integration extends AIPS_Test_Stub_Integration {
+		public function is_available() {
+			return false;
 		}
 	}
 }
