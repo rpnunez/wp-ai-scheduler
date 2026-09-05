@@ -880,13 +880,19 @@ class AIPS_Schedule_Processor {
      * Uses the caller-supplied override when present, otherwise the template's
      * current post_quantity, defaulting to 1.
      *
+     * post_quantity is read off the passed object rather than re-fetched. Both
+     * callers hand in a schedule already merged with its template — the cron
+     * path via the `t.*, s.*` join in get_due_schedules(), the manual path via
+     * process_single_schedule()'s array_merge — and post_quantity exists only
+     * on the templates table, so no schedule column can shadow it. Re-reading
+     * the template here would just repeat a query the caller already made.
+     *
      * @param object   $schedule          Schedule object (merged with template).
      * @param int|null $quantity_override Optional caller-supplied quantity.
      * @return int
      */
     private function resolve_post_quantity($schedule, $quantity_override = null) {
-        $actual_template_model  = $this->template_repository->get_by_id($schedule->template_id);
-        $template_post_quantity = ($actual_template_model && isset($actual_template_model->post_quantity)) ? $actual_template_model->post_quantity : 1;
+        $template_post_quantity = isset($schedule->post_quantity) ? $schedule->post_quantity : 1;
         $raw_quantity           = $quantity_override ?? ($template_post_quantity ?? 1);
 
         return max(1, absint($raw_quantity));
