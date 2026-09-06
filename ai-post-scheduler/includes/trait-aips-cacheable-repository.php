@@ -55,26 +55,52 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		$policy = $this->normalize_repository_cache_policy( $policy );
-		$bypass_options = $options;
-		if ( ! empty( $bypass_options['force_refresh'] ) ) {
-			unset( $bypass_options['force_refresh'] );
-		}
+		$options_data = $this->prepare_bypass_options( $options );
+		$bypass_opts = $options_data['bypass_options'];
+		$orig_opts = $options_data['original'];
+		$reason = $this->resolve_bypass_reason( $policy, $orig_opts );
 
-		if ( $this->repository_cache_should_bypass( $policy, $bypass_options ) ) {
-			return $this->run_repository_cache_bypass(
-				$operation_id,
-				$args,
-				$callback,
-				$policy,
-				$this->resolve_bypass_reason( $policy, $options )
-			);
+		if ( $this->repository_cache_should_bypass( $policy, $bypass_opts ) ) {
+			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $reason );
 		}
 
 		$cache = AIPS_Repository_Cache_Config::resolve_cache_instance( $this->repository_cache_group(), $policy );
 		if (!$cache) {
-			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $this->resolve_bypass_reason( $policy, $options ) );
+			return $this->run_repository_cache_bypass( $operation_id, $args, $callback, $policy, $reason );
 		}
 
+		return $this->handle_cache_resolution( $cache, $operation_id, $args, $callback, $policy, $orig_opts );
+	}
+
+	/**
+	 * Prepares bypass options from the original options array.
+	 *
+	 * @param array $options Per-call cache options.
+	 * @return array Normalized options and bypass options.
+	 */
+	private function prepare_bypass_options( array $options ): array {
+		$bypass_options = $options;
+		if ( ! empty( $bypass_options['force_refresh'] ) ) {
+			unset( $bypass_options['force_refresh'] );
+		}
+		return array(
+			'original'       => $options,
+			'bypass_options' => $bypass_options,
+		);
+	}
+
+	/**
+	 * Handles cache resolution, determining whether to hit or miss the cache.
+	 *
+	 * @param object $cache Cache instance.
+	 * @param string $operation_id Operation ID.
+	 * @param array $args Operation arguments.
+	 * @param callable $callback Callback to build cache.
+	 * @param array $policy Cache policy.
+	 * @param array $options Cache options.
+	 * @return mixed The cached or newly rebuilt value.
+	 */
+	private function handle_cache_resolution( $cache, string $operation_id, array $args, callable $callback, array $policy, array $options ) {
 		$tags         = $this->repository_cache_tags( $operation_id, $policy, $args );
 		$tag_versions = $cache->get_tag_versions( $tags, $this->repository_cache_group() );
 		$key          = AIPS_Repository_Cache_Key_Builder::build_key( $operation_id, $args, $tag_versions );
@@ -87,24 +113,9 @@ trait AIPS_Cacheable_Repository {
 			$start   = microtime( true );
 			$payload = $cache->get( $key, $this->repository_cache_group() );
 			if ($this->is_repository_cache_payload( $payload )) {
-				$this->record_repository_cache_read(
-					$observer,
-					array(
-						'operation_id' => $operation_id,
-						'key_hash'     => $key_hash,
-						'tier'         => $tier,
-						'tags'         => $tags,
-						'hit'          => true,
-						'miss'         => false,
-						'stale'        => false,
-						'elapsed_ms'   => $this->elapsed_ms( $start ),
-					)
-				);
-				return $payload['value'];
+				return $this->handle_cache_hit( $observer, $payload, $operation_id, $key_hash, $tier, $tags, $start );
 			}
-		}
-
-		if ( ! empty( $options['force_refresh'] ) ) {
+		} elseif ( ! empty( $options['force_refresh'] ) ) {
 			$this->record_repository_cache_bypass(
 				$observer,
 				array(
@@ -117,6 +128,54 @@ trait AIPS_Cacheable_Repository {
 			);
 		}
 
+		return $this->handle_cache_miss( $cache, $observer, $callback, $operation_id, $key_hash, $tier, $tags, $key, $policy, $allow_stale );
+	}
+
+	/**
+	 * Handles a cache hit.
+	 *
+	 * @param AIPS_Repository_Cache_Observer $observer Observer instance.
+	 * @param array $payload The cached payload.
+	 * @param string $operation_id The operation ID.
+	 * @param string $key_hash The hash of the cache key.
+	 * @param string $tier The cache tier.
+	 * @param array $tags The cache tags.
+	 * @param float $start The start time.
+	 * @return mixed
+	 */
+	private function handle_cache_hit( $observer, $payload, $operation_id, $key_hash, $tier, $tags, $start ) {
+		$this->record_repository_cache_read(
+			$observer,
+			array(
+				'operation_id' => $operation_id,
+				'key_hash'     => $key_hash,
+				'tier'         => $tier,
+				'tags'         => $tags,
+				'hit'          => true,
+				'miss'         => false,
+				'stale'        => false,
+				'elapsed_ms'   => $this->elapsed_ms( $start ),
+			)
+		);
+		return $payload['value'];
+	}
+
+	/**
+	 * Handles a cache miss and rebuilds the value.
+	 *
+	 * @param object $cache The cache instance.
+	 * @param AIPS_Repository_Cache_Observer $observer Observer instance.
+	 * @param callable $callback The callback to rebuild the value.
+	 * @param string $operation_id The operation ID.
+	 * @param string $key_hash The hash of the cache key.
+	 * @param string $tier The cache tier.
+	 * @param array $tags The cache tags.
+	 * @param string $key The cache key.
+	 * @param array $policy The cache policy.
+	 * @param bool $allow_stale Whether stale reads are allowed.
+	 * @return mixed
+	 */
+	private function handle_cache_miss( $cache, $observer, $callback, $operation_id, $key_hash, $tier, $tags, $key, $policy, $allow_stale ) {
 		$rebuild_start = microtime( true );
 		$value         = $callback();
 		$rebuild_ms    = $this->elapsed_ms( $rebuild_start );
@@ -160,7 +219,6 @@ trait AIPS_Cacheable_Repository {
 
 		return $value;
 	}
-
 	/**
 	 * Explicitly bypass the repository cache for a read.
 	 *

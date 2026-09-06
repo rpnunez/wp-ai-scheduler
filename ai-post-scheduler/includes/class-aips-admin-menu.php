@@ -227,6 +227,15 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
+            'ai-post-scheduler',
+            __('Content Indexer', 'ai-post-scheduler'),
+            __('Content Indexer', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-indexer',
+            array($this, 'render_content_indexer_page')
+        );
+
+        add_submenu_page(
             null,
             __('Affiliate Links', 'ai-post-scheduler'),
             __('Affiliate Links', 'ai-post-scheduler'),
@@ -261,17 +270,6 @@ class AIPS_Admin_Menu {
             'aips-status',
             array($this, 'render_status_page')
         );
-
-        if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-            add_submenu_page(
-                null,
-                __('Seeder', 'ai-post-scheduler'),
-                __('Seeder', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-seeder',
-                array($this, 'render_seeder_page')
-            );
-        }
 
         add_submenu_page(
             null,
@@ -376,7 +374,6 @@ class AIPS_Admin_Menu {
                 'aips-operations-insights',
                 'aips-status',
                 'aips-telemetry',
-                'aips-seeder',
                 'aips-dev-tools',
                 'aips-cache-monitor',
                 AIPS_Stress_Test_Controller::PAGE_SLUG,
@@ -730,18 +727,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Seeder page.
-     *
-     * Includes the seeder template file.
-     *
-     * @return void
-     */
-    public function render_seeder_page() {
-        $seeder_admin = new AIPS_Seeder_Admin();
-        $seeder_admin->render_page();
-    }
-
-    /**
      * Render the Cache Monitor page.
      *
      * @return void
@@ -832,5 +817,16 @@ class AIPS_Admin_Menu {
         echo '<div class="notice notice-error"><p>' .
             esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
         '</p></div>';
+    }
+
+    public function render_content_indexer_page() {
+        try {
+            $controller = new AIPS_Content_Indexer_Controller();
+            $controller->render_page();
+        } catch (Throwable $throwable) {
+            echo '<div class="notice notice-error"><p>' .
+                esc_html__('The Content Indexer page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+            '</p></div>';
+        }
     }
 }

@@ -355,7 +355,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 					<!-- Bulk actions bar -->
 					<div class="aips-panel-toolbar">
 						<div class="aips-bulk-actions">
-							<input type="checkbox" id="aips-cache-select-all" title="<?php esc_attr_e('Select all', 'ai-post-scheduler'); ?>" />
+							<input type="checkbox" id="aips-cache-select-all" title="<?php esc_attr_e('Select all', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Select all cache entries', 'ai-post-scheduler'); ?>" />
 							<select id="aips-cache-bulk-action" class="aips-form-select aips-input-sm">
 								<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 								<option value="delete"><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></option>

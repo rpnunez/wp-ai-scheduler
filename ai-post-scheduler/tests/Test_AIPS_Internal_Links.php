@@ -7,7 +7,7 @@
 
 class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 
-	/** @var AIPS_Post_Embeddings_Repository */
+	/** @var AIPS_Embeddings_Repository */
 	private $embeddings_repo;
 
 	/** @var AIPS_Internal_Links_Repository */
@@ -16,13 +16,13 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		AIPS_DB_Manager::install_tables();
-		$this->embeddings_repo = new AIPS_Post_Embeddings_Repository();
+		$this->embeddings_repo = new AIPS_Embeddings_Repository();
 		$this->links_repo      = new AIPS_Internal_Links_Repository();
 	}
 
 	public function tearDown(): void {
 		global $wpdb;
-		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_post_embeddings' );
+		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_internal_links' );
 		parent::tearDown();
 	}
@@ -32,19 +32,21 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * aips_post_embeddings table should exist and have the expected columns.
+	 * aips_embeddings table should exist and have the expected columns.
 	 */
 	public function test_post_embeddings_table_exists() {
 		global $wpdb;
-		$table   = $wpdb->prefix . 'aips_post_embeddings';
+		$table   = $wpdb->prefix . 'aips_embeddings';
 		$columns = $wpdb->get_col( "DESCRIBE $table" );
 
-		$this->assertNotEmpty( $columns, 'aips_post_embeddings table should exist' );
-		$this->assertContains( 'id',         $columns );
-		$this->assertContains( 'post_id',    $columns );
-		$this->assertContains( 'embedding',  $columns );
-		$this->assertContains( 'model',      $columns );
-		$this->assertContains( 'indexed_at', $columns );
+		$this->assertNotEmpty( $columns, 'aips_embeddings table should exist' );
+		$this->assertContains( 'id',               $columns );
+		$this->assertContains( 'object_type',      $columns );
+		$this->assertContains( 'object_post_type', $columns );
+		$this->assertContains( 'object_id',        $columns );
+		$this->assertContains( 'embedding',        $columns );
+		$this->assertContains( 'model',            $columns );
+		$this->assertContains( 'indexed_at',       $columns );
 	}
 
 	/**
@@ -65,7 +67,7 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Post Embeddings Repository
+	// Embeddings Repository
 	// -------------------------------------------------------------------------
 
 	/**
@@ -74,12 +76,12 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	public function test_embeddings_upsert_and_get() {
 		$embedding = array( 0.1, 0.2, 0.3 );
 
-		$this->embeddings_repo->upsert( 42, $embedding, 'test-model' );
+		$this->embeddings_repo->upsert( 'post', 42, $embedding, 'test-model' );
 
 		$row = $this->embeddings_repo->get_by_post_id( 42 );
 
 		$this->assertNotNull( $row );
-		$this->assertEquals( 42, (int) $row->post_id );
+		$this->assertEquals( 42, (int) $row->object_id );
 		$this->assertEquals( 'test-model', $row->model );
 		$this->assertEquals( $embedding, json_decode( $row->embedding, true ) );
 	}
@@ -88,8 +90,8 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	 * Upsert on an existing post_id should update the embedding.
 	 */
 	public function test_embeddings_upsert_updates_existing() {
-		$this->embeddings_repo->upsert( 1, array( 0.1 ), 'old-model' );
-		$this->embeddings_repo->upsert( 1, array( 0.9 ), 'new-model' );
+		$this->embeddings_repo->upsert( 'post', 1, array( 0.1 ), 'old-model' );
+		$this->embeddings_repo->upsert( 'post', 1, array( 0.9 ), 'new-model' );
 
 		$row = $this->embeddings_repo->get_by_post_id( 1 );
 
@@ -103,8 +105,8 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	public function test_embeddings_count() {
 		$this->assertEquals( 0, $this->embeddings_repo->count() );
 
-		$this->embeddings_repo->upsert( 10, array( 1.0 ) );
-		$this->embeddings_repo->upsert( 11, array( 0.5 ) );
+		$this->embeddings_repo->upsert( 'post', 10, array( 1.0 ) );
+		$this->embeddings_repo->upsert( 'post', 11, array( 0.5 ) );
 
 		$this->assertEquals( 2, $this->embeddings_repo->count() );
 	}
@@ -113,10 +115,10 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	 * delete() should remove the row.
 	 */
 	public function test_embeddings_delete() {
-		$this->embeddings_repo->upsert( 5, array( 0.5 ) );
+		$this->embeddings_repo->upsert( 'post', 5, array( 0.5 ) );
 		$this->assertNotNull( $this->embeddings_repo->get_by_post_id( 5 ) );
 
-		$this->embeddings_repo->delete( 5 );
+		$this->embeddings_repo->delete( 'post', 5 );
 		$this->assertNull( $this->embeddings_repo->get_by_post_id( 5 ) );
 	}
 

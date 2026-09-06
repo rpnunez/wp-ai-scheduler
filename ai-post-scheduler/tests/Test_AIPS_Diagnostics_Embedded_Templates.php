@@ -36,17 +36,16 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 		$this->assertStringContainsString('class="aips-status-page"', $output);
 	}
 
-	public function test_seeder_template_omits_page_shell_when_embedded() {
+	public function test_dev_tools_template_includes_seeder_form() {
 		$output = $this->render_template(
-			'seeder.php',
+			'dev-tools.php',
 			array(
 				'embedded' => true,
 			)
 		);
 
-		$this->assertStringNotContainsString('class="wrap aips-wrap"', $output);
-		$this->assertStringNotContainsString('class="aips-page-header"', $output);
 		$this->assertStringContainsString('id="aips-seeder-form"', $output);
+		$this->assertStringContainsString('id="aips-seeder-log"', $output);
 	}
 
 	public function test_operations_insights_template_omits_page_shell_when_embedded() {
