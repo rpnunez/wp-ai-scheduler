@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-class AIPS_Campaigns_Controller {
+class AIPS_Campaigns_Controller extends AIPS_Ajax_Controller_Base {
 
 	const PAGE_SLUG = 'aips-campaign-wizard';
 
@@ -51,6 +51,23 @@ class AIPS_Campaigns_Controller {
 	private $ai_service;
 
 	/**
+	 * @var array<string, string>
+	 */
+	protected array $actions = array(
+		'aips_get_campaigns'                 => 'ajax_get_campaigns',
+		'aips_get_campaign_metrics'          => 'ajax_get_campaign_metrics',
+		'aips_toggle_campaign'               => 'ajax_toggle_campaign',
+		'aips_duplicate_campaign'            => 'ajax_duplicate_campaign',
+		'aips_archive_campaign'              => 'ajax_archive_campaign',
+		'aips_restore_campaign'              => 'ajax_restore_campaign',
+		'aips_delete_campaign'               => 'ajax_delete_campaign',
+		'aips_campaign_wizard_save_draft'    => 'ajax_save_draft',
+		'aips_campaign_wizard_validate_step' => 'ajax_validate_step',
+		'aips_campaign_wizard_finalize'      => 'ajax_finalize_campaign',
+		'aips_campaign_wizard_ai_generate'   => 'ajax_ai_generate_campaign',
+	);
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct(
@@ -76,17 +93,7 @@ class AIPS_Campaigns_Controller {
 		});
 		$this->ai_service = $this->resolve_ai_service($ai_service);
 
-		add_action('wp_ajax_aips_get_campaigns', array($this, 'ajax_get_campaigns'));
-		add_action('wp_ajax_aips_get_campaign_metrics', array($this, 'ajax_get_campaign_metrics'));
-		add_action('wp_ajax_aips_toggle_campaign', array($this, 'ajax_toggle_campaign'));
-		add_action('wp_ajax_aips_duplicate_campaign', array($this, 'ajax_duplicate_campaign'));
-		add_action('wp_ajax_aips_archive_campaign', array($this, 'ajax_archive_campaign'));
-		add_action('wp_ajax_aips_restore_campaign', array($this, 'ajax_restore_campaign'));
-		add_action('wp_ajax_aips_delete_campaign', array($this, 'ajax_delete_campaign'));
-		add_action('wp_ajax_aips_campaign_wizard_save_draft', array($this, 'ajax_save_draft'));
-		add_action('wp_ajax_aips_campaign_wizard_validate_step', array($this, 'ajax_validate_step'));
-		add_action('wp_ajax_aips_campaign_wizard_finalize', array($this, 'ajax_finalize_campaign'));
-		add_action('wp_ajax_aips_campaign_wizard_ai_generate', array($this, 'ajax_ai_generate_campaign'));
+		parent::__construct();
 	}
 
 	/**
@@ -335,7 +342,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: fetch campaigns.
 	 */
 	public function ajax_get_campaigns() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$active = $this->campaigns_repository->get_campaigns(false);
 		$archived = $this->campaigns_repository->get_campaigns(true);
@@ -351,7 +358,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: fetch campaign metrics.
 	 */
 	public function ajax_get_campaign_metrics() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		if (!$campaign_id) {
@@ -367,7 +374,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: toggle campaign active state.
 	 */
 	public function ajax_toggle_campaign() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		$is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
@@ -393,7 +400,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: duplicate campaign.
 	 */
 	public function ajax_duplicate_campaign() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		if (!$campaign_id) {
@@ -414,7 +421,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: archive campaign.
 	 */
 	public function ajax_archive_campaign() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		if (!$campaign_id) {
@@ -437,7 +444,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: restore campaign.
 	 */
 	public function ajax_restore_campaign() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		if (!$campaign_id) {
@@ -460,7 +467,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: delete campaign.
 	 */
 	public function ajax_delete_campaign() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$campaign_id = $this->get_campaign_id_from_request();
 		if (!$campaign_id) {
@@ -487,7 +494,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: save wizard draft.
 	 */
 	public function ajax_save_draft() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$payload = $this->get_request_payload();
 		$draft = $this->normalise_payload(array_merge($this->get_draft(), $payload));
@@ -515,7 +522,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: validate wizard step.
 	 */
 	public function ajax_validate_step() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$payload = $this->normalise_payload(array_merge($this->get_draft(), $this->get_request_payload()));
 		$step = isset($_POST['step']) ? sanitize_key(wp_unslash($_POST['step'])) : '';
@@ -539,7 +546,7 @@ class AIPS_Campaigns_Controller {
 	 * AJAX: finalize campaign creation.
 	 */
 	public function ajax_finalize_campaign() {
-		$this->ajax_guard();
+		$this->verify_request();
 
 		$payload = $this->normalise_payload(array_merge($this->get_draft(), $this->get_request_payload()));
 		$payload['season_end_date'] = $this->normalise_season_end_date($payload['season_end_date']);
@@ -577,13 +584,7 @@ class AIPS_Campaigns_Controller {
 	 * @return void
 	 */
 	public function ajax_ai_generate_campaign() {
-		if (!check_ajax_referer('aips_campaign_wizard_ai_generate', 'nonce', false)) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+		$this->verify_request('aips_campaign_wizard_ai_generate');
 
 		if (!$this->ai_service || !$this->ai_service->is_available()) {
 			AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'), 'ai_unavailable', 503);
@@ -611,19 +612,6 @@ class AIPS_Campaigns_Controller {
 			'summary' => $this->build_summary($draft),
 			'preview' => $this->build_ai_strategy_preview($draft, $intake, $response),
 		), __('Campaign fields generated successfully.', 'ai-post-scheduler'));
-	}
-
-	/**
-	 * Common AJAX guard.
-	 */
-	private function ajax_guard() {
-		if (!check_ajax_referer('aips_ajax_nonce', 'nonce', false)) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
 	}
 
 	/**

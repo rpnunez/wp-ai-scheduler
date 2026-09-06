@@ -122,6 +122,36 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test the convert_class_name_to_trait_filename helper method
+	 */
+	public function test_convert_class_name_to_trait_filename_helper() {
+		$this->assertEquals(
+			'trait-aips-ajax-guard.php',
+			AIPS_Autoloader::convert_class_name_to_trait_filename('AIPS_Ajax_Guard')
+		);
+
+		$this->assertEquals(
+			'trait-aips-cacheable-repository.php',
+			AIPS_Autoloader::convert_class_name_to_trait_filename('AIPS_Cacheable_Repository')
+		);
+	}
+
+	/**
+	 * Test the convert_class_name_to_interface_filename helper method
+	 */
+	public function test_convert_class_name_to_interface_filename_helper() {
+		$this->assertEquals(
+			'interface-aips-history-service.php',
+			AIPS_Autoloader::convert_class_name_to_interface_filename('AIPS_History_Service')
+		);
+
+		$this->assertEquals(
+			'interface-aips-ai-service.php',
+			AIPS_Autoloader::convert_class_name_to_interface_filename('AIPS_AI_Service')
+		);
+	}
+
+	/**
 	 * Test that autoloader handles interface files
 	 */
 	public function test_autoloader_handles_interface_files() {
@@ -230,6 +260,35 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 			$this->assertTrue(
 				class_exists($class_name),
 				"Controller class {$class_name} should be loaded"
+			);
+		}
+	}
+
+	/**
+	 * Test that autoloader handles trait and base classes
+	 */
+	public function test_autoloader_handles_traits_and_base_classes() {
+		$traits = array(
+			'AIPS_Ajax_Guard',
+			'AIPS_Cacheable_Repository',
+		);
+
+		foreach ($traits as $trait_name) {
+			$this->assertTrue(
+				trait_exists($trait_name),
+				"Trait {$trait_name} should be loaded"
+			);
+		}
+
+		$base_classes = array(
+			'AIPS_Ajax_Controller_Base',
+			'AIPS_Author_Slice_Scheduler_Base',
+		);
+
+		foreach ($base_classes as $class_name) {
+			$this->assertTrue(
+				class_exists($class_name),
+				"Base class {$class_name} should be loaded"
 			);
 		}
 	}

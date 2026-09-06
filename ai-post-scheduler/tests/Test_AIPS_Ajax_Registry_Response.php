@@ -64,6 +64,7 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 
 		foreach ( glob( $includes_dir . '*.php' ) as $file ) {
 			$content = file_get_contents( $file );
+			// Check add_action calls
 			if ( preg_match_all( "/add_action\s*\(\s*['\"]wp_ajax_(aips_[^'\"]+)['\"]/" , $content, $matches ) ) {
 				foreach ( $matches[1] as $action ) {
 					if ( ! AIPS_Ajax_Registry::has_action( $action ) ) {
@@ -71,11 +72,21 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 					}
 				}
 			}
+			// Check declared $actions array in AIPS_Ajax_Controller_Base children
+			if ( basename( $file ) !== 'class-aips-ajax-registry.php' && strpos( $content, '$actions' ) !== false ) {
+				if ( preg_match_all( "/['\"](aips_[a-z0-9_]+)['\"]\s*=>/" , $content, $action_matches ) ) {
+					foreach ( $action_matches[1] as $action ) {
+						if ( ! AIPS_Ajax_Registry::has_action( $action ) ) {
+							$missing[] = $action . ' (' . basename( $file ) . ')';
+						}
+					}
+				}
+			}
 		}
 
 		$this->assertEmpty(
 			$missing,
-			'The following controller actions are registered with add_action but are missing from AIPS_Ajax_Registry: ' . implode( ', ', $missing )
+			'The following controller actions are registered but are missing from AIPS_Ajax_Registry: ' . implode( ', ', $missing )
 		);
 	}
 
