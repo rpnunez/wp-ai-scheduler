@@ -183,6 +183,62 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 	/**
 	 * Test error fallback rendering.
 	 */
+
+	/**
+	 * Test dense table rendering with progressive disclosure primitives.
+	 */
+	public function test_render_table() {
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_table(array(
+			'id'              => 'test-data-table',
+			'aria_label'      => 'Test Data Table',
+			'columns'         => array(
+				'title'   => 'Title',
+				'status'  => 'Status',
+				'actions' => 'Actions',
+			),
+			'bulk_actions'    => array(
+				'delete' => 'Delete Selected',
+			),
+			'rows'            => array(
+				array(
+					'id'             => 'item-1',
+					'checkbox_value' => '1',
+					'cells'          => array(
+						'title'  => 'First Item Title',
+						'status' => 'Active',
+					),
+					'actions'        => array(
+						'primary'  => array(
+							'label' => 'Edit',
+							'icon'  => 'dashicons-edit',
+							'url'   => '#edit-1',
+						),
+						'overflow' => array(
+							array(
+								'label' => 'Preview',
+								'icon'  => 'dashicons-visibility',
+							),
+						),
+					),
+					'details'        => '<p>Expanded details content for item 1</p>',
+				),
+			),
+			'footer_count'    => '1 item total',
+		));
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('test-data-table', $output);
+		$this->assertStringContainsString('aips-table-bulk-toolbar', $output);
+		$this->assertStringContainsString('aips-select-all-cb', $output);
+		$this->assertStringContainsString('aips-row-action-overflow-toggle', $output);
+		$this->assertStringContainsString('aips-row-action-menu', $output);
+		$this->assertStringContainsString('aips-row-expand-toggle', $output);
+		$this->assertStringContainsString('aips-row-details', $output);
+		$this->assertStringContainsString('Expanded details content for item 1', $output);
+		$this->assertStringContainsString('1 item total', $output);
+	}
+
 	public function test_render_error_fallback() {
 		ob_start();
 		AIPS_Admin_UI_Primitives::render_error_fallback(array(

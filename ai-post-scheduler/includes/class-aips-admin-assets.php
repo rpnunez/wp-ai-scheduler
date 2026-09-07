@@ -423,6 +423,7 @@ class AIPS_Admin_Assets {
             // Confirm dialog button labels (used by voices, schedules, structures, sections)
             'confirmCancelButton' => __('No, cancel', 'ai-post-scheduler'),
             'confirmDeleteButton' => __('Yes, delete', 'ai-post-scheduler'),
+            'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters', true),
             // Common button loading states
             'saving'              => __('Saving...', 'ai-post-scheduler'),
             'generating'          => __('Generating...', 'ai-post-scheduler'),

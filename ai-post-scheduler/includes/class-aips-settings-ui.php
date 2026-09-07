@@ -519,6 +519,26 @@ class AIPS_Settings_UI {
      *
      * @return void
      */
+
+    /**
+     * Render the persist table filters setting field.
+     *
+     * Displays a checkbox to enable or disable persistent table filters in browser local storage.
+     *
+     * @return void
+     */
+    public function persist_table_filters_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_persist_table_filters', true);
+        ?>
+        <input type="hidden" name="aips_persist_table_filters" value="0">
+        <label>
+            <input type="checkbox" name="aips_persist_table_filters" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Persist data table search and filter selections in local storage', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('When enabled, active filters, search queries, and pagination choices persist across page reloads per table.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
     public function developer_mode_field_callback() {
         $value = AIPS_Config::get_instance()->get_option('aips_developer_mode');
         ?>

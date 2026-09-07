@@ -46,3 +46,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Planner template
 **Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons or headers), confusing users.
 **Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
+## 2026-09-07 - Dense Table Progressive Disclosure & Filter Persistence
+**Area:** Admin UI Primitives (`includes/class-aips-admin-ui-primitives.php`, `templates/admin/partials/admin-table.php`, `templates/admin/tab-generated-posts.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Dense Table Progressive Disclosure, Kebab Menus & Filter Persistence
+**Learning:** Tables in dense operational sections struggle with narrow viewports when multiple action buttons and metadata are shown inline. Using progressive disclosure (kebab action dropdowns and expandable row detail drawers) drastically improves layout density and usability.
+**Action:** Use `AIPS_Admin_UI_Primitives::render_table()` for operational data tables to standardize row action menus, expandable row details, bulk selection toolbar counters, and filter persistence.
