@@ -707,7 +707,7 @@
                 return;
             }
 
-            $('#aips-trending-topic-posts-content').html('<p>' + (aipsResearchL10n.loadingPosts || 'Loading posts...') + '</p>');
+            $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.loadingPosts || 'Loading posts...') + '</p>');
             $('#aips-trending-topic-posts-modal').fadeIn();
 
             AIPS.loadTrendingTopicPosts(topicId);
@@ -733,19 +733,19 @@
                             ? response.data.topic.topic
                             : '';
 
-                        $('#aips-trending-topic-posts-modal-title').text(
+                        $('#aips-trending-topic-posts-modal').find('.aips-modal-title').text(
                             (aipsResearchL10n.postsGeneratedFrom || 'Posts Generated from Topic') + ': ' + topicTitle
                         );
 
                         AIPS.renderTrendingTopicPosts(response.data.posts || []);
                     } else {
-                        $('#aips-trending-topic-posts-content').html(
+                        $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html(
                             '<p>' + (response.data && response.data.message ? response.data.message : (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.')) + '</p>'
                         );
                     }
                 },
                 error: function() {
-                    $('#aips-trending-topic-posts-content').html('<p>' + (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.') + '</p>');
+                    $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.errorLoadingPosts || 'Error loading posts.') + '</p>');
                 }
             });
         },
@@ -757,7 +757,7 @@
          */
         renderTrendingTopicPosts: function(posts) {
             if (!posts || posts.length === 0) {
-                $('#aips-trending-topic-posts-content').html('<p>' + (aipsResearchL10n.noPostsFound || 'No posts found.') + '</p>');
+                $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html('<p>' + (aipsResearchL10n.noPostsFound || 'No posts found.') + '</p>');
                 return;
             }
 
@@ -790,7 +790,7 @@
                 rows: rowsHtml
             });
 
-            $('#aips-trending-topic-posts-content').html(tableHtml);
+            $('#aips-trending-topic-posts-modal').find('.aips-modal-content-body').html(tableHtml);
         },
 
         /**

@@ -150,61 +150,59 @@
         },
 
         /**
-         * Update the "N selected" label next to the topic list.
+         * Update the "N selected" label next to the topic list and sync Select All state.
          *
-         * Counts the number of checked `.topic-checkbox` elements (regardless of
-         * visibility) and updates every `.selection-count` element.
+         * Counts the total number of checked `.topic-checkbox` elements across all topics,
+         * updates every `.selection-count` element, and synchronizes the `#check-all-topics`
+         * checkbox state with visible checkboxes.
          */
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
             $('.selection-count').text(count + ' selected');
+
+            // Keep "Select All" checkbox in sync
+            var $selectAll = $('#check-all-topics');
+            var visibleCheckboxes = $('.topic-checkbox:visible');
+            var checkedVisibleCheckboxes = visibleCheckboxes.filter(':checked');
+
+            if (visibleCheckboxes.length > 0) {
+                $selectAll.prop('checked', visibleCheckboxes.length === checkedVisibleCheckboxes.length);
+            } else {
+                $selectAll.prop('checked', false);
+            }
         },
 
         /**
-         * Clear all generated topics using a two-click soft-confirm pattern.
+         * Clear all generated topics.
          *
-         * The first click changes the button label to "Click again to confirm" and
-         * starts a 3-second auto-reset timer. The second click (within the window)
-         * empties `#topics-list`, hides the results panel, clears all input fields,
-         * and resets the selection count.
+         * Uses the standard AIPS.Utilities.confirm dialog instead of the custom
+         * two-click soft-confirm pattern to standardize UI flows. Empties
+         * `#topics-list`, hides the results panel, clears all input fields,
+         * and resets the selection count on confirmation.
          *
          * Bound to the `click` event on `#btn-clear-topics`.
          */
-        clearTopics: function() {
-            var $btn = $(this);
-            var originalText = $btn.data('original-text') || $btn.text();
+        clearTopics: function(e) {
+            e.preventDefault();
 
-            // Store original text if not already stored
-            if (!$btn.data('original-text')) {
-                $btn.data('original-text', originalText);
-            }
-
-            if ($btn.data('is-confirming')) {
-                // Second click - Execute
-                $('#topics-list').empty();
-                $('#planner-results').removeClass('active');
-                $('#planner-niche').val('');
-                $('#planner-manual-topics').val('');
-                $('#planner-topic-search').val(''); // Clear search input
-                window.AIPS.updateSelectionCount();
-
-                // Reset button
-                $btn.text(originalText);
-                $btn.removeData('is-confirming');
-                clearTimeout($btn.data('timeout'));
-            } else {
-                // First click - Ask for confirmation
-                $btn.text('Click again to confirm');
-                $btn.data('is-confirming', true);
-
-                // Reset after 3 seconds
-                var timeout = setTimeout(function() {
-                    $btn.text(originalText);
-                    $btn.removeData('is-confirming');
-                }, 3000);
-
-                $btn.data('timeout', timeout);
-            }
+            AIPS.Utilities.confirm(aipsPlannerL10n.confirmClear || 'Are you sure you want to clear all topics?', 'Notice', [
+                {
+                    text: 'Cancel',
+                    class: 'aips-btn-secondary aips-modal-close'
+                },
+                {
+                    text: 'Clear Topics',
+                    class: 'aips-btn-primary',
+                    callback: function() {
+                        $('#topics-list').empty();
+                        $('#planner-results').removeClass('active');
+                        $('#planner-niche').val('');
+                        $('#planner-manual-topics').val('');
+                        $('#planner-topic-search').val(''); // Clear search input
+                        window.AIPS.updateSelectionCount();
+                    }
+                }
+            ]);
         },
 
         /**
@@ -274,7 +272,7 @@
          */
         copySelectedTopics: function() {
             var topics = [];
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -348,7 +346,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -395,7 +393,7 @@
                             var successMsg = data.message || 'Posts generated successfully.';
                             AIPS.Utilities.showToast(successMsg, 'success');
 
-                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                            $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                                 $(this).remove();
                                 window.AIPS.updateSelectionCount();
 
@@ -437,7 +435,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -480,7 +478,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
 
-                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                        $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                             $(this).remove();
                             window.AIPS.updateSelectionCount();
 

@@ -61,4 +61,11 @@ interface AIPS_Cache_Driver {
 	 * @return bool True if the key exists and is valid.
 	 */
 	public function has( $key, $group = 'default' );
+
+	/**
+	 * Check whether the cache driver is available for use.
+	 *
+	 * @return bool True if the cache driver is available, false otherwise.
+	 */
+	public function is_available();
 }

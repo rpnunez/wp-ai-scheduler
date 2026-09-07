@@ -1,0 +1,14 @@
+{
+  "id": "6bfab4fdab8860b26681a20614fd68abf685f444",
+  "type": "scheduler_datetime_gap",
+  "severity": "low",
+  "path": "ai-post-scheduler/includes/class-aips-schedule-controller.php",
+  "symbol": "AIPS_Schedule_Controller",
+  "anchor": "get_schedule_status_read_model-time-now",
+  "status": "open",
+  "summary": "Usage of time() instead of datetime service.",
+  "recommendation": "Inject and use the AIPS_DateTime_Service.",
+  "first_seen_run_id": "aips-20260518T220000Z",
+  "last_seen_run_id": "aips-20260518T220000Z",
+  "finding_file": ".aips-agent/findings/6bfab4fdab8860b26681a20614fd68abf685f444.json"
+}

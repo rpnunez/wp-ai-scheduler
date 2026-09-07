@@ -423,43 +423,103 @@ class AIPS_MCP_Bridge {
 	}
 	
 	/**
-	 * Handle incoming JSON-RPC request
-	 * 
+	 * Handle incoming JSON-RPC request (HTTP POST)
+	 *
 	 * @return void
 	 */
 	public function handle_request() {
+		// Defense in depth: re-check the bridge is enabled even though the
+		// top-level dispatcher already gates on this before instantiating us.
+		if (!defined('AIPS_MCP_BRIDGE_ENABLED') || !AIPS_MCP_BRIDGE_ENABLED) {
+			http_response_code(404);
+			exit;
+		}
+
+		// Get request body
+		$input = file_get_contents('php://input');
+		$request = json_decode($input, true);
+
+		if (json_last_error() !== JSON_ERROR_NONE) {
+			$this->send_error(-32700, 'Parse error: Invalid JSON');
+			return;
+		}
+
+		// Require a shared-secret token before any other processing. This is
+		// the bridge's CSRF protection (the endpoint is otherwise cookie/session
+		// authenticated only) and lets non-browser MCP clients authenticate
+		// without a WordPress nonce tied to a logged-in session.
+		$provided_token = isset($request['token']) ? (string) $request['token'] : '';
+		if (!defined('AIPS_MCP_BRIDGE_TOKEN') || '' === AIPS_MCP_BRIDGE_TOKEN || !hash_equals((string) AIPS_MCP_BRIDGE_TOKEN, $provided_token)) {
+			$this->send_error(-32001, 'Unauthorized: invalid or missing token.');
+			return;
+		}
+
 		// Verify user has admin capabilities
 		if (!current_user_can('manage_options')) {
 			$this->send_error(-32001, 'Insufficient permissions. Admin access required.');
 			return;
 		}
-		
-		// Get request body
-		$input = file_get_contents('php://input');
-		$request = json_decode($input, true);
-		
-		if (json_last_error() !== JSON_ERROR_NONE) {
-			$this->send_error(-32700, 'Parse error: Invalid JSON');
-			return;
-		}
-		
+
 		// Validate JSON-RPC structure
 		if (!isset($request['method'])) {
 			$this->send_error(-32600, 'Invalid Request: missing method');
 			return;
 		}
-		
+
 		$method = $request['method'];
 		$params = isset($request['params']) ? $request['params'] : array();
 		$id = isset($request['id']) ? $request['id'] : null;
-		
+
 		// Execute tool
 		$result = $this->execute_tool($method, $params);
-		
+
 		if (is_wp_error($result)) {
 			$this->send_error(-32000, $result->get_error_message(), $id);
 		} else {
 			$this->send_success($result, $id);
+		}
+	}
+
+	/**
+	 * Handle stdio requests (CLI/MCP mode)
+	 * Reads JSON-RPC messages from stdin and writes responses to stdout
+	 *
+	 * @return void
+	 */
+	public function handle_stdio_request() {
+		// Bypass user capability check in CLI mode (trusted execution environment)
+		while (true) {
+			// Read one line from stdin
+			$line = fgets(STDIN);
+			if ($line === false || $line === '') {
+				break;
+			}
+
+			$request = json_decode(trim($line), true);
+
+			if (json_last_error() !== JSON_ERROR_NONE) {
+				$this->send_stdio_error(-32700, 'Parse error: Invalid JSON');
+				continue;
+			}
+
+			// Validate JSON-RPC structure
+			if (!isset($request['method'])) {
+				$this->send_stdio_error(-32600, 'Invalid Request: missing method');
+				continue;
+			}
+
+			$method = $request['method'];
+			$params = isset($request['params']) ? $request['params'] : array();
+			$id = isset($request['id']) ? $request['id'] : null;
+
+			// Execute tool with bypass_cap_check = true (CLI is trusted)
+			$result = $this->execute_tool($method, $params, true);
+
+			if (is_wp_error($result)) {
+				$this->send_stdio_error(-32000, $result->get_error_message(), $id);
+			} else {
+				$this->send_stdio_success($result, $id);
+			}
 		}
 	}
 	
@@ -542,7 +602,7 @@ class AIPS_MCP_Bridge {
 	
 	/**
 	 * Send JSON-RPC error response
-	 * 
+	 *
 	 * @param int $code Error code
 	 * @param string $message Error message
 	 * @param mixed $id Request ID
@@ -559,6 +619,38 @@ class AIPS_MCP_Bridge {
 			'id' => $id
 		));
 		exit;
+	}
+
+	/**
+	 * Send JSON-RPC success response via stdio
+	 *
+	 * @param mixed $result Result data
+	 * @param mixed $id Request ID
+	 */
+	private function send_stdio_success($result, $id = null) {
+		fwrite(STDOUT, json_encode(array(
+			'jsonrpc' => '2.0',
+			'result' => $result,
+			'id' => $id
+		)) . "\n");
+	}
+
+	/**
+	 * Send JSON-RPC error response via stdio
+	 *
+	 * @param int $code Error code
+	 * @param string $message Error message
+	 * @param mixed $id Request ID
+	 */
+	private function send_stdio_error($code, $message, $id = null) {
+		fwrite(STDOUT, json_encode(array(
+			'jsonrpc' => '2.0',
+			'error' => array(
+				'code' => $code,
+				'message' => $message
+			),
+			'id' => $id
+		)) . "\n");
 	}
 	
 	// ===== Tool Handlers =====
@@ -823,6 +915,8 @@ class AIPS_MCP_Bridge {
 				'php_version' => phpversion(),
 				'wp_version' => get_bloginfo('version'),
 				'ai_engine_active' => class_exists('Meow_MWAI_Core'),
+				'ai_provider' => AIPS_AI_Provider_Factory::create()->get_id(),
+				'ai_provider_available' => AIPS_AI_Provider_Factory::has_available_provider(),
 				'settings' => array(
 					'default_post_status' => $config->get_option('aips_default_post_status'),
 					'default_category'    => $config->get_option('aips_default_category'),
@@ -1117,11 +1211,12 @@ class AIPS_MCP_Bridge {
 		if ($include_logs && isset($history->log)) {
 			$formatted_logs = array();
 			foreach ($history->log as $log) {
+				$log_details = json_decode($log->details, true);
 				$formatted_logs[] = array(
 					'id' => $log->id,
-					'log_type' => $log->log_type,
+					'log_type' => is_array($log_details) && isset($log_details['log_subtype']) ? (string) $log_details['log_subtype'] : '',
 					'history_type_id' => isset($log->history_type_id) ? $log->history_type_id : null,
-					'details' => json_decode($log->details, true),
+					'details' => $log_details,
 					'timestamp' => $log->timestamp
 				);
 			}
@@ -1500,10 +1595,10 @@ class AIPS_MCP_Bridge {
 		}
 		
 		// Get AI-specific metadata from post meta
-		$ai_model = get_post_meta($post_id, '_aips_ai_model', true);
-		$ai_prompt = get_post_meta($post_id, '_aips_prompt', true);
-		$generation_time = get_post_meta($post_id, '_aips_generation_time', true);
-		$tokens_used = get_post_meta($post_id, '_aips_tokens_used', true);
+		$ai_model = get_post_meta($post_id, AIPS_Post_Manager::META_AI_MODEL, true);
+		$ai_prompt = get_post_meta($post_id, AIPS_Post_Manager::META_PROMPT, true);
+		$generation_time = get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_TIME, true);
+		$tokens_used = get_post_meta($post_id, AIPS_Post_Manager::META_TOKENS_USED, true);
 		
 		// Build response
 		$metadata = array(
@@ -1538,23 +1633,48 @@ class AIPS_MCP_Bridge {
 	 * Tool: Get AI models
 	 */
 	private function tool_get_ai_models($params) {
-		// Check if AI Engine is available
+		// Check if an AI provider is available
 		$ai_service = new AIPS_AI_Service();
-		
+
 		if (!$ai_service->is_available()) {
-			return new WP_Error('ai_unavailable', 'AI Engine plugin is not available or not configured');
+			return new WP_Error('ai_unavailable', 'No AI provider is available or configured');
 		}
-		
+
 		// Get the current configured model
 		$current_model = AIPS_Config::get_instance()->get_option('aips_ai_model');
-		
-		// Try to get available models from AI Engine
-		global $mwai;
+
+		$provider = AIPS_AI_Provider_Factory::create();
 		$available_models = array();
-		
+
+		if ($provider->get_id() === 'wp_ai_client') {
+			// The WordPress AI Client owns the model catalog via core's Connectors
+			// API and does not expose an enumeration; surface the configured
+			// preference list (comma-separated, first entry preferred).
+			$preferences = array_filter(array_map('trim', explode(',', (string) $current_model)));
+
+			foreach (array_values($preferences) as $index => $model_id) {
+				$available_models[] = array(
+					'id' => $model_id,
+					'name' => $model_id,
+					'provider' => 'WordPress AI Client',
+					'type' => 'chat',
+					'is_current' => ($index === 0)
+				);
+			}
+
+			return array(
+				'success' => true,
+				'current_model' => $current_model ?: null,
+				'models' => $available_models,
+				'note' => 'Models and credentials are managed by WordPress core under Settings > AI Connectors. List shows the configured model preference order.'
+			);
+		}
+
+		// Meow AI Engine: it doesn't expose a direct API for listing models, so
+		// provide the commonly available models and indicate which is configured.
+		global $mwai;
+
 		if ($mwai) {
-			// AI Engine doesn't expose a direct API for listing models
-			// We'll provide the commonly available models and indicate which is configured
 			$common_models = array(
 				'gpt-4' => array('name' => 'GPT-4', 'provider' => 'OpenAI', 'type' => 'chat'),
 				'gpt-4-turbo' => array('name' => 'GPT-4 Turbo', 'provider' => 'OpenAI', 'type' => 'chat'),
@@ -1564,7 +1684,7 @@ class AIPS_MCP_Bridge {
 				'claude-3-sonnet' => array('name' => 'Claude 3 Sonnet', 'provider' => 'Anthropic', 'type' => 'chat'),
 				'claude-3-haiku' => array('name' => 'Claude 3 Haiku', 'provider' => 'Anthropic', 'type' => 'chat'),
 			);
-			
+
 			foreach ($common_models as $model_id => $model_info) {
 				$available_models[] = array(
 					'id' => $model_id,
@@ -1575,7 +1695,7 @@ class AIPS_MCP_Bridge {
 				);
 			}
 		}
-		
+
 		return array(
 			'success' => true,
 			'current_model' => $current_model ?: null,
@@ -1590,15 +1710,15 @@ class AIPS_MCP_Bridge {
 	private function tool_test_ai_connection($params) {
 		$test_prompt = isset($params['test_prompt']) ? $params['test_prompt'] : 'Say "Hello" if you can read this.';
 		
-		// Check if AI Engine is available
+		// Check if an AI provider is available
 		$ai_service = new AIPS_AI_Service();
-		
+
 		if (!$ai_service->is_available()) {
 			return array(
 				'success' => false,
 				'connected' => false,
-				'error' => 'AI Engine plugin is not available or not installed',
-				'message' => 'Please install and activate the AI Engine plugin'
+				'error' => 'No AI provider is available or configured',
+				'message' => 'Activate the Meow Apps AI Engine plugin or configure a WordPress AI Client connector'
 			);
 		}
 		
@@ -1607,7 +1727,7 @@ class AIPS_MCP_Bridge {
 		
 		try {
 			$result = $ai_service->generate_text($test_prompt, array(
-				'maxTokens' => 50,
+				'max_tokens' => 50,
 				'temperature' => 0.7
 			));
 			
@@ -1707,8 +1827,24 @@ class AIPS_MCP_Bridge {
 	}
 }
 
-// If called directly via HTTP
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle both HTTP and CLI (stdio) execution
+$is_cli = php_sapi_name() === 'cli' || php_sapi_name() === 'cli-server';
+$is_http_post = isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST';
+
+if ($is_http_post) {
+	// The bridge is disabled by default. It must be explicitly enabled by
+	// defining AIPS_MCP_BRIDGE_ENABLED (and AIPS_MCP_BRIDGE_TOKEN) in wp-config.php
+	// so it cannot be turned on from within the WP admin UI.
+	if (!defined('AIPS_MCP_BRIDGE_ENABLED') || !AIPS_MCP_BRIDGE_ENABLED) {
+		http_response_code(404);
+		exit;
+	}
+
+	// HTTP POST: standard JSON-RPC request/response
 	$bridge = new AIPS_MCP_Bridge();
 	$bridge->handle_request();
+} elseif ($is_cli) {
+	// CLI/stdio: MCP server mode for stdio transport
+	$bridge = new AIPS_MCP_Bridge();
+	$bridge->handle_stdio_request();
 }

@@ -66,7 +66,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-post-slice-search"><?php esc_html_e('Search Post Slices:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="aips-post-slice-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search post slices...', 'ai-post-scheduler'); ?>">
-						<button type="button" id="aips-post-slice-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+						<button type="button" id="aips-post-slice-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 					</div>
 				</div>
 
@@ -168,9 +168,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 					<h3 class="aips-empty-state-title"><?php esc_html_e('No Post Slices Found', 'ai-post-scheduler'); ?></h3>
 					<p class="aips-empty-state-description"><?php esc_html_e('No post slices match your search criteria.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-primary" id="aips-post-slice-search-clear-2">
-							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-						</button>
+						<button type="button" class="aips-btn aips-btn-ghost" id="aips-post-slice-search-clear-2" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 					</div>
 				</div>
 			<?php else: ?>
@@ -189,10 +187,10 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 	</div>
 </div>
 
-<div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-post-slice-modal-title">
+<div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
-			<h2 id="aips-post-slice-modal-title"><?php esc_html_e('Add New Post Slice', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title"><?php esc_html_e('Add New Post Slice', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
@@ -230,8 +228,8 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 			</form>
 		</div>
 		<div class="aips-modal-footer">
-			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-			<button type="button" class="button button-primary" id="aips-save-post-slice-btn">
+			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="aips-btn aips-btn-primary" id="aips-save-post-slice-btn">
 				<?php esc_html_e('Save Post Slice', 'ai-post-scheduler'); ?>
 			</button>
 		</div>

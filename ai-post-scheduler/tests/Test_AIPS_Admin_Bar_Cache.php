@@ -44,15 +44,29 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_admin_bar_double() {
+		return new class() {
+			public $nodes = array();
+			public $groups = array();
+
+			public function add_node( $args ) {
+				$this->nodes[] = $args;
+				return true;
+			}
+
+			public function add_group( $args ) {
+				$this->groups[] = $args;
+				return true;
+			}
+		};
+	}
+
 	/**
 	 * Test that cache is set after add_toolbar_node executes
 	 */
 	public function test_cache_set_with_ttl() {
 		// Create a mock WP_Admin_Bar
-		$wp_admin_bar = $this->getMockBuilder('WP_Admin_Bar')
-			->disableOriginalConstructor()
-			->onlyMethods(array('add_node', 'add_group'))
-			->getMock();
+		$wp_admin_bar = $this->make_admin_bar_double();
 
 		$cache     = AIPS_Cache_Factory::instance();
 		$cache_key = 'aips_unread_count_' . get_current_user_id();
@@ -97,12 +111,7 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		AIPS_Cache_Factory::instance()->delete($cache_key, 'aips_admin_bar');
 
 		// Create a mock WP_Admin_Bar
-		$wp_admin_bar = $this->getMockBuilder('WP_Admin_Bar')
-			->disableOriginalConstructor()
-			->onlyMethods(array('add_node', 'add_group'))
-			->getMock();
-		$wp_admin_bar->method('add_node')->willReturn(true);
-		$wp_admin_bar->method('add_group')->willReturn(true);
+		$wp_admin_bar = $this->make_admin_bar_double();
 
 		// Call add_toolbar_node
 		$admin_bar->add_toolbar_node($wp_admin_bar);
@@ -141,12 +150,7 @@ class Test_AIPS_Admin_Bar_Cache extends WP_UnitTestCase {
 		AIPS_Cache_Factory::instance()->delete($cache_key, 'aips_admin_bar');
 
 		// Create a mock WP_Admin_Bar
-		$wp_admin_bar = $this->getMockBuilder('WP_Admin_Bar')
-			->disableOriginalConstructor()
-			->onlyMethods(array('add_node', 'add_group'))
-			->getMock();
-		$wp_admin_bar->method('add_node')->willReturn(true);
-		$wp_admin_bar->method('add_group')->willReturn(true);
+		$wp_admin_bar = $this->make_admin_bar_double();
 
 		// Call add_toolbar_node
 		$admin_bar->add_toolbar_node($wp_admin_bar);

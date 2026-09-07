@@ -70,25 +70,10 @@ class AIPS_Planner {
         $json_str = preg_replace('/```$/', '', $json_str);
         $json_str = trim($json_str);
 
-        // First, try to parse the whole string as JSON.
-        $topics = json_decode($json_str);
+        $decoded = AIPS_JSON_Extractor::decode_json_response($json_str);
+        $topics  = is_wp_error($decoded) ? null : $decoded;
 
-        // If that fails, try to extract the first JSON array substring.
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
-            $first_bracket = strpos($json_str, '[');
-            $last_bracket  = strrpos($json_str, ']');
-
-            if ($first_bracket !== false && $last_bracket !== false && $last_bracket > $first_bracket) {
-                $json_candidate = substr($json_str, $first_bracket, $last_bracket - $first_bracket + 1);
-                $topics_candidate = json_decode($json_candidate);
-
-                if (json_last_error() === JSON_ERROR_NONE && is_array($topics_candidate)) {
-                    $topics = $topics_candidate;
-                }
-            }
-        }
-
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
+        if (!is_array($topics)) {
             // Fallback: try to parse line by line if JSON fails
             $topics = array_filter(array_map('trim', explode("\n", $json_str)));
             // Remove empty lines and lines that look like list markers if strictly splitting by newline
@@ -134,13 +119,20 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $topic) {
+        foreach ($topics as $index => $topic) {
+            if ($frequency === 'once') {
+                // Stagger one-off topics by 10 minutes (600 seconds)
+                $topic_next_run = date('Y-m-d H:i:s', $base_time + ($index * 600));
+            } else {
+                // Recurring frequencies must share the exact same initial next_run
+                $topic_next_run = date('Y-m-d H:i:s', $base_time);
+            }
+
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
+                'frequency' => $frequency,
+                'next_run' => $topic_next_run,
                 'is_active' => 1,
                 'topic' => $topic
             );

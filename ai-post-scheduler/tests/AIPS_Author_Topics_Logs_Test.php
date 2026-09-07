@@ -5,7 +5,7 @@
  * @package AI_Post_Scheduler
  */
 
-class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
+class AIPS_Author_Topics_Logs_Test extends WP_Ajax_UnitTestCase {
 
 	private $controller;
 	private $repository;
@@ -14,8 +14,8 @@ class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
 	private $author_id;
     private $topic_id;
 
-	public function setUp(): void {
-		parent::setUp();
+	public function set_up(): void {
+		parent::set_up();
 
 		// Create test users
 		$this->admin_user_id = $this->factory->user->create(array('role' => 'administrator'));
@@ -26,9 +26,6 @@ class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
 
 		// Initialize controller
 		$this->controller = new AIPS_Author_Topics_Controller();
-
-		// Set up nonce
-		$_REQUEST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 
 		// Create a test author
 		$authors_repository = new AIPS_Authors_Repository();
@@ -46,18 +43,56 @@ class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
         ));
 	}
 
-	public function tearDown(): void {
+	public function tear_down(): void {
 		global $wpdb;
-        // Clean up
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_author_topic_logs");
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_author_topics");
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}aips_authors");
+		$wpdb->delete(
+			$wpdb->prefix . 'aips_author_topic_logs',
+			array( 'author_topic_id' => $this->topic_id ),
+			array( '%d' )
+		);
+		$wpdb->delete(
+			$wpdb->prefix . 'aips_author_topics',
+			array( 'id' => $this->topic_id ),
+			array( '%d' )
+		);
+		$wpdb->delete(
+			$wpdb->prefix . 'aips_authors',
+			array( 'id' => $this->author_id ),
+			array( '%d' )
+		);
 
 		// Clean up $_POST and $_REQUEST
 		$_POST = array();
 		$_REQUEST = array();
 
-		parent::tearDown();
+		parent::tear_down();
+	}
+
+	private function capture_ajax_action($action) {
+		$this->_last_response = '';
+		$buffer_level = ob_get_level();
+		ob_start();
+
+		try {
+			$this->_handleAjax($action);
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for early exits.
+		}
+
+		while (ob_get_level() > $buffer_level) {
+			$buffer = ob_get_clean();
+			if ('' !== $buffer && false !== $buffer && '' === $this->_last_response) {
+				$this->_last_response = $buffer;
+			}
+		}
+
+		if ('' === $this->_last_response) {
+			return null;
+		}
+
+		return json_decode(strtok(trim($this->_last_response), "\r\n"), true);
 	}
 
 	/**
@@ -74,30 +109,18 @@ class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
 
 		// Set up POST data
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$_POST['topic_id'] = $this->topic_id;
-
-		// Capture output
-		ob_start();
-		try {
-			$this->controller->ajax_get_topic_logs();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		$output = ob_get_clean();
-
-		// Parse JSON response
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_get_topic_logs');
 
 		// Assertions
 		$this->assertTrue($response['success']);
 		$this->assertCount(2, $response['data']['logs']);
 
-        // Check log structure
-        // Assuming logs are returned in DESC order (latest first)
-        $first_log = $response['data']['logs'][0];
-        $this->assertArrayHasKey('action', $first_log);
-        $this->assertArrayHasKey('user_name', $first_log);
-        $this->assertEquals('topic_approved', $first_log['action']);
+		$actions = array_column($response['data']['logs'], 'action');
+		$this->assertContains('edited', $actions);
+		$this->assertContains('approved', $actions);
+		$this->assertArrayHasKey('user_name', $response['data']['logs'][0]);
 	}
 
     /**
@@ -107,16 +130,11 @@ class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
         wp_set_current_user($this->admin_user_id);
 
         $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+        $_REQUEST['nonce'] = $_POST['nonce'];
 
         // Test 0
         $_POST['topic_id'] = 0;
-
-        ob_start();
-		try {
-			$this->controller->ajax_get_topic_logs();
-		} catch (WPAjaxDieContinueException $e) { }
-		$output = ob_get_clean();
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_get_topic_logs');
 
         $this->assertFalse($response['success']);
         $this->assertEquals('Invalid topic ID.', $response['data']['message']);
@@ -129,14 +147,9 @@ class AIPS_Author_Topics_Logs_Test extends WP_UnitTestCase {
         wp_set_current_user($this->admin_user_id);
 
         $_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+        $_REQUEST['nonce'] = $_POST['nonce'];
         $_POST['topic_id'] = $this->topic_id; // No logs added
-
-        ob_start();
-		try {
-			$this->controller->ajax_get_topic_logs();
-		} catch (WPAjaxDieContinueException $e) { }
-		$output = ob_get_clean();
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_get_topic_logs');
 
         $this->assertTrue($response['success']);
         $this->assertEmpty($response['data']['logs']);

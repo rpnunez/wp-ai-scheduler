@@ -14,40 +14,44 @@ if (!defined('ABSPATH')) {
 }
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
+$is_embedded_author_topics_view = !empty($embedded);
 $authors_page_url = AIPS_Admin_Menu_Helper::get_page_url('authors');
 
 if (!$author_id) {
 	?>
+	<?php if (!$is_embedded_author_topics_view) : ?>
 	<div class="wrap aips-wrap">
 		<div class="aips-page-container">
-			<div class="notice notice-error">
-				<p>
-					<?php esc_html_e('Invalid author ID.', 'ai-post-scheduler'); ?>
-					<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
-				</p>
-			</div>
+	<?php endif; ?>
+		<div class="notice notice-error"><p>
+			<?php esc_html_e('Invalid author ID.', 'ai-post-scheduler'); ?>
+			<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
+		</p></div>
+	<?php if (!$is_embedded_author_topics_view) : ?>
 		</div>
 	</div>
+	<?php endif; ?>
 	<?php
 	return;
 }
 
 $authors_repository = new AIPS_Authors_Repository();
 $author = $authors_repository->get_by_id($author_id);
-$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
 
 if (!$author) {
 	?>
+	<?php if (!$is_embedded_author_topics_view) : ?>
 	<div class="wrap aips-wrap">
 		<div class="aips-page-container">
-			<div class="notice notice-error">
-				<p>
-					<?php esc_html_e('Author not found.', 'ai-post-scheduler'); ?>
-					<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
-				</p>
-			</div>
+	<?php endif; ?>
+		<div class="notice notice-error"><p>
+			<?php esc_html_e('Author not found.', 'ai-post-scheduler'); ?>
+			<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?></a>
+		</p></div>
+	<?php if (!$is_embedded_author_topics_view) : ?>
 		</div>
 	</div>
+	<?php endif; ?>
 	<?php
 	return;
 }
@@ -58,8 +62,11 @@ $status_counts      = $topics_repository->get_status_counts($author_id);
 $total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'] + $status_counts['posts_generated'];
 $posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
+<?php if (!$is_embedded_author_topics_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
+<?php endif; ?>
+<?php if (!$is_embedded_author_topics_view) : ?>
 		<!-- Breadcrumb -->
 		<nav class="aips-breadcrumb" aria-label="<?php esc_attr_e('Breadcrumb', 'ai-post-scheduler'); ?>">
 			<a href="<?php echo esc_url($authors_page_url); ?>"><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></a>
@@ -97,6 +104,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<!-- Author Stats -->
 		<div class="aips-author-topics-stats">
@@ -113,7 +121,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-generated">
-				<span class="aips-stat-value"><?php echo esc_html($posts_count); ?></span>
+				<span class="aips-stat-value" id="stat-generated-count"><?php echo esc_html($posts_count); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card">
@@ -161,7 +169,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 
@@ -197,15 +205,19 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				?>
 			</span>
 		</div>
+<?php if (!$is_embedded_author_topics_view) : ?>
 	</div>
 </div>
+<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content aips-modal-large">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2 id="aips-topic-logs-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
-		<div id="aips-topic-logs-content">
+		<div class="aips-modal-header">
+			<h2 class="aips-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body aips-modal-content-body">
 			<p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
 		</div>
 	</div>
@@ -214,9 +226,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <!-- Topic Posts Modal -->
 <div id="aips-topic-posts-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content aips-modal-large">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2 id="aips-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
-		<div id="aips-topic-posts-content">
+		<div class="aips-modal-header">
+			<h2 class="aips-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body aips-modal-content-body">
 			<p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
 		</div>
 	</div>
@@ -225,9 +239,12 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <!-- Feedback Modal -->
 <div id="aips-feedback-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2 id="aips-feedback-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
+		<div class="aips-modal-header">
+			<h2 class="aips-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
 		<form id="aips-feedback-form">
+			<div class="aips-modal-body">
 			<input type="hidden" id="feedback_topic_id" name="topic_id" value="">
 			<input type="hidden" id="feedback_action" name="action_type" value="">
 
@@ -244,10 +261,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<textarea id="feedback_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you approving/rejecting this topic?', 'ai-post-scheduler'); ?>"></textarea>
 				<p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
 			</div>
-
-			<div class="form-actions">
-				<button type="submit" class="button button-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
-				<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			</div>
+			<div class="aips-modal-footer form-actions">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
 			</div>
 		</form>
 	</div>
@@ -262,9 +279,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <table class="aips-table aips-topics-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
 			<th class="column-topic">{{topicDetails}}</th>
-			<th class="column-generated">{{generatedAtLabel}}</th>
+			<th class="column-date">{{generatedAtLabel}}</th>
+			{{secondaryDateHeader}}
 			<th class="column-actions">{{actionsLabel}}</th>
 		</tr>
 	</thead>
@@ -276,7 +294,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 <script type="text/html" id="aips-tmpl-topic-row">
 <tr data-topic-id="{{id}}">
-	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></th>
 	<td class="topic-title-cell column-topic">
 		<div class="aips-topic-row">
 			{{expandBtn}}
@@ -289,7 +307,8 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</div>
 		{{detailContent}}
 	</td>
-	<td class="column-generated">{{generatedAt}}</td>
+	<td class="column-date"><div class="cell-meta">{{generatedAt}}</div></td>
+	{{secondaryDateCell}}
 	<td class="topic-actions column-actions">
 		{{actions}}
 	</td>
@@ -321,24 +340,47 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 <script type="text/html" id="aips-tmpl-topic-actions-pending">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
-</div>
-<div class="cell-actions" style="margin-top: 6px;">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="{{id}}">{{approveLabel}}</button>
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="{{id}}">{{rejectLabel}}</button>
+	<div class="aips-row-action-group">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}" title="{{editTitle}}">{{editLabel}}</button>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-author-topic-row-actions-{{id}}" title="{{moreActionsTitle}}">
+			<span class="screen-reader-text">{{moreActionsLabel}}</span>
+		</button>
+	</div>
+	<div id="aips-author-topic-row-actions-{{id}}" class="aips-row-action-menu" hidden>
+		<button type="button" class="aips-row-action-item aips-approve-topic" data-id="{{id}}">
+			<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+			<span>{{approveLabel}}</span>
+		</button>
+		<button type="button" class="aips-row-action-item aips-reject-topic" data-id="{{id}}">
+			<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+			<span>{{rejectLabel}}</span>
+		</button>
+	</div>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-actions-approved">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
-	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+	<div class="aips-row-action-group">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-author-topic-row-actions-{{id}}" title="{{moreActionsTitle}}">
+			<span class="screen-reader-text">{{moreActionsLabel}}</span>
+		</button>
+	</div>
+	<div id="aips-author-topic-row-actions-{{id}}" class="aips-row-action-menu" hidden>
+		<button type="button" class="aips-row-action-item aips-edit-topic" data-id="{{id}}">
+			<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+			<span>{{editLabel}}</span>
+		</button>
+	</div>
 </div>
 </script>
 
 <script type="text/html" id="aips-tmpl-topic-actions-rejected">
 <div class="cell-actions">
-	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+	<div class="aips-row-action-group">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+	</div>
 </div>
 </script>
 
@@ -347,7 +389,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <table class="aips-table aips-feedback-table">
 	<thead>
 		<tr>
-			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback" aria-label="<?php esc_attr_e('Select all feedback', 'ai-post-scheduler'); ?>"></th>
 			<th class="column-topic">{{topicLabel}}</th>
 			<th class="column-action">{{actionLabel}}</th>
 			<th class="column-reason">{{reasonLabel}}</th>
@@ -363,7 +405,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 <script type="text/html" id="aips-tmpl-feedback-row">
 <tr>
-	<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}"></th>
+	<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select feedback', 'ai-post-scheduler'); ?>"></th>
 	<td>{{topicTitle}}</td>
 	<td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
 	<td>{{reason}}</td>
@@ -439,5 +481,3 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 <script type="text/html" id="aips-tmpl-topic-post-action-publish">
 <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-publish-topic-post" data-post-id="{{postId}}">{{label}}</button>
 </script>
-
-

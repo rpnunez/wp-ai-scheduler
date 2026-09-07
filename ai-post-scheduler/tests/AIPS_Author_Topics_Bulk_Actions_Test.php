@@ -5,7 +5,7 @@
  * @package AI_Post_Scheduler
  */
 
-class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
+class AIPS_Author_Topics_Bulk_Actions_Test extends WP_Ajax_UnitTestCase {
 	
 	private $controller;
 	private $repository;
@@ -14,8 +14,8 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 	private $subscriber_user_id;
 	private $author_id;
 	
-	public function setUp(): void {
-		parent::setUp();
+	public function set_up(): void {
+		parent::set_up();
 		
 		// Create test users
 		$this->admin_user_id = $this->factory->user->create(array('role' => 'administrator'));
@@ -44,7 +44,7 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		));
 	}
 	
-	public function tearDown(): void {
+	public function tear_down(): void {
 		// Clean up test data
 		global $wpdb;
 		$topics_table = $wpdb->prefix . 'aips_author_topics';
@@ -67,7 +67,7 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		$_POST = array();
 		$_REQUEST = array();
 		
-		parent::tearDown();
+		parent::tear_down();
 	}
 	
 	/**
@@ -86,6 +86,83 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		}
 		return $topic_ids;
 	}
+
+	/**
+	 * Dispatch a registered AJAX action through the WordPress AJAX test harness.
+	 *
+	 * @param string $action AJAX action slug without the wp_ajax_ prefix.
+	 * @return array|null
+	 */
+	private function capture_ajax_action($action) {
+		$this->_last_response = '';
+		$buffer_level = ob_get_level();
+		ob_start();
+
+		try {
+			$this->_handleAjax($action);
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected for wp_send_json_* success/error responses.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for wp_die()-style early exits.
+		}
+
+		while (ob_get_level() > $buffer_level) {
+			$buffer = ob_get_clean();
+			if ('' !== $buffer && false !== $buffer && '' === $this->_last_response) {
+				$this->_last_response = $buffer;
+			}
+		}
+
+		return $this->decode_last_response();
+	}
+
+	/**
+	 * Invoke a controller method directly while using the AJAX test case's die handler.
+	 *
+	 * @param callable $callable Controller method to invoke.
+	 * @return array|null
+	 */
+	private function capture_ajax_callable($callable) {
+		$this->_last_response = '';
+		$buffer_level = ob_get_level();
+		ob_start();
+
+		try {
+			call_user_func($callable);
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected for wp_send_json_* success/error responses.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for wp_die()-style early exits.
+		}
+
+		while (ob_get_level() > $buffer_level) {
+			$buffer = ob_get_clean();
+			if ('' !== $buffer && false !== $buffer && '' === $this->_last_response) {
+				$this->_last_response = $buffer;
+			}
+		}
+
+		return $this->decode_last_response();
+	}
+
+	/**
+	 * Decode the JSON portion of the captured AJAX response.
+	 *
+	 * Some full-WP runs append log lines after the JSON payload, so only decode
+	 * the first response line.
+	 *
+	 * @return array|null
+	 */
+	private function decode_last_response() {
+		if ('' === $this->_last_response) {
+			return null;
+		}
+
+		$response = trim($this->_last_response);
+		$first_line = strtok($response, "\r\n");
+
+		return json_decode($first_line, true);
+	}
 	
 	/**
 	 * Test bulk approve topics with valid permissions
@@ -98,19 +175,10 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		
 		// Set up POST data
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$_POST['topic_ids'] = $topic_ids;
 		
-		// Capture output
-		ob_start();
-		try {
-			$this->controller->ajax_bulk_approve_topics();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		$output = ob_get_clean();
-		
-		// Parse JSON response
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_bulk_approve_topics');
 		
 		// Assertions
 		$this->assertTrue($response['success']);
@@ -140,19 +208,10 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		
 		// Set up POST data
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$_POST['topic_ids'] = $topic_ids;
 		
-		// Capture output
-		ob_start();
-		try {
-			$this->controller->ajax_bulk_reject_topics();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		$output = ob_get_clean();
-		
-		// Parse JSON response
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_bulk_reject_topics');
 		
 		// Assertions
 		$this->assertTrue($response['success']);
@@ -182,19 +241,10 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		
 		// Set up POST data
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$_POST['topic_ids'] = $topic_ids;
 		
-		// Capture output
-		ob_start();
-		try {
-			$this->controller->ajax_bulk_delete_topics();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		$output = ob_get_clean();
-		
-		// Parse JSON response
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_bulk_delete_topics');
 		
 		// Assertions
 		$this->assertTrue($response['success']);
@@ -221,19 +271,10 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		
 		// Set up POST data with empty array
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$_POST['topic_ids'] = array();
 		
-		// Capture output
-		ob_start();
-		try {
-			$this->controller->ajax_bulk_delete_topics();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		$output = ob_get_clean();
-		
-		// Parse JSON response
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_bulk_delete_topics');
 		
 		// Assertions
 		$this->assertFalse($response['success']);
@@ -251,19 +292,10 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		
 		// Set up POST data
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$_POST['topic_ids'] = $topic_ids;
 		
-		// Capture output
-		ob_start();
-		try {
-			$this->controller->ajax_bulk_delete_topics();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected exception
-		}
-		$output = ob_get_clean();
-		
-		// Parse JSON response
-		$response = json_decode($output, true);
+		$response = $this->capture_ajax_action('aips_bulk_delete_topics');
 		
 		// Assertions
 		$this->assertFalse($response['success']);
@@ -293,13 +325,7 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		$_POST['nonce']    = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST['nonce'] = $_POST['nonce'];
 
-		ob_start();
-		try {
-			$this->controller->ajax_get_bulk_generate_estimate();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected.
-		}
-		$response = json_decode(ob_get_clean(), true);
+		$response = $this->capture_ajax_action('aips_get_bulk_generate_estimate');
 
 		$this->assertFalse($response['success']);
 		$this->assertEquals('Permission denied.', $response['data']['message']);
@@ -325,13 +351,7 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST = $_POST;
 
-		ob_start();
-		try {
-			$controller->ajax_get_bulk_generate_estimate();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected.
-		}
-		$response = json_decode(ob_get_clean(), true);
+		$response = $this->capture_ajax_callable(array($controller, 'ajax_get_bulk_generate_estimate'));
 
 		$this->assertTrue($response['success']);
 		$this->assertEquals(30, $response['data']['per_post_seconds']);
@@ -361,13 +381,7 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST = $_POST;
 
-		ob_start();
-		try {
-			$controller->ajax_get_bulk_generate_estimate();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected.
-		}
-		$response = json_decode(ob_get_clean(), true);
+		$response = $this->capture_ajax_callable(array($controller, 'ajax_get_bulk_generate_estimate'));
 
 		$this->assertTrue($response['success']);
 		$this->assertEquals(20, $response['data']['per_post_seconds']);
@@ -396,13 +410,7 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST = $_POST;
 
-		ob_start();
-		try {
-			$controller->ajax_get_bulk_generate_estimate();
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected.
-		}
-		$response = json_decode(ob_get_clean(), true);
+		$response = $this->capture_ajax_callable(array($controller, 'ajax_get_bulk_generate_estimate'));
 
 		$this->assertTrue($response['success']);
 		$this->assertEquals(11, $response['data']['per_post_seconds']);

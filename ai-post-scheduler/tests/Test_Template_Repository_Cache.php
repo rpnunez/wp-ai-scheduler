@@ -23,6 +23,8 @@ class Mock_WPDB_Query_Counter {
 
 	public $prefix    = 'wp_';
 	public $insert_id = 0;
+	public $last_error = '';
+	public $options = 'wp_options';
 
 	/** @var int How many get_row() calls were made. */
 	public $get_row_calls = 0;
@@ -30,11 +32,17 @@ class Mock_WPDB_Query_Counter {
 	/** @var int How many get_results() calls were made. */
 	public $get_results_calls = 0;
 
+	/** @var int How many get_col() calls were made. */
+	public $get_col_calls = 0;
+
 	/** @var mixed Fixed return value for get_row(). */
 	public $get_row_return = null;
 
 	/** @var mixed Fixed return value for get_results(). */
 	public $get_results_return = array();
+
+	/** @var mixed Fixed return value for get_col(). */
+	public $get_col_return = array();
 
 	public function prepare( $query, ...$args ) {
 		if ( empty( $args ) ) {
@@ -59,6 +67,11 @@ class Mock_WPDB_Query_Counter {
 		return $this->get_results_return;
 	}
 
+	public function get_col( $query, $x = 0 ) {
+		$this->get_col_calls++;
+		return $this->get_col_return;
+	}
+
 	public function insert( $table, $data, $format = null ) {
 		$this->insert_id++;
 		return true;
@@ -78,6 +91,18 @@ class Mock_WPDB_Query_Counter {
 
 	public function esc_like( $text ) {
 		return addcslashes( $text, '_%\\' );
+	}
+
+	public function _escape( $text ) {
+		return $text;
+	}
+
+	public function suppress_errors( $suppress = true ) {
+		return false;
+	}
+
+	public function show_errors( $show = true ) {
+		return true;
 	}
 }
 
@@ -100,7 +125,10 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		global $wpdb;
 		$this->original_wpdb = $wpdb;
 		$this->mock_wpdb     = new Mock_WPDB_Query_Counter();
-		$wpdb                = $this->mock_wpdb;
+		AIPS_Cache_Factory::register(
+			'aips_template_repository',
+			new AIPS_Cache( new AIPS_Cache_Array_Driver() )
+		);
 	}
 
 	public function tearDown(): void {
@@ -110,13 +138,28 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		parent::tearDown();
 	}
 
+	private function make_repository() {
+		$repo = new AIPS_Template_Repository();
+		$reflection = new ReflectionClass( $repo );
+
+		$wpdb_property = $reflection->getProperty( 'wpdb' );
+		$wpdb_property->setAccessible( true );
+		$wpdb_property->setValue( $repo, $this->mock_wpdb );
+
+		$table_property = $reflection->getProperty( 'table_name' );
+		$table_property->setAccessible( true );
+		$table_property->setValue( $repo, $this->mock_wpdb->prefix . 'aips_templates' );
+
+		return $repo;
+	}
+
 	// -----------------------------------------------------------------------
 	// get_by_id() caching
 	// -----------------------------------------------------------------------
 
 	public function test_get_by_id_hits_db_on_first_call() {
 		$this->mock_wpdb->get_row_return = (object) array( 'id' => 7, 'name' => 'My Template' );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$result = $repo->get_by_id( 7 );
 
@@ -126,7 +169,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_by_id_returns_cached_result_on_second_call() {
 		$this->mock_wpdb->get_row_return = (object) array( 'id' => 7, 'name' => 'My Template' );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_by_id( 7 );
 		$repo->get_by_id( 7 );
@@ -136,7 +179,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_by_id_null_result_is_not_cached() {
 		$this->mock_wpdb->get_row_return = null;
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_by_id( 99 );
 		$repo->get_by_id( 99 );
@@ -153,7 +196,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 			(object) array( 'id' => 1, 'name' => 'A' ),
 			(object) array( 'id' => 2, 'name' => 'B' ),
 		);
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$result = $repo->get_all();
 
@@ -163,7 +206,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_all_returns_cached_result_on_second_call() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all();
 		$repo->get_all();
@@ -173,7 +216,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_get_all_active_only_uses_separate_cache_key() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all( false );
 		$repo->get_all( true );
@@ -187,7 +230,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_cache_is_flushed_after_create() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all(); // Populate cache.
 		$repo->create( array(
@@ -204,7 +247,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 	public function test_cache_is_flushed_after_update() {
 		$row = (object) array( 'id' => 5, 'name' => 'Old' );
 		$this->mock_wpdb->get_row_return = $row;
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_by_id( 5 ); // Populate cache.
 		$repo->update( 5, array( 'name' => 'Updated' ) );
@@ -215,7 +258,7 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 
 	public function test_cache_is_flushed_after_delete() {
 		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'name' => 'A' ) );
-		$repo = new AIPS_Template_Repository();
+		$repo = $this->make_repository();
 
 		$repo->get_all(); // Populate cache.
 		$repo->delete( 1 );
@@ -232,8 +275,8 @@ class Test_Template_Repository_Cache extends WP_UnitTestCase {
 		$row = (object) array( 'id' => 3, 'name' => 'Shared' );
 		$this->mock_wpdb->get_row_return = $row;
 
-		$repo_a = new AIPS_Template_Repository();
-		$repo_b = new AIPS_Template_Repository();
+		$repo_a = $this->make_repository();
+		$repo_b = $this->make_repository();
 
 		$repo_a->get_by_id( 3 ); // Warms the named cache.
 		$repo_b->get_by_id( 3 ); // Should be served from the same named cache.
@@ -763,6 +806,7 @@ class Test_Authors_Repository_Cache extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb = $this->original_wpdb;
 		AIPS_Cache_Factory::reset();
+		remove_all_filters( 'wp_doing_cron' );
 		parent::tearDown();
 	}
 
@@ -870,5 +914,177 @@ class Test_Authors_Repository_Cache extends WP_UnitTestCase {
 		$repo_b->get_by_id( 8 );
 
 		$this->assertEquals( 1, $this->mock_wpdb->get_row_calls );
+	}
+
+	public function test_get_due_for_topic_generation_skips_cache_during_cron_reads() {
+		add_filter( 'wp_doing_cron', '__return_true' );
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 11, 'name' => 'Queued Author' ) );
+		$repo = new AIPS_Authors_Repository();
+
+		$repo->get_due_for_topic_generation();
+		$repo->get_due_for_topic_generation();
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
+	}
+}
+
+// ---------------------------------------------------------------------------
+// AIPS_Author_Topics_Repository caching tests
+// ---------------------------------------------------------------------------
+
+class Test_Author_Topics_Repository_Cache extends WP_UnitTestCase {
+
+	/** @var Mock_WPDB_Query_Counter */
+	private $mock_wpdb;
+
+	/** @var mixed Original global $wpdb. */
+	private $original_wpdb;
+
+	public function setUp(): void {
+		parent::setUp();
+		AIPS_Cache_Factory::reset();
+
+		global $wpdb;
+		$this->original_wpdb = $wpdb;
+		$this->mock_wpdb     = new Mock_WPDB_Query_Counter();
+		$wpdb                = $this->mock_wpdb;
+	}
+
+	public function tearDown(): void {
+		global $wpdb;
+		$wpdb = $this->original_wpdb;
+		AIPS_Cache_Factory::reset();
+		parent::tearDown();
+	}
+
+	public function test_get_by_author_cached_after_first_call() {
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'author_id' => 9 ) );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_author( 9 );
+		$repo->get_by_author( 9 );
+
+		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_get_by_author_status_uses_separate_cache_key() {
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1, 'author_id' => 9 ) );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_author( 9, 'approved' );
+		$repo->get_by_author( 9, 'rejected' );
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_get_by_id_cached_after_first_call() {
+		$this->mock_wpdb->get_row_return = (object) array( 'id' => 4, 'author_id' => 9 );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_id( 4 );
+		$repo->get_by_id( 4 );
+
+		$this->assertEquals( 1, $this->mock_wpdb->get_row_calls );
+	}
+
+	public function test_get_by_id_null_not_cached() {
+		$this->mock_wpdb->get_row_return = null;
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_id( 99 );
+		$repo->get_by_id( 99 );
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_row_calls );
+	}
+
+	public function test_get_approved_summary_cached_after_first_call() {
+		$this->mock_wpdb->get_col_return = array( 'Topic A', 'Topic B' );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_approved_summary( 9, 20 );
+		$repo->get_approved_summary( 9, 20 );
+
+		$this->assertEquals( 1, $this->mock_wpdb->get_col_calls );
+	}
+
+	public function test_get_status_counts_cached_after_first_call() {
+		$this->mock_wpdb->get_results_return = array(
+			array( 'bucket' => 'pending', 'count' => 2 ),
+			array( 'bucket' => 'approved', 'count' => 3 ),
+		);
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_status_counts( 9 );
+		$repo->get_status_counts( 9 );
+
+		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_get_global_status_counts_cached_after_first_call() {
+		$this->mock_wpdb->get_results_return = array(
+			array( 'status' => 'pending', 'count' => 5 ),
+			array( 'status' => 'approved', 'count' => 2 ),
+		);
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_global_status_counts();
+		$repo->get_global_status_counts();
+
+		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_get_counts_grouped_by_author_cached_after_first_call() {
+		$this->mock_wpdb->get_results_return = array(
+			(object) array( 'author_id' => 9, 'cnt' => 4 ),
+			(object) array( 'author_id' => 10, 'cnt' => 2 ),
+		);
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_counts_grouped_by_author();
+		$repo->get_counts_grouped_by_author();
+
+		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_get_approved_for_generation_remains_uncached() {
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 7, 'author_id' => 9 ) );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_approved_for_generation( 9, 1, 0 );
+		$repo->get_approved_for_generation( 9, 1, 0 );
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_get_all_approved_for_queue_remains_uncached() {
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 7, 'author_id' => 9 ) );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_all_approved_for_queue();
+		$repo->get_all_approved_for_queue();
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
+	}
+
+	public function test_cache_invalidated_after_update() {
+		$this->mock_wpdb->get_row_return = (object) array( 'id' => 4, 'author_id' => 9 );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_id( 4 );
+		$repo->update( 4, array( 'status' => 'approved' ) );
+		$repo->get_by_id( 4 );
+
+		$this->assertEquals( 3, $this->mock_wpdb->get_row_calls );
+	}
+
+	public function test_cache_invalidated_after_delete_by_author() {
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 4, 'author_id' => 9 ) );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_author( 9 );
+		$repo->delete_by_author( 9 );
+		$repo->get_by_author( 9 );
+
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
 	}
 }

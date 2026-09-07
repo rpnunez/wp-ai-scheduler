@@ -246,18 +246,21 @@ class AIPS_Job_Dispatcher {
 		if (!empty($metadata['context_id'])) {
 			$history_context[isset($metadata['context_id_name']) ? $metadata['context_id_name'] : 'id'] = $metadata['context_id'];
 		}
+		$history_context['creation_method'] = $history_type;
 
 		$history = $this->history_service->create($history_type, $history_context);
 
 		if ($history) {
+			$failure_message = sprintf(
+				'Failed to dispatch %s job after %d attempts: %s',
+				$job->get_job_type(),
+				$max_attempts,
+				$last_error ?: 'Unknown error'
+			);
+
 			$history->record(
 				'dispatch_failed',
-				sprintf(
-					'Failed to dispatch %s job after %d attempts: %s',
-					$job->get_job_type(),
-					$max_attempts,
-					$last_error ?: 'Unknown error'
-				),
+				$failure_message,
 				array(
 					'event_type'   => 'job_dispatch_failed',
 					'event_status' => 'failed',
@@ -269,6 +272,15 @@ class AIPS_Job_Dispatcher {
 					'error'         => $last_error,
 					'max_attempts'  => $max_attempts,
 					'correlation_id' => $job->get_correlation_id(),
+				)
+			);
+
+			$this->history_service->update_history_record(
+				$history->get_id(),
+				array(
+					'status' => 'failed',
+					'error_message' => $failure_message,
+					'completed_at' => AIPS_DateTime::now()->timestamp(),
 				)
 			);
 		}

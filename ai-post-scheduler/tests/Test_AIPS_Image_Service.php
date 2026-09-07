@@ -158,4 +158,97 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
         $this->assertInstanceOf('WP_Error', $result);
         $this->assertEquals('no_media_images', $result->get_error_code());
     }
+
+    /**
+     * A valid 1x1 PNG as a base64 payload (used to build data URIs).
+     *
+     * @return string
+     */
+    private function get_png_base64() {
+        return 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    }
+
+    /**
+     * upload_image_from_url must dispatch data URIs to the data-URI ingestion
+     * path (the WP AI Client provider returns generated images as data URIs).
+     */
+    public function test_upload_image_from_data_uri_creates_png_attachment() {
+        $data_uri = 'data:image/png;base64,' . $this->get_png_base64();
+
+        $attachment_id = $this->service->upload_image_from_url($data_uri, 'Data URI Test Post');
+
+        $this->assertIsInt($attachment_id);
+        $this->assertEquals('image/png', get_post_mime_type($attachment_id));
+        $this->assertFileExists(get_attached_file($attachment_id));
+    }
+
+    /**
+     * Non-image data URIs must be rejected before touching the filesystem.
+     */
+    public function test_upload_image_from_data_uri_rejects_non_image_mime() {
+        $data_uri = 'data:text/plain;base64,' . base64_encode('not an image');
+
+        $result = $this->service->upload_image_from_data_uri($data_uri, 'Bad Data URI');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('invalid_data_uri', $result->get_error_code());
+    }
+
+    /**
+     * A declared image mime wrapping non-image bytes must fail the finfo check.
+     */
+    public function test_upload_image_from_data_uri_rejects_spoofed_image_payload() {
+        if (!class_exists('finfo')) {
+            $this->markTestSkipped('finfo extension unavailable.');
+        }
+
+        $data_uri = 'data:image/png;base64,' . base64_encode('<?php echo "not an image"; ?>');
+
+        $result = $this->service->upload_image_from_data_uri($data_uri, 'Spoofed Data URI');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('invalid_image_content', $result->get_error_code());
+    }
+
+    /**
+     * Malformed / non-base64 data URIs must be rejected.
+     */
+    public function test_upload_image_from_data_uri_rejects_malformed_uri() {
+        $result = $this->service->upload_image_from_data_uri('data:image/png;base64,', 'Empty Payload');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('invalid_data_uri', $result->get_error_code());
+
+        $result = $this->service->upload_image_from_data_uri('data:image/png,rawdata', 'Not Base64');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('invalid_data_uri', $result->get_error_code());
+    }
+
+    /**
+     * End-to-end: the exact production path that breaks without data-URI
+     * support — a WP AI Client provider returning a data URI feeding
+     * generate_and_upload_featured_image().
+     */
+    public function test_generate_and_upload_featured_image_accepts_provider_data_uri() {
+        if (!function_exists('wp_ai_client_prompt') || !class_exists('AIPS_Test_WP_AI_Client_Builder')) {
+            $this->markTestSkipped('WP AI Client test fakes not loaded (run with the full suite).');
+        }
+
+        global $aips_wp_ai_client_test_builder;
+
+        $builder = new AIPS_Test_WP_AI_Client_Builder();
+        $builder->image_response = 'data:image/png;base64,' . $this->get_png_base64();
+        $aips_wp_ai_client_test_builder = $builder;
+
+        $ai_service = new AIPS_AI_Service(null, null, null, new AIPS_WP_AI_Client_Provider());
+        $image_service = new AIPS_Image_Service($ai_service);
+
+        $attachment_id = $image_service->generate_and_upload_featured_image('A test image', 'Provider Data URI Post');
+
+        $aips_wp_ai_client_test_builder = null;
+
+        $this->assertIsInt($attachment_id);
+        $this->assertEquals('image/png', get_post_mime_type($attachment_id));
+    }
 }

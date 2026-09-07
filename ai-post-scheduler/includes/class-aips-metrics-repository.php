@@ -23,14 +23,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( ! trait_exists( 'AIPS_Cacheable_Repository' ) ) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Metrics_Repository
  *
  * Repository that aggregates baseline observability metrics from existing
- * plugin tables.  Results are cached in WordPress transients for a
- * configurable TTL to keep collection overhead low.
+ * plugin tables.  Results are cached via the AIPS_Cacheable_Repository trait.
  */
 class AIPS_Metrics_Repository {
+	use AIPS_Cacheable_Repository;
 
 	/**
 	 * @var wpdb WordPress database abstraction object.
@@ -138,8 +142,9 @@ class AIPS_Metrics_Repository {
 	 *     @type int   $successful                  Completed (success) count.
 	 *     @type int   $failed                      Failed count.
 	 *     @type int   $partial                     Partial (incomplete) count.
-	 *     @type float $success_rate                Success rate percentage (0–100).
-	 *     @type float $failure_rate                Failure rate percentage (0–100).
+	 *     @type int   $terminated                  Terminated count (blocked before generation).
+	 *     @type float $success_rate                Success rate percentage (0–100) of attempted runs.
+	 *     @type float $failure_rate                Failure rate percentage (0–100) of attempted runs.
 	 *     @type int   $avg_duration_seconds        Average generation duration (seconds).
 	 *     @type int   $p50_duration_seconds        Median generation duration (seconds).
 	 *     @type int   $p95_duration_seconds        95th-percentile generation duration (seconds).
@@ -151,44 +156,47 @@ class AIPS_Metrics_Repository {
 	 */
 	public function get_generation_metrics( $window_days = self::DEFAULT_WINDOW_DAYS ) {
 		$window_days = max( 1, (int) $window_days );
-		$cache_key   = self::TRANSIENT_GENERATION . '_' . $window_days;
-		$cached      = get_transient( $cache_key );
 
-		if ( $cached !== false ) {
-			return $cached;
-		}
+		return $this->cache_read(
+			'metrics.get_generation_metrics',
+			array( 'window_days' => $window_days ),
+			function () use ( $window_days ) {
+				// Pass the window in days to each helper; the SQL boundary is derived
+				// via DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY) to match the
+				// timezone used by the DB DEFAULT CURRENT_TIMESTAMP on created_at.
+				$counts = $this->get_generation_counts( $window_days );
+				$durations = $this->get_duration_percentiles( $window_days );
+				$ai_calls  = $this->get_avg_ai_calls_per_post( $window_days );
+				$image_failure_rate    = $this->get_image_failure_rate( $window_days );
+				$schedule_success_rate = $this->get_schedule_success_rate( $window_days );
+				$recent_outcomes       = $this->get_recent_outcomes( 10 );
 
-		// Pass the window in days to each helper; the SQL boundary is derived
-		// via DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY) to match the
-		// timezone used by the DB DEFAULT CURRENT_TIMESTAMP on created_at.
-		$counts = $this->get_generation_counts( $window_days );
-		$durations = $this->get_duration_percentiles( $window_days );
-		$ai_calls  = $this->get_avg_ai_calls_per_post( $window_days );
-		$image_failure_rate    = $this->get_image_failure_rate( $window_days );
-		$schedule_success_rate = $this->get_schedule_success_rate( $window_days );
-		$recent_outcomes       = $this->get_recent_outcomes( 10 );
+				$total = $counts['total'];
 
-		$total = $counts['total'];
-		$metrics = array(
-			'window_days'             => $window_days,
-			'total'                   => $total,
-			'successful'              => $counts['completed'],
-			'failed'                  => $counts['failed'],
-			'partial'                 => $counts['partial'],
-			'success_rate'            => $total > 0 ? round( ( $counts['completed'] / $total ) * 100, 1 ) : 0.0,
-			'failure_rate'            => $total > 0 ? round( ( $counts['failed'] / $total ) * 100, 1 ) : 0.0,
-			'avg_duration_seconds'    => $durations['avg'],
-			'p50_duration_seconds'    => $durations['p50'],
-			'p95_duration_seconds'    => $durations['p95'],
-			'avg_ai_calls_per_post'   => $ai_calls,
-			'image_failure_rate'      => $image_failure_rate,
-			'schedule_success_rate'   => $schedule_success_rate,
-			'recent_outcomes'         => $recent_outcomes,
+				// Terminated runs were blocked before any generation was attempted,
+				// so they count toward the window total but not toward the success
+				// and failure rates, which describe attempted runs.
+				$attempted = max( 0, $total - $counts['terminated'] );
+
+				return array(
+					'window_days'             => $window_days,
+					'total'                   => $total,
+					'successful'              => $counts['completed'],
+					'failed'                  => $counts['failed'],
+					'partial'                 => $counts['partial'],
+					'terminated'              => $counts['terminated'],
+					'success_rate'            => $attempted > 0 ? round( ( $counts['completed'] / $attempted ) * 100, 1 ) : 0.0,
+					'failure_rate'            => $attempted > 0 ? round( ( $counts['failed'] / $attempted ) * 100, 1 ) : 0.0,
+					'avg_duration_seconds'    => $durations['avg'],
+					'p50_duration_seconds'    => $durations['p50'],
+					'p95_duration_seconds'    => $durations['p95'],
+					'avg_ai_calls_per_post'   => $ai_calls,
+					'image_failure_rate'      => $image_failure_rate,
+					'schedule_success_rate'   => $schedule_success_rate,
+					'recent_outcomes'         => $recent_outcomes,
+				);
+			}
 		);
-
-		set_transient( $cache_key, $metrics, self::CACHE_TTL );
-
-		return $metrics;
 	}
 
 	/**
@@ -200,30 +208,27 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	public function get_queue_depth_metrics() {
-		$cached = get_transient( self::TRANSIENT_QUEUE );
-		if ( $cached !== false ) {
-			return $cached;
-		}
+		return $this->cache_read(
+			'metrics.get_queue_depth_metrics',
+			array(),
+			function () {
+				$active_schedules = (int) $this->wpdb->get_var(
+					"SELECT COUNT(*) FROM {$this->table_schedule} WHERE is_active = 1"
+				);
 
-		$active_schedules = (int) $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$this->table_schedule} WHERE is_active = 1"
+				$approved_topics = (int) $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_author_topics} WHERE status = %s",
+						'approved'
+					)
+				);
+
+				return array(
+					'active_schedules' => $active_schedules,
+					'approved_topics'  => $approved_topics,
+				);
+			}
 		);
-
-		$approved_topics = (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_author_topics} WHERE status = %s",
-				'approved'
-			)
-		);
-
-		$metrics = array(
-			'active_schedules' => $active_schedules,
-			'approved_topics'  => $approved_topics,
-		);
-
-		set_transient( self::TRANSIENT_QUEUE, $metrics, self::CACHE_TTL );
-
-		return $metrics;
 	}
 
 	/**
@@ -250,128 +255,119 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	public function get_queue_health_metrics() {
+		return $this->cache_read(
+			'metrics.get_queue_health_metrics',
+			array(),
+			function () {
 				$now_ts = AIPS_DateTime::now()->timestamp();
 
-		$cached = get_transient( self::TRANSIENT_QUEUE_HEALTH );
-		if ( $cached !== false ) {
-			return $cached;
-		}
+				// --- Pending / partial backlog ---
+				$pending_count = (int) $this->wpdb->get_var(
+					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'pending'"
+				);
 
-		// --- Pending / partial backlog ---
-		$pending_count = (int) $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'pending'"
-		);
+				$partial_count = (int) $this->wpdb->get_var(
+					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial'"
+				);
 
-		$partial_count = (int) $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial'"
-		);
+				// --- Stuck jobs (pending or partial, older than threshold) ---
+				$stuck_count = (int) $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_history}
+						WHERE status IN ('pending','partial')
+						  AND created_at <= %d",
+						$now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS )
+					)
+				);
 
-		// --- Stuck jobs (pending or partial, older than threshold) ---
-		$stuck_count = (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_history}
-				WHERE status IN ('pending','partial')
-				  AND created_at <= %d",
-				$now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS )
-			)
-		);
+				$oldest_stuck_age_minutes = null;
+				if ( $stuck_count > 0 ) {
+					$stuck_cutoff = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
+					$age_raw = $this->wpdb->get_var(
+						$this->wpdb->prepare(
+							"SELECT MIN(created_at)
+							FROM {$this->table_history}
+							WHERE status IN ('pending','partial')
+							  AND created_at <= %d",
+							$stuck_cutoff
+						)
+					);
+					if ( $age_raw !== null ) {
+						$oldest_stuck_age_minutes = (int) floor( ( $now_ts - (int) $age_raw ) / MINUTE_IN_SECONDS );
+					}
+				}
 
-		$oldest_stuck_age_minutes = null;
-		if ( $stuck_count > 0 ) {
-			$stuck_cutoff = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
-			$age_raw = $this->wpdb->get_var(
-				$this->wpdb->prepare(
-					"SELECT MIN(created_at)
-					FROM {$this->table_history}
-					WHERE status IN ('pending','partial')
-					  AND created_at <= %d",
-					$stuck_cutoff
-				)
-			);
-			if ( $age_raw !== null ) {
-				$oldest_stuck_age_minutes = (int) floor( ( $now_ts - (int) $age_raw ) / MINUTE_IN_SECONDS );
+				// --- Recent failures (last 24 h) ---
+				// Use completed_at so we capture jobs that started before the window but
+				// failed within it, matching the docblock wording ("transitioned to failed").
+				$failed_24h = (int) $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_history}
+						WHERE status = 'failed'
+						  AND completed_at IS NOT NULL
+						  AND completed_at >= %d",
+						$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
+					)
+				);
+
+				// Retry saturation = failed / (completed + failed) over the same 24-h window.
+				// We intentionally exclude 'partial' from the denominator: partial jobs are
+				// still in-flight or abandoned, not cleanly completed or failed.
+				// Use completed_at (not created_at) so long-running jobs that finish within
+				// the window are counted correctly.
+				$window_row = $this->wpdb->get_row(
+					$this->wpdb->prepare(
+						"SELECT
+							SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+							SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed
+						FROM {$this->table_history}
+						WHERE status IN ('completed','failed')
+						  AND completed_at IS NOT NULL
+						  AND completed_at >= %d",
+						$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
+					)
+				);
+
+				$retry_saturation_pct = -1.0;
+				if ( $window_row ) {
+					$w_completed = (int) ( $window_row->completed ?? 0 );
+					$w_failed    = (int) ( $window_row->failed    ?? 0 );
+					$w_total     = $w_completed + $w_failed;
+					if ( $w_total > 0 ) {
+						$retry_saturation_pct = round( ( $w_failed / $w_total ) * 100, 1 );
+					}
+				}
+
+				// --- Circuit breaker state ---
+				$circuit_breaker = array( 'state' => 'unknown' );
+				if ( class_exists( 'AIPS_Resilience_Service' ) ) {
+					try {
+						$resilience      = new AIPS_Resilience_Service();
+						$circuit_breaker = $resilience->get_circuit_breaker_status();
+					} catch ( \Throwable $e ) {
+						// Non-fatal — leave as unknown.
+					}
+				}
+
+				return array(
+					'pending_count'             => $pending_count,
+					'partial_count'             => $partial_count,
+					'stuck_count'               => $stuck_count,
+					'oldest_stuck_age_minutes'  => $oldest_stuck_age_minutes,
+					'failed_24h'                => $failed_24h,
+					'retry_saturation_pct'      => $retry_saturation_pct,
+					'circuit_breaker'           => $circuit_breaker,
+				);
 			}
-		}
-
-		// --- Recent failures (last 24 h) ---
-		// Use completed_at so we capture jobs that started before the window but
-		// failed within it, matching the docblock wording ("transitioned to failed").
-		$failed_24h = (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_history}
-				WHERE status = 'failed'
-				  AND completed_at IS NOT NULL
-				  AND completed_at >= %d",
-				$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
-			)
 		);
-
-		// Retry saturation = failed / (completed + failed) over the same 24-h window.
-		// We intentionally exclude 'partial' from the denominator: partial jobs are
-		// still in-flight or abandoned, not cleanly completed or failed.
-		// Use completed_at (not created_at) so long-running jobs that finish within
-		// the window are counted correctly.
-		$window_row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT
-					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
-					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed
-				FROM {$this->table_history}
-				WHERE status IN ('completed','failed')
-				  AND completed_at IS NOT NULL
-				  AND completed_at >= %d",
-				$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
-			)
-		);
-
-		$retry_saturation_pct = -1.0;
-		if ( $window_row ) {
-			$w_completed = (int) ( $window_row->completed ?? 0 );
-			$w_failed    = (int) ( $window_row->failed    ?? 0 );
-			$w_total     = $w_completed + $w_failed;
-			if ( $w_total > 0 ) {
-				$retry_saturation_pct = round( ( $w_failed / $w_total ) * 100, 1 );
-			}
-		}
-
-		// --- Circuit breaker state ---
-		$circuit_breaker = array( 'state' => 'unknown' );
-		if ( class_exists( 'AIPS_Resilience_Service' ) ) {
-			try {
-				$resilience      = new AIPS_Resilience_Service();
-				$circuit_breaker = $resilience->get_circuit_breaker_status();
-			} catch ( \Throwable $e ) {
-				// Non-fatal — leave as unknown.
-			}
-		}
-
-		$metrics = array(
-			'pending_count'             => $pending_count,
-			'partial_count'             => $partial_count,
-			'stuck_count'               => $stuck_count,
-			'oldest_stuck_age_minutes'  => $oldest_stuck_age_minutes,
-			'failed_24h'                => $failed_24h,
-			'retry_saturation_pct'      => $retry_saturation_pct,
-			'circuit_breaker'           => $circuit_breaker,
-		);
-
-		set_transient( self::TRANSIENT_QUEUE_HEALTH, $metrics, self::CACHE_TTL );
-
-		return $metrics;
 	}
 
 	/**
 	 * Invalidate all cached metrics.
 	 *
-	 * Removes every `aips_metrics_generation_*` transient stored by this class
-	 * regardless of window size, plus the queue-depth and queue-health transients.
-	 *
-	 * When WordPress is using an external object cache (e.g. Redis/Memcached),
-	 * transients do not live in the options table, so `delete_transient()` is
-	 * used for all known keys plus the standard common windows.  When no
-	 * external cache is present the options table is queried to sweep every
-	 * window suffix — both the value row and the paired timeout row — so no
-	 * orphaned entries are left behind.
+	 * Bumps the 'metrics' cache tag, which immediately invalidates every entry
+	 * produced by get_generation_metrics(), get_queue_depth_metrics(), and
+	 * get_queue_health_metrics() regardless of window size or driver.
 	 *
 	 * Call this when history records are bulk-deleted or after schema upgrades
 	 * so stale summaries are not presented.
@@ -379,40 +375,38 @@ class AIPS_Metrics_Repository {
 	 * @return void
 	 */
 	public function invalidate_cache() {
-		global $wpdb;
+		$this->invalidate_cache_domain( 'metrics', array(), 'metrics_invalidated' );
+	}
 
-		// Common window values used by callers (covers the typical System Status view).
-		$common_windows = array( 1, 7, 14, 30, 45, 60, 90 );
+	// -----------------------------------------------------------------------
+	// AIPS_Cacheable_Repository contract
+	// -----------------------------------------------------------------------
 
-		if ( wp_using_ext_object_cache() ) {
-			// External object cache: delete_transient() is the only reliable path.
-			foreach ( $common_windows as $days ) {
-				delete_transient( self::TRANSIENT_GENERATION . '_' . $days );
-			}
-		} elseif ( ! empty( $wpdb->options ) ) {
-			// No external cache: sweep via SQL so arbitrary window suffixes
-			// (e.g. window=45) are also removed.  Delete both the value row and
-			// the paired timeout row to avoid orphaned options accumulating.
-			$value_prefix   = $wpdb->esc_like( '_transient_' . self::TRANSIENT_GENERATION . '_' );
-			$timeout_prefix = $wpdb->esc_like( '_transient_timeout_' . self::TRANSIENT_GENERATION . '_' );
-			$wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options}
-					WHERE option_name LIKE %s
-					   OR option_name LIKE %s",
-					$value_prefix . '%',
-					$timeout_prefix . '%'
-				)
-			);
-		} else {
-			// Fallback for test environments where $wpdb->options is absent.
-			foreach ( $common_windows as $days ) {
-				delete_transient( self::TRANSIENT_GENERATION . '_' . $days );
-			}
-		}
+	/**
+	 * @inheritDoc
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_metrics';
+	}
 
-		delete_transient( self::TRANSIENT_QUEUE );
-		delete_transient( self::TRANSIENT_QUEUE_HEALTH );
+	/**
+	 * @inheritDoc
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'metrics.get_generation_metrics'  => array(
+				'tier' => 'medium',
+				'tags' => array( 'metrics' ),
+			),
+			'metrics.get_queue_depth_metrics' => array(
+				'tier' => 'medium',
+				'tags' => array( 'metrics' ),
+			),
+			'metrics.get_queue_health_metrics' => array(
+				'tier' => 'medium',
+				'tags' => array( 'metrics' ),
+			),
+		);
 	}
 
 	// -----------------------------------------------------------------------
@@ -440,9 +434,10 @@ class AIPS_Metrics_Repository {
 			$this->wpdb->prepare(
 				"SELECT
 					COUNT(*) AS total,
-					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
-					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
-					SUM(CASE WHEN status = 'partial'   THEN 1 ELSE 0 END) AS partial
+					SUM(CASE WHEN status = 'completed'  THEN 1 ELSE 0 END) AS completed,
+					SUM(CASE WHEN status = 'failed'     THEN 1 ELSE 0 END) AS failed,
+					SUM(CASE WHEN status = 'partial'    THEN 1 ELSE 0 END) AS partial,
+					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS terminated
 				FROM {$this->table_history}
 				WHERE created_at >= %d",
 				$cutoff
@@ -450,14 +445,15 @@ class AIPS_Metrics_Repository {
 		);
 
 		if ( ! $row ) {
-			return array( 'total' => 0, 'completed' => 0, 'failed' => 0, 'partial' => 0 );
+			return array( 'total' => 0, 'completed' => 0, 'failed' => 0, 'partial' => 0, 'terminated' => 0 );
 		}
 
 		return array(
-			'total'     => isset( $row->total )     ? (int) $row->total     : 0,
-			'completed' => isset( $row->completed ) ? (int) $row->completed : 0,
-			'failed'    => isset( $row->failed )    ? (int) $row->failed    : 0,
-			'partial'   => isset( $row->partial )   ? (int) $row->partial   : 0,
+			'total'      => isset( $row->total )      ? (int) $row->total      : 0,
+			'completed'  => isset( $row->completed )  ? (int) $row->completed  : 0,
+			'failed'     => isset( $row->failed )     ? (int) $row->failed     : 0,
+			'partial'    => isset( $row->partial )    ? (int) $row->partial    : 0,
+			'terminated' => isset( $row->terminated ) ? (int) $row->terminated : 0,
 		);
 	}
 
@@ -483,10 +479,14 @@ class AIPS_Metrics_Repository {
 		// relying on ROW_NUMBER() / NTILE() which require MySQL 8+.
 		$rows = $this->wpdb->get_col(
 			$this->wpdb->prepare(
+				// completed_at is NOT NULL DEFAULT 0, so `IS NOT NULL` never filters
+				// anything. Guard on completed_at >= created_at instead: it keeps the
+				// unsigned subtraction from underflowing (error 1690) and drops rows
+				// with a missing or clock-skewed completion time from the percentiles.
 				"SELECT (completed_at - created_at) AS duration
 				FROM {$this->table_history}
 				WHERE status = 'completed'
-				  AND completed_at IS NOT NULL
+				  AND completed_at >= created_at
 				  AND created_at >= %d
 				ORDER BY duration ASC",
 				$cutoff
@@ -534,8 +534,8 @@ class AIPS_Metrics_Repository {
 	 * giving an accurate population average.  The window boundary uses
 	 * CURRENT_TIMESTAMP() to stay in the same timezone as the DB default.
 	 *
-	 * AI requests are identified by `log_type = 'ai_request'` — the value the
-	 * generator writes via `record('ai_request', ...)` for every AI call.
+	 * AI requests are identified by `history_type_id = AIPS_History_Type::AI_REQUEST (= 5)` —
+	 * set by the container when `record('ai_request', ...)` is called.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return float Average count (0.0 if no data).
@@ -560,10 +560,11 @@ class AIPS_Metrics_Repository {
 					FROM {$this->table_history} h
 					LEFT JOIN {$this->table_history_log} hl
 						ON hl.history_id = h.id
-						AND hl.log_type = 'ai_request'
+						AND hl.history_type_id = %d
 					WHERE h.status = 'completed'
 					  AND h.created_at >= %d
 				) AS stats",
+				AIPS_History_Type::AI_REQUEST,
 				$cutoff
 			)
 		);
@@ -601,10 +602,10 @@ class AIPS_Metrics_Repository {
 				"SELECT COUNT(*)
 				FROM {$this->table_history_log} hl
 				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
-				WHERE hl.log_type = %s
+				WHERE hl.history_type_id = %d
 				  AND hl.details LIKE %s
 				  AND h.created_at >= %d",
-				'metric_generation_result',
+				AIPS_History_Type::METRIC,
 				'%"image_attempted":true%',
 				$cutoff
 			)
@@ -620,11 +621,11 @@ class AIPS_Metrics_Repository {
 				"SELECT COUNT(*)
 				FROM {$this->table_history_log} hl
 				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
-				WHERE hl.log_type = %s
+				WHERE hl.history_type_id = %d
 				  AND hl.details LIKE %s
 				  AND hl.details LIKE %s
 				  AND h.created_at >= %d",
-				'metric_generation_result',
+				AIPS_History_Type::METRIC,
 				'%"image_attempted":true%',
 				'%"image_success":false%',
 				$cutoff
@@ -651,7 +652,8 @@ class AIPS_Metrics_Repository {
 			$this->wpdb->prepare(
 				"SELECT
 					COUNT(*) AS total,
-					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed
+					SUM(CASE WHEN status = 'completed'  THEN 1 ELSE 0 END) AS completed,
+					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS terminated
 				FROM {$this->table_history}
 				WHERE creation_method = %s
 				  AND created_at >= %d",
@@ -660,11 +662,21 @@ class AIPS_Metrics_Repository {
 			)
 		);
 
-		if ( ! $row || ! isset( $row->total ) || (int) $row->total === 0 ) {
+		if ( ! $row ) {
 			return -1.0; // No scheduled-run data available.
 		}
 
-		return round( ( (int) $row->completed / (int) $row->total ) * 100, 1 );
+		// Terminated runs never attempted generation, so they are excluded from
+		// the denominator rather than counted as failures.
+		$completed  = isset( $row->completed ) ? (int) $row->completed : 0;
+		$terminated = isset( $row->terminated ) ? (int) $row->terminated : 0;
+		$attempted  = ( isset( $row->total ) ? (int) $row->total : 0 ) - $terminated;
+
+		if ( $attempted <= 0 ) {
+			return -1.0; // No scheduled-run data available.
+		}
+
+		return round( ( $completed / $attempted ) * 100, 1 );
 	}
 
 	/**
@@ -677,8 +689,16 @@ class AIPS_Metrics_Repository {
 		$limit = max( 1, (int) $limit );
 		$rows  = $this->wpdb->get_results(
 			$this->wpdb->prepare(
+				// created_at and completed_at are UNSIGNED BIGINT timestamps that
+				// default to 0. Incomplete rows (failed, in-progress, partial) keep
+				// completed_at = 0, so a bare `completed_at - created_at` underflows
+				// into a negative value the unsigned type cannot hold, which MySQL
+				// rejects with error 1690. This query has no status filter, so those
+				// rows reach it. Compute the duration only when completed_at actually
+				// follows created_at, and report NULL otherwise (the PHP below and
+				// the UI already treat a null duration as "not finished").
 				"SELECT id, status, creation_method, created_at,
-				        (completed_at - created_at) AS duration_seconds,
+				        CASE WHEN completed_at >= created_at THEN completed_at - created_at ELSE NULL END AS duration_seconds,
 				        error_message
 				FROM {$this->table_history}
 				ORDER BY created_at DESC

@@ -137,6 +137,35 @@ class AIPS_DateTime extends DateTimeImmutable {
 	}
 
 	/**
+	 * Parse a naive "wall clock" string as the WordPress site timezone.
+	 *
+	 * Use this for user-entered local date/time input (e.g. a `datetime-local`
+	 * form field) where the string has no timezone information of its own but
+	 * is understood to represent the site's local time — matching how
+	 * {@see toDisplay()} renders timestamps back out. Accepts both the
+	 * `datetime-local` format ('Y-m-d\TH:i') and MySQL-style ('Y-m-d H:i:s').
+	 *
+	 * @param string $datetime Naive local datetime string.
+	 * @return static
+	 * @throws \InvalidArgumentException If the string cannot be parsed.
+	 */
+	public static function fromSiteLocal( string $datetime ): static {
+		$normalized = str_replace( 'T', ' ', trim( $datetime ) );
+		$tz         = self::site_timezone_static();
+
+		foreach ( array( 'Y-m-d H:i:s', 'Y-m-d H:i' ) as $format ) {
+			$dt = parent::createFromFormat( $format, $normalized, $tz );
+			if ( $dt !== false ) {
+				return new static( $dt->format( 'Y-m-d H:i:s' ), $tz );
+			}
+		}
+
+		throw new \InvalidArgumentException(
+			sprintf( 'Cannot parse local datetime: %s', $datetime )
+		);
+	}
+
+	/**
 	 * Format a mixed date input as relative (if within 24h) or absolute time.
 	 *
 	 * Accepts numeric timestamps, MySQL datetime strings, or null. Converts to
@@ -478,6 +507,15 @@ class AIPS_DateTime extends DateTimeImmutable {
 	 * @return DateTimeZone
 	 */
 	private function site_timezone(): DateTimeZone {
+		return self::site_timezone_static();
+	}
+
+	/**
+	 * Get the WordPress site timezone (static form, usable from factory methods).
+	 *
+	 * @return DateTimeZone
+	 */
+	private static function site_timezone_static(): DateTimeZone {
 		if ( function_exists( 'wp_timezone' ) ) {
 			return wp_timezone();
 		}

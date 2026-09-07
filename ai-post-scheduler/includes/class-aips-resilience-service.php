@@ -25,7 +25,9 @@ class AIPS_Resilience_Service {
      *
      * These codes are returned by OpenAI/compatible providers and may appear either as
      * structured JSON fields ({"error":{"code":"..."}}) or as substrings within
-     * human-readable exception messages forwarded by Meow AI Engine.
+     * human-readable exception messages forwarded by the active AI provider (Meow
+     * forwards raw provider messages; the WordPress AI Client adapter prefixes
+     * WP_Error codes as "code: message" and recovers them in extract_error_code()).
      *
      * @var string[]
      */
@@ -36,6 +38,21 @@ class AIPS_Resilience_Service {
         'invalid_request_error',
         'content_policy_violation',
         'billing_not_active',
+        'no_connector',
+    );
+
+    /**
+     * Capability codes raised by a provider adapter before any remote call is made
+     * (e.g. the WordPress AI Client connector cannot do image generation). They are
+     * configuration facts, not service faults: retrying cannot succeed, and they
+     * must not count toward the circuit breaker for the otherwise-healthy backend.
+     *
+     * @var string[]
+     */
+    const PERMANENT_CAPABILITY_CODES = array(
+        'text_generation_not_supported',
+        'image_generation_not_supported',
+        'embeddings_not_supported',
     );
 
     /**
@@ -65,13 +82,42 @@ class AIPS_Resilience_Service {
         'json_query_unavailable',
     );
 
+    // Bounds for retrying the local rate-limiter gate inside execute_safely().
+    //
+    // The local sliding-window limiter (check_rate_limit()) is self-imposed, not a
+    // provider error — a burst of calls for a single post (title/content/excerpt)
+    // can exhaust it even though the provider itself is healthy. These bounds keep
+    // the wait short enough to be safe for synchronous callers (e.g. the "Run Now"
+    // AJAX request, subject to PHP max_execution_time) while still giving the
+    // window a real chance to free up.
+    //
+    // If a slot cannot free up within RATE_LIMIT_RETRY_MAX_WAIT_SECONDS, the gate
+    // fails immediately instead of sleeping — waiting out a window that is longer
+    // than the budget only delays an error that is already unavoidable.
+
+    /**
+     * Maximum number of times the local rate-limit gate is re-checked.
+     *
+     * @var int
+     */
+    const RATE_LIMIT_RETRY_MAX_ATTEMPTS = 3;
+
+    /**
+     * Maximum seconds to sleep on a single rate-limit retry attempt. Doubles as
+     * the "is waiting worth it at all?" budget — see wait_for_rate_limit_capacity().
+     *
+     * @var int
+     */
+    const RATE_LIMIT_RETRY_MAX_WAIT_SECONDS = 10;
+
     /**
      * Message-based pattern map.
      *
-     * Meow AI Engine forwards the raw provider error message as the PHP exception
-     * message — there is no structured error code to inspect.  These patterns match
-     * the English-language strings that OpenAI (and compatible providers) actually
-     * send so that free-text messages can be mapped to canonical internal codes.
+     * AI provider adapters may forward the raw upstream error message as the PHP
+     * exception message with no structured error code to inspect (Meow AI Engine
+     * does this).  These patterns match the English-language strings that OpenAI
+     * (and compatible providers) actually send so that free-text messages can be
+     * mapped to canonical internal codes.
      *
      * Each entry: 'substring_pattern' => 'canonical_code'
      * Patterns are matched case-insensitively via stripos().
@@ -190,8 +236,14 @@ class AIPS_Resilience_Service {
             $last_error = $result;
             $error_code = $result->get_error_code();
 
-            // Do not retry permanent "user error" conditions or immediate-open codes — retrying wastes tokens.
-            $non_retryable = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES);
+            // Non-fault sentinels (e.g. json_query_unavailable) are not provider errors —
+            // retrying them wastes time; the caller handles them via a dedicated fallback path.
+            if (in_array($error_code, self::NON_FAULT_CODES, true)) {
+                break;
+            }
+
+            // Do not retry permanent "user error" conditions, capability gaps, or immediate-open codes — retrying wastes tokens.
+            $non_retryable = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES, self::PERMANENT_CAPABILITY_CODES);
             if (in_array($error_code, $non_retryable, true)) {
                 $this->logger->log("Non-retryable error '{$error_code}', aborting retry loop", 'error', array(
                     'type'       => $type,
@@ -246,8 +298,9 @@ class AIPS_Resilience_Service {
             return new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
         }
 
-        // Check rate limiting
-        if (!$this->check_rate_limit()) {
+        // Check rate limiting, waiting (bounded) for capacity to free up rather than
+        // failing a burst of calls (e.g. title/content/excerpt for one post) outright.
+        if (!$this->wait_for_rate_limit_capacity($type)) {
             return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
         }
 
@@ -258,9 +311,13 @@ class AIPS_Resilience_Service {
         // Self-generated resilience errors (circuit already open / rate-limited) and
         // the 'json_query_unavailable' signal (a non-fault fallback sentinel) are
         // excluded so that the caller's fallback path can record its own outcome.
+        // Permanent capability gaps are configuration facts raised before any remote
+        // call — they must not poison the breaker for the healthy request types.
         if (is_wp_error($result)) {
-            if (!in_array($result->get_error_code(), self::NON_FAULT_CODES, true)) {
-                $this->record_failure($result->get_error_code());
+            $code = $result->get_error_code();
+
+            if (!in_array($code, self::NON_FAULT_CODES, true) && !in_array($code, self::PERMANENT_CAPABILITY_CODES, true)) {
+                $this->record_failure($code);
             }
         } else {
             $this->record_success();
@@ -501,9 +558,10 @@ class AIPS_Resilience_Service {
     /**
      * Attempt to extract a structured provider error code from an exception message.
      *
-     * Meow AI Engine forwards the raw provider (OpenAI, etc.) error as the PHP
-     * exception message — there is no guaranteed structured error code field.
-     * This method uses a two-step approach:
+     * Provider adapters may forward the raw upstream (OpenAI, etc.) error as the PHP
+     * exception message — there is no guaranteed structured error code field.  (The
+     * WordPress AI Client adapter recovers its own "code: message" prefix before
+     * delegating here.)  This method uses a two-step approach:
      *
      * 1. Scan the raw message text for known human-readable patterns (MESSAGE_PATTERNS).
      *    This is the primary path because Meow AI Engine typically surfaces plain-text
@@ -521,7 +579,7 @@ class AIPS_Resilience_Service {
      * @return string Canonical provider error code, or '' when none can be identified.
      */
     public static function extract_error_code_from_message($message) {
-        // Step 1: Message pattern matching (primary — covers Meow AI Engine free-text errors)
+        // Step 1: Message pattern matching (primary — covers free-text provider errors)
         foreach (self::MESSAGE_PATTERNS as $pattern => $code) {
             if (stripos($message, $pattern) !== false) {
                 return $code;
@@ -583,9 +641,11 @@ class AIPS_Resilience_Service {
         $period = $rl_config['period'];
         $current_time = time();
 
-        // Load rate limiter state from transient
+        // Load rate limiter state from transient. Anything other than an array
+        // (missing, or corrupted by an external writer) is treated as empty —
+        // array_filter() would otherwise raise a TypeError on PHP 8.
         $requests = get_transient('aips_rate_limiter_requests');
-        if ($requests === false) {
+        if (!is_array($requests)) {
             $requests = array();
         }
 
@@ -629,7 +689,7 @@ class AIPS_Resilience_Service {
         $rl_config = $this->config->get_rate_limit_config();
         $requests = get_transient('aips_rate_limiter_requests');
 
-        if ($requests === false) {
+        if (!is_array($requests)) {
             $requests = array();
         }
 
@@ -659,5 +719,111 @@ class AIPS_Resilience_Service {
         delete_transient('aips_rate_limiter_requests');
         $this->logger->log('Rate limiter manually reset', 'info');
         return true;
+    }
+
+    /**
+     * Wait (bounded, with backoff) for the local rate limiter to allow a request.
+     *
+     * Unlike execute_with_retry() — which retries a provider call that already
+     * failed — this retries the local rate-limit *gate* itself, so a burst of
+     * calls (e.g. title/content/excerpt for one post) doesn't fail outright just
+     * because it briefly exhausted the sliding window.
+     *
+     * @param string $type Request type for logging.
+     * @return bool True once the rate limiter allows the request (a slot has
+     *              already been recorded), false if capacity did not free up
+     *              within RATE_LIMIT_RETRY_MAX_ATTEMPTS or if the next slot is
+     *              further out than RATE_LIMIT_RETRY_MAX_WAIT_SECONDS.
+     */
+    private function wait_for_rate_limit_capacity($type) {
+        for ($attempt = 1; $attempt <= self::RATE_LIMIT_RETRY_MAX_ATTEMPTS; $attempt++) {
+            if ($this->check_rate_limit()) {
+                if ($attempt > 1) {
+                    $this->logger->log("Rate limit capacity freed up on attempt {$attempt}", 'info', array(
+                        'type' => $type,
+                    ));
+                }
+                return true;
+            }
+
+            if ($attempt >= self::RATE_LIMIT_RETRY_MAX_ATTEMPTS) {
+                break;
+            }
+
+            $wait = $this->seconds_until_rate_limit_slot_frees();
+
+            // Sleeping longer than the budget can never succeed, so don't burn the
+            // caller's request time (or PHP's max_execution_time) on a wait we
+            // already know is too short to matter — fail fast instead.
+            if ($wait > self::RATE_LIMIT_RETRY_MAX_WAIT_SECONDS) {
+                $this->logger->log(
+                    "Rate limit reached, next slot frees in {$wait}s (over the " . self::RATE_LIMIT_RETRY_MAX_WAIT_SECONDS . 's wait budget) — failing fast',
+                    'warning',
+                    array('type' => $type)
+                );
+
+                return false;
+            }
+
+            // A freshly-expired or untracked slot reports 0; still pause briefly so
+            // the retry isn't a busy spin.
+            $wait = max(1, $wait);
+
+            $this->logger->log("Rate limit reached, waiting {$wait}s before retry (attempt {$attempt})", 'warning', array(
+                'type' => $type,
+            ));
+
+            sleep($wait);
+        }
+
+        return false;
+    }
+
+    /**
+     * Compute how many seconds remain until enough requests age out of the current
+     * rate-limit window for one more request to be admitted.
+     *
+     * Mirrors the sliding-window filtering in check_rate_limit(): the stored
+     * transient can retain timestamps older than the window (check_rate_limit()
+     * does not persist its filtered array when it denies a request, and each
+     * successful write extends the transient's TTL by a full period), so expired
+     * entries are dropped here before measuring. Counting them would understate
+     * the wait and make wait_for_rate_limit_capacity() retry too early.
+     *
+     * When the configured limit has been lowered while requests were already
+     * tracked, more than one entry may need to expire; this returns the wait for
+     * the newest of those, not merely the oldest tracked request.
+     *
+     * @return int Seconds until a slot frees (0 if none are tracked or all have expired).
+     */
+    private function seconds_until_rate_limit_slot_frees() {
+        $rl_config = $this->config->get_rate_limit_config();
+        $period = (int) $rl_config['period'];
+        $max_requests = (int) $rl_config['requests'];
+
+        $requests = get_transient('aips_rate_limiter_requests');
+        if (!is_array($requests) || empty($requests) || $max_requests < 1) {
+            return 0;
+        }
+
+        $current_time = time();
+
+        // Drop entries that have already aged out of the window.
+        $requests = array_values(array_filter($requests, function($timestamp) use ($current_time, $period) {
+            return ($current_time - $timestamp) < $period;
+        }));
+
+        if (empty($requests) || count($requests) < $max_requests) {
+            return 0;
+        }
+
+        sort($requests);
+
+        // Admitting one more request means getting below the limit, so
+        // count() - $max_requests + 1 entries must expire; the last of those is at
+        // index count() - $max_requests.
+        $slot_frees_at = $requests[count($requests) - $max_requests] + $period;
+
+        return max(0, $slot_frees_at - $current_time);
     }
 }

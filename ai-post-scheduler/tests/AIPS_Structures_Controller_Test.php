@@ -41,6 +41,31 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		
 		parent::tearDown();
 	}
+
+	private function set_valid_nonce() {
+		$nonce = wp_create_nonce('aips_ajax_nonce');
+		$_POST['nonce'] = $nonce;
+		$_REQUEST['nonce'] = $nonce;
+	}
+
+	private function capture_ajax_response($callback) {
+		ob_start();
+
+		try {
+			$callback();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected for wp_send_json_* handlers.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for nonce failures.
+		}
+
+		$output = ob_get_clean();
+		if ($output === '' && isset($GLOBALS['aips_last_ajax_output'])) {
+			$output = (string) $GLOBALS['aips_last_ajax_output'];
+		}
+
+		return json_decode($output, true);
+	}
 	
 	/**
 	 * Test ajax_get_structures with valid permissions
@@ -48,6 +73,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	public function test_ajax_get_structures_success() {
 		// Set current user as admin
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Create test structures
 		$data1 = array(
@@ -90,6 +116,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	public function test_ajax_get_structures_permission_denied() {
 		// Set current user as subscriber (no manage_options capability)
 		wp_set_current_user($this->subscriber_user_id);
+		$this->set_valid_nonce();
 		
 		// Capture JSON output
 		$this->expectOutputRegex('/.*Permission denied.*/');
@@ -112,12 +139,16 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_get_structures_invalid_nonce() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set invalid nonce
 		$_REQUEST['nonce'] = 'invalid_nonce';
-		
-		$this->expectException(WPAjaxDieStopException::class);
-		$this->controller->ajax_get_structures();
+
+		$response = $this->capture_ajax_response(array($this->controller, 'ajax_get_structures'));
+
+		$this->assertIsArray($response);
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Invalid nonce', $response['data']['message']);
 	}
 	
 	/**
@@ -125,6 +156,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_get_structure_success() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Mock a structure object
 		$mock_structure = (object) array(
@@ -164,6 +196,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_get_structure_invalid_id() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set invalid POST data
 		$_POST['structure_id'] = 0;
@@ -188,6 +221,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_get_structure_not_found() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		global $wpdb;
 		if (property_exists($wpdb, 'get_row_return_val')) {
@@ -232,6 +266,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_save_structure_create() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set POST data for new structure
 		$_POST['name'] = 'Test New Structure';
@@ -262,6 +297,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_save_structure_update() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set POST data for update
 		$_POST['structure_id'] = 1;
@@ -292,6 +328,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_save_structure_missing_fields() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set POST data with missing name
 		$_POST['description'] = 'Test Description';
@@ -321,6 +358,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_save_structure_sanitization() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set POST data with potentially unsafe content
 		$_POST['name'] = '<script>alert("xss")</script>Test Name';
@@ -407,6 +445,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_delete_structure_invalid_id() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set POST data with invalid ID
 		$_POST['structure_id'] = 0;
@@ -431,6 +470,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_delete_structure_permission_denied() {
 		wp_set_current_user($this->subscriber_user_id);
+		$this->set_valid_nonce();
 		
 		$_POST['structure_id'] = 1;
 		
@@ -454,6 +494,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_toggle_structure_active_success() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		// Set POST data to toggle active to 0
 		$_POST['structure_id'] = 1;
@@ -480,6 +521,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_toggle_structure_active_invalid_id() {
 		wp_set_current_user($this->admin_user_id);
+		$this->set_valid_nonce();
 		
 		$_POST['structure_id'] = 0;
 		
@@ -503,6 +545,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 	 */
 	public function test_ajax_toggle_structure_active_permission_denied() {
 		wp_set_current_user($this->subscriber_user_id);
+		$this->set_valid_nonce();
 		
 		$_POST['structure_id'] = 1;
 		

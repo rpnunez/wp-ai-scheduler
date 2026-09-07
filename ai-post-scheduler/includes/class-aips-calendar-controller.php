@@ -209,9 +209,15 @@ class AIPS_Calendar_Controller {
 		if (!empty($schedule->template_id)) {
 			$template = $this->template_repo->get_by_id($schedule->template_id);
 			if ($template && !empty($template->post_category)) {
-				$category = get_category($template->post_category);
-				if ($category && !is_wp_error($category) && isset($category->name)) {
-					return $category->name;
+				$categories = is_array($template->post_category)
+					? $template->post_category
+					: AIPS_Template_Data::parse_post_categories($template->post_category);
+				$first_cat_id = !empty($categories) ? $categories[0] : null;
+				if ($first_cat_id) {
+					$category = get_category($first_cat_id);
+					if ($category && !is_wp_error($category) && isset($category->name)) {
+						return $category->name;
+					}
 				}
 			}
 		}

@@ -17,7 +17,9 @@ $repository = new AIPS_Taxonomy_Repository();
 $status_counts = $repository->get_status_counts();
 $total_items = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] +
 	$status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
+$is_embedded_taxonomy_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_taxonomy_view) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<!-- Page Header -->
@@ -37,6 +39,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<!-- Taxonomy Stats -->
 		<div class="aips-author-topics-stats">
@@ -87,7 +90,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-taxonomy-search"><?php esc_html_e('Search Taxonomy:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-taxonomy-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-taxonomy-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-taxonomy-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 
@@ -122,15 +125,20 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				?>
 			</span>
 		</div>
+<?php if (!$is_embedded_taxonomy_view) : ?>
 	</div>
 </div>
+<?php endif; ?>
 
 <!-- Generate Taxonomy Modal -->
 <div id="aips-generate-taxonomy-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-content aips-modal-large">
-		<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		<h2><?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?></h2>
+		<div class="aips-modal-header">
+			<h2 class="aips-modal-title"><?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
 		<form id="aips-generate-taxonomy-form">
+			<div class="aips-modal-body">
 			<div class="form-group">
 				<label for="taxonomy_type"><?php esc_html_e('Taxonomy Type', 'ai-post-scheduler'); ?></label>
 				<select id="taxonomy_type" name="taxonomy_type" class="aips-form-select" required>
@@ -153,10 +161,10 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 				<div id="base-post-search-results" style="margin-top: 10px;"></div>
 				<div id="selected-posts-container" style="margin-top: 10px;"></div>
 			</div>
-
-			<div class="form-actions">
-				<button type="submit" class="button button-primary" id="generate-taxonomy-submit-btn"><?php esc_html_e('Generate', 'ai-post-scheduler'); ?></button>
-				<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			</div>
+			<div class="aips-modal-footer form-actions">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="submit" class="aips-btn aips-btn-primary" id="generate-taxonomy-submit-btn"><?php esc_html_e('Generate', 'ai-post-scheduler'); ?></button>
 			</div>
 		</form>
 	</div>
@@ -186,7 +194,7 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 
 <script type="text/html" id="aips-tmpl-taxonomy-row">
 <tr data-taxonomy-id="{{id}}" data-taxonomy-type="{{taxonomy_type}}">
-	<th class="check-column"><input type="checkbox" class="aips-taxonomy-checkbox" value="{{id}}"></th>
+	<th class="check-column"><input type="checkbox" class="aips-taxonomy-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select taxonomy', 'ai-post-scheduler'); ?>"></th>
 	<td class="column-name">
 		<span class="taxonomy-name">{{name}}</span>
 	</td>
@@ -226,6 +234,6 @@ $total_items = $status_counts['categories']['pending'] + $status_counts['categor
 <script type="text/html" id="aips-tmpl-selected-post">
 <div class="aips-selected-post" data-post-id="{{id}}">
 	<span>{{title}}</span>
-	<button type="button" class="aips-remove-post" data-post-id="{{id}}">&times;</button>
+	<button type="button" class="aips-remove-post" data-post-id="{{id}}" aria-label="<?php esc_attr_e('Remove selected post', 'ai-post-scheduler'); ?>">&times;</button>
 </div>
 </script>

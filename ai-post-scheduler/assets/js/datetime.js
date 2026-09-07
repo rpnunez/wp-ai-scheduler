@@ -76,6 +76,28 @@
 		},
 
 		/**
+		 * Format a UTC instant as a 'YYYY-MM-DDTHH:MM' string for a `datetime-local`
+		 * input, shifted by an explicit UTC offset rather than the browser's own
+		 * timezone. Use this to seed a datetime-local field with the WordPress site's
+		 * local time (e.g. from `aipsScheduleL10n.gmtOffsetSeconds`), so the value is
+		 * correct regardless of what timezone the admin's browser happens to be in.
+		 *
+		 * @param {*} value Anything accepted by parse() (Unix seconds, MySQL/ISO string, Date).
+		 * @param {number} offsetSeconds UTC offset in seconds (may be negative).
+		 * @return {string} 'YYYY-MM-DDTHH:MM', or '' when value cannot be parsed.
+		 */
+		toLocalInputValue: function(value, offsetSeconds) {
+			var d = this.parse(value);
+			if (!d) {
+				return '';
+			}
+			var shifted = new Date(d.getTime() + (offsetSeconds || 0) * 1000);
+			var pad = function(n) { return n < 10 ? '0' + n : n; };
+			return shifted.getUTCFullYear() + '-' + pad(shifted.getUTCMonth() + 1) + '-' + pad(shifted.getUTCDate()) +
+				'T' + pad(shifted.getUTCHours()) + ':' + pad(shifted.getUTCMinutes());
+		},
+
+		/**
 		 * Return the Intl locale string for date/time formatting.
 		 *
 		 * Reads `locale` from the provided l10n object, then from the global
@@ -86,7 +108,13 @@
 		 */
 		getLocale: function(l10n) {
 			var source = l10n || window.aipsDateTimeL10n || {};
-			return (typeof source.locale === 'string' && source.locale) || undefined;
+			if (typeof source.locale !== 'string' || !source.locale) {
+				return undefined;
+			}
+
+			// WordPress locales are often underscored (e.g. en_US). Intl expects
+			// BCP-47 language tags, so normalize underscores to hyphens.
+			return source.locale.replace(/_/g, '-');
 		},
 
 		/**

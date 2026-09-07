@@ -1,6 +1,33 @@
-# Post-Setup Instructions
+# Setup — AI Post Scheduler
 
-After cloning this repository, please update the `.gitignore` file with the following content:
+Local development environment reference for the AI Post Scheduler plugin.
+
+---
+
+## Prerequisites
+
+- **Docker Desktop** (or Docker Engine + Docker Compose)
+- **Git**
+- **Bash** (Git Bash on Windows, Terminal on Mac/Linux, or WSL2)
+- **VS Code** with the [PHP Debug extension](https://marketplace.visualstudio.com/items?itemName=xdebug.php-debug) (for Xdebug)
+
+---
+
+## First-Time Setup
+
+Clone the repo and run from the repo root:
+
+```bash
+./start-dev.sh
+```
+
+> **Windows users:** Run inside Git Bash, WSL2, or any bash-compatible shell. Native CMD/PowerShell are not supported.
+
+The script verifies Docker is running, stops any existing containers, builds images, and starts all services. First startup takes a few minutes — Docker downloads images, installs WordPress, configures the database, and activates the plugin.
+
+### `.gitignore`
+
+After cloning, update `.gitignore` with development artifacts:
 
 ```
 # Composer
@@ -28,19 +55,229 @@ Thumbs.db
 /tmp/
 ```
 
-Or simply run:
+Or run: `cp .gitignore.new .gitignore`
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` to customize settings:
+
 ```bash
-cp .gitignore.new .gitignore
+cp .env.example .env
 ```
 
-This ensures that Composer dependencies, test coverage reports, and other development artifacts are not committed to the repository.
+Common overrides:
 
-## Running Tests
+```env
+# WordPress admin credentials
+WP_ADMIN_USER=admin
+WP_ADMIN_PASSWORD=your-secure-password
 
-To run the tests:
+# Port mappings (change if 8080/8082 are in use)
+WP_PORT=8080
+PHPMYADMIN_PORT=8082
+MYSQL_PORT=3307
+```
+
+---
+
+## Starting the Environment
+
+```bash
+./start-dev.sh       # First-time setup — builds images and starts all services
+make up              # Subsequent starts — starts existing containers
+```
+
+Once running:
+
+| Service    | URL                           | Credentials           |
+|------------|-------------------------------|-----------------------|
+| WordPress  | http://localhost:8080         | admin / admin         |
+| WP Admin   | http://localhost:8080/wp-admin | admin / admin        |
+| phpMyAdmin | http://localhost:8082         | wordpress / wordpress |
+
+---
+
+## Daily Commands
+
+```bash
+make up              # Start all services
+make down            # Stop all services
+make restart         # Restart all services
+make logs            # Stream all logs
+make logs-web        # Stream WordPress logs
+make logs-db         # Stream database logs
+make shell           # Open a shell in the WordPress container
+make wp-shell        # Open an interactive WP-CLI session
+make db-shell        # Open a MySQL shell
+make status          # Show container status
+make info            # Show WordPress and plugin info
+```
+
+### Rebuilding
+
+Plugin source is bind-mounted — changes to `ai-post-scheduler/` are reflected immediately with no rebuild. Only rebuild when `Dockerfile`, `docker-compose.yml`, or image dependencies change:
+
+```bash
+docker compose up -d --build          # Rebuild and restart
+docker compose build --no-cache       # Force clean rebuild
+docker compose up -d
+```
+
+---
+
+## Xdebug / VS Code Debugging
+
+Xdebug 3.3.1 ships in the image but is **disabled by default** (`XDEBUG_MODE=off`). Leaving it in the previous always-on configuration (`mode=develop,debug` + `start_with_request=yes`) forces PHP to attempt a debugger handshake on every request even when no IDE is attached, which materially slows the dev site. Turn it on only when you're actively debugging.
+
+### Toggle Xdebug
+
+Recommended flow — edit `.env` via the Make targets:
+
+```bash
+make xdebug-on     # sets XDEBUG_MODE=develop,debug + XDEBUG_START_WITH_REQUEST=trigger, rebuilds & restarts web
+make xdebug-off    # sets XDEBUG_MODE=off, rebuilds & restarts web
+make xdebug-status # shows the effective .env value and container ini
+```
+
+`trigger` mode means Xdebug only attaches when your IDE sets the `XDEBUG_TRIGGER` cookie / GET param / env var — zero overhead on other requests. That's the recommended dev default when Xdebug is on.
+
+To hand-edit `.env` instead, set any of:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `XDEBUG_MODE` | `off` | `off`, `debug`, `develop,debug`, `profile`, `trace`, … (Xdebug 3 modes) |
+| `XDEBUG_START_WITH_REQUEST` | `trigger` | `trigger` (recommended), `yes` (attach every request — heavy), `no` (manual `xdebug_break()` only) |
+| `XDEBUG_CLIENT_HOST` | `host.docker.internal` | Where Xdebug dials your IDE |
+| `XDEBUG_CLIENT_PORT` | `9003` | IDE listen port |
+| `XDEBUG_IDEKEY` | `PHPSTORM` | IDE key |
+| `XDEBUG_LOG` / `XDEBUG_LOG_LEVEL` | `/tmp/xdebug.log` / `7` | Xdebug's own log for debugging Xdebug |
+
+After hand-editing `.env`, apply with `docker compose up -d --force-recreate web` (or `make xdebug-on` / `make xdebug-off`). A plain `make reload-php` is **not enough** — the Xdebug ini is generated by the container entrypoint from environment variables, so the entrypoint must re-run.
+
+### Debug flow (VS Code)
+
+1. Start the Docker environment (`make up`).
+2. Enable Xdebug: `make xdebug-on`.
+3. Open the project in VS Code.
+4. Press `F5` → select **"Listen for Xdebug (Docker)"**.
+5. Set breakpoints in plugin code.
+6. Trigger the request (browser reload with the Xdebug helper extension, or append `?XDEBUG_TRIGGER=1` to the URL).
+7. When done: `make xdebug-off` to remove the overhead.
+
+- **Port:** `XDEBUG_CLIENT_PORT` (default `9003`)
+- **Path mappings:** pre-configured in `.vscode/launch.json`
+
+### PHP-only settings
+
+`dev-php.ini` still holds the general PHP settings (`memory_limit`, `upload_max_filesize`, `display_errors`, …). Edit it and apply with:
+
+```bash
+make reload-php
+```
+
+The `[xdebug]` block was removed from `dev-php.ini` — Xdebug config now comes from `.env` via the entrypoint, so `zz-xdebug-runtime.ini` is written to `/usr/local/etc/php/conf.d/` at container start.
+
+---
+
+## PHPUnit Testing
+
+### Canonical workflow (Docker, recommended)
+
+From the repo root:
+
+```bash
+bash scripts/run-wp-tests-docker.sh
+bash scripts/run-wp-tests-docker.sh coverage
+```
+
+This script starts the Docker database, recreates a disposable test database, installs WordPress core and `wordpress-tests-lib`, exports `WP_TESTS_DIR`/`WP_CORE_DIR`, and runs the suite.
+
+### Direct execution
+
+If the WordPress test library is already installed:
 
 ```bash
 cd ai-post-scheduler
-composer install
+export WP_TESTS_DIR='C:/tmp/wordpress-tests-lib-docker'
+export WP_CORE_DIR='C:/tmp/wordpress-docker'
 composer test
+```
+
+Other composer targets:
+
+```bash
+composer install          # Install/update dependencies
+composer test             # Full suite
+composer test:verbose     # Verbose output
+composer test:coverage    # Generate coverage report
+
+vendor/bin/phpunit tests/test-template-processor.php   # Single file
+```
+
+---
+
+## WordPress Management
+
+```bash
+# Open a shell then run WP-CLI commands
+make shell
+wp plugin list --allow-root
+
+# Or run directly
+docker compose exec web wp plugin list --allow-root
+docker compose exec web wp cache flush --allow-root
+docker compose exec web wp user list --allow-root
+
+# Plugin via make
+make plugin-activate
+make plugin-deactivate
+make plugin-list
+```
+
+---
+
+## Database Operations
+
+**phpMyAdmin:** http://localhost:8082 (wordpress / wordpress)
+
+```bash
+make db-shell             # MySQL shell (external: host=localhost port=3307)
+make db-backup            # Saves to backup.sql
+make db-restore           # Restores from backup.sql
+```
+
+---
+
+## MCP Bridge
+
+To connect MCP-compatible tools (GitHub Copilot, automation scripts) to the plugin, see [docs/MCP_BRIDGE.md](MCP_BRIDGE.md).
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Port in use | Change `WP_PORT` in `.env` or `docker-compose.yml` |
+| Changes not in browser | `docker compose exec web wp cache flush --allow-root` |
+| Xdebug not connecting | `make xdebug-status` — if it says disabled, run `make xdebug-on`; otherwise verify your IDE is listening on port 9003 and that the request carries the `XDEBUG_TRIGGER` cookie/param |
+| Container keeps restarting | `docker compose logs web` |
+| No space left on device | `docker system prune -a --volumes` |
+| Database connection error | `docker compose down && docker compose up -d` |
+| Plugin activation fails | `docker compose exec web wp plugin activate ai-post-scheduler --allow-root` |
+| "healthcheck.sh: not found" | Run `./start-dev.sh` from repo root, not a subdirectory |
+
+**Linux: "Cannot connect to Docker daemon"**
+
+```bash
+sudo usermod -aG docker $USER && newgrp docker
+```
+
+**Find what is using a port:**
+
+```bash
+lsof -i :8080          # Mac/Linux
+netstat -ano | findstr :8080   # Windows PowerShell
 ```

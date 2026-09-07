@@ -56,16 +56,13 @@ class AIPS_Onboarding_Wizard {
 
 	public function register_page() {
 		add_submenu_page(
-			'ai-post-scheduler',
+			'',
 			__('Onboarding Wizard', 'ai-post-scheduler'),
 			__('Onboarding Wizard', 'ai-post-scheduler'),
 			'manage_options',
 			self::PAGE_SLUG,
 			array($this, 'render_page')
 		);
-
-		// Keep wizard accessible by URL without adding a visible submenu item.
-		remove_submenu_page('ai-post-scheduler', self::PAGE_SLUG);
 	}
 
 	/**
@@ -130,7 +127,7 @@ class AIPS_Onboarding_Wizard {
 		$state = $this->get_state();
 
 		$site_ctx = class_exists('AIPS_Site_Context') ? AIPS_Site_Context::get() : array();
-		$ai_engine_active = class_exists('Meow_MWAI_Core');
+		$ai_provider_available = AIPS_AI_Provider_Factory::has_available_provider();
 
 		$authors_repo = new AIPS_Authors_Repository();
 		$templates_repo = new AIPS_Template_Repository();
@@ -154,7 +151,7 @@ class AIPS_Onboarding_Wizard {
 			'topics_generated' => 0,
 			'first_topic'      => '',
 			'post_id'          => 0,
-			'updated_at'       => '',
+			'updated_at'       => 0,
 		);
 	}
 
@@ -171,7 +168,7 @@ class AIPS_Onboarding_Wizard {
 		foreach ((array) $patch as $key => $value) {
 			$state[$key] = $value;
 		}
-		$state['updated_at'] = current_time('mysql');
+		$state['updated_at'] = AIPS_DateTime::now()->timestamp();
 		update_option($this->state_option, $state, false);
 		return $state;
 	}
@@ -263,7 +260,7 @@ class AIPS_Onboarding_Wizard {
 			AIPS_Ajax_Response::invalid_request(__('Name and Field/Niche are required.', 'ai-post-scheduler'));
 		}
 
-		$now = current_time('mysql');
+		$now = AIPS_DateTime::now()->timestamp();
 
 		$data = array(
 			'name' => $name,
@@ -353,8 +350,8 @@ class AIPS_Onboarding_Wizard {
 	public function ajax_generate_topics() {
 		$this->ajax_guard();
 
-		if (!class_exists('Meow_MWAI_Core')) {
-			AIPS_Ajax_Response::invalid_request(__('AI Engine is not active. Install/activate it before generating topics.', 'ai-post-scheduler'));
+		if (!AIPS_AI_Provider_Factory::has_available_provider()) {
+			AIPS_Ajax_Response::invalid_request(__('No AI provider is available. Activate Meow Apps AI Engine or configure a WordPress AI Client connector before generating topics.', 'ai-post-scheduler'));
 		}
 
 		$state = $this->get_state();
@@ -412,8 +409,8 @@ class AIPS_Onboarding_Wizard {
 	public function ajax_generate_post() {
 		$this->ajax_guard();
 
-		if (!class_exists('Meow_MWAI_Core')) {
-			AIPS_Ajax_Response::invalid_request(__('AI Engine is not active. Install/activate it before generating a post.', 'ai-post-scheduler'));
+		if (!AIPS_AI_Provider_Factory::has_available_provider()) {
+			AIPS_Ajax_Response::invalid_request(__('No AI provider is available. Activate Meow Apps AI Engine or configure a WordPress AI Client connector before generating a post.', 'ai-post-scheduler'));
 		}
 
 		$state = $this->get_state();

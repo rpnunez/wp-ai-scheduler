@@ -36,7 +36,7 @@
 			$(document).on('click', '#aips-save-post-slice-btn', this.saveSlice.bind(this));
 			$(document).on('click', '.aips-delete-post-slice', this.deleteSlice.bind(this));
 			$(document).on('click', '.aips-toggle-post-slice', this.toggleSlice.bind(this));
-			$(document).on('click', '#aips-post-slice-modal .aips-modal-close', this.closeModal.bind(this));
+			// $(document).on('click', '#aips-post-slice-modal .aips-modal-close', this.closeModal.bind(this)); // Handled globally by admin.js
 			$(document).on('click', '#aips-post-slice-modal', this.onOverlayClick.bind(this));
 			$(document).on('input', '#aips-post-slice-search', this.filterSlices.bind(this));
 			$(document).on('click', '#aips-post-slice-search-clear, #aips-post-slice-search-clear-2', this.clearSearch.bind(this));
@@ -52,7 +52,7 @@
 			e.preventDefault();
 			this.currentSliceId = 0;
 			this.resetForm();
-			$('#aips-post-slice-modal-title').text(aipsPostSlicesL10n.addNewSlice);
+			$('#aips-post-slice-modal').find('.aips-modal-title').text(aipsPostSlicesL10n.addNewSlice);
 			$('#aips-post-slice-modal').show();
 			$('#aips-post-slice-name').trigger('focus');
 		},
@@ -78,7 +78,7 @@
 			$('#aips-post-slice-sort-order').val($row.data('sort-order') || 0);
 			$('#aips-post-slice-is-active').prop('checked', parseInt($row.data('active'), 10) === 1);
 
-			$('#aips-post-slice-modal-title').text(aipsPostSlicesL10n.editSlice);
+			$('#aips-post-slice-modal').find('.aips-modal-title').text(aipsPostSlicesL10n.editSlice);
 			$('#aips-post-slice-modal').show();
 			$('#aips-post-slice-name').trigger('focus');
 		},

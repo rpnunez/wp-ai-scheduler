@@ -124,11 +124,11 @@ if (!defined('ABSPATH')) {
 	
 	
 	<!-- Event Details Modal -->
-	<div id="aips-calendar-event-modal" class="aips-calendar-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-calendar-event-modal-title">
+	<div id="aips-calendar-event-modal" class="aips-calendar-modal" style="display: none;" role="dialog" aria-modal="true">
 		<div class="aips-calendar-modal-overlay"></div>
 		<div class="aips-calendar-modal-content">
 			<div class="aips-calendar-modal-header">
-				<h2 id="aips-calendar-event-modal-title"><?php esc_html_e('Schedule Details', 'ai-post-scheduler'); ?></h2>
+				<h2 class="aips-modal-title"><?php esc_html_e('Schedule Details', 'ai-post-scheduler'); ?></h2>
 				<button type="button" class="aips-calendar-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">
 					<span class="dashicons dashicons-no-alt"></span>
 				</button>

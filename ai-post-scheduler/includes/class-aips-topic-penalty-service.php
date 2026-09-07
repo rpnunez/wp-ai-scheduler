@@ -179,7 +179,7 @@ class AIPS_Topic_Penalty_Service {
 		
 		$metadata['policy_flags'][] = array(
 			'topic_id' => $topic_id,
-			'timestamp' => current_time('mysql'),
+			'timestamp' => AIPS_DateTime::now()->timestamp(),
 			'status' => 'pending_review'
 		);
 		

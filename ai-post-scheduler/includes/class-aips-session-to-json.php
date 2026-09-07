@@ -239,7 +239,7 @@ class AIPS_Session_To_JSON {
 			
 			$log_data = array(
 				'id' => $log_entry->id,
-				'log_type' => $log_entry->log_type,
+				'log_type' => isset($details['log_subtype']) ? (string) $details['log_subtype'] : '',
 				'history_type_id' => (int) $log_entry->history_type_id,
 				'history_type_label' => AIPS_History_Type::get_label($log_entry->history_type_id),
 				'timestamp' => $log_entry->timestamp,

@@ -403,6 +403,96 @@ class AIPS_Notification_Senders {
 	}
 
 	/**
+	 * Send a post-generated notification.
+	 *
+	 * Fires unconditionally for every successfully generated post, unlike
+	 * manual_generation_completed/post_ready_for_review which are conditional
+	 * on creation method / post status.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function post_generated( array $payload ) {
+		$post_id           = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
+		$post              = $post_id ? get_post($post_id) : null;
+		$post_title        = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
+		$source_label      = !empty($payload['source_label']) ? $payload['source_label'] : __('Unknown', 'ai-post-scheduler');
+		$post_status       = !empty($payload['post_status']) ? $payload['post_status'] : '';
+		$post_status_label = !empty($payload['post_status_label']) ? $payload['post_status_label'] : __('Unknown', 'ai-post-scheduler');
+
+		$title   = $post_title;
+		$message = sprintf(
+			/* translators: 1: source label (Template/Author) 2: post status label */
+			__('%1$s — %2$s', 'ai-post-scheduler'),
+			$source_label,
+			$post_status_label
+		);
+
+		$edit_url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
+
+		// Preview links carry a nonce tied to the current user/session at creation
+		// time. Post generation is frequently unauthenticated (cron/scheduled/bulk
+		// jobs), and even when it isn't, this URL is consumed later — by whoever
+		// opens the email — not synchronously by its creator. A baked-in preview
+		// nonce will not validate for that later viewer, so non-published posts
+		// route to the edit screen instead, where a fresh Preview button is
+		// generated for whoever is actually looking at it.
+		$view_url = $edit_url;
+		if ($post && 'publish' === $post_status) {
+			$permalink = get_permalink($post_id);
+			if ($permalink) {
+				$view_url = esc_url_raw($permalink);
+			}
+		}
+
+		$post_excerpt = $post && !empty($post->post_excerpt)
+			? $post->post_excerpt
+			: ($post ? wp_trim_words(wp_strip_all_tags($post->post_content), 55) : '');
+
+		$post_content_html = $post ? wp_kses_post($post->post_content) : '';
+
+		$featured_image_row = '';
+		if ($post_id) {
+			$thumbnail_id = get_post_thumbnail_id($post_id);
+			if ($thumbnail_id) {
+				$image_url = get_the_post_thumbnail_url($post_id, 'large');
+				if ($image_url) {
+					$featured_image_row = '<tr><td style="padding:0;">'
+						. '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($post_title) . '" style="width:100%;max-width:640px;height:auto;display:block;" />'
+						. '</td></tr>';
+				}
+			}
+		}
+
+		$vars = array(
+			'{{site_name}}'          => esc_html(get_bloginfo('name')),
+			'{{source_label}}'       => esc_html($source_label),
+			'{{post_status_label}}'  => esc_html($post_status_label),
+			'{{post_title}}'         => esc_html($post_title),
+			'{{post_excerpt}}'       => esc_html($post_excerpt),
+			'{{post_content}}'       => $post_content_html,
+			'{{featured_image_row}}' => $featured_image_row,
+			'{{edit_url}}'           => esc_url($edit_url),
+			'{{view_url}}'           => esc_url($view_url),
+		);
+
+		call_user_func(
+			$this->dispatcher,
+			'post_generated',
+			array(
+				'title'         => $title,
+				'message'       => $message,
+				'url'           => $edit_url,
+				'level'         => 'info',
+				'meta'          => $payload,
+				'dedupe_key'    => !empty($payload['dedupe_key'])    ? $payload['dedupe_key']          : ('post_generated_' . $post_id),
+				'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
+				'vars'          => $vars,
+			)
+		);
+	}
+
+	/**
 	 * Send a daily digest summary notification.
 	 *
 	 * @param array $payload Summary payload.
@@ -546,7 +636,7 @@ class AIPS_Notification_Senders {
 			array(
 				'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
 				'message' => $message_raw,
-				'url'     => AIPS_Admin_Menu_Helper::get_page_url('aips-seeder'),
+				'url'     => AIPS_Admin_Menu_Helper::get_page_url('dev_tools'),
 				'level'   => 'info',
 				'meta'    => $payload,
 			)

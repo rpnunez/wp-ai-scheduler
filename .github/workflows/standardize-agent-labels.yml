@@ -1,0 +1,65 @@
+name: Standardize Agent Labels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update required labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const labels = [
+              { name: 'agent-ready', color: '0e8a16', description: 'Spec is complete and ready for an agent to implement.' },
+              { name: 'needs-spec', color: 'fbca04', description: 'Needs a complete implementation spec before agent work.' },
+              { name: 'duplicate-risk', color: 'd4c5f9', description: 'Likely overlaps with existing PR/work.' },
+              { name: 'schema-change', color: 'b60205', description: 'Changes database schema, migrations, or versioning.' },
+              { name: 'admin-ui', color: '1d76db', description: 'Touches wp-admin UI templates, CSS, or JS.' },
+              { name: 'ajax-registry', color: '5319e7', description: 'Touches AJAX registry, handlers, or controller wiring.' },
+              { name: 'cron', color: '0052cc', description: 'Touches cron schedules, jobs, queues, or retry logic.' },
+              { name: 'generation-pipeline', color: '006b75', description: 'Touches prompts, generation flow, or AI pipeline.' },
+              { name: 'security-sensitive', color: 'b60205', description: 'Touches nonces, capabilities, auth, or data safety boundaries.' },
+              { name: 'needs-browser-test', color: 'c2e0c6', description: 'Requires browser/manual verification before merge.' },
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner,
+                  repo,
+                  name: label.name,
+                });
+
+                await github.rest.issues.updateLabel({
+                  owner,
+                  repo,
+                  name: label.name,
+                  new_name: label.name,
+                  color: label.color,
+                  description: label.description,
+                });
+                core.info(`Updated label: ${label.name}`);
+              } catch (error) {
+                if (error.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description,
+                  });
+                  core.info(`Created label: ${label.name}`);
+                } else {
+                  throw error;
+                }
+              }
+            }

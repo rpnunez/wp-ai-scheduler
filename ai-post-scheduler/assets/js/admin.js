@@ -73,6 +73,126 @@
             this.initAIVariablesScanner();
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
+            this.initScheduleStatusStrip();
+        },
+
+        initScheduleStatusStrip: function() {
+            if (!$('#aips-schedule-status-strip').length) {
+                return;
+            }
+
+            $.post(ajaxurl, { action: 'aips_get_schedule_status_read_model', nonce: aipsAjax.nonce }, function(resp) {
+                if (!resp || !resp.success || !resp.data) {
+                    $('#aips-schedule-status-summary').text(aipsScheduleL10n.scheduleStatusLoadFailed);
+                    return;
+                }
+
+                var d = resp.data;
+                var escapeHtml = function(value) {
+                    return String(value || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/\"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
+
+                var typeLabels = {
+                    template_schedule: aipsScheduleL10n.typeTemplateLabel,
+                    author_topic_gen: aipsScheduleL10n.typeAuthorTopicLabel,
+                    author_post_gen: aipsScheduleL10n.typeAuthorPostLabel
+                };
+
+                var queueTotal = 0;
+                $.each(d.queue_depth || {}, function(_, count) {
+                    queueTotal += parseInt(count || 0, 10);
+                });
+
+                var counts = d.schedule_counts || {};
+                var rateLimiter = d.rate_limiter || { enabled: false, remaining: 0, max_requests: 0 };
+                var cards = [
+                    {
+                        label: aipsScheduleL10n.activeSchedulesLabel,
+                        value: parseInt(counts.active || 0, 10),
+                        tone: 'neutral'
+                    },
+                    {
+                        label: aipsScheduleL10n.upcomingSchedulesLabel,
+                        value: parseInt(counts.upcoming_24h || 0, 10),
+                        tone: 'success'
+                    },
+                    {
+                        label: aipsScheduleL10n.queueDepthLabel,
+                        value: queueTotal,
+                        tone: 'info'
+                    },
+                    {
+                        label: rateLimiter.enabled ? 'Rate Limit Remaining' : 'Rate Limiting',
+                        value: rateLimiter.enabled ? (rateLimiter.remaining + ' / ' + rateLimiter.max_requests) : 'Disabled',
+                        tone: rateLimiter.enabled && rateLimiter.remaining === 0 ? 'error' : (rateLimiter.enabled ? 'success' : 'neutral')
+                    },
+                    {
+                        label: aipsScheduleL10n.bulkFailedLabel,
+                        value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
+                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
+                    }
+                ];
+
+                var cardsHtml = cards.map(function(card) {
+                    return '<div class="aips-schedule-status-card aips-schedule-status-card-' + escapeHtml(card.tone) + '">' +
+                        '<div class="aips-schedule-status-card-label">' + escapeHtml(card.label) + '</div>' +
+                        '<div class="aips-schedule-status-card-value">' + escapeHtml(card.value) + '</div>' +
+                    '</div>';
+                });
+                $('#aips-schedule-status-summary').html(cardsHtml.join(''));
+
+                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
+                    return a.timestamp - b.timestamp;
+                }).slice(0, 12).map(function(item) {
+                    var typeLabel = typeLabels[item.type] || item.type || '';
+                    var dt = new Date(item.timestamp * 1000);
+                    return '<div class="aips-schedule-status-event">' +
+                        '<div class="aips-schedule-status-event-top">' +
+                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(typeLabel) + '</span>' +
+                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
+                        '</div>' +
+                        '<div class="aips-schedule-status-event-title">' + escapeHtml(item.title || item.cron_hook || '') + '</div>' +
+                    '</div>';
+                });
+
+                $('#aips-schedule-status-timeline').html(
+                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
+                );
+
+                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
+                    return a.timestamp - b.timestamp;
+                }).slice(0, 12).map(function(item) {
+                    var dt = new Date(item.timestamp * 1000);
+                    return '<div class="aips-schedule-status-event">' +
+                        '<div class="aips-schedule-status-event-top">' +
+                            '<span class="aips-badge aips-badge-neutral">' + escapeHtml(item.hook || '') + '</span>' +
+                            '<span class="aips-schedule-status-event-time">' + escapeHtml(dt.toLocaleString()) + '</span>' +
+                        '</div>' +
+                        '<div class="aips-schedule-status-event-title">' + escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
+                    '</div>';
+                });
+
+                $('#aips-schedule-status-queue-timeline').html(
+                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
+                );
+
+                var warnings = [];
+                if (d.last_error) {
+                    warnings.push('<div class="notice notice-error inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.lastErrorDetected) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.history) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.viewHistory) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.system_status) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.systemStatus) + '</a></p></div>');
+                }
+                if (d.retry_pending) {
+                    warnings.push('<div class="notice notice-warning inline"><p>' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.retryPending) + ' <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.notifications) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.notifications) + '</a> · <a href="' + AIPS.Utilities.sanitizeUrl(d.quick_links.telemetry) + '">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.telemetry) + '</a></p></div>');
+                }
+                if (parseInt((counts.overdue || 0), 10) > 0) {
+                    warnings.push('<div class="notice notice-warning inline"><p>' + aipsScheduleL10n.overdueSchedulesWarning.replace('%d', counts.overdue) + '</p></div>');
+                }
+                $('#aips-schedule-status-warnings').html(warnings.join(''));
+            });
         },
 
         /**
@@ -97,13 +217,90 @@
         },
 
         /**
-         * Register all delegated jQuery event listeners for the admin UI.
+         * Register delegated jQuery event listeners for the admin UI.
          *
-         * Uses event delegation on `document` so handlers work for elements
-         * injected dynamically (e.g. rows rendered after an AJAX call).
-         * Each handler is a named method on the AIPS object.
+         * Registers core global listeners and selectively invokes feature-specific
+         * sub-binders when their corresponding elements are present in the DOM.
          */
         bindEvents: function() {
+            this.bindCoreEvents();
+
+            if ($('#aips-template-modal, .aips-templates-list, .aips-add-template-btn, #aips-template-search, .aips-wizard-modal').length) {
+                this.bindTemplateEvents();
+            }
+
+            if ($('#aips-schedule-modal, #aips-schedule-wizard-modal, .aips-schedules-list, .aips-add-schedule-btn, #aips-schedule-search, #cb-select-all-schedules').length) {
+                this.bindScheduleEvents();
+            }
+
+            if ($('#cb-select-all-unified, .aips-unified-checkbox, .aips-unified-toggle-schedule, #aips-unified-search, #aips-schedule-status-strip, .aips-tab').length) {
+                this.bindUnifiedScheduleEvents();
+            }
+
+            if ($('#aips-voice-modal, .aips-voices-list, .aips-add-voice-btn, #aips-voice-search').length) {
+                this.bindVoiceEvents();
+            }
+
+            if ($('#aips-structure-modal, .aips-structures-list, .aips-add-structure-btn, #aips-structure-search').length) {
+                this.bindStructureEvents();
+            }
+
+            if ($('#aips-section-modal, .aips-sections-list, .aips-add-section-btn, #aips-section-search').length) {
+                this.bindSectionEvents();
+            }
+
+            if ($('#aips-author-search, .aips-authors-list').length) {
+                this.bindAuthorEvents();
+            }
+
+            if ($('#aips-test-connection, #aips-settings-form').length) {
+                this.bindSettingsEvents();
+            }
+        },
+
+        /**
+         * Register core global event listeners needed across all admin screens.
+         */
+        bindCoreEvents: function() {
+            if (this._coreEventsBound) {
+                return;
+            }
+            this._coreEventsBound = true;
+
+            // Modals
+            $(document).on('click', '.aips-modal-close', this.closeModal);
+            $(document).on('click', '.aips-modal', function(e) {
+                if ($(e.target).hasClass('aips-modal')) {
+                    AIPS.closeModal();
+                }
+            });
+
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    AIPS.closeModal();
+                }
+            });
+
+            // Tabs
+            $(document).on('click', '.nav-tab', this.switchTab);
+            $(document).on('click', '.aips-tab-link', this.switchAipsTab);
+
+            // Preserve tab hash on form submissions
+            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
+
+            // Copy to Clipboard
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+        },
+
+        /**
+         * Register event listeners for Templates and the Template Wizard.
+         */
+        bindTemplateEvents: function() {
+            if (this._templateEventsBound) {
+                return;
+            }
+            this._templateEventsBound = true;
+
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
             $(document).on('click', '.aips-clone-template', this.cloneTemplate);
@@ -115,6 +312,7 @@
             $(document).on('click', '.aips-quick-preview-post', this.openGeneratedPostPreview);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
+            $(document).on('change', '#template_post_type', this.toggleTemplatePostTypeFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
@@ -125,7 +323,7 @@
             // Wizard navigation
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
-            $(document).on('click', '.aips-wizard-step', this.wizardStepClick);
+            $(document).on('click', '.aips-wizard-modal .aips-wizard-step', this.wizardStepClick);
 
             // Post-save next steps
             $(document).on('click', '#aips-quick-schedule-btn', this.quickSchedule);
@@ -145,10 +343,20 @@
             });
             $(document).on('click', '.aips-ai-var-tag', this.copyAIVariable);
 
-            $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
-            $(document).on('click', '.aips-edit-voice', this.editVoice);
-            $(document).on('click', '.aips-delete-voice', this.deleteVoice);
-            $(document).on('click', '.aips-save-voice', this.saveVoice);
+            // Template Search
+            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
+            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
+            $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
+        },
+
+        /**
+         * Register event listeners for Schedules and the Schedule Cadence Builder.
+         */
+        bindScheduleEvents: function() {
+            if (this._scheduleEventsBound) {
+                return;
+            }
+            this._scheduleEventsBound = true;
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-edit-schedule', this.editSchedule);
@@ -156,6 +364,12 @@
             $(document).on('click', '.aips-run-now-schedule', this.runNowSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-save-schedule-wizard', this.saveScheduleWizard);
+            $(document).on('click', '.aips-schedule-day-btn', this.onScheduleDayPick);
+            $(document).on('click', '.aips-cadence-tab', this.onScheduleCadenceTabClick);
+            $(document).on('click', '.aips-hourly-step-btn', this.onScheduleHourlyStepPick);
+            $(document).on('click', '.aips-monthly-day-btn', this.onScheduleMonthlyDayPick);
+            $(document).on('click', '.aips-time-chip', this.onScheduleTimeChipPick);
+            $(document).on('change input', '#schedule_builder_time, #schedule_builder_date, #schedule_builder_interval_val, #schedule_builder_interval_unit', this.onScheduleBuilderInputChange);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
             $(document).on('click', '.aips-view-schedule-history', this.viewScheduleHistory);
@@ -167,7 +381,21 @@
             $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
             $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
 
-            // Unified Schedule Page handlers
+            // Schedule Search
+            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
+            $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
+            $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
+        },
+
+        /**
+         * Register event listeners for the Unified Schedule page.
+         */
+        bindUnifiedScheduleEvents: function() {
+            if (this._unifiedScheduleEventsBound) {
+                return;
+            }
+            this._unifiedScheduleEventsBound = true;
+
             $(document).on('change', '#cb-select-all-unified', this.toggleAllUnified);
             $(document).on('change', '.aips-unified-checkbox', this.toggleUnifiedSelection);
             $(document).on('click', '#aips-unified-select-all', this.selectAllUnified);
@@ -180,82 +408,95 @@
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
             $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
+            $(document).on('click', '.aips-tab', this.switchScheduleTab);
+            $(document).on('click', '.aips-reset-circuit', this.resetScheduleCircuit);
+            $(document).on('click', '.aips-resume-batch', this.resumeScheduleBatch);
+        },
 
+        /**
+         * Register event listeners for Voices.
+         */
+        bindVoiceEvents: function() {
+            if (this._voiceEventsBound) {
+                return;
+            }
+            this._voiceEventsBound = true;
 
-
-            // Template Search
-            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
-            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
-            $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
-
-            // Schedule Search
-            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
-            $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
-            $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
+            $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
+            $(document).on('click', '.aips-edit-voice', this.editVoice);
+            $(document).on('click', '.aips-delete-voice', this.deleteVoice);
+            $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             // Voice Search
             $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
             $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
+        },
 
-            // Section Search
-            $(document).on('keyup search', '#aips-section-search', this.filterSections);
-            $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
-            $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+        /**
+         * Register event listeners for Article Structures.
+         */
+        bindStructureEvents: function() {
+            if (this._structureEventsBound) {
+                return;
+            }
+            this._structureEventsBound = true;
+
+            $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
+            $(document).on('click', '.aips-save-structure', this.saveStructure);
+            $(document).on('click', '.aips-edit-structure', this.editStructure);
+            $(document).on('click', '.aips-delete-structure', this.deleteStructure);
 
             // Structure Search
             $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
             $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
             $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
+        },
 
-            // Author Search
+        /**
+         * Register event listeners for Prompt Sections.
+         */
+        bindSectionEvents: function() {
+            if (this._sectionEventsBound) {
+                return;
+            }
+            this._sectionEventsBound = true;
+
+            $(document).on('click', '.aips-add-section-btn', this.openAddSectionModal);
+            $(document).on('click', '.aips-save-section', this.saveSection);
+            $(document).on('click', '.aips-edit-section', this.editSection);
+            $(document).on('click', '.aips-delete-section', this.deleteSection);
+
+            // Section Search
+            $(document).on('keyup search', '#aips-section-search', this.filterSections);
+            $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
+            $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+        },
+
+        /**
+         * Register event listeners for Authors search.
+         */
+        bindAuthorEvents: function() {
+            if (this._authorEventsBound) {
+                return;
+            }
+            this._authorEventsBound = true;
+
             $(document).on('keyup search', '#aips-author-search', this.filterAuthors);
             $(document).on('click', '#aips-author-search-clear', this.clearAuthorSearch);
             $(document).on('click', '.aips-clear-author-search-btn', this.clearAuthorSearch);
+        },
 
-            $(document).on('click', '.aips-modal-close', this.closeModal);
-            $(document).on('click', '.aips-modal', function(e) {
-                if ($(e.target).hasClass('aips-modal')) {
-                    AIPS.closeModal();
-                }
-            });
+        /**
+         * Register event listeners for Settings page actions.
+         */
+        bindSettingsEvents: function() {
+            if (this._settingsEventsBound) {
+                return;
+            }
+            this._settingsEventsBound = true;
 
-            $(document).on('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    AIPS.closeModal();
-                }
-            });
-
-            // Settings
             $(document).on('click', '#aips-test-connection', this.testConnection);
-
-            // Tabs
-            $(document).on('click', '.nav-tab', this.switchTab);
-            $(document).on('click', '.aips-tab-link', this.switchAipsTab);
-            
-            // Preserve tab hash on form submissions
-            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
-
-            // Copy to Clipboard
-            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
-
-            // Article Structures UI handlers
-            $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
-
-            $(document).on('click', '.aips-save-structure', this.saveStructure);
-
-            $(document).on('click', '.aips-edit-structure', this.editStructure);
-
-            $(document).on('click', '.aips-delete-structure', this.deleteStructure);
-
-            // Prompt Sections UI handlers
-            $(document).on('click', '.aips-add-section-btn', this.openAddSectionModal);
-
-            $(document).on('click', '.aips-save-section', this.saveSection);
-
-            $(document).on('click', '.aips-edit-section', this.editSection);
-
-            $(document).on('click', '.aips-delete-section', this.deleteSection);
         },
 
         /**
@@ -417,9 +658,16 @@
          * @param {Event} e - Click event from an `.aips-tab-link` element.
          */
         switchAipsTab: function(e) {
-            e.preventDefault();
             var $tabLink = $(e.currentTarget);
             var tabId = $tabLink.data('tab');
+
+            // Links without data-tab (for example Diagnostics top-level tabs)
+            // are regular navigation links and should not be intercepted.
+            if (!tabId) {
+                return;
+            }
+
+            e.preventDefault();
             var $tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
 
             if (!$tabNav.length) {
@@ -491,12 +739,18 @@
          * @param {Event} e - Click event from an `.aips-add-template-btn` element.
          */
         openTemplateModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindTemplateEvents();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
+            $('#template_post_type').val('post').prop('disabled', false);
+            $('#template_post_type_locked_notice').hide();
+            AIPS.toggleTemplatePostTypeFields();
             AIPS.setMediaSelection([]);
             AIPS.toggleImagePrompt();
             // Reset AI Variables panel
@@ -536,6 +790,26 @@
                 success: function(response) {
                     if (response.success) {
                         var t = response.data.template;
+                        var selectedCategories = [];
+                        if (Array.isArray(t.post_category)) {
+                            selectedCategories = t.post_category.map(String);
+                        } else if (typeof t.post_category === 'string' && t.post_category.length) {
+                            try {
+                                var parsedPostCategory = JSON.parse(t.post_category);
+                                if (Array.isArray(parsedPostCategory)) {
+                                    selectedCategories = parsedPostCategory.map(String);
+                                } else if (Number.isInteger(parsedPostCategory) && parsedPostCategory > 0) {
+                                    selectedCategories = [String(parsedPostCategory)];
+                                }
+                            } catch (err) {
+                                var parsedCategory = parseInt(t.post_category, 10);
+                                if (!isNaN(parsedCategory) && parsedCategory > 0) {
+                                    selectedCategories = [String(parsedCategory)];
+                                }
+                            }
+                        } else if (Number.isInteger(t.post_category) && t.post_category > 0) {
+                            selectedCategories = [String(t.post_category)];
+                        }
                         $('#template_id').val(t.id);
                         $('#template_name').val(t.name);
                         $('#template_description').val(t.description || '');
@@ -547,13 +821,19 @@
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
+                        $('#template_post_type').val(t.post_type || 'post').prop('disabled', true);
+                        $('#template_post_type_locked_notice').show();
+                        AIPS.toggleTemplatePostTypeFields();
                         $('#post_status').val(t.post_status);
-                        $('#post_category').val(t.post_category);
+                        $('#post_category').val(selectedCategories);
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
+
+                        // Restore affiliate links setting.
+                        $('#affiliate_links_enabled').prop('checked', t.affiliate_links_enabled == 1);
 
                         // Restore source group settings.
                         var includeSources = t.include_sources == 1;
@@ -633,12 +913,11 @@
         },
 
         /**
-         * Delete a template using a two-click soft-confirm pattern.
+         * Delete a template.
          *
-         * The first click changes the button label to "Click again to confirm"
-         * and sets a 3-second auto-reset timer. The second click (within the
-         * window) sends the `aips_delete_template` AJAX action and removes the
-         * table row on success.
+         * Confirms deletion using the standard AIPS.Utilities.confirm modal.
+         * On confirm, sends the `aips_delete_template` AJAX action and removes
+         * the table row on success.
          *
          * @param {Event} e - Click event from an `.aips-delete-template` element.
          */
@@ -648,56 +927,36 @@
             var id = $btn.data('id');
             var $row = $btn.closest('tr');
 
-            // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteTemplateConfirm || 'Are you sure you want to delete this template?', 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: aipsAdminL10n.confirmDeleteButton || 'Delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
 
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
-                return;
-            }
-
-            // Confirmed, proceed with deletion
-            AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                        // Reset button state on error
-                        $btn.text($btn.data('original-text'));
-                        $btn.removeClass('aips-confirm-delete');
-                        $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                    // Reset button state on error
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                    $btn.prop('disabled', false);
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_template',
+                            nonce: aipsAjax.nonce,
+                            template_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || 'Failed to delete template.', 'error');
+                                AIPS.Utilities.resetButton($btn);
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain || 'Failed to delete template.', 'error');
+                            AIPS.Utilities.resetButton($btn);
+                        }
+                    });
+                }}
+            ]);
         },
 
         /**
@@ -748,11 +1007,13 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                    affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
@@ -824,11 +1085,13 @@
                     featured_image_source: $('#featured_image_source').val(),
                     featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
                     featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_type: $('#template_post_type').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
                     include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                    affiliate_links_enabled: $('#affiliate_links_enabled').is(':checked') ? 1 : 0,
                     source_group_ids: (function() {
                         var ids = [];
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
@@ -842,6 +1105,12 @@
                         if (response.data && response.data.template_id) {
                             $('#template_id').val(response.data.template_id);
                             AIPS.lastSavedTemplateId = response.data.template_id;
+
+                            // post_type is write-once server-side as of this save;
+                            // lock the field so the UI doesn't imply it's still changeable.
+                            $('#template_post_type').prop('disabled', true);
+                            $('#template_post_type_locked_notice').show();
+                            AIPS.toggleTemplatePostTypeFields();
                         }
 
                         AIPS.Utilities.showToast(aipsTemplatesL10n.draftSaved, 'success');
@@ -920,7 +1189,7 @@
                         // Populate modal
                         $('#aips-test-title').text(result.title || '-');
                         $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-content').text(result.content || '-');
+                        $('#aips-test-result-modal').find('.aips-modal-content-body').text(result.content || '-');
 
                         if (result.image_prompt) {
                             $('#aips-test-image-row').show();
@@ -1000,7 +1269,7 @@
             var templateEngine = AIPS.Templates || null;
             var rowsHtml = '';
             var tableHtml = '';
-            var $modalTitle = $('#aips-post-success-modal-title');
+            var $modalTitle = $('#aips-post-success-modal').find('.aips-modal-title');
             var $summary = $('#aips-success-message');
             var $notice = $('#aips-success-note');
             var $results = $('#aips-post-results-container');
@@ -1131,10 +1400,13 @@
          * @param {Event} e - Click event from an `.aips-add-voice-btn` element.
          */
         openVoiceModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindVoiceEvents();
             $('#aips-voice-form')[0].reset();
             $('#voice_id').val('');
-            $('#aips-voice-modal-title').text(aipsVoicesL10n.addNewVoice);
+            $('#aips-voice-modal').find('.aips-modal-title').text(aipsVoicesL10n.addNewVoice);
             $('#aips-voice-modal').show();
         },
 
@@ -1166,7 +1438,7 @@
                         $('#voice_content_instructions').val(v.content_instructions);
                         $('#voice_excerpt_instructions').val(v.excerpt_instructions || '');
                         $('#voice_is_active').prop('checked', v.is_active == 1);
-                        $('#aips-voice-modal-title').text(aipsVoicesL10n.editVoice);
+                        $('#aips-voice-modal').find('.aips-modal-title').text(aipsVoicesL10n.editVoice);
                         $('#aips-voice-modal').show();
                     }
                 }
@@ -1260,22 +1532,348 @@
         },
 
         /**
-         * Open the schedule wizard in "Add New" mode.
+         * Reset the legacy modal's "Repeat on" day picker: hide it, clear the
+         * hidden day value, and un-highlight all day buttons.
+         */
+        resetScheduleDayPicker: function() {
+            $('#schedule_repeat_day').val('');
+            $('.aips-schedule-day-btn').removeClass('aips-btn-primary').addClass('aips-btn-secondary');
+            $('#aips-schedule-repeat-on-row').hide();
+        },
+
+        /**
+         * Apply a `frequency` value (as stored on a schedule row) to the legacy
+         * modal's Frequency select and "Repeat on" day picker.
          *
-         * Resets the wizard form, initialises the wizard to step 1, and shows
-         * the schedule wizard modal. Falls back to the legacy modal if the
-         * wizard modal is not present on the page.
+         * The Frequency dropdown no longer lists the 7 day-specific values
+         * (`every_monday` ... `every_sunday`) directly, so a day-specific
+         * frequency is presented as "Weekly" with the matching day pre-selected.
+         *
+         * @param {string} frequency
+         */
+        /**
+         * Reset the Schedule "Repeat on" day picker to Monday.
+         */
+        resetScheduleDayPicker: function() {
+            $('.aips-schedule-day-btn').removeClass('active');
+            $('#schedule_repeat_day').val('monday');
+            $('.aips-schedule-day-btn[data-day="monday"]').addClass('active');
+        },
+
+        /**
+         * Apply a `frequency` value to the Schedule Builder form.
+         *
+         * @param {string} frequency
+         * @param {string|number|null} nextRun
+         */
+        applyScheduleFrequencyToForm: function(frequency, nextRun) {
+            AIPS.initScheduleBuilder(frequency, nextRun);
+        },
+
+        /**
+         * Initialize the Schedule & Cadence Builder with data.
+         *
+         * @param {string} frequency
+         * @param {string|number|null} nextRun
+         */
+        initScheduleBuilder: function(frequency, nextRun) {
+            frequency = frequency || 'weekly';
+            var cadence = 'weekly';
+            var repeatDay = 'monday';
+            var timeValue = '09:00';
+            var targetDate = '';
+
+            // Detect Day-specific weekly: every_monday ... every_sunday
+            var dayMatch = /^every_(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/.exec(frequency);
+            if (dayMatch) {
+                cadence = 'weekly';
+                repeatDay = dayMatch[1];
+            } else if (frequency === 'weekly') {
+                cadence = 'weekly';
+                repeatDay = 'monday';
+            } else if (frequency === 'daily') {
+                cadence = 'daily';
+            } else if (frequency === 'hourly' || frequency === 'every_2_hours' || frequency === 'every_4_hours' || frequency === 'every_6_hours' || frequency === 'every_12_hours') {
+                cadence = 'hourly';
+            } else if (frequency === 'monthly') {
+                cadence = 'monthly';
+            } else if (frequency === 'once') {
+                cadence = 'once';
+            } else {
+                cadence = 'advanced';
+            }
+
+            // Parse time from nextRun if available
+            if (nextRun) {
+                var offsetSeconds = (typeof aipsScheduleL10n !== 'undefined' && aipsScheduleL10n.gmtOffsetSeconds) ? aipsScheduleL10n.gmtOffsetSeconds : 0;
+                var dt = AIPS.DateTime ? AIPS.DateTime.parse(nextRun) : new Date(nextRun);
+                if (dt) {
+                    var localTs = dt.getTime() + (offsetSeconds * 1000);
+                    var siteDate = new Date(localTs);
+                    var pad = function(n) { return n < 10 ? '0' + n : n; };
+                    timeValue = pad(siteDate.getUTCHours()) + ':' + pad(siteDate.getUTCMinutes());
+                    targetDate = siteDate.getUTCFullYear() + '-' + pad(siteDate.getUTCMonth() + 1) + '-' + pad(siteDate.getUTCDate());
+
+                    if (!dayMatch && cadence === 'weekly') {
+                        var dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        repeatDay = dayNames[siteDate.getUTCDay()];
+                    }
+                }
+            } else {
+                var now = new Date();
+                var dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                repeatDay = dayNames[now.getDay()];
+                var pad = function(n) { return n < 10 ? '0' + n : n; };
+                targetDate = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+            }
+
+            // Set active cadence tab
+            $('.aips-cadence-tab').removeClass('active').attr('aria-selected', 'false');
+            $('.aips-cadence-tab[data-cadence="' + cadence + '"]').addClass('active').attr('aria-selected', 'true');
+
+            // Show matching pane
+            $('.aips-cadence-pane').hide();
+            $('#aips-pane-' + cadence).show();
+
+            // Set repeat day
+            $('#schedule_repeat_day').val(repeatDay);
+            $('.aips-schedule-day-btn').removeClass('active');
+            $('.aips-schedule-day-btn[data-day="' + repeatDay + '"]').addClass('active');
+
+            // Set hourly step button
+            if (cadence === 'hourly') {
+                $('.aips-hourly-step-btn').removeClass('active');
+                $('.aips-hourly-step-btn[data-freq="' + frequency + '"]').addClass('active');
+            }
+
+            // Set time input & preset chips
+            $('#schedule_builder_time').val(timeValue);
+            $('.aips-time-chip').removeClass('active');
+            $('.aips-time-chip[data-time="' + timeValue + '"]').addClass('active');
+
+            // Set date input for one-time
+            if (targetDate) {
+                $('#schedule_builder_date').val(targetDate);
+            }
+
+            $('#aips-builder-time-row').toggle(cadence !== 'hourly');
+
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleCadenceTabClick: function(e) {
+            e.preventDefault();
+            var $tab = $(this);
+            var cadence = $tab.data('cadence');
+
+            $('.aips-cadence-tab').removeClass('active').attr('aria-selected', 'false');
+            $tab.addClass('active').attr('aria-selected', 'true');
+
+            $('.aips-cadence-pane').hide();
+            $('#aips-pane-' + cadence).show();
+
+            $('#aips-builder-time-row').toggle(cadence !== 'hourly');
+
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleDayPick: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $('.aips-schedule-day-btn').removeClass('active');
+            $btn.addClass('active');
+            $('#schedule_repeat_day').val($btn.data('day'));
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleHourlyStepPick: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $('.aips-hourly-step-btn').removeClass('active');
+            $btn.addClass('active');
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleMonthlyDayPick: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $('.aips-monthly-day-btn').removeClass('active');
+            $btn.addClass('active');
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleTimeChipPick: function(e) {
+            e.preventDefault();
+            var $chip = $(this);
+            var timeVal = $chip.data('time');
+            $('.aips-time-chip').removeClass('active');
+            $chip.addClass('active');
+            $('#schedule_builder_time').val(timeVal);
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        onScheduleBuilderInputChange: function(e) {
+            var timeVal = $('#schedule_builder_time').val();
+            $('.aips-time-chip').removeClass('active');
+            $('.aips-time-chip[data-time="' + timeVal + '"]').addClass('active');
+            AIPS.updateScheduleBuilderSummary();
+        },
+
+        /**
+         * Update the Live Summary Card and sync backend form fields.
+         */
+        updateScheduleBuilderSummary: function() {
+            var cadence = $('.aips-cadence-tab.active').data('cadence') || 'weekly';
+            var timeStr = $('#schedule_builder_time').val() || '09:00';
+            var offsetSeconds = (typeof aipsScheduleL10n !== 'undefined' && aipsScheduleL10n.gmtOffsetSeconds) ? aipsScheduleL10n.gmtOffsetSeconds : 0;
+
+            // Format human time: 09:00 -> 9:00 AM
+            var timeParts = timeStr.split(':');
+            var hours = parseInt(timeParts[0], 10) || 0;
+            var minutes = parseInt(timeParts[1], 10) || 0;
+            var ampm = hours >= 12 ? 'PM' : 'AM';
+            var dispHours = hours % 12 || 12;
+            var dispMinutes = minutes < 10 ? '0' + minutes : minutes;
+            var formattedTime = dispHours + ':' + dispMinutes + ' ' + ampm;
+
+            var pad = function(n) { return n < 10 ? '0' + n : n; };
+            var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            var dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+            // Current site time representation
+            var now = new Date();
+            var nowUtcTs = now.getTime() + (now.getTimezoneOffset() * 60000);
+            var siteNow = new Date(nowUtcTs + (offsetSeconds * 1000));
+
+            var heading = '';
+            var subtext = '';
+            var finalFrequency = 'weekly';
+            var startTimeFormatted = '';
+
+            if (cadence === 'weekly') {
+                var dayKey = $('#schedule_repeat_day').val() || 'monday';
+                var dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                var targetDayIdx = dayKeys.indexOf(dayKey);
+                if (targetDayIdx === -1) { targetDayIdx = 1; }
+
+                var curDayIdx = siteNow.getDay();
+                var daysAhead = (targetDayIdx - curDayIdx + 7) % 7;
+
+                // If same day, check if time has already passed today
+                var curMinutes = siteNow.getHours() * 60 + siteNow.getMinutes();
+                var targetMinutes = hours * 60 + minutes;
+                if (daysAhead === 0 && curMinutes >= targetMinutes) {
+                    daysAhead = 7;
+                }
+
+                var nextExecDate = new Date(siteNow.getTime() + (daysAhead * 86400000));
+                var dateStr = monthNames[nextExecDate.getMonth()] + ' ' + nextExecDate.getDate() + ', ' + nextExecDate.getFullYear();
+                var dayName = dayNamesFull[targetDayIdx];
+
+                heading = 'Every ' + dayName + ' at ' + formattedTime;
+                var countdown = daysAhead === 0 ? 'today' : (daysAhead === 1 ? 'tomorrow' : 'in ' + daysAhead + ' days');
+                subtext = 'First run: ' + dayName + ', ' + dateStr + ' at ' + formattedTime + ' (' + countdown + ')';
+
+                finalFrequency = 'every_' + dayKey;
+                startTimeFormatted = nextExecDate.getFullYear() + '-' + pad(nextExecDate.getMonth() + 1) + '-' + pad(nextExecDate.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'daily') {
+                var curMinutes = siteNow.getHours() * 60 + siteNow.getMinutes();
+                var targetMinutes = hours * 60 + minutes;
+                var isTomorrow = curMinutes >= targetMinutes;
+                var nextExecDate = new Date(siteNow.getTime() + (isTomorrow ? 86400000 : 0));
+                var dateStr = monthNames[nextExecDate.getMonth()] + ' ' + nextExecDate.getDate() + ', ' + nextExecDate.getFullYear();
+
+                heading = 'Every Day at ' + formattedTime;
+                var countdown = isTomorrow ? 'tomorrow' : 'today';
+                subtext = 'First run: ' + dateStr + ' at ' + formattedTime + ' (' + countdown + ')';
+
+                finalFrequency = 'daily';
+                startTimeFormatted = nextExecDate.getFullYear() + '-' + pad(nextExecDate.getMonth() + 1) + '-' + pad(nextExecDate.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'hourly') {
+                var hourlyFreq = $('.aips-hourly-step-btn.active').data('freq') || 'hourly';
+                finalFrequency = hourlyFreq;
+                var stepLabels = {
+                    'hourly': 'Every 1 Hour',
+                    'every_2_hours': 'Every 2 Hours',
+                    'every_4_hours': 'Every 4 Hours',
+                    'every_6_hours': 'Every 6 Hours',
+                    'every_12_hours': 'Every 12 Hours'
+                };
+                heading = stepLabels[hourlyFreq] || 'Every Hour';
+                subtext = 'Starts immediately on next recurring cron interval.';
+                startTimeFormatted = '';
+
+            } else if (cadence === 'monthly') {
+                var monthDayType = $('.aips-monthly-day-btn.active').data('month-day') || '1';
+                var targetDayNum = 1;
+                var typeLabel = '1st of the month';
+
+                if (monthDayType === '15') {
+                    targetDayNum = 15;
+                    typeLabel = '15th of the month';
+                } else if (monthDayType === 'last') {
+                    targetDayNum = new Date(siteNow.getFullYear(), siteNow.getMonth() + 1, 0).getDate();
+                    typeLabel = 'last day of the month';
+                }
+
+                heading = 'Monthly on the ' + typeLabel + ' at ' + formattedTime;
+                var nextMonth = siteNow.getMonth();
+                if (siteNow.getDate() > targetDayNum || (siteNow.getDate() === targetDayNum && (siteNow.getHours() * 60 + siteNow.getMinutes()) >= (hours * 60 + minutes))) {
+                    nextMonth++;
+                }
+                var nextExecDate = new Date(siteNow.getFullYear(), nextMonth, targetDayNum);
+                var dateStr = monthNames[nextExecDate.getMonth()] + ' ' + nextExecDate.getDate() + ', ' + nextExecDate.getFullYear();
+                subtext = 'First run: ' + dateStr + ' at ' + formattedTime;
+
+                finalFrequency = 'monthly';
+                startTimeFormatted = nextExecDate.getFullYear() + '-' + pad(nextExecDate.getMonth() + 1) + '-' + pad(nextExecDate.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'once') {
+                var inputDate = $('#schedule_builder_date').val();
+                if (!inputDate) {
+                    var tomorrow = new Date(siteNow.getTime() + 86400000);
+                    inputDate = tomorrow.getFullYear() + '-' + pad(tomorrow.getMonth() + 1) + '-' + pad(tomorrow.getDate());
+                    $('#schedule_builder_date').val(inputDate);
+                }
+                heading = 'One-Time Execution';
+                subtext = 'Runs once on ' + inputDate + ' at ' + formattedTime + ' and completes.';
+                finalFrequency = 'once';
+                startTimeFormatted = inputDate + 'T' + pad(hours) + ':' + pad(minutes);
+
+            } else if (cadence === 'advanced') {
+                var intervalVal = parseInt($('#schedule_builder_interval_val').val(), 10) || 1;
+                var intervalUnit = $('#schedule_builder_interval_unit').val() || 'days';
+                heading = 'Custom: Every ' + intervalVal + ' ' + intervalUnit + ' at ' + formattedTime;
+                subtext = 'Runs repeatedly every ' + intervalVal + ' ' + intervalUnit + '.';
+                finalFrequency = (intervalUnit === 'weeks' && intervalVal === 1) ? 'weekly' : (intervalUnit === 'days' && intervalVal === 1 ? 'daily' : 'daily');
+                startTimeFormatted = siteNow.getFullYear() + '-' + pad(siteNow.getMonth() + 1) + '-' + pad(siteNow.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+            }
+
+            $('#aips-summary-card-title').text(heading);
+            $('#aips-summary-card-subtitle').text(subtext);
+
+            $('#schedule_frequency').val(finalFrequency);
+            $('#schedule_start_time').val(startTimeFormatted);
+        },
+
+        /**
+         * Open the schedule modal in "Add New" mode.
          *
          * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
          */
         openScheduleModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindScheduleEvents();
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
-                // Fallback to legacy modal if wizard not present
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
-                $('#aips-schedule-modal-title').text('Add New Schedule');
+                AIPS.initScheduleBuilder('weekly', null);
+                $('#aips-schedule-modal').find('.aips-modal-title').text(aipsScheduleL10n.addNewSchedule || 'Add New Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -1287,8 +1885,7 @@
         },
 
         /**
-         * Opens the schedule wizard pre-filled with the existing schedule's data
-         * so the user can modify it in-place without deleting and recreating.
+         * Opens the schedule modal pre-filled with the existing schedule's data.
          *
          * @param {Event} e - Click event from the edit button.
          */
@@ -1308,25 +1905,16 @@
 
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
-                // Fallback to legacy modal
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val(scheduleId);
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
-                $('#schedule_frequency').val(frequency);
+                AIPS.initScheduleBuilder(frequency, nextRun);
                 $('#schedule_topic').val(topic || '');
                 $('#article_structure_id').val(articleStructureId || '');
                 $('#rotation_pattern').val(rotationPattern || '');
                 $('#schedule_is_active').prop('checked', isActive == 1);
-                if (nextRun) {
-                    var dt0 = AIPS.DateTime.parse(nextRun);
-                    if (dt0) {
-                        var pad0 = function(n) { return n < 10 ? '0' + n : n; };
-                        $('#schedule_start_time').val(dt0.getFullYear() + '-' + pad0(dt0.getMonth() + 1) + '-' + pad0(dt0.getDate()) +
-                            'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
-                    }
-                }
-                $('#aips-schedule-modal-title').text('Edit Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text(aipsScheduleL10n.editSchedule || 'Edit Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
@@ -1357,18 +1945,13 @@
         },
 
         /**
-         * Copy an existing schedule's settings into the wizard in "Add New" mode.
-         *
-         * Reads all schedule data from the row's `data-*` attributes, populates
-         * the wizard form fields (leaving `schedule_id` and `start_time` blank
-         * so a new schedule is created), and shows the wizard titled "Clone Schedule".
+         * Copy an existing schedule's settings into the modal in "Add New" mode.
          *
          * @param {Event} e - Click event from an `.aips-clone-schedule` element.
          */
         cloneSchedule: function(e) {
             e.preventDefault();
 
-            // Get data from the row
             var $row = $(this).closest('tr');
             var templateId = $row.data('template-id');
             var scheduleTitle = $row.data('title');
@@ -1379,26 +1962,21 @@
 
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
-                // Fallback to legacy modal
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
                 $('#schedule_title').val(scheduleTitle || '');
                 $('#schedule_template').val(templateId);
-                $('#schedule_frequency').val(frequency);
+                AIPS.initScheduleBuilder(frequency, null);
                 $('#schedule_topic').val(topic);
                 $('#article_structure_id').val(articleStructureId);
                 $('#rotation_pattern').val(rotationPattern);
-                $('#schedule_start_time').val('');
-                $('#aips-schedule-modal-title').text('Clone Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text(aipsScheduleL10n.cloneSchedule || 'Clone Schedule');
                 $('#aips-schedule-modal').show();
                 return;
             }
 
-            // Reset wizard form and clear ID (new schedule)
             $('#aips-schedule-wizard-form')[0].reset();
             $('#sw_schedule_id').val('');
-
-            // Populate wizard form
             $('#sw_schedule_title').val(scheduleTitle || '');
             $('#sw_schedule_template').val(templateId);
             $('#sw_schedule_frequency').val(frequency);
@@ -1415,9 +1993,6 @@
         /**
          * Validate and save the schedule form via AJAX.
          *
-         * Runs HTML5 form validation before submitting. Sends the
-         * `aips_save_schedule` AJAX action and reloads the page on success.
-         *
          * @param {Event} e - Click event from an `.aips-save-schedule` element.
          */
         saveSchedule: function(e) {
@@ -1428,11 +2003,13 @@
 
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
-
                 return;
             }
 
             AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
+
+            var frequency = $('#schedule_frequency').val() || 'weekly';
+            var startTime = $('#schedule_start_time').val() || '';
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1443,8 +2020,8 @@
                     schedule_id: $('#schedule_id').val(),
                     schedule_title: $('#schedule_title').val(),
                     template_id: $('#schedule_template').val(),
-                    frequency: $('#schedule_frequency').val(),
-                    start_time: $('#schedule_start_time').val(),
+                    frequency: frequency,
+                    start_time: startTime,
                     topic: $('#schedule_topic').val(),
                     article_structure_id: $('#article_structure_id').val(),
                     rotation_pattern: $('#rotation_pattern').val(),
@@ -2155,6 +2732,134 @@
         },
 
         /**
+         * Switch between schedule tabs (All/Content/Author).
+         *
+         * @param {Event} e - Click event on .aips-tab
+         */
+        switchScheduleTab: function(e) {
+            e.preventDefault();
+
+            var $tab = $(this);
+            var tabCategory = $tab.data('tab');
+
+            // Update active tab
+            $('.aips-tab').removeClass('aips-tab-active');
+            $tab.addClass('aips-tab-active');
+
+            // Filter rows by tab category
+            if (tabCategory === 'all') {
+                $('.aips-unified-row').show();
+            } else {
+                $('.aips-unified-row').each(function() {
+                    var rowCategory = $(this).data('tab-category');
+                    if (rowCategory === tabCategory) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            // Update bulk action state
+            AIPS.updateUnifiedBulkActions();
+        },
+
+        /**
+         * Reset circuit breaker for a specific schedule.
+         *
+         * @param {Event} e - Click event on .aips-reset-circuit
+         */
+        resetScheduleCircuit: function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var type = $btn.data('type');
+
+            if (!confirm('Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+
+            $.post(ajaxurl, {
+                action: 'aips_reset_schedule_circuit',
+                nonce: aipsData.nonce,
+                id: id,
+                type: type
+            })
+            .done(function(response) {
+                if (response.success) {
+                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+
+                    // Update the row's circuit state
+                    var $row = $btn.closest('.aips-unified-row');
+                    $row.attr('data-circuit-state', 'closed');
+
+                    // Update health indicator badge
+                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
+                        '<div style="display:flex;align-items:center;gap:8px;">' +
+                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
+                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
+                    );
+
+                    // Remove the reset button
+                    $btn.remove();
+                } else {
+                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                }
+            })
+            .fail(function() {
+                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+            });
+        },
+
+        /**
+         * Resume an incomplete batch for a specific schedule.
+         *
+         * @param {Event} e - Click event on .aips-resume-batch
+         */
+        resumeScheduleBatch: function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var type = $btn.data('type');
+
+            if (!confirm('Resume the incomplete batch for this schedule? This will continue generation from where it left off.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+
+            $.post(ajaxurl, {
+                action: 'aips_resume_schedule_batch',
+                nonce: aipsData.nonce,
+                id: id,
+                type: type
+            })
+            .done(function(response) {
+                if (response.success) {
+                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
+
+                    // Optionally reload the page or update the UI
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                }
+            })
+            .fail(function() {
+                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+            });
+        },
+
+        /**
          * Sync all unified-schedule checkboxes with the "select all" header.
          */
         toggleAllUnified: function() {
@@ -2578,6 +3283,23 @@
 
             if (!id || !type) { return; }
 
+            AIPS.Utilities.confirm(
+                aipsScheduleL10n.runNowChoice || 'How should this manual run affect the schedule?',
+                aipsScheduleL10n.runNow || 'Run Now',
+                [
+                    { label: aipsScheduleL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    { label: aipsScheduleL10n.runNowIndependent || 'Run now, independently from schedule', className: 'aips-btn aips-btn-secondary', action: function() {
+                        AIPS.executeUnifiedRunNow($btn, id, type, false);
+                    }},
+                    { label: aipsScheduleL10n.runNowAndAdvance || 'Run next scheduled run now and advance', className: 'aips-btn aips-btn-primary', action: function() {
+                        AIPS.executeUnifiedRunNow($btn, id, type, true);
+                    }}
+                ]
+            );
+        },
+
+        /** Execute a unified schedule using the selected schedule-advance mode. */
+        executeUnifiedRunNow: function($btn, id, type, advanceSchedule) {
             AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
 
             $.ajax({
@@ -2587,7 +3309,8 @@
                     action: 'aips_unified_run_now',
                     nonce: aipsAjax.nonce,
                     id: id,
-                    type: type
+                    type: type,
+                    advance_schedule: advanceSchedule ? 1 : 0
                 },
                 success: function(response) {
                     if (response.success) {
@@ -2679,6 +3402,7 @@
                         'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
                         'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
+                        'author_post_generation':    { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                         'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
                     };
                     var defaultIcon = { icon: 'dashicons-info', cls: '' };
@@ -2758,6 +3482,27 @@
             } else {
                 $('.aips-image-source-ai').show();
             }
+        },
+
+        /**
+         * Show/hide the Categories and Tags rows based on whether the
+         * currently-selected template post type supports those taxonomies.
+         *
+         * A custom post type isn't guaranteed to support the built-in
+         * 'category'/'post_tag' taxonomies, and assigning them anyway would
+         * silently create orphaned term relationships. Reads the support
+         * flags from `aipsTemplatesL10n.postTypeTaxonomySupport`, localized
+         * per post type alongside the rest of the Templates page strings.
+         *
+         * Bound to the `change` event on `#template_post_type`, and also
+         * called directly after setting its value in openTemplateModal()/editTemplate().
+         */
+        toggleTemplatePostTypeFields: function() {
+            var postType = $('#template_post_type').val();
+            var support = (aipsTemplatesL10n.postTypeTaxonomySupport || {})[postType] || {};
+
+            $('#post_category_row').toggle(!!support.supports_category);
+            $('#post_tags_row').toggle(!!support.supports_post_tag);
         },
 
         /**
@@ -3184,10 +3929,13 @@
          * @param {Event} e - Click event from an `.aips-add-structure-btn` element.
          */
         openAddStructureModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindStructureEvents();
             $('#aips-structure-form')[0].reset();
             $('#structure_id').val('');
-            $('#aips-structure-modal-title').text('Add New Article Structure');
+            $('#aips-structure-modal').find('.aips-modal-title').text('Add New Article Structure');
             $('#aips-structure-modal').show();
         },
 
@@ -3289,7 +4037,7 @@
                     var sections = structureData.sections || [];
                     $('#structure_sections').val(sections);
                     $('#structure_is_active').prop('checked', s.is_active == 1);
-                    $('#aips-structure-modal-title').text('Edit Article Structure');
+                    $('#aips-structure-modal').find('.aips-modal-title').text('Edit Article Structure');
                     $('#aips-structure-modal').show();
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadStructureFailed, 'error');
@@ -3337,10 +4085,13 @@
          * @param {Event} e - Click event from an `.aips-add-section-btn` element.
          */
         openAddSectionModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindSectionEvents();
             $('#aips-section-form')[0].reset();
             $('#section_id').val('');
-            $('#aips-section-modal-title').text('Add New Prompt Section');
+            $('#aips-section-modal').find('.aips-modal-title').text('Add New Prompt Section');
             $('#aips-section-modal').show();
         },
 
@@ -3443,7 +4194,7 @@
                     $('#section_description').val(s.description);
                     $('#section_content').val(s.content);
                     $('#section_is_active').prop('checked', s.is_active == 1);
-                    $('#aips-section-modal-title').text('Edit Prompt Section');
+                    $('#aips-section-modal').find('.aips-modal-title').text('Edit Prompt Section');
                     $('#aips-section-modal').show();
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.loadSectionFailed, 'error');
@@ -3667,7 +4418,7 @@
                     $('#article_structure_id').val(preselectStructureIdNum);
                 }
 
-                $('#aips-schedule-modal-title').text('Add New Schedule');
+                $('#aips-schedule-modal').find('.aips-modal-title').text('Add New Schedule');
                 $legacyModal.show();
             }
 
@@ -3998,7 +4749,9 @@
          */
         initAIVariablesScanner: function() {
             // Initial scan when modal opens or form loads
-            AIPS.scanAllAIVariables();
+            if ($('.aips-ai-var-input').length) {
+                AIPS.scanAllAIVariables();
+            }
         },
 
         /**

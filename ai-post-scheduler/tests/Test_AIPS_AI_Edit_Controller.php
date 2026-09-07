@@ -26,6 +26,10 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	public function tearDown(): void {
 		parent::tearDown();
 	}
+
+	private function sync_request_from_post() {
+		$_REQUEST = $_POST;
+	}
 	
 	/**
 	 * Test that the controller can be instantiated
@@ -75,40 +79,54 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 	 * Test get_post_components requires valid post ID
 	 */
 	public function test_get_post_components_requires_valid_post() {
-		// Create a test post and history
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Test Post',
 			'post_content' => 'Test content',
 			'post_excerpt' => 'Test excerpt',
 		));
-		
-		// Create template
-		$template_id = $this->template_repository->create(array(
-			'name' => 'Test Template',
-			'system_prompt' => 'Test prompt',
-			'user_prompt' => 'Test user prompt',
-			'is_active' => 1,
-		));
-		
-		// Create history record
-		$history_id = $this->history_repository->create(array(
-			'template_id' => $template_id,
-			'post_id' => $post_id,
-			'status' => 'completed',
-		));
+
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Injected Template',
+			'prompt_template' => 'Test prompt template',
+			'title_prompt' => 'Injected title prompt',
+			'post_status' => 'draft',
+			'post_type' => 'post',
+			'post_category' => 0,
+			'post_author' => get_current_user_id(),
+		);
+
+		$mock_service = $this->getMockBuilder( 'AIPS_Component_Regeneration_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_generation_context' ) )
+			->getMock();
+
+		$mock_service->method( 'get_generation_context' )
+			->willReturn(
+				array(
+					'history_id' => 101,
+					'post_id' => $post_id,
+					'context_type' => 'template',
+					'context_name' => 'Injected Template',
+					'generation_context' => new AIPS_Template_Context( $template, null, 'Injected Topic' ),
+				)
+			);
+
+		$controller = new AIPS_AI_Edit_Controller( $mock_service );
 		
 		// Set up request with valid nonce
 		$_POST = array(
 			'action' => 'aips_get_post_components',
 			'post_id' => $post_id,
-			'history_id' => $history_id,
+			'history_id' => 101,
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		// This should succeed (just checking it doesn't throw an error)
 		ob_start();
 		try {
-			$this->controller->ajax_get_post_components();
+			$controller->ajax_get_post_components();
 		} catch (WPAjaxDieContinueException $e) {
 			// wp_send_json_success throws this
 			$output = ob_get_clean();
@@ -147,6 +165,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'component' => 'invalid_component',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -176,6 +195,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'components' => array('title' => 'New Title'),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -199,17 +219,27 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'post_excerpt' => 'Old excerpt',
 			'post_content' => 'Old content',
 		));
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'     => false,
+			'post_excerpt'   => false,
+			'featured_image' => true,
+			'post_content'   => false,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
 		
 		$_POST = array(
 			'action' => 'aips_save_post_components',
 			'post_id' => $post_id,
 			'components' => array(
-				'title' => 'New Title',
+				'title' => 'AI Generated Post: New Title',
 				'excerpt' => 'New excerpt',
 				'content' => 'New content',
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -224,9 +254,18 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		
 		// Verify post was updated
 		$updated_post = get_post($post_id);
-		$this->assertEquals('New Title', $updated_post->post_title);
+		$this->assertEquals('AI Generated Post: New Title', $updated_post->post_title);
 		$this->assertEquals('New excerpt', $updated_post->post_excerpt);
 		$this->assertEquals('New content', $updated_post->post_content);
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_title']);
+		$this->assertTrue($statuses['post_excerpt']);
+		$this->assertTrue($statuses['post_content']);
+		$this->assertTrue($statuses['featured_image']);
 	}
 	
 	/**
@@ -245,6 +284,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 		
 		ob_start();
 		try {
@@ -282,8 +322,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Snapshot',
 				'output' => array('value' => 'Previous Title'),
 				'context' => array(
@@ -300,6 +340,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'component_type' => 'title',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 
 		ob_start();
 		try {
@@ -323,29 +364,30 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'post_title' => 'Revision Restore Target',
 		));
 
-		$attachment_id = $this->factory->post->create(array(
-			'post_type' => 'attachment',
-			'post_mime_type' => 'image/jpeg',
-			'post_title' => 'Image Attachment',
-			'post_status' => 'inherit',
-		));
-
 		$history_id = $this->history_repository->create(array(
 			'post_id' => $post_id,
 			'status' => 'completed',
 		));
 
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'     => false,
+			'post_excerpt'   => true,
+			'featured_image' => true,
+			'post_content'   => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
+
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
 			'ai_response',
 			array(
-				'message' => 'Image Snapshot',
+				'message' => 'Title Snapshot',
 				'output' => array(
-					'attachment_id' => $attachment_id,
-					'url' => 'https://example.test/image.jpg',
+					'value' => 'Restored Title',
 				),
 				'context' => array(
-					'component' => 'featured_image',
+					'component' => 'title',
 					'post_id' => $post_id,
 				),
 			),
@@ -355,10 +397,11 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$_POST = array(
 			'action' => 'aips_restore_component_revision',
 			'post_id' => $post_id,
-			'component_type' => 'featured_image',
+			'component_type' => 'title',
 			'revision_id' => $revision_id,
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 
 		ob_start();
 		try {
@@ -370,9 +413,85 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$response = json_decode($output, true);
 
 		$this->assertTrue($response['success']);
-		$this->assertEquals('featured_image', $response['data']['component']);
-		$this->assertIsArray($response['data']['value']);
-		$this->assertEquals($attachment_id, $response['data']['value']['attachment_id']);
+		$this->assertEquals('title', $response['data']['component']);
+		$this->assertEquals('Restored Title', $response['data']['value']);
+		$this->assertEquals('Restored Title', get_post($post_id)->post_title);
+		$this->assertSame('false', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, true));
+
+		$statuses = json_decode((string) get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true), true);
+		$this->assertIsArray($statuses);
+		$this->assertTrue($statuses['post_title']);
+	}
+
+	/**
+	 * Invalid featured-image revision payloads should be rejected instead of
+	 * silently falling back to a no-op restore.
+	 */
+	public function test_restore_component_revision_rejects_invalid_featured_image_payload() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Featured Image Restore Target',
+		));
+
+		$current_attachment_id = $this->factory->post->create(array(
+			'post_type'      => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_status'    => 'inherit',
+		));
+		update_post_meta($post_id, '_thumbnail_id', $current_attachment_id);
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			array(
+				'log_subtype' => 'ai_response',
+				'message' => 'Image Snapshot',
+				'output' => array(
+					'url' => 'https://example.com/broken.jpg',
+				),
+				'context' => array(
+					'component' => 'featured_image',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'featured_image' => false,
+			'post_content'   => true,
+		)));
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, 'true');
+
+		$_POST = array(
+			'action' => 'aips_restore_component_revision',
+			'post_id' => $post_id,
+			'component' => 'featured_image',
+			'revision_id' => $revision_id,
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+		$this->sync_request_from_post();
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Invalid featured image revision data', $response['data']['message']);
+		$this->assertSame($current_attachment_id, get_post_thumbnail_id($post_id));
+		$this->assertSame('true', get_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, true));
 	}
 
 	/**
@@ -390,8 +509,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 
 		$revision_id = $this->history_repository->add_log_entry(
 			$history_id,
-			'ai_response',
 			array(
+				'log_subtype' => 'ai_response',
 				'message' => 'Original AI Title',
 				'output' => array('value' => 'Original AI Title'),
 				'context' => array(
@@ -412,6 +531,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'current_reason' => 'pre_restore_manual',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$this->sync_request_from_post();
 
 		ob_start();
 		try {
@@ -424,9 +544,16 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$revisions = $this->history_repository->get_component_revisions($post_id, 'title', 10);
 
 		$this->assertNotEmpty($revisions);
-		$this->assertEquals('Manual Draft Title', $revisions[0]['value']);
-		$this->assertEquals('manual_edit', $revisions[0]['source']);
-		$this->assertEquals('pre_restore_manual', $revisions[0]['reason']);
+		$manual_snapshot = null;
+		foreach ( $revisions as $revision ) {
+			if ( 'manual_edit' === $revision['source'] && 'pre_restore_manual' === $revision['reason'] ) {
+				$manual_snapshot = $revision;
+				break;
+			}
+		}
+
+		$this->assertNotNull( $manual_snapshot );
+		$this->assertEquals( 'Manual Draft Title', $manual_snapshot['value'] );
 	}
 
 	// -----------------------------------------------------------------------

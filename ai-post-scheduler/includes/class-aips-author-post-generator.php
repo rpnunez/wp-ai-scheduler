@@ -481,6 +481,9 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'author_id' => $author->id
 				))
 			);
+
+			// Always record author's last run timestamp on successful generation.
+			$this->authors_repository->update_post_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
 			
 			// Get post status for activity log
 			$post = get_post($post_id);
@@ -586,8 +589,10 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		// Calculate next run time based on frequency, preserving original phase
-		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $author->post_generation_next_run);
+		$base_run = !empty($author->post_generation_next_run) ? (int) $author->post_generation_next_run : AIPS_DateTime::now()->timestamp();
+
+		// Advance from the scheduled slot to preserve phase and time-of-day.
+		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $base_run);
 		
 		$this->authors_repository->update_post_generation_schedule($author->id, $next_run);
 		
@@ -628,7 +633,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		// Store elapsed time in post meta for future progress-bar estimation.
 		if (!is_wp_error($result) && $result > 0) {
 			$elapsed = round(microtime(true) - $start_time, 2);
-			update_post_meta($result, '_aips_post_generation_total_time', $elapsed);
+			update_post_meta($result, AIPS_Post_Manager::META_POST_GENERATION_TOTAL_TIME, $elapsed);
 		}
 		
 		return $result;
@@ -647,7 +652,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		// Preserve the original post status before setting it to draft
 		$original_post = get_post($post_id);
 		if ($original_post && isset($original_post->post_status)) {
-			update_post_meta($post_id, '_aips_original_post_status', $original_post->post_status);
+			update_post_meta($post_id, AIPS_Post_Manager::META_ORIGINAL_POST_STATUS, $original_post->post_status);
 		}
 
 		// Set the old post to draft

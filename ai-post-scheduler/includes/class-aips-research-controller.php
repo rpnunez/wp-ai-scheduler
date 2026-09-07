@@ -569,8 +569,8 @@ class AIPS_Research_Controller {
 
                 // Persist a durable post-to-trending-topic link so the Research UI
                 // can show generated-post counts and drill into post lists later.
-                update_post_meta($post_id, '_aips_trending_topic_id', absint($topic_data['id']));
-                update_post_meta($post_id, '_aips_trending_topic_text', sanitize_text_field($topic_data['topic']));
+                update_post_meta($post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID, absint($topic_data['id']));
+                update_post_meta($post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field($topic_data['topic']));
 
                 $generated_topic_ids[] = $topic_data['id'];
 

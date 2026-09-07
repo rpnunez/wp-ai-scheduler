@@ -183,12 +183,12 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 			'id'          => '5',
 			'template_id' => '3',
 			'frequency'   => 'daily',
-			'next_run'    => '2025-01-15 08:00:00',
+			'next_run'    => '1736928000',
 			'is_active'   => '1',
 			'status'      => 'active',
 			'schedule_type'  => 'post_generation',
 			'circuit_state'  => 'closed',
-			'created_at'     => '2025-01-01 00:00:00',
+			'created_at'     => '1735689600',
 		);
 		return (object) array_merge( $defaults, $overrides );
 	}
@@ -252,7 +252,7 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 			'article_structure_id' => '7',
 			'rotation_pattern'     => 'sequential',
 			'topic'                => 'WordPress plugins',
-			'last_run'             => '2025-01-14 08:00:00',
+			'last_run'             => '1736841600',
 			'schedule_history_id'  => '12',
 			'run_state'            => '{"step":2}',
 			'batch_progress'       => '{"done":1}',
@@ -264,7 +264,7 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 		$this->assertSame( 7, $entry->article_structure_id );
 		$this->assertSame( 'sequential', $entry->rotation_pattern );
 		$this->assertSame( 'WordPress plugins', $entry->topic );
-		$this->assertSame( '2025-01-14 08:00:00', $entry->last_run );
+		$this->assertSame( 1736841600, $entry->last_run );
 		$this->assertSame( 12, $entry->schedule_history_id );
 		$this->assertSame( '{"step":2}', $entry->run_state );
 		$this->assertSame( '{"done":1}', $entry->batch_progress );
@@ -280,10 +280,10 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 	 */
 	public function test_is_due_past_next_run() {
 		$entry = AIPS_Schedule_Entry::from_row( $this->make_row( array(
-			'next_run' => '2020-01-01 00:00:00',
+			'next_run' => '1577836800',
 		) ) );
 
-		$this->assertTrue( $entry->is_due( '2025-01-01 00:00:00' ) );
+		$this->assertTrue( $entry->is_due( 1735689600 ) );
 	}
 
 	/**
@@ -291,10 +291,10 @@ class Test_AIPS_Schedule_Entry extends WP_UnitTestCase {
 	 */
 	public function test_is_due_future_next_run() {
 		$entry = AIPS_Schedule_Entry::from_row( $this->make_row( array(
-			'next_run' => '2099-01-01 00:00:00',
+			'next_run' => '4070908800',
 		) ) );
 
-		$this->assertFalse( $entry->is_due( '2025-01-01 00:00:00' ) );
+		$this->assertFalse( $entry->is_due( 1735689600 ) );
 	}
 
 	/**
@@ -410,13 +410,13 @@ class Test_AIPS_Template_Data extends WP_UnitTestCase {
 	}
 
 	/**
-	 * from_row() returns null for missing nullable int fields.
+	 * from_row() returns empty array for missing post_category field.
 	 */
 	public function test_from_row_nullable_int_fields() {
 		$tpl = AIPS_Template_Data::from_row( $this->make_row() );
 
 		$this->assertNull( $tpl->voice_id );
-		$this->assertNull( $tpl->post_category );
+		$this->assertSame( array(), $tpl->post_category );
 		$this->assertNull( $tpl->post_author );
 	}
 
@@ -453,11 +453,31 @@ class Test_AIPS_Template_Data extends WP_UnitTestCase {
 		$this->assertSame( 'technology,abstract', $tpl->featured_image_unsplash_keywords );
 		$this->assertSame( '10,11', $tpl->featured_image_media_ids );
 		$this->assertSame( 'publish', $tpl->post_status );
-		$this->assertSame( 5, $tpl->post_category );
+		$this->assertSame( array( 5 ), $tpl->post_category );
 		$this->assertSame( 'tech,ai', $tpl->post_tags );
 		$this->assertSame( 2, $tpl->post_author );
 		$this->assertTrue( $tpl->include_sources );
 		$this->assertSame( '[1,2]', $tpl->source_group_ids );
+	}
+
+	/**
+	 * parse_post_categories() handles documented input variants.
+	 */
+	public function test_parse_post_categories_handles_documented_variants() {
+		$this->assertSame( array( 1, 3 ), AIPS_Template_Data::parse_post_categories( '[1,3]' ) );
+		$this->assertSame( array( 2, 4 ), AIPS_Template_Data::parse_post_categories( array( '2', 4 ) ) );
+		$this->assertSame( array( 5 ), AIPS_Template_Data::parse_post_categories( '5' ) );
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '' ) );
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '[]' ) );
+	}
+
+	/**
+	 * parse_post_categories() drops zero/negative IDs and malformed JSON.
+	 */
+	public function test_parse_post_categories_filters_invalid_ids_and_json() {
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '[-5,0]' ) );
+		$this->assertSame( array( 7 ), AIPS_Template_Data::parse_post_categories( array( '-1', '0', '7' ) ) );
+		$this->assertSame( array(), AIPS_Template_Data::parse_post_categories( '[1,2' ) );
 	}
 
 	// -----------------------------------------------------------------------
@@ -619,13 +639,14 @@ class Test_AIPS_Template_Entry extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Nullable integer fields return null when missing from source.
+	 * Nullable integer fields return empty array for post_category and null for others when missing from source.
 	 */
 	public function test_nullable_int_fields_default_to_null() {
 		$entry = AIPS_Template_Entry::from_template_and_overrides( 1, $this->make_source(), 1 );
 
-		$this->assertNull( $entry->post_category );
+		$this->assertSame( array(), $entry->post_category );
 		$this->assertNull( $entry->post_author );
+		$this->assertNull( $entry->campaign_id );
 	}
 
 	/**
@@ -643,6 +664,7 @@ class Test_AIPS_Template_Entry extends WP_UnitTestCase {
 			'post_category'                    => '5',
 			'post_tags'                        => 'ai,tech',
 			'post_author'                      => '3',
+			'campaign_id'                      => '12',
 			'include_sources'                  => '1',
 			'source_group_ids'                 => '[1,2]',
 		) );
@@ -657,9 +679,10 @@ class Test_AIPS_Template_Entry extends WP_UnitTestCase {
 		$this->assertSame( 'nature,mountains', $entry->featured_image_unsplash_keywords );
 		$this->assertSame( '10,11', $entry->featured_image_media_ids );
 		$this->assertSame( 'publish', $entry->post_status );
-		$this->assertSame( 5, $entry->post_category );
+		$this->assertSame( array( 5 ), $entry->post_category );
 		$this->assertSame( 'ai,tech', $entry->post_tags );
 		$this->assertSame( 3, $entry->post_author );
+		$this->assertSame( 12, $entry->campaign_id );
 		$this->assertSame( 10, $entry->post_quantity );
 		$this->assertSame( 4, $entry->article_structure_id );
 		$this->assertTrue( $entry->include_sources );

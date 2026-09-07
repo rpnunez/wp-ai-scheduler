@@ -1,0 +1,14 @@
+{
+  "id": "a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc",
+  "type": "controller_container_bypass",
+  "severity": "medium",
+  "path": "ai-post-scheduler/includes/class-aips-schedule-controller.php",
+  "symbol": "AIPS_Schedule_Controller::__construct",
+  "anchor": "constructor-repeated-ternary-resolution",
+  "status": "resolved",
+  "finding_file": ".aips-agent/findings/a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc.json",
+  "first_seen_run_id": "aips-20260518T223500Z",
+  "last_seen_run_id": "aips-20260518T223500Z",
+  "summary": "Container bypass in constructor.",
+  "recommendation": "Use container for dependency resolution."
+}

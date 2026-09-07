@@ -107,7 +107,6 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 			'AIPS_Onboarding_Wizard',
 			'AIPS_Dev_Tools',
 			'AIPS_Seeder_Admin',
-			'AIPS_Data_Management',
 			'AIPS_DB_Manager',
 		);
 

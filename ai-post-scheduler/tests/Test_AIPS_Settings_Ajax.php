@@ -77,7 +77,7 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 		$this->assertCount(1, $ai_service->calls);
 		$this->assertSame('Say "Hello World" in 2 words.', $ai_service->calls[0]['prompt']);
-		$this->assertSame(array('maxTokens' => 20), $ai_service->calls[0]['options']);
+		$this->assertSame(array('max_tokens' => 20), $ai_service->calls[0]['options']);
 
 		$this->assertCount(1, $history_service->created);
 		$this->assertSame('settings_connection_test', $history_service->created[0]['type']);
@@ -110,31 +110,117 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 		$this->assertSame(array('error_code' => 'ai_failed'), $container->failure_data);
 	}
 
-	public function test_ajax_notifications_data_hygiene_records_summary_history() {
-		$history_service = new Test_AIPS_Settings_Ajax_Fake_History_Service();
-		$controller = new AIPS_Settings_AJAX(
-			new Test_AIPS_Settings_Ajax_Fake_AI_Service('unused'),
-			$history_service
-		);
+	public function test_ajax_save_settings_sanitizes_and_updates_registered_options() {
+		$settings = new AIPS_Settings();
+		$settings->register_settings();
 
 		wp_set_current_user($this->admin_user_id);
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_ai_model' => '  GPT-5  ',
+			'aips_enable_retry' => '1',
+			'aips_notification_preferences' => array(
+				'author_topics_generated' => 'invalid-mode',
+			),
+			'aips_topic_similarity_threshold' => '4.5',
+		);
 
-		update_option('aips_review_notifications_enabled', 1);
-
-		$response = $this->capture_ajax(array($controller, 'ajax_notifications_data_hygiene'));
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
 
 		$this->assertTrue($response['success']);
-		$this->assertSame(1, $response['data']['details']['removed_options']);
-		$this->assertSame(0, $response['data']['details']['rollup_scheduled']);
+		$this->assertSame('GPT-5', get_option('aips_ai_model'));
+		$this->assertSame(1, (int) get_option('aips_enable_retry'));
+		$this->assertSame(1.0, (float) get_option('aips_topic_similarity_threshold'));
 
-		$this->assertCount(1, $history_service->created);
-		$this->assertSame('settings_notifications_hygiene', $history_service->created[0]['type']);
+		$stored_preferences = get_option('aips_notification_preferences');
+		$registry = AIPS_Notifications::get_notification_type_registry();
+		$expected_mode = isset($registry['author_topics_generated']['default_mode']) ? $registry['author_topics_generated']['default_mode'] : AIPS_Notifications::MODE_BOTH;
+		$this->assertSame($expected_mode, $stored_preferences['author_topics_generated']);
+	}
 
-		$container = $history_service->created[0]['container'];
-		$this->assertSame(array('activity', 'warning', 'activity'), array_column($container->records, 'type'));
-		$this->assertSame($response['data']['details'], $container->success_data);
+	public function test_ajax_save_settings_accepts_ordered_connector_ids() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_wp_ai_connector_mode'     => 'selected',
+			'aips_wp_ai_connector_ids'      => array('', 'google', array('nested'), 'openai', 'google', 'invalid connector'),
+			'aips_wp_ai_connector_failover' => '1',
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('selected', get_option('aips_wp_ai_connector_mode'));
+		$this->assertSame(array('google', 'openai'), get_option('aips_wp_ai_connector_ids'));
+		$this->assertSame(1, (int) get_option('aips_wp_ai_connector_failover'));
+	}
+
+	public function test_ajax_save_settings_rejects_empty_or_unknown_payloads() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'not_a_real_setting' => 'value',
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('invalid_request', $response['data']['code']);
+	}
+
+	public function test_ajax_save_settings_rejects_invalid_nonce() {
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = 'invalid';
+		$_REQUEST['nonce'] = 'invalid';
+		$_POST['settings'] = array('aips_wp_ai_connector_mode' => 'all');
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('error', $response['data']['code']);
+	}
+
+	public function test_ajax_save_settings_requires_manage_options() {
+		$subscriber_id = $this->factory->user->create(array('role' => 'subscriber'));
+		wp_set_current_user($subscriber_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array('aips_wp_ai_connector_mode' => 'selected');
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertFalse($response['success']);
+		$this->assertSame('permission_denied', $response['data']['code']);
+		$this->assertNotSame('selected', get_option('aips_wp_ai_connector_mode'));
+	}
+
+	public function test_ajax_save_settings_ignores_array_payload_for_scalar_option() {
+		update_option('aips_ai_model', 'existing-model');
+
+		wp_set_current_user($this->admin_user_id);
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_REQUEST['nonce'] = $_POST['nonce'];
+		$_POST['settings'] = array(
+			'aips_ai_model' => array('bad' => 'value'),
+			'aips_enable_retry' => '1',
+		);
+
+		$controller = new AIPS_Settings_AJAX();
+		$response = $this->capture_ajax(array($controller, 'ajax_save_settings'));
+
+		$this->assertTrue($response['success']);
+		$this->assertSame('existing-model', get_option('aips_ai_model'));
+		$this->assertNotContains('aips_ai_model', $response['data']['updated']);
+		$this->assertContains('aips_enable_retry', $response['data']['updated']);
+		$this->assertSame(1, (int) get_option('aips_enable_retry'));
 	}
 }
 
@@ -176,6 +262,18 @@ class Test_AIPS_Settings_Ajax_Fake_AI_Service implements AIPS_AI_Service_Interfa
 
 	public function generate_image($prompt, $options = array()) {
 		return '';
+	}
+
+	public function generate_embedding($text, $options = array()) {
+		return array();
+	}
+
+	public function supports_embeddings() {
+		return false;
+	}
+
+	public function supports_conversation() {
+		return false;
 	}
 
 	public function get_call_log() {

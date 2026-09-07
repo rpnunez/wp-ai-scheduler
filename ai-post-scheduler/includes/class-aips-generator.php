@@ -14,6 +14,16 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Generator {
 
+    /**
+     * Upper bound for a stored post excerpt, in characters.
+     *
+     * The excerpt prompt targets 40-60 words; this leaves headroom above that so
+     * a normal response is never trimmed, while still bounding a model that
+     * ignores the instruction. The SEO meta description is capped separately at
+     * 160 characters by AIPS_Post_Manager.
+     */
+    const EXCERPT_MAX_CHARS = 400;
+
     private $ai_service;
     private $logger;
 
@@ -23,19 +33,9 @@ class AIPS_Generator {
     private $history_service;
 
     /**
-     * @var AIPS_History_Repository_Interface History repository for logger
-     */
-    private $history_repository;
-
-    /**
      * @var AIPS_History_Container|null Current history container
      */
     private $current_history;
-
-    /**
-     * @var AIPS_Generation_Logger Handles logging logic.
-     */
-    private $generation_logger;
 
     private $template_processor;
     private $image_service;
@@ -46,6 +46,22 @@ class AIPS_Generator {
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
     private $post_featured_image_prompt_builder;
+    private $post_metadata_prompt_builder;
+
+    /**
+     * @var AIPS_AI_Conversation|null Transcript for the current generation run.
+     *
+     * Non-null only while a conversational run is in progress. When null, every
+     * prompt is built self-contained exactly as before.
+     */
+    private $conversation = null;
+
+    /**
+     * Source-data snapshots selected for the current content prompt.
+     *
+     * @var array<int,array<string,mixed>>
+     */
+    private $current_source_snapshots = array();
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -87,7 +103,6 @@ class AIPS_Generator {
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
         $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-        $this->history_repository = $container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
         $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
@@ -102,8 +117,6 @@ class AIPS_Generator {
             $this->markdown_parser = null;
         }
 
-        // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
     }
 
     /**
@@ -127,6 +140,11 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
+        // Snapshot the caller's options for history records. The request options are
+        // mutated below to carry the conversation transcript, which holds the whole
+        // article and must never be serialized into a history row.
+        $loggable_options = $options;
+
         // Log AI request before making the call
         if ($this->current_history) {
             $this->current_history->record(
@@ -134,20 +152,37 @@ class AIPS_Generator {
                 "Requesting AI generation for {$log_type}",
                 array(
                     'prompt' => $prompt,
-                    'options' => $options,
+                    'options' => $loggable_options,
                 ),
                 null,
                 array('component' => $log_type)
             );
         }
 
-        // Forward the request type so AIPS_AI_Service can calculate maxTokens correctly.
+        // Forward the request type so AIPS_AI_Service can calculate max_tokens correctly.
         // Only set it when the caller has not already provided an explicit token override.
-        if (!isset($options['maxTokens']) && !isset($options['max_tokens'])) {
+        if (!isset($options['max_tokens'])) {
             $options['request_type'] = $log_type;
         }
 
+        // Replay the run's transcript so the model can refer back to text it has
+        // already produced instead of receiving another copy of it in the prompt.
+        if ($this->conversation !== null && !$this->conversation->is_empty()) {
+            $options['conversation'] = $this->conversation;
+        }
+
         $result = $this->ai_service->generate_text($prompt, $options);
+
+        // Record the exchange only on success; a failed call contributed no model
+        // turn, and a half-exchange would break the transcript's alternation.
+        // Auxiliary calls (AI variable resolution) read the transcript but pass
+        // 'conversation_turn' => false so their bookkeeping output does not end up
+        // between the article and the follow-up that should refer to it.
+        $records_turn = !isset($options['conversation_turn']) || $options['conversation_turn'] !== false;
+
+        if ($this->conversation !== null && $records_turn && !is_wp_error($result)) {
+            $this->conversation->add_exchange($prompt, (string) $result);
+        }
 
         // Normalize values for logging to avoid deprecation warnings when null.
         $prompt_for_length  = (string) $prompt;
@@ -161,7 +196,7 @@ class AIPS_Generator {
                     "AI generation failed for {$log_type}: " . $result->get_error_message(),
                     array(
                         'prompt' => $prompt,
-                        'options' => $options,
+                        'options' => $loggable_options,
                     ),
                     null,
                     array('component' => $log_type, 'error' => $result->get_error_message())
@@ -192,6 +227,133 @@ class AIPS_Generator {
         }
 
         return $result;
+    }
+
+    /**
+     * Whether this run should generate components as one conversation.
+     *
+     * Requires both the site setting and a provider that can replay history —
+     * without provider support the transcript would be silently dropped and the
+     * follow-up prompts, which omit the article, would have no context at all.
+     *
+     * @return bool
+     */
+    private function use_conversation() {
+        if (!AIPS_Config::get_instance()->get_option('aips_conversational_generation')) {
+            return false;
+        }
+
+        if (!method_exists($this->ai_service, 'supports_conversation')) {
+            return false;
+        }
+
+        return (bool) $this->ai_service->supports_conversation();
+    }
+
+    /**
+     * Lazily build the combined metadata prompt builder.
+     *
+     * Only constructed when the metadata turn actually runs, matching the lazy
+     * getters on AIPS_Prompt_Builder — every generation instantiates the
+     * generator, but almost none of them need this builder.
+     *
+     * @return AIPS_Prompt_Builder_Post_Metadata
+     */
+    private function get_post_metadata_prompt_builder() {
+        if (null === $this->post_metadata_prompt_builder) {
+            $this->post_metadata_prompt_builder = new AIPS_Prompt_Builder_Post_Metadata($this->template_processor);
+        }
+
+        return $this->post_metadata_prompt_builder;
+    }
+
+    /**
+     * Whether the remaining components should be requested in one structured turn.
+     *
+     * @return bool
+     */
+    private function use_metadata_turn() {
+        return $this->conversation !== null
+            && (bool) AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+    }
+
+    /**
+     * Begin a fresh transcript for a generation run, when enabled.
+     *
+     * @return void
+     */
+    private function start_conversation() {
+        $this->conversation = $this->use_conversation() ? new AIPS_AI_Conversation() : null;
+    }
+
+    /**
+     * Discard the current transcript.
+     *
+     * Called once a run finishes so a reused generator instance (the component
+     * regeneration service keeps one) never leaks turns between posts.
+     *
+     * @return void
+     */
+    private function end_conversation() {
+        $this->conversation = null;
+    }
+
+    /**
+     * Whether conversational generation is available for this request.
+     *
+     * Exposed so callers that drive individual components — component
+     * regeneration in particular — can decide whether it is worth rebuilding a
+     * transcript before invoking the generator.
+     *
+     * @return bool
+     */
+    public function supports_conversation() {
+        return $this->use_conversation();
+    }
+
+    /**
+     * Seed the generator with an existing transcript.
+     *
+     * Used when regenerating a single component of an already-generated post: the
+     * original article is replayed as a model turn so the follow-up prompt can
+     * refer back to it instead of pasting the body in again.
+     *
+     * Pass null to clear.
+     *
+     * @param AIPS_AI_Conversation|null $conversation Transcript to resume, or null.
+     * @return void
+     */
+    public function set_conversation($conversation = null) {
+        if ($conversation !== null && !($conversation instanceof AIPS_AI_Conversation)) {
+            return;
+        }
+
+        // Honour the same setting/provider gate as a full run; without provider
+        // support the transcript would be dropped and the follow-up prompts, which
+        // omit the article, would have no context at all.
+        if ($conversation !== null && !$this->use_conversation()) {
+            return;
+        }
+
+        $this->conversation = $conversation;
+    }
+
+    /**
+     * Generate a post title for a context, optionally continuing a conversation.
+     *
+     * Public entry point for callers that already hold a generation context —
+     * notably component regeneration, which must not go through the legacy
+     * template/voice/topic argument list.
+     *
+     * @param AIPS_Generation_Context $context      Generation context.
+     * @param string                  $content      Article content used as context
+     *                                              when no conversation is active.
+     * @param array                   $ai_variables Optional resolved AI variables.
+     * @param array                   $options      AI options.
+     * @return string|WP_Error Generated title or WP_Error on failure.
+     */
+    public function generate_title_for_context($context, $content = '', $ai_variables = array(), $options = array()) {
+        return $this->generate_title_from_context($context, $content, $ai_variables, $options);
     }
 
     /**
@@ -247,8 +409,16 @@ class AIPS_Generator {
         // Build context from content prompt and generated content only when AI
         // variables are present. Use smart truncation to preserve context from
         // both beginning and end of content.
-        $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
-        $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
+        //
+        // In a conversation the article is already the preceding model turn, so
+        // re-sending a truncated copy would be pure waste — and a truncation the
+        // model can only reason about partially.
+        if ($this->conversation !== null) {
+            $context_str = 'Use the article you just wrote as the context.';
+        } else {
+            $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
+            $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
+        }
 
         return $this->resolve_ai_variables_for_template_string($title_prompt, $context_str, 'ai_variables');
     }
@@ -275,28 +445,31 @@ class AIPS_Generator {
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
 
         // Max tokens of 200 is sufficient for JSON responses with typical variable values.
-        $options = array('max_tokens' => 200);
+        // This is bookkeeping rather than post content, so it reads the transcript
+        // but does not append to it — the title turn should follow the article directly.
+        $options = array('max_tokens' => 200, 'conversation_turn' => false);
         $result = $this->generate_content($resolve_prompt, $options, $log_type);
 
         if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            $message = 'Failed to resolve AI variables: ' . $result->get_error_message();
+            $this->logger->log($message, 'warning');
+            if ($this->current_history) {
+                $this->current_history->record('warning', $message, null, null, array('component' => $log_type));
+            }
             return array();
         }
 
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
 
         if (empty($resolved_values)) {
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
-                'variables' => $ai_variables,
-                'raw_response' => $result,
-                'component' => $log_type,
-            ));
+            $message = 'AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.';
+            $context = array('variables' => $ai_variables, 'component' => $log_type);
+            $this->logger->log($message, 'warning', $context);
+            if ($this->current_history) {
+                $this->current_history->record('warning', $message, array('variables' => $ai_variables, 'raw_response' => $result, 'component' => $log_type));
+            }
         } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
-                'variables' => $ai_variables,
-                'resolved'   => $resolved_values,
-                'component' => $log_type,
-            ));
+            $this->logger->log('Resolved AI variables', 'info', array('variables' => $ai_variables, 'resolved' => $resolved_values, 'component' => $log_type));
         }
 
         return $resolved_values;
@@ -333,6 +506,25 @@ class AIPS_Generator {
     }
 
     /**
+     * Build featured image variable context for a conversational run.
+     *
+     * The article and title are already turns in the transcript, so only the
+     * topic is worth restating.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return string
+     */
+    private function build_featured_image_variable_context_conversational($context) {
+        $context_parts = array('Use the article and title from this conversation as the context.');
+
+        if (!empty($context->get_topic())) {
+            $context_parts[] = 'Topic: ' . $context->get_topic();
+        }
+
+        return implode("\n\n", $context_parts);
+    }
+
+    /**
      * Process featured image prompt with basic template variables and AI variables.
      *
      * Resolves any AI variables (custom {{VariableName}} placeholders not in the
@@ -355,7 +547,10 @@ class AIPS_Generator {
         $resolved_ai_variables = array();
 
         if (method_exists($this->template_processor, 'has_ai_variables') && $this->template_processor->has_ai_variables($image_prompt)) {
-            $image_context = $this->build_featured_image_variable_context($context, $content, $title);
+            $image_context = ($this->conversation !== null)
+                ? $this->build_featured_image_variable_context_conversational($context)
+                : $this->build_featured_image_variable_context($context, $content, $title);
+
             $resolved_ai_variables = $this->resolve_ai_variables_for_template_string($image_prompt, $image_context, 'ai_variables_featured_image');
         }
 
@@ -464,8 +659,13 @@ class AIPS_Generator {
      * @return string|WP_Error Generated title string or WP_Error on failure.
      */
     private function generate_title_from_context($context, $content = '', $ai_variables = array(), $options = array()) {
-        // Delegate prompt building to AIPS_Prompt_Builder_Post_Title
-        $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
+        // In a conversation the article is the preceding model turn, so the prompt
+        // refers back to it instead of carrying another full copy.
+        if ($this->conversation !== null) {
+            $prompt = $this->post_title_prompt_builder->build_followup($context);
+        } else {
+            $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
+        }
 
         // Apply resolved AI variables so that any {{VariableName}} placeholders in the
         // title instructions are substituted before the prompt is sent to the AI.
@@ -507,14 +707,16 @@ class AIPS_Generator {
      * @param string|null                    $topic   Optional topic to be injected into prompts.
      * @param array                          $options AI options.
      * @param object|AIPS_Generation_Context $subject Optional template/author object or generation context for diversity injection.
-     * @return string Short excerpt string (max 160 chars). Empty string on failure.
+     * @return string Excerpt string (40-60 words as prompted). Empty string on failure.
      */
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array(), $subject = null) {
-        // Delegate prompt building to AIPS_Prompt_Builder_Post_Excerpt
-        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic, $subject);
-
-        // Set token limit for excerpt generation
-        //$options['maxTokens'] = 150;
+        // In a conversation the article and title are already turns in the
+        // transcript, so neither is pasted back into the prompt.
+        if ($this->conversation !== null) {
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice, $topic);
+        } else {
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic, $subject);
+        }
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
@@ -527,8 +729,7 @@ class AIPS_Generator {
         $excerpt = trim($result);
         $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
 
-        return $excerpt;
-        //return substr($excerpt, 0, 160);
+        return self::truncate_excerpt($excerpt);
     }
 
     /**
@@ -539,7 +740,7 @@ class AIPS_Generator {
      * @param AIPS_Generation_Context $context Generation context.
      * @param array                   $options AI options.
      * @param bool|null               $generation_success Output parameter. Set to true on success, false on failure.
-     * @return string Short excerpt string (max 160 chars). Empty string on failure.
+     * @return string Excerpt string (40-60 words as prompted). Empty string on failure.
      */
     private function generate_excerpt_from_context($title, $content, $context, $options = array(), &$generation_success = null) {
         // For template contexts with voice, pass voice object to prompt builder
@@ -550,8 +751,13 @@ class AIPS_Generator {
 
         $topic_str = $context->get_topic();
 
-        // Delegate prompt building to Prompt Builder
-        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
+        // In a conversation the article and title are the two preceding turns, so
+        // neither is pasted back into the prompt.
+        if ($this->conversation !== null) {
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice_obj, $topic_str);
+        } else {
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
+        }
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
@@ -566,7 +772,166 @@ class AIPS_Generator {
         $excerpt = trim($result);
         $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
 
-        return substr($excerpt, 0, 160);
+        return self::truncate_excerpt($excerpt);
+    }
+
+    /**
+     * Safety net for excerpt length.
+     *
+     * The excerpt prompt asks for 40-60 words (roughly 250-350 characters) and
+     * that full text is what gets stored as post_excerpt. This is only a guard
+     * against a model that ignores the word limit entirely — it is NOT the SEO
+     * meta-description cap. AIPS_Post_Manager::sanitize_meta_description()
+     * independently trims the meta description to 160 characters, so capping
+     * here as well would truncate every excerpt to less than half the length the
+     * prompt asked for.
+     *
+     * Uses mb_substr because a byte-wise cut can land mid-character and produce
+     * invalid UTF-8, and backs off to the last word boundary so the excerpt does
+     * not end mid-word.
+     *
+     * @param string $excerpt Excerpt text.
+     * @return string
+     */
+    private static function truncate_excerpt($excerpt) {
+        $excerpt = (string) $excerpt;
+        $limit   = self::EXCERPT_MAX_CHARS;
+
+        if (mb_strlen($excerpt) <= $limit) {
+            return $excerpt;
+        }
+
+        $truncated = mb_substr($excerpt, 0, $limit);
+        $last_space = mb_strrpos($truncated, ' ');
+
+        // Only back off to a word boundary when doing so keeps most of the text;
+        // a very long single token should still be cut rather than emptied.
+        if ($last_space !== false && $last_space >= (int) ($limit * 0.6)) {
+            $truncated = mb_substr($truncated, 0, $last_space);
+        }
+
+        return rtrim($truncated);
+    }
+
+    /**
+     * Request every remaining component in one structured turn.
+     *
+     * Collapses AI variable resolution, title, excerpt, and featured image prompt
+     * into a single JSON request on the conversation that already holds the
+     * article. Returns null when the turn fails or comes back unusable, in which
+     * case the caller falls back to the separate per-component requests.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return array|null Array with 'title', 'excerpt', 'image_prompt', and
+     *                    'ai_variables' keys, or null to fall back.
+     */
+    private function generate_metadata_turn($context) {
+        $image_prompt_template = '';
+
+        if ($context->should_generate_featured_image() && $context->get_featured_image_source() === 'ai_prompt') {
+            $image_prompt_template = (string) $this->post_featured_image_prompt_builder->build($context, $context->get_topic());
+        }
+
+        // Collect the placeholders appearing across both templates so the model
+        // resolves them once, in the same turn that consumes them. The title
+        // instructions are read through the builder so a voice override — which may
+        // carry different placeholders than the template's own title prompt — is
+        // the string actually scanned.
+        $ai_variables = array();
+
+        if (method_exists($this->template_processor, 'extract_ai_variables')) {
+            $title_instructions = $this->get_post_metadata_prompt_builder()->resolve_title_instructions($context, $context->get_topic());
+
+            $ai_variables = array_values(array_unique(array_merge(
+                (array) $this->template_processor->extract_ai_variables($title_instructions),
+                (array) $this->template_processor->extract_ai_variables($image_prompt_template)
+            )));
+        }
+
+        $prompt = $this->get_post_metadata_prompt_builder()->build($context, $ai_variables, $image_prompt_template);
+        $schema = $this->get_post_metadata_prompt_builder()->get_schema($ai_variables, $image_prompt_template !== '');
+
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_request',
+                'Requesting AI generation for post metadata',
+                array('prompt' => $prompt),
+                null,
+                array('component' => 'metadata')
+            );
+        }
+
+        $options = array(
+            'json_schema'  => $schema,
+            'max_tokens'   => 800,
+            'conversation' => $this->conversation,
+        );
+
+        $result = $this->ai_service->generate_json($prompt, $options);
+
+        if (is_wp_error($result) || !is_array($result)) {
+            $message = is_wp_error($result) ? $result->get_error_message() : 'Metadata turn returned no usable JSON.';
+
+            $this->logger->log('Combined metadata turn failed; falling back to separate requests: ' . $message, 'warning');
+
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'warning',
+                    'Combined metadata turn failed; falling back to separate requests: ' . $message,
+                    null,
+                    null,
+                    array('component' => 'metadata')
+                );
+            }
+
+            return null;
+        }
+
+        $title   = isset($result['title']) ? trim((string) $result['title']) : '';
+        $excerpt = isset($result['excerpt']) ? trim((string) $result['excerpt']) : '';
+
+        // Without a title there is nothing to salvage; the fallback path produces a
+        // better result than half a metadata set.
+        if ($title === '') {
+            $this->logger->log('Combined metadata turn returned no title; falling back to separate requests.', 'warning');
+
+            return null;
+        }
+
+        // The conversation must reflect what the model actually produced so any
+        // later turn (for example the image prompt fallback) stays coherent.
+        if ($this->conversation !== null) {
+            $this->conversation->add_exchange($prompt, wp_json_encode($result));
+        }
+
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_response',
+                'AI generation successful for post metadata',
+                null,
+                wp_json_encode($result),
+                array('component' => 'metadata')
+            );
+        }
+
+        $ai_variable_values = array();
+
+        if (isset($result['ai_variables']) && is_array($result['ai_variables'])) {
+            foreach ($result['ai_variables'] as $name => $value) {
+                if (is_scalar($value)) {
+                    $ai_variable_values[$name] = (string) $value;
+                }
+            }
+        }
+
+        $image_prompt = isset($result['image_prompt']) ? trim((string) $result['image_prompt']) : '';
+
+        return array(
+            'title'        => preg_replace('/^["\']|["\']$/', '', $title),
+            'excerpt'      => $excerpt,
+            'image_prompt' => $image_prompt !== '' ? $this->remove_unresolved_template_placeholders($image_prompt) : '',
+            'ai_variables' => $ai_variable_values,
+        );
     }
 
     /**
@@ -576,8 +941,14 @@ class AIPS_Generator {
      * @return array|WP_Error Array with title, content, excerpt, and image prompt, or WP_Error.
      */
     public function generate_preview($context) {
-        // Build the full content prompt from context
+        $this->start_conversation();
+
+        // Build the full content prompt from context and capture source snapshot usage.
+        $this->current_source_snapshots = array();
+      
+        add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
         $content_prompt = $this->post_content_prompt_builder->build($context);
+        remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
 
         // Build contextual instructions
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -591,6 +962,8 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content_preview');
 
         if (is_wp_error($content)) {
+            $this->end_conversation();
+
             return $content;
         }
 
@@ -607,9 +980,10 @@ class AIPS_Generator {
             $title = __('Error generating title', 'ai-post-scheduler');
         }
 
+        $content = $this->strip_leading_title_block_from_content($content);
+
         // Generate excerpt
-        $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+		$excerpt = $this->generate_excerpt_from_context($title, $content, $context);
 
         $result = array(
             'title' => $title,
@@ -630,6 +1004,8 @@ class AIPS_Generator {
                 $result['image_prompt'] = $processed_keywords;
             }
         }
+
+        $this->end_conversation();
 
         return $result;
     }
@@ -701,6 +1077,10 @@ class AIPS_Generator {
 
         if ($context instanceof AIPS_Template_Context) {
             $history_metadata['template_id'] = $context->get_id();
+            $template = $context->get_template();
+            if ($template && !empty($template->campaign_id)) {
+                $history_metadata['campaign_id'] = absint($template->campaign_id);
+            }
         } elseif ($context instanceof AIPS_Topic_Context) {
             // For topic context, store author_id and topic_id
             $history_metadata['topic_id'] = $context->get_id();
@@ -721,100 +1101,51 @@ class AIPS_Generator {
             $this->logger->log('Failed to create history record', 'error');
         }
 
-        // Build the full content prompt from context
-        $content_prompt = $this->post_content_prompt_builder->build($context);
+        // Open a transcript for this run when conversational generation is enabled
+        // and the active provider can replay it.
+        $this->start_conversation();
 
-        if ($this->current_history) {
-            $this->current_history->record(
-                'log',
-                "Built content prompt",
-                array('prompt' => isset($content_prompt) ? $content_prompt : ''),
-                null,
-                array('component' => 'content')
-            );
-        }
+		// Generate and normalize the content.
+		$content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
+		if (is_wp_error($content)) {
+			return $content;
+		}
 
-        // Build contextual instructions to pass through AI Engine context channel.
-        $content_context = $this->prompt_builder->build_content_context($context);
-        $content_options = array();
+		$component_statuses['post_content'] = true;
+		$content = $this->strip_leading_title_block_from_content($content);
 
-        if (!empty($content_context)) {
-            $content_options['context'] = $content_context;
-        }
+		$metadata_result = $this->generate_and_resolve_metadata($context, $content);
+		$title                 = $metadata_result['title'];
+		$excerpt               = $metadata_result['excerpt'];
+		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
 
-        // Ask AI to generate the article body
-        $content = $this->generate_content($content_prompt, $content_options, 'content');
+		$component_statuses['post_title']   = $metadata_result['title_success'];
+		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 
-        if (is_wp_error($content)) {
-            $this->current_history->record_error($content->get_error_message(), array(
-                'component' => 'content',
-                'prompt' => $content_prompt,
-            ));
-            $content = '';
-        }
+		$pre_image_incomplete  = in_array(false, $component_statuses, true);
+		$generation_incomplete = $pre_image_incomplete;
 
-        $content = $this->normalize_generated_content_for_wordpress($content);
-        $component_statuses['post_content'] = ($content !== '');
+        // Resolve the status the context/template would normally apply.
+        $intended_post_status = $context->get_post_status();
 
-        // Resolve AI variables from the title prompt using the generated content
-        $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
+        // Only use the configured/intended Post Status (e.g. "publish") when
+        // every component known so far succeeded. If title/excerpt failed
+        // and fell back, force the post to be saved as a draft regardless of
+        // the template's configured status. Featured image failure (if
+        // requested) is resolved after post creation below and can only
+        // ever downgrade further, never upgrade back to the intended status.
+        $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
 
-        // Generate the title using the context and content.
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
-
-        // Log post title
-        if ($this->current_history) {
-            $this->current_history->record(
-                'info',
-                "Post title generated",
-                array(),
-                null,
-                array('component' => 'title')
-            );
-        }
-
-        // Detect unresolved template placeholders in the generated title.
-        $has_unresolved_placeholders = false;
-
-        if (!is_wp_error($title) && is_string($title)) {
-            if (strpos($title, '{{') !== false && strpos($title, '}}') !== false) {
-                $has_unresolved_placeholders = true;
-
-                // Log a warning for observability when AI variables were not resolved correctly.
-                $this->generation_logger->warning(
-                    'Generated title contains unresolved AI variables; falling back to safe default title.',
-                    array(
-                        'context_type' => $context->get_type(),
-                        'context_id' => $context->get_id(),
-                        'topic'       => $context->get_topic(),
-                    )
-                );
+        // Generation-time affiliate link injection (when enabled on the template/author).
+        if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() && ! empty( $content ) ) {
+            $raw_tags = $context->get_post_tags();
+            if ( ! empty( $raw_tags ) ) {
+                $tag_names = array_filter( array_map( 'trim', explode( ',', $raw_tags ) ) );
+                if ( ! empty( $tag_names ) ) {
+                    $content = ( new AIPS_Affiliate_Links_Service() )->inject_into_content( $content, $tag_names );
+                }
             }
         }
-
-        if (is_wp_error($title) || $has_unresolved_placeholders) {
-            // Fall back to a safe default title when AI fails or leaves unresolved variables.
-            $base_title = __('AI Generated Post', 'ai-post-scheduler');
-            $topic_str = $context->get_topic();
-
-            if (!empty($topic_str)) {
-                // Include topic in fallback title for context, truncated for safety
-                $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
-            }
-
-            $title = $base_title . ' - ' . AIPS_DateTime::now()->toDisplay();
-            $component_statuses['post_title'] = false;
-        } else {
-            $component_statuses['post_title'] = true;
-        }
-
-        // Use actual generated content for excerpt, truncated to prevent token limits
-        $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt_success = false;
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
-        $component_statuses['post_excerpt'] = (bool) $excerpt_success;
-
-        $generation_incomplete = in_array(false, $component_statuses, true);
 
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
@@ -822,6 +1153,7 @@ class AIPS_Generator {
             'content' => $content,
             'excerpt' => $excerpt,
             'context' => $context,
+            'post_status' => $initial_post_status,
             // Provide SEO context for downstream plugins.
             'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
             'meta_description' => $excerpt,
@@ -856,16 +1188,37 @@ class AIPS_Generator {
                 )
             );
 
+            $this->end_conversation();
+
             return $post_id;
+        }
+
+        if (!empty($this->current_source_snapshots)) {
+            update_post_meta($post_id, 'aips_source_snapshots_used', $this->current_source_snapshots);
         }
 
         // Handle featured image generation/selection.
         $featured_image_success = !$context->should_generate_featured_image();
-        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content);
+        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success, $content, $resolved_image_prompt);
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
+
+        // If the featured image failed after post creation and the post was
+        // not already forced to draft pre-creation, downgrade it now. This
+        // never upgrades a post back to the intended status.
+        if ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
+            $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
+
+            if (is_wp_error($downgrade_result)) {
+                $this->generation_logger->log(
+                    'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
+                    'error',
+                    array('post_id' => $post_id)
+                );
+            }
+        }
 
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
@@ -874,11 +1227,22 @@ class AIPS_Generator {
         // Use new history API to complete with success
         $this->current_history->complete_success(array(
             'post_id' => $post_id,
+            'post_type' => $context->get_post_type(),
             'generated_title' => $title,
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         ));
+
+        if ($context instanceof AIPS_Template_Context) {
+            $template = $context->get_template();
+            if ($template && !empty($template->campaign_id) && class_exists('AIPS_Campaigns_Repository')) {
+                $campaigns_repo = AIPS_Campaigns_Repository::instance();
+                if (method_exists($campaigns_repo, 'flush_campaign_cache')) {
+                    $campaigns_repo->flush_campaign_cache((int) $template->campaign_id);
+                }
+            }
+        }
 
         // Write a structured metric snapshot to history_log.  The metrics
         // repository reads these entries to compute image failure rates and
@@ -888,10 +1252,13 @@ class AIPS_Generator {
             'metric_generation_result',
             'Generation metric snapshot',
             array(
-                'outcome'          => $generation_incomplete ? 'partial' : 'completed',
-                'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                'image_attempted'  => $image_was_attempted,
-                'image_success'    => $image_was_attempted ? (bool) $featured_image_success : null,
+                'outcome'            => $generation_incomplete ? 'partial' : 'completed',
+                'duration_seconds'   => (int) round( microtime(true) - $generation_start ),
+                'image_attempted'    => $image_was_attempted,
+                'image_success'      => $image_was_attempted ? (bool) $featured_image_success : null,
+                'word_count'         => str_word_count( wp_strip_all_tags( (string) $content ) ),
+                'char_count'         => mb_strlen( (string) $content ),
+                'component_statuses' => $component_statuses,
             )
         );
 
@@ -910,7 +1277,7 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generated with missing components', 'warning', array(
+            $this->logger->log('Post generated with missing components', 'warning', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
@@ -930,7 +1297,7 @@ class AIPS_Generator {
                 )
             );
 
-            $this->generation_logger->log('Post generated successfully', 'info', array(
+            $this->logger->log('Post generated successfully', 'info', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
@@ -947,9 +1314,68 @@ class AIPS_Generator {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
 
-        $this->generation_logger->set_history_id(null);
+        $this->end_conversation();
 
         return $post_id;
+    }
+
+    /**
+     * Record selected source-data snapshots once they are injected into a prompt.
+     *
+     * @param array $snapshots Selected source snapshot metadata.
+     * @param array $term_ids  Source group term IDs.
+     * @param array $sources   Source rows.
+     * @return void
+     */
+    public function record_source_snapshots_injected($snapshots, $term_ids = array(), $sources = array()) {
+        if (empty($snapshots) || !is_array($snapshots)) {
+            return;
+        }
+
+        $normalized = array();
+        $ids = array();
+
+        foreach ($snapshots as $snapshot) {
+            if (empty($snapshot['source_data_id'])) {
+                continue;
+            }
+
+            $source_data_id = absint($snapshot['source_data_id']);
+            $ids[] = $source_data_id;
+            $normalized[] = array(
+                'source_data_id' => $source_data_id,
+                'source_id'      => isset($snapshot['source_id']) ? absint($snapshot['source_id']) : 0,
+                'label'          => isset($snapshot['label']) ? sanitize_text_field($snapshot['label']) : '',
+                'url'            => isset($snapshot['url']) ? esc_url_raw($snapshot['url']) : '',
+                'page_title'     => isset($snapshot['page_title']) ? sanitize_text_field($snapshot['page_title']) : '',
+                'fetched_at'     => isset($snapshot['fetched_at']) ? absint($snapshot['fetched_at']) : 0,
+                'char_count'     => isset($snapshot['char_count']) ? absint($snapshot['char_count']) : 0,
+            );
+        }
+
+        if (empty($normalized)) {
+            return;
+        }
+
+        $this->current_source_snapshots = $normalized;
+
+        if ($this->current_history) {
+            $this->current_history->record(
+                'activity',
+                __('Injected source snapshots into content prompt', 'ai-post-scheduler'),
+                array(
+                    'source_data_ids' => array_values(array_unique($ids)),
+                    'snapshots'       => $normalized,
+                ),
+                null,
+                array(
+                    'component'         => 'content',
+                    'source_data_ids'   => array_values(array_unique($ids)),
+                    'source_snapshots'  => $normalized,
+                    'source_group_ids'  => array_map('absint', (array) $term_ids),
+                )
+            );
+        }
     }
 
     /**
@@ -999,7 +1425,7 @@ class AIPS_Generator {
      * @param string                  $title   Title of the generated post, used as image alt text/context.
      * @return int|null ID of the featured image attachment or null on failure/disabled.
      */
-    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null, $content = '') {
+    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null, $content = '', $precomputed_image_prompt = null) {
         $featured_image_id = null;
         $featured_image_source = '';
 
@@ -1042,7 +1468,11 @@ class AIPS_Generator {
                 $component_success = true;
             }
         } elseif ($context->get_image_prompt()) {
-            $processed_image_prompt = $this->process_featured_image_prompt($context, $content, $title);
+            // The combined metadata turn already produced a fully resolved prompt;
+            // reuse it rather than spending another call to rebuild the same thing.
+            $processed_image_prompt = ($precomputed_image_prompt !== null && $precomputed_image_prompt !== '')
+                ? $precomputed_image_prompt
+                : $this->process_featured_image_prompt($context, $content, $title);
 
             // Log AI request for featured image
             if ($this->current_history) {
@@ -1083,7 +1513,7 @@ class AIPS_Generator {
 
         if (is_wp_error($featured_image_result)) {
             $component_success = false;
-            $this->generation_logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
+            $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
             // Log featured image generation error
             if ($this->current_history) {
@@ -1119,10 +1549,13 @@ class AIPS_Generator {
     /**
      * Normalize generated content so post bodies are consistently stored as HTML.
      *
+     * Public so diagnostic surfaces can show the exact before/after of this step
+     * without re-implementing it; it is a pure transform with no side effects.
+     *
      * @param string $content Raw generated content.
      * @return string Sanitized HTML content.
      */
-    private function normalize_generated_content_for_wordpress($content) {
+    public function normalize_generated_content_for_wordpress($content) {
         if (!is_string($content)) {
             return '';
         }
@@ -1141,6 +1574,34 @@ class AIPS_Generator {
     }
 
     /**
+     * Remove a prepended title block from generated content when present.
+     *
+     * Some models occasionally emit an article title at the start of content
+     * (for example as <h1>Title</h1> or Markdown "# Title"). WordPress already
+     * renders the post title separately, so keeping this heading creates a
+     * duplicated "second title" in the article body.
+     *
+     * @param string $content Generated content.
+     * @return string Content without a leading title block.
+     */
+    private function strip_leading_title_block_from_content($content) {
+        if (!is_string($content)) {
+            return '';
+        }
+
+        $cleaned = ltrim($content);
+
+        // Remove a leading HTML <h1>...</h1> title block.
+        $cleaned = preg_replace('/^<h1\b[^>]*>[\s\S]*?<\/h1>\s*/i', '', $cleaned, 1);
+
+        // Remove a leading Markdown "# Title" block when Markdown slipped through.
+        $cleaned = preg_replace('/^#\\s+[^\\n]+\\s*/u', '', $cleaned, 1);
+        
+
+        return ltrim((string) $cleaned);
+    }
+
+    /**
      * Set the history container for logging
      *
      * Allows external code to set a specific history container for logging.
@@ -1151,4 +1612,202 @@ class AIPS_Generator {
     public function set_history_container($history_container) {
         $this->current_history = $history_container;
     }
+
+	/**
+	 * Generates and normalizes the post content.
+	 *
+	 * @param AIPS_Generation_Context $context            Generation context.
+	 * @param array                   $component_statuses Current component statuses for failure diagnostics.
+	 * @param float                   $generation_start   Generation start timestamp.
+	 * @return string|WP_Error
+	 */
+	private function generate_and_normalize_content($context, $component_statuses, $generation_start) {
+		// Build the full content prompt from context and capture source snapshot usage.
+		$this->current_source_snapshots = array();
+		add_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10, 3);
+		$content_prompt = $this->post_content_prompt_builder->build($context);
+		remove_action('aips_source_snapshots_injected', array($this, 'record_source_snapshots_injected'), 10);
+
+		if ($this->current_history) {
+			$this->current_history->record(
+				'log',
+				'Built content prompt',
+				array('prompt' => isset($content_prompt) ? $content_prompt : ''),
+				null,
+				array('component' => 'content')
+			);
+		}
+
+		// Build contextual instructions to pass through AI Engine context channel.
+		$content_context = $this->prompt_builder->build_content_context($context);
+		$content_options = array();
+
+		if (!empty($content_context)) {
+			$content_options['context'] = $content_context;
+		}
+
+		$content = $this->generate_content($content_prompt, $content_options, 'content');
+
+		if (is_wp_error($content)) {
+			$this->current_history->record_error($content->get_error_message(), array(
+				'component' => 'content',
+				'prompt'    => $content_prompt,
+			));
+			$content = '';
+		}
+
+		$content = $this->normalize_generated_content_for_wordpress($content);
+
+		if ($content === '') {
+			$error_message = __('Post generation failed before a usable Post Content could be created.', 'ai-post-scheduler');
+
+			$error = new WP_Error(
+				'aips_generation_missing_required_content',
+				$error_message,
+				array(
+					'component_statuses' => $component_statuses,
+				)
+			);
+
+			$this->current_history->complete_failure($error_message, array(
+				'component'          => 'post_content',
+				'component_statuses' => $component_statuses,
+				'content_length'     => mb_strlen($content),
+			));
+
+			$this->current_history->record(
+				'metric_generation_result',
+				'Generation failed - required Post Content was not generated',
+				array(
+					'outcome'          => 'failed',
+					'duration_seconds' => (int) round(microtime(true) - $generation_start),
+					'image_attempted'  => false,
+					'image_success'    => null,
+				)
+			);
+
+			$this->logger->log('Post generation failed before post creation', 'error', array(
+				'context_type'       => $context->get_type(),
+				'context_id'         => $context->get_id(),
+				'component_statuses' => $component_statuses,
+			));
+
+			$this->end_conversation();
+
+			return $error;
+		}
+
+		return $content;
+	}
+
+	/**
+	 * Generates and resolves metadata components.
+	 *
+	 * @param AIPS_Generation_Context $context Generation context.
+	 * @param string                  $content Generated post content.
+	 * @return array
+	 */
+	private function generate_and_resolve_metadata($context, $content) {
+		// A failed combined turn falls back to the established per-component requests.
+		$metadata = $this->use_metadata_turn() ? $this->generate_metadata_turn($context) : null;
+
+		$title_result   = $this->resolve_generated_title($context, $content, $metadata);
+		$excerpt_result = $this->resolve_generated_excerpt($title_result['title'], $content, $context, $metadata);
+
+		return array(
+			'title'                 => $title_result['title'],
+			'title_success'         => $title_result['success'],
+			'excerpt'               => $excerpt_result['excerpt'],
+			'excerpt_success'       => $excerpt_result['success'],
+			'resolved_image_prompt' => $metadata !== null ? $metadata['image_prompt'] : null,
+		);
+	}
+
+	/**
+	 * Resolves the generated title and its component status.
+	 *
+	 * @param AIPS_Generation_Context $context  Generation context.
+	 * @param string                  $content  Generated post content.
+	 * @param array|null              $metadata Combined metadata response, when available.
+	 * @return array
+	 */
+	private function resolve_generated_title($context, $content, $metadata) {
+		if ($metadata !== null) {
+			$title = $metadata['title'];
+		} else {
+			$ai_variables = $this->resolve_ai_variables_from_context($context, $content);
+			$title        = $this->generate_title_from_context($context, $content, $ai_variables);
+		}
+
+		if ($this->current_history) {
+			$this->current_history->record(
+				'info',
+				'Post title generated',
+				array(),
+				null,
+				array('component' => 'title')
+			);
+		}
+
+		$has_unresolved_placeholders = !is_wp_error($title)
+			&& is_string($title)
+			&& strpos($title, '{{') !== false
+			&& strpos($title, '}}') !== false;
+
+		if ($has_unresolved_placeholders) {
+			$warning_context = array(
+				'context_type' => $context->get_type(),
+				'context_id'   => $context->get_id(),
+				'topic'        => $context->get_topic(),
+			);
+			$warning_message = 'Generated title contains unresolved AI variables; falling back to safe default title.';
+
+			$this->logger->log($warning_message, 'warning', $warning_context);
+			if ($this->current_history) {
+				$this->current_history->record('warning', $warning_message, null, null, $warning_context);
+			}
+		}
+
+		$title_success = !is_wp_error($title) && !$has_unresolved_placeholders;
+
+		if (!$title_success) {
+			$base_title = __('AIPS Generated Post', 'ai-post-scheduler');
+			$topic      = $context->get_topic();
+
+			if (!empty($topic)) {
+				$base_title .= ': ' . mb_substr($topic, 0, 50) . (mb_strlen($topic) > 50 ? '...' : '');
+			}
+
+			$title = $base_title . ' - ' . AIPS_DateTime::now()->toDisplay();
+		}
+
+		return array(
+			'title'   => $title,
+			'success' => $title_success,
+		);
+	}
+
+	/**
+	 * Resolves the generated excerpt and its component status.
+	 *
+	 * @param string                  $title    Resolved post title.
+	 * @param string                  $content  Generated post content.
+	 * @param AIPS_Generation_Context $context  Generation context.
+	 * @param array|null              $metadata Combined metadata response, when available.
+	 * @return array
+	 */
+	private function resolve_generated_excerpt($title, $content, $context, $metadata) {
+		if ($metadata !== null) {
+			$excerpt         = self::truncate_excerpt($metadata['excerpt']);
+			$excerpt_success = ($excerpt !== '');
+		} else {
+			$excerpt_success = false;
+			$excerpt         = $this->generate_excerpt_from_context($title, $content, $context, array(), $excerpt_success);
+		}
+
+		return array(
+			'excerpt' => $excerpt,
+			'success' => (bool) $excerpt_success,
+		);
+	}
 }

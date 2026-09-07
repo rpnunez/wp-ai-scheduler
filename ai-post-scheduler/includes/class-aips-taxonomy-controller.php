@@ -181,6 +181,10 @@ class AIPS_Taxonomy_Controller {
 		}
 
 		// Build post content summary
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique(array_map('intval', $post_ids)), false, true);
+		}
+
 		$post_contents = array();
 		foreach ($post_ids as $post_id) {
 			$post = get_post($post_id);
@@ -317,7 +321,7 @@ class AIPS_Taxonomy_Controller {
 		$this->repository->update($item_id, array(
 			'term_id'    => $term_id,
 			'status'     => 'created',
-			'updated_at' => current_time('mysql'),
+			'updated_at' => AIPS_DateTime::now()->timestamp(),
 		));
 
 		return array(
@@ -350,17 +354,16 @@ class AIPS_Taxonomy_Controller {
 		if ($result) {
 			$item = $this->repository->get_by_id($item_id);
 
-			// Log approval
+			// Log approval via the canonical event recorder.
 			if ($item) {
-				$history = $this->history_service->create('taxonomy_approval', array(
-					'item_id' => $item_id,
-				));
-				$history->record(
-					'activity',
-					sprintf(__('Taxonomy item approved: "%s"', 'ai-post-scheduler'), $item->name),
-					array('event_type' => 'taxonomy_approved', 'event_status' => 'success'),
-					null,
-					array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
+				$recorder = new AIPS_History_Event_Recorder($this->history_service);
+				$recorder->record(
+					AIPS_History_Event::success(
+						AIPS_History_Event_Type::TAXONOMY_APPROVED,
+						sprintf(__('Taxonomy item approved: "%s"', 'ai-post-scheduler'), $item->name),
+						AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TAXONOMY_ITEM, $item_id, $item->name),
+						array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
+					)
 				);
 			}
 
@@ -393,17 +396,16 @@ class AIPS_Taxonomy_Controller {
 		if ($result) {
 			$item = $this->repository->get_by_id($item_id);
 
-			// Log rejection
+			// Log rejection via the canonical event recorder.
 			if ($item) {
-				$history = $this->history_service->create('taxonomy_rejection', array(
-					'item_id' => $item_id,
-				));
-				$history->record(
-					'activity',
-					sprintf(__('Taxonomy item rejected: "%s"', 'ai-post-scheduler'), $item->name),
-					array('event_type' => 'taxonomy_rejected', 'event_status' => 'failed'),
-					null,
-					array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
+				$recorder = new AIPS_History_Event_Recorder($this->history_service);
+				$recorder->record(
+					AIPS_History_Event::failure(
+						AIPS_History_Event_Type::TAXONOMY_REJECTED,
+						sprintf(__('Taxonomy item rejected: "%s"', 'ai-post-scheduler'), $item->name),
+						AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TAXONOMY_ITEM, $item_id, $item->name),
+						array('item_id' => $item_id, 'item_name' => $item->name, 'taxonomy_type' => $item->taxonomy_type)
+					)
 				);
 			}
 

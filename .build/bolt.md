@@ -26,3 +26,28 @@
 ## 2026-03-24 - [Optimize Dashboard History Retrieval]
 **Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
 **Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.
+## 2026-07-01 - [N+1 Internal Links Generation]
+**Area:** ai-post-scheduler/includes/class-aips-internal-links-service.php
+**Status:** opened PR
+**PR:** To be created
+**Learning:** The internal links service looped over suggestion results and called `get_post()` individually to fetch titles for anchor text, resulting in N+1 queries.
+**Action:** When looping over post IDs to call `get_post()`, use `_prime_post_caches(array_unique($post_ids), false, true)` before the loop (with a `function_exists` check) to bulk load the posts.
+
+## 2025-05-18 - [N+1 Query Reduction]
+**Area:** ai-post-scheduler/includes/class-aips-generated-posts-controller.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Prevent N+1 queries in Generated Posts controller
+**Learning:** Using `_prime_post_caches` prevents N+1 queries in loops calling `get_post()`.
+**Action:** Pre-fetch post IDs into arrays and use `_prime_post_caches()` before loops.
+## 2026-08-28 - [Batch Template Schedules Lookup]
+**Area:** ai-post-scheduler/includes/class-aips-generated-posts-controller.php
+**Status:** opened PR
+**PR:** To be created
+**Learning:** The Generated Posts Controller list view looped over history items and queried the schedules table for each item's template ID, creating N+1 queries.
+**Action:** When gathering data for list views where the underlying repository returns multiple items with foreign keys, fetch all foreign keys into an array and use an `IN()` query batch fetching method instead of querying individually in the loop.
+## 2026-08-31 - Optimize AIPS_Site_Context get_setting linear search
+**Area:** ai-post-scheduler/includes/class-aips-site-context.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Optimize AIPS_Site_Context get_setting linear search
+**Learning:** Avoid repeated O(n) loops over arrays in static methods called frequently.
+**Action:** Use static variables to cache inverted maps for O(1) lookups.

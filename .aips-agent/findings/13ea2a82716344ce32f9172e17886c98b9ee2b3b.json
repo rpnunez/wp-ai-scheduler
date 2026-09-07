@@ -1,0 +1,14 @@
+{
+  "id": "13ea2a82716344ce32f9172e17886c98b9ee2b3b",
+  "type": "diagnostics_datetime_gap",
+  "severity": "low",
+  "path": "ai-post-scheduler/includes/diagnostics/class-aips-system-diagnostics-logs-provider.php",
+  "symbol": "AIPS_System_Diagnostics_Logs_Provider::check_logs",
+  "anchor": "check_logs-usort-strtotime",
+  "status": "open",
+  "summary": "Usage of strtotime for log sorting.",
+  "recommendation": "Use datetime service for consistent time handling.",
+  "first_seen_run_id": "aips-20260518T220000Z",
+  "last_seen_run_id": "aips-20260518T220000Z",
+  "finding_file": ".aips-agent/findings/13ea2a82716344ce32f9172e17886c98b9ee2b3b.json"
+}

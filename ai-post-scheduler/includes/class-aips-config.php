@@ -44,6 +44,14 @@ class AIPS_Config {
      *             return true for genuinely cached null values.
      */
     private $null_sentinel = null;
+
+    /**
+     * @var array Options that should use persistent cache to reduce DB hits on every page load.
+     */
+    private static $persistent_cache_options = array(
+        'aips_onboarding_completed',
+        'aips_feature_flags',
+    );
     
     /**
      * Get singleton instance.
@@ -123,14 +131,22 @@ class AIPS_Config {
             'aips_db_version' => '0',
             'aips_onboarding_completed' => false,
             'aips_log_secret' => '',
-            // AI model
+            // AI provider & model
+            'aips_ai_provider' => '', // '' = auto-detect (Meow preferred)
             'aips_ai_model' => '',
             'aips_ai_env_id' => '',
+			'aips_wp_ai_connector_mode' => 'all',
+			'aips_wp_ai_connector_ids' => array(),
+			'aips_wp_ai_connector_failover' => true,
+			'aips_prevent_scheduled_ai_generation' => false,
             'aips_max_tokens_limit' => 16000,
             'aips_max_tokens_title' => 150,
             'aips_max_tokens_excerpt' => 300,
             'aips_max_tokens_content' => 4000,
             'aips_temperature' => 0.7,
+            // Conversational generation (requires a provider with supports_conversation())
+            'aips_conversational_generation' => false,
+            'aips_conversational_metadata_turn' => false,
             // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
@@ -140,7 +156,7 @@ class AIPS_Config {
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
-            'aips_topic_similarity_threshold' => 0.8,
+            'aips_topic_similarity_threshold' => 0.85,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
@@ -154,6 +170,7 @@ class AIPS_Config {
 				'post_ready_for_review' => 'db',
 				'post_rejected' => 'db',
 				'partial_generation_completed' => 'db',
+				'post_generated' => 'both',
             ),
             // Notification digest state (runtime markers, not user-configurable)
             'aips_notif_daily_digest_last_sent' => '',
@@ -183,25 +200,49 @@ class AIPS_Config {
             'aips_cache_driver'         => 'array',
             'aips_cache_db_prefix'      => '',
             'aips_cache_default_ttl'    => 3600,
-            'aips_cache_redis_host'     => '127.0.0.1',
-            'aips_cache_redis_port'     => 6379,
-            'aips_cache_redis_password' => '',
-            'aips_cache_redis_db'       => 0,
-            'aips_cache_redis_prefix'   => 'aips',
-            'aips_cache_redis_timeout'  => 2,
             // Research
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Cache Monitor
+            'aips_cache_monitor_enabled'               => false,
+            'aips_cache_monitor_index_enabled'         => true,
+            'aips_cache_monitor_metrics_enabled'       => true,
+            'aips_cache_monitor_event_retention_days'  => 30,
+            'aips_cache_monitor_max_index_entries'     => 10000,
+            'aips_cache_monitor_preview_length'        => 500,
+            'aips_cache_monitor_full_value_debug_only' => true,
+            'aips_cache_monitor_live_refresh_enabled'  => false,
+            'aips_cache_monitor_live_refresh_interval' => 30,
+            // Content Indexer & Embeddings
+            'aips_embeddings_provider'                 => '', // '' = auto-detect (Meow preferred)
+            'aips_embeddings_model'                    => 'text-embedding-3-small',
+            'aips_embeddings_env_id'                   => '',
+            'aips_embeddings_dimensions'               => 1536,
+            'aips_indexer_verbose_history'             => false,
+            'aips_indexer_post_types'                  => array('post'),
+            'aips_indexer_similarity_threshold'        => 0.65,
+            'aips_auto_index_on_publish'               => true,
+            // Related Posts
+            'aips_related_posts_enabled'               => true,
+            'aips_related_posts_auto_append'           => false,
+            'aips_related_posts_count'                 => 4,
+            'aips_related_posts_heading'               => 'Related Articles',
+            'aips_related_posts_layout'                => 'grid',
+            'aips_related_posts_show_thumbnails'       => true,
+            'aips_related_posts_show_excerpts'         => true,
+            // Deduplication & Cannibalization Shield
+            'aips_deduplication_mode'                  => 'warn',
+            'aips_deduplication_threshold'             => 0.85,
+            'aips_generation_inject_related_context'   => true,
         );
     }
     
     /**
      * Get a specific option value with fallback to default.
      *
-     * Resolved values are stored in a per-request in-memory cache so that
-     * repeated reads of the same key within a single request do not trigger
-     * additional get_option() calls.
+     * Critical options (those accessed on every page load) use persistent cache
+     * to reduce database queries. Other values use a per-request in-memory cache.
      *
      * When an explicit $default is supplied by the caller the result is NOT
      * cached (to avoid polluting the cache with ad-hoc fallback values that
@@ -212,10 +253,26 @@ class AIPS_Config {
      * @return mixed Option value or default.
      */
     public function get_option($option_name, $default = null) {
-        // Use cached value only when no caller-supplied default is in play.
+        // For critical options, try persistent cache first to avoid DB query
+        if ($default === null && in_array($option_name, self::$persistent_cache_options)) {
+            if (AIPS_Cache_Factory::instance()->is_available()) {
+                $persistent_cache = AIPS_Cache_Factory::instance();
+                if ($persistent_cache->has($option_name)) {
+                    return $persistent_cache->get($option_name);
+                }
+                // Fetch from DB and cache persistently
+                $value = get_option($option_name);
+                if ($value !== false) {
+                    $persistent_cache->set($option_name, $value, HOUR_IN_SECONDS);
+                    return $value;
+                }
+                // Fall through to defaults if option doesn't exist in DB
+            }
+        }
+
+        // Use per-request cache for all other options
         if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
             $cached = $this->cache->get($option_name);
-            // A stored null sentinel means the resolved value is null.
             return ($cached === $this->null_sentinel) ? null : $cached;
         }
 
@@ -255,7 +312,7 @@ class AIPS_Config {
     }
 
     /**
-     * Set an option value and invalidate the per-request cache for that key.
+     * Set an option value and invalidate both per-request and persistent caches.
      *
      * @param string    $option_name Option name.
      * @param mixed     $value       Option value.
@@ -267,6 +324,9 @@ class AIPS_Config {
     public function set_option($option_name, $value, $autoload = null) {
         if ($this->cache !== null) {
             $this->cache->delete($option_name);
+        }
+        if (in_array($option_name, self::$persistent_cache_options) && AIPS_Cache_Factory::instance()->is_available()) {
+            AIPS_Cache_Factory::instance()->delete($option_name);
         }
         return update_option($option_name, $value, $autoload);
     }
@@ -363,23 +423,49 @@ class AIPS_Config {
      * Get AI model configuration.
      *
      * Returns all settings needed to configure an AI generation request,
-     * including the model identifier, optional environment/project ID,
+     * including the selected provider, model identifier, optional
+     * environment/project ID, whether scheduled AI generation is prevented,
      * token limit, and temperature.
      *
      * @return array AI model configuration with keys:
+     *               'provider'                      (string) AI provider identifier.
      *               'model'            (string) AI model identifier.
      *               'env_id'           (string) Optional AI Engine environment ID.
+     *               'prevent_scheduled_generation' (bool)  Whether schedule-driven AI
+     *                                              generation (cron and manual runs) is prevented.
      *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
      *               'temperature'      (float)  Sampling temperature (creativity).
      */
     public function get_ai_config() {
         return array(
+            'provider'         => (string) $this->get_option('aips_ai_provider'),
             'model'            => (string) $this->get_option('aips_ai_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
+            'prevent_scheduled_generation' => $this->is_scheduled_ai_generation_prevented(),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
             'temperature'      => (float) $this->get_option('aips_temperature'),
         );
     }
+
+	/**
+	 * Check whether schedule-driven AI generation is prevented.
+	 *
+	 * Applies to both cron-started runs and manual "Run Now" executions.
+	 *
+	 * @return bool True when schedule-driven AI generation is prevented, false otherwise.
+	 */
+	public function is_scheduled_ai_generation_prevented() {
+		return (bool) $this->get_option('aips_prevent_scheduled_ai_generation');
+	}
+
+	/**
+	 * Get the user-facing label for the AI generation prevention setting.
+	 *
+	 * @return string
+	 */
+	public function get_scheduled_ai_generation_prevention_label() {
+		return __('Prevent AI Generation (Scheduled & Manual)', 'ai-post-scheduler');
+	}
     
     /**
      * Get retry configuration.
@@ -500,7 +586,7 @@ class AIPS_Config {
      * Get cache framework configuration.
      *
      * Returns all settings that configure the plugin's cache layer, including
-     * driver selection, DB prefix, default TTL, and Redis connection details.
+     * driver selection, DB prefix, and default TTL.
      *
      * Note: AIPS_Cache_Factory::make_driver() reads these settings via direct
      * get_option() calls to avoid a bootstrapping circular dependency (AIPS_Config
@@ -509,28 +595,16 @@ class AIPS_Config {
      *
      * @return array Cache configuration with keys:
      *               'enabled'        (bool)   Whether the cache system is enabled.
-     *               'driver'         (string) Cache driver name ('array', 'db', 'redis', 'wp_object_cache', 'session').
+     *               'driver'         (string) Cache driver name ('array', 'db', 'wp_object_cache').
      *               'db_prefix'      (string) Table prefix for the DB driver.
      *               'default_ttl'    (int)    Default time-to-live in seconds.
-     *               'redis_host'     (string) Redis hostname.
-     *               'redis_port'     (int)    Redis port.
-     *               'redis_password' (string) Redis auth password (empty = no auth).
-     *               'redis_db'       (int)    Redis database index.
-     *               'redis_prefix'   (string) Key prefix for Redis entries.
-     *               'redis_timeout'  (float)  Connection timeout in seconds.
      */
     public function get_cache_config() {
         return array(
-            'enabled'        => (bool)   $this->get_option('aips_enable_cache_system'),
-            'driver'         => (string) $this->get_option('aips_cache_driver'),
-            'db_prefix'      => (string) $this->get_option('aips_cache_db_prefix'),
-            'default_ttl'    => (int)    $this->get_option('aips_cache_default_ttl'),
-            'redis_host'     => (string) $this->get_option('aips_cache_redis_host'),
-            'redis_port'     => (int)    $this->get_option('aips_cache_redis_port'),
-            'redis_password' => (string) $this->get_option('aips_cache_redis_password'),
-            'redis_db'       => (int)    $this->get_option('aips_cache_redis_db'),
-            'redis_prefix'   => (string) $this->get_option('aips_cache_redis_prefix'),
-            'redis_timeout'  => (float)  $this->get_option('aips_cache_redis_timeout'),
+            'enabled'     => (bool)   $this->get_option('aips_enable_cache_system'),
+            'driver'      => (string) $this->get_option('aips_cache_driver'),
+            'db_prefix'   => (string) $this->get_option('aips_cache_db_prefix'),
+            'default_ttl' => (int)    $this->get_option('aips_cache_default_ttl'),
         );
     }
 
@@ -582,10 +656,22 @@ class AIPS_Config {
     // ========================================
     
     /**
-     * Load feature flags from database.
+     * Load feature flags from database via persistent cache.
      */
     private function load_feature_flags() {
-        $this->feature_flags = get_option('aips_feature_flags', array());
+        if (!AIPS_Cache_Factory::instance()->is_available()) {
+            $this->feature_flags = get_option('aips_feature_flags', array());
+            return;
+        }
+
+        $cache = AIPS_Cache_Factory::instance();
+        $this->feature_flags = $cache->remember(
+            'aips_feature_flags',
+            HOUR_IN_SECONDS,
+            function() {
+                return get_option('aips_feature_flags', array());
+            }
+        );
     }
     
     /**
@@ -617,9 +703,12 @@ class AIPS_Config {
      */
     public function enable_feature($feature_name) {
         $this->feature_flags[$feature_name] = true;
+        if (AIPS_Cache_Factory::instance()->is_available()) {
+            AIPS_Cache_Factory::instance()->delete('aips_feature_flags');
+        }
         return update_option('aips_feature_flags', $this->feature_flags);
     }
-    
+
     /**
      * Disable a feature.
      *
@@ -628,6 +717,9 @@ class AIPS_Config {
      */
     public function disable_feature($feature_name) {
         $this->feature_flags[$feature_name] = false;
+        if (AIPS_Cache_Factory::instance()->is_available()) {
+            AIPS_Cache_Factory::instance()->delete('aips_feature_flags');
+        }
         return update_option('aips_feature_flags', $this->feature_flags);
     }
     

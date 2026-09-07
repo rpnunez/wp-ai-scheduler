@@ -9,6 +9,11 @@ class Test_AIPS_Date_Time_DB_Repair extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+
+		if (!defined('ABSPATH') || !file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+			$this->markTestSkipped('Date/time DB repair tests require the full WordPress test library.');
+		}
+
 		AIPS_DB_Manager::install_tables();
 	}
 

@@ -28,6 +28,10 @@ class Test_Author_Topics_Controller_Delegation extends WP_UnitTestCase {
 	}
 
 	public function tearDown(): void {
+		global $wpdb;
+		$wpdb->query(
+			"DELETE FROM {$wpdb->prefix}aips_authors WHERE name IN ('Author One', 'Author Two')"
+		);
 		$_POST    = array();
 		$_REQUEST = array();
 		parent::tearDown();
@@ -159,18 +163,28 @@ public function test_compute_embeddings_for_author_delegates_to_expansion_servic
 
 		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'batch_compute_approved_embeddings', 'batch_compute_all_approved_embeddings' ) )
 			->getMock();
 
-		$mock_expansion->expects( $this->once() )
-			->method( 'batch_compute_approved_embeddings' )
-			->with( 3 )
-			->willReturn( array( 'success' => 5, 'failed' => 0, 'skipped' => 2 ) );
+		$mock_job_scheduler = $this->getMockBuilder( 'AIPS_Job_Scheduler' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'schedule_simple' ) )
+			->getMock();
 
-		$mock_expansion->expects( $this->never() )
-			->method( 'batch_compute_all_approved_embeddings' );
+		$mock_job_scheduler->expects( $this->once() )
+			->method( 'schedule_simple' )
+			->with(
+				'aips_process_author_embeddings',
+				$this->isType( 'int' ),
+				$this->callback( function( $args ) {
+					return isset( $args[0]['author_id'] ) && 3 === $args[0]['author_id'];
+				} ),
+				$this->callback( function( $options ) {
+					return isset( $options['job_type'] ) && 'author_embeddings' === $options['job_type'];
+				} )
+			)
+			->willReturn( true );
 
-		$controller = new AIPS_Author_Topics_Controller( $mock_expansion );
+		$controller = new AIPS_Author_Topics_Controller( $mock_expansion, null, null, $mock_job_scheduler );
 
 		$_POST = array(
 			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
@@ -180,8 +194,7 @@ public function test_compute_embeddings_for_author_delegates_to_expansion_servic
 		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
 
 		$this->assertTrue( $response['success'] );
-		$this->assertArrayHasKey( 'stats', $response['data'] );
-		$this->assertEquals( 5, $response['data']['stats']['success'] );
+		$this->assertEquals( 1, $response['data']['queued_count'] );
 }
 
 /**
@@ -191,19 +204,42 @@ public function test_compute_embeddings_for_author_delegates_to_expansion_servic
 public function test_compute_embeddings_for_all_delegates_to_expansion_service() {
 		wp_set_current_user( $this->admin_user_id );
 
+		$authors_repository = new AIPS_Authors_Repository();
+		$authors_repository->create(
+			array(
+				'name' => 'Author One',
+				'field_niche' => 'Testing',
+			)
+		);
+		$authors_repository->create(
+			array(
+				'name' => 'Author Two',
+				'field_niche' => 'Testing',
+			)
+		);
+
 		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'batch_compute_approved_embeddings', 'batch_compute_all_approved_embeddings' ) )
 			->getMock();
 
-		$mock_expansion->expects( $this->never() )
-			->method( 'batch_compute_approved_embeddings' );
+		$mock_job_scheduler = $this->getMockBuilder( 'AIPS_Job_Scheduler' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'schedule_simple' ) )
+			->getMock();
 
-		$mock_expansion->expects( $this->once() )
-			->method( 'batch_compute_all_approved_embeddings' )
-			->willReturn( array( 'success' => 10, 'failed' => 1, 'skipped' => 3 ) );
+		$mock_job_scheduler->expects( $this->exactly( 2 ) )
+			->method( 'schedule_simple' )
+			->with(
+				'aips_process_author_embeddings',
+				$this->isType( 'int' ),
+				$this->callback( function( $args ) {
+					return isset( $args[0]['author_id'] ) && $args[0]['author_id'] > 0;
+				} ),
+				$this->anything()
+			)
+			->willReturn( true );
 
-		$controller = new AIPS_Author_Topics_Controller( $mock_expansion );
+		$controller = new AIPS_Author_Topics_Controller( $mock_expansion, null, null, $mock_job_scheduler );
 
 		$_POST = array(
 			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
@@ -213,7 +249,7 @@ public function test_compute_embeddings_for_all_delegates_to_expansion_service()
 		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
 
 		$this->assertTrue( $response['success'] );
-		$this->assertEquals( 10, $response['data']['stats']['success'] );
+		$this->assertEquals( 2, $response['data']['queued_count'] );
 }
 
 // -----------------------------------------------------------------------

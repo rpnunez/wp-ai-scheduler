@@ -48,11 +48,13 @@ class Test_AIPS_Schedule_Controller_Save extends WP_UnitTestCase {
 			$callable();
 		} catch ( WPAjaxDieContinueException $e ) {
 			// Expected when wp_send_json_* is called.
+		} catch ( WPAjaxDieStopException $e ) {
+			// Expected for wp_die()-style early exits.
 		}
 
 		$output = ob_get_clean();
 
-		return json_decode( $output, true );
+		return json_decode( strtok( trim( $output ), "\r\n" ), true );
 	}
 
 	public function test_ajax_save_schedule_passes_inactive_value_when_zero_is_posted() {

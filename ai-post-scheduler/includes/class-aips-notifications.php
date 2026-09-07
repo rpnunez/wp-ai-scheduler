@@ -326,6 +326,16 @@ class AIPS_Notifications {
 	}
 
 	/**
+	 * Send a post-generated notification.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function post_generated(array $payload) {
+		$this->senders->post_generated($payload);
+	}
+
+	/**
 	 * Send a daily digest summary notification.
 	 *
 	 * @param array $payload Summary payload.

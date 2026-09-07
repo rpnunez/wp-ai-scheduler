@@ -96,4 +96,34 @@ class Test_AIPS_Scheduler_Save extends WP_UnitTestCase {
 
 		$this->assertSame( 77, $updated_id );
 	}
+
+	public function test_save_schedule_interprets_start_time_in_site_timezone_not_php_default() {
+		$original_timezone_string = get_option( 'timezone_string' );
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$this->repository->expects( $this->once() )
+			->method( 'create' )
+			->with(
+				$this->callback(
+					function ( $data ) {
+						// 2026-03-20T09:00 in America/New_York (EDT, UTC-4) is 13:00 UTC.
+						$expected_utc = AIPS_DateTime::fromMysql( '2026-03-20 13:00:00' )->timestamp();
+						return isset( $data['next_run'] ) && $expected_utc === (int) $data['next_run'];
+					}
+				)
+			)
+			->willReturn( 42 );
+
+		$this->scheduler->save_schedule(
+			array(
+				'template_id' => 15,
+				'frequency'   => 'daily',
+				'start_time'  => '2026-03-20T09:00',
+				'is_active'   => 1,
+				'topic'       => 'Timezone-sensitive schedule',
+			)
+		);
+
+		update_option( 'timezone_string', $original_timezone_string );
+	}
 }

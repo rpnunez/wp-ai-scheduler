@@ -8,10 +8,24 @@
 class Mock_WPDB_Stateful_Voices {
     public $prefix = 'wp_';
     public $insert_id = 0;
+    public $last_error = '';
+    public $options = 'wp_options';
     private $data = array();
 
     public function esc_like($text) {
         return addcslashes($text, '_%\\');
+    }
+
+    public function _escape($text) {
+        return $text;
+    }
+
+    public function suppress_errors($suppress = true) {
+        return false;
+    }
+
+    public function show_errors($show = true) {
+        return true;
     }
 
     public function prepare($query, ...$args) {
@@ -110,9 +124,14 @@ class AIPS_Voices_Repository_Test extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
+        AIPS_Cache_Factory::reset();
         global $wpdb;
         $this->original_wpdb = $wpdb;
         $wpdb = new Mock_WPDB_Stateful_Voices();
+        AIPS_Cache_Factory::register(
+            'aips_voices_repository',
+            new AIPS_Cache(new AIPS_Cache_Array_Driver())
+        );
 
         $this->repository = new AIPS_Voices_Repository();
     }
@@ -120,6 +139,7 @@ class AIPS_Voices_Repository_Test extends WP_UnitTestCase {
     public function tearDown(): void {
         global $wpdb;
         $wpdb = $this->original_wpdb;
+        AIPS_Cache_Factory::reset();
         parent::tearDown();
     }
 

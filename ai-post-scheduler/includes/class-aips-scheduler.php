@@ -64,6 +64,11 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      * @var AIPS_Schedule_Processor Processor for executing schedules
      */
     private $processor;
+
+    /**
+     * @var AIPS_Schedule_Batch_Resume_Service|null Lazily built resume service
+     */
+    private $batch_resume_service;
     
     public function __construct() {
         global $wpdb;
@@ -175,9 +180,13 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
 					: '';
 
 				// Parse start_time from datetime-local input (YYYY-MM-DDTHH:MM) or fallback to now.
+				// The input has no timezone of its own; treat it as the WordPress site
+				// timezone (matching how it is displayed elsewhere) rather than PHP's
+				// ambient runtime timezone, which may not match the site's configured one.
 				if (!empty($start_time_raw)) {
-					$start_timestamp = (int) strtotime($start_time_raw);
-					if ($start_timestamp <= 0) {
+					try {
+						$start_timestamp = AIPS_DateTime::fromSiteLocal($start_time_raw)->toUtc()->timestamp();
+					} catch (\InvalidArgumentException $e) {
 						$start_timestamp = AIPS_DateTime::now()->timestamp();
 					}
 				} else {
@@ -206,12 +215,21 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
 
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
+            'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => $frequency,
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+            'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
+            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'campaign_mode' => isset($data['campaign_mode']) ? sanitize_key($data['campaign_mode']) : 'template',
+            'blackout_dates' => isset($data['blackout_dates']) ? $data['blackout_dates'] : null,
+            'time_window_start' => isset($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null,
+            'time_window_end' => isset($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null,
+            'day_preferences' => isset($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null,
+            'season_end_date' => isset($data['season_end_date']) ? absint($data['season_end_date']) : null,
         );
 
         if (!empty($data['id'])) {
@@ -434,10 +452,11 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      *
      * @param int      $schedule_id      The schedule ID.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
+     * @param bool     $advance_schedule Whether this run consumes the next scheduled occurrence.
      * @return int|WP_Error Post ID on success, or WP_Error on failure.
      */
-    public function run_schedule_now($schedule_id, $quantity_override = null) {
-        return $this->processor->process_single_schedule($schedule_id, $quantity_override);
+    public function run_schedule_now($schedule_id, $quantity_override = null, $advance_schedule = true) {
+        return $this->processor->process_single_schedule($schedule_id, $quantity_override, $advance_schedule);
     }
 
     /**
@@ -448,6 +467,32 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      */
     public function process(): void {
         $this->processor->process_due_schedules();
+    }
+
+    /**
+     * Resume large-batch runs that were terminated before they finished.
+     *
+     * Called by the aips_resume_terminated_batches cron hook, which is queued
+     * when the "Prevent AI Generation" setting is switched back off.
+     *
+     * @return array{resumed: int, finished: int, skipped: int, failed: int}
+     */
+    public function resume_terminated_batches(): array {
+        if ($this->batch_resume_service === null) {
+            $this->batch_resume_service = new AIPS_Schedule_Batch_Resume_Service(
+                $this->repository,
+                new AIPS_Batch_Queue_Service(),
+                new AIPS_Schedule_Result_Handler(
+                    $this->repository,
+                    $this->history_service,
+                    $this->history_repository,
+                    new AIPS_Logger()
+                ),
+                new AIPS_Logger()
+            );
+        }
+
+        return $this->batch_resume_service->resume_all();
     }
 
     /**

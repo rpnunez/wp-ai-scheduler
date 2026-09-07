@@ -61,12 +61,16 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	/** @var Test_AIPS_Mock_Scheduler */
 	private $mock_scheduler;
 
+	/** @var int */
+	private $admin_user_id;
+
 	public function setUp(): void {
 		parent::setUp();
 
 		$this->mock_scheduler           = new Test_AIPS_Mock_Scheduler();
 		$this->planner                  = new Test_AIPS_Planner_BulkSchedule();
 		$this->planner->mock_scheduler  = $this->mock_scheduler;
+		$this->admin_user_id            = $this->factory->user->create(array('role' => 'administrator'));
 
 		$_POST    = array();
 		$_REQUEST = array();
@@ -75,6 +79,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	public function tearDown(): void {
 		$_POST    = array();
 		$_REQUEST = array();
+		wp_set_current_user(0);
 
 		parent::tearDown();
 	}
@@ -91,12 +96,7 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 	}
 
 	private function set_admin_user() {
-		global $current_user_id, $test_users;
-		if (!isset($test_users)) {
-			$test_users = array();
-		}
-		$current_user_id = 1;
-		$test_users[1]   = 'administrator';
+		wp_set_current_user($this->admin_user_id);
 	}
 
 	private function capture_json( $callable ) {
@@ -105,9 +105,11 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 			$callable();
 		} catch ( WPAjaxDieContinueException $e ) {
 			// Expected when wp_send_json_* is called.
+		} catch ( WPAjaxDieStopException $e ) {
+			// Expected for wp_die()-style early exits.
 		}
 		$output  = ob_get_clean();
-		$decoded = json_decode($output, true);
+		$decoded = json_decode(strtok(trim($output), "\r\n"), true);
 		$this->assertIsArray($decoded, 'Response must be valid JSON. Got: ' . $output);
 		return $decoded;
 	}
@@ -174,12 +176,13 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 		$schedules = $this->mock_scheduler->last_schedules;
 		$this->assertCount(5, $schedules, '5 schedule entries must be created.');
 
-		// All next_run values must equal the user-specified start_date.
+		// Topics with 'once' frequency should be staggered by 10 minutes (600 seconds)
 		foreach ($schedules as $i => $schedule) {
+            $expected_date = date('Y-m-d H:i:s', strtotime($start_date) + ($i * 600));
 			$this->assertEquals(
-				$start_date,
+				$expected_date,
 				$schedule['next_run'],
-				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $start_date, $schedule['next_run'])
+				sprintf('Topic at index %d must have next_run = %s, got %s', $i, $expected_date, $schedule['next_run'])
 			);
 		}
 	}

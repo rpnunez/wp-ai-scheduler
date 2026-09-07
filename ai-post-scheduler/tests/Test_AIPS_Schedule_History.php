@@ -39,6 +39,30 @@ unset( $_POST );
 parent::tearDown();
 }
 
+private function set_private_property( $object, $property_name, $value ) {
+$reflection = new ReflectionClass( $object );
+$property = $reflection->getProperty( $property_name );
+$property->setAccessible( true );
+$property->setValue( $object, $value );
+}
+
+private function capture_ajax_response( $callback ) {
+ob_start();
+
+try {
+$callback();
+} catch ( WPAjaxDieContinueException $e ) {
+// Expected.
+}
+
+$output = ob_get_clean();
+if ( '' === $output && isset( $GLOBALS['aips_last_ajax_output'] ) ) {
+$output = (string) $GLOBALS['aips_last_ajax_output'];
+}
+
+return json_decode( $output, true );
+}
+
 // ------------------------------------------------------------------
 // AIPS_History_Repository::get_logs_by_history_id
 // ------------------------------------------------------------------
@@ -83,24 +107,25 @@ $this->assertEmpty( $logs );
  * Schedule with no history ID should return success with empty entries array.
  */
 public function test_ajax_get_schedule_history_returns_empty_when_no_history() {
-// Mock get_row to return a schedule without schedule_history_id
-global $wpdb;
 $schedule_obj = new stdClass();
 $schedule_obj->id = 5;
-// no schedule_history_id property set
+
+$schedule_repository = $this->getMockBuilder( 'AIPS_Schedule_Repository' )
+->disableOriginalConstructor()
+->onlyMethods( array( 'get_by_id' ) )
+->getMock();
+
+$schedule_repository->method( 'get_by_id' )
+->with( 5 )
+->willReturn( $schedule_obj );
+
+$this->set_private_property( $this->controller, 'schedule_repository', $schedule_repository );
 
 $_POST['schedule_id'] = 5;
 $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
 
-try {
-$this->controller->ajax_get_schedule_history();
-} catch ( WPAjaxDieContinueException $e ) {
-// expected
-}
-
-$output   = $this->getActualOutput();
-$response = json_decode( $output, true );
+$response = $this->capture_ajax_response( array( $this->controller, 'ajax_get_schedule_history' ) );
 
 $this->assertTrue( $response['success'] );
 $this->assertIsArray( $response['data']['entries'] );
@@ -115,14 +140,7 @@ $_POST['schedule_id'] = 0;
 $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
 
-try {
-$this->controller->ajax_get_schedule_history();
-} catch ( WPAjaxDieContinueException $e ) {
-// expected
-}
-
-$output   = $this->getActualOutput();
-$response = json_decode( $output, true );
+$response = $this->capture_ajax_response( array( $this->controller, 'ajax_get_schedule_history' ) );
 
 $this->assertFalse( $response['success'] );
 $this->assertStringContainsString( 'Invalid schedule ID', $response['data']['message'] );
@@ -139,14 +157,7 @@ $_POST['schedule_id'] = 1;
 $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
 
-try {
-$this->controller->ajax_get_schedule_history();
-} catch ( WPAjaxDieContinueException $e ) {
-// expected
-}
-
-$output   = $this->getActualOutput();
-$response = json_decode( $output, true );
+$response = $this->capture_ajax_response( array( $this->controller, 'ajax_get_schedule_history' ) );
 
 $this->assertFalse( $response['success'] );
 $this->assertStringContainsString( 'Permission denied', $response['data']['message'] );

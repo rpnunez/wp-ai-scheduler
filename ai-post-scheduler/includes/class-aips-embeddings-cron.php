@@ -155,6 +155,15 @@ class AIPS_Embeddings_Cron {
 				$result
 			);
 
+			$this->history_service->update_history_record(
+				$history->get_id(),
+				array(
+					'status' => 'failed',
+					'error_message' => $result->get_error_message(),
+					'completed_at' => AIPS_DateTime::now()->timestamp(),
+				)
+			);
+
 			// Delete progress transient on error
 			delete_transient("aips_embeddings_progress_{$author_id}");
 			return;
@@ -193,7 +202,7 @@ class AIPS_Embeddings_Cron {
 			'last_processed_id' => $result['last_processed_id'],
 			'done'              => $result['done'],
 			'processed_count'   => $result['processed_count'],
-			'timestamp'         => current_time('timestamp'),
+			'timestamp'         => AIPS_DateTime::now()->timestamp(),
 		);
 
 		set_transient("aips_embeddings_progress_{$author_id}", $progress_data, HOUR_IN_SECONDS);
@@ -259,6 +268,7 @@ class AIPS_Embeddings_Cron {
 		// Create new history container
 		return $this->history_service->create('author_embeddings', array(
 			'author_id' => $author_id,
+			'creation_method' => 'author_embeddings',
 		));
 	}
 

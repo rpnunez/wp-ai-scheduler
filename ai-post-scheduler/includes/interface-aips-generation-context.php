@@ -96,6 +96,13 @@ interface AIPS_Generation_Context {
 	public function get_post_status();
 
 	/**
+	 * Get the post type for the generated post.
+	 *
+	 * @return string Post type slug.
+	 */
+	public function get_post_type();
+
+	/**
 	 * Get the post category ID(s).
 	 *
 	 * @return int|string Category ID or comma-separated IDs.
@@ -164,6 +171,13 @@ interface AIPS_Generation_Context {
 	 * @return int[] Array of term IDs. Empty array means no source groups are selected and no sources will be injected, even if include_sources is true.
 	 */
 	public function get_source_group_ids();
+
+	/**
+	 * Whether affiliate links should be injected into generated content.
+	 *
+	 * @return bool
+	 */
+	public function get_affiliate_links_enabled();
 
 	/**
 	 * Get all context data as an array for serialization/storage.

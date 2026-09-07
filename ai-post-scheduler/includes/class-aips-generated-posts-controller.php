@@ -76,6 +76,8 @@ class AIPS_Generated_Posts_Controller {
 		$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$campaign_id = isset($_GET['campaign_id']) ? absint($_GET['campaign_id']) : 0;
+		$post_type_filter = isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '';
 
 		// Get completed history entries with post IDs (for Generated Posts tab)
 		$history = $this->history_repository->get_history(array(
@@ -85,9 +87,47 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,
+			'campaign_id' => $campaign_id,
+			'post_type' => $post_type_filter,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
 		
+		// Hoist date/time format lookups outside of loops to prevent N+1 query overhead
+		$date_format = get_option('date_format');
+		$time_format = get_option('time_format');
+		$datetime_format = $date_format . ' ' . $time_format;
+
+		// Pre-fetch posts for history items to avoid N+1 query overhead
+		$history_post_ids = array();
+		foreach ($history['items'] as $item) {
+			if (!empty($item->post_id)) {
+				$history_post_ids[] = $item->post_id;
+			}
+		}
+
+		if (!empty($history_post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($history_post_ids), false, true);
+		}
+
+		$template_ids = array();
+		if (!empty($history['items'])) {
+			foreach ($history['items'] as $item) {
+				if ($item->template_id) {
+					$template_ids[] = (int) $item->template_id;
+				}
+			}
+		}
+
+		$schedules_by_template = array();
+		if (!empty($template_ids) && method_exists($this->schedule_repository, 'get_by_template_ids')) {
+			$all_schedules = $this->schedule_repository->get_by_template_ids(array_unique($template_ids));
+			foreach ($all_schedules as $sched) {
+				if (!isset($schedules_by_template[$sched->template_id])) {
+					$schedules_by_template[$sched->template_id] = $sched;
+				}
+			}
+		}
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -103,9 +143,13 @@ class AIPS_Generated_Posts_Controller {
 			// Get most recent schedule for this template (if exists)
 			$schedule = null;
 			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
+				if (method_exists($this->schedule_repository, 'get_by_template_ids')) {
+					$schedule = isset($schedules_by_template[$item->template_id]) ? $schedules_by_template[$item->template_id] : null;
+				} else {
+					$schedules = $this->schedule_repository->get_by_template($item->template_id);
+					// get_by_template returns multiple schedules, get the first one
+					$schedule = !empty($schedules) ? $schedules[0] : null;
+				}
 			}
 			
 			// Format source information
@@ -117,10 +161,11 @@ class AIPS_Generated_Posts_Controller {
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
+				'post_type' => $post->post_type,
 				'title' => $post->post_title,
-				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, get_option('date_format') . ' ' . get_option('time_format')),
-				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, get_option('date_format') . ' ' . get_option('time_format')),
+				'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
+				'date_published' => AIPS_DateTime::formatRelativeOrAbsolute($published_timestamp, $datetime_format),
+				'date_scheduled' => AIPS_DateTime::formatRelativeOrAbsolute($schedule ? $schedule->next_run : null, $datetime_format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
 			);
@@ -131,12 +176,13 @@ class AIPS_Generated_Posts_Controller {
 			'page' => $review_page,
 			'search' => $search_query,
 			'template_id' => $template_id,
+			'post_type' => $post_type_filter,
 		));
 
 		// Pre-format dates for draft posts
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {
-				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format'));
+				$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format);
 			}
 		}
 
@@ -146,7 +192,20 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,
+			'post_type' => $post_type_filter,
 		));
+
+		// Pre-fetch posts for partial generations to avoid N+1 query overhead
+		$partial_post_ids = array();
+		foreach ($partial_generations['items'] as $item) {
+			if (!empty($item->post_id)) {
+				$partial_post_ids[] = $item->post_id;
+			}
+		}
+
+		if (!empty($partial_post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($partial_post_ids), false, true);
+		}
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
@@ -162,9 +221,10 @@ class AIPS_Generated_Posts_Controller {
 			$partial_posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
+				'post_type' => $post->post_type,
 				'title' => $post->post_title,
-			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, get_option('date_format') . ' ' . get_option('time_format')),
-			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, get_option('date_format') . ' ' . get_option('time_format')),
+			'date_generated' => AIPS_DateTime::formatRelativeOrAbsolute($item->created_at, $datetime_format),
+			'date_updated' => AIPS_DateTime::formatRelativeOrAbsolute($item->post_modified, $datetime_format),
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'post_status' => $item->post_status,
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
@@ -181,11 +241,15 @@ class AIPS_Generated_Posts_Controller {
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
 		$templates = $template_repository->get_all();
+		$campaigns = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
 
 		// Get authors for filter dropdown
 		$authors_repository = new AIPS_Authors_Repository();
 		$authors = $authors_repository->get_all();
-		
+
+		// Get selectable post types for filter dropdown
+		$selectable_post_types = AIPS_Utilities::get_selectable_post_types();
+
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
 		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
@@ -310,7 +374,7 @@ class AIPS_Generated_Posts_Controller {
 						'type' => AIPS_History_Type::get_label($type_id),
 						'type_id' => $type_id,
 						'timestamp' => $log_entry->timestamp,
-						'log_type' => $log_entry->log_type,
+						'log_type' => isset($details['log_subtype']) ? (string) $details['log_subtype'] : '',
 						'details' => $details,
 					);
 					break;
@@ -428,7 +492,7 @@ class AIPS_Generated_Posts_Controller {
 		}
 		
 		// Build a safe filename including history id and timestamp
-		$timestamp = current_time('Ymd-His');
+		$timestamp = AIPS_DateTime::now()->toDisplay('Ymd-His');
 		$filename = sprintf('aips-session-%d-%s.json', $history_id, $timestamp);
 		
 		// Send download headers and the JSON payload

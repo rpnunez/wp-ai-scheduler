@@ -141,11 +141,13 @@ class AIPS_Post_Review {
 		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
 		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-		
+		$post_type = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
+
 		$draft_posts = $this->get_draft_posts(array(
 			'page' => $page,
 			'search' => $search,
 			'template_id' => $template_id,
+			'post_type' => $post_type,
 		));
 		
 		AIPS_Ajax_Response::success($draft_posts);
@@ -311,6 +313,10 @@ class AIPS_Post_Review {
 		$success_count = 0;
 		$failed_count = 0;
 		
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique(array_map('intval', $post_ids)), false, true);
+		}
+
 		foreach ($post_ids as $post_id) {
 			// Verify the post exists and is a draft
 			$post = get_post($post_id);

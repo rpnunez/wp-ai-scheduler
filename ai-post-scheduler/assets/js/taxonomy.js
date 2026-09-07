@@ -31,7 +31,7 @@
 		 */
 		bindEvents: function() {
 			$(document).on('click', '#aips-open-generate-modal', this.openGenerateModal.bind(this));
-			$(document).on('click', '.aips-modal-close', this.closeModal.bind(this));
+			// $(document).on('click', '.aips-modal-close', this.closeModal.bind(this)); // Handled globally by admin.js
 			$(document).on('submit', '#aips-generate-taxonomy-form', this.generateTaxonomy.bind(this));
 			$(document).on('keyup', '#base_posts', this.searchPosts.bind(this));
 			$(document).on('click', '.aips-remove-post', this.removeSelectedPost.bind(this));

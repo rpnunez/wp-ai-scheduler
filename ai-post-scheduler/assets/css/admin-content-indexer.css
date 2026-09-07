@@ -1,0 +1,356 @@
+/**
+ * Content Indexer & Semantic Graph Visualizer Admin Styles
+ */
+
+.aips-indexer-page .aips-page-header-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+
+/* Live Indexing Progress Banner */
+.aips-indexer-banner {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	background: #f0f6fc;
+	border: 1px solid #cce5ff;
+	border-left: 4px solid #2271b1;
+	border-radius: 6px;
+	padding: 14px 20px;
+	margin-bottom: 24px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.aips-indexer-banner-text {
+	flex-grow: 1;
+}
+
+.aips-indexer-banner-text strong {
+	display: block;
+	font-size: 14px;
+	color: #0c4a6e;
+}
+
+.aips-indexer-banner-text span {
+	font-size: 13px;
+	color: #64748b;
+}
+
+.aips-indexer-banner-counter {
+	font-size: 16px;
+	font-weight: 700;
+	color: #2271b1;
+}
+
+/* Visualizer Panel */
+.aips-visualizer-panel {
+	position: relative;
+	background: #fff;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.aips-visualizer-toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 20px;
+	border-bottom: 1px solid #e2e8f0;
+	background: #f8fafc;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.aips-visualizer-search-wrap {
+	position: relative;
+	flex: 1;
+	max-width: 400px;
+}
+
+.aips-autocomplete-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: #fff;
+	border: 1px solid #cbd5e1;
+	border-radius: 6px;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+	z-index: 1000;
+	max-height: 240px;
+	overflow-y: auto;
+	margin-top: 4px;
+}
+
+.aips-autocomplete-item {
+	padding: 10px 14px;
+	cursor: pointer;
+	font-size: 13px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.aips-autocomplete-item:hover,
+.aips-autocomplete-item.active {
+	background: #eff6ff;
+	color: #1d4ed8;
+}
+
+.aips-visualizer-controls {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	flex-wrap: wrap;
+}
+
+.aips-slider-control {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.aips-slider-control input[type="range"] {
+	width: 120px;
+}
+
+.aips-control-label {
+	font-size: 12px;
+	color: #475569;
+}
+
+/* Viewport & SVG Canvas */
+.aips-graph-viewport-container {
+	position: relative;
+	background: #0f172a;
+	background-image: radial-gradient(#1e293b 1px, transparent 1px);
+	background-size: 20px 20px;
+	min-height: 560px;
+	overflow: hidden;
+}
+
+.aips-graph-canvas-wrap {
+	width: 100%;
+	height: 100%;
+}
+
+.aips-graph-placeholder {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	text-align: center;
+	color: #94a3b8;
+	max-width: 420px;
+}
+
+.aips-graph-placeholder h3 {
+	color: #f1f5f9;
+	margin: 16px 0 8px;
+}
+
+/* SVG Nodes and Edges */
+#aips-graph-svg {
+	cursor: grab;
+}
+
+#aips-graph-svg:active {
+	cursor: grabbing;
+}
+
+.graph-edge {
+	stroke: #334155;
+	stroke-opacity: 0.7;
+	transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.graph-edge.edge-high {
+	stroke: #10b981;
+	stroke-opacity: 0.85;
+}
+
+.graph-edge.edge-med {
+	stroke: #38bdf8;
+	stroke-opacity: 0.75;
+}
+
+.graph-edge.edge-low {
+	stroke: #f59e0b;
+	stroke-opacity: 0.65;
+}
+
+.graph-edge:hover {
+	stroke: #f43f5e !important;
+	stroke-width: 3px !important;
+	stroke-opacity: 1 !important;
+}
+
+.graph-edge-text {
+	font-size: 11px;
+	fill: #94a3b8;
+	text-anchor: middle;
+	pointer-events: none;
+	user-select: none;
+}
+
+.graph-node {
+	cursor: pointer;
+	transition: transform 0.2s ease;
+}
+
+.graph-node circle {
+	transition: r 0.2s ease, fill 0.2s ease, stroke 0.2s ease;
+}
+
+.graph-node.node-center circle {
+	fill: #3b82f6;
+	stroke: #93c5fd;
+	stroke-width: 4px;
+	filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.7));
+}
+
+.graph-node.node-neighbor circle {
+	fill: #1e293b;
+	stroke: #38bdf8;
+	stroke-width: 2.5px;
+}
+
+.graph-node.node-high circle {
+	stroke: #10b981;
+}
+
+.graph-node.node-low circle {
+	stroke: #f59e0b;
+}
+
+.graph-node:hover circle {
+	stroke: #f43f5e;
+	stroke-width: 4px;
+}
+
+.graph-node text {
+	font-size: 11px;
+	font-weight: 500;
+	fill: #f8fafc;
+	pointer-events: none;
+	user-select: none;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Node Flyout Drawer */
+.aips-node-drawer {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	width: 320px;
+	background: rgba(15, 23, 42, 0.95);
+	backdrop-filter: blur(8px);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	color: #fff;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+	z-index: 50;
+	animation: fadeInRight 0.25s ease;
+}
+
+@keyframes fadeInRight {
+	from { opacity: 0; transform: translateX(20px); }
+	to   { opacity: 1; transform: translateX(0); }
+}
+
+.aips-node-drawer-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 14px 16px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.aips-node-drawer-header h4 {
+	margin: 0;
+	font-size: 14px;
+	color: #f8fafc;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.aips-node-drawer-header .aips-btn-ghost {
+	color: #94a3b8;
+	font-size: 18px;
+	padding: 0 4px;
+}
+
+.aips-node-drawer-body {
+	padding: 16px;
+}
+
+.aips-node-stat-badge {
+	display: inline-block;
+	background: #065f46;
+	color: #34d399;
+	font-size: 12px;
+	font-weight: 700;
+	padding: 4px 10px;
+	border-radius: 12px;
+	margin-bottom: 8px;
+}
+
+.aips-node-drawer-type {
+	font-size: 13px;
+	color: #94a3b8;
+	margin: 0 0 16px;
+}
+
+.aips-drawer-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* Legend */
+.aips-graph-legend {
+	display: flex;
+	gap: 20px;
+	padding: 12px 20px;
+	background: #f8fafc;
+	border-top: 1px solid #e2e8f0;
+	font-size: 12px;
+	color: #64748b;
+	flex-wrap: wrap;
+}
+
+.aips-graph-legend .legend-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.aips-graph-legend .dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	display: inline-block;
+}
+
+.dot.dot-center { background: #3b82f6; }
+.dot.dot-high   { background: #10b981; }
+.dot.dot-med    { background: #38bdf8; }
+.dot.dot-low    { background: #f59e0b; }
+
+/* Cannibalization Risk Badges */
+.aips-risk-badge {
+	display: inline-flex;
+	align-items: center;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: 4px;
+}
+
+.aips-risk-high   { background: #fee2e2; color: #b91c1c; }
+.aips-risk-medium { background: #fef3c7; color: #b45309; }
+.aips-risk-low    { background: #e0f2fe; color: #0369a1; }

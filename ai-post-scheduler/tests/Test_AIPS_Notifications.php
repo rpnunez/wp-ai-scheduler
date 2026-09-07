@@ -107,9 +107,9 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	 * Test that create() stores created_at in UTC.
 	 */
 	public function test_create_stores_utc_timestamp() {
-		$before = gmdate( 'Y-m-d H:i:s' );
+		$before = time();
 		$id     = $this->repository->create( 'test_type', 'UTC test' );
-		$after  = gmdate( 'Y-m-d H:i:s' );
+		$after  = time();
 
 		global $wpdb;
 		$row = $wpdb->get_row( $wpdb->prepare(
@@ -118,8 +118,8 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		) );
 
 		$this->assertNotNull( $row );
-		$this->assertGreaterThanOrEqual( $before, $row->created_at );
-		$this->assertLessThanOrEqual( $after, $row->created_at );
+		$this->assertGreaterThanOrEqual( $before, (int) $row->created_at );
+		$this->assertLessThanOrEqual( $after, (int) $row->created_at );
 	}
 
 	// -----------------------------------------------------------------------
@@ -351,6 +351,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 			'nonce'  => wp_create_nonce( 'aips_admin_bar_nonce' ),
 			'id'     => 1,
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		$response = null;
@@ -386,6 +387,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 			'nonce'  => wp_create_nonce( 'aips_admin_bar_nonce' ),
 			'id'     => $id1,
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		try {
@@ -447,6 +449,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 			'action' => 'aips_mark_all_notifications_read',
 			'nonce'  => wp_create_nonce( 'aips_admin_bar_nonce' ),
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		try {

@@ -53,6 +53,24 @@ class AIPS_Ajax_Registry {
 		'aips_unified_bulk_run_now'       => 'AIPS_Schedule_Controller',
 		'aips_unified_bulk_delete'        => 'AIPS_Schedule_Controller',
 		'aips_get_unified_schedule_history' => 'AIPS_Schedule_Controller',
+		'aips_get_schedule_status_read_model' => 'AIPS_Schedule_Controller',
+		'aips_reset_schedule_circuit'     => 'AIPS_Schedule_Controller',
+		'aips_resume_schedule_batch'      => 'AIPS_Schedule_Controller',
+
+		// Admin Campaign Wizard
+		'aips_campaign_wizard_save_draft'    => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_validate_step' => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_finalize'      => 'AIPS_Campaigns_Controller',
+		'aips_campaign_wizard_ai_generate'   => 'AIPS_Campaigns_Controller',
+
+		// Campaigns Controller
+		'aips_get_campaigns'                 => 'AIPS_Campaigns_Controller',
+		'aips_get_campaign_metrics'          => 'AIPS_Campaigns_Controller',
+		'aips_toggle_campaign'               => 'AIPS_Campaigns_Controller',
+		'aips_duplicate_campaign'            => 'AIPS_Campaigns_Controller',
+		'aips_archive_campaign'              => 'AIPS_Campaigns_Controller',
+		'aips_restore_campaign'              => 'AIPS_Campaigns_Controller',
+		'aips_delete_campaign'               => 'AIPS_Campaigns_Controller',
 
 		// Author Topics Controller
 		'aips_approve_topic'              => 'AIPS_Author_Topics_Controller',
@@ -137,12 +155,22 @@ class AIPS_Ajax_Registry {
 		'aips_perform_gap_analysis'       => 'AIPS_Research_Controller',
 		'aips_generate_topics_from_gap'   => 'AIPS_Research_Controller',
 
+		// Content Auditor Controller
+		'aips_auditor_scan_step'          => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_graph_step'         => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_analyze_step'       => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_synthesize_step'    => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_get_latest'         => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_get_history'        => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_get_audit'          => 'AIPS_Content_Auditor_Controller',
+		'aips_auditor_delete_audit'       => 'AIPS_Content_Auditor_Controller',
+
 		// History
 		'aips_bulk_delete_history'        => 'AIPS_History',
-		'aips_clear_history'              => 'AIPS_History',
 		'aips_export_history'             => 'AIPS_History',
 		'aips_get_history_details'        => 'AIPS_History',
 		'aips_get_history_logs'           => 'AIPS_History',
+		'aips_get_history_modal_html'     => 'AIPS_History',
 		'aips_reload_history'             => 'AIPS_History',
 		'aips_retry_generation'           => 'AIPS_History',
 
@@ -154,10 +182,6 @@ class AIPS_Ajax_Registry {
 
 		// Seeder Admin
 		'aips_process_seeder'             => 'AIPS_Seeder_Admin',
-
-		// Data Management
-		'aips_export_data'                => 'AIPS_Data_Management',
-		'aips_import_data'                => 'AIPS_Data_Management',
 
 		// DB Manager
 		'aips_repair_db'                  => 'AIPS_DB_Manager',
@@ -198,8 +222,8 @@ class AIPS_Ajax_Registry {
 		'aips_search_posts'               => 'AIPS_Taxonomy_Controller',
 
 		// Settings Ajax
+		'aips_save_settings'              => 'AIPS_Settings_Ajax',
 		'aips_test_connection'            => 'AIPS_Settings_Ajax',
-		'aips_notifications_data_hygiene' => 'AIPS_Settings_Ajax',
 
 		// Sources Controller
 		'aips_get_sources'                => 'AIPS_Sources_Controller',
@@ -207,6 +231,9 @@ class AIPS_Ajax_Registry {
 		'aips_delete_source'              => 'AIPS_Sources_Controller',
 		'aips_toggle_source_active'       => 'AIPS_Sources_Controller',
 		'aips_fetch_source_now'           => 'AIPS_Sources_Controller',
+		'aips_get_source_data'            => 'AIPS_Sources_Controller',
+		'aips_save_source_data'            => 'AIPS_Sources_Controller',
+		'aips_delete_source_data'          => 'AIPS_Sources_Controller',
 		'aips_get_source_groups'          => 'AIPS_Sources_Controller',
 		'aips_save_source_group'          => 'AIPS_Sources_Controller',
 		'aips_delete_source_group'        => 'AIPS_Sources_Controller',
@@ -231,8 +258,15 @@ class AIPS_Ajax_Registry {
 		'aips_reset_circuit_breaker'      => 'AIPS_System_Status_Controller',
 		'aips_status_reschedule_missed_cron' => 'AIPS_System_Status_Controller',
 		'aips_status_retry_failed_slices' => 'AIPS_System_Status_Controller',
+		'aips_status_repair_campaign_data' => 'AIPS_System_Status_Controller',
 		'aips_status_clear_partial_generations' => 'AIPS_System_Status_Controller',
 		'aips_status_cleanup_stale_jobs_cache' => 'AIPS_System_Status_Controller',
+		'aips_rebuild_caches'            => 'AIPS_System_Status_Controller',
+		'aips_status_refresh_system'     => 'AIPS_System_Status_Controller',
+		'aips_status_cache_maintenance'  => 'AIPS_System_Status_Controller',
+		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
+		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
+		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
@@ -243,11 +277,70 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_clear_index'            => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_get_post_for_insertion' => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_find_insert_locations'  => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_apply_insertion'        => 'AIPS_Internal_Links_Controller',
-		'aips_internal_links_apply_bulk_insertions'  => 'AIPS_Internal_Links_Controller',
+		// Content Indexer Controller
+		'aips_indexer_get_status'                    => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_process_batch'                 => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_clear_index'                   => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_get_graph'                     => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_run_cannibalization_audit'     => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_save_settings'                 => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_search_posts'                  => 'AIPS_Content_Indexer_Controller',
+
+		// AI Assistance Controller
+		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
+		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
+
+		// Cache Monitor Controller
+		'aips_cache_monitor_summary'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_entries'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_inspect'           => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_entry'      => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_delete_bulk'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_group'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_expired'     => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_flush_all'         => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_tag'    => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_invalidate_domain' => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_operations'        => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_events'            => 'AIPS_Cache_Monitor_Controller',
+		'aips_cache_monitor_maintenance'       => 'AIPS_Cache_Monitor_Controller',
+
+		// Stress Test Controller
+		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_cleanup'             => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_status'              => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_save_run'            => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_get_history'         => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_get_run'             => 'AIPS_Stress_Test_Controller',
+		'aips_stress_test_diff_runs'           => 'AIPS_Stress_Test_Controller',
+
+		// Dashboard Controller
+		'aips_get_dashboard_data'              => 'AIPS_Dashboard_Controller',
+
+		// Integrations Controller
+		'aips_get_available_integrations'      => 'AIPS_Integrations_Controller',
+		'aips_get_integration_schema'          => 'AIPS_Integrations_Controller',
+		'aips_get_field_mappings'              => 'AIPS_Integrations_Controller',
+		'aips_save_field_mappings'             => 'AIPS_Integrations_Controller',
+		'aips_delete_field_mapping'            => 'AIPS_Integrations_Controller',
+		// Affiliate Links Controller
+		'aips_affiliate_links_list'          => 'AIPS_Affiliate_Links_Controller',
+		'aips_affiliate_links_get'           => 'AIPS_Affiliate_Links_Controller',
+		'aips_affiliate_links_create'        => 'AIPS_Affiliate_Links_Controller',
+		'aips_affiliate_links_update'        => 'AIPS_Affiliate_Links_Controller',
+		'aips_affiliate_links_delete'        => 'AIPS_Affiliate_Links_Controller',
+		'aips_affiliate_links_toggle'        => 'AIPS_Affiliate_Links_Controller',
+		'aips_affiliate_links_inject_post'   => 'AIPS_Affiliate_Links_Controller',
+
+		// Content Indexer Controller
+		'aips_indexer_get_status'              => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_process_batch'           => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_clear_index'             => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_get_graph'               => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_run_cannibalization_audit'=> 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_save_settings'           => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_search_posts'            => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_fetch_meow_environments' => 'AIPS_Content_Indexer_Controller',
 	);
 
 	/**
