@@ -522,7 +522,7 @@
 					var rowStyle   = row.is_expired ? ' style="opacity:0.55;"' : '';
 
 					html += '<tr data-hash="' + escAttr( row.key_hash ) + '"' + rowStyle + '>';
-					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" /></td>';
+					html += '<td class="check-column"><input type="checkbox" class="aips-cache-entry-cb" value="' + escAttr( row.key_hash ) + '" aria-label="' + escAttr( aipsCacheMonitor.i18n.selectEntry || 'Select entry' ) + '" /></td>';
 					html += '<td class="cell-primary">';
 					html += '<code class="aips-key-hash" title="' + escAttr( row.key_hash ) + '">' + esc( row.key_hash.substring( 0, 12 ) + '…' ) + '</code>';
 					html += '<div class="row-actions">';
