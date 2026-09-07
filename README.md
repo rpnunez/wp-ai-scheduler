@@ -63,12 +63,16 @@ ai-post-scheduler/
 ./start-dev.sh
 ```
 
-This provisions WordPress, database services, plugin activation, and debugging support.
+This provisions WordPress, database services, the official WordPress **AI plugin**, the **Google AI Connector**, API key credentials from `.env`, and AI Post Scheduler activation.
+
+On first run, `start-dev.sh` automatically creates a `.env` file from `.env.example`. You can edit `.env` to update your `GOOGLE_API_KEY` or select a different default connector.
 
 Local URLs:
 - WordPress: http://localhost:8080
 - Admin: http://localhost:8080/wp-admin (admin/admin)
 - phpMyAdmin: http://localhost:8082
+- AI Connectors: http://localhost:8080/wp-admin/options-general.php?page=connectors
+
 
 See [docs/SETUP.md](docs/SETUP.md) for full setup details.
 
@@ -95,9 +99,14 @@ make down
 
 ### Debugging (VS Code)
 
-1. Start the Docker environment.
-2. Press `F5` in VS Code.
-3. Select `Listen for Xdebug (Docker)`.
+Xdebug is **off by default** for performance. Enable it only when actively debugging:
+
+1. `make xdebug-on` (sets `XDEBUG_MODE=develop,debug` with `trigger`-based startup, rebuilds & restarts `web`).
+2. Press `F5` in VS Code and select `Listen for Xdebug (Docker)`.
+3. Trigger the request (with the Xdebug browser helper, or append `?XDEBUG_TRIGGER=1`).
+4. When finished: `make xdebug-off`.
+
+See [docs/SETUP.md](docs/SETUP.md#xdebug--vs-code-debugging) for the full env-var reference and mode explanations.
 
 ## Testing
 

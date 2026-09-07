@@ -159,6 +159,35 @@
 	font-size: var(--aips-text-sm);
 }
 
+.aips-stress-summary-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-stress-history-picker {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--aips-space-2, 6px);
+}
+
+.aips-stress-history-picker .aips-select {
+	height: 36px;
+	padding: 0 var(--aips-space-2, 8px);
+	font-size: 13px;
+	border: 1px solid var(--aips-gray-300, #cbd5e1);
+	border-radius: var(--aips-radius-sm, 4px);
+	background-color: var(--aips-white, #ffffff);
+}
+
+.aips-stress-history-picker .aips-btn {
+	height: 36px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
 /* Banner entrance. Replayed by toggling .is-animating so a second run with the
  * same outcome still animates. */
 .aips-stress-summary.is-animating .aips-stress-summary-banner {
@@ -638,3 +667,138 @@
 		transition: none;
 	}
 }
+
+/* -----------------------------------------------------------------------
+ * Diff Modal & History Comparison Styles
+ * -------------------------------------------------------------------- */
+
+#aips-stress-diff-modal[hidden],
+.aips-modal[hidden] {
+	display: none !important;
+}
+
+#aips-stress-diff-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#aips-stress-diff-modal .aips-modal-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 1;
+}
+
+#aips-stress-diff-modal .aips-modal-dialog {
+	position: relative;
+	z-index: 2;
+	background: #ffffff;
+	border-radius: var(--aips-radius-md, 8px);
+	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.aips-stress-diff-meta-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+
+.aips-stress-diff-card {
+	padding: 14px 16px;
+	border-radius: var(--aips-radius-sm, 6px);
+	background: var(--aips-gray-50, #f8fafc);
+	border: 1px solid var(--aips-gray-200, #e2e8f0);
+}
+
+.aips-stress-diff-card h4 {
+	margin: 0 0 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--aips-gray-800, #1e293b);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.aips-stress-diff-meta-list {
+	font-size: 12px;
+	line-height: 1.6;
+	color: var(--aips-gray-600, #475569);
+}
+
+.aips-stress-diff-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 12px;
+}
+
+.aips-stress-diff-table th,
+.aips-stress-diff-table td {
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--aips-gray-200, #e2e8f0);
+	font-size: 13px;
+}
+
+.aips-stress-diff-table th {
+	background: var(--aips-gray-100, #f1f5f9);
+	font-weight: 600;
+	text-align: left;
+}
+
+.aips-stress-diff-change-regressed {
+	background-color: #fef2f2;
+	color: #991b1b;
+	border-left: 3px solid #ef4444;
+}
+
+.aips-stress-diff-change-improved {
+	background-color: #f0fdf4;
+	color: #166534;
+	border-left: 3px solid #22c55e;
+}
+
+.aips-stress-diff-delta-faster {
+	color: #16a34a;
+	font-weight: 600;
+}
+
+.aips-stress-diff-delta-slower {
+	color: #dc2626;
+	font-weight: 600;
+}
+
+.aips-stress-diff-split {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.aips-stress-diff-split-box {
+	background: #ffffff;
+	border: 1px solid #cbd5e1;
+	border-radius: 4px;
+	padding: 8px 10px;
+	max-height: 200px;
+	overflow: auto;
+}
+
+.aips-stress-diff-split-box pre {
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-size: 11px;
+}
+

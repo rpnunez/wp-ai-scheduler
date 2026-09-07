@@ -22,3 +22,21 @@
 **PR:** 🎨 Palette: Add accessible labels to author table checkboxes
 **Learning:** Checkboxes in data tables (like select all, or row selection) often lack accessible labels when placed in Handlebars JS templates or standard WP tables without explicitly rendering a label.
 **Action:** Always add `aria-label` to table selection checkboxes in WP Admin interfaces.
+## 2024-08-21 - Add aria-label to toggle checkboxes
+**Area:** Affiliate Links (`templates/admin/affiliate-links.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to toggle checkboxes in affiliate links
+**Learning:** Toggle slider checkboxes in admin UIs often lack native labels on the `<input>` element itself.
+**Action:** Always ensure toggle `<input type="checkbox">` elements have an explicit `aria-label` or are wrapped with a text-inclusive `<label>` to remain accessible to screen readers.
+## 2024-08-25 - Add aria-label to cache monitor checkboxes
+**Area:** Cache Monitor (`templates/admin/cache-monitor.php`, `assets/js/cache-monitor.js`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to cache monitor checkboxes
+**Learning:** Data tables and lists sometimes contain generated or standalone checkboxes for bulk actions without `<label>` elements or ARIA labels.
+**Action:** When adding checkboxes for bulk actions, ensure both the header select-all and individual row checkboxes have an explicit localized `aria-label`.
+## 2026-09-03 - Add aria-label to content indexer drawer close button
+**Area:** Content Indexer (`templates/admin/content-indexer.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
+**Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
+**Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.

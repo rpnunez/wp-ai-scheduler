@@ -23,6 +23,14 @@ interface AIPS_History_Repository_Interface {
 	public function get_history($args = array());
 
 	/**
+	 * Get paginated posts whose latest completed generation is incomplete.
+	 *
+	 * @param array $args Query arguments.
+	 * @return array
+	 */
+	public function get_partial_generations($args = array());
+
+	/**
 	 * Fetch paginated activity-feed entries.
 	 *
 	 * @param int   $limit Number of rows to return.
