@@ -235,7 +235,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					<div id="aips-node-drawer" class="aips-node-drawer" style="display:none;">
 						<div class="aips-node-drawer-header">
 							<h4 id="aips-drawer-title"><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></h4>
-							<button type="button" id="aips-drawer-close" class="aips-btn aips-btn-ghost aips-btn-sm">&times;</button>
+							<button type="button" id="aips-drawer-close" class="aips-btn aips-btn-ghost aips-btn-sm" aria-label="<?php esc_attr_e('Close drawer', 'ai-post-scheduler'); ?>">&times;</button>
 						</div>
 						<div class="aips-node-drawer-body">
 							<div class="aips-node-stat-badge" id="aips-drawer-sim-badge">
@@ -457,6 +457,17 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 										<input type="checkbox" name="auto_index_on_publish" value="1" <?php checked($settings['auto_index_on_publish']); ?>>
 										<?php esc_html_e('Automatically generate embeddings and compute relationships whenever a post is published or updated.', 'ai-post-scheduler'); ?>
 									</label>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e('Verbose History Logging', 'ai-post-scheduler'); ?></th>
+								<td>
+									<input type="hidden" name="verbose_history" value="false">
+									<label>
+										<input type="checkbox" name="verbose_history" value="true" <?php checked($settings['verbose_history']); ?>>
+										<?php esc_html_e('Record embedding request metadata, response previews, and relationship details in History.', 'ai-post-scheduler'); ?>
+									</label>
+									<p class="description"><?php esc_html_e('Leave disabled for large reindex runs to limit History log volume.', 'ai-post-scheduler'); ?></p>
 								</td>
 							</tr>
 							<tr>

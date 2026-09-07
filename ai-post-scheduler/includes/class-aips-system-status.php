@@ -19,14 +19,6 @@ class AIPS_System_Status {
         $ai_provider_available       = $active_ai_provider->is_available();
         $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider->get_unavailable_reason();
 
-        if ( $data_management ) {
-            $export_formats = $data_management->get_export_formats();
-            $import_formats = $data_management->get_import_formats();
-        } else {
-            $export_formats = array();
-            $import_formats = array();
-        }
-
         include AIPS_PLUGIN_DIR . 'templates/admin/system-status.php';
     }
 

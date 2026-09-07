@@ -138,6 +138,7 @@ class AIPS_Config {
 			'aips_wp_ai_connector_mode' => 'all',
 			'aips_wp_ai_connector_ids' => array(),
 			'aips_wp_ai_connector_failover' => true,
+			'aips_prevent_scheduled_ai_generation' => false,
             'aips_max_tokens_limit' => 16000,
             'aips_max_tokens_title' => 150,
             'aips_max_tokens_excerpt' => 300,
@@ -218,6 +219,7 @@ class AIPS_Config {
             'aips_embeddings_model'                    => 'text-embedding-3-small',
             'aips_embeddings_env_id'                   => '',
             'aips_embeddings_dimensions'               => 1536,
+            'aips_indexer_verbose_history'             => false,
             'aips_indexer_post_types'                  => array('post'),
             'aips_indexer_similarity_threshold'        => 0.65,
             'aips_auto_index_on_publish'               => true,
@@ -421,12 +423,16 @@ class AIPS_Config {
      * Get AI model configuration.
      *
      * Returns all settings needed to configure an AI generation request,
-     * including the model identifier, optional environment/project ID,
+     * including the selected provider, model identifier, optional
+     * environment/project ID, whether scheduled AI generation is prevented,
      * token limit, and temperature.
      *
      * @return array AI model configuration with keys:
+     *               'provider'                      (string) AI provider identifier.
      *               'model'            (string) AI model identifier.
      *               'env_id'           (string) Optional AI Engine environment ID.
+     *               'prevent_scheduled_generation' (bool)  Whether schedule-driven AI
+     *                                              generation (cron and manual runs) is prevented.
      *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
      *               'temperature'      (float)  Sampling temperature (creativity).
      */
@@ -435,10 +441,31 @@ class AIPS_Config {
             'provider'         => (string) $this->get_option('aips_ai_provider'),
             'model'            => (string) $this->get_option('aips_ai_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
+            'prevent_scheduled_generation' => $this->is_scheduled_ai_generation_prevented(),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
             'temperature'      => (float) $this->get_option('aips_temperature'),
         );
     }
+
+	/**
+	 * Check whether schedule-driven AI generation is prevented.
+	 *
+	 * Applies to both cron-started runs and manual "Run Now" executions.
+	 *
+	 * @return bool True when schedule-driven AI generation is prevented, false otherwise.
+	 */
+	public function is_scheduled_ai_generation_prevented() {
+		return (bool) $this->get_option('aips_prevent_scheduled_ai_generation');
+	}
+
+	/**
+	 * Get the user-facing label for the AI generation prevention setting.
+	 *
+	 * @return string
+	 */
+	public function get_scheduled_ai_generation_prevention_label() {
+		return __('Prevent AI Generation (Scheduled & Manual)', 'ai-post-scheduler');
+	}
     
     /**
      * Get retry configuration.
