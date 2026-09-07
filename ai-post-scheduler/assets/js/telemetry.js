@@ -147,44 +147,52 @@
 			this.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshing || 'Refreshing...');
 			$refreshButtons.prop('disabled', true);
 
-			$.post(
-				ajaxurl,
-				{
-					action: 'aips_get_telemetry',
-					nonce: window.aipsTelemetryL10n.nonce || '',
-					page: page,
-					per_page: this.perPage,
-					type: $('#aips-telemetry-type-filter').val() || '',
-					event_category: $('#aips-telemetry-category-filter').val() || '',
-					request_method: $('#aips-telemetry-method-filter').val() || '',
-					page_search: $('#aips-telemetry-page-filter').val() || '',
-					issues_only: $('#aips-telemetry-issues-only').is(':checked') ? '1' : '0',
-					start_date: $('#aips-telemetry-start-date').val() || '',
-					end_date: $('#aips-telemetry-end-date').val() || ''
-				},
-				function(response) {
-					if (!response || !response.success || !response.data) {
+			var query = {
+				page: page,
+				per_page: this.perPage,
+				issues_only: $('#aips-telemetry-issues-only').is(':checked')
+			};
+			var optional = {
+				type: $('#aips-telemetry-type-filter').val(),
+				event_category: $('#aips-telemetry-category-filter').val(),
+				request_method: $('#aips-telemetry-method-filter').val(),
+				page_search: $('#aips-telemetry-page-filter').val(),
+				start_date: $('#aips-telemetry-start-date').val(),
+				end_date: $('#aips-telemetry-end-date').val()
+			};
+			Object.keys(optional).forEach(function(key) {
+				if (optional[key]) {
+					query[key] = optional[key];
+				}
+			});
+
+			var finish = function() {
+				self.setLoadingState(false);
+				self.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshLabel || 'Refresh');
+				$refreshButtons.prop('disabled', false);
+			};
+
+			AIPS.Http.get('telemetry', query)
+				.then(function(data) {
+					if (!data) {
 						self.handleRequestFailure();
 						return;
 					}
 
-					self.page = response.data.page || 1;
-					self.totalPages = response.data.total_pages || 1;
-					self.perPage = response.data.per_page || self.perPage;
+					self.page = data.page || 1;
+					self.totalPages = data.total_pages || 1;
+					self.perPage = data.per_page || self.perPage;
 
-					$('#aips-telemetry-start-date').val(response.data.start_date || '');
-					$('#aips-telemetry-end-date').val(response.data.end_date || '');
-					self.renderRows(response.data.rows || []);
-					self.updatePagination(response.data);
-					self.updateCharts(response.data.charts || {});
-				}
-			).fail(function() {
-				self.handleRequestFailure();
-			}).always(function() {
-				self.setLoadingState(false);
-				self.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshLabel || 'Refresh');
-				$refreshButtons.prop('disabled', false);
-			});
+					$('#aips-telemetry-start-date').val(data.start_date || '');
+					$('#aips-telemetry-end-date').val(data.end_date || '');
+					self.renderRows(data.rows || []);
+					self.updatePagination(data);
+					self.updateCharts(data.charts || {});
+				})
+				.catch(function() {
+					self.handleRequestFailure();
+				})
+				.then(finish);
 		},
 
 		/**
@@ -310,26 +318,21 @@
 
 			$button.prop('disabled', true);
 
-			$.post(
-				ajaxurl,
-				{
-					action: 'aips_get_telemetry_details',
-					nonce: window.aipsTelemetryL10n.detailsNonce || '',
-					id: rowId
-				},
-				function(response) {
-					if (!response || !response.success || !response.data || !response.data.row) {
+			AIPS.Http.get('telemetry/' + rowId)
+				.then(function(data) {
+					if (!data || !data.row) {
 						self.handleDetailsFailure();
 						return;
 					}
 
-					self.renderDetailsModal(response.data);
-				}
-			).fail(function() {
-				self.handleDetailsFailure();
-			}).always(function() {
-				$button.prop('disabled', false);
-			});
+					self.renderDetailsModal(data);
+				})
+				.catch(function() {
+					self.handleDetailsFailure();
+				})
+				.then(function() {
+					$button.prop('disabled', false);
+				});
 		},
 
 		/**

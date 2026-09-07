@@ -407,10 +407,29 @@ class AIPS_Admin_Assets {
             true
         );
 
+        // REST client (AIPS.Http). Depending on wp-api-fetch makes core inject the
+        // root URL + wp_rest nonce middleware inline, so requests are authenticated
+        // without any per-page nonce plumbing.
+        wp_enqueue_script(
+            'aips-http-script',
+            AIPS_PLUGIN_URL . 'assets/js/http.js',
+            array('jquery', 'wp-api-fetch', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-http-script', 'aipsRest', array(
+            // Namespace-relative path used with apiFetch (which prefixes the site REST root).
+            'root'    => '/' . AIPS_Rest_Registry::NAMESPACE_V1,
+            // Absolute URL + nonce for the jQuery fallback when apiFetch is unavailable.
+            'rootUrl' => esc_url_raw(rest_url(AIPS_Rest_Registry::NAMESPACE_V1)),
+            'nonce'   => wp_create_nonce('wp_rest'),
+        ));
+
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'aips-http-script'),
             AIPS_VERSION,
             true
         );

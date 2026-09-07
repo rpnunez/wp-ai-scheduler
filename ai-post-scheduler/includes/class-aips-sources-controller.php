@@ -59,6 +59,9 @@ class AIPS_Sources_Controller {
 	 *
 	 * @return void Sends JSON response.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/sources.
+	 */
 	public function ajax_get_sources() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -110,6 +113,9 @@ class AIPS_Sources_Controller {
 	 * Expected POST params: source_id (0 = create), url, label, description, is_active, term_ids[].
 	 *
 	 * @return void Sends JSON response.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/sources or PUT /aips/v1/sources/{id}.
 	 */
 	public function ajax_save_source() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -219,6 +225,9 @@ class AIPS_Sources_Controller {
 	 *
 	 * @return void Sends JSON response.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use DELETE /aips/v1/sources/{id}.
+	 */
 	public function ajax_delete_source() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -252,6 +261,9 @@ class AIPS_Sources_Controller {
 	 *
 	 * @return void Sends JSON response.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use PATCH /aips/v1/sources/{id} with `is_active`.
+	 */
 	public function ajax_toggle_source_active() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -281,6 +293,9 @@ class AIPS_Sources_Controller {
 	 *
 	 * @return void Sends JSON response.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/source-groups.
+	 */
 	public function ajax_get_source_groups() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -308,6 +323,9 @@ class AIPS_Sources_Controller {
 	 * Expected POST params: term_id (0 = create), name, description.
 	 *
 	 * @return void Sends JSON response.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/source-groups or PUT /aips/v1/source-groups/{id}.
 	 */
 	public function ajax_save_source_group() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -357,6 +375,9 @@ class AIPS_Sources_Controller {
 	 *
 	 * @return void Sends JSON response.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use DELETE /aips/v1/source-groups/{id}.
+	 */
 	public function ajax_delete_source_group() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -388,6 +409,9 @@ class AIPS_Sources_Controller {
 	 * Return one source data row for editing.
 	 *
 	 * @return void Sends JSON response.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/source-data/{id}.
 	 */
 	public function ajax_get_source_data() {
 		if ( ! check_ajax_referer('aips_source_data_get', 'nonce', false) ) {
@@ -422,6 +446,9 @@ class AIPS_Sources_Controller {
 	 * Update one source data row.
 	 *
 	 * @return void Sends JSON response.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use PUT /aips/v1/source-data/{id}.
 	 */
 	public function ajax_save_source_data() {
 		if ( ! check_ajax_referer('aips_source_data_save', 'nonce', false) ) {
@@ -492,6 +519,9 @@ class AIPS_Sources_Controller {
 	 * Delete one source data row.
 	 *
 	 * @return void Sends JSON response.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use DELETE /aips/v1/source-data/{id}.
 	 */
 	public function ajax_delete_source_data() {
 		if ( ! check_ajax_referer('aips_source_data_delete', 'nonce', false) ) {

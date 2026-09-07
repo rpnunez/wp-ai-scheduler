@@ -190,29 +190,20 @@
 			$('.aips-calendar-loading').show();
 			$('.aips-calendar-grid, .aips-calendar-week-view, .aips-calendar-day-view').hide();
 			
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_get_calendar_events',
-					nonce: aipsAjax.nonce,
-					year: calendarState.currentYear,
-					month: calendarState.currentMonth
-				},
-				success: function(response) {
-					if (response.success) {
-						calendarState.events = response.data.events || [];
-						self.renderCalendar();
-					} else {
-						AIPS.Utilities.showToast(response.data.message || 'Failed to load calendar events.', 'error');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while loading calendar events.', 'error');
-				},
-				complete: function() {
+			AIPS.Http.get('calendar/events', {
+				year: calendarState.currentYear,
+				month: calendarState.currentMonth
+			})
+				.then(function(data) {
+					calendarState.events = (data && data.events) || [];
+					self.renderCalendar();
+				})
+				.catch(function(err) {
+					AIPS.Utilities.showToast((err && err.message) || 'An error occurred while loading calendar events.', 'error');
+				})
+				.then(function() {
 					$('.aips-calendar-loading').hide();
-					
+
 					// Show appropriate view
 					if (calendarState.currentView === 'month') {
 						$('.aips-calendar-grid').show();
@@ -221,8 +212,7 @@
 					} else if (calendarState.currentView === 'day') {
 						$('.aips-calendar-day-view').show();
 					}
-				}
-			});
+				});
 		},
 
 		/**

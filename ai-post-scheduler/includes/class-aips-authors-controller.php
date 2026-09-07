@@ -92,6 +92,9 @@ class AIPS_Authors_Controller {
 	/**
 	 * AJAX handler for saving an author.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/authors or PUT /aips/v1/authors/{id}.
+	 */
 	public function ajax_save_author() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -183,6 +186,9 @@ class AIPS_Authors_Controller {
 	/**
 	 * AJAX handler for deleting an author.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use DELETE /aips/v1/authors/{id}.
+	 */
 	public function ajax_delete_author() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -225,6 +231,9 @@ class AIPS_Authors_Controller {
 	/**
 	 * AJAX handler for getting an author.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/authors/{id}.
+	 */
 	public function ajax_get_author() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -251,6 +260,9 @@ class AIPS_Authors_Controller {
 	
 	/**
 	 * AJAX handler for getting author topics.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/authors/{id}/topics.
 	 */
 	public function ajax_get_author_topics() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -354,6 +366,9 @@ class AIPS_Authors_Controller {
 	/**
 	 * AJAX handler for getting author generated posts.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/authors/{id}/posts.
+	 */
 	public function ajax_get_author_posts() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -449,6 +464,9 @@ class AIPS_Authors_Controller {
 	/**
 	 * AJAX handler for getting author feedback.
 	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/authors/{id}/feedback.
+	 */
 	public function ajax_get_author_feedback() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -481,6 +499,9 @@ class AIPS_Authors_Controller {
 	
 	/**
 	 * AJAX handler for getting posts associated with a specific topic.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use GET /aips/v1/author-topics/{id}/posts.
 	 */
 	public function ajax_get_topic_posts() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -555,6 +576,9 @@ class AIPS_Authors_Controller {
 	 *
 	 * Accepts site context inputs and returns an array of suggested author
 	 * profiles that the admin can review and import with one click.
+	 */
+	/**
+	 * @deprecated 3.7.0 Use POST /aips/v1/authors/suggest.
 	 */
 	public function ajax_suggest_authors() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {

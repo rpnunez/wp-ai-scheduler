@@ -26,10 +26,13 @@
 - Use `AIPS_DateTime` for timestamp handling.
 
 ## Architecture rules
-- `AI_Post_Scheduler::init()` boots only the needed request context: common, cron, AJAX, admin, or frontend.
+- `AI_Post_Scheduler::init()` boots only the needed request context: common, cron, AJAX, REST, admin, or frontend.
 - Use `AIPS_Container::get_instance()->make(ClassName::class)` for registered singletons and interface aliases.
 - Register every AJAX action in `AIPS_Ajax_Registry::$map` with its controller.
 - Controllers register `wp_ajax_*` hooks in constructors and own nonce checks, capability checks, sanitization, and JSON responses.
+- New endpoints go on the REST API (`aips/v1`) unless they stream files, return HTML fragments, drive long-running batch steps, or are destructive DB-admin tools; those stay on admin-ajax.
+- REST controllers extend `AIPS_Rest_Controller`, set `$rest_base`, implement `register_routes()`, and are registered in `AIPS_Rest_Registry::$map` keyed by resource base. Use `permission_check()`/`capability_callback()` for auth (core verifies the `wp_rest` nonce — never check nonces manually), declare `args` schemas instead of hand-sanitizing, and return `respond*()` payloads or `error_*()` `WP_Error`s — no `{success, data}` envelope.
+- JS calls REST endpoints through `AIPS.Http` (`get/post/put/patch/delete`, native Promises), never `$.ajax` + `ajaxurl`.
 - Keep SQL/persistence in repositories; avoid direct `$wpdb` in controllers or services when a repository exists.
 - Repositories managing collections/repeaters must provide atomic group sync to purge removed records.
 - Entity clone actions (e.g. cloning Templates) must duplicate all child/relational mappings to the new entity.
