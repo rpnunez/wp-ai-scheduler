@@ -91,7 +91,7 @@ class AIPS_Post_Manager {
         } elseif ($template) {
             $post_status = !empty($template->post_status) ? $template->post_status : AIPS_Config::get_instance()->get_option('aips_default_post_status');
             $post_type = !empty($template->post_type) ? sanitize_key($template->post_type) : 'post';
-            $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
+            $post_author = !empty($template->post_author) ? $template->post_author : (int) AIPS_Config::get_instance()->get_option('aips_default_post_author', get_current_user_id() ?: 1);
             $raw_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
         } else {
@@ -99,6 +99,10 @@ class AIPS_Post_Manager {
                 'missing_context',
                 __('Either a template object or generation context is required for post creation.', 'ai-post-scheduler')
             );
+        }
+
+        if (empty($post_author)) {
+            $post_author = (int) AIPS_Config::get_instance()->get_option('aips_default_post_author', 1);
         }
 
         // Allow the caller (service layer) to explicitly override the resolved
@@ -112,6 +116,7 @@ class AIPS_Post_Manager {
         // Normalise post_category to an array of int IDs regardless of source format.
         $post_category = $this->normalise_post_categories( $raw_category );
 
+        $config = AIPS_Config::get_instance();
         $post_data = array(
             'post_title' => $title,
             'post_content' => $content,
@@ -119,11 +124,13 @@ class AIPS_Post_Manager {
             'post_status' => $post_status,
             'post_author' => $post_author,
             'post_type' => post_type_exists($post_type) ? $post_type : 'post',
+            'comment_status' => (string) $config->get_option('aips_default_comment_status', 'open'),
+            'ping_status'    => (string) $config->get_option('aips_default_ping_status', 'open'),
         );
 
         if (!empty($post_category)) {
             $post_data['post_category'] = $post_category;
-        } elseif ($default_cat = AIPS_Config::get_instance()->get_option('aips_default_category')) {
+        } elseif ($default_cat = $config->get_option('aips_default_category')) {
             $post_data['post_category'] = array((int) $default_cat);
         }
 
@@ -131,6 +138,11 @@ class AIPS_Post_Manager {
 
         if (is_wp_error($post_id)) {
             return $post_id;
+        }
+
+        $default_format = (string) $config->get_option('aips_default_post_format', 'standard');
+        if ($default_format !== 'standard' && $default_format !== '') {
+            set_post_format($post_id, $default_format);
         }
 
         update_post_meta($post_id, self::META_GENERATED_POST, '1');
