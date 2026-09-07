@@ -2502,9 +2502,9 @@ class AIPS_Settings_UI {
 			$value = get_current_user_id() ?: 1;
 		}
 		wp_dropdown_users(array(
-			'name'     => 'aips_default_post_author',
-			'selected' => $value,
-			'who'      => 'authors',
+			'name'       => 'aips_default_post_author',
+			'selected'   => $value,
+			'capability' => array('edit_posts'),
 		));
 		echo '<p class="description">' . esc_html__('Default WordPress author assigned to generated posts if an author is not specified.', 'ai-post-scheduler') . '</p>';
 	}
@@ -2570,7 +2570,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_auto_generate_meta_description" value="0">
 		<label>
-			<input type="checkbox" name="aips_auto_generate_meta_description" value="1" <?php checked($value, 1); ?>>
+			<input type="checkbox" name="aips_auto_generate_meta_description" value="1" <?php checked(!empty($value)); ?>>
 			<?php esc_html_e('Automatically generate search-optimized meta descriptions and post excerpts', 'ai-post-scheduler'); ?>
 		</label>
 		<p class="description"><?php esc_html_e('Creates a concise 150-160 character meta description for search engines and social sharing.', 'ai-post-scheduler'); ?></p>
@@ -2587,7 +2587,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_auto_generate_tags" value="0">
 		<label>
-			<input type="checkbox" name="aips_auto_generate_tags" value="1" <?php checked($value, 1); ?>>
+			<input type="checkbox" name="aips_auto_generate_tags" value="1" <?php checked(!empty($value)); ?>>
 			<?php esc_html_e('Automatically generate and assign relevant tags from generated content', 'ai-post-scheduler'); ?>
 		</label>
 		<p class="description"><?php esc_html_e('Extracts key topical tags during post generation and attaches them to the WordPress post.', 'ai-post-scheduler'); ?></p>
@@ -2727,7 +2727,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_enable_schedule_jitter" value="0">
 		<label>
-			<input type="checkbox" name="aips_enable_schedule_jitter" value="1" <?php checked($value, 1); ?>>
+			<input type="checkbox" name="aips_enable_schedule_jitter" value="1" <?php checked(!empty($value)); ?>>
 			<?php esc_html_e('Add randomized jitter / time variance to scheduled posts', 'ai-post-scheduler'); ?>
 		</label>
 		<p class="description"><?php esc_html_e('Varies execution times slightly so scheduled posts appear published at natural, non-uniform intervals.', 'ai-post-scheduler'); ?></p>
@@ -2783,7 +2783,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_generation_inject_related_context" value="0">
 		<label>
-			<input type="checkbox" name="aips_generation_inject_related_context" value="1" <?php checked($value, 1); ?>>
+			<input type="checkbox" name="aips_generation_inject_related_context" value="1" <?php checked(!empty($value)); ?>>
 			<?php esc_html_e('Inject summaries of existing related posts into AI prompt for internal linking and context', 'ai-post-scheduler'); ?>
 		</label>
 		<?php
@@ -2827,7 +2827,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_related_posts_show_thumbnails" value="0">
 		<label>
-			<input type="checkbox" name="aips_related_posts_show_thumbnails" value="1" <?php checked($value, 1); ?>>
+			<input type="checkbox" name="aips_related_posts_show_thumbnails" value="1" <?php checked(!empty($value)); ?>>
 			<?php esc_html_e('Display featured image thumbnails in related posts block', 'ai-post-scheduler'); ?>
 		</label>
 		<?php
@@ -2843,7 +2843,7 @@ class AIPS_Settings_UI {
 		?>
 		<input type="hidden" name="aips_related_posts_show_excerpts" value="0">
 		<label>
-			<input type="checkbox" name="aips_related_posts_show_excerpts" value="1" <?php checked($value, 1); ?>>
+			<input type="checkbox" name="aips_related_posts_show_excerpts" value="1" <?php checked(!empty($value)); ?>>
 			<?php esc_html_e('Display short excerpts in related posts block', 'ai-post-scheduler'); ?>
 		</label>
 		<?php
@@ -2942,6 +2942,7 @@ class AIPS_Settings_UI {
 		);
 		?>
 		<fieldset>
+			<input type="hidden" name="aips_webhook_events[]" value="">
 			<?php foreach ($events as $slug => $label) : ?>
 				<label style="display:block; margin-bottom: 5px;">
 					<input type="checkbox" name="aips_webhook_events[]" value="<?php echo esc_attr($slug); ?>" <?php checked(in_array($slug, $selected, true)); ?>>
