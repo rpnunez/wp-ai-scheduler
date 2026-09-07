@@ -217,13 +217,90 @@
         },
 
         /**
-         * Register all delegated jQuery event listeners for the admin UI.
+         * Register delegated jQuery event listeners for the admin UI.
          *
-         * Uses event delegation on `document` so handlers work for elements
-         * injected dynamically (e.g. rows rendered after an AJAX call).
-         * Each handler is a named method on the AIPS object.
+         * Registers core global listeners and selectively invokes feature-specific
+         * sub-binders when their corresponding elements are present in the DOM.
          */
         bindEvents: function() {
+            this.bindCoreEvents();
+
+            if ($('#aips-template-modal, .aips-templates-list, .aips-add-template-btn, #aips-template-search, .aips-wizard-modal').length) {
+                this.bindTemplateEvents();
+            }
+
+            if ($('#aips-schedule-modal, #aips-schedule-wizard-modal, .aips-schedules-list, .aips-add-schedule-btn, #aips-schedule-search, #cb-select-all-schedules').length) {
+                this.bindScheduleEvents();
+            }
+
+            if ($('#cb-select-all-unified, .aips-unified-checkbox, .aips-unified-toggle-schedule, #aips-unified-search, #aips-schedule-status-strip, .aips-tab').length) {
+                this.bindUnifiedScheduleEvents();
+            }
+
+            if ($('#aips-voice-modal, .aips-voices-list, .aips-add-voice-btn, #aips-voice-search').length) {
+                this.bindVoiceEvents();
+            }
+
+            if ($('#aips-structure-modal, .aips-structures-list, .aips-add-structure-btn, #aips-structure-search').length) {
+                this.bindStructureEvents();
+            }
+
+            if ($('#aips-section-modal, .aips-sections-list, .aips-add-section-btn, #aips-section-search').length) {
+                this.bindSectionEvents();
+            }
+
+            if ($('#aips-author-search, .aips-authors-list').length) {
+                this.bindAuthorEvents();
+            }
+
+            if ($('#aips-test-connection, #aips-settings-form').length) {
+                this.bindSettingsEvents();
+            }
+        },
+
+        /**
+         * Register core global event listeners needed across all admin screens.
+         */
+        bindCoreEvents: function() {
+            if (this._coreEventsBound) {
+                return;
+            }
+            this._coreEventsBound = true;
+
+            // Modals
+            $(document).on('click', '.aips-modal-close', this.closeModal);
+            $(document).on('click', '.aips-modal', function(e) {
+                if ($(e.target).hasClass('aips-modal')) {
+                    AIPS.closeModal();
+                }
+            });
+
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    AIPS.closeModal();
+                }
+            });
+
+            // Tabs
+            $(document).on('click', '.nav-tab', this.switchTab);
+            $(document).on('click', '.aips-tab-link', this.switchAipsTab);
+
+            // Preserve tab hash on form submissions
+            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
+
+            // Copy to Clipboard
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+        },
+
+        /**
+         * Register event listeners for Templates and the Template Wizard.
+         */
+        bindTemplateEvents: function() {
+            if (this._templateEventsBound) {
+                return;
+            }
+            this._templateEventsBound = true;
+
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
             $(document).on('click', '.aips-clone-template', this.cloneTemplate);
@@ -266,10 +343,20 @@
             });
             $(document).on('click', '.aips-ai-var-tag', this.copyAIVariable);
 
-            $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
-            $(document).on('click', '.aips-edit-voice', this.editVoice);
-            $(document).on('click', '.aips-delete-voice', this.deleteVoice);
-            $(document).on('click', '.aips-save-voice', this.saveVoice);
+            // Template Search
+            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
+            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
+            $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
+        },
+
+        /**
+         * Register event listeners for Schedules and the Schedule Cadence Builder.
+         */
+        bindScheduleEvents: function() {
+            if (this._scheduleEventsBound) {
+                return;
+            }
+            this._scheduleEventsBound = true;
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-edit-schedule', this.editSchedule);
@@ -294,7 +381,21 @@
             $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
             $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
 
-            // Unified Schedule Page handlers
+            // Schedule Search
+            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
+            $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
+            $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
+        },
+
+        /**
+         * Register event listeners for the Unified Schedule page.
+         */
+        bindUnifiedScheduleEvents: function() {
+            if (this._unifiedScheduleEventsBound) {
+                return;
+            }
+            this._unifiedScheduleEventsBound = true;
+
             $(document).on('change', '#cb-select-all-unified', this.toggleAllUnified);
             $(document).on('change', '.aips-unified-checkbox', this.toggleUnifiedSelection);
             $(document).on('click', '#aips-unified-select-all', this.selectAllUnified);
@@ -310,82 +411,92 @@
             $(document).on('click', '.aips-tab', this.switchScheduleTab);
             $(document).on('click', '.aips-reset-circuit', this.resetScheduleCircuit);
             $(document).on('click', '.aips-resume-batch', this.resumeScheduleBatch);
+        },
 
+        /**
+         * Register event listeners for Voices.
+         */
+        bindVoiceEvents: function() {
+            if (this._voiceEventsBound) {
+                return;
+            }
+            this._voiceEventsBound = true;
 
-
-            // Template Search
-            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
-            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
-            $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
-
-            // Schedule Search
-            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
-            $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
-            $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
+            $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
+            $(document).on('click', '.aips-edit-voice', this.editVoice);
+            $(document).on('click', '.aips-delete-voice', this.deleteVoice);
+            $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             // Voice Search
             $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
             $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
+        },
 
-            // Section Search
-            $(document).on('keyup search', '#aips-section-search', this.filterSections);
-            $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
-            $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+        /**
+         * Register event listeners for Article Structures.
+         */
+        bindStructureEvents: function() {
+            if (this._structureEventsBound) {
+                return;
+            }
+            this._structureEventsBound = true;
+
+            $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
+            $(document).on('click', '.aips-save-structure', this.saveStructure);
+            $(document).on('click', '.aips-edit-structure', this.editStructure);
+            $(document).on('click', '.aips-delete-structure', this.deleteStructure);
 
             // Structure Search
             $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
             $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
             $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
+        },
 
-            // Author Search
+        /**
+         * Register event listeners for Prompt Sections.
+         */
+        bindSectionEvents: function() {
+            if (this._sectionEventsBound) {
+                return;
+            }
+            this._sectionEventsBound = true;
+
+            $(document).on('click', '.aips-add-section-btn', this.openAddSectionModal);
+            $(document).on('click', '.aips-save-section', this.saveSection);
+            $(document).on('click', '.aips-edit-section', this.editSection);
+            $(document).on('click', '.aips-delete-section', this.deleteSection);
+
+            // Section Search
+            $(document).on('keyup search', '#aips-section-search', this.filterSections);
+            $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
+            $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+        },
+
+        /**
+         * Register event listeners for Authors search.
+         */
+        bindAuthorEvents: function() {
+            if (this._authorEventsBound) {
+                return;
+            }
+            this._authorEventsBound = true;
+
             $(document).on('keyup search', '#aips-author-search', this.filterAuthors);
             $(document).on('click', '#aips-author-search-clear', this.clearAuthorSearch);
             $(document).on('click', '.aips-clear-author-search-btn', this.clearAuthorSearch);
+        },
 
-            $(document).on('click', '.aips-modal-close', this.closeModal);
-            $(document).on('click', '.aips-modal', function(e) {
-                if ($(e.target).hasClass('aips-modal')) {
-                    AIPS.closeModal();
-                }
-            });
+        /**
+         * Register event listeners for Settings page actions.
+         */
+        bindSettingsEvents: function() {
+            if (this._settingsEventsBound) {
+                return;
+            }
+            this._settingsEventsBound = true;
 
-            $(document).on('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    AIPS.closeModal();
-                }
-            });
-
-            // Settings
             $(document).on('click', '#aips-test-connection', this.testConnection);
-
-            // Tabs
-            $(document).on('click', '.nav-tab', this.switchTab);
-            $(document).on('click', '.aips-tab-link', this.switchAipsTab);
-            
-            // Preserve tab hash on form submissions
-            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
-
-            // Copy to Clipboard
-            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
-
-            // Article Structures UI handlers
-            $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
-
-            $(document).on('click', '.aips-save-structure', this.saveStructure);
-
-            $(document).on('click', '.aips-edit-structure', this.editStructure);
-
-            $(document).on('click', '.aips-delete-structure', this.deleteStructure);
-
-            // Prompt Sections UI handlers
-            $(document).on('click', '.aips-add-section-btn', this.openAddSectionModal);
-
-            $(document).on('click', '.aips-save-section', this.saveSection);
-
-            $(document).on('click', '.aips-edit-section', this.editSection);
-
-            $(document).on('click', '.aips-delete-section', this.deleteSection);
         },
 
         /**
@@ -628,7 +739,10 @@
          * @param {Event} e - Click event from an `.aips-add-template-btn` element.
          */
         openTemplateModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindTemplateEvents();
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
             $('#aips-modal-title').text('Add New Template');
@@ -1286,7 +1400,10 @@
          * @param {Event} e - Click event from an `.aips-add-voice-btn` element.
          */
         openVoiceModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindVoiceEvents();
             $('#aips-voice-form')[0].reset();
             $('#voice_id').val('');
             $('#aips-voice-modal').find('.aips-modal-title').text(aipsVoicesL10n.addNewVoice);
@@ -1747,7 +1864,10 @@
          * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
          */
         openScheduleModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindScheduleEvents();
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
                 $('#aips-schedule-form')[0].reset();
@@ -3809,7 +3929,10 @@
          * @param {Event} e - Click event from an `.aips-add-structure-btn` element.
          */
         openAddStructureModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindStructureEvents();
             $('#aips-structure-form')[0].reset();
             $('#structure_id').val('');
             $('#aips-structure-modal').find('.aips-modal-title').text('Add New Article Structure');
@@ -3962,7 +4085,10 @@
          * @param {Event} e - Click event from an `.aips-add-section-btn` element.
          */
         openAddSectionModal: function(e) {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.bindSectionEvents();
             $('#aips-section-form')[0].reset();
             $('#section_id').val('');
             $('#aips-section-modal').find('.aips-modal-title').text('Add New Prompt Section');
@@ -4623,7 +4749,9 @@
          */
         initAIVariablesScanner: function() {
             // Initial scan when modal opens or form loads
-            AIPS.scanAllAIVariables();
+            if ($('.aips-ai-var-input').length) {
+                AIPS.scanAllAIVariables();
+            }
         },
 
         /**
