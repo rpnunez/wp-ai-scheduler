@@ -35,7 +35,7 @@
     ],
     "test:coverage": [
       "@test:setup",
-      "php vendor/bin/phpunit --configuration phpunit.xml --coverage-html coverage"
+      "php vendor/bin/phpunit --configuration phpunit.xml --coverage-filter includes --coverage-html coverage --coverage-text"
     ],
     "test:verbose": [
       "@test:setup",

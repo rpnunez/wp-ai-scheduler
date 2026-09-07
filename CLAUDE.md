@@ -15,14 +15,20 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 | `qa-reviewer` | Test planning, bug hunting, edge-case analysis, implementation verification |
 | `ajax-controller-reviewer` | Reviewing nonce/capability/sanitization compliance in AJAX controllers |
 | `db-migration-reviewer` | Reviewing schema changes against `AIPS_DB_Manager`/`AIPS_DB_Migrations` patterns |
+| `batch-job-reviewer` | Reviewing bulk batch processor strategies, cron slicing, and job store state |
+| `l10n-reviewer` | Reviewing text domain usage, i18n string escaping, language stores, and templates |
 | `feature-slicer` | Breaking a feature request into independently testable, mergeable slices |
 | `generation-pipeline-reviewer` | Reviewing changes to generation context, prompt builders, or resilience flows |
 | `pr-triage` | Overlap detection, risk classification, and review readiness for pull requests |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`.
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`, `batch-job-changes`.
 
-Saved workflow: `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit nonce/capability/sanitization/escaping compliance.
+Saved multi-agent workflows live in `.claude/workflows/`:
+- `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
+- `.claude/workflows/db-migration-audit.md` — audits table schemas, `$wpdb` repository isolation, and migrations.
+- `.claude/workflows/generation-pipeline-sweep.md` — sweeps generation contexts, prompt builders, logging, and retry backoff.
+- `.claude/workflows/full-plugin-pr-audit.md` — master pre-merge sweep fanning out domain reviewers across touched files.
 
 ## Commands
 

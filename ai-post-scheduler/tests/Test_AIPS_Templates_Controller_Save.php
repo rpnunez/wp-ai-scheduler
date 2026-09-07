@@ -124,4 +124,60 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame(0, $this->templates_stub->saved_data['generate_featured_image']);
 	}
+
+	// -------------------------------------------------------------------------
+	// post_type: write-once on create, ignored on update
+	// -------------------------------------------------------------------------
+
+	private function run_save() {
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for wp_send_json_* in tests.
+		} catch (WPAjaxDieContinueException $e) {
+			// Some environments throw continue exceptions for AJAX responses.
+		}
+		return json_decode(ob_get_clean(), true);
+	}
+
+	public function test_ajax_save_template_honors_post_type_when_creating() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'CPT Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['post_type'] = 'page';
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+
+		$this->assertTrue($response['success']);
+		$this->assertArrayHasKey('post_type', $this->templates_stub->saved_data);
+		$this->assertSame('page', $this->templates_stub->saved_data['post_type']);
+	}
+
+	public function test_ajax_save_template_ignores_post_type_when_updating() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['template_id'] = '5';
+		$_POST['name'] = 'Existing Template';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['post_type'] = 'page';
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+
+		$this->assertTrue($response['success']);
+		$this->assertArrayNotHasKey('post_type', $this->templates_stub->saved_data);
+	}
+
+	public function test_ajax_save_template_omits_post_type_when_absent_on_create() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'No Post Type Specified';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_REQUEST = $_POST;
+
+		$response = $this->run_save();
+
+		$this->assertTrue($response['success']);
+		$this->assertArrayNotHasKey('post_type', $this->templates_stub->saved_data);
+	}
 }

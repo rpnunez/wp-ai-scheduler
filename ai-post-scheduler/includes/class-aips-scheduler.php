@@ -64,6 +64,11 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      * @var AIPS_Schedule_Processor Processor for executing schedules
      */
     private $processor;
+
+    /**
+     * @var AIPS_Schedule_Batch_Resume_Service|null Lazily built resume service
+     */
+    private $batch_resume_service;
     
     public function __construct() {
         global $wpdb;
@@ -462,6 +467,32 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
      */
     public function process(): void {
         $this->processor->process_due_schedules();
+    }
+
+    /**
+     * Resume large-batch runs that were terminated before they finished.
+     *
+     * Called by the aips_resume_terminated_batches cron hook, which is queued
+     * when the "Prevent AI Generation" setting is switched back off.
+     *
+     * @return array{resumed: int, finished: int, skipped: int, failed: int}
+     */
+    public function resume_terminated_batches(): array {
+        if ($this->batch_resume_service === null) {
+            $this->batch_resume_service = new AIPS_Schedule_Batch_Resume_Service(
+                $this->repository,
+                new AIPS_Batch_Queue_Service(),
+                new AIPS_Schedule_Result_Handler(
+                    $this->repository,
+                    $this->history_service,
+                    $this->history_repository,
+                    new AIPS_Logger()
+                ),
+                new AIPS_Logger()
+            );
+        }
+
+        return $this->batch_resume_service->resume_all();
     }
 
     /**

@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.4.1
+ * Version: 3.6.6
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.4.1');
+    define('AIPS_VERSION', '3.6.6');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -440,6 +440,58 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_System_Status_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Status_Diagnostics_Service();
         });
+
+        // Register AIPS_Embeddings_Repository
+        $container->singleton(AIPS_Embeddings_Repository::class, function( $container ) {
+            return new AIPS_Embeddings_Repository();
+        });
+
+        // Register AIPS_Relationships_Repository
+        $container->singleton(AIPS_Relationships_Repository::class, function( $container ) {
+            return new AIPS_Relationships_Repository();
+        });
+
+        // Register AIPS_Embeddings_Service
+        $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
+            return new AIPS_Embeddings_Service(
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        // Register AIPS_Content_Indexer_Service
+        $container->singleton(AIPS_Content_Indexer_Service::class, function( $container ) {
+            return new AIPS_Content_Indexer_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_History_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Config::class),
+                $container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository()
+            );
+        });
+
+        // Register AIPS_Related_Posts_Service
+        $container->singleton(AIPS_Related_Posts_Service::class, function( $container ) {
+            return new AIPS_Related_Posts_Service(
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        // Register AIPS_Deduplication_Service
+        $container->singleton(AIPS_Deduplication_Service::class, function( $container ) {
+            return new AIPS_Deduplication_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_Config::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
     }
 
     /**
@@ -547,6 +599,34 @@ final class AI_Post_Scheduler {
                 'query_var'         => false,
             )
         );
+
+        // Integration bridge: listens for 'aips_post_generated' and
+        // 'aips_template_changed' in every request context (cron and AJAX
+        // both trigger generation). Registered as lazy closures rather than
+        // an eagerly-constructed object — AIPS_Integration_Manager resolves
+        // AIPS_AI_Service (and, through it, AIPS_Resilience_Service, whose
+        // constructor reads a transient) via the container, which is not
+        // lazy, so constructing it here would do real work on every request
+        // even when no post is ever generated.
+        add_action('aips_post_generated', function ($post_id, $template_or_context, $history_id, $context) {
+            (new AIPS_Integration_Manager())->handle_post_generated($post_id, $template_or_context, $history_id, $context);
+        }, 10, 4);
+        add_action('aips_template_changed', function ($args) {
+            (new AIPS_Integration_Manager())->handle_template_deleted($args);
+        });
+
+        // Continuous semantic indexing: automatically index published posts and refresh relationships
+        add_action('save_post', function ($post_id, $post) {
+            if (!is_object($post) || !isset($post->post_status)) {
+                return;
+            }
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
+        }, 10, 2);
+
+        // Related Posts Frontend integration (content filter, shortcode, block)
+        new AIPS_Related_Posts_Frontend(
+            AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
+        );
     }
 
     /**
@@ -590,6 +670,12 @@ final class AI_Post_Scheduler {
                 (string) $correlation_id
             );
         }, 10, 5);
+
+        // Resume large batches that the "Prevent AI Generation" setting stopped
+        // part-way through. Queued once when that setting is switched back off.
+        add_action('aips_resume_terminated_batches', function() {
+            AIPS_Scheduler::instance()->resume_terminated_batches();
+        });
 
         // Lazy-resolve the author-topics scheduler only when its hook fires.
         add_action('aips_generate_author_topics', function() {
@@ -876,6 +962,14 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Ensure Seeder admin hooks are registered when developer mode is enabled
+        // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
+        if ( AIPS_Config::get_instance()->get_option('aips_developer_mode') ) {
+            // Lazy instantiate the Seeder admin class so its admin_enqueue_scripts
+            // hook is available on Diagnostics/Dev Tools pages.
+            new AIPS_Seeder_Admin();
+        }
 
     }
 
