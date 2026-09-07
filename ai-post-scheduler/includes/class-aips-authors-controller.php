@@ -138,17 +138,25 @@ class AIPS_Authors_Controller {
 			'preferred_content_length' => isset($_POST['preferred_content_length']) ? sanitize_text_field(wp_unslash($_POST['preferred_content_length'])) : '',
 			'language' => isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : 'en',
 			'max_posts_per_topic' => isset($_POST['max_posts_per_topic']) ? max(1, absint($_POST['max_posts_per_topic'])) : 1,
+			'manual_post_generation_quantity' => isset($_POST['manual_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['manual_post_generation_quantity']))) : 1,
+			'scheduled_post_generation_quantity' => isset($_POST['scheduled_post_generation_quantity']) ? min(AIPS_Author_Post_Generator::MAX_POSTS_PER_RUN, max(1, absint($_POST['scheduled_post_generation_quantity']))) : 1,
 			// Source group fields
 			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+			'affiliate_links_enabled' => isset($_POST['affiliate_links_enabled']) ? 1 : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),
+			// Topic auto-approval configuration
+			'topic_auto_approval_mode' => isset($_POST['topic_auto_approval_mode']) && in_array($_POST['topic_auto_approval_mode'], array('manual', 'all', 'score', 'similarity'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_mode'])) : 'manual',
+			'topic_auto_approval_min_score' => isset($_POST['topic_auto_approval_min_score']) ? max(1, min(100, absint($_POST['topic_auto_approval_min_score']))) : 70,
+			'topic_auto_approval_max_similarity' => isset($_POST['topic_auto_approval_max_similarity']) ? max(0.0, min(1.0, (float) $_POST['topic_auto_approval_max_similarity'])) : 0.80,
+			'topic_auto_approval_fallback' => isset($_POST['topic_auto_approval_fallback']) && in_array($_POST['topic_auto_approval_fallback'], array('pending', 'rejected'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_fallback'])) : 'pending',
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
 		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
-			$now = current_time('mysql');
+			$now = AIPS_DateTime::now()->timestamp();
 			$data['topic_generation_next_run'] = $now;
 			$data['post_generation_next_run'] = $now;
 		}
@@ -284,9 +292,13 @@ class AIPS_Authors_Controller {
 		foreach ($topics as &$topic) {
 			$logs = $this->logs_repository->get_by_topic($topic->id);
 			$post_count = 0;
+			$topic->post_generated_at = null;
 			foreach ($logs as $log) {
 				if ($log->action === 'post_generated' && $log->post_id) {
 					$post_count++;
+					if (null === $topic->post_generated_at && isset($log->created_at)) {
+						$topic->post_generated_at = absint($log->created_at);
+					}
 				}
 			}
 			$topic->post_count = $post_count;
@@ -359,7 +371,29 @@ class AIPS_Authors_Controller {
 		
 		$posts = $this->logs_repository->get_generated_posts_by_author($author_id);
 		
+		// Pre-fetch post caches to avoid N+1 queries
+		$post_ids = array();
+		foreach ($posts as $post) {
+			if ($post->post_id) {
+				$post_ids[] = (int) $post->post_id;
+			}
+		}
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		// Enrich with WordPress post data
+		$post_ids = array();
+		foreach ($posts as $post) {
+			if ($post->post_id) {
+				$post_ids[] = (int) $post->post_id;
+			}
+		}
+
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		foreach ($posts as &$post) {
 			if ($post->post_id) {
 				$wp_post = get_post($post->post_id);
@@ -393,7 +427,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
-		$result = $this->topics_scheduler->generate_now($author_id);
+		$apply_auto_approval = !isset($_POST['apply_auto_approval']) || filter_var(wp_unslash($_POST['apply_auto_approval']), FILTER_VALIDATE_BOOLEAN);
+		$result = $this->topics_scheduler->generate_now($author_id, true, $apply_auto_approval);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
@@ -472,6 +507,18 @@ class AIPS_Authors_Controller {
 		// Get logs for this topic (UI display only — capped at 200 entries).
 		$logs = $this->logs_repository->get_by_topic($topic_id, 200);
 		
+		// Pre-fetch post caches to avoid N+1 queries
+		$post_ids = array();
+		foreach ($logs as $log) {
+			if ($log->action === 'post_generated' && $log->post_id) {
+				$post_ids[] = (int) $log->post_id;
+			}
+		}
+    
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		$posts = array();
 		foreach ($logs as $log) {
 			// Only include post_generated logs with valid post IDs.

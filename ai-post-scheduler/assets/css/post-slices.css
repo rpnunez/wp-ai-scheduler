@@ -1,0 +1,84 @@
+/**
+ * Post Slices admin styles.
+ *
+ * @package AI_Post_Scheduler
+ * @since 2.6.0
+ */
+
+.aips-post-slices-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--aips-space-4);
+	margin-bottom: var(--aips-space-6);
+}
+
+.aips-post-slices-summary-card {
+	background: #fff;
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-lg);
+	box-shadow: var(--aips-shadow-sm);
+	padding: var(--aips-space-5);
+}
+
+.aips-post-slices-summary-card.is-active {
+	border-left: 4px solid var(--aips-success);
+}
+
+.aips-post-slices-summary-card.is-inactive {
+	border-left: 4px solid var(--aips-gray-400);
+}
+
+.aips-post-slices-summary-value {
+	color: var(--aips-gray-900);
+	display: block;
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-post-slices-summary-label {
+	color: var(--aips-gray-500);
+	display: block;
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-semibold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.aips-post-slices-table .column-name {
+	width: 24%;
+}
+
+.aips-post-slices-table .column-sort-order {
+	text-align: center;
+	width: 110px;
+}
+
+.aips-post-slices-table .column-status {
+	width: 120px;
+}
+
+.aips-post-slices-table .column-actions {
+	width: 130px;
+}
+
+#aips-post-slice-modal .aips-modal-content {
+	max-width: 640px;
+}
+
+#aips-post-slice-description {
+	min-height: 110px;
+}
+
+@media screen and (max-width: 782px) {
+	.aips-post-slices-summary {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-post-slices-table .column-sort-order,
+	.aips-post-slices-table .column-status,
+	.aips-post-slices-table .column-actions {
+		width: auto;
+	}
+}

@@ -18,7 +18,25 @@ if (!defined('ABSPATH')) {
  *
  * Schedules and executes topic generation for authors.
  */
-class AIPS_Author_Topics_Scheduler {
+class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
+
+	/**
+	 * WordPress cron hook name for per-author topic-generation slices.
+	 *
+	 * @var string
+	 */
+	const SLICE_HOOK = 'aips_process_author_topics_slice';
+
+	/**
+	 * Default minimum number of due authors that triggers per-author batching.
+	 *
+	 * When more than this many authors are due, individual single events are
+	 * dispatched for each author rather than processing all of them inline.
+	 * Override via the 'aips_author_topics_batch_threshold' filter.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_BATCH_THRESHOLD = 3;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -38,34 +56,24 @@ class AIPS_Author_Topics_Scheduler {
 	}
 
 	/**
-	 * @var AIPS_Authors_Repository Repository for authors
-	 */
-	private $authors_repository;
-	
-	/**
 	 * @var AIPS_Author_Topics_Generator Generator for topics
 	 */
 	private $topics_generator;
-	
-	/**
-	 * @var AIPS_Logger Logger instance
-	 */
-	private $logger;
-	
+
 	/**
 	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
 	 */
 	private $interval_calculator;
-	
-	/**
-	 * @var AIPS_History_Service Service for history logging
-	 */
-	private $history_service;
 
 	/**
 	 * @var AIPS_Notifications Notifications service
 	 */
 	private $notifications;
+
+	/**
+	 * @var AIPS_Batch_Queue_Service|null Lazy-loaded batch queue service.
+	 */
+	private $batch_queue_service;
 
 	/**
 	 * Initialize the scheduler.
@@ -77,10 +85,82 @@ class AIPS_Author_Topics_Scheduler {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
+		$this->job_scheduler = new AIPS_Job_Scheduler();
+	}
+
+	/**
+	 * Get the cron hook name for this scheduler's slice processing.
+	 *
+	 * @return string The WordPress cron hook name.
+	 */
+	protected function get_slice_hook(): string {
+		return self::SLICE_HOOK;
+	}
+
+	/**
+	 * Get the filter name for stagger seconds configuration.
+	 *
+	 * @return string The WordPress filter name.
+	 */
+	protected function get_stagger_filter(): string {
+		return 'aips_author_topics_slice_stagger_seconds';
+	}
+
+	/**
+	 * Get the default stagger seconds value.
+	 *
+	 * @return int Default number of seconds between author slices.
+	 */
+	protected function get_default_stagger_seconds(): int {
+		return 10;
+	}
+
+	/**
+	 * Get the history service type for this scheduler.
+	 *
+	 * @return string Type string for history service.
+	 */
+	protected function get_history_type(): string {
+		return 'author_topic_generation';
+	}
+
+	/**
+	 * Get the human-readable log type for this scheduler.
+	 *
+	 * @return string Log type.
+	 */
+	protected function get_log_type(): string {
+		return 'author-topics';
+	}
+
+	/**
+	 * Get the retry cron hook name for this scheduler.
+	 *
+	 * @return string The WordPress cron hook name for retries.
+	 */
+	protected function get_retry_hook(): string {
+		return 'aips_retry_failed_author_slices_topics';
+	}
+
+	/**
+	 * Lazy-load the batch queue service.
+	 *
+	 * @return AIPS_Batch_Queue_Service
+	 */
+	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
+		if ( $this->batch_queue_service === null ) {
+			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
+		}
+		return $this->batch_queue_service;
 	}
 	
 	/**
 	 * Process topic generation for all due authors.
+	 *
+	 * When the number of due authors meets or exceeds the configured threshold
+	 * (aips_author_topics_batch_threshold), individual single cron events are
+	 * dispatched for each author instead of processing all of them inline.
+	 * This prevents PHP timeout issues when many authors are due simultaneously.
 	 *
 	 * This is called by WordPress cron on the scheduled interval.
 	 */
@@ -94,11 +174,19 @@ class AIPS_Author_Topics_Scheduler {
 			$this->logger->log('No authors due for topic generation', 'info');
 			return;
 		}
+
+		$author_count = count($due_authors);
+		$this->logger->log("Found {$author_count} authors due for topic generation", 'info');
+
+		// Determine whether to dispatch per-author slices.
+		$threshold = max(1, (int) apply_filters('aips_author_topics_batch_threshold', self::DEFAULT_BATCH_THRESHOLD));
+
+		if ( $author_count >= $threshold ) {
+			$this->dispatch_author_slices( $due_authors );
+			return;
+		}
 		
-		$this->logger->log('Found ' . count($due_authors) . ' authors due for topic generation', 'info');
-		
-		// Process each author, scoping a unique correlation ID to each author's
-		// generation run so the full chain (scheduler → topics → history) is traceable.
+		// Below threshold — process inline (original behaviour).
 		foreach ($due_authors as $author) {
 			AIPS_Correlation_ID::generate();
 			try {
@@ -110,7 +198,52 @@ class AIPS_Author_Topics_Scheduler {
 		
 		$this->logger->log('Completed scheduled topic generation', 'info');
 	}
-	
+
+	/**
+	 * Process topic generation for a single author slice.
+	 *
+	 * This is the callback for the `aips_process_author_topics_slice` cron hook.
+	 * It loads the author by ID and calls generate_topics_for_author().
+	 *
+	 * @param int    $author_id      ID of the author to process.
+	 * @param string $correlation_id Correlation ID for tracing.
+	 */
+	public function process_author_slice( int $author_id, string $correlation_id = '' ): void {
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::set( $correlation_id );
+		} else {
+			AIPS_Correlation_ID::generate();
+		}
+
+		try {
+			$author = $this->authors_repository->get_by_id( $author_id );
+			if ( ! $author ) {
+				$this->logger->log(
+					"Author topics slice: author {$author_id} not found — skipping.",
+					'warning'
+				);
+				return;
+			}
+
+			$this->generate_topics_for_author( $author );
+		} finally {
+			AIPS_Correlation_ID::reset();
+		}
+	}
+
+	/**
+	 * Retry failed author topic slices.
+	 *
+	 * This is the callback for the `aips_retry_failed_author_slices_topics` cron hook.
+	 * It re-attempts to dispatch slice events for authors that failed to schedule earlier.
+	 *
+	 * @param string $author_ids_json JSON-encoded array of author IDs.
+	 * @param string $correlation_id  Correlation ID for tracing.
+	 */
+	public function retry_failed_topic_slices( string $author_ids_json, string $correlation_id = '' ): void {
+		$this->retry_failed_slices( $author_ids_json, $correlation_id );
+	}
+
 	/**
 	 * Generate topics for a specific author.
 	 *
@@ -200,8 +333,10 @@ class AIPS_Author_Topics_Scheduler {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		// Calculate next run time based on frequency, preserving original phase
-		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency, $author->topic_generation_next_run);
+		$base_run = !empty($author->topic_generation_next_run) ? (int) $author->topic_generation_next_run : AIPS_DateTime::now()->timestamp();
+
+		// Advance from the scheduled slot to preserve phase and time-of-day.
+		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency, $base_run);
 		
 		$this->authors_repository->update_topic_generation_schedule($author->id, $next_run);
 		
@@ -211,22 +346,26 @@ class AIPS_Author_Topics_Scheduler {
 	/**
 	 * Manually trigger topic generation for an author (e.g., from admin UI).
 	 *
-	 * @param int $author_id Author ID.
+	 * @param int  $author_id           Author ID.
+	 * @param bool $advance_schedule    Whether to update the author's next run.
+	 * @param bool $apply_auto_approval Whether to apply author auto-approval rules. Default true.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
-	public function generate_now($author_id) {
+	public function generate_now($author_id, $advance_schedule = true, $apply_auto_approval = true) {
 		$author = $this->authors_repository->get_by_id($author_id);
 		
 		if (!$author) {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 
-		$result = $this->topics_generator->generate_topics($author);
+		$result = $this->topics_generator->generate_topics($author, $apply_auto_approval);
 
 		// Keep manual "Run Now" behavior aligned with cron runs by advancing
 		// schedule timestamps regardless of success/failure to avoid re-running
 		// immediately on the next cron tick.
-		$this->update_author_schedule($author);
+		if ($advance_schedule) {
+			$this->update_author_schedule($author);
+		}
 
 		return $result;
 	}

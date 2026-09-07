@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 ?>
+<?php if (empty($embedded)) : ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<div class="aips-page-header">
@@ -20,6 +21,7 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
+<?php endif; ?>
 
 		<div class="aips-telemetry-dashboard-grid" id="aips-telemetry-panel">
 			<div class="aips-telemetry-dashboard-main">
@@ -182,19 +184,21 @@ if (!defined('ABSPATH')) {
 			</div>
 		</div>
 
-		<div id="aips-telemetry-details-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-telemetry-details-title">
+		<div id="aips-telemetry-details-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true">
 			<div class="aips-modal-content aips-modal-large">
 				<div class="aips-modal-header">
-					<h2 id="aips-telemetry-details-title"><?php esc_html_e('Telemetry Details', 'ai-post-scheduler'); ?></h2>
+					<h2 class="aips-modal-title"><?php esc_html_e('Telemetry Details', 'ai-post-scheduler'); ?></h2>
 					<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 				</div>
-				<div class="aips-modal-body" id="aips-telemetry-details-content">
+				<div class="aips-modal-body aips-modal-content-body">
 					<p class="aips-telemetry-loading"><?php esc_html_e('Select a telemetry row to view its details.', 'ai-post-scheduler'); ?></p>
 				</div>
 			</div>
 		</div>
+<?php if (empty($embedded)) : ?>
 	</div>
 </div>
+<?php endif; ?>
 
 <script type="text/html" id="aips-tmpl-telemetry-message-row">
 	<tr>

@@ -1,0 +1,18 @@
+{
+  "id": "5f29b08991b4753c2a23130f4b20e518f4d7d599",
+  "type": "batch_queue_past_base_timestamp",
+  "severity": "medium",
+  "status": "resolved",
+  "path": "ai-post-scheduler/includes/class-aips-batch-queue-service.php",
+  "symbol": "AIPS_Batch_Queue_Service",
+  "anchor": "dispatch_generic:base_timestamp-past",
+  "summary": "Batch queue dispatch accepted stale base timestamps and could anchor events in the past.",
+  "why_it_matters": "Past-anchored slice scheduling increases burst risk and obscures intended queue spread behavior during delayed cron execution.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-batch-queue-service.php:246",
+    "ai-post-scheduler/includes/class-aips-batch-queue-service.php:356-382"
+  ],
+  "fix_applied": "dispatch_generic() now normalizes stale base timestamps to AIPS_DateTime::now()->timestamp() and logs a warning for observability.",
+  "first_seen_run_id": "aips-20260507T011431Z",
+  "last_seen_run_id": "aips-20260507T011431Z"
+}

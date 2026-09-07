@@ -38,13 +38,14 @@ class AIPS_Telemetry_Controller {
 	 *
 	 * @return void
 	 */
-	public function render_page() {
+	public function render_page($embedded = false) {
 		if (!AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
 			wp_die(esc_html__('Telemetry is currently disabled.', 'ai-post-scheduler'));
 		}
 
-		$end_date   = date_i18n('Y-m-d', current_time('timestamp'));
-		$start_date = date_i18n('Y-m-d', strtotime('-29 days', current_time('timestamp')));
+		$embedded = (bool) $embedded;
+		$end_date   = AIPS_DateTime::now()->toDisplay('Y-m-d');
+		$start_date = AIPS_DateTime::now()->advance('-29 days')->toDisplay('Y-m-d');
 		$per_page   = 25;
 		$filter_options = $this->get_filter_options();
 
@@ -57,7 +58,9 @@ class AIPS_Telemetry_Controller {
 	 * @return void
 	 */
 	public function ajax_get_telemetry() {
-		check_ajax_referer('aips_get_telemetry', 'nonce');
+		if ( ! check_ajax_referer('aips_get_telemetry', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -67,10 +70,10 @@ class AIPS_Telemetry_Controller {
 			AIPS_Ajax_Response::error(__('Telemetry is disabled.', 'ai-post-scheduler'));
 		}
 
-		$today      = date_i18n('Y-m-d', current_time('timestamp'));
+		$today      = AIPS_DateTime::now()->toDisplay('Y-m-d');
 		$start_date = $this->sanitize_date(
 			isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '',
-			date_i18n('Y-m-d', strtotime('-29 days', current_time('timestamp')))
+			AIPS_DateTime::now()->advance('-29 days')->toDisplay('Y-m-d')
 		);
 		$end_date   = $this->sanitize_date(
 			isset($_POST['end_date']) ? sanitize_text_field(wp_unslash($_POST['end_date'])) : '',
@@ -117,7 +120,9 @@ class AIPS_Telemetry_Controller {
 	 * @return void
 	 */
 	public function ajax_get_telemetry_details() {
-		check_ajax_referer('aips_get_telemetry_details', 'nonce');
+		if ( ! check_ajax_referer('aips_get_telemetry_details', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();

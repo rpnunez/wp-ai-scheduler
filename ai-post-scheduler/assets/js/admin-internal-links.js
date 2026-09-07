@@ -890,7 +890,7 @@
 			this._suggestionDataMap  = {};
 
 			$('#aips-insert-suggestions-list').html(spinnerHtml);
-			$('#aips-insert-post-content').html(spinnerHtml);
+			$('#aips-insert-modal').find('.aips-modal-content-body').html(spinnerHtml);
 			$('#aips-insert-post-title').text('');
 			$('#aips-update-post-btn').prop('disabled', true);
 			$('#aips-pending-count').text('');
@@ -907,7 +907,7 @@
 							message: (response.data && response.data.message) || aipsInternalLinksL10n.loadingFailed,
 						})
 					);
-					$('#aips-insert-post-content').html('');
+					$('#aips-insert-modal').find('.aips-modal-content-body').html('');
 					return;
 				}
 
@@ -932,7 +932,7 @@
 						message: aipsInternalLinksL10n.loadingFailed,
 					})
 				);
-				$('#aips-insert-post-content').html('');
+				$('#aips-insert-modal').find('.aips-modal-content-body').html('');
 			});
 		},
 
@@ -1227,7 +1227,7 @@
 			var html = AIPS.Templates.escape(this._previewPlainText || '');
 
 			if (!html) {
-				$('#aips-insert-post-content').html(
+				$('#aips-insert-modal').find('.aips-modal-content-body').html(
 					AIPS.Templates.render('aips-tmpl-il-notice-muted', {
 						message: aipsInternalLinksL10n.noContent,
 					})
@@ -1273,7 +1273,7 @@
 				html = html.substring(0, idx) + insertionHtml + html.substring(idx + escapedMatch.length);
 			}
 
-			$('#aips-insert-post-content').html(html);
+			$('#aips-insert-modal').find('.aips-modal-content-body').html(html);
 		},
 
 		/**

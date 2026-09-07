@@ -15,14 +15,22 @@ class AIPS_Seeder_Admin {
     }
 
     public function enqueue_assets($hook) {
-        if (strpos($hook, 'aips-seeder') === false) {
+        unset($hook);
+
+        $page = filter_input(INPUT_GET, 'page', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $tab  = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $page = $page ? sanitize_key($page) : '';
+        $tab  = $tab ? sanitize_key($tab) : '';
+
+        // Seeder UI now lives only under Diagnostics -> Dev Tools.
+        if ('aips-diagnostics' !== $page || 'dev-tools' !== $tab) {
             return;
         }
 
         wp_enqueue_script(
             'aips-admin-seeder',
             AIPS_PLUGIN_URL . 'assets/js/admin-seeder.js',
-            array('jquery', 'aips-admin-script'), // Depends on core admin script
+            array('jquery', 'aips-admin-script'),
             AIPS_VERSION,
             true
         );
@@ -35,6 +43,10 @@ class AIPS_Seeder_Admin {
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();
+        }
+
+        if (!AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
+            AIPS_Ajax_Response::error(__('Developer Mode is disabled.', 'ai-post-scheduler'));
         }
 
         $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : '';

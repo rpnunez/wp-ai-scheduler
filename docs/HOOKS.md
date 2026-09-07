@@ -2,6 +2,22 @@
 
 This document lists all the actions and filters available in the AI Post Scheduler plugin. Developers can use these hooks to extend the plugin's functionality.
 
+## AI Provider Filters
+
+### `aips_wp_ai_client_prompt_builder`
+Filters an optional prebuilt WordPress AI Client prompt builder before AIPS calls `wp_ai_client_prompt()`.
+
+* **Arguments:**
+  * `object|WP_Error|null $builder`: Replacement builder, or `null` to use WordPress core.
+  * `string $prompt`: Prompt text for the request.
+  * `AIPS_WP_AI_Client_Provider $provider`: Current provider adapter.
+
+### `aips_wp_ai_client_connectors`
+Filters active WordPress AI connectors before AIPS applies its connector allowlist and failover policy.
+
+* **Arguments:**
+  * `array $connectors`: Active AI connector definitions keyed by connector ID.
+
 ## Action Hooks
 
 ### Post Generation
@@ -39,12 +55,12 @@ Fires after a post has been created but one or more requested components failed 
     *   `int $history_id`: The ID of the history record associated with this generation.
 
 #### `aips_post_components_updated`
-Fires after AI Edit saves updated post components.
+Fires after AI Assistance saves updated post components.
 
 *   **Arguments:**
     *   `int $post_id`: The updated post ID.
     *   `array $updated_components`: Updated component keys (`title`, `excerpt`, `content`, `featured_image`).
-    *   `array $components`: Raw component payload submitted by AI Edit.
+    *   `array $components`: Raw component payload submitted by AI Assistance.
 
 #### `aips_generation_failed`
 Fires when a non-scheduled/manual generation flow fails and should create a high-priority notification.
@@ -175,6 +191,37 @@ Fires immediately before the content prompt is constructed.
 
 ---
 
+### Integrations (Third-Party Plugin Bridge)
+
+Despite the name, this framework isn't limited to third-party plugins —
+`native_meta` (`AIPS_Integration_Native_Meta`) ships as a core adapter that
+generates into plain WordPress post meta ("custom fields") on any post
+type, no plugin required.
+
+#### `aips_before_build_integration_field_prompt`
+Fires immediately before the fallback single-field prompt for a mapped third-party field (e.g. an ACF field) is constructed. Only used when the batched prompt call fails and the manager falls back to one call per field — see `aips_before_build_integration_batch_prompt` for the normal (batched) path.
+
+*   **Arguments:**
+    *   `array $field_def`: Field definition (`key`, `label`, `native_type`, `instructions`).
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+#### `aips_before_build_integration_batch_prompt`
+Fires immediately before the batched prompt covering every generatable mapped field for one integration is constructed. This is the normal generation path — all mapped fields are generated in a single AI call rather than one call per field.
+
+*   **Arguments:**
+    *   `array $items`: List of `{mapping, field_def}` pairs, one per field in the batch.
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+#### `aips_integration_fields_applied`
+Fires after a batch of mapped fields has been generated and written for one integration on a post.
+
+*   **Arguments:**
+    *   `int $post_id`: The post the fields were written to.
+    *   `string $integration_id`: Integration identifier (e.g. `acf`).
+    *   `array $results`: `field_key => true|WP_Error` outcome map.
+
+---
+
 ## Filter Hooks
 
 ### Prompt Builder
@@ -189,8 +236,179 @@ Filters the final content prompt before it is sent to the AI service.
 
 ---
 
+### Integrations (Third-Party Plugin Bridge)
+
+#### `aips_integrations_registry`
+Registers a third-party plugin as an "AIPS-compatible plugin". Any plugin can add its own adapter here without modifying AIPS core — see `docs/AI_AGENT_REFERENCE.md` for the `AIPS_Integration_Interface` contract.
+
+*   **Arguments:**
+    *   `array $map`: `integration_id => class name implementing AIPS_Integration_Interface`.
+
+```php
+add_filter('aips_integrations_registry', function ($map) {
+    $map['my_plugin'] = 'My_Plugin_AIPS_Integration';
+    return $map;
+});
+```
+
+#### `aips_integration_field_prompt`
+Filters the fallback single-field prompt (used only when the batched call fails).
+
+*   **Arguments:**
+    *   `string $prompt`: The constructed prompt string.
+    *   `array $field_def`: Field definition (`key`, `label`, `native_type`, `instructions`).
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+#### `aips_integration_batch_prompt`
+Filters the batched prompt covering every generatable mapped field for one integration — the normal generation path.
+
+*   **Arguments:**
+    *   `string $prompt`: The constructed prompt string.
+    *   `array $items`: List of `{mapping, field_def}` pairs, one per field in the batch.
+    *   `AIPS_Generation_Context $context`: The generation context driving this post.
+
+---
+
 ## Deprecated/Removed Hooks
 
 The following hooks have been removed or deprecated in recent versions:
 
 *   `aips_post_generation_completed` (Removed in v1.7.0) - Use `aips_post_generated` instead.
+
+---
+
+## Batch Queue &amp; Async Generation Filters (added in 2.6.0)
+
+### `aips_large_batch_threshold`
+
+Filters the minimum item count that triggers async batch-queue dispatch. When `queue_job_type` is set in `AIPS_Bulk_Generator_Service::run()` and the item count is at or above this value, the job is persisted to `AIPS_Bulk_Batch_Job_Store` and dispatched as a series of cron events instead of running synchronously. Also used by `AIPS_Batch_Queue_Service::should_dispatch_as_batch()`.
+
+*   **Type:** `filter`
+*   **Default:** `5`
+*   **Arguments:**
+    *   `int $threshold` The minimum item count threshold.
+
+---
+
+### `aips_batch_max_jobs`
+
+Filters the maximum number of individual cron events that `AIPS_Batch_Queue_Service` will schedule per large-batch run. Capped at `ceil(quantity / 2)` so there is always at least one item per event.
+
+*   **Type:** `filter`
+*   **Default:** `10`
+*   **Arguments:**
+    *   `int $max_jobs` Maximum number of batch cron events.
+
+---
+
+### `aips_batch_queue_window_seconds`
+
+Filters the total time window (in seconds) over which `AIPS_Batch_Queue_Service` staggers the scheduled cron events of a large-batch run. Events are spread evenly across this window to reduce simultaneous AI load.
+
+*   **Type:** `filter`
+*   **Default:** `600` (10 minutes)
+*   **Arguments:**
+    *   `int $seconds` Total spread window in seconds.
+
+---
+
+### `aips_author_topics_batch_threshold`
+
+Filters the minimum number of due authors that triggers per-author batching in `AIPS_Author_Topics_Scheduler`. When this many or more authors are due for topic generation, individual `aips_process_author_topics_slice` single events are dispatched instead of processing all authors inline.
+
+*   **Type:** `filter`
+*   **Default:** `3`
+*   **Arguments:**
+    *   `int $threshold` The minimum due-author count.
+
+---
+
+### `aips_author_topics_slice_stagger_seconds`
+
+Filters the number of seconds between each staggered `aips_process_author_topics_slice` single event. Increase this value to spread AI requests out over a wider window and reduce simultaneous load.
+
+*   **Type:** `filter`
+*   **Default:** `10`
+*   **Arguments:**
+    *   `int $seconds` Seconds between consecutive author slice events.
+
+---
+
+### `aips_author_post_batch_threshold`
+
+Filters the minimum number of due authors that triggers per-author batching in `AIPS_Author_Post_Generator`. When this many or more authors are due for post generation, individual `aips_process_author_post_slice` single events are dispatched instead of processing all authors inline.
+
+*   **Type:** `filter`
+*   **Default:** `3`
+*   **Arguments:**
+    *   `int $threshold` The minimum due-author count.
+
+---
+
+### `aips_author_post_slice_stagger_seconds`
+
+Filters the number of seconds between each staggered `aips_process_author_post_slice` single event.
+
+*   **Type:** `filter`
+*   **Default:** `15`
+*   **Arguments:**
+    *   `int $seconds` Seconds between consecutive author post-slice events.
+
+---
+
+### `aips_default_topic_quantity`
+
+Filters the fallback topic-generation quantity used by `AIPS_Prompt_Builder_Topic` when an author's `topic_generation_quantity` value is unset or less than 1.
+
+*   **Type:** `filter`
+*   **Default:** `5`
+*   **Arguments:**
+    *   `int $quantity` The fallback quantity.
+
+---
+
+### `aips_sources_cron_max_per_run`
+
+Filters the maximum number of source-index rows processed per `AIPS_Sources_Cron` run. Increase this to process more sources per invocation when server resources allow; decrease it to avoid HTTP timeouts on shared hosting.
+
+*   **Type:** `filter`
+*   **Default:** `10` (`AIPS_Sources_Cron::MAX_PER_RUN`)
+*   **Arguments:**
+    *   `int $max` The maximum number of sources per run.
+
+---
+
+### `aips_topic_expansion_context_limit`
+
+Filters the maximum number of similar approved topics used as expanded context when `AIPS_Author_Post_Generator` generates a post from an author topic via `AIPS_Topic_Expansion_Service::get_expanded_context()`.
+
+*   **Type:** `filter`
+*   **Default:** `5`
+*   **Arguments:**
+    *   `int $limit` Maximum context topics.
+
+---
+
+## Semantic Embeddings & Related Posts Filters (added in 3.6.5)
+
+### `aips_related_posts_query_args`
+
+Filters query parameters before fetching related posts from `wp_aips_relationships`.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $args`: Array containing `limit`, `min_similarity`, `post_types`.
+    *   `int $post_id`: The source post ID.
+
+---
+
+### `aips_related_posts_html`
+
+Filters the rendered HTML output for the Related Posts block, shortcode, or auto-append content.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: The rendered HTML.
+    *   `int $post_id`: The source post ID.
+    *   `array $posts`: The list of related post arrays.
+

@@ -7,6 +7,26 @@ if (!defined('ABSPATH')) {
  * JSON import implementation (placeholder for future)
  */
 class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
+
+	/**
+	 * @var AIPS_Data_Management_Repository
+	 */
+	private $repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Data_Management_Repository|null $repository Repository override for tests.
+	 */
+	public function __construct($repository = null) {
+		if ($repository) {
+			$this->repository = $repository;
+			return;
+		}
+
+		$repository_class = 'AIPS_Data_Management_Repository';
+		$this->repository = new $repository_class();
+	}
 	
 	/**
 	 * Get the import format name
@@ -67,8 +87,6 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 	 * @return bool|WP_Error True on success, WP_Error on failure
 	 */
 	public function import($file_path) {
-		global $wpdb;
-		
 		// Read the JSON file
 		$json_content = file_get_contents($file_path);
 		
@@ -95,32 +113,29 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 		$tables = $this->get_tables();
 		$success_count = 0;
 		$error_count = 0;
-		
-		// Disable foreign key checks
-		$wpdb->query('SET FOREIGN_KEY_CHECKS = 0');
-		
-		foreach ($data['tables'] as $table_name => $rows) {
-			if (!isset($tables[$table_name])) {
-				continue; // Skip unknown tables
-			}
-			
-			$full_table_name = $tables[$table_name];
-			
-			// Truncate table first - table name is already validated from get_full_table_names()
-			$wpdb->query("TRUNCATE TABLE `" . esc_sql($full_table_name) . "`");
-			
-			// Insert rows
-			foreach ($rows as $row) {
-				$result = $wpdb->insert($full_table_name, $row);
-				if ($result === false) {
-					$error_count++;
-				} else {
-					$success_count++;
+
+		$this->repository->disable_foreign_key_checks();
+
+		try {
+			foreach ($data['tables'] as $table_name => $rows) {
+				if (!isset($tables[$table_name])) {
+					continue;
+				}
+
+				$full_table_name = $tables[$table_name];
+				$this->repository->truncate_table($full_table_name);
+
+				foreach ($rows as $row) {
+					if (!$this->repository->insert_row($full_table_name, $row)) {
+						$error_count++;
+					} else {
+						$success_count++;
+					}
 				}
 			}
+		} finally {
+			$this->repository->enable_foreign_key_checks();
 		}
-		
-		$wpdb->query('SET FOREIGN_KEY_CHECKS = 1');
 		
 		if ($error_count > 0) {
 			return new WP_Error(

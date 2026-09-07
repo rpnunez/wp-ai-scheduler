@@ -21,7 +21,40 @@ if (!defined('ABSPATH')) {
  * Implements AIPS_Cron_Generation_Handler so it can be discovered and
  * dispatched through the standard cron handler contract.
  */
-class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
+class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implements AIPS_Cron_Generation_Handler {
+
+	/**
+	 * WordPress cron hook name for per-author post-generation slices.
+	 *
+	 * @var string
+	 */
+	const SLICE_HOOK = 'aips_process_author_post_slice';
+
+	/**
+	 * Default minimum number of due authors that triggers per-author batching.
+	 *
+	 * Override via the 'aips_author_post_batch_threshold' filter.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_BATCH_THRESHOLD = 3;
+
+	/**
+	 * Default number of posts to generate per author run.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_POSTS_PER_RUN = 1;
+
+	/**
+	 * Maximum number of posts that can be generated per author run.
+	 *
+	 * Prevents runaway loops from misconfigured settings or large overrides.
+	 * Can be raised via the 'aips_author_post_generation_quantity_max' filter.
+	 *
+	 * @var int
+	 */
+	const MAX_POSTS_PER_RUN = 10;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -41,50 +74,35 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	}
 
 	/**
-	 * @var AIPS_Authors_Repository Repository for authors
-	 */
-	private $authors_repository;
-	
-	/**
 	 * @var AIPS_Author_Topics_Repository Repository for topics
 	 */
 	private $topics_repository;
-	
+
 	/**
 	 * @var AIPS_Author_Topic_Logs_Repository Repository for logs
 	 */
 	private $logs_repository;
-	
+
 	/**
 	 * @var AIPS_Generator Generator for posts
 	 */
 	private $generator;
-	
-	/**
-	 * @var AIPS_Logger Logger instance
-	 */
-	private $logger;
-	
+
 	/**
 	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
 	 */
 	private $interval_calculator;
-	
+
 	/**
 	 * @var AIPS_Topic_Expansion_Service Service for topic expansion
 	 */
 	private $expansion_service;
-	
-	/**
-	 * @var AIPS_History_Service Service for history logging
-	 */
-	private $history_service;
 
 	/**
 	 * @var AIPS_Generation_Execution_Runner Shared execution harness.
 	 */
 	private $runner;
-	
+
 	/**
 	 * Initialize the generator.
 	 */
@@ -98,10 +116,70 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
+		$this->job_scheduler = new AIPS_Job_Scheduler();
+	}
+
+	/**
+	 * Get the cron hook name for this scheduler's slice processing.
+	 *
+	 * @return string The WordPress cron hook name.
+	 */
+	protected function get_slice_hook(): string {
+		return self::SLICE_HOOK;
+	}
+
+	/**
+	 * Get the filter name for stagger seconds configuration.
+	 *
+	 * @return string The WordPress filter name.
+	 */
+	protected function get_stagger_filter(): string {
+		return 'aips_author_post_slice_stagger_seconds';
+	}
+
+	/**
+	 * Get the default stagger seconds value.
+	 *
+	 * @return int Default number of seconds between author slices.
+	 */
+	protected function get_default_stagger_seconds(): int {
+		return 15;
+	}
+
+	/**
+	 * Get the history service type for this scheduler.
+	 *
+	 * @return string Type string for history service.
+	 */
+	protected function get_history_type(): string {
+		return 'author_post_generation';
+	}
+
+	/**
+	 * Get the human-readable log type for this scheduler.
+	 *
+	 * @return string Log type.
+	 */
+	protected function get_log_type(): string {
+		return 'author-post';
+	}
+
+	/**
+	 * Get the retry cron hook name for this scheduler.
+	 *
+	 * @return string The WordPress cron hook name for retries.
+	 */
+	protected function get_retry_hook(): string {
+		return 'aips_retry_failed_author_slices_posts';
 	}
 	
 	/**
 	 * Process post generation for all due authors.
+	 *
+	 * When the number of due authors meets or exceeds the configured threshold
+	 * (aips_author_post_batch_threshold), individual single cron events are
+	 * dispatched for each author instead of processing all of them inline.
+	 * This prevents PHP timeout issues when many authors are due simultaneously.
 	 *
 	 * Called by WordPress cron on the `aips_generate_author_posts` hook.
 	 * Implements AIPS_Cron_Generation_Handler::process().
@@ -116,15 +194,23 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 			$this->logger->log('No authors due for post generation', 'info');
 			return;
 		}
+
+		$author_count = count($due_authors);
+		$this->logger->log("Found {$author_count} authors due for post generation", 'info');
+
+		// Determine whether to dispatch per-author slices.
+		$threshold = max(1, (int) apply_filters('aips_author_post_batch_threshold', self::DEFAULT_BATCH_THRESHOLD));
+
+		if ( $author_count >= $threshold ) {
+			$this->dispatch_author_slices( $due_authors );
+			return;
+		}
 		
-		$this->logger->log('Found ' . count($due_authors) . ' authors due for post generation', 'info');
-		
-		// Process each author through the shared execution harness, which scopes a
-		// unique correlation ID to each author's run and provides a Throwable safety net.
+		// Below threshold — process inline (original behaviour).
 		foreach ($due_authors as $author) {
 			$this->runner->run(
 				function() use ($author) {
-					$this->generate_post_for_author($author);
+					$this->generate_posts_for_author($author, null, 'scheduled', true);
 				},
 				'author_post_generation',
 				array('author_id' => $author->id)
@@ -133,7 +219,59 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');
 	}
-	
+
+	/**
+	 * Process post generation for a single author slice.
+	 *
+	 * This is the callback for the `aips_process_author_post_slice` cron hook.
+	 * It loads the author by ID and calls generate_posts_for_author().
+	 *
+	 * @param int    $author_id      ID of the author to process.
+	 * @param string $correlation_id Correlation ID for tracing.
+	 */
+	public function process_author_slice( int $author_id, string $correlation_id = '' ): void {
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::set( $correlation_id );
+		}
+
+		$author = $this->authors_repository->get_by_id( $author_id );
+		if ( ! $author ) {
+			$this->logger->log(
+				"Author post slice: author {$author_id} not found — skipping.",
+				'warning'
+			);
+			if ( ! empty( $correlation_id ) ) {
+				AIPS_Correlation_ID::reset();
+			}
+			return;
+		}
+
+		$this->runner->run(
+			function() use ($author) {
+				$this->generate_posts_for_author($author, null, 'scheduled', true);
+			},
+			'author_post_generation',
+			array('author_id' => $author->id)
+		);
+
+		if ( ! empty( $correlation_id ) ) {
+			AIPS_Correlation_ID::reset();
+		}
+	}
+
+	/**
+	 * Retry failed author post slices.
+	 *
+	 * This is the callback for the `aips_retry_failed_author_slices_posts` cron hook.
+	 * It re-attempts to dispatch slice events for authors that failed to schedule earlier.
+	 *
+	 * @param string $author_ids_json JSON-encoded array of author IDs.
+	 * @param string $correlation_id  Correlation ID for tracing.
+	 */
+	public function retry_failed_post_slices( string $author_ids_json, string $correlation_id = '' ): void {
+		$this->retry_failed_slices( $author_ids_json, $correlation_id );
+	}
+
 	/**
 	 * Generate a post for a specific author from their approved topics.
 	 *
@@ -157,28 +295,112 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
 	public function generate_post_for_author($author) {
+		$results = $this->generate_posts_for_author($author, 1, 'scheduled', true);
+
+		if (is_wp_error($results)) {
+			return $results;
+		}
+
+		return !empty($results) ? (int) $results[0] : new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Generate one or more posts for a specific author from approved topics.
+	 *
+	 * @param object      $author          Author object from database.
+	 * @param int|null    $count           Optional explicit post count. When null,
+	 *                                     the author-level setting for the creation
+	 *                                     method is used.
+	 * @param string      $creation_method Optional creation method.
+	 * @param bool        $advance_schedule Whether to update the author schedule.
+	 * @return int[]|WP_Error Generated post IDs on success, WP_Error when no posts were generated.
+	 */
+	public function generate_posts_for_author($author, ?int $count = null, string $creation_method = 'scheduled', bool $advance_schedule = true) {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
-		
-		// Get the next approved topic for this author
-		$topics = $this->topics_repository->get_approved_for_generation($author->id, 1);
+
+		$post_count = $this->resolve_post_generation_quantity($author, $creation_method, $count);
+
+		// Get the next approved topics for this author.
+		$topics = $this->topics_repository->get_approved_for_generation($author->id, $post_count);
 		
 		if (empty($topics)) {
 			$this->logger->log("No approved topics available for author {$author->id}", 'warning');
 			
 			// Still update the schedule to avoid getting stuck
-			$this->update_author_schedule($author);
-			return new WP_Error('no_topics', 'No approved topics available');
+			if ($advance_schedule) {
+				$this->update_author_schedule($author);
+			}
+			return new WP_Error('no_topics', __('No approved topics available', 'ai-post-scheduler'));
 		}
-		
-		$topic = $topics[0];
-		
-		// Generate the post using the topic (scheduled generation)
-		$result = $this->generate_post_from_topic($topic, $author, 'scheduled');
-		
-		// Update the author's next run time
-		$this->update_author_schedule($author);
-		
-		return $result;
+
+		$post_ids = array();
+		$last_error = null;
+
+		foreach ($topics as $topic) {
+			$result = $this->generate_post_from_topic($topic, $author, $creation_method);
+
+			if (is_wp_error($result)) {
+				$last_error = $result;
+				continue;
+			}
+
+			$post_ids[] = (int) $result;
+		}
+
+		if ($advance_schedule) {
+			$this->update_author_schedule($author);
+		}
+
+		if (!empty($post_ids)) {
+			return $post_ids;
+		}
+
+		return $last_error instanceof WP_Error
+			? $last_error
+			: new WP_Error('generation_failed', __('No posts were generated', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Resolve how many posts an author run should generate.
+	 *
+	 * @param object   $author          Author object from database.
+	 * @param string   $creation_method Creation method ('manual' or 'scheduled').
+	 * @param int|null $count           Optional explicit override.
+	 * @return int
+	 */
+	private function resolve_post_generation_quantity($author, string $creation_method, ?int $count = null): int {
+		if (null !== $count) {
+			$resolved_count = $count;
+		} elseif ('manual' === $creation_method) {
+			$resolved_count = isset($author->manual_post_generation_quantity) ? (int) $author->manual_post_generation_quantity : self::DEFAULT_POSTS_PER_RUN;
+		} else {
+			$resolved_count = isset($author->scheduled_post_generation_quantity) ? (int) $author->scheduled_post_generation_quantity : self::DEFAULT_POSTS_PER_RUN;
+		}
+
+		$resolved_count = max(1, $resolved_count);
+
+		/**
+		 * Filters the maximum number of posts allowed per single author run.
+		 * Raise this to allow more than the default cap without code changes.
+		 *
+		 * @since 2.5.1
+		 *
+		 * @param int $max Maximum post count per run.
+		 */
+		$max_count = (int) max(1, apply_filters('aips_author_post_generation_quantity_max', self::MAX_POSTS_PER_RUN));
+
+		/**
+		 * Filters the number of posts generated for a single author run.
+		 *
+		 * @since 2.5.1
+		 *
+		 * @param int    $resolved_count  Resolved post count for this author run.
+		 * @param object $author          Author object from database.
+		 * @param string $creation_method Creation method ('manual' or 'scheduled').
+		 */
+		$filtered_count = (int) apply_filters('aips_author_post_generation_quantity', $resolved_count, $author, $creation_method);
+
+		return max(1, min($max_count, $filtered_count));
 	}
 	
 	/**
@@ -192,8 +414,18 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
 		
-		// Get expanded context from similar approved topics
-		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);
+		// Get expanded context from similar approved topics.
+		// The limit is filterable so installations with many related topics can
+		// increase it without code changes.
+		/**
+		 * Filters the maximum number of similar approved topics used as expanded
+		 * context when generating a post from an author topic.
+		 *
+		 * @since 2.6.0
+		 * @param int $limit Default context limit. Default 5.
+		 */
+		$context_limit    = max(1, (int) apply_filters('aips_topic_expansion_context_limit', 5));
+		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, $context_limit);
 		
 		if (!empty($expanded_context)) {
 			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');
@@ -249,6 +481,9 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 					'author_id' => $author->id
 				))
 			);
+
+			// Always record author's last run timestamp on successful generation.
+			$this->authors_repository->update_post_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
 			
 			// Get post status for activity log
 			$post = get_post($post_id);
@@ -354,8 +589,10 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		// Calculate next run time based on frequency, preserving original phase
-		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $author->post_generation_next_run);
+		$base_run = !empty($author->post_generation_next_run) ? (int) $author->post_generation_next_run : AIPS_DateTime::now()->timestamp();
+
+		// Advance from the scheduled slot to preserve phase and time-of-day.
+		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $base_run);
 		
 		$this->authors_repository->update_post_generation_schedule($author->id, $next_run);
 		
@@ -396,7 +633,7 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		// Store elapsed time in post meta for future progress-bar estimation.
 		if (!is_wp_error($result) && $result > 0) {
 			$elapsed = round(microtime(true) - $start_time, 2);
-			update_post_meta($result, '_aips_post_generation_total_time', $elapsed);
+			update_post_meta($result, AIPS_Post_Manager::META_POST_GENERATION_TOTAL_TIME, $elapsed);
 		}
 		
 		return $result;
@@ -415,7 +652,7 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		// Preserve the original post status before setting it to draft
 		$original_post = get_post($post_id);
 		if ($original_post && isset($original_post->post_status)) {
-			update_post_meta($post_id, '_aips_original_post_status', $original_post->post_status);
+			update_post_meta($post_id, AIPS_Post_Manager::META_ORIGINAL_POST_STATUS, $original_post->post_status);
 		}
 
 		// Set the old post to draft

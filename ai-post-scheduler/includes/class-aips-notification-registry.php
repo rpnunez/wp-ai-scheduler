@@ -123,6 +123,13 @@ class AIPS_Notification_Registry {
 				'level'         => 'warning',
 				'dedupe_window' => 60,
 			),
+			'post_generated' => array(
+				'label'         => __('Post Generated', 'ai-post-scheduler'),
+				'description'   => __('A new post finished generating (from a template, author topic, planner, or trending-topic run).', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'info',
+				'dedupe_window' => 60,
+			),
 			'daily_digest' => array(
 				'label'         => __('Daily Digest', 'ai-post-scheduler'),
 				'description'   => __('Daily summary of generation and review activity.', 'ai-post-scheduler'),

@@ -21,30 +21,34 @@ from typing import Dict, Any, Optional
 class MCPClient:
     """Simple MCP Bridge client"""
     
-    def __init__(self, url: str, username: str = None, password: str = None):
+    def __init__(self, url: str, username: str = None, password: str = None, token: str = None):
         """
         Initialize MCP client
-        
+
         Args:
             url: URL to the MCP bridge endpoint
             username: WordPress username (optional)
             password: WordPress application password (optional)
+            token: Shared secret matching the AIPS_MCP_BRIDGE_TOKEN constant
+                defined in wp-config.php (required; the bridge rejects
+                requests without it regardless of WordPress auth)
         """
         self.url = url
+        self.token = token
         self.session = requests.Session()
-        
+
         if username and password:
             self.session.auth = (username, password)
-    
+
     def call_tool(self, method: str, params: Optional[Dict[str, Any]] = None, request_id: int = 1) -> Dict[str, Any]:
         """
         Call an MCP tool
-        
+
         Args:
             method: Tool name to call
             params: Tool parameters (optional)
             request_id: JSON-RPC request ID
-            
+
         Returns:
             Tool result or error
         """
@@ -52,7 +56,8 @@ class MCPClient:
             "jsonrpc": "2.0",
             "method": method,
             "params": params or {},
-            "id": request_id
+            "id": request_id,
+            "token": self.token
         }
         
         try:
@@ -93,6 +98,7 @@ def main():
     parser.add_argument("--url", required=True, help="MCP Bridge URL")
     parser.add_argument("--username", help="WordPress username")
     parser.add_argument("--password", help="WordPress application password")
+    parser.add_argument("--token", required=True, help="Shared secret matching AIPS_MCP_BRIDGE_TOKEN in wp-config.php")
     parser.add_argument("--tool", default="list_tools", help="Tool to call (default: list_tools)")
     parser.add_argument("--params", help="Tool parameters as JSON string")
     
@@ -108,7 +114,7 @@ def main():
             return 1
     
     # Create client
-    client = MCPClient(args.url, args.username, args.password)
+    client = MCPClient(args.url, args.username, args.password, args.token)
     
     print(f"🔧 Calling tool: {args.tool}")
     print(f"📝 Parameters: {json.dumps(params)}")

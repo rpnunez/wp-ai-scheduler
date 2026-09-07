@@ -232,7 +232,7 @@ class AIPS_Telemetry {
 			'peak_memory_bytes' => $peak_memory,
 			'elapsed_ms'        => $elapsed_ms,
 			'payload'           => wp_json_encode($payload),
-			'inserted_at'       => current_time('mysql'),
+			'inserted_at'       => AIPS_DateTime::now()->timestamp(),
 		));
 
 		if ($inserted !== false) {

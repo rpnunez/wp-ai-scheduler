@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 2.4.1
+ * Version: 3.6.7
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '2.4.1');
+    define('AIPS_VERSION', '3.6.7');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -64,6 +64,14 @@ if (!defined('AIPS_PLUGIN_BASENAME')) {
 // it will automatically enable when WP_DEBUG is true.
 if (!defined('AIPS_AI_DEBUG_LOG_PROMPTS')) {
     define('AIPS_AI_DEBUG_LOG_PROMPTS', defined('WP_DEBUG') && WP_DEBUG);
+}
+
+if (!defined('AIPS_DEBUG')) {
+    define('AIPS_DEBUG', defined('WP_DEBUG') && WP_DEBUG);
+}
+
+if (!defined('AIPS_DEBUG_LEVEL')) {
+    define('AIPS_DEBUG_LEVEL', defined('WP_DEBUG') && WP_DEBUG ? 1 : 0);
 }
 
 final class AI_Post_Scheduler {
@@ -108,6 +116,14 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Sources Fetch', 'ai-post-scheduler' ),
             ),
+            'aips_cleanup_bulk_batch_jobs' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Bulk Batch Job Cleanup', 'ai-post-scheduler' ),
+            ),
+            'aips_cache_monitor_maintenance' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -141,10 +157,12 @@ final class AI_Post_Scheduler {
      */
     private function check_dependencies() {
         add_action('admin_init', function() {
-            if (!class_exists('Meow_MWAI_Core')) {
+            // The plugin needs at least one AI backend: the Meow Apps AI Engine
+            // plugin OR a ready native WordPress AI Client text-generation connector.
+            if (class_exists('AIPS_AI_Provider_Factory') && !AIPS_AI_Provider_Factory::has_available_provider()) {
                 add_action('admin_notices', function() {
                     echo '<div class="notice notice-error"><p>';
-                    echo esc_html__('AI Post Scheduler requires Meow Apps AI Engine plugin to be installed and activated.', 'ai-post-scheduler');
+                    echo esc_html__('AI Post Scheduler requires a configured AI provider. Activate Meow Apps AI Engine, or configure credentials for an active WordPress AI Client connector (WordPress 7.0+).', 'ai-post-scheduler');
                     echo '</p></div>';
                 });
             }
@@ -159,6 +177,7 @@ final class AI_Post_Scheduler {
     private function includes() {
         // Primary autoloader: Composer-generated classmap (O(1) hash lookup, no filesystem hits).
         $vendor_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        
         if ( file_exists( $vendor_autoload ) ) {
             require_once $vendor_autoload;
         }
@@ -269,10 +288,26 @@ final class AI_Post_Scheduler {
     /**
      * Run versioned upgrade checks.
      *
+     * Called both on plugin activation (via activate()) and on every page load
+     * via the plugins_loaded hook. WordPress plugin auto-updates skip activation,
+     * so this must be self-contained: AIPS_DB_Migrations::check_and_run() runs
+     * migrations AND install_tables() (dbDelta) when an upgrade is detected,
+     * ensuring the schema is fully applied regardless of the call path.
+     *
+     * Call-order guarantee inside AIPS_DB_Migrations::run_upgrade() (must not change):
+     *   1. Versioned migrations run first — column renames/type changes/index ops
+     *      that dbDelta cannot perform. Schema must be consistent before dbDelta.
+     *   2. AIPS_DB_Manager::install_tables() (dbDelta) runs second — adds any new
+     *      tables/columns introduced in the current plugin version.
+     *
+     * Note: activate() also calls install_tables() directly afterward for the
+     * fresh-install / re-activation edge case. The double invocation is harmless
+     * because dbDelta is fully idempotent.
+     *
      * @return void
      */
     public function check_upgrades() {
-        AIPS_Upgrades::check_and_run();
+        AIPS_DB_Migrations::check_and_run();
     }
 
     /**
@@ -365,8 +400,14 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Logger::class);
         });
 
+        $container->singleton(AIPS_AI_Provider_Interface::class, function( $container ) {
+            return AIPS_AI_Provider_Factory::create();
+        });
+
         $container->singleton(AIPS_AI_Service::class, function( $container ) {
-            return AIPS_AI_Service::instance();
+            return new AIPS_AI_Service(
+                provider: $container->make(AIPS_AI_Provider_Interface::class)
+            );
         });
 
         $container->singleton(AIPS_AI_Service_Interface::class, function( $container ) {
@@ -388,6 +429,68 @@ final class AI_Post_Scheduler {
         // Register AIPS_Template_Repository
         $container->singleton(AIPS_Template_Repository::class, function( $container ) {
             return AIPS_Template_Repository::instance();
+        });
+
+        // Register AIPS_System_Diagnostics_Service
+        $container->singleton(AIPS_System_Diagnostics_Service::class, function( $container ) {
+            return new AIPS_System_Diagnostics_Service();
+        });
+
+        // Register AIPS_System_Status_Diagnostics_Service
+        $container->singleton(AIPS_System_Status_Diagnostics_Service::class, function( $container ) {
+            return new AIPS_System_Status_Diagnostics_Service();
+        });
+
+        // Register AIPS_Embeddings_Repository
+        $container->singleton(AIPS_Embeddings_Repository::class, function( $container ) {
+            return new AIPS_Embeddings_Repository();
+        });
+
+        // Register AIPS_Relationships_Repository
+        $container->singleton(AIPS_Relationships_Repository::class, function( $container ) {
+            return new AIPS_Relationships_Repository();
+        });
+
+        // Register AIPS_Embeddings_Service
+        $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
+            return new AIPS_Embeddings_Service(
+                $container->make(AIPS_AI_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
+        });
+
+        // Register AIPS_Content_Indexer_Service
+        $container->singleton(AIPS_Content_Indexer_Service::class, function( $container ) {
+            return new AIPS_Content_Indexer_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_History_Service_Interface::class),
+                $container->make(AIPS_Logger_Interface::class),
+                $container->make(AIPS_Config::class),
+                $container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository()
+            );
+        });
+
+        // Register AIPS_Related_Posts_Service
+        $container->singleton(AIPS_Related_Posts_Service::class, function( $container ) {
+            return new AIPS_Related_Posts_Service(
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        // Register AIPS_Deduplication_Service
+        $container->singleton(AIPS_Deduplication_Service::class, function( $container ) {
+            return new AIPS_Deduplication_Service(
+                $container->make(AIPS_Embeddings_Repository::class),
+                $container->make(AIPS_Relationships_Repository::class),
+                $container->make(AIPS_Embeddings_Service::class),
+                $container->make(AIPS_Config::class),
+                $container->make(AIPS_Logger_Interface::class)
+            );
         });
     }
 
@@ -496,6 +599,34 @@ final class AI_Post_Scheduler {
                 'query_var'         => false,
             )
         );
+
+        // Integration bridge: listens for 'aips_post_generated' and
+        // 'aips_template_changed' in every request context (cron and AJAX
+        // both trigger generation). Registered as lazy closures rather than
+        // an eagerly-constructed object — AIPS_Integration_Manager resolves
+        // AIPS_AI_Service (and, through it, AIPS_Resilience_Service, whose
+        // constructor reads a transient) via the container, which is not
+        // lazy, so constructing it here would do real work on every request
+        // even when no post is ever generated.
+        add_action('aips_post_generated', function ($post_id, $template_or_context, $history_id, $context) {
+            (new AIPS_Integration_Manager())->handle_post_generated($post_id, $template_or_context, $history_id, $context);
+        }, 10, 4);
+        add_action('aips_template_changed', function ($args) {
+            (new AIPS_Integration_Manager())->handle_template_deleted($args);
+        });
+
+        // Continuous semantic indexing: automatically index published posts and refresh relationships
+        add_action('save_post', function ($post_id, $post) {
+            if (!is_object($post) || !isset($post->post_status)) {
+                return;
+            }
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
+        }, 10, 2);
+
+        // Related Posts Frontend integration (content filter, shortcode, block)
+        new AIPS_Related_Posts_Frontend(
+            AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
+        );
     }
 
     /**
@@ -522,14 +653,210 @@ final class AI_Post_Scheduler {
             return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
         });
 
+        // Batch-queue single events: each call processes one slice of a large schedule.
+        // Args: schedule_id, start_index, batch_size, total_quantity, correlation_id.
+        add_action('aips_process_schedule_batch', function(
+            $schedule_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $correlation_id = ''
+        ) {
+            AIPS_Scheduler::instance()->process_batch(
+                (int) $schedule_id,
+                (int) $start_index,
+                (int) $batch_size,
+                (int) $total_quantity,
+                (string) $correlation_id
+            );
+        }, 10, 5);
+
+        // Resume large batches that the "Prevent AI Generation" setting stopped
+        // part-way through. Queued once when that setting is switched back off.
+        add_action('aips_resume_terminated_batches', function() {
+            AIPS_Scheduler::instance()->resume_terminated_batches();
+        });
+
         // Lazy-resolve the author-topics scheduler only when its hook fires.
         add_action('aips_generate_author_topics', function() {
             AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
         });
 
+        // Per-author topic-generation slice: process one author's topics in a dedicated cron event.
+        // Args: author_id, correlation_id.
+        add_action('aips_process_author_topics_slice', function( $author_id, $correlation_id = '' ) {
+            AIPS_Author_Topics_Scheduler::instance()->process_author_slice(
+                (int) $author_id,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Retry failed topic-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_topics', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Topics_Scheduler::instance()->retry_failed_topic_slices(
+                (string) $author_ids_json,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
         // Lazy-resolve the author-post generator only when its hook fires.
         add_action('aips_generate_author_posts', function() {
             AIPS_Author_Post_Generator::instance()->process();
+        });
+
+        // Per-author post-generation slice: process one author's post in a dedicated cron event.
+        // Args: author_id, correlation_id.
+        add_action('aips_process_author_post_slice', function( $author_id, $correlation_id = '' ) {
+            AIPS_Author_Post_Generator::instance()->process_author_slice(
+                (int) $author_id,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Retry failed post-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_posts', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Post_Generator::instance()->retry_failed_post_slices(
+                (string) $author_ids_json,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Async bulk-batch processing: each single event processes one slice of a stored job.
+        // Args: job_id, start_index, batch_size, total_quantity, correlation_id.
+        add_action('aips_process_bulk_batch', function(
+            $job_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $correlation_id = ''
+        ) {
+            AIPS_Bulk_Batch_Processor::instance()->process(
+                (string) $job_id,
+                (int)    $start_index,
+                (int)    $batch_size,
+                (int)    $total_quantity,
+                (string) $correlation_id
+            );
+        }, 10, 5);
+
+        // Register bulk-batch strategies for each supported job type.
+        // Strategies are registered directly (not via add_action) so they are
+        // available immediately when boot_cron() runs — before any later cron
+        // hook could fire in the same request.  Closures are safe here because
+        // they are never serialised; only the job_type string goes to the DB.
+        //
+        // Every handler receives ($item, $job_id, $job) so that per-job context
+        // stored in $job->options (e.g. template_id) can be read inside the closure.
+        $processor = AIPS_Bulk_Batch_Processor::instance();
+
+        $processor->register(
+            'author_topic_post',
+            function( $topic_id, $job_id, $job ) {
+                return AIPS_Author_Post_Generator::instance()->generate_now( (int) $topic_id );
+            }
+        );
+
+        $processor->register(
+            'planner_post',
+            function( $item, $job_id, $job ) {
+                $template_id = isset( $job->options['history_meta']['template_id'] )
+                    ? (int) $job->options['history_meta']['template_id']
+                    : 0;
+
+                if ( $template_id <= 0 ) {
+                    return new WP_Error(
+                        'planner_post_missing_template',
+                        __( 'planner_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
+                    );
+                }
+
+                $template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
+
+                if ( ! $template || empty( $template->is_active ) ) {
+                    return new WP_Error(
+                        'planner_post_template_not_found',
+                        /* translators: %d: template ID */
+                        sprintf( __( 'Template %d not found or inactive for planner_post strategy.', 'ai-post-scheduler' ), $template_id )
+                    );
+                }
+
+                $topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
+                $generator = new AIPS_Generator();
+
+                return $generator->generate_post( $template, null, $topic );
+            }
+        );
+
+        $processor->register(
+            'trending_topic_post',
+            function( $item, $job_id, $job ) {
+                if ( ! is_array( $item ) || empty( $item['id'] ) || ! isset( $item['topic'] ) ) {
+                    return new WP_Error(
+                        'invalid_trending_topic_item',
+                        __( 'Item must be an array with id and topic keys.', 'ai-post-scheduler' )
+                    );
+                }
+
+                $template_id = isset( $job->options['history_meta']['template_id'] )
+                    ? (int) $job->options['history_meta']['template_id']
+                    : 0;
+
+                if ( $template_id <= 0 ) {
+                    return new WP_Error(
+                        'trending_topic_post_missing_template',
+                        __( 'trending_topic_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
+                    );
+                }
+
+                $template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
+
+                if ( ! $template || empty( $template->is_active ) ) {
+                    return new WP_Error(
+                        'trending_topic_post_template_not_found',
+                        /* translators: %d: template ID */
+                        sprintf( __( 'Template %d not found or inactive for trending_topic_post strategy.', 'ai-post-scheduler' ), $template_id )
+                    );
+                }
+
+                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'cron' );
+                $generator = new AIPS_Generator();
+                $post_id   = $generator->generate_post( $context );
+
+                if ( is_wp_error( $post_id ) ) {
+                    return $post_id;
+                }
+
+                update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID,  absint( $item['id'] ) );
+                update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field( (string) $item['topic'] ) );
+
+                return $post_id;
+            }
+        );
+
+        // Daily cleanup of completed/failed bulk-batch job rows.
+        add_action('aips_cleanup_bulk_batch_jobs', function() {
+            $store   = new AIPS_Bulk_Batch_Job_Store();
+            $deleted = $store->cleanup_old_jobs();
+            if ( $deleted > 0 ) {
+                ( new AIPS_Logger() )->log(
+                    sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
+                    'info'
+                );
+            }
+        });
+
+        // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
+        add_action('aips_cache_monitor_maintenance', function() {
+            $repository  = new AIPS_Cache_Monitor_Repository();
+            $cache_index = new AIPS_Cache_Index();
+            $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+            $result      = $service->run_maintenance();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
         });
 
         // Lazy-resolve the embeddings worker only when its hook fires.
@@ -559,6 +886,11 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // Post-save affiliate link injection — fires after every generated post.
+        add_action('aips_post_generated', function($post_id) {
+            (new AIPS_Affiliate_Links_Service())->inject_for_post(absint($post_id));
+        }, 10, 1);
     }
 
     /**
@@ -622,11 +954,23 @@ final class AI_Post_Scheduler {
         // Reconciler's save_post hook fires on post-save actions initiated from admin.
         new AIPS_Partial_Generation_State_Reconciler();
 
+        // Native WordPress post list/editor History links for plugin containers.
+        new AIPS_Post_History_UI();
+
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Ensure Seeder admin hooks are registered when developer mode is enabled
+        // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
+        if ( AIPS_Config::get_instance()->get_option('aips_developer_mode') ) {
+            // Lazy instantiate the Seeder admin class so its admin_enqueue_scripts
+            // hook is available on Diagnostics/Dev Tools pages.
+            new AIPS_Seeder_Admin();
+        }
+
     }
 
     /**

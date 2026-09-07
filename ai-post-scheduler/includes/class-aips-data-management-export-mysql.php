@@ -7,6 +7,26 @@ if (!defined('ABSPATH')) {
  * MySQL dump export implementation
  */
 class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
+
+	/**
+	 * @var AIPS_Data_Management_Repository
+	 */
+	private $repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AIPS_Data_Management_Repository|null $repository Repository override for tests.
+	 */
+	public function __construct($repository = null) {
+		if ($repository) {
+			$this->repository = $repository;
+			return;
+		}
+
+		$repository_class = 'AIPS_Data_Management_Repository';
+		$this->repository = new $repository_class();
+	}
 	
 	/**
 	 * Get the export format name
@@ -41,8 +61,6 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 	 * @return string The exported SQL dump
 	 */
 	public function export() {
-		global $wpdb;
-		
 		$sql_dump = '';
 		
 		// Add header comment
@@ -55,12 +73,10 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 		$sql_dump .= "SET time_zone = \"+00:00\";\n\n";
 		
 		$tables = $this->get_tables();
+		$existing_tables = $this->repository->get_existing_tables($tables);
 		
 		foreach ($tables as $table_name => $full_table_name) {
-			// Check if table exists
-			$table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $full_table_name));
-			
-			if ($table_exists !== $full_table_name) {
+			if (!isset($existing_tables[$table_name])) {
 				$sql_dump .= "-- Table $full_table_name does not exist\n\n";
 				continue;
 			}
@@ -69,17 +85,16 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 			$sql_dump .= "-- Table structure for table `$full_table_name`\n";
 			$sql_dump .= "-- --------------------------------------------------------\n\n";
 			
-			// Get CREATE TABLE statement - table name is already validated from get_full_table_names()
-			$create_table = $wpdb->get_row("SHOW CREATE TABLE `" . esc_sql($full_table_name) . "`", ARRAY_N);
-			if ($create_table) {
-				$sql_dump .= "DROP TABLE IF EXISTS `" . esc_sql($full_table_name) . "`;\n";
-				$sql_dump .= $create_table[1] . ";\n\n";
+			$create_table_statement = $this->repository->get_create_table_statement($full_table_name);
+			if (!empty($create_table_statement)) {
+				$sql_dump .= "DROP TABLE IF EXISTS `" . $this->escape_identifier($full_table_name) . "`;\n";
+				$sql_dump .= $create_table_statement . ";\n\n";
 			}
 			
 			// Get table data
 			$sql_dump .= "-- Dumping data for table `$full_table_name`\n\n";
 			
-			$rows = $wpdb->get_results("SELECT * FROM `" . esc_sql($full_table_name) . "`", ARRAY_A);
+			$rows = $this->repository->get_table_rows($full_table_name);
 			
 			if (!empty($rows)) {
 				foreach ($rows as $row) {
@@ -102,8 +117,6 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 	 * @return string
 	 */
 	private function generate_insert_statement($table_name, $row) {
-		global $wpdb;
-		
 		$columns = array_keys($row);
 		$values = array();
 		
@@ -120,10 +133,24 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 		}
 		
 		// Escape column names
-		$columns_str = '`' . implode('`, `', array_map('esc_sql', $columns)) . '`';
+		$columns_str = '`' . implode('`, `', array_map(array($this, 'escape_identifier'), $columns)) . '`';
 		$values_str = implode(', ', $values);
 		
 		return "INSERT INTO `$table_name` ($columns_str) VALUES ($values_str);\n";
+	}
+
+	/**
+	 * Escape SQL identifiers for dump output.
+	 *
+	 * @param string $identifier SQL identifier.
+	 * @return string
+	 */
+	private function escape_identifier($identifier) {
+		if (function_exists('esc_sql')) {
+			return esc_sql($identifier);
+		}
+
+		return str_replace('`', '``', (string) $identifier);
 	}
 	
 	/**

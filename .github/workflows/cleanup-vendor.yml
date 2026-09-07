@@ -1,0 +1,56 @@
+name: Cleanup vendor from branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to clean (e.g. feature/foo). If empty, uses the branch you run it from."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine target branch
+        id: tgt
+        run: |
+          if [ -n "${{ inputs.branch }}" ]; then
+            echo "branch=${{ inputs.branch }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tgt.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Remove vendor from tracking and commit
+        run: |
+          set -euxo pipefail
+
+          # Remove from index only (won't delete files from the working directory)
+          git rm -r --cached ai-post-scheduler/vendor || true
+
+          # Ensure ignore rule exists
+          if [ -f ".gitignore" ]; then
+            grep -qxF "ai-post-scheduler/vendor/" .gitignore || echo "ai-post-scheduler/vendor/" >> .gitignore
+          else
+            echo "ai-post-scheduler/vendor/" > .gitignore
+          fi
+
+          # Only commit if anything changed
+          if git diff --cached --quiet && git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: remove ai-post-scheduler/vendor from branch"
+          git push origin HEAD:${{ steps.tgt.outputs.branch }}

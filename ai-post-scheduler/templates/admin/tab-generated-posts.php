@@ -10,10 +10,13 @@
  * @var array $templates
  * @var int $author_id
  * @var int $template_id
+ * @var int $campaign_id
  * @var string $search_query
  * @var array $posts_data
  * @var array $history
  * @var int $current_page
+ * @var array $selectable_post_types
+ * @var string $post_type_filter
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -50,23 +53,45 @@ if (!defined('ABSPATH')) {
 								<?php endforeach; ?>
 							</select>
 							<?php endif; ?>
+							<?php if (!empty($campaigns)): ?>
+							<label class="screen-reader-text" for="aips-filter-campaign-generated"><?php esc_html_e('Filter by Campaign:', 'ai-post-scheduler'); ?></label>
+							<select name="campaign_id" id="aips-filter-campaign-generated" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Campaigns', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($campaigns as $campaign): ?>
+								<option value="<?php echo esc_attr($campaign->id); ?>" <?php selected($campaign_id, $campaign->id); ?>>
+									<?php echo esc_html($campaign->name); ?><?php echo !empty($campaign->is_archived) ? esc_html__(' (Archived)', 'ai-post-scheduler') : ''; ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
+							<?php if (!empty($selectable_post_types)): ?>
+							<label class="screen-reader-text" for="aips-filter-post-type-generated"><?php esc_html_e('Filter by Post Type:', 'ai-post-scheduler'); ?></label>
+							<select name="post_type" id="aips-filter-post-type-generated" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+								<option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
+									<?php echo esc_html($post_type_info['label']); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
 							<button type="submit" id="aips-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-								<span class="dashicons dashicons-filter"></span>
+								<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($author_id) || !empty($template_id)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id) || !empty($post_type_filter)): ?>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id', 'post_type', 'generated_paged'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
 							<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 							<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-								<span class="dashicons dashicons-search"></span>
+								<span class="dashicons dashicons-search" aria-hidden="true"></span>
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+							<a href="<?php echo esc_url(remove_query_arg(array('s', 'generated_paged'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 					</form>
@@ -79,7 +104,7 @@ if (!defined('ABSPATH')) {
 						<thead>
 							<tr>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-
+								<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
@@ -87,23 +112,7 @@ if (!defined('ABSPATH')) {
 							</tr>
 						</thead>
 						<tbody>
-							<?php
-						$format_relative_date = static function ( $date_string ) {
-							if ( ! $date_string ) {
-								return '—';
-							}
-							$timestamp = strtotime( $date_string );
-							if ( ! $timestamp ) {
-								return '—';
-							}
-							if ( ( time() - $timestamp ) < DAY_IN_SECONDS ) {
-								/* translators: %s: human-readable time difference */
-								return sprintf( __( '%s ago', 'ai-post-scheduler' ), human_time_diff( $timestamp ) );
-							}
-							return date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
-						};
-						?>
-						<?php foreach ($posts_data as $post_data): ?>
+							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
@@ -112,47 +121,78 @@ if (!defined('ABSPATH')) {
 									<span class="aips-cell-source"><?php echo esc_html($post_data['source']); ?></span>
 								</td>
 								<td>
+									<?php $post_type_obj = get_post_type_object($post_data['post_type']); ?>
+									<span class="aips-badge aips-badge-neutral">
+										<?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $post_data['post_type']); ?>
+									</span>
+								</td>
+								<td>
 									<div class="cell-meta">
-										<?php echo esc_html($format_relative_date($post_data['date_scheduled'])); ?>
+										<?php echo esc_html($post_data['date_scheduled']); ?>
 									</div>
 								</td>
 								<td>
 									<div class="cell-meta">
-										<?php echo esc_html($format_relative_date($post_data['date_published'])); ?>
+										<?php echo esc_html($post_data['date_published']); ?>
 									</div>
 								</td>
 								<td>
 									<div class="cell-meta">
-										<?php echo esc_html($format_relative_date($post_data['date_generated'])); ?>
+										<?php echo esc_html($post_data['date_generated']); ?>
 									</div>
 								</td>
 								<td>
 									<div class="cell-actions">
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
-										        data-edit-url="<?php echo esc_url($post_data['edit_link']); ?>"
-										        title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-edit"></span>
-											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-preview-post"
-										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-										        title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-visibility"></span>
-											<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
-										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-										        title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-admin-customizer"></span>
-											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
-										</button>
-										<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
-								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-											<span class="dashicons dashicons-visibility"></span>
-											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-										</button>
+										<div class="aips-row-action-group">
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-post"
+												data-edit-url="<?php echo esc_url($post_data['edit_link']); ?>"
+												title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-edit" aria-hidden="true"></span>
+												<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"
+												aria-haspopup="true"
+												aria-expanded="false"
+												aria-controls="aips-generated-row-actions-<?php echo esc_attr($post_data['post_id']); ?>"
+												title="<?php esc_attr_e('More actions', 'ai-post-scheduler'); ?>">
+												<span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
+											</button>
+										</div>
+										<div id="aips-generated-row-actions-<?php echo esc_attr($post_data['post_id']); ?>" class="aips-row-action-menu" hidden>
+											<button type="button" class="aips-row-action-item aips-preview-post"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+												<span><?php esc_html_e('Preview', 'ai-post-scheduler'); ?></span>
+											</button>
+											<button type="button" class="aips-row-action-item aips-ai-edit-btn"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-admin-customizer" aria-hidden="true"></span>
+												<span><?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?></span>
+											</button>
+											<?php
+												$history_url = AIPS_Admin_Menu_Helper::get_page_url('history', array_filter(array(
+													'history_id' => !empty($post_data['history_id']) ? absint($post_data['history_id']) : 0,
+													'post_id'    => !empty($post_data['post_id']) ? absint($post_data['post_id']) : 0,
+												)));
+											?>
+											<a class="aips-row-action-item aips-open-history-modal"
+												href="<?php echo esc_url($history_url); ?>"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+												title="<?php esc_attr_e('View history for this post', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-backup" aria-hidden="true"></span>
+												<span><?php esc_html_e('History', 'ai-post-scheduler'); ?></span>
+											</a>
+											<button type="button" class="aips-row-action-item aips-view-session"
+												data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+												title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+												<span><?php esc_html_e('View Session', 'ai-post-scheduler'); ?></span>
+											</button>
+										</div>
 									</div>
 								</td>
 							</tr>
@@ -166,8 +206,8 @@ if (!defined('ABSPATH')) {
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Posts Found', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No generated posts match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 							<div class="aips-empty-state-actions">
-								<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-primary">
-									<span class="dashicons dashicons-dismiss"></span>
+								<a href="<?php echo esc_url(remove_query_arg(array('s', 'generated_paged'))); ?>" class="aips-btn aips-btn-primary">
+									<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 									<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 								</a>
 							</div>
@@ -179,11 +219,11 @@ if (!defined('ABSPATH')) {
 							<p class="aips-empty-state-description"><?php esc_html_e('No generated posts found. Start creating content by setting up templates and schedules.', 'ai-post-scheduler'); ?></p>
 							<div class="aips-empty-state-actions">
 								<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
-									<span class="dashicons dashicons-plus-alt"></span>
+									<span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
 									<?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
 								</a>
 								<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-									<span class="dashicons dashicons-calendar-alt"></span>
+									<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
 									<?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
 								</a>
 							</div>
@@ -204,11 +244,13 @@ if (!defined('ABSPATH')) {
 					$start = max(1, $current - 3);
 					$end = min($pages, $current + 3);
 					$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $search_query) {
+					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $campaign_id, $post_type_filter, $search_query) {
 						return add_query_arg(array_filter(array(
 							'generated_paged' => absint($page_number),
 							'author_id' => $author_id ? $author_id : false,
 							'template_id' => $template_id ? $template_id : false,
+							'campaign_id' => $campaign_id ? $campaign_id : false,
+							'post_type' => $post_type_filter ? $post_type_filter : false,
 							's' => $search_query ? $search_query : false,
 						)), $base_url);
 					};
@@ -216,11 +258,11 @@ if (!defined('ABSPATH')) {
 					<div class="aips-history-pagination-links">
 						<?php if ($current > 1): ?>
 							<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" href="<?php echo esc_url($build_generated_posts_page_url($current - 1)); ?>" aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-arrow-left-alt2"></span>
+								<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 							</a>
 						<?php else: ?>
 							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" disabled aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-arrow-left-alt2"></span>
+								<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 							</button>
 						<?php endif; ?>
 
@@ -246,11 +288,11 @@ if (!defined('ABSPATH')) {
 
 						<?php if ($current < $pages): ?>
 							<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" href="<?php echo esc_url($build_generated_posts_page_url($current + 1)); ?>" aria-label="<?php esc_attr_e('Next page', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-arrow-right-alt2"></span>
+								<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
 							</a>
 						<?php else: ?>
 							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" disabled aria-label="<?php esc_attr_e('Next page', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-arrow-right-alt2"></span>
+								<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
 							</button>
 						<?php endif; ?>
 					</div>

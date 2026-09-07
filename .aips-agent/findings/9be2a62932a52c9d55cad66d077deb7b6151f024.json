@@ -1,0 +1,17 @@
+{
+  "id": "9be2a62932a52c9d55cad66d077deb7b6151f024",
+  "type": "scheduler_dispatch_error_handling_gap",
+  "severity": "high",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-author-post-generator.php",
+  "symbol": "AIPS_Author_Post_Generator",
+  "anchor": "dispatch_author_slices:wp_schedule_single_event-unchecked",
+  "summary": "Author-post slice dispatch does not check wp_schedule_single_event return values or dedupe existing slices.",
+  "why_it_matters": "Missing dispatch guardrails can cause duplicate or silently dropped slice jobs, reducing cron reliability under load or race conditions.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-author-post-generator.php:184-190"
+  ],
+  "suggested_fix": "Add wp_next_scheduled checks and validate wp_schedule_single_event return values with AIPS_Logger/AIPS_History instrumentation.",
+  "first_seen_run_id": "aips-20260507T011431Z",
+  "last_seen_run_id": "aips-20260507T011431Z"
+}

@@ -32,7 +32,7 @@ if (!defined('ABSPATH')) {
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-voice-search"><?php esc_html_e('Search Voices:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-voice-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-voice-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="aips-voice-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                     </div>
                 </div>
 
@@ -132,8 +132,8 @@ if (!defined('ABSPATH')) {
     <div id="aips-voice-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
-                <h2 id="aips-voice-modal-title"><?php esc_html_e('Add New Voice', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <h2 class="aips-modal-title"><?php esc_html_e('Add New Voice', 'ai-post-scheduler'); ?></h2>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <form id="aips-voice-form">
@@ -171,8 +171,8 @@ if (!defined('ABSPATH')) {
                 </form>
             </div>
             <div class="aips-modal-footer">
-                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-                <button type="button" class="button button-primary aips-save-voice"><?php esc_html_e('Save Voice', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="aips-btn aips-btn-primary aips-save-voice"><?php esc_html_e('Save Voice', 'ai-post-scheduler'); ?></button>
             </div>
         </div>
     </div>

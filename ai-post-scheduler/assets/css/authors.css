@@ -251,6 +251,33 @@
 	margin-bottom: 5px;
 }
 
+.aips-author-generation-actions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--aips-space-2);
+}
+
+.aips-author-generation-actions .aips-btn {
+	width: 100%;
+}
+
+.aips-btn-author-posts {
+	background: var(--aips-success);
+	color: var(--aips-white);
+	border: 1px solid var(--aips-success-dark);
+}
+
+.aips-btn-author-posts:hover:not(:disabled) {
+	background: var(--aips-success-dark);
+	border-color: var(--aips-success-dark);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-btn-author-posts:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 .aips-authors-list .column-name {
 	width: 20%;
 }
@@ -310,6 +337,15 @@
 		display: block;
 		width: 100%;
 		margin-bottom: 5px;
+	}
+
+	.aips-table .cell-actions {
+		flex-wrap: wrap;
+		align-items: stretch;
+	}
+
+	.aips-author-generation-actions {
+		width: 100%;
 	}
 }
 
@@ -440,6 +476,7 @@
 	background-color: transparent;
 }
 
+.aips-topics-table .column-date,
 .aips-topics-table .column-generated,
 .aips-feedback-table .column-date {
 	white-space: nowrap;
@@ -447,7 +484,30 @@
 }
 
 .aips-topics-table .column-actions {
-	width: 340px;
+	width: 180px;
+}
+
+/* Badge display styling - make them inline and consistent */
+.aips-topic-similarity-slot,
+.aips-post-count-badge,
+.aips-duplicate-badge,
+.aips-feedback-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-right: 6px;
+	vertical-align: middle;
+}
+
+.aips-topic-similarity-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
 }
 
 .aips-topics-table .column-topic,

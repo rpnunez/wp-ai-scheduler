@@ -57,6 +57,20 @@ interface AIPS_Schedule_Repository_Interface {
 	public function update($id, $data);
 
 	/**
+	 * Atomically claim a due schedule by advancing next_run only if it still
+	 * matches the expected timestamp.
+	 *
+	 * Prevents overlapping cron workers from processing the same due schedule
+	 * after they both loaded it from get_due_schedules().
+	 *
+	 * @param int $id Schedule ID.
+	 * @param int $expected_next_run Previously-read next_run timestamp.
+	 * @param int $new_next_run New next_run timestamp to store.
+	 * @return bool True when the row was claimed, false when another worker won.
+	 */
+	public function claim_due_schedule($id, $expected_next_run, $new_next_run);
+
+	/**
 	 * Delete a schedule.
 	 *
 	 * @param int $id Schedule ID.
@@ -110,6 +124,13 @@ interface AIPS_Schedule_Repository_Interface {
 	 * @return bool
 	 */
 	public function update_run_state($id, array $state);
+
+	/**
+	 * Get active schedules that carry a run_state payload.
+	 *
+	 * @return array Array of schedule row objects (may be empty).
+	 */
+	public function get_schedules_with_run_state();
 
 	/**
 	 * Bulk delete schedules.

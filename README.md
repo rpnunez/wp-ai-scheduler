@@ -63,14 +63,18 @@ ai-post-scheduler/
 ./start-dev.sh
 ```
 
-This provisions WordPress, database services, plugin activation, and debugging support.
+This provisions WordPress, database services, the official WordPress **AI plugin**, the **Google AI Connector**, API key credentials from `.env`, and AI Post Scheduler activation.
+
+On first run, `start-dev.sh` automatically creates a `.env` file from `.env.example`. You can edit `.env` to update your `GOOGLE_API_KEY` or select a different default connector.
 
 Local URLs:
 - WordPress: http://localhost:8080
 - Admin: http://localhost:8080/wp-admin (admin/admin)
 - phpMyAdmin: http://localhost:8082
+- AI Connectors: http://localhost:8080/wp-admin/options-general.php?page=connectors
 
-See [docs/DEV.md](docs/DEV.md) for full setup details and [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) for a quick-reference card.
+
+See [docs/SETUP.md](docs/SETUP.md) for full setup details.
 
 ### Daily Workflow
 
@@ -90,14 +94,19 @@ make down
 
 ### Manual/Non-Docker Setup
 
-- See [docs/DEV.md](docs/DEV.md) for full PHPUnit / WordPress test library setup without Docker.
 - See [ai-post-scheduler/readme.txt](ai-post-scheduler/readme.txt) for plugin installation details.
+- PHPUnit is maintained around the Docker-backed WordPress test environment. See [docs/SETUP.md](docs/SETUP.md) for the supported workflow.
 
 ### Debugging (VS Code)
 
-1. Start the Docker environment.
-2. Press `F5` in VS Code.
-3. Select `Listen for Xdebug (Docker)`.
+Xdebug is **off by default** for performance. Enable it only when actively debugging:
+
+1. `make xdebug-on` (sets `XDEBUG_MODE=develop,debug` with `trigger`-based startup, rebuilds & restarts `web`).
+2. Press `F5` in VS Code and select `Listen for Xdebug (Docker)`.
+3. Trigger the request (with the Xdebug browser helper, or append `?XDEBUG_TRIGGER=1`).
+4. When finished: `make xdebug-off`.
+
+See [docs/SETUP.md](docs/SETUP.md#xdebug--vs-code-debugging) for the full env-var reference and mode explanations.
 
 ## Testing
 
@@ -119,6 +128,15 @@ composer test:coverage
 vendor/bin/phpunit tests/test-template-processor.php
 ```
 
+Canonical Docker-backed workflow:
+
+```bash
+bash scripts/run-wp-tests-docker.sh
+bash scripts/run-wp-tests-docker.sh coverage
+```
+
+For agent-session PHPUnit bootstrap behavior and troubleshooting, see [TESTING.md](TESTING.md).
+
 ### Performance Benchmarks
 
 The project includes performance benchmarking to detect regressions:
@@ -136,18 +154,16 @@ php bin/benchmark.php \
   --fail-on-regression
 ```
 
-Performance benchmarks run automatically in CI on pull requests and fail PRs when thresholds are exceeded. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for details.
+Benchmarks can be run manually; no CI workflow currently enforces them automatically.
 
 ## Documentation
 
-- [docs/FEATURES.MD](docs/FEATURES.MD) — complete feature reference
-- [docs/DEV.md](docs/DEV.md) — developer setup and environment guide
-- [docs/DEV_HANDBOOK.md](docs/DEV_HANDBOOK.md) — quick-reference cheat sheet
+- [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md) — complete feature reference
+- [docs/SETUP.md](docs/SETUP.md) — developer setup and environment guide
 - [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
-- [docs/SETUP.md](docs/SETUP.md)
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) — performance benchmarking and CI integration
 - [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — coding and architectural guidelines
+- [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md) — MCP bridge API reference
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
 ## Contributing

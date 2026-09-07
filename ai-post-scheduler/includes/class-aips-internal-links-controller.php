@@ -35,7 +35,7 @@ class AIPS_Internal_Links_Controller {
 	private $links_repo;
 
 	/**
-	 * @var AIPS_Post_Embeddings_Repository
+	 * @var AIPS_Embeddings_Repository
 	 */
 	private $embeddings_repo;
 
@@ -50,26 +50,35 @@ class AIPS_Internal_Links_Controller {
 	private $logger;
 
 	/**
+	 * @var AIPS_Job_Scheduler
+	 */
+	private $job_scheduler;
+
+	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
 	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
 	 * @param AIPS_Internal_Links_Repository|null       $links_repo       Links repository.
-	 * @param AIPS_Post_Embeddings_Repository|null      $embeddings_repo  Embeddings repository.
+	 * @param AIPS_Embeddings_Repository|null           $embeddings_repo  Embeddings repository.
 	 * @param AIPS_Logger|null                          $logger           Logger instance.
 	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
+	 * @param AIPS_Job_Scheduler|null                   $job_scheduler    Job scheduler service.
 	 */
 	public function __construct(
 		$service = null,
 		$links_repo = null,
 		$embeddings_repo = null,
 		$logger = null,
-		$inserter_service = null
+		$inserter_service = null,
+		$job_scheduler = null
 	) {
+		$container              = AIPS_Container::get_instance();
 		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
 		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_repo  = $embeddings_repo  ?: new AIPS_Post_Embeddings_Repository();
+		$this->embeddings_repo  = $embeddings_repo  ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->logger           = $logger           ?: new AIPS_Logger();
 		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
+		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));
@@ -96,9 +105,10 @@ class AIPS_Internal_Links_Controller {
 	/**
 	 * Render the Internal Links admin page.
 	 *
+	 * @param bool $embedded Whether the page is being rendered inside another admin page.
 	 * @return void
 	 */
-	public function render_page() {
+	public function render_page($embedded = false) {
 		$summary       = $this->service->get_dashboard_summary();
 		$links_repo    = $this->links_repo;
 		$service       = $this->service;
@@ -116,7 +126,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_get_suggestions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -151,7 +163,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_generate_suggestions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -202,7 +216,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_update_status() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -230,7 +246,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_update_anchor() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -258,7 +276,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_delete() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -287,7 +307,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_start_indexing() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -310,7 +332,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_get_status() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -326,7 +350,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_reindex_post() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -382,7 +408,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_clear_index() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -406,7 +434,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_get_post_for_insertion() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -432,6 +462,14 @@ class AIPS_Internal_Links_Controller {
 
 		// Fetch all accepted suggestions for this source post.
 		$accepted = $this->links_repo->get_by_source_post($suggestion->source_post_id, 'accepted');
+
+		$post_ids = array();
+		foreach ($accepted as $s) {
+			$post_ids[] = (int) $s->target_post_id;
+		}
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
 
 		$suggestions_data = array();
 		foreach ($accepted as $s) {
@@ -461,7 +499,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_find_insert_locations() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -493,7 +533,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_apply_insertion() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -544,7 +586,9 @@ class AIPS_Internal_Links_Controller {
 	 * @return void
 	 */
 	public function ajax_apply_bulk_insertions() {
-		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
@@ -699,7 +743,18 @@ class AIPS_Internal_Links_Controller {
 		if (function_exists('as_schedule_single_action')) {
 			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
 		} else {
-			wp_schedule_single_event($timestamp, 'aips_index_posts_batch', array($args));
+			// Use centralized job scheduler
+			$this->job_scheduler->schedule_simple(
+				'aips_index_posts_batch',
+				$timestamp,
+				array($args),
+				array(
+					'job_type'      => 'internal_links_indexing',
+					'retry_options' => array(
+						'max_attempts' => 3,
+					),
+				)
+			);
 		}
 	}
 }

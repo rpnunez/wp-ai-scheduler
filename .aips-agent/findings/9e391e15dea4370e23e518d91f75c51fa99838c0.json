@@ -1,0 +1,19 @@
+{
+  "id": "9e391e15dea4370e23e518d91f75c51fa99838c0",
+  "type": "service_datetime_gap",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-templates.php",
+  "symbol": "AIPS_Templates",
+  "anchor": "get_pending_stats:current_time-strtotime-next_run",
+  "summary": "Pending schedule stats in AIPS_Templates still mix current_time(), strtotime(), and date() instead of using AIPS_DateTime consistently.",
+  "why_it_matters": "This service calculates user-facing schedule windows, so ad-hoc timestamp math risks timezone drift and duplicates logic already centralized in AIPS_DateTime and the interval calculator.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-templates.php:100",
+    "ai-post-scheduler/includes/class-aips-templates.php:106",
+    "ai-post-scheduler/includes/class-aips-templates.php:212"
+  ],
+  "suggested_fix": "Normalize schedule-window and next-run calculations through AIPS_DateTime value objects or a dedicated helper so the service only coordinates stats counting.",
+  "first_seen_run_id": "aips-20260507T000346Z",
+  "last_seen_run_id": "aips-20260507T000346Z"
+}

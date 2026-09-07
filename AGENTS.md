@@ -1,102 +1,58 @@
 # AGENTS.md — wp-ai-scheduler
 
-## Project goal
-Build and maintain a WordPress plugin that schedules and generates AI-written posts using the Meow Apps AI Engine plugin as the AI backend. The plugin is admin-driven and supports template scheduling, author/topic workflows, research, review flows, regeneration, and reliable WordPress cron automation.
+## Canonical project context
+- This file is the canonical cross-agent instruction source; keep tool-specific files brief and link here instead of duplicating it.
+- Project: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
+- Plugin app root: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
+- Bootstrap/version source: `ai-post-scheduler/ai-post-scheduler.php`.
+- Current plugin version: **3.6.5** (`Version:` header and `AIPS_VERSION`).
+- Runtime targets: PHP 8.2+ and WordPress 5.8+.
 
-## Where to work
-- The plugin lives in `ai-post-scheduler/`; treat that directory as the app root.
-- Run Composer and PHPUnit from `ai-post-scheduler/`, not the repository root.
-- Target PHP 8.2+ and WordPress 5.8+.
-- Use `ai-post-scheduler/ai-post-scheduler.php` as the bootstrap reference.
+## Key paths
+- Business logic and PHP classes: `ai-post-scheduler/includes/`.
+- Admin templates: `ai-post-scheduler/templates/admin/`.
+- Admin assets: `ai-post-scheduler/assets/`.
+- Tests: `ai-post-scheduler/tests/`.
+- Changelog: `ai-post-scheduler/CHANGELOG.md`.
+- Deeper docs: [README.md](README.md), [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md), [docs/AI_AGENT_REFERENCE.md](docs/AI_AGENT_REFERENCE.md), [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md), [docs/HOOKS.md](docs/HOOKS.md), [docs/MIGRATIONS.md](docs/MIGRATIONS.md), [docs/SETUP.md](docs/SETUP.md).
 
-## Current runtime shape
-- Admin bootstrap happens in `AI_Post_Scheduler::init()`.
-- Admin-only classes are instantiated there for settings, templates, voices, history, schedules, research, authors, generated posts, AI edit, calendar, structures, prompt sections, seeding, and data management.
-- Always-loaded runtime services include:
-  - `AIPS_Scheduler`
-  - `AIPS_Author_Topics_Scheduler`
-  - `AIPS_Author_Post_Generator`
-  - `AIPS_Post_Review_Notifications`
-  - `AIPS_Partial_Generation_Notifications`
-  - `AIPS_Partial_Generation_State_Reconciler`
-  - `AIPS_Admin_Bar`
-
-## Core conventions
+## Coding conventions
 - Use `AIPS_`-prefixed, underscore-separated PHP class names.
-- Rely on the plugin autoloader; avoid new manual `require_once` calls for normal plugin classes.
-- Keep admin rendering in `ai-post-scheduler/templates/admin/`.
-- Keep business logic in `ai-post-scheduler/includes/`.
-- Use tabs and `array()` syntax in PHP to match the codebase and WordPress style.
+- Mirror class names in filenames: `class-aips-my-class.php` for `AIPS_My_Class`.
+- Use Composer `vendor/autoload.php` as the primary autoloader; `AIPS_Autoloader` is fallback only.
+- Use tabs and `array()` syntax for PHP.
+- Add `if (!defined('ABSPATH')) { exit; }` to plugin PHP files.
+- Centralize default option values in `AIPS_Config::get_instance()->get_default_options()`.
+- Use `AIPS_DateTime` for timestamp handling.
 
-## Architecture patterns
-
-### Repositories
-- Put persistence and SQL in repository classes.
-- Prefer repository methods over direct `$wpdb` usage in feature code.
-- Current repositories include history, schedule, template, authors, author topics, author topic logs, voices, article structures, prompt sections, trending topics, post review, feedback, and notifications.
-
-### Controllers
-- Register `wp_ajax_*` hooks in controller/handler constructors.
-- Keep nonce checks, capability checks, sanitization, and JSON response formatting in controllers.
-- Do not put SQL in controllers.
-- Instantiate hook-owning classes once during bootstrap; do not add new render-time re-instantiation patterns.
-- Some older render callbacks still re-instantiate classes such as generated posts/history handlers; treat that as legacy, not precedent.
-
-### Generation context
-- Prefer the context-based generation architecture for new generation or regeneration work.
-- Key types:
-  - `AIPS_Generation_Context`
-  - `AIPS_Template_Context`
-  - `AIPS_Topic_Context`
-  - `AIPS_Generation_Context_Factory`
-- Use this abstraction instead of building new flows around raw template objects where possible.
-
-### Prompt assembly
-- `AIPS_Prompt_Builder` is the shared/base prompt builder.
-- `AIPS_Prompt_Builder_Topic` handles author-topic prompt composition.
-- `AIPS_Prompt_Builder_Authors` handles author suggestion prompts.
-- `AIPS_Template_Processor` supports built-in variables and AI variables.
-
-### History and observability
-- Use `AIPS_History_Service` and `AIPS_History_Container` for meaningful operations.
-- Prefer structured lifecycle events for AI requests, retries, failures, automation runs, and user actions.
-
-### Site context
-- Site-wide content strategy settings are defined centrally in `AIPS_Settings::get_content_strategy_options()`.
-- `AIPS_Site_Context` reads that registry dynamically.
-- If you add a site-wide content strategy setting, update the registry there.
-
-### Partial generation recovery
-- Use the existing recovery flow for incomplete generations:
-  - `AIPS_Partial_Generation_Notifications`
-  - `AIPS_Partial_Generation_State_Reconciler`
-  - `AIPS_Component_Regeneration_Service`
-  - `AIPS_Session_To_JSON`
-
-### Unified scheduling
-- The schedule experience aggregates multiple schedule types through `AIPS_Unified_Schedule_Service`.
-- It normalizes template schedules, author topic generation schedules, and author post generation schedules.
-
-## Admin/UI notes
-- Admin menu registration lives in `AIPS_Settings::add_menu_pages()`.
-- Key active pages include dashboard, templates, voices, structures, authors, research, schedule, calendar, generated posts, history, settings, system status, seeder, and optional dev tools.
-- `aips-author-topics` is a hidden page linked from the Authors experience.
-- Some templates exist without current submenu registration, including prompt sections, planner, and post-review-specific UI.
-
-## Data access and upgrades
-- Schema changes go through `AIPS_DB_Manager::get_schema()` and `dbDelta` via `AIPS_DB_Manager::install_tables()`.
-- There is no standalone migrations directory.
-- Current plugin tables include history, history log, templates, schedule, voices, article structures, prompt sections, trending topics, authors, author topics, author topic logs, topic feedback, and notifications.
+## Architecture rules
+- `AI_Post_Scheduler::init()` boots only the needed request context: common, cron, AJAX, admin, or frontend.
+- Use `AIPS_Container::get_instance()->make(ClassName::class)` for registered singletons and interface aliases.
+- Register every AJAX action in `AIPS_Ajax_Registry::$map` with its controller.
+- Controllers register `wp_ajax_*` hooks in constructors and own nonce checks, capability checks, sanitization, and JSON responses.
+- Keep SQL/persistence in repositories; avoid direct `$wpdb` in controllers or services when a repository exists.
+- Repositories managing collections/repeaters must provide atomic group sync to purge removed records.
+- Entity clone actions (e.g. cloning Templates) must duplicate all child/relational mappings to the new entity.
+- Prefer `AIPS_Generation_Context`, `AIPS_Template_Context`, `AIPS_Topic_Context`, and `AIPS_Generation_Context_Factory` for generation flows.
+- Use shared/specialized prompt builders rather than ad hoc prompt assembly.
+- Use `AIPS_History_Service`, `AIPS_History_Container`, `AIPS_Generation_Logger`, `AIPS_Logger`, and `AIPS_Correlation_Id` for lifecycle logging and tracing.
+- Site-wide content strategy settings live in `AIPS_Settings::get_content_strategy_options()`.
+- Localization uses `AIPS_Language_Store` and `AIPS_Admin_L10n`.
 
 ## Security and WordPress hygiene
-- Escape output appropriately with `esc_html()`, `esc_attr()`, `esc_url()`, and `wp_kses_post()`.
-- Sanitize all request data with WordPress helpers.
+- Escape output with `esc_html()`, `esc_attr()`, `esc_url()`, or `wp_kses_post()` as appropriate.
 - Verify nonces for state-changing actions.
 - Check `current_user_can('manage_options')` for admin/AJAX actions.
-- Handle missing AI Engine dependency gracefully.
+- Sanitize request data with WordPress helpers.
+- Parse AJAX boolean parameters using `filter_var($val, FILTER_VALIDATE_BOOLEAN)` (jQuery transmits `"false"` as a string).
+- Use `AIPS_Ajax_Response` for consistent AJAX JSON responses.
+- Handle missing Meow Apps AI Engine dependency gracefully.
 
-## Useful docs
-- `.github/copilot-instructions.md` for the fuller repository guide.
-- `README.md` and `docs/` for feature and setup documentation.
-- `ai-post-scheduler/CHANGELOG.md` for plugin release history.
-- `docs/DEVELOPMENT_GUIDELINES.md` for project-specific coding and architectural guidelines that all developers and AI agents must follow.
+## Testing policy
+- No local unit tests by default: do not run `composer test`, PHPUnit, or test setup commands unless the user explicitly asks or the task requires it.
+- Prefer focused static/syntax checks for touched files; note unrun test suites in the final response.
+- When full tests are explicitly needed, run from `ai-post-scheduler/`; use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+
+## Documentation ownership
+- Keep this file concise (about 40–60 lines) and high-level.
+- Put long subsystem inventories, cron hook lists, table catalogs, and workflow details in `docs/AI_AGENT_REFERENCE.md` or `docs/DEVELOPMENT_GUIDELINES.md`.

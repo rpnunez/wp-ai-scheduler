@@ -12,30 +12,295 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  */
 class AIPS_Settings {
-    
-    /**
-     * @var AIPS_Settings_UI
-     */
-    private $ui;
+	/**
+	 * @var AIPS_Settings_UI
+	 */
+	private $ui;
 
-    /**
-     * @var AIPS_Settings_AJAX
-     */
-    private $ajax;
+	/**
+	 * @var AIPS_Settings_AJAX
+	 */
+	private $ajax;
 
-    /**
-     * Initialize the settings class.
-     *
-     * Hooks into admin_init, and wp_ajax.
-     */
-    public function __construct() {
-        $this->ui = new AIPS_Settings_UI();
-        $this->ajax = new AIPS_Settings_AJAX();
+	/**
+	 * Initialize the settings class.
+	 *
+	 * Hooks into admin_init, and wp_ajax.
+	 */
+	public function __construct() {
+		$this->ui = new AIPS_Settings_UI();
+		$this->ajax = new AIPS_Settings_AJAX();
 
-        add_action('admin_init', array($this, 'register_settings'));
-    }
+		add_action('admin_init', array($this, 'register_settings'));
+	}
 
-    /**
+	/**
+	 * Register runtime hooks required by settings updates.
+	 *
+	 * @return void
+	 */
+	public static function register_runtime_hooks() {
+		static $hooks_registered = false;
+
+		if ($hooks_registered) {
+			return;
+		}
+
+		$hooks_registered = true;
+
+		$reset_cache_flag = function() {
+			AIPS_Cache::reset_system_enabled_flag();
+		};
+
+		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
+		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
+
+		// Turning AI generation back on queues a one-off sweep that resumes any
+		// large batch the setting stopped part-way through. The sweep runs on
+		// cron rather than inline so saving settings stays a cheap request.
+		add_action(
+			'update_option_aips_prevent_scheduled_ai_generation',
+			array(__CLASS__, 'maybe_queue_batch_resume'),
+			10,
+			2
+		);
+	}
+
+	/**
+	 * Queue a batch-resume sweep when AI generation is re-enabled.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 * @return void
+	 */
+	public static function maybe_queue_batch_resume($old_value, $new_value) {
+		// Only on the on -> off transition. Saving settings without changing this
+		// option, or switching it on, must not queue anything.
+		if (!(bool) $old_value || (bool) $new_value) {
+			return;
+		}
+
+		if (wp_next_scheduled('aips_resume_terminated_batches')) {
+			return;
+		}
+
+		wp_schedule_single_event(AIPS_DateTime::now()->timestamp() + 60, 'aips_resume_terminated_batches');
+	}
+
+	/**
+	 * Return the canonical registry of registered setting arguments.
+	 *
+	 * @param AIPS_Settings_UI|null $ui Settings UI helper for instance callbacks.
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function get_registered_settings_args($ui = null) {
+		$ui = $ui ?: new AIPS_Settings_UI();
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+
+		$settings = array(
+			'aips_default_post_status' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_default_post_status'],
+			),
+			'aips_default_category' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_default_category'],
+			),
+			'aips_enable_logging' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_logging'],
+			),
+			'aips_developer_mode' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_developer_mode'],
+			),
+			'aips_enable_telemetry' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_telemetry'],
+			),
+			'aips_cache_monitor_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_cache_monitor_enabled'],
+			),
+			'aips_enable_retry' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_retry'],
+			),
+			'aips_retry_max_attempts' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_retry_max_attempts'],
+			),
+			'aips_retry_initial_delay' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_retry_initial_delay'],
+			),
+			'aips_enable_rate_limiting' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_rate_limiting'],
+			),
+			'aips_rate_limit_requests' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_rate_limit_requests'],
+			),
+			'aips_rate_limit_period' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_rate_limit_period'],
+			),
+			'aips_enable_circuit_breaker' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_circuit_breaker'],
+			),
+			'aips_circuit_breaker_threshold' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_circuit_breaker_threshold'],
+			),
+			'aips_circuit_breaker_timeout' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_circuit_breaker_timeout'],
+			),
+			'aips_ai_provider' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_provider'),
+				'default'           => $defaults['aips_ai_provider'],
+			),
+			'aips_wp_ai_connector_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_wp_ai_connector_mode'),
+				'default'           => $defaults['aips_wp_ai_connector_mode'],
+			),
+			'aips_wp_ai_connector_ids' => array(
+				'sanitize_callback' => array($ui, 'sanitize_wp_ai_connector_ids'),
+				'default'           => $defaults['aips_wp_ai_connector_ids'],
+			),
+			'aips_wp_ai_connector_failover' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_wp_ai_connector_failover'],
+			),
+			'aips_ai_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_model'],
+			),
+			'aips_ai_env_id' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_ai_env_id'],
+			),
+			'aips_prevent_scheduled_ai_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_prevent_scheduled_ai_generation'],
+			),
+			'aips_max_tokens_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_max_tokens_limit'],
+			),
+			'aips_max_tokens_title' => array(
+				'sanitize_callback' => array($ui, 'sanitize_token_budget'),
+				'default'           => $defaults['aips_max_tokens_title'],
+			),
+			'aips_max_tokens_excerpt' => array(
+				'sanitize_callback' => array($ui, 'sanitize_token_budget'),
+				'default'           => $defaults['aips_max_tokens_excerpt'],
+			),
+			'aips_max_tokens_content' => array(
+				'sanitize_callback' => array($ui, 'sanitize_token_budget'),
+				'default'           => $defaults['aips_max_tokens_content'],
+			),
+			'aips_conversational_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_generation'],
+			),
+			'aips_conversational_metadata_turn' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_metadata_turn'],
+			),
+			'aips_unsplash_access_key' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_unsplash_access_key'],
+			),
+			'aips_review_notifications_email' => array(
+				'sanitize_callback' => array($ui, 'sanitize_notification_emails'),
+				'default'           => $defaults['aips_review_notifications_email'],
+			),
+			'aips_notification_preferences' => array(
+				'sanitize_callback' => array($ui, 'sanitize_notification_preferences'),
+				'default'           => $defaults['aips_notification_preferences'],
+			),
+			'aips_topic_similarity_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_similarity_threshold'),
+				'default'           => $defaults['aips_topic_similarity_threshold'],
+			),
+			'aips_enable_cache_system' => array(
+				'sanitize_callback' => array($ui, 'sanitize_enable_cache_system'),
+				'default'           => $defaults['aips_enable_cache_system'],
+			),
+			'aips_cache_driver' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cache_driver'),
+				'default'           => $defaults['aips_cache_driver'],
+			),
+			'aips_cache_db_prefix' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_cache_db_prefix'],
+			),
+			'aips_cache_default_ttl' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_cache_default_ttl'],
+			),
+			'aips_embeddings_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_embeddings_provider'],
+			),
+			'aips_embeddings_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_model'],
+			),
+			'aips_indexer_verbose_history' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_verbose_history'],
+			),
+			'aips_embeddings_env_id' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_env_id'],
+			),
+			'aips_embeddings_dimensions' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_dimensions'],
+			),
+			'aips_indexer_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_indexer_post_types'],
+			),
+			'aips_indexer_similarity_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_similarity_threshold'],
+			),
+			'aips_auto_index_on_publish' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_auto_index_on_publish'],
+			),
+		);
+
+		foreach (self::get_content_strategy_options() as $option_key => $meta) {
+			$settings[$option_key] = array(
+				'sanitize_callback' => $meta['sanitize_callback'],
+				'default'           => $meta['default'],
+			);
+		}
+
+		return $settings;
+	}
+
+	/**
+	 * Register the canonical settings schema with WordPress.
+	 *
+	 * @param AIPS_Settings_UI|null $ui Settings UI helper for instance callbacks.
+	 * @return void
+	 */
+	public static function register_setting_schema($ui = null) {
+		self::register_runtime_hooks();
+
+		foreach (self::get_registered_settings_args($ui) as $option_name => $args) {
+			register_setting('aips_settings', $option_name, $args);
+		}
+	}
+
+     /**
      * Register plugin settings and fields.
      *
      * Defines the settings section and fields for general configuration including
@@ -43,105 +308,8 @@ class AIPS_Settings {
      *
      * @return void
      */
-    public function register_settings() {
-        $defaults = AIPS_Config::get_instance()->get_default_options();
-
-        register_setting('aips_settings', 'aips_default_post_status', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_default_post_status'],
-        ));
-        register_setting('aips_settings', 'aips_default_category', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_default_category'],
-        ));
-        register_setting('aips_settings', 'aips_enable_logging', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_enable_logging'],
-        ));
-        register_setting('aips_settings', 'aips_developer_mode', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_developer_mode'],
-        ));
-        register_setting('aips_settings', 'aips_enable_telemetry', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_enable_telemetry'],
-        ));
-        register_setting('aips_settings', 'aips_enable_retry', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_enable_retry'],
-        ));
-        register_setting('aips_settings', 'aips_retry_max_attempts', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_retry_max_attempts'],
-        ));
-        register_setting('aips_settings', 'aips_retry_initial_delay', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_retry_initial_delay'],
-        ));
-        register_setting('aips_settings', 'aips_enable_rate_limiting', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_enable_rate_limiting'],
-        ));
-        register_setting('aips_settings', 'aips_rate_limit_requests', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_rate_limit_requests'],
-        ));
-        register_setting('aips_settings', 'aips_rate_limit_period', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_rate_limit_period'],
-        ));
-        register_setting('aips_settings', 'aips_enable_circuit_breaker', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_enable_circuit_breaker'],
-        ));
-        register_setting('aips_settings', 'aips_circuit_breaker_threshold', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_circuit_breaker_threshold'],
-        ));
-        register_setting('aips_settings', 'aips_circuit_breaker_timeout', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_circuit_breaker_timeout'],
-        ));
-        register_setting('aips_settings', 'aips_ai_model', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_ai_model'],
-        ));
-        register_setting('aips_settings', 'aips_ai_env_id', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_ai_env_id'],
-        ));
-        register_setting('aips_settings', 'aips_max_tokens_limit', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_max_tokens_limit'],
-        ));
-        register_setting('aips_settings', 'aips_max_tokens_title', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
-            'default'           => $defaults['aips_max_tokens_title'],
-        ));
-        register_setting('aips_settings', 'aips_max_tokens_excerpt', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
-            'default'           => $defaults['aips_max_tokens_excerpt'],
-        ));
-        register_setting('aips_settings', 'aips_max_tokens_content', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_token_budget'),
-            'default'           => $defaults['aips_max_tokens_content'],
-        ));
-        register_setting('aips_settings', 'aips_unsplash_access_key', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_unsplash_access_key'],
-        ));
-        register_setting('aips_settings', 'aips_review_notifications_email', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_notification_emails'),
-            'default'           => $defaults['aips_review_notifications_email'],
-        ));
-        register_setting('aips_settings', 'aips_notification_preferences', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_notification_preferences'),
-            'default'           => $defaults['aips_notification_preferences'],
-        ));
-        register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_similarity_threshold'),
-            'default'           => $defaults['aips_topic_similarity_threshold'],
-        ));
+	public function register_settings() {
+		self::register_setting_schema($this->ui);
         
         // -----------------------------------------------------------------------
         // General section: Default Post Status, Default Category
@@ -180,6 +348,22 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_ai_provider',
+            __('AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+		add_settings_field(
+			'aips_wp_ai_connectors',
+			__('WordPress AI Connectors', 'ai-post-scheduler'),
+			array($this->ui, 'wp_ai_connectors_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
+
+        add_settings_field(
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this->ui, 'ai_model_field_callback'),
@@ -194,6 +378,14 @@ class AIPS_Settings {
             'aips-settings',
             'aips_ai_section'
         );
+
+		add_settings_field(
+			'aips_prevent_scheduled_ai_generation',
+			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
         add_settings_field(
             'aips_max_tokens_limit',
@@ -223,6 +415,22 @@ class AIPS_Settings {
             'aips_max_tokens_content',
             __('Max Tokens for Post Content', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_content_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_generation',
+            __('Conversational Generation', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_generation_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_metadata_turn',
+            __('Combined Metadata Turn', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_metadata_turn_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );
@@ -329,6 +537,14 @@ class AIPS_Settings {
             'aips_developers_section'
         );
 
+        add_settings_field(
+            'aips_cache_monitor_enabled',
+            __('Enable Cache Monitor', 'ai-post-scheduler'),
+            array($this->ui, 'cache_monitor_enabled_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
         add_settings_section(
             'aips_resilience_section',
             __('Resilience & Limits', 'ai-post-scheduler'),
@@ -415,14 +631,6 @@ class AIPS_Settings {
         // full list is maintained in ONE place. Both settings registration here
         // and AIPS_Site_Context::get() read from that shared list — no duplicates.
         // -----------------------------------------------------------------------
-        $cs_options = self::get_content_strategy_options();
-        foreach ($cs_options as $option_key => $meta) {
-            register_setting('aips_settings', $option_key, array(
-                'sanitize_callback' => $meta['sanitize_callback'],
-                'default'           => $meta['default'],
-            ));
-        }
-
         add_settings_section(
             'aips_content_strategy_section',
             __('Site Content Strategy', 'ai-post-scheduler'),
@@ -497,50 +705,19 @@ class AIPS_Settings {
         // -----------------------------------------------------------------------
         // Cache section: Driver selection + per-driver configuration.
         // -----------------------------------------------------------------------
-        $defaults = AIPS_Config::get_instance()->get_default_options();
-
-        register_setting('aips_settings', 'aips_cache_driver', array(
-            'sanitize_callback' => array($this->ui, 'sanitize_cache_driver'),
-            'default'           => $defaults['aips_cache_driver'],
-        ));
-        register_setting('aips_settings', 'aips_cache_db_prefix', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_db_prefix'],
-        ));
-        register_setting('aips_settings', 'aips_cache_default_ttl', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_default_ttl'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_host', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_redis_host'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_port', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_redis_port'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_password', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_redis_password'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_db', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_redis_db'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_prefix', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => $defaults['aips_cache_redis_prefix'],
-        ));
-        register_setting('aips_settings', 'aips_cache_redis_timeout', array(
-            'sanitize_callback' => 'absint',
-            'default'           => $defaults['aips_cache_redis_timeout'],
-        ));
-
         add_settings_section(
             'aips_cache_section',
-            __('Cache Settings', 'ai-post-scheduler'),
+            '',
             array($this->ui, 'cache_section_callback'),
             'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_enable_cache_system',
+            __('Enable Cache System?', 'ai-post-scheduler'),
+            array($this->ui, 'enable_cache_system_field_callback'),
+            'aips-settings',
+            'aips_cache_section'
         );
 
         add_settings_field(
@@ -567,53 +744,11 @@ class AIPS_Settings {
             'aips_cache_section'
         );
 
-        add_settings_field(
-            'aips_cache_redis_host',
-            __('Redis Host', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_host_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_port',
-            __('Redis Port', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_port_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_password',
-            __('Redis Password', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_password_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_db',
-            __('Redis Database Index', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_db_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_prefix',
-            __('Redis Key Prefix', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_prefix_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
 
-        add_settings_field(
-            'aips_cache_redis_timeout',
-            __('Redis Connection Timeout (seconds)', 'ai-post-scheduler'),
-            array($this->ui, 'cache_redis_timeout_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
     }
 
     /**

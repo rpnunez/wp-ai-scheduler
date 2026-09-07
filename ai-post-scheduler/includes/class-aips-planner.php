@@ -70,25 +70,10 @@ class AIPS_Planner {
         $json_str = preg_replace('/```$/', '', $json_str);
         $json_str = trim($json_str);
 
-        // First, try to parse the whole string as JSON.
-        $topics = json_decode($json_str);
+        $decoded = AIPS_JSON_Extractor::decode_json_response($json_str);
+        $topics  = is_wp_error($decoded) ? null : $decoded;
 
-        // If that fails, try to extract the first JSON array substring.
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
-            $first_bracket = strpos($json_str, '[');
-            $last_bracket  = strrpos($json_str, ']');
-
-            if ($first_bracket !== false && $last_bracket !== false && $last_bracket > $first_bracket) {
-                $json_candidate = substr($json_str, $first_bracket, $last_bracket - $first_bracket + 1);
-                $topics_candidate = json_decode($json_candidate);
-
-                if (json_last_error() === JSON_ERROR_NONE && is_array($topics_candidate)) {
-                    $topics = $topics_candidate;
-                }
-            }
-        }
-
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
+        if (!is_array($topics)) {
             // Fallback: try to parse line by line if JSON fails
             $topics = array_filter(array_map('trim', explode("\n", $json_str)));
             // Remove empty lines and lines that look like list markers if strictly splitting by newline
@@ -134,13 +119,20 @@ class AIPS_Planner {
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
         $schedules = array();
-        $next_run = date('Y-m-d H:i:s', $base_time);
 
-        foreach ($topics as $topic) {
+        foreach ($topics as $index => $topic) {
+            if ($frequency === 'once') {
+                // Stagger one-off topics by 10 minutes (600 seconds)
+                $topic_next_run = date('Y-m-d H:i:s', $base_time + ($index * 600));
+            } else {
+                // Recurring frequencies must share the exact same initial next_run
+                $topic_next_run = date('Y-m-d H:i:s', $base_time);
+            }
+
             $schedules[] = array(
                 'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
+                'frequency' => $frequency,
+                'next_run' => $topic_next_run,
                 'is_active' => 1,
                 'topic' => $topic
             );
@@ -177,25 +169,6 @@ class AIPS_Planner {
             AIPS_Ajax_Response::error(__('Missing required fields.', 'ai-post-scheduler'));
         }
 
-        // Enforce the bulk limit BEFORE the expensive template lookup so the
-        // error is returned immediately (this also preserves original method ordering
-        // that existing tests depend on).
-        $max_bulk = absint(apply_filters('aips_bulk_run_now_limit', 5));
-        if ($max_bulk < 1) {
-            $max_bulk = 5;
-        }
-        if (count($topics) > $max_bulk) {
-            AIPS_Ajax_Response::error(array(
-                'message' => sprintf(
-                    /* translators: 1: selected count, 2: max allowed */
-                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
-                    count($topics),
-                    $max_bulk
-                ),
-            ));
-            return;
-        }
-
         $template = $this->get_template_by_id($template_id);
 
         if (!$template) {
@@ -208,14 +181,16 @@ class AIPS_Planner {
             AIPS_Ajax_Response::error(__('AI Engine is not available.', 'ai-post-scheduler'));
         }
 
-        // Pass a matching limit so the service never rejects (pre-check already done above).
+        // Delegate limit enforcement and async queuing to the service.
+        // When the item count is large, the service will queue the job and return
+        // was_queued = true instead of running synchronously.
         $result = $this->bulk_generator_service->run(
             $topics,
             function ( $topic ) use ( $generator, $template ) {
                 return $generator->generate_post($template, null, $topic);
             },
             array(
-                'limit_default'   => $max_bulk,
+                'queue_job_type'  => 'planner_post',
                 'history_type'    => 'bulk_generate_now',
                 'trigger_name'    => 'ajax_bulk_generate_now',
                 'user_action'     => 'bulk_generate_now',
@@ -224,12 +199,30 @@ class AIPS_Planner {
                     __('User initiated bulk generation for %d topics', 'ai-post-scheduler'),
                     count($topics)
                 ),
+                // Pass template_id so the cron strategy can reconstruct the generator context.
+                'history_meta'    => array( 'template_id' => $template_id ),
                 'error_formatter' => function ( $topic, $msg ) {
                     /* translators: 1: topic string, 2: error message */
                     return sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $msg);
                 },
             )
         );
+
+        // Async queued path: large batch dispatched to cron workers.
+        if ( $result->was_queued ) {
+            AIPS_Ajax_Response::success(array(
+                'message'  => sprintf(
+                    /* translators: %d: number of topics */
+                    __('Bulk generation queued for %d topics. Posts will be created in the background.', 'ai-post-scheduler'),
+                    count($topics)
+                ),
+                'queued'   => true,
+                'job_id'   => $result->job_id,
+                'post_ids' => array(),
+                'errors'   => array(),
+            ));
+            return;
+        }
 
         if (empty($result->post_ids) && !empty($result->errors)) {
             AIPS_Ajax_Response::error(array(

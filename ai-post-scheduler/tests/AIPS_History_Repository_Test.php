@@ -1,0 +1,556 @@
+<?php
+/**
+ * Tests for AIPS_History_Repository
+ *
+ * @package AI_Post_Scheduler
+ */
+
+class AIPS_History_Repository_Test extends WP_UnitTestCase {
+
+	private $repository;
+	private $template_repository;
+	private $test_template_id;
+	private $test_schedule_id;
+	private $test_history_ids = array();
+
+	public function setUp(): void {
+		parent::setUp();
+		$this->repository = new AIPS_History_Repository();
+		$this->template_repository = new AIPS_Template_Repository();
+		
+		// Create test template
+		$template_data = array(
+			'name' => 'Test Template',
+			'prompt_template' => 'Test prompt',
+			'post_type' => 'post',
+			'post_status' => 'draft',
+			'is_active' => 1,
+			'post_category' => '1',
+			'post_tags' => '',
+			'post_author' => 1,
+			'system_prompt' => '',
+		);
+		$this->test_template_id = $this->template_repository->create($template_data);
+		
+		// Create test history entries
+		$this->create_test_history_entries();
+		$this->create_test_schedule();
+	}
+
+	private function create_test_schedule() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_schedule';
+
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id' => $this->test_template_id,
+				'title' => 'Test Schedule',
+				'frequency' => 'daily',
+				'next_run' => current_time('mysql'),
+				'is_active' => 1,
+				'status' => 'active',
+				'created_at' => gmdate('Y-m-d H:i:s', time() - HOUR_IN_SECONDS),
+			),
+			array('%d', '%s', '%s', '%s', '%d', '%s', '%s')
+		);
+
+		$this->test_schedule_id = $wpdb->insert_id;
+	}
+
+	private function create_test_history_entries() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_history';
+		
+		// Create 3 test entries
+		for ($i = 1; $i <= 3; $i++) {
+			$wpdb->insert(
+				$table,
+				array(
+					'template_id' => $this->test_template_id,
+					'post_id' => null,
+					'status' => 'completed',
+					'generated_title' => 'Test Title ' . $i,
+					'generated_content' => 'Test content ' . $i . ' with more details',
+					'prompt' => 'Test prompt ' . $i . ' with full context',
+					'error_message' => null,
+					'created_at' => current_time('mysql'),
+				),
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+			);
+			$this->test_history_ids[] = $wpdb->insert_id;
+		}
+	}
+
+	public function tearDown(): void {
+		global $wpdb;
+		$history_table = $wpdb->prefix . 'aips_history';
+		$template_table = $wpdb->prefix . 'aips_templates';
+		$schedule_table = $wpdb->prefix . 'aips_schedule';
+		
+		// Clean up test data
+		foreach ($this->test_history_ids as $id) {
+			$wpdb->delete($history_table, array('id' => $id), array('%d'));
+		}
+
+		if (!empty($this->test_schedule_id)) {
+			$wpdb->delete($schedule_table, array('id' => $this->test_schedule_id), array('%d'));
+			delete_transient('aips_schedule_completed_count_' . $this->test_schedule_id);
+		}
+		
+		$wpdb->delete($template_table, array('id' => $this->test_template_id), array('%d'));
+		
+		parent::tearDown();
+	}
+
+	/**
+	 * Test count_completed_for_schedule returns completed rows since schedule creation.
+	 */
+	public function test_count_completed_for_schedule_returns_completed_count() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Schedule count test requires the full WordPress test library.');
+		}
+
+		$count = $this->repository->count_completed_for_schedule($this->test_schedule_id);
+
+		$this->assertSame(3, $count);
+	}
+
+	/**
+	 * Test that get_history returns all fields when fields='all'
+	 */
+	public function test_get_history_returns_all_fields() {
+		$result = $this->repository->get_history(array(
+			'fields' => 'all',
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('items', $result);
+		$this->assertGreaterThan(0, count($result['items']));
+		
+		// Check that all fields are present
+		$item = $result['items'][0];
+		$this->assertObjectHasProperty('id', $item);
+		$this->assertObjectHasProperty('post_id', $item);
+		$this->assertObjectHasProperty('template_id', $item);
+		$this->assertObjectHasProperty('status', $item);
+		$this->assertObjectHasProperty('generated_title', $item);
+		$this->assertObjectHasProperty('generated_content', $item);
+		$this->assertObjectHasProperty('prompt', $item);
+		$this->assertObjectHasProperty('error_message', $item);
+		$this->assertObjectHasProperty('created_at', $item);
+		$this->assertObjectHasProperty('template_name', $item);
+	}
+
+	/**
+	 * Test that get_history returns only list fields when fields='list'
+	 */
+	public function test_get_history_returns_only_list_fields() {
+		$result = $this->repository->get_history(array(
+			'fields' => 'list',
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('items', $result);
+		$this->assertGreaterThan(0, count($result['items']));
+		
+		// Check that only list fields are present
+		$item = $result['items'][0];
+		$this->assertObjectHasProperty('id', $item);
+		$this->assertObjectHasProperty('post_id', $item);
+		$this->assertObjectHasProperty('template_id', $item);
+		$this->assertObjectHasProperty('status', $item);
+		$this->assertObjectHasProperty('generated_title', $item);
+		$this->assertObjectHasProperty('created_at', $item);
+		$this->assertObjectHasProperty('error_message', $item);
+		$this->assertObjectHasProperty('template_name', $item);
+		
+		// Check that full content fields are NOT present
+		$this->assertObjectNotHasProperty('generated_content', $item);
+		$this->assertObjectNotHasProperty('prompt', $item);
+	}
+
+	/**
+	 * Test that fields='list' reduces memory usage by excluding large fields
+	 */
+	public function test_get_history_list_excludes_large_content_fields() {
+		// Get with all fields
+		$all_result = $this->repository->get_history(array(
+			'fields' => 'all',
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		// Get with list fields
+		$list_result = $this->repository->get_history(array(
+			'fields' => 'list',
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		// Both should have items
+		$this->assertGreaterThan(0, count($all_result['items']));
+		$this->assertGreaterThan(0, count($list_result['items']));
+		
+		// All result should have prompt and generated_content
+		$all_item = $all_result['items'][0];
+		$this->assertObjectHasProperty('prompt', $all_item);
+		$this->assertObjectHasProperty('generated_content', $all_item);
+		$this->assertNotEmpty($all_item->prompt);
+		$this->assertNotEmpty($all_item->generated_content);
+		
+		// List result should NOT have these fields
+		$list_item = $list_result['items'][0];
+		$this->assertObjectNotHasProperty('prompt', $list_item);
+		$this->assertObjectNotHasProperty('generated_content', $list_item);
+	}
+
+	/**
+	 * Test that fields parameter defaults to 'all' when not specified
+	 */
+	public function test_get_history_defaults_to_all_fields() {
+		$result = $this->repository->get_history(array(
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('items', $result);
+		$this->assertGreaterThan(0, count($result['items']));
+		
+		// Check that all fields are present (default behavior)
+		$item = $result['items'][0];
+		$this->assertObjectHasProperty('generated_content', $item);
+		$this->assertObjectHasProperty('prompt', $item);
+	}
+
+	/**
+	 * Test that both field modes return correct template_name
+	 */
+	public function test_get_history_returns_template_name_in_both_modes() {
+		// Test with all fields
+		$all_result = $this->repository->get_history(array(
+			'fields' => 'all',
+			'template_id' => $this->test_template_id,
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		$this->assertGreaterThan(0, count($all_result['items']));
+		$this->assertEquals('Test Template', $all_result['items'][0]->template_name);
+		
+		// Test with list fields
+		$list_result = $this->repository->get_history(array(
+			'fields' => 'list',
+			'template_id' => $this->test_template_id,
+			'per_page' => 10,
+			'page' => 1,
+		));
+		
+		$this->assertGreaterThan(0, count($list_result['items']));
+		$this->assertEquals('Test Template', $list_result['items'][0]->template_name);
+	}
+
+	/**
+	 * Test get_estimated_generation_time calculates average correctly
+	 */
+	public function test_get_estimated_generation_time_calculates_correctly() {
+		global $wpdb;
+
+		$postmeta_table = $wpdb->prefix . 'postmeta';
+
+		if (isset($this->factory)) {
+			$post_id = $this->factory->post->create();
+		} else {
+			$post_id = 1; // Fallback for limited mode
+		}
+
+		// Clean up existing meta values for isolation (if any)
+		$wpdb->query($wpdb->prepare("DELETE FROM {$postmeta_table} WHERE meta_key = %s", '_aips_post_generation_total_time'));
+
+		// Insert dummy postmeta values (10, 20, 30) -> average should be 20
+		$times = [10, 20, 30];
+		foreach ($times as $index => $time) {
+			if (function_exists('add_post_meta')) {
+				add_post_meta($post_id, '_aips_post_generation_total_time', $time);
+			} else {
+				$wpdb->insert(
+					$postmeta_table,
+					array(
+						'post_id' => $post_id,
+						'meta_key' => '_aips_post_generation_total_time',
+						'meta_value' => $time
+					),
+					array('%d', '%s', '%s')
+				);
+			}
+		}
+
+		// Ensure $wpdb->postmeta exists in testing environment for limited mode
+		if (!property_exists($wpdb, 'postmeta') || !isset($wpdb->postmeta)) {
+			@$wpdb->postmeta = $postmeta_table;
+		}
+
+		// Our mock sets get_col_return_val, but our codebase uses get_col instead of querying
+		// get_col natively. If we check the mock wpdb in limited mode, it doesn't return
+		// get_col_return_val correctly for get_col, it only uses it for specific returns or
+		// we must use get_results_return_val.
+		$is_mocked = property_exists($wpdb, 'get_col_return_val');
+		if ($is_mocked) {
+			$old_val = clone $wpdb;
+			$wpdb->get_col_return_val = [30, 20, 10];
+		} else {
+			$wpdb->get_col_return_val = [30, 20, 10];
+			$is_mocked = true;
+			$old_val = clone $wpdb;
+		}
+
+		$estimate = $this->repository->get_estimated_generation_time(3);
+
+		$this->assertIsArray($estimate);
+		$this->assertArrayHasKey('per_post_seconds', $estimate);
+		$this->assertArrayHasKey('sample_size', $estimate);
+		$this->assertEquals(20, $estimate['per_post_seconds']);
+		$this->assertEquals(3, $estimate['sample_size']);
+
+		// Clean up
+		$wpdb->query($wpdb->prepare("DELETE FROM {$postmeta_table} WHERE meta_key = %s", '_aips_post_generation_total_time'));
+
+		if (function_exists('wp_delete_post')) {
+			wp_delete_post($post_id, true);
+		}
+
+		if ($is_mocked) {
+			$wpdb->get_col_return_val = $old_val->get_col_return_val;
+		}
+	}
+
+	/**
+	 * Test that get_daily_generation_counts returns correct per-day buckets.
+	 */
+	public function test_get_daily_generation_counts_returns_per_day_buckets() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('get_daily_generation_counts requires a real wpdb instance.');
+		}
+
+		$table     = $wpdb->prefix . 'aips_history';
+		$extra_ids = array();
+
+		// Two days: today and yesterday.
+		$today     = gmdate('Y-m-d');
+		$yesterday = gmdate('Y-m-d', time() - DAY_IN_SECONDS);
+
+		// Today: 2 completed + 1 failed.
+		foreach ( array( 'completed', 'completed', 'failed' ) as $status ) {
+			$wpdb->insert(
+				$table,
+				array(
+					'template_id'      => $this->test_template_id,
+					'post_id'          => null,
+					'status'           => $status,
+					'generated_title'  => 'Daily count test',
+					'generated_content'=> '',
+					'prompt'           => '',
+					'error_message'    => null,
+					'created_at'       => $today . ' 10:00:00',
+				),
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+			);
+			$extra_ids[] = $wpdb->insert_id;
+		}
+
+		// Yesterday: 1 completed.
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id'      => $this->test_template_id,
+				'post_id'          => null,
+				'status'           => 'completed',
+				'generated_title'  => 'Daily count test yesterday',
+				'generated_content'=> '',
+				'prompt'           => '',
+				'error_message'    => null,
+				'created_at'       => $yesterday . ' 08:00:00',
+			),
+			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+		);
+		$extra_ids[] = $wpdb->insert_id;
+
+		$result = $this->repository->get_daily_generation_counts(14);
+
+		// Today's bucket must contain the correct values.
+		$this->assertArrayHasKey($today, $result, 'Today should have a bucket in the result.' );
+		$this->assertSame(2, $result[$today]['completed'], 'Expected 2 completed today.' );
+		$this->assertSame(1, $result[$today]['failed'],    'Expected 1 failed today.' );
+
+		// Yesterday's bucket must be present.
+		$this->assertArrayHasKey($yesterday, $result, 'Yesterday should have a bucket in the result.' );
+		$this->assertSame(1, $result[$yesterday]['completed'], 'Expected 1 completed yesterday.' );
+		$this->assertSame(0, $result[$yesterday]['failed'],    'Expected 0 failed yesterday.' );
+
+		// A date outside the window must not appear.
+		$out_of_range = gmdate('Y-m-d', time() - 30 * DAY_IN_SECONDS);
+		$this->assertArrayNotHasKey($out_of_range, $result, 'Out-of-range date should not appear.' );
+
+		// Clean up extra rows.
+		foreach ( $extra_ids as $id ) {
+			$wpdb->delete( $table, array('id' => $id), array('%d') );
+		}
+	}
+
+	/**
+	 * Test that get_daily_generation_counts omits days with no records.
+	 */
+	public function test_get_daily_generation_counts_omits_empty_days() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('get_daily_generation_counts requires a real wpdb instance.');
+		}
+
+		// Request counts for a narrow window where we know no extra records exist
+		// (14 days), but verify the return value is an array (possibly empty for
+		// dates with no activity).
+		$result = $this->repository->get_daily_generation_counts(1);
+
+		$this->assertIsArray($result);
+
+		// Every returned key must be a valid Y-m-d string.
+		foreach ( array_keys($result) as $day ) {
+			$this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $day);
+		}
+	}
+
+	/**
+	 * Regression: an incomplete row must not crash the duration query.
+	 *
+	 * created_at and completed_at are UNSIGNED BIGINT columns that default to 0.
+	 * An incomplete generation keeps completed_at = 0, so the average-duration
+	 * query's `completed_at - created_at` used to underflow the unsigned type and
+	 * MySQL rejected it with error 1690. The window guard (completed_at IS NOT
+	 * NULL) never excluded those rows because the column is NOT NULL. This proves
+	 * the incomplete row is now skipped rather than fataling the query.
+	 */
+	public function test_average_duration_by_flow_skips_incomplete_rows_without_underflow() {
+		global $wpdb;
+
+		if (property_exists($wpdb, 'get_results_return_val')) {
+			$this->markTestSkipped('Requires the full WordPress test library and a real database.');
+		}
+
+		$table = $wpdb->prefix . 'aips_history';
+		$now   = time();
+		$flow  = 'aips_underflow_probe';
+
+		// Incomplete row: completed_at stays 0. This is the row that used to blow
+		// up the query once it fell inside the lookback window.
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id'     => $this->test_template_id,
+				'status'          => 'partial',
+				'creation_method' => $flow,
+				'created_at'      => $now,
+				'completed_at'    => 0,
+			),
+			array('%d', '%s', '%s', '%d', '%d')
+		);
+		$this->test_history_ids[] = $wpdb->insert_id;
+
+		// A genuinely finished row in the same flow, so the average has data.
+		$wpdb->insert(
+			$table,
+			array(
+				'template_id'     => $this->test_template_id,
+				'status'          => 'completed',
+				'creation_method' => $flow,
+				'created_at'      => $now,
+				'completed_at'    => $now + 42,
+			),
+			array('%d', '%s', '%s', '%d', '%d')
+		);
+		$this->test_history_ids[] = $wpdb->insert_id;
+
+		$wpdb->last_error = '';
+
+		$rows = $this->repository->get_average_duration_by_flow(30);
+
+		$this->assertSame('', $wpdb->last_error, 'Incomplete rows must not trigger an unsigned-underflow error.');
+		$this->assertIsArray($rows);
+
+		$probe = null;
+		foreach ($rows as $row) {
+			if (isset($row['flow_type']) && $row['flow_type'] === $flow) {
+				$probe = $row;
+				break;
+			}
+		}
+
+		$this->assertNotNull($probe, 'The probe flow should appear in the results.');
+		// Only the finished row (42s) is counted; the incomplete row is excluded.
+		$this->assertSame(1, (int) $probe['sample_count']);
+		$this->assertSame(42, (int) round((float) $probe['avg_duration_seconds']));
+	}
+
+	// -----------------------------------------------------------------------
+	// post_type
+	// -----------------------------------------------------------------------
+
+	public function test_create_persists_post_type() {
+		$id = $this->repository->create(array(
+			'status' => 'completed',
+			'post_id' => 999001,
+			'post_type' => 'product_review',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$this->test_history_ids[] = $id;
+
+		$item = $this->repository->get_by_id($id);
+		$this->assertSame('product_review', $item->post_type);
+	}
+
+	public function test_update_persists_post_type() {
+		$id = $this->repository->create(array(
+			'status' => 'processing',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$this->test_history_ids[] = $id;
+
+		$this->repository->update($id, array('post_type' => 'page'));
+
+		$item = $this->repository->get_by_id($id);
+		$this->assertSame('page', $item->post_type);
+	}
+
+	public function test_get_history_filters_by_post_type() {
+		$matching_id = $this->repository->create(array(
+			'status' => 'completed',
+			'post_type' => 'product_review',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$other_id = $this->repository->create(array(
+			'status' => 'completed',
+			'post_type' => 'post',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$this->test_history_ids[] = $matching_id;
+		$this->test_history_ids[] = $other_id;
+
+		$results = $this->repository->get_history(array('post_type' => 'product_review', 'per_page' => 50));
+
+		$ids = wp_list_pluck($results['items'], 'id');
+		$this->assertContains($matching_id, $ids);
+		$this->assertNotContains($other_id, $ids);
+	}
+}

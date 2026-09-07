@@ -26,6 +26,11 @@ class AIPS_Token_Budget {
 	/**
 	 * Calculate a max-token budget from prompt and expected output sizing.
 	 *
+	 * Set 'include_prompt_tokens' => false when the result is used as a provider
+	 * max_tokens value. Every backend the plugin talks to treats max_tokens as an
+	 * output-only cap, so folding the prompt size into it makes a long prompt
+	 * silently raise the response allowance (and a short one lower it).
+	 *
 	 * @param string $prompt        Prompt text.
 	 * @param int    $output_tokens Expected response token count.
 	 * @param array  $options       Optional calculation settings.
@@ -35,17 +40,21 @@ class AIPS_Token_Budget {
 		$options = wp_parse_args(
 			$options,
 			array(
-				'chars_per_token'      => self::DEFAULT_CHARS_PER_TOKEN,
-				'buffer_ratio'         => 0,
-				'minimum_tokens'       => 1,
-				'maximum_tokens'       => 0,
-				'respect_config_limit' => false,
-				'config_limit_option'  => 'aips_max_tokens_limit',
+				'chars_per_token'       => self::DEFAULT_CHARS_PER_TOKEN,
+				'buffer_ratio'          => 0,
+				'minimum_tokens'        => 1,
+				'maximum_tokens'        => 0,
+				'respect_config_limit'  => false,
+				'config_limit_option'   => 'aips_max_tokens_limit',
+				'include_prompt_tokens' => true,
 			)
 		);
 
-		$prompt_tokens = self::estimate_prompt_tokens($prompt, (int) $options['chars_per_token']);
-		$calculated    = $prompt_tokens + max(0, (int) $output_tokens);
+		$calculated = max(0, (int) $output_tokens);
+
+		if (!empty($options['include_prompt_tokens'])) {
+			$calculated += self::estimate_prompt_tokens($prompt, (int) $options['chars_per_token']);
+		}
 
 		if ((float) $options['buffer_ratio'] > 0) {
 			$calculated += (int) ceil($calculated * (float) $options['buffer_ratio']);

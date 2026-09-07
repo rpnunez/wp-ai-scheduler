@@ -1,6 +1,6 @@
 # Development Guidelines
 
-Project-specific rules for the AI Post Scheduler plugin. Follow these in addition to `AGENTS.md` and `.github/copilot-instructions.md`.
+Project-specific rules for the AI Post Scheduler plugin. Follow these in addition to the canonical guidance in [AGENTS.md](../AGENTS.md).
 
 ---
 
@@ -63,3 +63,22 @@ Never call the native `confirm()` function. Always use:
 Never call `location.reload()` after an AJAX action. Instead:
 - Re-fetch the updated data via a follow-up AJAX call and re-render the affected UI region using `AIPS.Templates.render()` / `renderRaw()`.
 - Only replace or patch the specific DOM nodes that changed; leave the rest of the page untouched.
+
+---
+
+## Date and Time Handling: AIPS_DateTime, Never Native PHP Date Functions
+
+All datetime columns in the database are stored as `BIGINT UNSIGNED` Unix timestamps (not MySQL DATETIME strings). Use the `AIPS_DateTime` class for all date/time operations:
+
+- **DB writes:** store the raw int — `AIPS_DateTime::now()->timestamp()`.
+- **Display:** `AIPS_DateTime::fromTimestamp($ts)->toDisplay($format)` or `->toHumanDiff()`.
+- **Parsing stored strings (legacy data only):** `AIPS_DateTime::fromMysql($str)->timestamp()`.
+- **ISO 8601:** `AIPS_DateTime::now()->toIso8601()`.
+
+Never use `current_time()`, `strtotime()`, `date()`, `date_i18n()`, or `gmdate()` in new code. For `updated_at` columns, repository UPDATE methods must set the value explicitly — `ON UPDATE CURRENT_TIMESTAMP` does not fire on BIGINT columns.
+
+---
+
+## Admin UI Design System
+
+For all admin interface work, use `ai-post-scheduler/docs/Design_Guidelines.md` as the single source of truth for tokens, shared component classes, approved usage, and migration patterns.

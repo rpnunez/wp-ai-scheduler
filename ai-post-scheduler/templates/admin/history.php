@@ -8,11 +8,39 @@ if (!defined('ABSPATH')) {
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
+$domain_filter = isset($domain_filter) ? $domain_filter : (isset($_GET['domain']) ? sanitize_key(wp_unslash($_GET['domain'])) : '');
+$actor_filter = isset($actor_filter) ? $actor_filter : (isset($_GET['actor']) ? sanitize_key(wp_unslash($_GET['actor'])) : '');
+$post_type_filter = isset($post_type_filter) ? $post_type_filter : (isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '');
+$selectable_post_types = isset($selectable_post_types) ? $selectable_post_types : AIPS_Utilities::get_selectable_post_types();
+$correlation_filter = isset($correlation_id) ? $correlation_id : (isset($_GET['correlation_id']) ? sanitize_text_field(wp_unslash($_GET['correlation_id'])) : '');
+$date_from = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '');
+$date_to = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '');
 
-$items       = isset($history['items']) ? $history['items'] : array();
-$total_items = isset($history['total']) ? (int) $history['total'] : 0;
+$items       = array();
+$total_items = 0;
+
+$history = isset($history) ? $history : array();
+
+if (is_object($history)) {
+    if ($history instanceof ArrayAccess) {
+        $items       = isset($history['items']) ? $history['items'] : array();
+        $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+    } elseif (method_exists($history, 'get_history')) {
+        $history     = $history->get_history();
+        $history     = is_array($history) ? $history : array();
+        $items       = isset($history['items']) ? $history['items'] : array();
+        $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+    } else {
+        $history = array();
+    }
+} elseif (is_array($history)) {
+    $items       = isset($history['items']) ? $history['items'] : array();
+    $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+} else {
+    $history = array();
+}
 ?>
-<div class="wrap aips-wrap">
+<div class="wrap aips-wrap aips-history-page">
     <div class="aips-page-container">
         <!-- Page Header -->
         <div class="aips-page-header">
@@ -21,124 +49,169 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                     <h1 class="aips-page-title"><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
                     <p class="aips-page-description"><?php esc_html_e('View generation history containers and inspect every logged step, AI call, and error for each run.', 'ai-post-scheduler'); ?></p>
                 </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
-                        <span class="dashicons dashicons-download"></span>
-                        <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
             </div>
         </div>
 
         <?php
-        $has_active_filter = !empty($status_filter) || !empty($search_query);
+        $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($domain_filter) || !empty($actor_filter) || !empty($post_type_filter) || !empty($correlation_filter) || !empty($date_from) || !empty($date_to);
         $show_panel        = $total_items > 0 || $has_active_filter;
         ?>
         <?php if ($show_panel): ?>
         <div class="aips-content-panel">
+            <div class="aips-history-overview" aria-label="<?php esc_attr_e('History overview', 'ai-post-scheduler'); ?>">
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed">
+                    <span class="aips-history-metric-value" id="aips-stat-failed"><?php echo esc_html((int) ($stats['failed'] ?? 0)); ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Failed runs', 'ai-post-scheduler'); ?></span>
+                </button>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="processing">
+                    <span class="aips-history-metric-value" id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('In progress', 'ai-post-scheduler'); ?></span>
+                </button>
+                <div class="aips-history-metric">
+                    <span class="aips-history-metric-value" id="aips-stat-success-rate"><?php echo esc_html(number_format_i18n((float) ($stats['success_rate'] ?? 0), 1)); ?>%</span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Success rate', 'ai-post-scheduler'); ?></span>
+                </div>
+                <div class="aips-history-metric">
+                    <span class="aips-history-metric-value" id="aips-stat-median-duration"><?php echo isset($stats['median_duration']) ? esc_html($history_handler->format_duration_for_display($stats['median_duration'])) : '&mdash;'; ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Median duration', 'ai-post-scheduler'); ?></span>
+                </div>
+            </div>
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
                 <div class="aips-filter-left">
+                    <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
+                    <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
                     <select id="aips-filter-status" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
-                    <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
-                        <span class="dashicons dashicons-filter"></span>
-                        <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
-                    </button>
+                    <div class="aips-history-quick-dates" role="group" aria-label="<?php esc_attr_e('Date range', 'ai-post-scheduler'); ?>">
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="0"><?php esc_html_e('Today', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="7"><?php esc_html_e('7 days', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
+                    </div>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-history-more-filters" aria-expanded="false" aria-controls="aips-history-advanced-filters"><?php esc_html_e('More filters', 'ai-post-scheduler'); ?></button>
+                    <button class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
                 </div>
-                <div class="aips-filter-right">
-                    <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
-                    <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
-                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                <div id="aips-history-advanced-filters" class="aips-history-advanced-filters" hidden>
+                    <select id="aips-filter-domain" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
+                        <option value="post_generation" <?php selected($domain_filter, 'post_generation'); ?>>Post Generation</option>
+                        <option value="content_indexing" <?php selected($domain_filter, 'content_indexing'); ?>>Content Indexing</option>
+                        <option value="author_topics" <?php selected($domain_filter, 'author_topics'); ?>>Author Topics</option>
+                        <option value="research" <?php selected($domain_filter, 'research'); ?>>Research</option>
+                        <option value="sources" <?php selected($domain_filter, 'sources'); ?>>Sources</option>
+                        <option value="embeddings" <?php selected($domain_filter, 'embeddings'); ?>>Embeddings</option>
+                        <option value="internal_links" <?php selected($domain_filter, 'internal_links'); ?>>Internal Links</option>
+                        <option value="batch_jobs" <?php selected($domain_filter, 'batch_jobs'); ?>>Batch Jobs</option>
+                    </select>
+                    <select id="aips-filter-actor" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Actors', 'ai-post-scheduler'); ?></option>
+                        <option value="system" <?php selected($actor_filter, 'system'); ?>>System</option>
+                        <option value="admin" <?php selected($actor_filter, 'admin'); ?>>Admin</option>
+                    </select>
+                    <select id="aips-filter-post-type" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+                        <option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
+                            <?php echo esc_html($post_type_info['label']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($correlation_filter); ?>">
+                    <div class="aips-date-range-group">
+                        <label class="screen-reader-text" for="aips-filter-date-from"><?php esc_html_e('Logged after', 'ai-post-scheduler'); ?></label>
+                        <input type="date" id="aips-filter-date-from" class="aips-form-input" aria-label="<?php esc_attr_e('Logged after', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_from); ?>">
+                        <span class="aips-date-range-sep" aria-hidden="true">&ndash;</span>
+                        <label class="screen-reader-text" for="aips-filter-date-to"><?php esc_html_e('Logged before', 'ai-post-scheduler'); ?></label>
+                        <input type="date" id="aips-filter-date-to" class="aips-form-input" aria-label="<?php esc_attr_e('Logged before', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_to); ?>">
+                    </div>
                 </div>
+                <div id="aips-history-filter-chips" class="aips-history-filter-chips" aria-live="polite"></div>
             </div>
 
             <!-- Toolbar (bulk actions) -->
             <div class="aips-panel-toolbar">
-                <div class="aips-toolbar-left">
+                <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
                     <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
-                        <span class="dashicons dashicons-trash"></span>
-                        <?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?>
+                        <span class="dashicons dashicons-trash" aria-hidden="true"></span>
+                        <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                     </button>
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
-                        <span class="dashicons dashicons-update"></span>
+                        <span class="dashicons dashicons-update" aria-hidden="true"></span>
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-export-history-btn">
+                        <span class="dashicons dashicons-download" aria-hidden="true"></span>
+                        <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
                 <div class="aips-toolbar-right aips-history-pagination-cell">
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
-                        <span class="dashicons dashicons-dismiss"></span>
-                        <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
-                    </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
-                        <span class="dashicons dashicons-trash"></span>
-                        <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
-                    </button>
-                    <?php if (isset($history_handler)): ?>
-                        <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
-                    <?php elseif ($total_items > 0): ?>
-                        <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
-                    <?php endif; ?>
+                    <div id="aips-history-pagination-wrap">
+                        <?php if (isset($history_handler)): ?>
+                            <?php $history_handler->render_pagination_html($history, $status_filter, $search_query); ?>
+                        <?php elseif ($total_items > 0): ?>
+                            <span class="aips-history-pagination-info"><?php printf(esc_html__('%d items', 'ai-post-scheduler'), $total_items); ?></span>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
-            <!-- History Containers Table -->
-            <div class="aips-panel-body no-padding">
-                <table class="aips-table aips-history-table">
-                    <thead>
-                        <tr>
-                            <td id="cb" class="manage-column column-cb check-column">
-                                <label class="screen-reader-text" for="aips-cb-select-all"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
-                                <input id="aips-cb-select-all" type="checkbox">
-                            </td>
-                            <th class="column-title"><?php esc_html_e('Title / Topic', 'ai-post-scheduler'); ?></th>
-                            <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
-                            <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-                            <th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
-                            <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody id="aips-history-tbody">
-                        <?php if (!empty($items)): ?>
-                            <?php foreach ($items as $item): ?>
-                                <?php include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php'; ?>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" style="text-align:center;padding:40px;">
-                                    <span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
-                                    <?php esc_html_e('No history containers match your current filters.', 'ai-post-scheduler'); ?>
-                                    <?php if ($has_active_filter): ?>
-                                        <br><br>
-                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
-                                            <span class="dashicons dashicons-dismiss"></span>
-                                            <?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
+            <div class="aips-history-main-column">
+                    <!-- History Containers Table -->
+                    <div class="aips-panel-body no-padding">
+                        <table class="aips-table aips-history-table">
+                            <thead>
+                                <tr>
+                                    <td id="cb" class="manage-column column-cb check-column">
+                                        <label class="screen-reader-text" for="aips-cb-select-all"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+                                        <input id="aips-cb-select-all" type="checkbox">
+                                    </td>
+                                    <th class="column-title"><?php esc_html_e('Run', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-post-type"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-status"><?php esc_html_e('Result', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-type"><?php esc_html_e('Activity', 'ai-post-scheduler'); ?></th>
+                                    <th class="column-date"><?php esc_html_e('Logged', 'ai-post-scheduler'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody id="aips-history-tbody">
+                                <?php if (!empty($items)): ?>
+                                    <?php echo isset($history_handler) ? $history_handler->render_table_rows_html($items) : ''; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="6" style="text-align:center;padding:40px;">
+                                            <span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
+                                            <?php esc_html_e('No history containers match your current filters.', 'ai-post-scheduler'); ?>
+                                            <?php if ($has_active_filter): ?>
+                                                <br><br>
+                                                <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
+                                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
+                                                    <?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
+                                                </button>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
 
-                </table>
+                        </table>
 
-                <!-- No Search Results State (client-side live filter) -->
-                <div id="aips-history-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
-                    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-                    <h3 class="aips-empty-state-title"><?php esc_html_e('No History Found', 'ai-post-scheduler'); ?></h3>
-                    <p class="aips-empty-state-description"><?php esc_html_e('No history containers match your search criteria. Try a different search term or filter.', 'ai-post-scheduler'); ?></p>
-                    <div class="aips-empty-state-actions">
-                        <button type="button" class="aips-btn aips-btn-primary aips-clear-history-search-btn">
-                            <span class="dashicons dashicons-dismiss"></span>
-                            <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-                        </button>
+                        <!-- No Search Results State (client-side live filter) -->
+                        <div id="aips-history-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                            <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+                            <h3 class="aips-empty-state-title"><?php esc_html_e('No History Found', 'ai-post-scheduler'); ?></h3>
+                            <p class="aips-empty-state-description"><?php esc_html_e('No history containers match your search criteria. Try a different search term or filter.', 'ai-post-scheduler'); ?></p>
+                            <div class="aips-empty-state-actions">
+                                <button type="button" class="aips-btn aips-btn-primary aips-clear-history-search-btn">
+                                    <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
+                                    <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div><!-- .aips-panel-body -->
         </div><!-- .aips-content-panel -->
 
         <?php else: ?>
@@ -157,14 +230,20 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 </div><!-- .wrap.aips-wrap -->
 
 <!-- History Logs Modal -->
-<div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
-    <div class="aips-modal-content aips-modal-large">
+<div id="aips-history-logs-modal" class="aips-modal aips-history-drawer" style="display: none;">
+    <div class="aips-modal-content aips-history-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="aips-history-logs-modal-title">
         <div class="aips-modal-header">
-            <h3 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
-            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            <div class="aips-history-modal-header-main">
+                <h3 class="aips-modal-title" id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h3>
+                <div id="aips-history-logs-modal-actions" class="aips-history-modal-header-links"></div>
+            </div>
+            <div class="aips-history-modal-header-side">
+                <div id="aips-history-logs-modal-status"></div>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
         </div>
-        <div class="aips-modal-body" id="aips-history-logs-content">
-            <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
+        <div class="aips-modal-body aips-modal-content-body">
+            <p><?php esc_html_e('Preparing plain-language summary and technical logs...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>
 </div>
@@ -189,13 +268,13 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: tbody loading placeholder row (shown while reloading the table) -->
 <script type="text/html" id="aips-tmpl-history-tbody-loading">
-	<tr><td colspan="6" style="text-align:center;padding:20px;">{{text}}</td></tr>
+	<tr><td colspan="5" style="text-align:center;padding:20px;">{{text}}</td></tr>
 </script>
 
 <!-- Template: tbody empty-state row (no containers match current filters) -->
 <script type="text/html" id="aips-tmpl-history-tbody-empty">
 	<tr>
-		<td colspan="6" style="text-align:center;padding:40px;">
+		<td colspan="5" style="text-align:center;padding:40px;">
 			<span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
 			{{message}}
 		</td>
@@ -251,7 +330,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 
 <!-- Template: a single log table row; {{detailsHtml}} is raw, all others are pre-escaped -->
 <script type="text/html" id="aips-tmpl-history-log-row">
-	<tr data-type-id="{{typeId}}">
+	<tr data-type-ids="{{typeIds}}">
 		<td style="white-space:nowrap;font-size:12px;">{{timestamp}}</td>
 		<td><span class="aips-badge {{typeClass}}">{{typeLabel}}</span></td>
 		<td style="font-size:12px;font-family:monospace;">{{logType}}</td>

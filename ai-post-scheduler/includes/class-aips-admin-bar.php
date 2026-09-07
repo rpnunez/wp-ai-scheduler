@@ -98,10 +98,10 @@ class AIPS_Admin_Bar {
 		}
 
 		$cache        = AIPS_Cache_Factory::instance();
-		$cache_key    = 'aips_unread_count_' . get_current_user_id();
+		$cache_key    = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR, 'unread_count', array('user_id' => get_current_user_id()) );
 		$unread_count = $cache->remember(
 			$cache_key,
-			MINUTE_IN_SECONDS,
+			AIPS_Cache_Policy::default_ttl( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR ),
 			function() {
 				return $this->get_repository()->count_unread();
 			},
@@ -256,10 +256,10 @@ class AIPS_Admin_Bar {
 			AIPS_Ajax_Response::error(__('Notification could not be updated or was already read.', 'ai-post-scheduler'));
 		}
 
-		$cache_key    = 'aips_unread_count_' . get_current_user_id();
+		$cache_key    = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR, 'unread_count', array('user_id' => get_current_user_id()) );
 		$unread_count = $this->get_repository()->count_unread();
 
-		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, AIPS_Cache_Policy::default_ttl( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR ), 'aips_admin_bar');
 
 		AIPS_Ajax_Response::success(array(
 			'unread_count' => $unread_count,
@@ -280,10 +280,10 @@ class AIPS_Admin_Bar {
 
 		$result       = $this->get_repository()->mark_all_as_read();
 
-		$cache_key    = 'aips_unread_count_' . get_current_user_id();
+		$cache_key    = AIPS_Cache_Policy::key( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR, 'unread_count', array('user_id' => get_current_user_id()) );
 		$unread_count = $this->get_repository()->count_unread();
 
-		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, MINUTE_IN_SECONDS, 'aips_admin_bar');
+		AIPS_Cache_Factory::instance()->set($cache_key, $unread_count, AIPS_Cache_Policy::default_ttl( AIPS_Cache_Policy::SUBSYSTEM_ADMIN_BAR ), 'aips_admin_bar');
 
 		// If the repository reported a failure and there are still unread notifications, return an error.
 		if (false === $result && $unread_count > 0) {

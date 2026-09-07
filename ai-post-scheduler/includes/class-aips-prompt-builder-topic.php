@@ -31,10 +31,17 @@ class AIPS_Prompt_Builder_Topic {
 	private $base_builder;
 
 	/**
-	 * @param AIPS_Prompt_Builder|null $base_builder Optional; instantiated automatically when null.
+	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
 	 */
-	public function __construct($base_builder = null) {
+	private $diversity_injector;
+
+	/**
+	 * @param AIPS_Prompt_Builder|null                  $base_builder Optional; instantiated automatically when null.
+	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
+	 */
+	public function __construct($base_builder = null, $diversity_injector = null) {
 		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
+		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -54,7 +61,14 @@ class AIPS_Prompt_Builder_Topic {
 	) {
 		$quantity = (int) $author->topic_generation_quantity;
 		if ($quantity < 1) {
-			$quantity = 5;
+			/**
+			 * Filters the default topic-generation quantity when an author's
+			 * topic_generation_quantity is not set or is less than 1.
+			 *
+			 * @since 2.6.0
+			 * @param int $quantity Default fallback quantity. Default 5.
+			 */
+			$quantity = max(1, (int) apply_filters('aips_default_topic_quantity', 5));
 		}
 
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
@@ -142,6 +156,11 @@ class AIPS_Prompt_Builder_Topic {
 			$prompt .= "{$author->topic_generation_prompt}\n\n";
 		}
 
+		$created_titles_block = $this->diversity_injector->build_created_topic_titles_block($author);
+		if (!empty($created_titles_block)) {
+			$prompt .= $created_titles_block . "\n\n";
+		}
+
 		// ---- Historical feedback ----
 		if (!empty($approved_topics)) {
 			$prompt .= "Previously approved topics (for diversity — avoid duplicating these concepts):\n";
@@ -170,19 +189,7 @@ class AIPS_Prompt_Builder_Topic {
 		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
 		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
 
-		$prompt .= "Return a JSON array of objects. Each object must have:\n";
-		$prompt .= "- \"title\": The blog post topic/title (string)\n";
-		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
-		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n\n";
-
-		$prompt .= "Example format:\n";
-		$prompt .= "[\n";
-		$prompt .= "  {\n";
-		$prompt .= "    \"title\": \"10 Best Practices for WordPress SEO in 2025\",\n";
-		$prompt .= "    \"score\": 85,\n";
-		$prompt .= "    \"keywords\": [\"WordPress\", \"SEO\", \"best practices\", \"2025\", \"optimization\"]\n";
-		$prompt .= "  }\n";
-		$prompt .= "]";
+		$prompt .= "Return a JSON array where each item has: \"title\" (string), \"score\" (integer 1-100), \"keywords\" (array of strings).";
 
 		return $prompt;
 	}

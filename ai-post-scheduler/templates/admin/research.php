@@ -40,7 +40,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <!-- Tab Navigation -->
         <div class="aips-tab-nav">
             <a href="#trending" class="aips-tab-link<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
-            <a href="#gap-analysis" class="aips-tab-link<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Gap Analysis', 'ai-post-scheduler'); ?></a>
+            <a href="#gap-analysis" class="aips-tab-link<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Content Auditor', 'ai-post-scheduler'); ?></a>
             <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
         </div>
 
@@ -240,7 +240,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="filter-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                 </div>
             </div>
             
@@ -336,30 +336,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </div><!-- #trending-tab -->
 
     <div id="gap-analysis-tab" class="aips-tab-content<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'gap-analysis' ? '' : 'display:none;'; ?>">
-        <div class="aips-content-panel">
-            <div class="aips-panel-header">
-                <h2 class="aips-panel-title"><?php esc_html_e('Content Gap Analysis', 'ai-post-scheduler'); ?></h2>
-            </div>
-            <div class="aips-panel-body">
-                <p class="description"><?php esc_html_e('Analyze your existing content against your target niche to identify missing sub-topics and opportunities.', 'ai-post-scheduler'); ?></p>
-
-                <div class="aips-gap-analysis-controls">
-                    <input type="text" id="gap-niche" class="regular-text" placeholder="<?php esc_attr_e('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
-                    <button type="button" class="aips-btn aips-btn-primary" id="analyze-gaps-btn">
-                        <span class="dashicons dashicons-chart-area"></span>
-                        <?php esc_html_e('Analyze Site for Gaps', 'ai-post-scheduler'); ?>
-                    </button>
-                    <span class="spinner" style="float: none; margin-left: 10px;"></span>
-                </div>
-
-                <div id="gap-results-container" style="margin-top: 30px; display: none;">
-                    <h3><?php esc_html_e('Identified Content Gaps', 'ai-post-scheduler'); ?></h3>
-                    <div class="aips-gap-grid">
-                        <!-- Gap cards will be injected here -->
-                    </div>
-                </div>
-            </div><!-- .aips-panel-body -->
-        </div><!-- .aips-content-panel -->
+        <?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-content-auditor.php'; ?>
     </div>
 
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">
@@ -370,7 +347,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <div id="aips-generate-now-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
-                <h2><?php esc_html_e('Generate Posts Now', 'ai-post-scheduler'); ?></h2>
+                <h2 class="aips-modal-title"><?php esc_html_e('Generate Posts Now', 'ai-post-scheduler'); ?></h2>
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
@@ -414,9 +391,11 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <!-- Trending Topic Posts Modal -->
     <div id="aips-trending-topic-posts-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content aips-modal-large">
-            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-            <h2 id="aips-trending-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
-            <div id="aips-trending-topic-posts-content">
+            <div class="aips-modal-header">
+                <h2 id="aips-trending-topic-posts-modal-title" class="aips-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body aips-modal-content-body" id="aips-trending-topic-posts-content">
                 <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
             </div>
         </div>
@@ -462,7 +441,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <table class="aips-table aips-research-table">
             <thead>
                 <tr>
-                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics"></th>
+                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics" aria-label="<?php esc_attr_e('Select all topics', 'ai-post-scheduler'); ?>"></th>
                     <th scope="col"><?php esc_html_e('Topic', 'ai-post-scheduler'); ?></th>
                     <th scope="col"><?php esc_html_e('Score', 'ai-post-scheduler'); ?></th>
                     <th scope="col"><?php esc_html_e('Niche', 'ai-post-scheduler'); ?></th>
@@ -478,7 +457,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
 
     <script type="text/html" id="aips-tmpl-research-topics-row">
         <tr>
-            <td><input type="checkbox" class="topic-checkbox" value="{{id}}"></td>
+            <td><input type="checkbox" class="topic-checkbox" value="{{id}}" aria-label="<?php esc_attr_e('Select topic', 'ai-post-scheduler'); ?>"></td>
             <td>
                 <strong>{{topic}}</strong>
                 {{status_chip_html}}

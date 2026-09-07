@@ -124,6 +124,9 @@ class AIPS_History_Container {
 		if (isset($history->template_id) && $history->template_id) {
 			$metadata['template_id'] = $history->template_id;
 		}
+		if (isset($history->campaign_id) && $history->campaign_id) {
+			$metadata['campaign_id'] = $history->campaign_id;
+		}
 		if (isset($history->author_id) && $history->author_id) {
 			$metadata['author_id'] = $history->author_id;
 		}
@@ -134,8 +137,12 @@ class AIPS_History_Container {
 			$metadata['creation_method'] = $history->creation_method;
 		}
 		
+		$history_type = isset($history->type) && $history->type
+			? $history->type
+			: (isset($history->creation_method) && $history->creation_method ? $history->creation_method : 'post_generation');
+
 		// Create container with existing ID and preserved metadata
-		return new self($repository, $history->type, $metadata, $history_id);
+		return new self($repository, $history_type, $metadata, $history_id);
 	}
 
 	/**
@@ -197,18 +204,24 @@ class AIPS_History_Container {
 			array(
 				'uuid' => $this->uuid,
 				'correlation_id' => $this->correlation_id,
+				'creation_method' => isset($this->metadata['creation_method']) && $this->metadata['creation_method']
+					? $this->metadata['creation_method']
+					: $this->type,
 				'status' => 'processing',
 			),
 			$this->metadata
 		);
-		
+
+		$data = apply_filters('aips_history_record_data', $data, null);
+
 		$this->history_id = $this->repository->create($data);
-		
+
 		if ($this->history_id) {
 			$this->is_persisted = true;
+			do_action('aips_history_created', $this->history_id, $this->type, $this->metadata);
 			return true;
 		}
-		
+
 		return false;
 	}
 	
@@ -262,10 +275,12 @@ class AIPS_History_Container {
 		// Determine history type ID based on log_type
 		$history_type_id = $this->map_log_type_to_history_type($log_type);
 		
-		// Build details array
+		// Build details array — log_subtype carries the semantic string label
+		// so callers can search/display it even though there is no log_type column.
 		$details = array(
-			'message' => $message,
-			'timestamp' => current_time('mysql'),
+			'log_subtype' => $log_type,
+			'message'     => $message,
+			'timestamp'   => AIPS_DateTime::now()->timestamp(),
 		);
 		
 		// Add input if provided
@@ -299,12 +314,17 @@ class AIPS_History_Container {
 			$this->session->add_error();
 		}
 		
-		return $this->repository->add_log_entry(
+		$log_id = $this->repository->add_log_entry(
 			$this->history_id,
-			$log_type,
 			$details,
 			$history_type_id
 		);
+
+		if ($log_id) {
+			do_action('aips_history_log_added', $this->history_id, $log_type, $details);
+		}
+
+		return $log_id;
 	}
 	
 	/**
@@ -324,6 +344,7 @@ class AIPS_History_Container {
 			'debug' => AIPS_History_Type::DEBUG,
 			'log' => AIPS_History_Type::LOG,
 			'metric_generation_result' => AIPS_History_Type::METRIC,
+			'session_metadata' => AIPS_History_Type::SESSION_METADATA,
 		);
 		
 		return isset($map[$log_type]) ? $map[$log_type] : AIPS_History_Type::LOG;
@@ -385,6 +406,47 @@ class AIPS_History_Container {
 	}
 	
 	/**
+	 * Complete this history container as terminated.
+	 *
+	 * Used when an operator setting stops the run before any work is attempted.
+	 * The run neither succeeded nor failed, so it is closed with its own
+	 * terminal status rather than being left open in 'processing'.
+	 *
+	 * @param string $message Human-readable reason the run was terminated.
+	 * @param array  $result_data Optional additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	public function complete_terminated($message, $result_data = array()) {
+		if (!$this->is_persisted) {
+			return false;
+		}
+
+		if ($this->session) {
+			$this->session->complete(array(
+				'success' => false,
+				'error'   => $message,
+			));
+		}
+
+		$update_data = apply_filters('aips_history_record_data', array_merge(
+			array(
+				'status'        => AIPS_History_Event_Status::TERMINATED,
+				'error_message' => $message,
+				'completed_at'  => AIPS_DateTime::now()->timestamp(),
+			),
+			$result_data
+		), $this->history_id);
+
+		$success = $this->repository->update($this->history_id, $update_data) !== false;
+
+		if ($success) {
+			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
+		}
+
+		return $success;
+	}
+
+	/**
 	 * Complete this history container with success
 	 *
 	 * @param array $result_data Result data (e.g., post_id, title, content)
@@ -407,12 +469,20 @@ class AIPS_History_Container {
 		$update_data = array_merge(
 			array(
 				'status' => 'completed',
-				'completed_at' => current_time('mysql'),
+				'completed_at' => AIPS_DateTime::now()->timestamp(),
 			),
 			$result_data
 		);
-		
-		return $this->repository->update($this->history_id, $update_data) !== false;
+
+		$update_data = apply_filters('aips_history_record_data', $update_data, $this->history_id);
+
+		$success = $this->repository->update($this->history_id, $update_data) !== false;
+
+		if ($success) {
+			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
+		}
+
+		return $success;
 	}
 	
 	/**
@@ -437,13 +507,21 @@ class AIPS_History_Container {
 		
 		// Log the error
 		$this->record('error', $error_message, null, null, $error_data);
-		
+
 		// Update history status
-		return $this->repository->update($this->history_id, array(
+		$update_data = apply_filters('aips_history_record_data', array(
 			'status' => 'failed',
 			'error_message' => $error_message,
-			'completed_at' => current_time('mysql'),
-		)) !== false;
+			'completed_at' => AIPS_DateTime::now()->timestamp(),
+		), $this->history_id);
+
+		$success = $this->repository->update($this->history_id, $update_data) !== false;
+
+		if ($success) {
+			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
+		}
+
+		return $success;
 	}
 	
 	/**

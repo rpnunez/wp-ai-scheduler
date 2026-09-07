@@ -132,7 +132,7 @@ class AIPS_Feedback_Repository {
 			'reason_category' => isset($data['reason_category']) ? sanitize_text_field($data['reason_category']) : 'other',
 			'source' => isset($data['source']) ? sanitize_text_field($data['source']) : 'UI',
 			'notes' => isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '',
-			'created_at' => current_time('mysql')
+			'created_at' => AIPS_DateTime::now()->timestamp()
 		);
 		
 		$result = $this->wpdb->insert($this->table_name, $insert_data);

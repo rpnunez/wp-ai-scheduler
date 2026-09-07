@@ -165,15 +165,12 @@ class AIPS_Template_Processor {
      */
     public function parse_ai_variables_response($response, $ai_variables) {
         $values = array();
-        
-        // Clean up the response - remove any markdown code block formatting
-        $response = trim($response);
-        $response = preg_replace('/^```(?:json)?\s*/i', '', $response);
-        $response = preg_replace('/\s*```$/', '', $response);
-        $response = trim($response);
-        
-        // Try to parse as JSON
-        $decoded = json_decode($response, true);
+
+        $decoded = AIPS_JSON_Extractor::decode_json_response($response);
+
+        if (is_wp_error($decoded)) {
+            return $values;
+        }
         
         if (is_array($decoded)) {
             foreach ($ai_variables as $var_name) {
@@ -205,11 +202,11 @@ class AIPS_Template_Processor {
      */
     public function get_variables($topic = null) {
         $variables = array(
-            '{{date}}' => date('F j, Y'),
-            '{{year}}' => date('Y'),
-            '{{month}}' => date('F'),
-            '{{day}}' => date('l'),
-            '{{time}}' => current_time('H:i'),
+            '{{date}}' => AIPS_DateTime::now()->toDisplay('F j, Y'),
+            '{{year}}' => AIPS_DateTime::now()->toDisplay('Y'),
+            '{{month}}' => AIPS_DateTime::now()->toDisplay('F'),
+            '{{day}}' => AIPS_DateTime::now()->toDisplay('l'),
+            '{{time}}' => AIPS_DateTime::now()->toDisplay('H:i'),
             '{{site_name}}' => get_bloginfo('name'),
             '{{site_description}}' => get_bloginfo('description'),
             '{{random_number}}' => rand(1, 1000),

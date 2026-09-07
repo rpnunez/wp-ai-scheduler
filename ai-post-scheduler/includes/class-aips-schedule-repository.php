@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+    require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
 /**
  * Class AIPS_Schedule_Repository
  *
@@ -20,6 +24,7 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to scheduling.
  */
 class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
+    use AIPS_Cacheable_Repository;
 
     /**
      * @var self|null Singleton instance.
@@ -54,11 +59,6 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     private $wpdb;
 
     /**
-     * @var AIPS_Cache In-request identity-map cache.
-     */
-    private $cache = null;
-    
-    /**
      * Initialize the repository.
      */
     public function __construct() {
@@ -66,93 +66,95 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         $this->wpdb = $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
-        $this->cache = AIPS_Cache_Factory::named( 'aips_schedule_repository' );
     }
     
     /**
      * Get all schedules with optional template details.
      *
-     * Results are cached for the duration of the request so repeat calls
-     * within the same request do not issue additional DB queries.
+     * Results are cached with a medium-tier persistent cache and invalidated
+     * whenever a schedule is created, updated, or deleted.
      *
      * @param bool $active_only Optional. Return only active schedules. Default false.
      * @return array Array of schedule objects with template names.
      */
     public function get_all($active_only = false) {
-        $key = 'all:' . ( $active_only ? '1' : '0' );
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $where  = $active_only ? "WHERE s.is_active = 1" : "";
-        $result = $this->wpdb->get_results( "
-            SELECT s.*, t.name as template_name 
-            FROM {$this->schedule_table} s 
-            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
-            $where
-            ORDER BY s.next_run ASC
-        " );
-        $this->cache->set( $key, $result );
-        return $result;
+        $active_only = (bool) $active_only;
+        return $this->cache_read(
+            'schedules.get_all',
+            array( 'active_only' => $active_only ),
+            function() use ( $active_only ) {
+                $where = $active_only ? "WHERE s.is_active = 1" : "";
+                return $this->wpdb->get_results( "
+                    SELECT s.*, t.name as template_name
+                    FROM {$this->schedule_table} s
+                    LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+                    $where
+                    ORDER BY s.next_run ASC
+                " );
+            }
+        );
     }
     
     /**
      * Get a single schedule by ID.
      *
-     * Non-null results are cached for the duration of the request.
+     * Non-null results are cached with a long-tier persistent cache.
+     * Null results (record not found) are never cached.
      *
      * @param int $id Schedule ID.
      * @return object|null Schedule object or null if not found.
      */
     public function get_by_id($id) {
-        $key = 'id:' . (int) $id;
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $result = $this->wpdb->get_row( $this->wpdb->prepare(
-            "SELECT * FROM {$this->schedule_table} WHERE id = %d",
-            $id
-        ) );
-        if ( $result !== null ) {
-            $this->cache->set( $key, $result );
-        }
-        return $result;
+        $id = absint( $id );
+        return $this->cache_read(
+            'schedules.get_by_id',
+            array( 'schedule_id' => $id ),
+            function() use ( $id ) {
+                return $this->wpdb->get_row( $this->wpdb->prepare(
+                    "SELECT * FROM {$this->schedule_table} WHERE id = %d",
+                    $id
+                ) );
+            }
+        );
     }
     
     /**
      * Get schedules that are due to run.
      *
-     * Results are cached for the duration of the request. The cache is
-     * invalidated whenever any schedule is mutated, so re-running the
-     * scheduler within the same request correctly picks up the updated
-     * next_run timestamps.
+     * Results are cached at request scope only. The timestamp parameter
+     * creates a unique cache key per second, so request-scoped caching
+     * deduplicates calls within one cron invocation without polluting the
+     * persistent cache with many near-identical time-keyed entries.
      *
-     * @param string $current_time Optional. Current time in MySQL format. Default current time.
-     * @param int    $limit        Optional. Maximum number of schedules to retrieve. Default 5.
+     * @param int  $current_time Optional. UTC Unix timestamp. Default current time.
+     * @param int  $limit        Optional. Maximum number of schedules to retrieve. Default 5.
      * @return array Array of schedule objects that should run now.
      */
     public function get_due_schedules($current_time = null, $limit = 5) {
         if ($current_time === null) {
-            $current_time = current_time('mysql');
+            $current_time = AIPS_DateTime::now()->timestamp();
         }
-        $key = 'due:' . $current_time . ':' . (int) $limit;
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        // Use INNER JOIN to ensure we only get schedules with valid active templates.
-        // Select t.* first, then s.* to let schedule fields override template fields where they overlap,
-        // but alias s.id as schedule_id to avoid confusion with template id.
-        $result = $this->wpdb->get_results( $this->wpdb->prepare( "
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT %d
-        ", $current_time, $limit ) );
-        $this->cache->set( $key, $result );
-        return $result;
+        $current_time = (int) $current_time;
+        $limit        = (int) $limit;
+        return $this->cache_read(
+            'schedules.get_due_schedules',
+            array( 'current_time' => $current_time, 'limit' => $limit ),
+            function() use ( $current_time, $limit ) {
+                // Use INNER JOIN to ensure we only get schedules with valid active templates.
+                // Select t.* first, then s.* to let schedule fields override template fields where they overlap,
+                // but alias s.id as schedule_id to avoid confusion with template id.
+                return $this->wpdb->get_results( $this->wpdb->prepare( "
+                    SELECT t.*, s.*, s.id AS schedule_id
+                    FROM {$this->schedule_table} s
+                    INNER JOIN {$this->templates_table} t ON s.template_id = t.id
+                    WHERE s.is_active = 1
+                    AND s.next_run <= %d
+                    AND t.is_active = 1
+                    ORDER BY s.next_run ASC
+                    LIMIT %d
+                ", $current_time, $limit ) );
+            }
+        );
     }
 
     /**
@@ -183,6 +185,25 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             SELECT * FROM {$this->schedule_table} WHERE template_id = %d ORDER BY next_run ASC
         ", $template_id));
     }
+
+    /**
+     * Get schedules for multiple template IDs.
+     *
+     * @param array $template_ids Array of Template IDs.
+     * @return array Array of schedule objects.
+     */
+    public function get_by_template_ids(array $template_ids) {
+        if (empty($template_ids)) {
+            return array();
+        }
+
+        $template_ids = array_map('absint', $template_ids);
+        $placeholders = implode(',', array_fill(0, count($template_ids), '%d'));
+
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT * FROM {$this->schedule_table} WHERE template_id IN ($placeholders) ORDER BY next_run ASC
+        ", ...$template_ids));
+    }
     
     /**
      * Create a new schedule.
@@ -205,18 +226,21 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        $next_run = $this->normalize_datetime_input(isset($data['next_run']) ? $data['next_run'] : 0);
+
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => sanitize_text_field($data['frequency']),
-            'next_run' => sanitize_text_field($data['next_run']),
+            'next_run' => $next_run,
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
             'schedule_type' => isset($data['schedule_type']) ? sanitize_key($data['schedule_type']) : 'post_generation',
         );
-        
-        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s');
+
+        $format = array('%d', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -226,6 +250,46 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if (isset($data['rotation_pattern'])) {
             $insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
             $format[] = '%s';
+        }
+
+        if (isset($data['author_id'])) {
+            $insert_data['author_id'] = !empty($data['author_id']) ? absint($data['author_id']) : null;
+            $format[] = '%d';
+        }
+
+        if (isset($data['campaign_mode'])) {
+            $insert_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('post_type_rules', $data)) {
+            $insert_data['post_type_rules'] = !empty($data['post_type_rules']) ? wp_unslash($data['post_type_rules']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('blackout_dates', $data)) {
+            $insert_data['blackout_dates'] = !empty($data['blackout_dates']) ? sanitize_textarea_field($data['blackout_dates']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_start', $data)) {
+            $insert_data['time_window_start'] = !empty($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_end', $data)) {
+            $insert_data['time_window_end'] = !empty($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('day_preferences', $data)) {
+            $insert_data['day_preferences'] = !empty($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('season_end_date', $data)) {
+            $insert_data['season_end_date'] = !empty($data['season_end_date']) ? absint($data['season_end_date']) : null;
+            $format[] = '%d';
         }
 
         if (isset($data['circuit_state'])) {
@@ -249,7 +313,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array(), 'schedule_created' );
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -262,7 +326,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * @param array $data Data to update (same structure as create).
      * @return bool True on success, false on failure.
      */
-    public function update($id, $data) {
+	public function update($id, $data) {
         $update_data = array();
         $format = array();
         
@@ -282,13 +346,13 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         }
         
         if (isset($data['next_run'])) {
-            $update_data['next_run'] = sanitize_text_field($data['next_run']);
-            $format[] = '%s';
+            $update_data['next_run'] = $this->normalize_datetime_input($data['next_run']);
+            $format[] = '%d';
         }
         
         if (isset($data['last_run'])) {
-            $update_data['last_run'] = sanitize_text_field($data['last_run']);
-            $format[] = '%s';
+            $update_data['last_run'] = $this->normalize_datetime_input($data['last_run']);
+            $format[] = '%d';
         }
         
         if (isset($data['is_active'])) {
@@ -300,6 +364,11 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             $update_data['topic'] = sanitize_text_field($data['topic']);
             $format[] = '%s';
         }
+
+        if (array_key_exists('campaign_id', $data)) {
+            $update_data['campaign_id'] = !empty($data['campaign_id']) ? absint($data['campaign_id']) : null;
+            $format[] = '%d';
+        }
         
         if (isset($data['article_structure_id'])) {
             $update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -309,6 +378,46 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         if (isset($data['rotation_pattern'])) {
             $update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
             $format[] = '%s';
+        }
+
+        if (isset($data['author_id'])) {
+            $update_data['author_id'] = !empty($data['author_id']) ? absint($data['author_id']) : null;
+            $format[] = '%d';
+        }
+
+        if (isset($data['campaign_mode'])) {
+            $update_data['campaign_mode'] = sanitize_key($data['campaign_mode']);
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('post_type_rules', $data)) {
+            $update_data['post_type_rules'] = !empty($data['post_type_rules']) ? wp_unslash($data['post_type_rules']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('blackout_dates', $data)) {
+            $update_data['blackout_dates'] = !empty($data['blackout_dates']) ? sanitize_textarea_field($data['blackout_dates']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_start', $data)) {
+            $update_data['time_window_start'] = !empty($data['time_window_start']) ? sanitize_text_field($data['time_window_start']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('time_window_end', $data)) {
+            $update_data['time_window_end'] = !empty($data['time_window_end']) ? sanitize_text_field($data['time_window_end']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('day_preferences', $data)) {
+            $update_data['day_preferences'] = !empty($data['day_preferences']) ? sanitize_text_field($data['day_preferences']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('season_end_date', $data)) {
+            $update_data['season_end_date'] = !empty($data['season_end_date']) ? absint($data['season_end_date']) : null;
+            $format[] = '%d';
         }
         
         if (isset($data['status'])) {
@@ -357,11 +466,46 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array( 'schedule_id' => absint( $id ) ), 'schedule_updated' );
         }
 
-        return $result !== false;
-    }
+		return $result !== false;
+	}
+
+	/**
+	 * Atomically claim a due schedule by advancing next_run only when the row
+	 * still has the expected due timestamp.
+	 *
+	 * This acts as a compare-and-swap lock for cron workers: only the first
+	 * worker that updates the matching row gets to process the schedule.
+	 *
+	 * @param int $id Schedule ID.
+	 * @param int $expected_next_run Previously-read next_run timestamp.
+	 * @param int $new_next_run New next_run timestamp.
+	 * @return bool True when the schedule was claimed, false otherwise.
+	 */
+	public function claim_due_schedule($id, $expected_next_run, $new_next_run) {
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->schedule_table}
+				SET next_run = %d
+				WHERE id = %d
+				AND is_active = 1
+				AND next_run = %d",
+				(int) $new_next_run,
+				(int) $id,
+				(int) $expected_next_run
+			)
+		);
+
+		if ($result !== false && $result > 0) {
+			delete_transient('aips_pending_schedule_stats');
+			$this->invalidate_cache_domain( 'schedule', array( 'schedule_id' => absint( $id ) ), 'schedule_claimed' );
+			return true;
+		}
+
+		return false;
+	}
     
     /**
      * Delete a schedule by ID.
@@ -374,12 +518,52 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array( 'schedule_id' => absint( $id ) ), 'schedule_deleted' );
         }
 
         return $result !== false;
     }
-    
+
+    /**
+     * Count schedules owned by a campaign.
+     *
+     * @param int $campaign_id Campaign ID.
+     * @return int
+     */
+    public function count_by_campaign($campaign_id) {
+        return (int) $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->schedule_table} WHERE campaign_id = %d",
+            absint($campaign_id)
+        ));
+    }
+
+    /**
+     * Return the subset of the given IDs that belong to a campaign.
+     *
+     * Uses a single IN() query instead of one get_by_id() call per ID,
+     * avoiding the N+1 pattern in bulk-delete guards.
+     *
+     * @param int[] $ids Array of schedule IDs to check.
+     * @return int[] Schedule IDs that have a non-NULL campaign_id.
+     */
+    public function get_campaign_owned_ids(array $ids) {
+        $ids = array_filter(array_map('absint', $ids));
+
+        if (empty($ids)) {
+            return array();
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $rows = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->schedule_table} WHERE id IN ($placeholders) AND campaign_id IS NOT NULL",
+                $ids
+            )
+        );
+
+        return array_map('intval', $rows);
+    }
+
     /**
      * Delete all schedules for a template.
      *
@@ -391,36 +575,36 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array(), 'schedule_template_deleted' );
         }
 
         return $result;
     }
-    
+
     /**
      * Update the last_run timestamp for a schedule.
      *
-     * @param int    $id        Schedule ID.
-     * @param string $timestamp Optional. Timestamp in MySQL format. Default current time.
+     * @param int      $id        Schedule ID.
+     * @param int|null $timestamp Optional. UTC Unix timestamp. Default current time.
      * @return bool True on success, false on failure.
      */
     public function update_last_run($id, $timestamp = null) {
         if ($timestamp === null) {
-            $timestamp = current_time('mysql');
+            $timestamp = AIPS_DateTime::now()->timestamp();
         }
         
-        return $this->update($id, array('last_run' => $timestamp));
+        return $this->update($id, array('last_run' => (int) $timestamp));
     }
     
     /**
      * Update the next_run timestamp for a schedule.
      *
-     * @param int    $id        Schedule ID.
-     * @param string $timestamp Timestamp in MySQL format.
+     * @param int $id        Schedule ID.
+     * @param int $timestamp UTC Unix timestamp.
      * @return bool True on success, false on failure.
      */
     public function update_next_run($id, $timestamp) {
-        return $this->update($id, array('next_run' => $timestamp));
+        return $this->update($id, array('next_run' => (int) $timestamp));
     }
     
     /**
@@ -474,7 +658,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             array('%d')
         );
         if ( $result !== false ) {
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array( 'schedule_id' => absint( $id ) ), 'schedule_batch_progress_updated' );
         }
         return $result !== false;
     }
@@ -506,10 +690,35 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      *                       - 'completed'   int     Posts successfully generated
      *                       - 'total'       int     Posts requested for this run
      *                       - 'timestamp'   string  ISO-8601 timestamp of this state capture
+     *                       - 'resumable'   bool    Set when a large batch stopped part-way
+     *                                               through and can be re-dispatched
+     *                       - 'resume_index' int    Absolute index the next slice starts at
      * @return bool True on success, false on failure.
      */
     public function update_run_state($id, array $state) {
         return $this->update($id, array('run_state' => wp_json_encode($state)));
+    }
+
+    /**
+     * Get active schedules that carry a run_state payload.
+     *
+     * The payload is returned as the raw JSON string on each row; callers decode
+     * it and decide what to do. This is intentionally a coarse filter — the
+     * schedules table is small, and matching JSON substrings in SQL would couple
+     * the query to wp_json_encode's exact output.
+     *
+     * @return array Array of schedule row objects (may be empty).
+     */
+    public function get_schedules_with_run_state() {
+        return $this->wpdb->get_results( "
+            SELECT s.*, t.name as template_name
+            FROM {$this->schedule_table} s
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+              AND s.run_state IS NOT NULL
+              AND s.run_state <> ''
+            ORDER BY s.id ASC
+        " );
     }
 
     /**
@@ -531,13 +740,13 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             array_push($values,
                 absint($data['template_id']),
                 sanitize_text_field($data['frequency']),
-                sanitize_text_field($data['next_run']),
+                $this->normalize_datetime_input(isset($data['next_run']) ? $data['next_run'] : 0),
                 isset($data['is_active']) ? (int) $data['is_active'] : 0,
                 isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
                 isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
                 isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
             );
-            $placeholders[] = "(%d, %s, %s, %d, %s, %d, %s)";
+            $placeholders[] = "(%d, %s, %d, %d, %s, %d, %s)";
         }
 
         $query .= implode(', ', $placeholders);
@@ -546,12 +755,12 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array(), 'schedule_bulk_created' );
         }
 
         return $result;
     }
-    
+
     /**
      * Delete multiple schedules by ID.
      *
@@ -580,7 +789,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array(), 'schedule_bulk_deleted' );
         }
 
         return $result;
@@ -617,7 +826,7 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
 
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
-            $this->cache->flush();
+            $this->invalidate_cache_domain( 'schedule', array(), 'schedule_bulk_active_updated' );
         }
 
         return $result;
@@ -664,20 +873,21 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      * Returns schedules with only the columns needed for schedule calculations
      * (template_id, next_run, frequency), ordered by template_id.
      *
-     * Results are cached for the duration of the request.
+     * Results are cached with a medium-tier persistent cache and invalidated
+     * whenever a schedule is created, updated, or deleted.
      *
      * @return array Array of schedule objects (template_id, next_run, frequency).
      */
     public function get_active_schedules() {
-        $key = 'active_schedules';
-        if ( $this->cache->has( $key ) ) {
-            return $this->cache->get( $key );
-        }
-        $result = $this->wpdb->get_results(
-            "SELECT template_id, next_run, frequency FROM {$this->schedule_table} WHERE is_active = 1 ORDER BY template_id"
+        return $this->cache_read(
+            'schedules.get_active',
+            array(),
+            function() {
+                return $this->wpdb->get_results(
+                    "SELECT template_id, next_run, frequency FROM {$this->schedule_table} WHERE is_active = 1 ORDER BY template_id"
+                );
+            }
         );
-        $this->cache->set( $key, $result );
-        return $result;
     }
 
     /**
@@ -712,6 +922,74 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         return array(
             'total' => isset($results->total) ? (int) $results->total : 0,
             'active' => isset($results->active) ? (int) $results->active : 0,
+        );
+    }
+
+    /**
+     * Normalize legacy MySQL datetimes and timestamp-like values to UTC timestamps.
+     *
+     * The schedule schema stores bigint timestamps, but some older call sites and
+     * tests still pass MySQL datetime strings.
+     *
+     * @param mixed $value Timestamp or datetime-like input.
+     * @return int UTC Unix timestamp, or 0 when the value cannot be parsed.
+     */
+    private function normalize_datetime_input($value) {
+        if ($value instanceof AIPS_DateTime) {
+            return $value->timestamp();
+        }
+
+        if (is_numeric($value)) {
+            return max(0, (int) $value);
+        }
+
+        if (is_string($value)) {
+            $parsed = AIPS_DateTime::fromMysqlOrNull(sanitize_text_field($value));
+            if ($parsed !== null) {
+                return $parsed->timestamp();
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Return the repository cache group for schedule reads.
+     *
+     * @return string
+     */
+    protected function repository_cache_group(): string {
+        return 'aips_schedules';
+    }
+
+    /**
+     * Return the explicit repository cache policies for schedule reads.
+     *
+     * @return array
+     */
+    protected function repository_cache_policies(): array {
+        return array(
+            'schedules.get_all'           => array(
+                'tier'        => 'medium',
+                'tags'        => array( 'schedules' ),
+                'description' => 'Cache schedule list reads including active-only filtering.',
+            ),
+            'schedules.get_by_id'         => array(
+                'tier'        => 'long',
+                'tags'        => array( 'schedules', 'schedule:{schedule_id}' ),
+                'cache_null'  => false,
+                'description' => 'Cache single schedule reads by ID.',
+            ),
+            'schedules.get_due_schedules' => array(
+                'tier'        => 'request',
+                'tags'        => array( 'schedules' ),
+                'description' => 'Request-scoped cache for due schedules; avoids persistent pollution from timestamp-keyed entries.',
+            ),
+            'schedules.get_active'        => array(
+                'tier'        => 'medium',
+                'tags'        => array( 'schedules' ),
+                'description' => 'Cache active schedule list for scheduling-calculation callers.',
+            ),
         );
     }
 }

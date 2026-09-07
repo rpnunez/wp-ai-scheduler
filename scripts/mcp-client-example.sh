@@ -13,6 +13,8 @@
 MCP_URL="${MCP_URL:-http://localhost/wp-content/plugins/ai-post-scheduler/mcp-bridge.php}"
 WP_USERNAME="${WP_USERNAME:-admin}"
 WP_PASSWORD="${WP_PASSWORD:-}"
+# Must match the AIPS_MCP_BRIDGE_TOKEN constant defined in wp-config.php.
+MCP_BRIDGE_TOKEN="${MCP_BRIDGE_TOKEN:-}"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -32,7 +34,8 @@ REQUEST=$(cat <<EOF
   "jsonrpc": "2.0",
   "method": "$TOOL",
   "params": $PARAMS,
-  "id": 1
+  "id": 1,
+  "token": "$MCP_BRIDGE_TOKEN"
 }
 EOF
 )

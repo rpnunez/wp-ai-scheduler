@@ -113,7 +113,7 @@ class AIPS_Generation_Session {
 	 */
 	public function start($template_or_context, $voice = null) {
 		$this->reset();
-		$this->started_at = current_time('mysql');
+		$this->started_at = AIPS_DateTime::now()->toMysql();
 
 		// Check if we're using the new context-based approach
 		if ($template_or_context instanceof AIPS_Generation_Context) {
@@ -131,6 +131,7 @@ class AIPS_Generation_Session {
 					'prompt_template' => $template->prompt_template,
 					'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
 					'post_status' => $template->post_status,
+					'post_type' => isset($template->post_type) ? $template->post_type : 'post',
 					'post_category' => $template->post_category,
 					'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
 					'post_author' => isset($template->post_author) ? $template->post_author : '',
@@ -160,6 +161,7 @@ class AIPS_Generation_Session {
 				'prompt_template' => $template->prompt_template,
 				'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
 				'post_status' => $template->post_status,
+				'post_type' => isset($template->post_type) ? $template->post_type : 'post',
 				'post_category' => $template->post_category,
 				'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
 				'post_author' => isset($template->post_author) ? $template->post_author : '',
@@ -217,7 +219,7 @@ class AIPS_Generation_Session {
 	 * @return void
 	 */
 	public function complete($result) {
-		$this->completed_at = current_time('mysql');
+		$this->completed_at = AIPS_DateTime::now()->toMysql();
 		$this->result = $result;
 	}
 
@@ -231,10 +233,14 @@ class AIPS_Generation_Session {
 			return null;
 		}
 
-		$start = strtotime($this->started_at);
-		$end = strtotime($this->completed_at);
+		$start = AIPS_DateTime::fromMysqlOrNull($this->started_at);
+		$end = AIPS_DateTime::fromMysqlOrNull($this->completed_at);
 
-		return $end - $start;
+		if (!$start || !$end) {
+			return null;
+		}
+
+		return $end->timestamp() - $start->timestamp();
 	}
 
 	/**

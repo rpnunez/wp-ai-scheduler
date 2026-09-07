@@ -569,8 +569,8 @@ class AIPS_Research_Controller {
 
                 // Persist a durable post-to-trending-topic link so the Research UI
                 // can show generated-post counts and drill into post lists later.
-                update_post_meta($post_id, '_aips_trending_topic_id', absint($topic_data['id']));
-                update_post_meta($post_id, '_aips_trending_topic_text', sanitize_text_field($topic_data['topic']));
+                update_post_meta($post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID, absint($topic_data['id']));
+                update_post_meta($post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field($topic_data['topic']));
 
                 $generated_topic_ids[] = $topic_data['id'];
 
@@ -579,6 +579,7 @@ class AIPS_Research_Controller {
                 return $post_id;
             },
             array(
+                'queue_job_type' => 'trending_topic_post',
                 'limit_filter' => 'aips_trending_bulk_generate_max_batch',
                 'limit_mode'   => 'soft',
                 'history_type' => 'bulk_generate',
@@ -604,6 +605,25 @@ class AIPS_Research_Controller {
         // Update the status of all successfully generated topics in the repository.
         if (!empty($generated_topic_ids)) {
             $this->repository->update_status_bulk($generated_topic_ids, 'generated');
+        }
+
+        // Async queued path: large batch dispatched to cron workers.
+        if ($result->was_queued) {
+            AIPS_Ajax_Response::success(array(
+                'message' => sprintf(
+                    /* translators: %d: number of topics */
+                    __('Bulk generation queued for %d topic(s). Posts will be created in the background.', 'ai-post-scheduler'),
+                    $total_requested
+                ),
+                'queued'          => true,
+                'job_id'          => $result->job_id,
+                'success_count'   => 0,
+                'failed_count'    => 0,
+                'batch_limited'   => false,
+                'total_requested' => $total_requested,
+                'processed_count' => 0,
+            ));
+            return;
         }
 
         if ($result->success_count > 0) {
@@ -836,7 +856,9 @@ class AIPS_Research_Controller {
      * @return void Sends JSON response.
      */
     public function ajax_research_from_sources() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+        }
 
         if (!current_user_can('manage_options')) {
             AIPS_Ajax_Response::permission_denied();

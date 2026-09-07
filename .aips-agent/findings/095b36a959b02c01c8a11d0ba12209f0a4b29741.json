@@ -1,0 +1,17 @@
+{
+  "id": "095b36a959b02c01c8a11d0ba12209f0a4b29741",
+  "type": "scheduler_dispatch_error_handling_gap",
+  "severity": "high",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-author-topics-scheduler.php",
+  "symbol": "AIPS_Author_Topics_Scheduler",
+  "anchor": "dispatch_author_slices:wp_schedule_single_event-unchecked",
+  "summary": "Author-topics slice dispatch does not check wp_schedule_single_event return values or duplicate events.",
+  "why_it_matters": "Without explicit schedule-result handling, silent failures or duplicate events can reduce reliability and make queue state transitions opaque.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-author-topics-scheduler.php:180-186"
+  ],
+  "suggested_fix": "Check for existing scheduled events with wp_next_scheduled and handle WP_Error/false results from wp_schedule_single_event with structured logs/history.",
+  "first_seen_run_id": "aips-20260507T011431Z",
+  "last_seen_run_id": "aips-20260507T011431Z"
+}

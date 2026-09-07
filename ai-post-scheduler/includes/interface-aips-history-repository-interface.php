@@ -23,6 +23,14 @@ interface AIPS_History_Repository_Interface {
 	public function get_history($args = array());
 
 	/**
+	 * Get paginated posts whose latest completed generation is incomplete.
+	 *
+	 * @param array $args Query arguments.
+	 * @return array
+	 */
+	public function get_partial_generations($args = array());
+
+	/**
 	 * Fetch paginated activity-feed entries.
 	 *
 	 * @param int   $limit Number of rows to return.
@@ -68,12 +76,11 @@ interface AIPS_History_Repository_Interface {
 	 * Insert a history log entry row.
 	 *
 	 * @param int          $history_id History record ID.
-	 * @param string       $log_type Log type.
-	 * @param array|string $details Event details.
+	 * @param array|string $details Event details (include 'log_subtype' key for semantic label).
 	 * @param int|null     $history_type_id Optional history type ID.
 	 * @return int|false
 	 */
-	public function add_log_entry($history_id, $log_type, $details, $history_type_id = null);
+	public function add_log_entry($history_id, $details, $history_type_id = null);
 
 	/**
 	 * Create a history row.
