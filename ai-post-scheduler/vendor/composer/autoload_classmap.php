@@ -115,6 +115,7 @@ return array(
     'AIPS_Generation_Session' => $baseDir . '/includes/class-aips-generation-session.php',
     'AIPS_Generator' => $baseDir . '/includes/class-aips-generator.php',
     'AIPS_History' => $baseDir . '/includes/class-aips-history.php',
+    'AIPS_History_Ajax_Controller' => $baseDir . '/includes/class-aips-history-ajax-controller.php',
     'AIPS_History_Container' => $baseDir . '/includes/class-aips-history-container.php',
     'AIPS_History_Event' => $baseDir . '/includes/class-aips-history-event.php',
     'AIPS_History_Event_Recorder' => $baseDir . '/includes/class-aips-history-event-recorder.php',

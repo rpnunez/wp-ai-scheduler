@@ -96,7 +96,7 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 			'AIPS_Structures_Controller',
 			'AIPS_Prompt_Sections_Controller',
 			'AIPS_Research_Controller',
-			'AIPS_History',
+			'AIPS_History_Ajax_Controller',
 			'AIPS_Voices',
 			'AIPS_Post_Review',
 			'AIPS_Admin_Bar',
@@ -162,6 +162,29 @@ class Test_AIPS_Ajax_Registry_Response extends WP_UnitTestCase {
 			AIPS_Ajax_Registry::get_controller_for( 'aips_delete_draft_post' ),
 			'aips_delete_draft_post must map to AIPS_Post_Review in the registry'
 		);
+	}
+
+	/**
+	 * History AJAX actions must be owned by the extracted controller.
+	 */
+	public function test_history_actions_map_to_history_ajax_controller() {
+		$actions = array(
+			'aips_bulk_delete_history',
+			'aips_export_history',
+			'aips_get_history_details',
+			'aips_get_history_logs',
+			'aips_get_history_modal_html',
+			'aips_reload_history',
+			'aips_retry_generation',
+		);
+
+		foreach ( $actions as $action ) {
+			$this->assertSame(
+				'AIPS_History_Ajax_Controller',
+				AIPS_Ajax_Registry::get_controller_for( $action ),
+				$action . ' must map to the extracted History AJAX controller'
+			);
+		}
 	}
 
 	// -------------------------------------------------------------------------
