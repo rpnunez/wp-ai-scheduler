@@ -138,7 +138,6 @@ class AIPS_Config {
 			'aips_wp_ai_connector_mode' => 'all',
 			'aips_wp_ai_connector_ids' => array(),
 			'aips_wp_ai_connector_failover' => true,
-			'aips_prevent_scheduled_ai_generation' => false,
             'aips_max_tokens_limit' => 16000,
             'aips_max_tokens_title' => 150,
             'aips_max_tokens_excerpt' => 300,
@@ -147,16 +146,33 @@ class AIPS_Config {
             // Conversational generation (requires a provider with supports_conversation())
             'aips_conversational_generation' => false,
             'aips_conversational_metadata_turn' => false,
+            'aips_global_system_prompt' => '',
+            'aips_max_tokens_outline' => 800,
+            'aips_max_tokens_faq' => 600,
+            'aips_ai_fallback_provider' => '',
+            'aips_ai_fallback_model' => '',
             // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
-            // General
+            'aips_default_post_format' => 'standard',
+            'aips_default_comment_status' => 'open',
+            'aips_default_ping_status' => 'open',
+            'aips_auto_generate_meta_description' => true,
+            'aips_auto_generate_tags' => true,
+            'aips_max_tags_count' => 5,
+            // General & Integrations
             'aips_unsplash_access_key' => '',
+            'aips_webhook_url' => '',
+            'aips_webhook_secret' => '',
+            'aips_webhook_events' => array('generation_completed', 'generation_failed', 'post_ready_for_review'),
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
+            'aips_history_retention_days' => 90,
             'aips_topic_similarity_threshold' => 0.85,
+            'aips_max_topic_suggestions_batch' => 10,
+            'aips_topics_retention_days' => 60,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
@@ -176,7 +192,7 @@ class AIPS_Config {
             'aips_notif_daily_digest_last_sent' => '',
             'aips_notif_weekly_summary_last_sent' => '',
             'aips_notif_monthly_report_last_sent' => '',
-            // Resilience
+            // Resilience & Scheduler
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
@@ -186,6 +202,10 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            'aips_enable_schedule_jitter' => false,
+            'aips_schedule_jitter_minutes' => 15,
+            'aips_cron_batch_size' => 3,
+            'aips_generation_timeout_seconds' => 120,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',
@@ -219,7 +239,6 @@ class AIPS_Config {
             'aips_embeddings_model'                    => 'text-embedding-3-small',
             'aips_embeddings_env_id'                   => '',
             'aips_embeddings_dimensions'               => 1536,
-            'aips_indexer_verbose_history'             => false,
             'aips_indexer_post_types'                  => array('post'),
             'aips_indexer_similarity_threshold'        => 0.65,
             'aips_auto_index_on_publish'               => true,
@@ -423,16 +442,12 @@ class AIPS_Config {
      * Get AI model configuration.
      *
      * Returns all settings needed to configure an AI generation request,
-     * including the selected provider, model identifier, optional
-     * environment/project ID, whether scheduled AI generation is prevented,
+     * including the model identifier, optional environment/project ID,
      * token limit, and temperature.
      *
      * @return array AI model configuration with keys:
-     *               'provider'                      (string) AI provider identifier.
      *               'model'            (string) AI model identifier.
      *               'env_id'           (string) Optional AI Engine environment ID.
-     *               'prevent_scheduled_generation' (bool)  Whether schedule-driven AI
-     *                                              generation (cron and manual runs) is prevented.
      *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
      *               'temperature'      (float)  Sampling temperature (creativity).
      */
@@ -441,31 +456,10 @@ class AIPS_Config {
             'provider'         => (string) $this->get_option('aips_ai_provider'),
             'model'            => (string) $this->get_option('aips_ai_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
-            'prevent_scheduled_generation' => $this->is_scheduled_ai_generation_prevented(),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
             'temperature'      => (float) $this->get_option('aips_temperature'),
         );
     }
-
-	/**
-	 * Check whether schedule-driven AI generation is prevented.
-	 *
-	 * Applies to both cron-started runs and manual "Run Now" executions.
-	 *
-	 * @return bool True when schedule-driven AI generation is prevented, false otherwise.
-	 */
-	public function is_scheduled_ai_generation_prevented() {
-		return (bool) $this->get_option('aips_prevent_scheduled_ai_generation');
-	}
-
-	/**
-	 * Get the user-facing label for the AI generation prevention setting.
-	 *
-	 * @return string
-	 */
-	public function get_scheduled_ai_generation_prevention_label() {
-		return __('Prevent AI Generation (Scheduled & Manual)', 'ai-post-scheduler');
-	}
     
     /**
      * Get retry configuration.
