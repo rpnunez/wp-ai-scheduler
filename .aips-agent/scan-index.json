@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "repo": "rpnunez/wp-ai-scheduler",
-  "last_run_at": "2026-05-18T22:35:00Z",
-  "last_run_id": "aips-20260518T223500Z",
+  "last_run_at": "2026-09-06T00:00:00Z",
+  "last_run_id": "aips-20260906T000000Z",
   "ruleset_hash": "785615625ed43fd3e7129b93d844260fb5ddd36b",
   "files": {
     "ai-post-scheduler/includes/class-aips-author-post-generator.php": {
@@ -132,11 +132,11 @@
       "status": "ok"
     },
     "ai-post-scheduler/includes/class-aips-sources-cron.php": {
-      "fingerprint": "9b540cc857b63e2445121ddc8b95530ba4b31e6d",
-      "last_scanned_at": "2026-05-10T12:00:00Z",
-      "last_scan_run_id": "aips-20260510T120000Z",
-      "findings_open_count": 0,
-      "status": "ok"
+      "fingerprint": "cfb12b2a6417e608870971887dc395d59280c5dc",
+      "last_scanned_at": "2026-09-06T00:00:00Z",
+      "last_scan_run_id": "aips-20260906T000000Z",
+      "findings_open_count": 1,
+      "status": "findings"
     },
     "ai-post-scheduler/includes/class-aips-sources-fetcher.php": {
       "fingerprint": "328cbade5841af9adbf077b942037ef03c0f801d",
@@ -146,11 +146,11 @@
       "status": "ok"
     },
     "ai-post-scheduler/includes/class-aips-research-controller.php": {
-      "fingerprint": "506cc00f451396905d893d59b85b68461496c1b1",
-      "last_scanned_at": "2026-05-10T12:00:00Z",
-      "last_scan_run_id": "aips-20260510T120000Z",
-      "findings_open_count": 0,
-      "status": "ok"
+      "fingerprint": "5b220bd89b334bd54548366fcd1f711c36b2f852",
+      "last_scanned_at": "2026-09-06T00:00:00Z",
+      "last_scan_run_id": "aips-20260906T000000Z",
+      "findings_open_count": 1,
+      "status": "findings"
     },
     "ai-post-scheduler/includes/class-aips-notifications.php": {
       "fingerprint": "cf1e3dfdc18a11294f31c7f883e2a99f61b34a7c",
@@ -207,6 +207,34 @@
       "fingerprint": "4df5474472013a4fffb94482871dfac12bbdcf3e",
       "last_scanned_at": "2026-05-18T22:35:00Z",
       "last_scan_run_id": "aips-20260518T223500Z"
+    },
+    "ai-post-scheduler/includes/class-aips-admin-assets.php": {
+      "fingerprint": "9500f880bcb2ef168c54c265de00c39a628c7f0d",
+      "last_scanned_at": "2026-09-06T00:00:00Z",
+      "last_scan_run_id": "aips-20260906T000000Z",
+      "findings_open_count": 1,
+      "status": "findings"
+    },
+    "ai-post-scheduler/includes/class-aips-author-topics-controller.php": {
+      "fingerprint": "1c65f76f272bc1c5de794b79ca95f8f56e195be5",
+      "last_scanned_at": "2026-09-06T00:00:00Z",
+      "last_scan_run_id": "aips-20260906T000000Z",
+      "findings_open_count": 1,
+      "status": "findings"
+    },
+    "ai-post-scheduler/includes/class-aips-bulk-batch-job-store.php": {
+      "fingerprint": "5afec914f362724e135ac36a894f0c43a1d29d1c",
+      "last_scanned_at": "2026-09-06T00:00:00Z",
+      "last_scan_run_id": "aips-20260906T000000Z",
+      "findings_open_count": 0,
+      "status": "ok"
+    },
+    "ai-post-scheduler/includes/class-aips-telemetry-controller.php": {
+      "fingerprint": "bd6409f87dc996a074b48974b532ed2a49f2fc3d",
+      "last_scanned_at": "2026-09-06T00:00:00Z",
+      "last_scan_run_id": "aips-20260906T000000Z",
+      "findings_open_count": 0,
+      "status": "ok"
     }
   },
   "open_findings": {
@@ -258,29 +286,53 @@
       "first_seen_run_id": "aips-20260518T220000Z",
       "last_seen_run_id": "aips-20260518T220000Z"
     },
-    "756f9a8af6d398cd59f65ab42ea80f7f9bb5abec": {
-      "id": "756f9a8af6d398cd59f65ab42ea80f7f9bb5abec",
-      "type": "controller_container_bypass",
+    "026dfa160c80702e05c0eae0d466290d640113cd": {
+      "id": "026dfa160c80702e05c0eae0d466290d640113cd",
+      "type": "scheduler_dispatch_error_handling_gap",
       "severity": "medium",
-      "path": "ai-post-scheduler/includes/class-aips-system-status-controller.php",
-      "symbol": "AIPS_System_Status_Controller",
-      "anchor": "constructor-and-actions-container-and-datetime",
-      "status": "resolved",
-      "finding_file": ".aips-agent/findings/756f9a8af6d398cd59f65ab42ea80f7f9bb5abec.json",
-      "first_seen_run_id": "aips-20260518T220000Z",
-      "last_seen_run_id": "aips-20260518T220000Z"
+      "path": "ai-post-scheduler/includes/class-aips-sources-cron.php",
+      "symbol": "AIPS_Sources_Cron",
+      "anchor": "schedule:wp_schedule_event-return-unchecked",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/026dfa160c80702e05c0eae0d466290d640113cd.json",
+      "first_seen_run_id": "aips-20260509T202750Z",
+      "last_seen_run_id": "aips-20260906T000000Z"
     },
-    "a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc": {
-      "id": "a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc",
-      "type": "controller_container_bypass",
+    "3a869b73e2333af6f2e640029c374bd23ccea09c": {
+      "id": "3a869b73e2333af6f2e640029c374bd23ccea09c",
+      "type": "god_object",
       "severity": "medium",
-      "path": "ai-post-scheduler/includes/class-aips-schedule-controller.php",
-      "symbol": "AIPS_Schedule_Controller::__construct",
-      "anchor": "constructor-repeated-ternary-resolution",
-      "status": "resolved",
-      "finding_file": ".aips-agent/findings/a07f6e6dc4a89db9f2f9e53137b8942e8f4ac2fc.json",
-      "first_seen_run_id": "aips-20260518T223500Z",
-      "last_seen_run_id": "aips-20260518T223500Z"
+      "path": "ai-post-scheduler/includes/class-aips-admin-assets.php",
+      "symbol": "AIPS_Admin_Assets",
+      "anchor": "file_size:114kb",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/3a869b73e2333af6f2e640029c374bd23ccea09c.json",
+      "first_seen_run_id": "aips-20260509T202750Z",
+      "last_seen_run_id": "aips-20260906T000000Z"
+    },
+    "3d6aaddba33f8346e45d0d904488f969ac2d969b": {
+      "id": "3d6aaddba33f8346e45d0d904488f969ac2d969b",
+      "type": "controller_datetime_gap",
+      "severity": "medium",
+      "path": "ai-post-scheduler/includes/class-aips-research-controller.php",
+      "symbol": "AIPS_Research_Controller",
+      "anchor": "ajax_schedule_trending_topics:strtotime-start_date",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/3d6aaddba33f8346e45d0d904488f969ac2d969b.json",
+      "first_seen_run_id": "aips-20260509T202750Z",
+      "last_seen_run_id": "aips-20260906T000000Z"
+    },
+    "d938ad93630ed19f1653f3f48f37303ab15792ce": {
+      "id": "d938ad93630ed19f1653f3f48f37303ab15792ce",
+      "type": "scheduler_datetime_gap",
+      "severity": "low",
+      "path": "ai-post-scheduler/includes/class-aips-author-topics-controller.php",
+      "symbol": "AIPS_Author_Topics_Controller",
+      "anchor": "schedule_embeddings_job:time-base_timestamp",
+      "status": "open",
+      "finding_file": ".aips-agent/findings/d938ad93630ed19f1653f3f48f37303ab15792ce.json",
+      "first_seen_run_id": "aips-20260509T202750Z",
+      "last_seen_run_id": "aips-20260906T000000Z"
     }
   }
 }

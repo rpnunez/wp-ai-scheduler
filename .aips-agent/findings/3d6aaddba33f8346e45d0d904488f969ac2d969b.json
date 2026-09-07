@@ -1,18 +1,17 @@
-﻿{
-    "schema_version":  1,
-    "finding_id":  "3d6aaddba33f8346e45d0d904488f969ac2d969b",
-    "type":  "controller_datetime_gap",
-    "severity":  "medium",
-    "status":  "open",
-    "path":  "ai-post-scheduler/includes/class-aips-research-controller.php",
-    "symbol":  "AIPS_Research_Controller",
-    "anchor":  "ajax_schedule_trending_topics:strtotime-start_date",
-    "lines":  [
-                  334
-              ],
-    "rationale":  "Bulk trending-topic scheduling parses a submitted start date with strtotime() inside the controller.",
-    "remediation":  "Validate via AIPS_DateTime and move schedule timestamp calculation into a service/repository boundary.",
-    "first_seen_run_id":  "aips-20260509T202750Z",
-    "last_seen_run_id":  "aips-20260509T202750Z",
-    "updated_at":  "2026-05-09T20:27:50Z"
+{
+  "id": "3d6aaddba33f8346e45d0d904488f969ac2d969b",
+  "type": "controller_datetime_gap",
+  "severity": "medium",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-research-controller.php",
+  "symbol": "AIPS_Research_Controller",
+  "anchor": "ajax_schedule_trending_topics:strtotime-start_date",
+  "summary": "Bulk trending-topic scheduling parses the submitted start date with raw strtotime() inside the controller.",
+  "why_it_matters": "strtotime() resolves against the PHP process timezone rather than the site timezone, so the computed base timestamp can drift by hours, and the parse-failure case (false) is not handled.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-research-controller.php:334"
+  ],
+  "suggested_fix": "Validate the input with AIPS_DateTime::fromSiteLocal()/fromDate() and move the schedule timestamp calculation behind a service boundary.",
+  "first_seen_run_id": "aips-20260509T202750Z",
+  "last_seen_run_id": "aips-20260906T000000Z"
 }
