@@ -39,7 +39,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_SCHEDULE = 'aips-schedule';
 	private const PAGE_CAMPAIGNS = 'aips-campaigns';
 	private const PAGE_CAMPAIGN_WIZARD = 'aips-campaign-wizard';
-	private const PAGE_SCHEDULE_CALENDAR = 'aips-schedule-calendar';
+	private const PAGE_STUDIO = 'aips-studio';
 	private const PAGE_RESEARCH = 'aips-research';
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
 	private const PAGE_HISTORY = 'aips-history';
@@ -93,23 +93,18 @@ class AIPS_Admin_Assets {
 			$this->enqueue_authors_assets($hook);
 		}
 
-        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
+        if (
+            self::PAGE_STUDIO === $page
+            || $this->hook_contains($hook, self::PAGE_STUDIO)
+            || in_array($page, array(self::PAGE_TEMPLATES, self::PAGE_VOICES, self::PAGE_STRUCTURES, self::PAGE_POST_SLICES), true)
+        ) {
+			$this->enqueue_templates_assets();
+			$this->enqueue_voices_assets();
+			$this->enqueue_structures_assets();
 			$this->enqueue_post_slices_assets();
 		}
 
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates')) {
-			$this->enqueue_templates_assets();
-		}
-
-        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
-			$this->enqueue_voices_assets();
-		}
-
-        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
-			$this->enqueue_structures_assets();
-		}
-
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if (self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -132,10 +127,7 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
-		}
-
-        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
-			$this->enqueue_schedule_calendar_assets();
+			$this->enqueue_content_indexer_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -1296,26 +1288,6 @@ class AIPS_Admin_Assets {
                 'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
                 'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
             ));
-    }
-
-    /**
-     * Enqueue assets for the schedule-calendar page.
-     */
-    private function enqueue_schedule_calendar_assets() {
-            wp_enqueue_style(
-                'aips-calendar-style',
-                AIPS_PLUGIN_URL . 'assets/css/calendar.css',
-                array(),
-                AIPS_VERSION
-            );
-
-            wp_enqueue_script(
-                'aips-calendar-script',
-                AIPS_PLUGIN_URL . 'assets/js/calendar.js',
-                array('jquery', 'aips-admin-script'),
-                AIPS_VERSION,
-                true
-            );
     }
 
     /**

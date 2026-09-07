@@ -6,7 +6,6 @@
  *   $cases       (array) – Case definitions from AIPS_Stress_Test_Service::get_cases()
  *   $environment (array) – Provider/model snapshot
  *   $test_data   (array) – Counts of leftover posts/attachments
- *   $embedded    (bool)  – Whether rendered inside a Diagnostics tab
  *
  * @package AI_Post_Scheduler
  * @since 3.2.0
@@ -16,7 +15,6 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$is_embedded  = !empty($embedded);
 $creates_data = false;
 
 foreach ($cases as $case) {
@@ -26,24 +24,6 @@ foreach ($cases as $case) {
 	}
 }
 ?>
-<?php if (!$is_embedded) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-performance" style="font-size:30px;vertical-align:middle;margin-right:6px;"></span>
-						<?php esc_html_e('Stress Test', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Exercise the configured AI provider end to end. Each case shows what the provider returned alongside what the plugin produced from it.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<div class="aips-content-panel aips-stress-test" id="aips-stress-test">
 
@@ -334,8 +314,3 @@ foreach ($cases as $case) {
 			</script>
 
 		</div>
-
-<?php if (!$is_embedded) : ?>
-	</div>
-</div>
-<?php endif; ?>

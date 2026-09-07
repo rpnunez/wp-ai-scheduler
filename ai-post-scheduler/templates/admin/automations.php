@@ -1,21 +1,34 @@
 <?php
 /**
- * Automations Admin Template
+ * Automations Admin Template (Vertical Sidebar Rail Layout)
  *
  * @package AI_Post_Scheduler
+ * @since 3.7.0
  */
 
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+/** @var AIPS_Automations_Controller $automations_controller */
+/** @var string $active_tab */
+/** @var array<string, array{label:string, icon:string, description?:string, special?:bool}> $tabs */
+/** @var array<int, array<string, mixed>> $tab_actions */
 ?>
 <div class="wrap aips-wrap aips-automations-wrap">
 	<div class="aips-page-container">
+
+		<!-- Page Header -->
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
 				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Automations', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Manage schedules, campaigns, templates, authors, sources, internal links, and taxonomy from one place.', 'ai-post-scheduler'); ?></p>
+					<h1 class="aips-page-title">
+						<span class="dashicons dashicons-rest-api" style="font-size:28px;width:28px;height:28px;vertical-align:middle;margin-right:8px;color:#2271b1;"></span>
+						<?php esc_html_e('Automations', 'ai-post-scheduler'); ?>
+					</h1>
+					<p class="aips-page-description">
+						<?php esc_html_e('Orchestrate generation schedules, goal-based campaigns, authors, data sources, monetization, and SEO linking.', 'ai-post-scheduler'); ?>
+					</p>
 				</div>
 				<?php if (!empty($tab_actions)) : ?>
 					<div class="aips-page-actions">
@@ -53,22 +66,40 @@ if (!defined('ABSPATH')) {
 			</div>
 		</div>
 
-		<div class="aips-tab-nav">
-			<?php foreach ($tabs as $tab_key => $tab) : ?>
-				<?php
-				$tab_classes = 'aips-tab-link' . ($active_tab === $tab_key ? ' active' : '');
-				if (!empty($tab['special'])) {
-					$tab_classes .= ' aips-tab-link-special';
-				}
-				?>
-				<a href="<?php echo esc_url($automations_controller->get_tab_url($tab_key)); ?>" class="<?php echo esc_attr($tab_classes); ?>">
-					<?php echo esc_html($tab['label']); ?>
-				</a>
-			<?php endforeach; ?>
+		<!-- Vertical Sidebar Rail Layout -->
+		<div class="aips-rail-layout">
+			<nav class="aips-rail-sidebar" aria-label="<?php esc_attr_e('Automations Navigation', 'ai-post-scheduler'); ?>">
+				<ul class="aips-rail-nav">
+					<?php foreach ($tabs as $tab_key => $tab) : ?>
+						<?php
+						$is_active = ($active_tab === $tab_key);
+						$item_classes = 'aips-rail-item' . ($is_active ? ' active' : '');
+						if (!empty($tab['special'])) {
+							$item_classes .= ' aips-rail-item-special';
+						}
+						?>
+						<li>
+							<a href="<?php echo esc_url($automations_controller->get_tab_url($tab_key)); ?>" class="<?php echo esc_attr($item_classes); ?>">
+								<span class="dashicons <?php echo esc_attr($tab['icon']); ?> aips-rail-icon"></span>
+								<span class="aips-rail-text">
+									<span class="aips-rail-title"><?php echo esc_html($tab['label']); ?></span>
+									<?php if (!empty($tab['description'])) : ?>
+										<span class="aips-rail-desc"><?php echo esc_html($tab['description']); ?></span>
+									<?php endif; ?>
+								</span>
+								<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
+							</a>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			</nav>
+
+			<main class="aips-rail-main">
+				<div class="aips-automations-stage">
+					<?php $automations_controller->render_tab_content($active_tab); ?>
+				</div>
+			</main>
 		</div>
 
-		<div class="aips-automations-tab-content">
-			<?php $automations_controller->render_tab_content($active_tab); ?>
-		</div>
 	</div>
 </div>
