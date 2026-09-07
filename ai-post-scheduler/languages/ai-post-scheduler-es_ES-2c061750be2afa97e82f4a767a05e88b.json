@@ -1,0 +1,27 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-settings.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Saving…": [
+        "Guardando…"
+      ],
+      "No settings were found to save.": [
+        "No se encontraron ajustes para guardar."
+      ],
+      "Settings saved successfully.": [
+        "Ajustes guardados correctamente."
+      ],
+      "Failed to save settings.": [
+        "Error al guardar los ajustes."
+      ]
+    }
+  }
+}

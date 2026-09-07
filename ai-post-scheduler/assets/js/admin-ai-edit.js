@@ -9,6 +9,11 @@
 
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 	
 	// Ensure AIPS object exists
 	window.AIPS = window.AIPS || {};
@@ -79,13 +84,13 @@
 			$('.aips-ai-edit-content').hide();
 			
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: ((window.aipsAIEditConfig && aipsAIEditConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsAIEditL10n && aipsAIEditL10n.ajaxUrl)),
 				type: 'POST',
 				data: {
 					action: 'aips_get_post_components',
 					post_id: aiEditState.postId,
 					history_id: aiEditState.historyId,
-					nonce: aipsAIEditL10n.nonce
+					nonce: ((window.aipsAIEditConfig && aipsAIEditConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIEditL10n && aipsAIEditL10n.nonce))
 				},
 				success: window.AIPS.onAIEditComponentsLoaded,
 				error: window.AIPS.onAIEditLoadError
@@ -100,7 +105,7 @@
 				aiEditState.components = response.data.components;
 				window.AIPS.populateAIEditModal(response.data);
 			} else {
-				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.loadError, 'error');
+				window.AIPS.showAIEditNotice(response.data.message || __("Failed to load post components.", 'ai-post-scheduler'), 'error');
 				window.AIPS.closeAIEditModal();
 			}
 		},
@@ -109,7 +114,7 @@
 		 * Handle load error
 		 */
 		onAIEditLoadError: function() {
-			window.AIPS.showAIEditNotice(aipsAIEditL10n.loadError, 'error');
+			window.AIPS.showAIEditNotice(__("Failed to load post components.", 'ai-post-scheduler'), 'error');
 			window.AIPS.closeAIEditModal();
 		},
 		
@@ -167,7 +172,7 @@
 				post_id: aiEditState.postId,
 				history_id: aiEditState.historyId,
 				component: component,
-				nonce: aipsAIEditL10n.nonce
+				nonce: ((window.aipsAIEditConfig && aipsAIEditConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIEditL10n && aipsAIEditL10n.nonce))
 			};
 
 			if (window.AIPS.shouldCaptureManualRevision(component)) {
@@ -179,10 +184,10 @@
 			// Disable button and show loading state
 			$btn.prop('disabled', true)
 				.addClass('regenerating')
-				.find('.button-text').text(aipsAIEditL10n.regenerating);
+				.find('.button-text').text(__("Regenerating...", 'ai-post-scheduler'));
 			
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: ((window.aipsAIEditConfig && aipsAIEditConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsAIEditL10n && aipsAIEditL10n.ajaxUrl)),
 				type: 'POST',
 				data: requestData,
 				success: function(response) {
@@ -218,18 +223,18 @@
 			var $button = $(e.currentTarget);
 			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(['title', 'excerpt', 'content', 'featured_image']);
 
-			window.AIPS.Utilities.setButtonLoading($button, aipsAIEditL10n.regeneratingAll);
+			window.AIPS.Utilities.setButtonLoading($button, __("Regenerating all components...", 'ai-post-scheduler'));
 			$('.aips-regenerate-btn').prop('disabled', true);
 
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: ((window.aipsAIEditConfig && aipsAIEditConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsAIEditL10n && aipsAIEditL10n.ajaxUrl)),
 				type: 'POST',
 				data: {
 					action: 'aips_regenerate_all_components',
 					post_id: aiEditState.postId,
 					history_id: aiEditState.historyId,
 					manual_snapshots: manualSnapshots,
-					nonce: aipsAIEditL10n.nonce
+					nonce: ((window.aipsAIEditConfig && aipsAIEditConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIEditL10n && aipsAIEditL10n.nonce))
 				},
 				success: function(response) {
 					window.AIPS.onRegenerateAllSuccess($button, response);
@@ -248,7 +253,7 @@
 			$('.aips-regenerate-btn').prop('disabled', false);
 
 			if (!response.success) {
-				window.AIPS.showAIEditNotice(response.data && response.data.message ? response.data.message : aipsAIEditL10n.regenerateAllError, 'error');
+				window.AIPS.showAIEditNotice(response.data && response.data.message ? response.data.message : __("Failed to regenerate all components.", 'ai-post-scheduler'), 'error');
 				return;
 			}
 
@@ -261,7 +266,7 @@
 				window.AIPS.updateAIEditComponentValue(component, regenerated[component], 'ai_generated');
 				aiEditState.changedComponents.add(component);
 				$('.aips-component-section[data-component="' + component + '"]').addClass('changed');
-				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				window.AIPS.showComponentStatus(component, 'success', __("Component regenerated successfully!", 'ai-post-scheduler'));
 				window.AIPS.refreshComponentRevisions(component);
 				regeneratedCount += 1;
 			});
@@ -275,11 +280,11 @@
 			});
 
 			if (regeneratedCount > 0) {
-				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllSuccess, 'success');
+				window.AIPS.showAIEditNotice(response.data.message || __("Components regenerated successfully.", 'ai-post-scheduler'), 'success');
 				return;
 			}
 
-			window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllError, 'error');
+			window.AIPS.showAIEditNotice(response.data.message || __("Failed to regenerate all components.", 'ai-post-scheduler'), 'error');
 		},
 
 		/**
@@ -288,7 +293,7 @@
 		onRegenerateAllError: function($button) {
 			window.AIPS.Utilities.resetButton($button);
 			$('.aips-regenerate-btn').prop('disabled', false);
-			window.AIPS.showAIEditNotice(aipsAIEditL10n.regenerateAllError, 'error');
+			window.AIPS.showAIEditNotice(__("Failed to regenerate all components.", 'ai-post-scheduler'), 'error');
 		},
 		
 		/**
@@ -298,7 +303,7 @@
 			// Re-enable button
 			$btn.prop('disabled', false)
 				.removeClass('regenerating')
-				.find('.button-text').text(aipsAIEditL10n.regenerate);
+				.find('.button-text').text(__("Re-generate", 'ai-post-scheduler'));
 			
 			if (response.success) {
 				// Update component value
@@ -309,12 +314,12 @@
 				$('[data-component="' + component + '"]').closest('.aips-component-section').addClass('changed');
 				
 				// Show success message
-				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				window.AIPS.showComponentStatus(component, 'success', __("Component regenerated successfully!", 'ai-post-scheduler'));
 
 				// Ensure revision list reflects the new regeneration snapshot if panel is open.
 				window.AIPS.refreshComponentRevisions(component);
 			} else {
-				window.AIPS.showComponentStatus(component, 'error', response.data.message || aipsAIEditL10n.regenerateError);
+				window.AIPS.showComponentStatus(component, 'error', response.data.message || __("Failed to regenerate component.", 'ai-post-scheduler'));
 			}
 		},
 
@@ -397,9 +402,9 @@
 			// Re-enable button
 			$btn.prop('disabled', false)
 				.removeClass('regenerating')
-				.find('.button-text').text(aipsAIEditL10n.regenerate);
+				.find('.button-text').text(__("Re-generate", 'ai-post-scheduler'));
 			
-			window.AIPS.showComponentStatus(component, 'error', aipsAIEditL10n.regenerateError);
+			window.AIPS.showComponentStatus(component, 'error', __("Failed to regenerate component.", 'ai-post-scheduler'));
 		},
 		
 		/**
@@ -507,7 +512,7 @@
 			e.preventDefault();
 			
 			if (aiEditState.changedComponents.size === 0) {
-				window.AIPS.showAIEditNotice(aipsAIEditL10n.noChanges, 'info');
+				window.AIPS.showAIEditNotice(__("No changes to save.", 'ai-post-scheduler'), 'info');
 				return;
 			}
 			
@@ -533,16 +538,16 @@
 			});
 			
 			// Disable save button
-			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), aipsAIEditL10n.saving);
+			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), __("Saving...", 'ai-post-scheduler'));
 			
 			$.ajax({
-				url: aipsAIEditL10n.ajaxUrl,
+				url: ((window.aipsAIEditConfig && aipsAIEditConfig.ajaxUrl) || (window.aipsAjax && aipsAjax.ajaxUrl) || (window.aipsAIEditL10n && aipsAIEditL10n.ajaxUrl)),
 				type: 'POST',
 				data: {
 					action: 'aips_save_post_components',
 					post_id: aiEditState.postId,
 					components: components,
-					nonce: aipsAIEditL10n.nonce
+					nonce: ((window.aipsAIEditConfig && aipsAIEditConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIEditL10n && aipsAIEditL10n.nonce))
 				},
 				success: window.AIPS.onAIEditSaveSuccess,
 				error: window.AIPS.onAIEditSaveError
@@ -566,7 +571,7 @@
 					location.reload();
 				}, 1000);
 			} else {
-				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.saveError, 'error');
+				window.AIPS.showAIEditNotice(response.data.message || __("Failed to update post.", 'ai-post-scheduler'), 'error');
 			}
 		},
 		
@@ -575,7 +580,7 @@
 		 */
 		onAIEditSaveError: function() {
 			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
-			window.AIPS.showAIEditNotice(aipsAIEditL10n.saveError, 'error');
+			window.AIPS.showAIEditNotice(__("Failed to update post.", 'ai-post-scheduler'), 'error');
 		},
 		
 		/**
@@ -597,7 +602,7 @@
 			}
 			
 			if (!options.skipConfirm && aiEditState.changedComponents.size > 0) {
-				AIPS.Utilities.confirm(aipsAIEditL10n.confirmClose, 'Notice', [
+				AIPS.Utilities.confirm(__("You have unsaved changes. Are you sure you want to close?", 'ai-post-scheduler'), 'Notice', [
 					{ label: 'No, keep editing', className: 'aips-btn aips-btn-primary' },
 					{ label: 'Yes, discard changes', className: 'aips-btn aips-btn-danger-solid', action: function() {
 						$('#aips-ai-edit-modal').hide();
@@ -728,7 +733,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_component_revisions',
-					nonce: aipsAIEditL10n.nonce,
+					nonce: ((window.aipsAIEditConfig && aipsAIEditConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIEditL10n && aipsAIEditL10n.nonce)),
 					post_id: aiEditState.postId,
 					component: componentType,
 					history_id: aiEditState.historyId
@@ -845,7 +850,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_restore_component_revision',
-					nonce: aipsAIEditL10n.nonce,
+					nonce: ((window.aipsAIEditConfig && aipsAIEditConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsAIEditL10n && aipsAIEditL10n.nonce)),
 					post_id: aiEditState.postId,
 					revision_id: revisionId,
 					component: componentType,
@@ -888,12 +893,12 @@
 
 			switch (source) {
 				case 'manual_edit':
-					return aipsAIEditL10n.revisionManualEdit;
+					return __("Manual Edit", 'ai-post-scheduler');
 				case 'restored_revision':
-					return aipsAIEditL10n.revisionRestored;
+					return __("Restored Version", 'ai-post-scheduler');
 				case 'ai_generated':
 				default:
-					return aipsAIEditL10n.revisionAiGenerated || aipsAIEditL10n.revisionUnknown;
+					return __("AI Generated", 'ai-post-scheduler') || __("Revision", 'ai-post-scheduler');
 			}
 		},
 		

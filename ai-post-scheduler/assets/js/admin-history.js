@@ -14,6 +14,11 @@
 
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 
@@ -348,16 +353,15 @@
 			var historyId = parseInt($button.data('history-id') || 0, 10);
 			var ajaxConfig = this.getStandaloneAjaxConfig();
 			var $modal = $('#aips-history-modal');
-			var l10n = this.getModalL10n();
 			var self = this;
 
 			if (!historyId) {
-				AIPS.Utilities.showToast(l10n.invalidHistoryId || 'Invalid history ID.', 'error');
+				AIPS.Utilities.showToast(__('Invalid history ID.', 'ai-post-scheduler'), 'error');
 				return;
 			}
 
 			if (!ajaxConfig) {
-				AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+				AIPS.Utilities.showToast(__('Error loading history modal.', 'ai-post-scheduler'), 'error');
 				return;
 			}
 
@@ -379,7 +383,7 @@
 					if (!response || !response.success || !response.data) {
 						var message = response && response.data && response.data.message
 							? response.data.message
-							: (l10n.loadingFailed || 'Failed to load history modal.');
+							: __('Failed to load history modal.', 'ai-post-scheduler');
 						AIPS.Utilities.showToast(message, 'error');
 						$modal.fadeOut(200);
 						return;
@@ -389,14 +393,14 @@
 						titleSelector: '#aips-history-modal-title',
 						actionsSelector: '#aips-history-modal-actions',
 						statusSelector: '#aips-history-modal-status',
-						defaultTitle: l10n.historyDetailsTitle || 'History Details'
+						defaultTitle: __('History Details', 'ai-post-scheduler')
 					});
 					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
 					self.bindStandaloneModalEvents($modal);
 					$modal.fadeIn(200);
 				},
 				error: function () {
-					AIPS.Utilities.showToast(l10n.loadingError || 'Error loading history modal.', 'error');
+					AIPS.Utilities.showToast(__('Error loading history modal.', 'ai-post-scheduler'), 'error');
 					$modal.fadeOut(200);
 				}
 			});
@@ -408,16 +412,15 @@
 		 * @param {jQuery} $modal Modal element.
 		 */
 		showStandaloneModalLoading: function ($modal) {
-			var l10n = this.getModalL10n();
 			var loadingHtml = '<div style="text-align: center; padding: 20px;"><span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> '
-				+ (l10n.loading || 'Loading…')
+				+ __('Loading…', 'ai-post-scheduler')
 				+ '</div>';
 
 			this.resetModalHeader($modal, {
 				titleSelector: '#aips-history-modal-title',
 				actionsSelector: '#aips-history-modal-actions',
 				statusSelector: '#aips-history-modal-status',
-				defaultTitle: l10n.historyDetailsTitle || 'History Details'
+				defaultTitle: __('History Details', 'ai-post-scheduler')
 			});
 			$modal.find('#aips-history-modal-content').html(loadingHtml);
 			$modal.fadeIn(200);
@@ -430,7 +433,6 @@
 		 */
 		bindStandaloneModalEvents: function ($modal) {
 			var self = this;
-			var l10n = this.getModalL10n();
 
 			$modal.find('.aips-modal-close').off('click').on('click', function (e) {
 				e.preventDefault();
@@ -451,8 +453,8 @@
 			$modal.find('.aips-log-toggle').off('click').on('click', function (e) {
 				e.preventDefault();
 				self.toggleLogDetail($modal, $(this), {
-					show: l10n.showDetails || 'Show details',
-					hide: l10n.hideDetails || 'Hide details'
+					show: __('Show details', 'ai-post-scheduler'),
+					hide: __('Hide details', 'ai-post-scheduler')
 				});
 			});
 
@@ -463,8 +465,8 @@
 			$modal.find('[data-copy-target]').off('click').on('click', function (e) {
 				e.preventDefault();
 				self.copyLogDetail($modal, $(this), {
-					copy: l10n.copyDetails || 'Copy',
-					copied: l10n.copiedDetails || 'Copied!'
+					copy: __('Copy', 'ai-post-scheduler'),
+					copied: __('Copied!', 'ai-post-scheduler')
 				}, {
 					disable: true,
 					duration: 1500
@@ -784,10 +786,10 @@
 				titleSelector: '#aips-history-logs-modal-title',
 				actionsSelector: '#aips-history-logs-modal-actions',
 				statusSelector: '#aips-history-logs-modal-status',
-				defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+				defaultTitle: __("History Details", 'ai-post-scheduler') || 'History Details'
 			});
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
-				text: aipsHistoryL10n.loadingLogs || 'Loading logs\u2026'
+				text: __("Loading logs…", 'ai-post-scheduler') || 'Loading logs\u2026'
 			}));
 			$modal.fadeIn(200);
 
@@ -804,7 +806,7 @@
 						$content.html(T.render('aips-tmpl-history-error-msg', {
 							message: response.data && response.data.message
 								? response.data.message
-								: (aipsHistoryL10n.errorLoading || 'Error loading logs.')
+								: (__("Error loading logs.", 'ai-post-scheduler') || 'Error loading logs.')
 						}));
 						return;
 					}
@@ -816,14 +818,14 @@
 						titleSelector: '#aips-history-logs-modal-title',
 						actionsSelector: '#aips-history-logs-modal-actions',
 						statusSelector: '#aips-history-logs-modal-status',
-						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
+						defaultTitle: __("History Details", 'ai-post-scheduler') || 'History Details'
 					});
 					$content.html(modalHtml);
 					$content.find('.aips-history-detail-tab').first().focus();
 				},
 				error: function () {
 					$content.html(T.render('aips-tmpl-history-error-msg', {
-						message: aipsHistoryL10n.errorLoading || 'Error loading logs.'
+						message: __("Error loading logs.", 'ai-post-scheduler') || 'Error loading logs.'
 					}));
 				}
 			});
@@ -859,7 +861,7 @@
 			var text = $(e.currentTarget).data('diagnostic') || '';
 			if (navigator.clipboard && navigator.clipboard.writeText) {
 				navigator.clipboard.writeText(text).then(function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.copiedDetails || 'Copied!', 'success');
+					AIPS.Utilities.showToast(__("Copied!", 'ai-post-scheduler') || 'Copied!', 'success');
 				});
 			}
 		},
@@ -876,8 +878,8 @@
 				$scope = $(document);
 			}
 			AIPS.HistoryModalShared.toggleLogDetail($scope, $(e.currentTarget), {
-				show: aipsHistoryL10n.showDetails || 'Show details',
-				hide: aipsHistoryL10n.hideDetails || 'Hide details'
+				show: __("Show details", 'ai-post-scheduler') || 'Show details',
+				hide: __("Hide details", 'ai-post-scheduler') || 'Hide details'
 			});
 		},
 
@@ -1099,8 +1101,8 @@
 				$scope = $(document);
 			}
 			AIPS.HistoryModalShared.copyLogDetail($scope, $(e.currentTarget), {
-				copy: aipsHistoryL10n.copyDetails || 'Copy',
-				copied: aipsHistoryL10n.copiedDetails || 'Copied!'
+				copy: __("Copy", 'ai-post-scheduler') || 'Copy',
+				copied: __("Copied!", 'ai-post-scheduler') || 'Copied!'
 			}, {
 				disable: false,
 				duration: 2000
@@ -1292,13 +1294,13 @@
 			var self     = this;
 			var $btn     = $(e.currentTarget);
 			var origHtml = $btn.html();
-			var msg      = aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.';
+			var msg      = __("Delete the selected history containers? This cannot be undone.", 'ai-post-scheduler') || 'Delete the selected history containers? This cannot be undone.';
 
 			AIPS.Utilities.confirm(msg, 'Notice', [
-				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
-				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: __("No, cancel", 'ai-post-scheduler') || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: __("Yes, delete", 'ai-post-scheduler') || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					$btn.prop('disabled', true).html(
-						'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026')
+						'<span class="dashicons dashicons-update"></span> ' + (__("Deleting…", 'ai-post-scheduler') || 'Deleting\u2026')
 					);
 
 					$.ajax({
@@ -1311,20 +1313,20 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+								AIPS.Utilities.showToast(__("Items deleted successfully.", 'ai-post-scheduler') || 'Items deleted successfully.', 'success');
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
 									response.data && response.data.message
 										? response.data.message
-										: (aipsHistoryL10n.errorDeleting || 'Error deleting items.'),
+										: (__("Error deleting items.", 'ai-post-scheduler') || 'Error deleting items.'),
 									'error'
 								);
 								$btn.prop('disabled', false).html(origHtml);
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
+							AIPS.Utilities.showToast(__("Error deleting items.", 'ai-post-scheduler') || 'Error deleting items.', 'error');
 							$btn.prop('disabled', false).html(origHtml);
 						}
 					});
@@ -1347,11 +1349,11 @@
 			}
 
 			var self = this;
-			var msg  = aipsHistoryL10n.confirmDelete || 'Delete this history container? This cannot be undone.';
+			var msg  = __("Delete this history container? This cannot be undone.", 'ai-post-scheduler') || 'Delete this history container? This cannot be undone.';
 
 			AIPS.Utilities.confirm(msg, 'Notice', [
-				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
-				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: __("No, cancel", 'ai-post-scheduler') || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: __("Yes, delete", 'ai-post-scheduler') || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					$.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
@@ -1362,19 +1364,19 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
+								AIPS.Utilities.showToast(__("Items deleted successfully.", 'ai-post-scheduler') || 'Item deleted.', 'success');
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
 									response.data && response.data.message
 										? response.data.message
-										: (aipsHistoryL10n.errorDeleting || 'Error deleting item.'),
+										: (__("Error deleting items.", 'ai-post-scheduler') || 'Error deleting item.'),
 									'error'
 								);
 							}
 						},
 						error: function () {
-							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
+							AIPS.Utilities.showToast(__("Error deleting items.", 'ai-post-scheduler') || 'Error deleting item.', 'error');
 						}
 					});
 				}}
@@ -1402,7 +1404,7 @@
 			var origHtml = $btn.html();
 
 			$btn.prop('disabled', true).html(
-				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026')
+				'<span class="dashicons dashicons-update"></span> ' + (__("Retrying…", 'ai-post-scheduler') || 'Retrying\u2026')
 			);
 
 			$.ajax({
@@ -1423,7 +1425,7 @@
 					}
 				},
 				error: function () {
-					AIPS.Utilities.showToast(aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.', 'error');
+					AIPS.Utilities.showToast(__("An error occurred. Please try again.", 'ai-post-scheduler') || 'An error occurred. Please try again.', 'error');
 					$btn.prop('disabled', false).html(origHtml);
 				}
 			});
@@ -1466,13 +1468,13 @@
 			// Show a loading placeholder in the table body.
 			if ($tbody.length) {
 				$tbody.html(AIPS.Templates.render('aips-tmpl-history-tbody-loading', {
-					text: aipsHistoryL10n.loading || 'Loading\u2026'
+					text: __("Loading…", 'ai-post-scheduler') || 'Loading\u2026'
 				}));
 			}
 			if (!options.fromHeartbeat) {
 				$reloadBtn.prop('disabled', true).html(
 					'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
-					+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
+					+ (__("Reloading…", 'ai-post-scheduler') || 'Reloading\u2026')
 				);
 			}
 
@@ -1499,7 +1501,7 @@
 							AIPS.Utilities.showToast(
 								response.data && response.data.message
 									? response.data.message
-									: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
+									: (__("Failed to reload history.", 'ai-post-scheduler') || 'Failed to reload history.'),
 								'error'
 							);
 						}
@@ -1515,7 +1517,7 @@
 						} else {
 							// No results: render a friendly inline empty state.
 							$tbody.html(AIPS.Templates.render('aips-tmpl-history-tbody-empty', {
-								message: aipsHistoryL10n.noResultsFound || 'No history containers match your current filters.'
+								message: __("No history containers match your current filters.", 'ai-post-scheduler') || 'No history containers match your current filters.'
 							}));
 						}
 					}
@@ -1551,7 +1553,7 @@
 				},
 				error: function () {
 					if (!options.fromHeartbeat) {
-						AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+						AIPS.Utilities.showToast(__("Failed to reload history.", 'ai-post-scheduler') || 'Failed to reload history.', 'error');
 					}
 				},
 				complete: function () {

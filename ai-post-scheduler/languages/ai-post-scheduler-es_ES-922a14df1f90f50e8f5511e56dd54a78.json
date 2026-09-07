@@ -1,0 +1,63 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-ai-edit.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Failed to load post components.": [
+        "Error al cargar los componentes de la entrada."
+      ],
+      "Regenerating...": [
+        "Regenerando..."
+      ],
+      "Regenerating all components...": [
+        "Regenerando todos los componentes..."
+      ],
+      "Failed to regenerate all components.": [
+        "Error al regenerar todos los componentes."
+      ],
+      "Component regenerated successfully!": [
+        "¡Componente regenerado correctamente!"
+      ],
+      "Components regenerated successfully.": [
+        "Componentes regenerados correctamente."
+      ],
+      "Re-generate": [
+        "Regenerar"
+      ],
+      "Failed to regenerate component.": [
+        "Error al regenerar el componente."
+      ],
+      "No changes to save.": [
+        "No hay cambios que guardar."
+      ],
+      "Saving...": [
+        "Guardando..."
+      ],
+      "Failed to update post.": [
+        "Error al actualizar la entrada."
+      ],
+      "You have unsaved changes. Are you sure you want to close?": [
+        "Tiene cambios sin guardar. ¿Está seguro de que desea cerrar?"
+      ],
+      "Manual Edit": [
+        "Edición Manual"
+      ],
+      "Restored Version": [
+        "Versión Restaurada"
+      ],
+      "AI Generated": [
+        "Generado por IA"
+      ],
+      "Revision": [
+        "Revisión"
+      ]
+    }
+  }
+}

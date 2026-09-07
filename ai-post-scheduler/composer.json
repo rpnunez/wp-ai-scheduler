@@ -41,7 +41,8 @@
       "@test:setup",
       "php vendor/bin/phpunit --configuration phpunit.xml --verbose"
     ],
-    "lint:repository-boundary": "php tools/check-repository-boundary.php"
+    "lint:repository-boundary": "php tools/check-repository-boundary.php",
+    "i18n:build": "node tools/generate-i18n.js"
   },
   "config": {
     "allow-plugins": {

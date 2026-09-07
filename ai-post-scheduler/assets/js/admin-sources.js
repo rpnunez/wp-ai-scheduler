@@ -12,6 +12,11 @@
  */
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -95,7 +100,7 @@
 			e.preventDefault();
 			this.currentSourceId = 0;
 			this.resetForm();
-			$('#aips-source-modal').find('.aips-modal-title').text(aipsSourcesL10n.addNewSource);
+			$('#aips-source-modal').find('.aips-modal-title').text(__("Add New Source", 'ai-post-scheduler'));
 			$('#aips-source-modal').show();
 		},
 
@@ -132,7 +137,7 @@
 				$('.aips-source-group-checkbox[value="' + tid + '"]').prop('checked', true);
 			});
 
-			$('#aips-source-modal').find('.aips-modal-title').text(aipsSourcesL10n.editSource);
+			$('#aips-source-modal').find('.aips-modal-title').text(__("Edit Source", 'ai-post-scheduler'));
 			$('#aips-source-modal').show();
 		},
 
@@ -189,7 +194,7 @@
 
 			var url = $('#aips-source-url').val().trim();
 			if (!url) {
-				AIPS.Utilities.showToast(aipsSourcesL10n.urlRequired, 'error');
+				AIPS.Utilities.showToast(__("A URL is required.", 'ai-post-scheduler'), 'error');
 				return;
 			}
 
@@ -214,14 +219,14 @@
 				data.is_active = 1;
 			}
 
-			$('#aips-save-source-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
+			$('#aips-save-source-btn').prop('disabled', true).text(__("Saving…", 'ai-post-scheduler'));
 
 			var self = this;
 			$.post(aipsAjax.ajaxUrl, data, function (response) {
-				$('#aips-save-source-btn').prop('disabled', false).text(aipsSourcesL10n.saveSource);
+				$('#aips-save-source-btn').prop('disabled', false).text(__("Save Source", 'ai-post-scheduler'));
 
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to save source.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
@@ -229,8 +234,8 @@
 				$('#aips-source-modal').hide();
 				self.refreshPage();
 			}).fail(function () {
-				$('#aips-save-source-btn').prop('disabled', false).text(aipsSourcesL10n.saveSource);
-				AIPS.Utilities.showToast(aipsSourcesL10n.saveFailed, 'error');
+				$('#aips-save-source-btn').prop('disabled', false).text(__("Save Source", 'ai-post-scheduler'));
+				AIPS.Utilities.showToast(__("Failed to save source.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -248,7 +253,7 @@
 			e.preventDefault();
 			var id = parseInt($(e.currentTarget).data('id'), 10);
 
-			if (!confirm(aipsSourcesL10n.deleteConfirm)) {
+			if (!confirm(__("Are you sure you want to delete this source?", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -259,14 +264,14 @@
 				source_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.deleteFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to delete source.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsSourcesL10n.deleteFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to delete source.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -295,14 +300,14 @@
 				is_active: newStatus,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.toggleFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to update source status.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsSourcesL10n.toggleFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to update source status.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -326,25 +331,25 @@
 			var self = this;
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_get_source_data',
-				nonce:   aipsSourcesL10n.sourceDataNonces.get,
+				nonce:   ((window.aipsSourcesConfig && aipsSourcesConfig.sourceDataNonces) || (window.aipsSourcesL10n && aipsSourcesL10n.sourceDataNonces) || {}).get,
 				data_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.viewDataFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to load source data.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
 				var row = response.data.source_data || {};
 				var $modal = $('#aips-source-data-modal');
 				if (!$modal.length) {
-					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+					AIPS.Utilities.showToast(__("Failed to load source data.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
 				var formFields = ['aips-source-data-id', 'aips-source-data-display-id', 'aips-source-data-source-id', 'aips-source-data-url', 'aips-source-data-page-title', 'aips-source-data-meta-description', 'aips-source-data-extracted-text', 'aips-source-data-raw-html', 'aips-source-data-fetch-status', 'aips-source-data-http-status', 'aips-source-data-error-message', 'aips-source-data-fetched-at', 'aips-source-data-char-count', 'aips-source-data-content-hash', 'aips-source-data-num-used', 'aips-source-data-created-at', 'aips-source-data-updated-at'];
 				var missingFields = formFields.filter(function(field) { return !$('#' + field).length; });
 				if (missingFields.length > 0) {
-					AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+					AIPS.Utilities.showToast(__("Failed to load source data.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 
@@ -368,7 +373,7 @@
 				self.renderSourceDataUsage(response.data.usage || []);
 				$modal.show();
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsSourcesL10n.viewDataFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to load source data.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -402,7 +407,7 @@
 			e.preventDefault();
 			var data = {
 				action:           'aips_save_source_data',
-				nonce:            aipsSourcesL10n.sourceDataNonces.save,
+				nonce:            ((window.aipsSourcesConfig && aipsSourcesConfig.sourceDataNonces) || (window.aipsSourcesL10n && aipsSourcesL10n.sourceDataNonces) || {}).save,
 				data_id:          $('#aips-source-data-id').val(),
 				url:              $('#aips-source-data-url').val(),
 				page_title:       $('#aips-source-data-page-title').val(),
@@ -415,20 +420,20 @@
 				fetched_at:       $('#aips-source-data-fetched-at').val(),
 			};
 
-			$('#aips-save-source-data-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
+			$('#aips-save-source-data-btn').prop('disabled', true).text(__("Saving…", 'ai-post-scheduler'));
 			var self = this;
 			$.post(aipsAjax.ajaxUrl, data, function (response) {
-				$('#aips-save-source-data-btn').prop('disabled', false).text(aipsSourcesL10n.saveData);
+				$('#aips-save-source-data-btn').prop('disabled', false).text(__("Save Source Data", 'ai-post-scheduler'));
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveDataFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to save source data.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.closeSourceDataModal($.Event('click'));
 				window.location.reload();
 			}).fail(function () {
-				$('#aips-save-source-data-btn').prop('disabled', false).text(aipsSourcesL10n.saveData);
-				AIPS.Utilities.showToast(aipsSourcesL10n.saveDataFailed, 'error');
+				$('#aips-save-source-data-btn').prop('disabled', false).text(__("Save Source Data", 'ai-post-scheduler'));
+				AIPS.Utilities.showToast(__("Failed to save source data.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -442,7 +447,7 @@
 			e.preventDefault();
 			var id = parseInt($(e.currentTarget).data('id'), 10);
 			var self = this;
-			AIPS.Utilities.confirm(aipsSourcesL10n.deleteDataConfirm, '', {
+			AIPS.Utilities.confirm(__("Are you sure you want to delete this source data record?", 'ai-post-scheduler'), '', {
 				confirm: { text: aipsSourcesL10n.delete || 'Delete', className: 'button-primary' },
 				cancel: { text: aipsSourcesL10n.cancel || 'Cancel', className: 'button' }
 			}, function(confirmed) {
@@ -462,17 +467,17 @@
 		performDeleteSourceData: function (id) {
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_delete_source_data',
-				nonce:   aipsSourcesL10n.sourceDataNonces.delete,
+				nonce:   ((window.aipsSourcesConfig && aipsSourcesConfig.sourceDataNonces) || (window.aipsSourcesL10n && aipsSourcesL10n.sourceDataNonces) || {}).delete,
 				data_id: id,
 			}, function (response) {
 				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.deleteDataFailed, 'error');
+					AIPS.Utilities.showToast(response.data.message || __("Failed to delete source data.", 'ai-post-scheduler'), 'error');
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				window.location.reload();
 			}).fail(function () {
-				AIPS.Utilities.showToast(aipsSourcesL10n.deleteDataFailed, 'error');
+				AIPS.Utilities.showToast(__("Failed to delete source data.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -548,7 +553,7 @@
 			e.preventDefault();
 			var name = $('#aips-new-group-name').val().trim();
 			if (!name) {
-				AIPS.Utilities.showToast(aipsSourcesL10n.groupNameRequired || 'Please enter a group name.', 'error');
+				AIPS.Utilities.showToast(__("Please enter a group name.", 'ai-post-scheduler') || 'Please enter a group name.', 'error');
 				return;
 			}
 
@@ -584,7 +589,7 @@
 			e.preventDefault();
 			var termId = parseInt($(e.currentTarget).data('term-id'), 10);
 
-			if (!confirm(aipsSourcesL10n.deleteGroupConfirm || 'Delete this Source Group? Sources in this group will not be deleted.')) {
+			if (!confirm(__("Delete this Source Group? Sources in this group will not be deleted.", 'ai-post-scheduler') || 'Delete this Source Group? Sources in this group will not be deleted.')) {
 				return;
 			}
 

@@ -59,16 +59,16 @@ class AIPS_Admin_Bar {
 		wp_enqueue_script(
 			'aips-admin-bar',
 			AIPS_PLUGIN_URL . 'assets/js/admin-bar.js',
-			array('jquery'),
+			array('jquery', 'wp-i18n'),
 			AIPS_VERSION,
 			true
 		);
 
-		wp_localize_script('aips-admin-bar', 'aipsAdminBarL10n', array(
-			'ajaxUrl'         => admin_url('admin-ajax.php'),
-			'nonce'           => wp_create_nonce('aips_admin_bar_nonce'),
-			'markReadError'   => __('Could not mark notification as read.', 'ai-post-scheduler'),
-			'markAllReadError' => __('Could not mark all notifications as read.', 'ai-post-scheduler'),
+		wp_set_script_translations('aips-admin-bar', 'ai-post-scheduler', AIPS_PLUGIN_DIR . 'languages');
+
+		wp_localize_script('aips-admin-bar', 'aipsAdminBarConfig', array(
+			'ajaxUrl' => admin_url('admin-ajax.php'),
+			'nonce'   => wp_create_nonce('aips_admin_bar_nonce'),
 		));
 	}
 

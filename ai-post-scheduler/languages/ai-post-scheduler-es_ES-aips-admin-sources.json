@@ -1,0 +1,63 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-sources.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Add New Source": [
+        "Añadir Nueva Fuente"
+      ],
+      "Edit Source": [
+        "Editar Fuente"
+      ],
+      "A URL is required.": [
+        "Se requiere una URL."
+      ],
+      "Saving…": [
+        "Guardando…"
+      ],
+      "Save Source": [
+        "Guardar Fuente"
+      ],
+      "Failed to save source.": [
+        "Error al guardar la fuente."
+      ],
+      "Are you sure you want to delete this source?": [
+        "¿Está seguro de que desea eliminar esta fuente?"
+      ],
+      "Failed to delete source.": [
+        "Error al eliminar la fuente."
+      ],
+      "Failed to update source status.": [
+        "Error al actualizar el estado de la fuente."
+      ],
+      "Failed to load source data.": [
+        "Error al cargar los datos de la fuente."
+      ],
+      "Save Source Data": [
+        "Guardar Datos de Fuente"
+      ],
+      "Failed to save source data.": [
+        "Error al guardar los datos de la fuente."
+      ],
+      "Are you sure you want to delete this source data record?": [
+        "¿Está seguro de que desea eliminar este registro de datos de fuente?"
+      ],
+      "Failed to delete source data.": [
+        "Error al eliminar los datos de la fuente."
+      ],
+      "Please enter a group name.": [
+        "Por favor, introduzca un nombre de grupo."
+      ],
+      "Delete this Source Group? Sources in this group will not be deleted.": [
+        "¿Eliminar este Grupo de Fuentes? Las fuentes de este grupo no se eliminarán."
+      ]
+    }
+  }
+}

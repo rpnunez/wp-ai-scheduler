@@ -9,6 +9,11 @@
  */
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -106,14 +111,14 @@
 			
 			var dateFromVal = $('#aips-input-date-from').val();
 			var dateToVal = $('#aips-input-date-to').val();
-			var l10n = window.aipsDashboardL10n || {};
+			var config = window.aipsDashboardConfig || window.aipsAjax || {};
 
 			if (dateFromVal && dateToVal) {
 				var fromDate = new Date(dateFromVal + 'T00:00:00');
 				var toDate = new Date(dateToVal + 'T23:59:59');
 
 				if (fromDate > toDate) {
-					AIPS.Utilities.showToast(l10n.dateValidationError || 'Start Date cannot be after End Date.', 'error');
+					AIPS.Utilities.showToast(__('Start Date cannot be after End Date.', 'ai-post-scheduler'), 'error');
 					return false;
 				}
 			}
@@ -130,7 +135,7 @@
 				type: 'POST',
 				data: {
 					action: 'aips_get_dashboard_data',
-					nonce: l10n.nonce,
+					nonce: config.nonce,
 					date_from: dateFromVal,
 					date_to: dateToVal
 				},
@@ -139,12 +144,12 @@
 					if (response.success && response.data) {
 						self.updateDashboardData(response.data);
 					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to fetch dashboard data.', 'error');
+						AIPS.Utilities.showToast(response.data || __('Failed to fetch dashboard data.', 'ai-post-scheduler'), 'error');
 					}
 				},
 				error: function() {
 					$('.aips-dashboard-spinner-overlay').hide();
-					AIPS.Utilities.showToast('An error occurred while fetching dashboard data.', 'error');
+					AIPS.Utilities.showToast(__('An error occurred while fetching dashboard data.', 'ai-post-scheduler'), 'error');
 				}
 			});
 		},
@@ -179,20 +184,20 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var postId = $btn.data('id');
-			var l10n = window.aipsDashboardL10n || {};
+			var config = window.aipsDashboardConfig || window.aipsAjax || {};
 
-			if (!confirm('Are you sure you want to publish this post now?')) {
+			if (!confirm(__('Are you sure you want to publish this post now?', 'ai-post-scheduler'))) {
 				return;
 			}
 
-			$btn.text('Publishing...');
+			$btn.text(__('Publishing...', 'ai-post-scheduler'));
 
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
 					action: 'aips_publish_post',
-					nonce: l10n.nonce,
+					nonce: config.nonce,
 					post_id: postId
 				},
 				success: function(response) {
@@ -201,16 +206,16 @@
 						$tr.find('.aips-badge')
 							.removeClass('aips-badge-warning aips-badge-neutral')
 							.addClass('aips-badge-success')
-							.text('Completed');
+							.text(__('Completed', 'ai-post-scheduler'));
 						$btn.remove();
 					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
-						$btn.text('Publish Now');
+						AIPS.Utilities.showToast(response.data || __('Failed to publish post.', 'ai-post-scheduler'), 'error');
+						$btn.text(__('Publish Now', 'ai-post-scheduler'));
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
-					$btn.text('Publish Now');
+					AIPS.Utilities.showToast(__('An error occurred while publishing the post.', 'ai-post-scheduler'), 'error');
+					$btn.text(__('Publish Now', 'ai-post-scheduler'));
 				}
 			});
 		},
@@ -225,14 +230,14 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var topicId = $btn.data('id');
-			var l10n = window.aipsDashboardL10n || {};
+			var config = window.aipsDashboardConfig || window.aipsAjax || {};
 
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
 					action: 'aips_approve_topic',
-					nonce: l10n.nonce,
+					nonce: config.nonce,
 					id: topicId
 				},
 				success: function(response) {
@@ -241,14 +246,14 @@
 						$tr.find('.status-badge')
 							.removeClass('aips-badge-warning aips-badge-error')
 							.addClass('aips-badge-success')
-							.text('Approved');
+							.text(__('Approved', 'ai-post-scheduler'));
 						$tr.find('.actions-container').empty();
 					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to approve topic.', 'error');
+						AIPS.Utilities.showToast(response.data || __('Failed to approve topic.', 'ai-post-scheduler'), 'error');
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showToast('An error occurred while approving the topic.', 'error');
+					AIPS.Utilities.showToast(__('An error occurred while approving the topic.', 'ai-post-scheduler'), 'error');
 				}
 			});
 		},
@@ -263,14 +268,14 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var topicId = $btn.data('id');
-			var l10n = window.aipsDashboardL10n || {};
+			var config = window.aipsDashboardConfig || window.aipsAjax || {};
 
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
 					action: 'aips_reject_topic',
-					nonce: l10n.nonce,
+					nonce: config.nonce,
 					id: topicId
 				},
 				success: function(response) {
@@ -279,14 +284,14 @@
 						$tr.find('.status-badge')
 							.removeClass('aips-badge-warning aips-badge-success')
 							.addClass('aips-badge-error')
-							.text('Rejected');
+							.text(__('Rejected', 'ai-post-scheduler'));
 						$tr.find('.actions-container').empty();
 					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to reject topic.', 'error');
+						AIPS.Utilities.showToast(response.data || __('Failed to reject topic.', 'ai-post-scheduler'), 'error');
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showToast('An error occurred while rejecting the topic.', 'error');
+					AIPS.Utilities.showToast(__('An error occurred while rejecting the topic.', 'ai-post-scheduler'), 'error');
 				}
 			});
 		},
@@ -301,30 +306,30 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var scheduleId = $btn.data('id');
-			var l10n = window.aipsDashboardL10n || {};
+			var config = window.aipsDashboardConfig || window.aipsAjax || {};
 
-			$btn.text('Running...');
+			$btn.text(__('Running...', 'ai-post-scheduler'));
 
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
 					action: 'aips_unified_run_now',
-					nonce: l10n.nonce,
+					nonce: config.nonce,
 					id: scheduleId
 				},
 				success: function(response) {
 					if (response.success) {
-						AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
-						$btn.text('Run Now');
+						AIPS.Utilities.showToast(__('Automated run triggered successfully!', 'ai-post-scheduler'), 'success');
+						$btn.text(__('Run Now', 'ai-post-scheduler'));
 					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to trigger schedule.', 'error');
-						$btn.text('Run Now');
+						AIPS.Utilities.showToast(response.data || __('Failed to trigger schedule.', 'ai-post-scheduler'), 'error');
+						$btn.text(__('Run Now', 'ai-post-scheduler'));
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showToast('An error occurred while triggering the schedule.', 'error');
-					$btn.text('Run Now');
+					AIPS.Utilities.showToast(__('An error occurred while triggering the schedule.', 'ai-post-scheduler'), 'error');
+					$btn.text(__('Run Now', 'ai-post-scheduler'));
 				}
 			});
 		},
@@ -336,7 +341,6 @@
 		 */
 		renderCharts: function() {
 			var data = window.aipsDashboardChartData;
-			var l10n = window.aipsDashboardL10n || {};
 			var utilities = (AIPS && AIPS.Utilities) ? AIPS.Utilities : null;
 
 			if (!data || !data.labels) {
@@ -344,7 +348,7 @@
 			}
 
 			if (typeof Chart === 'undefined') {
-				var chartUnavailableMessage = l10n.chartUnavailable || 'Chart library failed to load.';
+				var chartUnavailableMessage = __('Chart library failed to load.', 'ai-post-scheduler');
 				$('.aips-dashboard-chart-wrap').each(function() {
 					$(this)
 						.empty()
@@ -365,7 +369,7 @@
 				data.labels,
 				[
 					{
-						label: l10n.chartAiCallsLabel || 'AI Calls',
+						label: __('AI Calls', 'ai-post-scheduler'),
 						data:  data.aiCalls,
 						backgroundColor: utilities ? utilities.toAlpha('#2271b1', 0.75) : 'rgba(34,113,177,0.75)',
 						borderColor:     '#2271b1',
@@ -374,7 +378,7 @@
 						borderSkipped: false
 					},
 					{
-						label: l10n.chartAiErrorsLabel || 'AI Errors',
+						label: __('AI Errors', 'ai-post-scheduler'),
 						data:  data.aiErrors,
 						backgroundColor: utilities ? utilities.toAlpha('#d63638', 0.65) : 'rgba(214,54,56,0.65)',
 						borderColor:     '#d63638',
@@ -384,7 +388,7 @@
 					}
 				],
 				'bar',
-				l10n.chartAiCallsTitle || 'AI Calls & Errors by Day'
+				__('AI Calls & Errors by Day', 'ai-post-scheduler')
 			);
 
 			// 2. Posts by day: Completed vs Failed (Bar Chart)
@@ -393,7 +397,7 @@
 				data.labels,
 				[
 					{
-						label: l10n.chartCompletedLabel || 'Completed',
+						label: __('Completed', 'ai-post-scheduler'),
 						data:  data.completed,
 						backgroundColor: utilities ? utilities.toAlpha('#00a32a', 0.75) : 'rgba(0,163,42,0.75)',
 						borderColor:     '#00a32a',
@@ -402,7 +406,7 @@
 						borderSkipped: false
 					},
 					{
-						label: l10n.chartFailedLabel || 'Failed',
+						label: __('Failed', 'ai-post-scheduler'),
 						data:  data.failed,
 						backgroundColor: utilities ? utilities.toAlpha('#b32d2e', 0.65) : 'rgba(179,45,46,0.65)',
 						borderColor:     '#b32d2e',
@@ -412,7 +416,7 @@
 					}
 				],
 				'bar',
-				l10n.chartPostsTitle || 'Post Generations by Day'
+				__('Post Generations by Day', 'ai-post-scheduler')
 			);
 
 			// 3. Topics by day (Line Chart)
@@ -421,7 +425,7 @@
 				data.labels,
 				[
 					{
-						label: l10n.chartTopicsLabel || 'Topics Generated',
+						label: __('Topics Generated', 'ai-post-scheduler'),
 						data:  data.topics,
 						backgroundColor: utilities ? utilities.toAlpha('#dba617', 0.15) : 'rgba(219,166,23,0.15)',
 						borderColor:     '#dba617',
@@ -431,7 +435,7 @@
 					}
 				],
 				'line',
-				l10n.chartTopicsTitle || 'Topic Generations by Day'
+				__('Topic Generations by Day', 'ai-post-scheduler')
 			);
 
 			// 4. Error rate by day (Line Chart)
@@ -440,7 +444,7 @@
 				data.labels,
 				[
 					{
-						label: l10n.chartErrorRateLabel || 'Error Rate (%)',
+						label: __('Error Rate (%)', 'ai-post-scheduler'),
 						data:  data.errorRate,
 						backgroundColor: utilities ? utilities.toAlpha('#d63638', 0.1) : 'rgba(214,54,56,0.1)',
 						borderColor:     '#d63638',
@@ -450,7 +454,7 @@
 					}
 				],
 				'line',
-				l10n.chartErrorRateTitle || 'AI Error Rate (%)'
+				__('AI Error Rate (%)', 'ai-post-scheduler')
 			);
 		},
 

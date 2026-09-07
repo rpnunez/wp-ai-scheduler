@@ -1,5 +1,10 @@
 (function($) {
     'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
     // Ensure AIPS object exists
     window.AIPS = window.AIPS || {};
@@ -173,7 +178,7 @@
         clearTopics: function(e) {
             e.preventDefault();
 
-            AIPS.Utilities.confirm(aipsPlannerL10n.confirmClear || 'Are you sure you want to clear all topics?', 'Notice', [
+            AIPS.Utilities.confirm(__("Are you sure you want to clear all topics?", 'ai-post-scheduler') || 'Are you sure you want to clear all topics?', 'Notice', [
                 {
                     text: 'Cancel',
                     class: 'aips-btn-secondary aips-modal-close'

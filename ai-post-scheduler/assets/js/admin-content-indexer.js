@@ -7,6 +7,11 @@
 
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 
@@ -183,8 +188,8 @@
 			this.isIndexing = false;
 
 			$('#aips-pause-indexing-btn').hide();
-			$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.resumeScan || 'Resume Scan');
-			$('#aips-indexer-banner-title').text(aipsContentIndexerL10n.indexingPaused || 'Indexing Paused');
+			$('#aips-start-indexing-btn').show().find('.btn-text').text(__("Resume Scan", 'ai-post-scheduler') || 'Resume Scan');
+			$('#aips-indexer-banner-title').text(__("Indexing Paused", 'ai-post-scheduler') || 'Indexing Paused');
 		},
 
 		/**
@@ -203,7 +208,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_indexer_process_batch',
-					nonce: aipsContentIndexerL10n.nonce,
+					nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce)),
 					batch_size: self.batchSize,
 					last_post_id: self.lastPostId
 				},
@@ -228,9 +233,9 @@
 					if (data.done) {
 						self.isIndexing = false;
 						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Backfill Scan');
+						$('#aips-start-indexing-btn').show().find('.btn-text').text(__("Start Backfill Scan", 'ai-post-scheduler') || 'Start Backfill Scan');
 						$('#aips-indexer-live-banner').slideUp(200);
-						AIPS.Utilities && AIPS.Utilities.showNotice(aipsContentIndexerL10n.indexingComplete || 'Content indexing complete!', 'success');
+						AIPS.Utilities && AIPS.Utilities.showNotice(__("Content indexing complete!", 'ai-post-scheduler') || 'Content indexing complete!', 'success');
 					} else if (self.isIndexing && !self.isPaused) {
 						// Continue next slice immediately
 						setTimeout(function () {
@@ -249,7 +254,7 @@
 		 * Clear entire index.
 		 */
 		handleClearIndex: function () {
-			if (!confirm(aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.')) {
+			if (!confirm(__("Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.", 'ai-post-scheduler') || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.')) {
 				return;
 			}
 
@@ -260,7 +265,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_indexer_clear_index',
-					nonce: aipsContentIndexerL10n.nonce
+					nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce))
 				},
 				success: function (res) {
 					if (res.success) {
@@ -286,7 +291,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_indexer_search_posts',
-					nonce: aipsContentIndexerL10n.nonce,
+					nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce)),
 					q: q
 				},
 				success: function (res) {
@@ -334,7 +339,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_indexer_get_graph',
-					nonce: aipsContentIndexerL10n.nonce,
+					nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce)),
 					post_id: postId,
 					min_similarity: simThreshold,
 					limit: maxNodes
@@ -518,7 +523,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_indexer_run_cannibalization_audit',
-					nonce: aipsContentIndexerL10n.nonce,
+					nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce)),
 					threshold: 0.75,
 					limit: 50
 				},
@@ -585,7 +590,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_indexer_fetch_meow_environments',
-					nonce: aipsContentIndexerL10n.nonce
+					nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce))
 				},
 				success: function (res) {
 					$btn.prop('disabled', false).html(originalHtml);
@@ -631,7 +636,7 @@
 			var formData = $(e.target).serializeArray();
 			var payload = {
 				action: 'aips_indexer_save_settings',
-				nonce: aipsContentIndexerL10n.nonce,
+				nonce: ((window.aipsContentIndexerConfig && aipsContentIndexerConfig.nonce) || (window.aipsAjax && aipsAjax.nonce) || (window.aipsContentIndexerL10n && aipsContentIndexerL10n.nonce)),
 				post_types: []
 			};
 

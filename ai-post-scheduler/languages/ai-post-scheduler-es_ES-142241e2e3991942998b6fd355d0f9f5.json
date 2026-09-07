@@ -1,0 +1,117 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-content-auditor.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Please select at least one audit module.": [
+        "Por favor, seleccione al menos un módulo de auditoría."
+      ],
+      "Topic successfully added to Author Persona!": [
+        "¡Tema añadido con éxito a la Persona de Autor!"
+      ],
+      "Generate post immediately for this topic?": [
+        "¿Generar entrada inmediatamente para este tema?"
+      ],
+      "Step 1/4: Ingesting and profiling content library...": [
+        "Paso 1/4: Ingestando y perfilando la biblioteca de contenido..."
+      ],
+      "Step 2/4: Constructing link graph & entity clusters...": [
+        "Paso 2/4: Construyendo grafo de enlaces y clústeres de entidades..."
+      ],
+      "Step 3/4: Running AI intelligence modules...": [
+        "Paso 3/4: Ejecutando módulos de inteligencia artificial..."
+      ],
+      "Step 4/4: Synthesizing health scorecard & saving...": [
+        "Paso 4/4: Sintetizando tarjeta de puntuación de salud y guardando..."
+      ],
+      "Audit complete!": [
+        "¡Auditoría completada!"
+      ],
+      "Analyzing": [
+        "Analizando"
+      ],
+      "An error occurred during the audit.": [
+        "Se produjo un error durante la auditoría."
+      ],
+      "Strong Standing": [
+        "Posición Fuerte"
+      ],
+      "Moderate Gaps": [
+        "Brechas Moderadas"
+      ],
+      "Action Required": [
+        "Acción Requerida"
+      ],
+      "Audited:": [
+        "Auditado:"
+      ],
+      "No major content gaps identified.": [
+        "No se identificaron brechas importantes de contenido."
+      ],
+      "Missing Topic": [
+        "Tema Faltante"
+      ],
+      "Priority": [
+        "Prioridad"
+      ],
+      "Type": [
+        "Tipo"
+      ],
+      "Intent": [
+        "Intención"
+      ],
+      "Strategic Reason & Angle": [
+        "Motivo Estratégico y Enfoque"
+      ],
+      "Actions": [
+        "Acciones"
+      ],
+      "No keyword cannibalization conflicts detected across your published articles.": [
+        "No se detectaron conflictos de canibalización de palabras clave en sus artículos publicados."
+      ],
+      "All evaluated content is fresh and within healthy word count thresholds.": [
+        "Todo el contenido evaluado está actualizado y dentro de los umbrales saludables de palabras."
+      ],
+      "Post Title": [
+        "Título de la Entrada"
+      ],
+      "Urgency": [
+        "Urgencia"
+      ],
+      "Refresh Checklist & Actions": [
+        "Lista de Verificación y Acciones de Actualización"
+      ],
+      "Internal link connectivity is strong with no orphan articles.": [
+        "La conectividad de enlaces internos es fuerte sin artículos huérfanos."
+      ],
+      "Orphan Article": [
+        "Artículo Huérfano"
+      ],
+      "Suggested Source Article": [
+        "Artículo Fuente Sugerido"
+      ],
+      "Anchor & Silo Rationale": [
+        "Justificación de Anclaje y Silo"
+      ],
+      "No new external industry trends uncovered from active sources.": [
+        "No se descubrieron nuevas tendencias externas de la industria a partir de fuentes activas."
+      ],
+      "Industry Trend": [
+        "Tendencia de la Industria"
+      ],
+      "Source Evidence": [
+        "Evidencia de la Fuente"
+      ],
+      "Recommended Angle": [
+        "Enfoque Recomendado"
+      ]
+    }
+  }
+}

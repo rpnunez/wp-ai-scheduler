@@ -7,6 +7,11 @@
  */
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -143,15 +148,15 @@
 			var $refreshButtons = $('.aips-telemetry-refresh');
 
 			this.setLoadingState(true);
-			this.setTableMessage(window.aipsTelemetryL10n.loading || 'Loading...', 'aips-telemetry-loading');
-			this.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshing || 'Refreshing...');
+			this.setTableMessage(window.__("Loading…", 'ai-post-scheduler') || 'Loading...', 'aips-telemetry-loading');
+			this.setRefreshButtonLabel($refreshButtons, window.__("Refreshing…", 'ai-post-scheduler') || 'Refreshing...');
 			$refreshButtons.prop('disabled', true);
 
 			$.post(
 				ajaxurl,
 				{
 					action: 'aips_get_telemetry',
-					nonce: window.aipsTelemetryL10n.nonce || '',
+					nonce: ((window.aipsTelemetryConfig && aipsTelemetryConfig.nonce) || (window.aipsTelemetryL10n && ((window.aipsTelemetryConfig && aipsTelemetryConfig.nonce) || (window.aipsTelemetryL10n && aipsTelemetryL10n.nonce)))) || '',
 					page: page,
 					per_page: this.perPage,
 					type: $('#aips-telemetry-type-filter').val() || '',
@@ -182,7 +187,7 @@
 				self.handleRequestFailure();
 			}).always(function() {
 				self.setLoadingState(false);
-				self.setRefreshButtonLabel($refreshButtons, window.aipsTelemetryL10n.refreshLabel || 'Refresh');
+				self.setRefreshButtonLabel($refreshButtons, window.__("Refresh", 'ai-post-scheduler') || 'Refresh');
 				$refreshButtons.prop('disabled', false);
 			});
 		},
@@ -209,7 +214,7 @@
 		 * @return {void}
 		 */
 		handleRequestFailure: function() {
-			var message = window.aipsTelemetryL10n.requestFailed || 'Request failed. Please try again.';
+			var message = window.__("Request failed. Please try again.", 'ai-post-scheduler') || 'Request failed. Please try again.';
 			this.setTableMessage(message, 'aips-telemetry-empty');
 			if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
 				AIPS.Utilities.showToast(message, 'error');
@@ -260,7 +265,7 @@
 
 			$tbody.empty();
 			if (!rows || !rows.length) {
-				this.setTableMessage(window.aipsTelemetryL10n.telemetryNoRecords || 'No telemetry records found for the selected range.', 'aips-telemetry-empty');
+				this.setTableMessage(window.__("No telemetry records found for the selected range.", 'ai-post-scheduler') || 'No telemetry records found for the selected range.', 'aips-telemetry-empty');
 				return;
 			}
 
@@ -278,7 +283,7 @@
 					num_queries: AIPS.Templates.escape(this.displayValue(row.num_queries)),
 					elapsed_ms: AIPS.Templates.escape(elapsedSeconds),
 					inserted_at: AIPS.Templates.escape(insertedAt),
-					view_details_label: AIPS.Templates.escape(window.aipsTelemetryL10n.viewDetails || 'View Details')
+					view_details_label: AIPS.Templates.escape(window.__("View Details", 'ai-post-scheduler') || 'View Details')
 				});
 			}, this).join(''));
 		},
@@ -297,14 +302,14 @@
 			var rowId = parseInt($button.attr('data-telemetry-id'), 10) || 0;
 
 			if (rowId < 1) {
-				AIPS.Utilities.showToast(window.aipsTelemetryL10n.requestFailed || 'Request failed. Please try again.', 'error');
+				AIPS.Utilities.showToast(window.__("Request failed. Please try again.", 'ai-post-scheduler') || 'Request failed. Please try again.', 'error');
 				return;
 			}
 
 			this.openDetailsModal(
-				(window.aipsTelemetryL10n.detailsTitle || 'Telemetry Details #%s').replace('%s', rowId),
+				(window.__("Telemetry Details #%s", 'ai-post-scheduler') || 'Telemetry Details #%s').replace('%s', rowId),
 				AIPS.Templates.render('aips-tmpl-telemetry-details-loading', {
-					message: window.aipsTelemetryL10n.loadingDetails || 'Loading telemetry details...'
+					message: window.__("Loading telemetry details…", 'ai-post-scheduler') || 'Loading telemetry details...'
 				})
 			);
 
@@ -314,7 +319,7 @@
 				ajaxurl,
 				{
 					action: 'aips_get_telemetry_details',
-					nonce: window.aipsTelemetryL10n.detailsNonce || '',
+					nonce: ((window.aipsTelemetryConfig && aipsTelemetryConfig.detailsNonce) || (window.aipsTelemetryL10n && ((window.aipsTelemetryConfig && aipsTelemetryConfig.detailsNonce) || (window.aipsTelemetryL10n && aipsTelemetryL10n.detailsNonce)))) || '',
 					id: rowId
 				},
 				function(response) {
@@ -342,41 +347,41 @@
 			var row = data.row || {};
 			var dtL10n = this._buildL10n();
 			var detailRows = [
-				{ label: window.aipsTelemetryL10n.detailsIdLabel || 'ID', value: this.displayValue(row.id) },
-				{ label: window.aipsTelemetryL10n.detailsTypeLabel || 'Type', value: this.displayValue(row.type) },
-				{ label: window.aipsTelemetryL10n.detailsPageLabel || 'Page', value: this.displayValue(row.page) },
-				{ label: window.aipsTelemetryL10n.detailsCategoriesLabel || 'Categories', value: this.displayValue(row.event_categories) },
-				{ label: window.aipsTelemetryL10n.detailsMethodLabel || 'Method', value: this.displayValue(row.request_method) },
-				{ label: window.aipsTelemetryL10n.detailsUserIdLabel || 'User ID', value: this.displayValue(row.user_id) },
-				{ label: window.aipsTelemetryL10n.detailsEventsLabel || 'Events', value: this.displayValue(row.total_events) },
-				{ label: window.aipsTelemetryL10n.detailsCacheCallsLabel || 'Cache Calls', value: this.displayValue(row.cache_calls) },
-				{ label: window.aipsTelemetryL10n.detailsCacheHitsLabel || 'Cache Hits', value: this.displayValue(row.cache_hits) },
-				{ label: window.aipsTelemetryL10n.detailsCacheMissesLabel || 'Cache Misses', value: this.displayValue(row.cache_misses) },
-				{ label: window.aipsTelemetryL10n.detailsQueriesLabel || 'Queries', value: this.displayValue(row.num_queries) },
-				{ label: window.aipsTelemetryL10n.detailsSlowQueriesLabel || 'Slow Queries', value: this.displayValue(row.slow_query_count) },
-				{ label: window.aipsTelemetryL10n.detailsDuplicateQueriesLabel || 'Duplicate Queries', value: this.displayValue(row.duplicate_query_count) },
-				{ label: window.aipsTelemetryL10n.detailsPeakMemoryLabel || 'Peak Memory', value: AIPS.DateTime.formatMemory(row.peak_memory_bytes) + ' (' + this.displayValue(row.peak_memory_bytes) + ' bytes)' },
-				{ label: window.aipsTelemetryL10n.detailsElapsedLabel || 'Elapsed', value: AIPS.DateTime.formatElapsed(row.elapsed_ms) },
-				{ label: window.aipsTelemetryL10n.detailsInsertedLabel || 'Inserted At', value: AIPS.DateTime.formatRelative(row.inserted_at, dtL10n) }
+				{ label: window.__("ID", 'ai-post-scheduler') || 'ID', value: this.displayValue(row.id) },
+				{ label: window.__("Type", 'ai-post-scheduler') || 'Type', value: this.displayValue(row.type) },
+				{ label: window.__("Page", 'ai-post-scheduler') || 'Page', value: this.displayValue(row.page) },
+				{ label: window.__("Categories", 'ai-post-scheduler') || 'Categories', value: this.displayValue(row.event_categories) },
+				{ label: window.__("Method", 'ai-post-scheduler') || 'Method', value: this.displayValue(row.request_method) },
+				{ label: window.__("User ID", 'ai-post-scheduler') || 'User ID', value: this.displayValue(row.user_id) },
+				{ label: window.__("Events", 'ai-post-scheduler') || 'Events', value: this.displayValue(row.total_events) },
+				{ label: window.__("Cache Calls", 'ai-post-scheduler') || 'Cache Calls', value: this.displayValue(row.cache_calls) },
+				{ label: window.__("Cache Hits", 'ai-post-scheduler') || 'Cache Hits', value: this.displayValue(row.cache_hits) },
+				{ label: window.__("Cache Misses", 'ai-post-scheduler') || 'Cache Misses', value: this.displayValue(row.cache_misses) },
+				{ label: window.__("Queries", 'ai-post-scheduler') || 'Queries', value: this.displayValue(row.num_queries) },
+				{ label: window.__("Slow Queries", 'ai-post-scheduler') || 'Slow Queries', value: this.displayValue(row.slow_query_count) },
+				{ label: window.__("Duplicate Queries", 'ai-post-scheduler') || 'Duplicate Queries', value: this.displayValue(row.duplicate_query_count) },
+				{ label: window.__("Peak Memory", 'ai-post-scheduler') || 'Peak Memory', value: AIPS.DateTime.formatMemory(row.peak_memory_bytes) + ' (' + this.displayValue(row.peak_memory_bytes) + ' bytes)' },
+				{ label: window.__("Elapsed", 'ai-post-scheduler') || 'Elapsed', value: AIPS.DateTime.formatElapsed(row.elapsed_ms) },
+				{ label: window.__("Inserted At", 'ai-post-scheduler') || 'Inserted At', value: AIPS.DateTime.formatRelative(row.inserted_at, dtL10n) }
 			];
 
 			var detailRowsHtml = this.renderDetailRows(detailRows);
 			var payloadSectionsHtml = this.renderPayloadSections(data.payload_decoded || this.safeParseJson(row.payload));
 			var payloadJson = data.payload_decoded
 				? JSON.stringify(data.payload_decoded, null, 2)
-				: (row.payload || window.aipsTelemetryL10n.payloadEmpty || 'No payload was stored for this telemetry row.');
+				: (row.payload || window.__("No payload was stored for this telemetry row.", 'ai-post-scheduler') || 'No payload was stored for this telemetry row.');
 
 			var payloadHtml = AIPS.Templates.renderRaw('aips-tmpl-telemetry-details-payload', {
 				payload_sections: payloadSectionsHtml,
 				raw_payload_json: AIPS.Templates.escape(payloadJson),
-				raw_payload_label: AIPS.Templates.escape(window.aipsTelemetryL10n.detailsRawPayloadLabel || 'Raw Payload JSON'),
-				raw_payload_help: AIPS.Templates.escape(window.aipsTelemetryL10n.detailsRawPayloadHelp || 'Review the structured payload summaries above, or expand the raw JSON below for the original object.'),
-				expand_label: AIPS.Templates.escape(window.aipsTelemetryL10n.expandLabel || 'Expand'),
-				collapse_label: AIPS.Templates.escape(window.aipsTelemetryL10n.collapseLabel || 'Collapse')
+				raw_payload_label: AIPS.Templates.escape(window.__("Raw Payload JSON", 'ai-post-scheduler') || 'Raw Payload JSON'),
+				raw_payload_help: AIPS.Templates.escape(window.__("Review the structured payload summaries above, or expand the raw JSON below for the original object.", 'ai-post-scheduler') || 'Review the structured payload summaries above, or expand the raw JSON below for the original object.'),
+				expand_label: AIPS.Templates.escape(window.__("Expand", 'ai-post-scheduler') || 'Expand'),
+				collapse_label: AIPS.Templates.escape(window.__("Collapse", 'ai-post-scheduler') || 'Collapse')
 			});
 
 			this.openDetailsModal(
-				(window.aipsTelemetryL10n.detailsTitle || 'Telemetry Details #%s').replace('%s', this.displayValue(row.id)),
+				(window.__("Telemetry Details #%s", 'ai-post-scheduler') || 'Telemetry Details #%s').replace('%s', this.displayValue(row.id)),
 				AIPS.Templates.renderRaw('aips-tmpl-telemetry-details-modal-body', {
 					detail_rows: detailRowsHtml,
 					payload_section: payloadHtml
@@ -453,26 +458,26 @@
 			var sectionMap = [
 				{
 					key: 'cache_summary',
-					title: window.aipsTelemetryL10n.detailsCacheSummarySection || 'Cache Summary',
-					help: window.aipsTelemetryL10n.detailsCacheSummaryHelp || 'Cache activity grouped by operation and result.',
+					title: window.__("Cache Summary", 'ai-post-scheduler') || 'Cache Summary',
+					help: window.__("Cache activity grouped by operation and result.", 'ai-post-scheduler') || 'Cache activity grouped by operation and result.',
 					collapsed: false
 				},
 				{
 					key: 'query_summary',
-					title: window.aipsTelemetryL10n.detailsQuerySummarySection || 'Query Summary',
-					help: window.aipsTelemetryL10n.detailsQuerySummaryHelp || 'Query totals, slow queries, and duplicate query counts.',
+					title: window.__("Query Summary", 'ai-post-scheduler') || 'Query Summary',
+					help: window.__("Query totals, slow queries, and duplicate query counts.", 'ai-post-scheduler') || 'Query totals, slow queries, and duplicate query counts.',
 					collapsed: false
 				},
 				{
 					key: 'event_summary',
-					title: window.aipsTelemetryL10n.detailsEventSummarySection || 'Event Summary',
-					help: window.aipsTelemetryL10n.detailsEventSummaryHelp || 'High-level telemetry counts grouped by bucket and event type.',
+					title: window.__("Event Summary", 'ai-post-scheduler') || 'Event Summary',
+					help: window.__("High-level telemetry counts grouped by bucket and event type.", 'ai-post-scheduler') || 'High-level telemetry counts grouped by bucket and event type.',
 					collapsed: false
 				},
 				{
 					key: 'events',
-					title: window.aipsTelemetryL10n.detailsEventsSection || 'Events',
-					help: window.aipsTelemetryL10n.detailsEventsHelp || 'The full event list can be long. Expand to inspect each nested event object.',
+					title: window.__("Events", 'ai-post-scheduler') || 'Events',
+					help: window.__("The full event list can be long. Expand to inspect each nested event object.", 'ai-post-scheduler') || 'The full event list can be long. Expand to inspect each nested event object.',
 					collapsed: true
 				}
 			];
@@ -483,7 +488,7 @@
 
 			if (!payloadObject || typeof payloadObject !== 'object') {
 				return AIPS.Templates.render('aips-tmpl-telemetry-payload-empty', {
-					message: window.aipsTelemetryL10n.payloadEmpty || 'No payload was stored for this telemetry row.'
+					message: window.__("No payload was stored for this telemetry row.", 'ai-post-scheduler') || 'No payload was stored for this telemetry row.'
 				});
 			}
 
@@ -497,8 +502,8 @@
 					title: AIPS.Templates.escape(section.title),
 					help_text: AIPS.Templates.escape(section.help),
 					content_html: this.renderPayloadTable(payloadObject[section.key], section.key),
-					button_expand_label: AIPS.Templates.escape(window.aipsTelemetryL10n.expandLabel || 'Expand'),
-					button_collapse_label: AIPS.Templates.escape(window.aipsTelemetryL10n.collapseLabel || 'Collapse'),
+					button_expand_label: AIPS.Templates.escape(window.__("Expand", 'ai-post-scheduler') || 'Expand'),
+					button_collapse_label: AIPS.Templates.escape(window.__("Collapse", 'ai-post-scheduler') || 'Collapse'),
 					aria_expanded: section.collapsed ? 'false' : 'true',
 					is_collapsed: section.collapsed ? 'is-collapsed' : ''
 				}));
@@ -506,7 +511,7 @@
 
 			if (!sections.length) {
 				return AIPS.Templates.render('aips-tmpl-telemetry-payload-empty', {
-					message: window.aipsTelemetryL10n.payloadEmpty || 'No payload was stored for this telemetry row.'
+					message: window.__("No payload was stored for this telemetry row.", 'ai-post-scheduler') || 'No payload was stored for this telemetry row.'
 				});
 			}
 
@@ -571,8 +576,8 @@
 		 */
 		renderPayloadRow: function(label, value, depth, useIndexLabel, groupKey) {
 			var itemLabelTemplate = (groupKey === 'events')
-				? (window.aipsTelemetryL10n.detailsEventItemLabel || 'Event %s')
-				: (window.aipsTelemetryL10n.detailsItemLabel || 'Item %s');
+				? (window.__("Event %s", 'ai-post-scheduler') || 'Event %s')
+				: (window.__("Item %s", 'ai-post-scheduler') || 'Item %s');
 			var rowLabel = AIPS.Templates.escape(useIndexLabel ? itemLabelTemplate.replace('%s', label) : label);
 
 			if (Array.isArray(value) || (value && typeof value === 'object')) {
@@ -606,9 +611,9 @@
 		 * @return {void}
 		 */
 		handleDetailsFailure: function() {
-			var message = window.aipsTelemetryL10n.detailsRequestFailed || 'Failed to load telemetry details. Please try again.';
+			var message = window.__("Failed to load telemetry details. Please try again.", 'ai-post-scheduler') || 'Failed to load telemetry details. Please try again.';
 			this.openDetailsModal(
-				window.aipsTelemetryL10n.detailsTitle || 'Telemetry Details',
+				window.__("Telemetry Details #%s", 'ai-post-scheduler') || 'Telemetry Details',
 				AIPS.Templates.render('aips-tmpl-telemetry-details-loading', {
 					message: message
 				})
@@ -753,8 +758,8 @@
 		 * @return {void}
 		 */
 		updatePagination: function(data) {
-			var countLabel = (window.aipsTelemetryL10n.telemetryTotal || '%s records').replace('%s', data.total || 0);
-			var pageLabel = (window.aipsTelemetryL10n.telemetryPage || 'Page %1$s of %2$s')
+			var countLabel = (window.__("%s records", 'ai-post-scheduler') || '%s records').replace('%s', data.total || 0);
+			var pageLabel = (window.__("Page %1$s of %2$s", 'ai-post-scheduler') || 'Page %1$s of %2$s')
 				.replace('%1$s', data.page || 1)
 				.replace('%2$s', data.total_pages || 1);
 
@@ -774,7 +779,7 @@
 		updateCharts: function(charts) {
 			if (typeof window.Chart === 'undefined') {
 				if (AIPS.Utilities && typeof AIPS.Utilities.showToast === 'function') {
-					AIPS.Utilities.showToast(window.aipsTelemetryL10n.chartUnavailable || 'Chart library failed to load.', 'error');
+					AIPS.Utilities.showToast(window.__("Chart library failed to load.", 'ai-post-scheduler') || 'Chart library failed to load.', 'error');
 				}
 				return;
 			}
@@ -785,8 +790,8 @@
 				labels,
 				charts.queries || [],
 				'bar',
-				window.aipsTelemetryL10n.chartQueriesTitle || 'Queries Executed per Day',
-				window.aipsTelemetryL10n.chartQueriesLabel || 'Queries',
+				window.__("Queries Executed per Day", 'ai-post-scheduler') || 'Queries Executed per Day',
+				window.__("Queries", 'ai-post-scheduler') || 'Queries',
 				'#2271b1'
 			);
 			this.renderChart(
@@ -794,8 +799,8 @@
 				labels,
 				charts.peak_memory_mb || [],
 				'line',
-				window.aipsTelemetryL10n.chartMemoryTitle || 'Peak Memory per Day',
-				window.aipsTelemetryL10n.chartMemoryLabel || 'Peak Memory (MB)',
+				window.__("Peak Memory per Day", 'ai-post-scheduler') || 'Peak Memory per Day',
+				window.__("Peak Memory (MB)", 'ai-post-scheduler') || 'Peak Memory (MB)',
 				'#8c8f94'
 			);
 			this.renderChart(
@@ -803,8 +808,8 @@
 				labels,
 				charts.avg_elapsed_ms || [],
 				'line',
-				window.aipsTelemetryL10n.chartElapsedTitle || 'Average Elapsed Time per Day',
-				window.aipsTelemetryL10n.chartElapsedLabel || 'Average Elapsed (ms)',
+				window.__("Average Elapsed Time per Day", 'ai-post-scheduler') || 'Average Elapsed Time per Day',
+				window.__("Average Elapsed (ms)", 'ai-post-scheduler') || 'Average Elapsed (ms)',
 				'#d63638'
 			);
 			this.renderChart(
@@ -812,8 +817,8 @@
 				labels,
 				charts.requests || [],
 				'bar',
-				window.aipsTelemetryL10n.chartRequestsTitle || 'Requests Logged per Day',
-				window.aipsTelemetryL10n.chartRequestsLabel || 'Requests',
+				window.__("Requests Logged per Day", 'ai-post-scheduler') || 'Requests Logged per Day',
+				window.__("Requests", 'ai-post-scheduler') || 'Requests',
 				'#00a32a'
 			);
 		},

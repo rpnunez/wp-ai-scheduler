@@ -8,6 +8,11 @@
 
 (function($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	if (typeof AIPS === 'undefined') {
 		console.error('AIPS object not found');
@@ -64,12 +69,12 @@
 						AIPS.Utilities.showNotice(response.data.message, 'success');
 						location.reload();
 					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorToggle, 'error');
+						AIPS.Utilities.showNotice(response.data.message || __("Failed to update campaign.", 'ai-post-scheduler'), 'error');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					AIPS.Utilities.showNotice(__("Network error. Please try again.", 'ai-post-scheduler'), 'error');
 					$button.prop('disabled', false);
 				}
 			});
@@ -86,7 +91,7 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmDuplicate)) {
+			if (!confirm(__("Duplicate this campaign? The copy will be created in a paused state.", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -105,12 +110,12 @@
 						AIPS.Utilities.showNotice(response.data.message, 'success');
 						location.reload();
 					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDuplicate, 'error');
+						AIPS.Utilities.showNotice(response.data.message || __("Failed to duplicate campaign.", 'ai-post-scheduler'), 'error');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					AIPS.Utilities.showNotice(__("Network error. Please try again.", 'ai-post-scheduler'), 'error');
 					$button.prop('disabled', false);
 				}
 			});
@@ -127,7 +132,7 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmArchive)) {
+			if (!confirm(__("Archive this campaign? It will be hidden from the active campaigns list.", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -146,12 +151,12 @@
 						AIPS.Utilities.showNotice(response.data.message, 'success');
 						location.reload();
 					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorArchive, 'error');
+						AIPS.Utilities.showNotice(response.data.message || __("Failed to archive campaign.", 'ai-post-scheduler'), 'error');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					AIPS.Utilities.showNotice(__("Network error. Please try again.", 'ai-post-scheduler'), 'error');
 					$button.prop('disabled', false);
 				}
 			});
@@ -176,10 +181,10 @@
 				if (response.success) {
 					location.reload();
 				} else {
-					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorRestore, 'error');
+					AIPS.Utilities.showNotice(response.data.message || __("Failed to restore campaign.", 'ai-post-scheduler'), 'error');
 				}
 			}).fail(function() {
-				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+				AIPS.Utilities.showNotice(__("Network error. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		},
 
@@ -227,7 +232,7 @@
 					}
 				},
 				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+					AIPS.Utilities.showNotice(__("Network error. Please try again.", 'ai-post-scheduler'), 'error');
 					$button.prop('disabled', false).removeClass('is-busy');
 				}
 			});
@@ -244,7 +249,7 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmDelete)) {
+			if (!confirm(__("Delete this campaign? This removes the campaign and its owned template/schedule rows.", 'ai-post-scheduler'))) {
 				return;
 			}
 
@@ -256,10 +261,10 @@
 				if (response.success) {
 					location.reload();
 				} else {
-					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDelete, 'error');
+					AIPS.Utilities.showNotice(response.data.message || __("Failed to delete campaign.", 'ai-post-scheduler'), 'error');
 				}
 			}).fail(function() {
-				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+				AIPS.Utilities.showNotice(__("Network error. Please try again.", 'ai-post-scheduler'), 'error');
 			});
 		}
 	};

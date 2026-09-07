@@ -1,0 +1,165 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/admin-internal-links.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Clear the entire index and all suggestions? This cannot be undone.": [
+        "¿Borrar todo el índice y todas las sugerencias? Esto no se puede deshacer."
+      ],
+      "Delete this suggestion? This cannot be undone.": [
+        "¿Eliminar esta sugerencia? Esto no se puede deshacer."
+      ],
+      "Loading…": [
+        "Cargando…"
+      ],
+      "Error loading suggestions.": [
+        "Error al cargar sugerencias."
+      ],
+      "No suggestions found. Run indexing and generate suggestions to see results.": [
+        "No se encontraron sugerencias. Ejecute la indexación y genere sugerencias para ver resultados."
+      ],
+      "Accept suggestion": [
+        "Aceptar sugerencia"
+      ],
+      "Reject suggestion": [
+        "Rechazar sugerencia"
+      ],
+      "Insert Link": [
+        "Insertar Enlace"
+      ],
+      "Edit anchor text": [
+        "Editar texto ancla"
+      ],
+      "Delete suggestion": [
+        "Eliminar sugerencia"
+      ],
+      "Embeddings are not available. Please configure AI Engine.": [
+        "Los embeddings no están disponibles. Por favor configure AI Engine."
+      ],
+      "Please enter a valid post ID.": [
+        "Por favor, introduzca un ID de entrada válido."
+      ],
+      "Generating…": [
+        "Generando…"
+      ],
+      "Request failed. Please try again.": [
+        "La solicitud falló. Por favor, inténtelo de nuevo."
+      ],
+      "Re-indexing…": [
+        "Re-indexando…"
+      ],
+      "Status updated.": [
+        "Estado actualizado."
+      ],
+      "Failed to update status.": [
+        "Error al actualizar el estado."
+      ],
+      "Error deleting suggestion.": [
+        "Error al eliminar la sugerencia."
+      ],
+      "Anchor text updated.": [
+        "Texto ancla actualizado."
+      ],
+      "Failed to update anchor text.": [
+        "Error al actualizar el texto ancla."
+      ],
+      "Pending": [
+        "Pendiente"
+      ],
+      "Accepted": [
+        "Aceptado"
+      ],
+      "Rejected": [
+        "Rechazado"
+      ],
+      "Inserted": [
+        "Insertado"
+      ],
+      "Failed to load post data. Please try again.": [
+        "Error al cargar los datos de la entrada. Por favor, inténtelo de nuevo."
+      ],
+      "No accepted suggestions found for this post.": [
+        "No se encontraron sugerencias aceptadas para esta entrada."
+      ],
+      "Anchor": [
+        "Ancla"
+      ],
+      "Get Suggestions": [
+        "Obtener Sugerencias"
+      ],
+      "Insertion Locations": [
+        "Ubicaciones de Inserción"
+      ],
+      "Finding insertion locations…": [
+        "Buscando ubicaciones de inserción…"
+      ],
+      "Failed to find insertion locations. Please try again.": [
+        "Error al buscar ubicaciones de inserción. Por favor, inténtelo de nuevo."
+      ],
+      "0 valid suggestions": [
+        "0 sugerencias válidas"
+      ],
+      "The AI responded, but its suggestions rewrote the source text instead of bracketing an existing phrase.": [
+        "La IA respondió, pero sus sugerencias reescribieron el texto de origen en lugar de delimitar una frase existente."
+      ],
+      "No valid insertion locations could be shown for this suggestion.": [
+        "No se pudieron mostrar ubicaciones de inserción válidas para esta sugerencia."
+      ],
+      "Reason": [
+        "Motivo"
+      ],
+      "Option": [
+        "Opción"
+      ],
+      "With link inserted": [
+        "Con enlace insertado"
+      ],
+      "Apply": [
+        "Aplicar"
+      ],
+      "Showing %1$d valid of %2$d AI suggestions": [
+        "Mostrando %1$d válidas de %2$d sugerencias de IA"
+      ],
+      "AI returned %d suggestion(s)": [
+        "La IA devolvió %d sugerencia(s)"
+      ],
+      "This suggestion has already been applied to the preview.": [
+        "Esta sugerencia ya ha sido aplicada a la vista previa."
+      ],
+      "The selected text was not found in the content preview.": [
+        "El texto seleccionado no se encontró en la vista previa del contenido."
+      ],
+      "Link inserted successfully.": [
+        "Enlace insertado correctamente."
+      ],
+      "(No content)": [
+        "(Sin contenido)"
+      ],
+      "Edit anchor": [
+        "Editar ancla"
+      ],
+      "Remove link": [
+        "Eliminar enlace"
+      ],
+      "%d pending insertion": [
+        "%d inserción pendiente"
+      ],
+      "%d pending insertions": [
+        "%d inserciones pendientes"
+      ],
+      "Updating…": [
+        "Actualizando…"
+      ],
+      "Failed to update post. Please try again.": [
+        "Error al actualizar la entrada. Por favor, inténtelo de nuevo."
+      ]
+    }
+  }
+}

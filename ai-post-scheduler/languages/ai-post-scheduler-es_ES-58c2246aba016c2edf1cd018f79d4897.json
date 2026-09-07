@@ -1,0 +1,153 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/campaign-wizard.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Choose Campaign Setup Mode": [
+        "Elegir Modo de Configuración de Campaña"
+      ],
+      "Would you like Guided AI Setup to prefill your campaign fields, or configure everything manually?": [
+        "¿Le gustaría que la Configuración Guiada con IA complete los campos de su campaña, o configurar todo manualmente?"
+      ],
+      "Advanced Mode": [
+        "Modo Avanzado"
+      ],
+      "Guided AI Setup": [
+        "Configuración Guiada con IA"
+      ],
+      "Topic / Niche": [
+        "Tema / Nicho"
+      ],
+      "Example: WordPress SEO for local businesses": [
+        "Ejemplo: SEO de WordPress para negocios locales"
+      ],
+      "Target Audience": [
+        "Audiencia Objetivo"
+      ],
+      "Example: Small business owners with limited technical knowledge": [
+        "Ejemplo: Propietarios de pequeñas empresas con conocimientos técnicos limitados"
+      ],
+      "Content Tone": [
+        "Tono del Contenido"
+      ],
+      "Conversational": [
+        "Conversacional"
+      ],
+      "Professional": [
+        "Profesional"
+      ],
+      "Technical": [
+        "Técnico"
+      ],
+      "Friendly": [
+        "Amigable"
+      ],
+      "Publishing Goal": [
+        "Objetivo de Publicación"
+      ],
+      "Example: Drive organic traffic and convert readers to consultation bookings": [
+        "Ejemplo: Atraer tráfico orgánico y convertir lectores en reservas de consultas"
+      ],
+      "Template Output Style": [
+        "Estilo de Salida de Plantilla"
+      ],
+      "Educational/tutorial": [
+        "Educativo/tutorial"
+      ],
+      "Listicle": [
+        "Listado / Artículo en lista"
+      ],
+      "Comparison": [
+        "Comparación"
+      ],
+      "How-to guide": [
+        "Guía práctica / Cómo hacer"
+      ],
+      "Opinion/editorial": [
+        "Opinión/editorial"
+      ],
+      "FAQ-based": [
+        "Basado en preguntas frecuentes (FAQ)"
+      ],
+      "Case-study style": [
+        "Estilo estudio de caso"
+      ],
+      "News analysis": [
+        "Análisis de noticias"
+      ],
+      "Preferred Post Frequency": [
+        "Frecuencia Preferida de Entradas"
+      ],
+      "Post Type": [
+        "Tipo de Contenido"
+      ],
+      "Cancel": [
+        "Cancelar"
+      ],
+      "Generate Campaign": [
+        "Generar Campaña"
+      ],
+      "Generating campaign fields with AI…": [
+        "Generando campos de campaña con IA…"
+      ],
+      "Campaign fields filled in by AI — review and adjust as needed.": [
+        "Campos de campaña completados por IA — revise y ajuste según sea necesario."
+      ],
+      "Campaign Strategy Preview": [
+        "Vista Previa de Estrategia de Campaña"
+      ],
+      "Review the proposed plan before applying it to your wizard fields.": [
+        "Revise el plan propuesto antes de aplicarlo a los campos del asistente."
+      ],
+      "No preview details were returned by AI.": [
+        "La IA no devolvió detalles de vista previa."
+      ],
+      "Campaign Name": [
+        "Nombre de Campaña"
+      ],
+      "Content angle": [
+        "Enfoque del contenido"
+      ],
+      "Prompt Template": [
+        "Plantilla de Instrucción"
+      ],
+      "Title Prompt": [
+        "Instrucción de Título"
+      ],
+      "Posting cadence": [
+        "Cadencia de publicación"
+      ],
+      "Review Policy": [
+        "Política de Revisión"
+      ],
+      "Campaign Mode": [
+        "Modo de Campaña"
+      ],
+      "Select at least one field to apply.": [
+        "Seleccione al menos un campo para aplicar."
+      ],
+      "Regenerating campaign strategy…": [
+        "Regenerando estrategia de campaña…"
+      ],
+      "Select fields to apply": [
+        "Seleccionar campos a aplicar"
+      ],
+      "Apply selected fields": [
+        "Aplicar campos seleccionados"
+      ],
+      "Create this campaign and schedule it now?": [
+        "¿Crear esta campaña y programarla ahora?"
+      ],
+      "Campaign created.": [
+        "Campaña creada."
+      ]
+    }
+  }
+}

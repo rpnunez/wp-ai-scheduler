@@ -1,0 +1,411 @@
+{
+  "translation-revision-date": "2026-09-05 07:50:00+0000",
+  "generator": "AI Post Scheduler i18n Tool",
+  "source": "assets/js/authors.js",
+  "domain": "ai-post-scheduler",
+  "locale_data": {
+    "ai-post-scheduler": {
+      "": {
+        "domain": "ai-post-scheduler",
+        "lang": "es_ES",
+        "plural-forms": "nplurals=2; plural=(n != 1);"
+      },
+      "Please select a bulk action.": [
+        "Por favor, seleccione una acción por lotes."
+      ],
+      "Invalid action.": [
+        "Acción no válida."
+      ],
+      "Error generating topics.": [
+        "Error al generar temas."
+      ],
+      "Error deleting author.": [
+        "Error al eliminar el autor."
+      ],
+      "Add New Author": [
+        "Añadir Nuevo Autor"
+      ],
+      "Loading...": [
+        "Cargando..."
+      ],
+      "Edit Author": [
+        "Editar Autor"
+      ],
+      "Error loading author data.": [
+        "Error al cargar los datos del autor."
+      ],
+      "Saving...": [
+        "Guardando..."
+      ],
+      "Author saved successfully.": [
+        "Autor guardado correctamente."
+      ],
+      "Error saving author.": [
+        "Error al guardar el autor."
+      ],
+      "Are you sure you want to delete this author? This will also delete all associated topics and logs.": [
+        "¿Está seguro de que desea eliminar este autor? Esto también eliminará todos los temas y registros asociados."
+      ],
+      "Author deleted successfully.": [
+        "Autor eliminado correctamente."
+      ],
+      "Generate topics for this author now?": [
+        "¿Generar temas para este autor ahora?"
+      ],
+      "Generating...": [
+        "Generando..."
+      ],
+      "Topics generated successfully.": [
+        "Temas generados correctamente."
+      ],
+      "Generate Posts": [
+        "Generar Entradas"
+      ],
+      "How many posts would you like to generate for this author?": [
+        "¿Cuántas entradas le gustaría generar para este autor?"
+      ],
+      "Number of Posts to Generate": [
+        "Número de Entradas a Generar"
+      ],
+      "Please enter a valid quantity between 1 and 10.": [
+        "Por favor, introduzca una cantidad válida entre 1 y 10."
+      ],
+      "Cancel": [
+        "Cancelar"
+      ],
+      "Generate": [
+        "Generar"
+      ],
+      "Posts generated successfully.": [
+        "Entradas generadas correctamente."
+      ],
+      "Edit Post": [
+        "Editar Entrada"
+      ],
+      "Error generating posts.": [
+        "Error al generar entradas."
+      ],
+      "Error loading topics.": [
+        "Error al cargar temas."
+      ],
+      "No topics found.": [
+        "No se encontraron temas."
+      ],
+      "Date Approved": [
+        "Fecha de Aprobación"
+      ],
+      "Date Rejected": [
+        "Fecha de Rechazo"
+      ],
+      "Date Post Generated": [
+        "Fecha de Generación de la Entrada"
+      ],
+      "Today": [
+        "Hoy"
+      ],
+      "Yesterday": [
+        "Ayer"
+      ],
+      "Reject": [
+        "Rechazar"
+      ],
+      "Approve": [
+        "Aprobar"
+      ],
+      "Last Feedback": [
+        "Últimos Comentarios"
+      ],
+      "Potential Duplicate": [
+        "Posible Duplicado"
+      ],
+      "View Details": [
+        "Ver Detalles"
+      ],
+      "Click to view posts generated from this topic": [
+        "Haga clic para ver las entradas generadas a partir de este tema"
+      ],
+      "Previously Rejected": [
+        "Previamente Rechazado"
+      ],
+      "Previously Approved": [
+        "Previamente Aprobado"
+      ],
+      "Edit": [
+        "Editar"
+      ],
+      "More actions": [
+        "Más acciones"
+      ],
+      "Approve with Feedback": [
+        "Aprobar con Comentarios"
+      ],
+      "Reject with Feedback": [
+        "Rechazar con Comentarios"
+      ],
+      "Generate Post Now": [
+        "Generar Entrada Ahora"
+      ],
+      "Topic Details": [
+        "Detalles del Tema"
+      ],
+      "Date Topic Generated": [
+        "Fecha de Generación del Tema"
+      ],
+      "Actions": [
+        "Acciones"
+      ],
+      "topic": [
+        "tema"
+      ],
+      "topics": [
+        "temas"
+      ],
+      "Similarity": [
+        "Similitud"
+      ],
+      "Other": [
+        "Otro"
+      ],
+      "Timely / On-trend": [
+        "Oportuno / En tendencia"
+      ],
+      "Relevant to niche": [
+        "Relevante para el nicho"
+      ],
+      "Well-researched angle": [
+        "Enfoque bien investigado"
+      ],
+      "Engaging hook": [
+        "Gancho atractivo"
+      ],
+      "Original perspective": [
+        "Perspectiva original"
+      ],
+      "Duplicate": [
+        "Duplicado"
+      ],
+      "Tone": [
+        "Tono"
+      ],
+      "Irrelevant": [
+        "Irrelevante"
+      ],
+      "Policy": [
+        "Política"
+      ],
+      "Delete": [
+        "Eliminar"
+      ],
+      "Generate Now": [
+        "Generar Ahora"
+      ],
+      "Approval Reason": [
+        "Motivo de Aprobación"
+      ],
+      "Rejection Reason": [
+        "Motivo de Rechazo"
+      ],
+      "Select a positive reason to help train future topic generation.": [
+        "Seleccione un motivo positivo para ayudar a entrenar futuras generaciones de temas."
+      ],
+      "Select a structured reason to improve future topic quality.": [
+        "Seleccione un motivo estructurado para mejorar la calidad de futuros temas."
+      ],
+      "Approve Topic": [
+        "Aprobar Tema"
+      ],
+      "Why are you approving this topic? (optional)": [
+        "¿Por qué aprueba este tema? (opcional)"
+      ],
+      "Reject Topic": [
+        "Rechazar Tema"
+      ],
+      "Why are you rejecting this topic? (optional)": [
+        "¿Por qué rechaza este tema? (opcional)"
+      ],
+      "Error approving topic.": [
+        "Error al aprobar el tema."
+      ],
+      "Error rejecting topic.": [
+        "Error al rechazar el tema."
+      ],
+      "No feedback yet.": [
+        "Aún no hay comentarios."
+      ],
+      "Topic": [
+        "Tema"
+      ],
+      "Action": [
+        "Acción"
+      ],
+      "Reason": [
+        "Motivo"
+      ],
+      "User": [
+        "Usuario"
+      ],
+      "Date": [
+        "Fecha"
+      ],
+      "Are you sure you want to delete this topic?": [
+        "¿Está seguro de que desea eliminar este tema?"
+      ],
+      "Error deleting topic.": [
+        "Error al eliminar el tema."
+      ],
+      "Save": [
+        "Guardar"
+      ],
+      "Topic title is required.": [
+        "El título del tema es obligatorio."
+      ],
+      "Error saving topic.": [
+        "Error al guardar el tema."
+      ],
+      "Generate a post from this topic now?": [
+        "¿Generar una entrada a partir de este tema ahora?"
+      ],
+      "Post generated successfully.": [
+        "Entrada generada correctamente."
+      ],
+      "Error generating post.": [
+        "Error al generar la entrada."
+      ],
+      "Loading logs...": [
+        "Loading logs..."
+      ],
+      "Error loading logs.": [
+        "Error al cargar registros."
+      ],
+      "No history found for this topic.": [
+        "No se encontró historial para este tema."
+      ],
+      "Details": [
+        "Detalles"
+      ],
+      "Loading posts...": [
+        "Cargando entradas..."
+      ],
+      "Posts Generated from Topic": [
+        "Entradas Generadas a partir del Tema"
+      ],
+      "Error loading posts.": [
+        "Error al cargar entradas."
+      ],
+      "No posts have been generated from this topic yet.": [
+        "Aún no se han generado entradas a partir de este tema."
+      ],
+      "No featured image": [
+        "Sin imagen destacada"
+      ],
+      "View Post": [
+        "Ver Entrada"
+      ],
+      "Publish": [
+        "Publicar"
+      ],
+      "Not published": [
+        "No publicado"
+      ],
+      "Date Generated": [
+        "Fecha de Generación"
+      ],
+      "Date Published": [
+        "Fecha de Publicación"
+      ],
+      "Error publishing post.": [
+        "Error al publicar la entrada."
+      ],
+      "Are you sure you want to publish this post?": [
+        "¿Está seguro de que desea publicar esta entrada?"
+      ],
+      "Publishing...": [
+        "Publicando..."
+      ],
+      "Post published successfully.": [
+        "Entrada publicada correctamente."
+      ],
+      "Please select at least one feedback item.": [
+        "Por favor, seleccione al menos un elemento de comentarios."
+      ],
+      "Please select at least one topic.": [
+        "Por favor, seleccione al menos un tema."
+      ],
+      "Processing...": [
+        "Procesando..."
+      ],
+      "Error executing bulk action.": [
+        "Error al ejecutar la acción por lotes."
+      ],
+      "Are you sure you want to generate posts for %d topics?": [
+        "¿Está seguro de que desea generar entradas para %d temas?"
+      ],
+      "Generating Posts": [
+        "Generando Entradas"
+      ],
+      "Please wait while your posts are being generated. This may take a few minutes.": [
+        "Por favor, espere mientras se generan sus entradas. Esto puede tomar unos minutos."
+      ],
+      "Site niche is required.": [
+        "El nicho del sitio es obligatorio."
+      ],
+      "Generating suggestions...": [
+        "Generando sugerencias..."
+      ],
+      "Error generating author suggestions.": [
+        "Error al generar sugerencias de autor."
+      ],
+      "Voice/Tone": [
+        "Voz/Tono"
+      ],
+      "Writing Style": [
+        "Estilo de Escritura"
+      ],
+      "Topic Generation Prompt": [
+        "Instrucción de Generación de Temas"
+      ],
+      "Import Author": [
+        "Importar Autor"
+      ],
+      "Importing...": [
+        "Importando..."
+      ],
+      "Author imported successfully.": [
+        "Autor importado correctamente."
+      ],
+      "Imported Author": [
+        "Autor Importado"
+      ],
+      "Error importing author.": [
+        "Error al importar autor."
+      ],
+      "Loading queue...": [
+        "Cargando cola..."
+      ],
+      "Error loading queue.": [
+        "Error al cargar la cola."
+      ],
+      "No approved topics in the queue yet.": [
+        "Aún no hay temas aprobados en la cola."
+      ],
+      "N/A": [
+        "N/D"
+      ],
+      "Topic Title": [
+        "Título del Tema"
+      ],
+      "Author": [
+        "Autor"
+      ],
+      "Field/Niche": [
+        "Campo/Nicho"
+      ],
+      "Approved Date": [
+        "Fecha de Aprobación"
+      ],
+      "Generate posts now for %d selected topic(s)?": [
+        "¿Generar entradas ahora para %d tema(s) seleccionado(s)?"
+      ]
+    }
+  }
+}

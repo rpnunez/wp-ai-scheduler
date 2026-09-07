@@ -5,6 +5,11 @@
  */
 (function ($) {
 	'use strict';
+	var __ = (window.wp && window.wp.i18n) ? window.wp.i18n.__ : function(s) { return s; };
+	var _x = (window.wp && window.wp.i18n) ? window.wp.i18n._x : function(s) { return s; };
+	var _n = (window.wp && window.wp.i18n) ? window.wp.i18n._n : function(s, p, n) { return n === 1 ? s : p; };
+	var sprintf = (window.wp && window.wp.i18n) ? window.wp.i18n.sprintf : function(s) { return s; };
+
 
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
@@ -78,15 +83,15 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			var l10n  = window.aipsAdminBarL10n || {};
-			var $btn  = $(this);
-			var id    = $btn.data('id');
-			var nonce = $btn.data('nonce');
-			var $row  = $btn.closest('li.aips-toolbar-notification');
+			var config = window.aipsAdminBarConfig || window.aipsAjax || {};
+			var $btn   = $(this);
+			var id     = $btn.data('id');
+			var nonce  = $btn.data('nonce');
+			var $row   = $btn.closest('li.aips-toolbar-notification');
 
 			$btn.prop('disabled', true);
 
-			$.post(l10n.ajaxUrl, {
+			$.post(config.ajaxUrl || ajaxurl, {
 				action: 'aips_mark_notification_read',
 				nonce:  nonce,
 				id:     id
@@ -107,12 +112,12 @@
 					AIPS.adminBarUpdateBadge(response.data.unread_count);
 				} else {
 					$btn.prop('disabled', false);
-					alert(l10n.markReadError || 'Error marking notification as read.');
+					alert(__('Error marking notification as read.', 'ai-post-scheduler'));
 				}
 			})
 			.fail(function () {
 				$btn.prop('disabled', false);
-				alert(l10n.markReadError || 'Error marking notification as read.');
+				alert(__('Error marking notification as read.', 'ai-post-scheduler'));
 			});
 		},
 
@@ -125,13 +130,13 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			var l10n  = window.aipsAdminBarL10n || {};
-			var $btn  = $(this);
-			var nonce = $btn.data('nonce');
+			var config = window.aipsAdminBarConfig || window.aipsAjax || {};
+			var $btn   = $(this);
+			var nonce  = $btn.data('nonce');
 
 			$btn.prop('disabled', true);
 
-			$.post(l10n.ajaxUrl, {
+			$.post(config.ajaxUrl || ajaxurl, {
 				action: 'aips_mark_all_notifications_read',
 				nonce:  nonce
 			})
@@ -148,12 +153,12 @@
 					AIPS.adminBarUpdateBadge(response.data.unread_count || 0);
 				} else {
 					$btn.prop('disabled', false);
-					alert(l10n.markAllReadError || 'Error marking all notifications as read.');
+					alert(__('Error marking all notifications as read.', 'ai-post-scheduler'));
 				}
 			})
 			.fail(function () {
 				$btn.prop('disabled', false);
-				alert(l10n.markAllReadError || 'Error marking all notifications as read.');
+				alert(__('Error marking all notifications as read.', 'ai-post-scheduler'));
 			});
 		},
 
