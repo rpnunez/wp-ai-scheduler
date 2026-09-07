@@ -216,7 +216,7 @@ $authors = get_users(array(
 										</div>
 										<div style="padding-top: 20px;">
 											<button type="button" class="button button-small aips-remove-post-type-rule" title="<?php esc_attr_e('Remove', 'ai-post-scheduler'); ?>">
-												<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>
+												<span class="dashicons dashicons-no-alt" aria-hidden="true" style="margin-top: 2px;"></span>
 											</button>
 										</div>
 									</div>

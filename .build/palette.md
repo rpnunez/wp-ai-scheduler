@@ -40,3 +40,9 @@
 **PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
 **Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
 **Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.
+## 2024-09-08 - Add aria-hidden to decorative close/remove Dashicons
+**Area:** Calendar, Cache Monitor, Internal Links, and Campaign Wizard templates
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative close/remove Dashicons
+**Learning:** When using Dashicons like `dashicons-no-alt` inside close or remove buttons that already have `aria-label` or `title` attributes, they act as decorative icons and must be hidden from screen readers.
+**Action:** Always add `aria-hidden="true"` to `dashicons-no-alt` when used purely for visual decoration inside actionable elements.

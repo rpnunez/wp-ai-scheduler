@@ -215,7 +215,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 		<div class="aips-modal-header">
 			<h2 class="aips-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-no-alt"></span>
+				<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 			</button>
 		</div>
 		<div class="aips-modal-body" style="padding:0;">
@@ -430,7 +430,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 		<div class="aips-modal-header">
 			<h2 class="aips-modal-title"><?php esc_html_e('Edit Anchor Text', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-no-alt"></span>
+				<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 			</button>
 		</div>
 		<div class="aips-modal-body">
