@@ -185,6 +185,25 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
             SELECT * FROM {$this->schedule_table} WHERE template_id = %d ORDER BY next_run ASC
         ", $template_id));
     }
+
+    /**
+     * Get schedules for multiple template IDs.
+     *
+     * @param array $template_ids Array of Template IDs.
+     * @return array Array of schedule objects.
+     */
+    public function get_by_template_ids(array $template_ids) {
+        if (empty($template_ids)) {
+            return array();
+        }
+
+        $template_ids = array_map('absint', $template_ids);
+        $placeholders = implode(',', array_fill(0, count($template_ids), '%d'));
+
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT * FROM {$this->schedule_table} WHERE template_id IN ($placeholders) ORDER BY next_run ASC
+        ", ...$template_ids));
+    }
     
     /**
      * Create a new schedule.
@@ -671,10 +690,35 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
      *                       - 'completed'   int     Posts successfully generated
      *                       - 'total'       int     Posts requested for this run
      *                       - 'timestamp'   string  ISO-8601 timestamp of this state capture
+     *                       - 'resumable'   bool    Set when a large batch stopped part-way
+     *                                               through and can be re-dispatched
+     *                       - 'resume_index' int    Absolute index the next slice starts at
      * @return bool True on success, false on failure.
      */
     public function update_run_state($id, array $state) {
         return $this->update($id, array('run_state' => wp_json_encode($state)));
+    }
+
+    /**
+     * Get active schedules that carry a run_state payload.
+     *
+     * The payload is returned as the raw JSON string on each row; callers decode
+     * it and decide what to do. This is intentionally a coarse filter — the
+     * schedules table is small, and matching JSON substrings in SQL would couple
+     * the query to wp_json_encode's exact output.
+     *
+     * @return array Array of schedule row objects (may be empty).
+     */
+    public function get_schedules_with_run_state() {
+        return $this->wpdb->get_results( "
+            SELECT s.*, t.name as template_name
+            FROM {$this->schedule_table} s
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+              AND s.run_state IS NOT NULL
+              AND s.run_state <> ''
+            ORDER BY s.id ASC
+        " );
     }
 
     /**

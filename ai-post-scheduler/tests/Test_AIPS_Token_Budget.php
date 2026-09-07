@@ -19,6 +19,56 @@ class Test_AIPS_Token_Budget extends WP_UnitTestCase {
 		$this->assertSame(5003, $result);
 	}
 
+	public function test_calculate_can_exclude_prompt_tokens() {
+		// An output-only cap must not move when the prompt grows.
+		$short = AIPS_Token_Budget::calculate(
+			'Prompt',
+			4000,
+			array(
+				'buffer_ratio'          => 0.25,
+				'include_prompt_tokens' => false,
+			)
+		);
+
+		$long = AIPS_Token_Budget::calculate(
+			str_repeat('A', 40000),
+			4000,
+			array(
+				'buffer_ratio'          => 0.25,
+				'include_prompt_tokens' => false,
+			)
+		);
+
+		$this->assertSame(5000, $short);
+		$this->assertSame($short, $long);
+	}
+
+	public function test_ai_service_max_tokens_ignores_prompt_length() {
+		$service    = new AIPS_AI_Service();
+		$reflection = new ReflectionMethod($service, 'calculate_max_tokens');
+		$reflection->setAccessible(true);
+
+		$original = get_option('aips_max_tokens_title');
+		update_option('aips_max_tokens_title', 200);
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		try {
+			$short = $reflection->invokeArgs($service, array('Tiny prompt.', 'title'));
+			$long  = $reflection->invokeArgs($service, array(str_repeat('A', 40000), 'title'));
+
+			// 200 output tokens + the 25% buffer, regardless of prompt size.
+			$this->assertSame(250, $short);
+			$this->assertSame(250, $long);
+		} finally {
+			if (false === $original) {
+				delete_option('aips_max_tokens_title');
+			} else {
+				update_option('aips_max_tokens_title', $original);
+			}
+			AIPS_Config::get_instance()->flush_option_cache();
+		}
+	}
+
 	public function test_calculate_respects_config_limit() {
 		$original_limit = get_option('aips_max_tokens_limit');
 		update_option('aips_max_tokens_limit', 100);

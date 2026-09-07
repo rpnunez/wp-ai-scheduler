@@ -97,9 +97,122 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the AI provider selection field.
+     *
+     * Lets the admin pick which AI backend serves requests. "Auto-detect" lets
+     * AIPS_AI_Provider_Factory choose the first available provider (Meow first).
+     *
+     * @return void
+     */
+    public function ai_provider_field_callback() {
+        $value     = (string) AIPS_Config::get_instance()->get_option('aips_ai_provider');
+        $available = AIPS_AI_Provider_Factory::available_providers();
+        $reasons   = AIPS_AI_Provider_Factory::unavailable_reasons();
+        // Show every known provider so an unavailable one can still be selected,
+        // while clearly marking whether it is locally configured for use.
+        $all = AIPS_AI_Provider_Factory::all_providers();
+        ?>
+        <select name="aips_ai_provider" id="aips_ai_provider">
+            <option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (recommended)', 'ai-post-scheduler'); ?></option>
+            <?php foreach ($all as $id => $label) : ?>
+                <?php $is_available = isset($available[$id]); ?>
+                <option value="<?php echo esc_attr($id); ?>" <?php selected($value, $id); ?>>
+                    <?php
+                    echo esc_html($label);
+                    if (!$is_available) {
+                        echo ' ' . esc_html__('(currently unavailable)', 'ai-post-scheduler');
+                    }
+                    ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Which AI backend to use. Auto-detect prefers Meow Apps AI Engine, then a locally configured WordPress AI Client connector. Live connector and model capability is verified when a generation request runs. The Model and Environment ID fields below are interpreted per provider (Meow uses the Environment ID; the WordPress AI Client uses the Model as a model preference, with credentials managed under WordPress core Settings > AI Connectors).', 'ai-post-scheduler'); ?></p>
+        <?php if (!empty($reasons)) : ?>
+            <ul class="description aips-provider-readiness">
+                <?php foreach ($reasons as $id => $reason) : ?>
+                    <li><strong><?php echo esc_html(isset($all[$id]) ? $all[$id] : $id); ?>:</strong> <?php echo esc_html($reason); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+        <?php
+    }
+
+	/**
+	 * Render WordPress AI Client connector routing controls.
+	 *
+	 * @return void
+	 */
+	public function wp_ai_connectors_field_callback() {
+		$config          = AIPS_Config::get_instance();
+		$mode            = (string) $config->get_option('aips_wp_ai_connector_mode');
+		$selected        = (array) $config->get_option('aips_wp_ai_connector_ids');
+		$failover        = (bool) $config->get_option('aips_wp_ai_connector_failover');
+		$provider        = new AIPS_WP_AI_Client_Provider();
+		$connectors      = $provider->get_active_ai_connectors();
+		$ordered_ids     = array_values(array_unique(array_merge($selected, array_keys($connectors))));
+		$settings_url    = admin_url('options-general.php?page=connectors');
+		?>
+		<fieldset class="aips-wp-ai-connectors">
+			<label>
+				<input type="radio" name="aips_wp_ai_connector_mode" value="all" <?php checked($mode, 'all'); ?>>
+				<?php esc_html_e('Use all available connectors (recommended)', 'ai-post-scheduler'); ?>
+			</label><br>
+			<label>
+				<input type="radio" name="aips_wp_ai_connector_mode" value="selected" <?php checked($mode, 'selected'); ?>>
+				<?php esc_html_e('Use only selected connectors', 'ai-post-scheduler'); ?>
+			</label>
+
+			<?php if (!empty($ordered_ids)) : ?>
+				<p><label for="aips_wp_ai_connector_ids"><strong><?php esc_html_e('Allowed connectors and priority', 'ai-post-scheduler'); ?></strong></label></p>
+				<input type="hidden" name="aips_wp_ai_connector_ids[]" value="">
+				<select name="aips_wp_ai_connector_ids[]" id="aips_wp_ai_connector_ids" multiple size="<?php echo esc_attr((string) min(8, max(3, count($ordered_ids)))); ?>" style="min-width: 24em;">
+					<?php foreach ($ordered_ids as $connector_id) : ?>
+						<?php
+						$connector = isset($connectors[$connector_id]) ? $connectors[$connector_id] : null;
+						$name      = is_array($connector) && !empty($connector['name']) ? (string) $connector['name'] : $connector_id;
+						$health    = $provider->get_connector_health($connector_id);
+						$cooling   = !empty($health['cooldown_until']) && (int) $health['cooldown_until'] > time();
+						$approved  = $provider->get_connector_approval_status($connector_id);
+						$configured = is_array($connector) && $provider->is_connector_configured($connector);
+						$status    = !$configured
+							? __('currently unavailable', 'ai-post-scheduler')
+							: ($approved === false
+							? __('not approved for AI Post Scheduler', 'ai-post-scheduler')
+							: ($cooling
+							? __('temporarily unavailable', 'ai-post-scheduler')
+							: __('connected', 'ai-post-scheduler')));
+						?>
+						<option value="<?php echo esc_attr($connector_id); ?>" <?php selected(in_array($connector_id, $selected, true)); ?>>
+							<?php echo esc_html(sprintf('%1$s (%2$s)', $name, $status)); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+				<p>
+					<button type="button" class="button" data-aips-connector-move="up"><?php esc_html_e('Move up', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="button" data-aips-connector-move="down"><?php esc_html_e('Move down', 'ai-post-scheduler'); ?></button>
+				</p>
+				<p class="description"><?php esc_html_e('When selected-connector mode is active, highlighted connectors are attempted from top to bottom. Use Ctrl/Cmd to select more than one.', 'ai-post-scheduler'); ?></p>
+			<?php else : ?>
+				<p class="description"><?php esc_html_e('No active WordPress AI connectors are registered.', 'ai-post-scheduler'); ?></p>
+			<?php endif; ?>
+
+			<input type="hidden" name="aips_wp_ai_connector_failover" value="0">
+			<label>
+				<input type="checkbox" name="aips_wp_ai_connector_failover" value="1" <?php checked($failover); ?>>
+				<?php esc_html_e('Try the next allowed connector when a connector-specific failure occurs', 'ai-post-scheduler'); ?>
+			</label>
+			<p class="description">
+				<?php esc_html_e('Credentials remain managed by WordPress. Request validation and content-policy failures do not trigger connector failover.', 'ai-post-scheduler'); ?>
+				<a href="<?php echo esc_url($settings_url); ?>"><?php esc_html_e('Manage Connectors', 'ai-post-scheduler'); ?></a>
+			</p>
+		</fieldset>
+		<?php
+	}
+
+    /**
      * Render the AI model setting field.
      *
-     * Displays a text input for specifying a custom AI Engine model.
+     * Displays a text input for specifying a custom AI model.
      *
      * @return void
      */
@@ -107,7 +220,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_model');
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('AI model to use (leave empty for the provider default). For the WordPress AI Client you may enter a comma-separated model preference list, e.g. "claude-sonnet-4-5, gemini-3-pro-preview".', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -122,9 +235,23 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_ai_env_id');
         ?>
         <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
-        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Meow AI Engine only: environment ID to use (leave empty for the AI Engine default). Ignored by the WordPress AI Client, which manages connectors and credentials under WordPress core settings.', 'ai-post-scheduler'); ?></p>
         <?php
     }
+
+	/**
+	 * Render the AI generation prevention setting field.
+	 *
+	 * @return void
+	 */
+	public function prevent_scheduled_ai_generation_field_callback() {
+		$value = AIPS_Config::get_instance()->is_scheduled_ai_generation_prevented();
+		?>
+		<input type="hidden" name="aips_prevent_scheduled_ai_generation" value="0">
+		<input type="checkbox" name="aips_prevent_scheduled_ai_generation" value="1" <?php checked(1, $value); ?>>
+		<p class="description"><?php esc_html_e('Stop schedule runs before they begin AI generation. This applies to cron-started runs and to manual "Run Now" executions. Schedules remain active and record an early-termination history entry instead of generating content while this setting is enabled. A large batch stopped part-way through resumes from where it left off once you turn this back off.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
 
     /**
      * Render the max tokens limit setting field.
@@ -154,7 +281,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_title');
         ?>
         <input type="number" name="aips_max_tokens_title" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected output token budget for post title generation (~10–20 words). Default: 150.', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Expected visible-output budget for post title generation (~10–20 words). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 150.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -169,7 +296,7 @@ class AIPS_Settings_UI {
         $value = AIPS_Config::get_instance()->get_option('aips_max_tokens_excerpt');
         ?>
         <input type="number" name="aips_max_tokens_excerpt" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
-        <p class="description"><?php esc_html_e('Expected output token budget for post excerpt generation (~2–3 sentence summary). Default: 300.', 'ai-post-scheduler'); ?></p>
+        <p class="description"><?php esc_html_e('Expected visible-output budget for post excerpt generation (~2–3 sentence summary). Short-form requests reserve at least 1200 provider tokens so reasoning-capable models can finish the response. Default: 300.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -327,6 +454,61 @@ class AIPS_Settings_UI {
             <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
         </label>
+        <?php
+    }
+
+    /**
+     * Render the conversational generation setting field.
+     *
+     * When enabled, the title, excerpt, and image-prompt steps continue the same
+     * conversation as the content step instead of each pasting a copy of the
+     * article into a fresh prompt. Requires an AI provider that can replay
+     * conversation history.
+     *
+     * @return void
+     */
+    public function conversational_generation_field_callback() {
+        $value     = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
+        $supported = AIPS_AI_Provider_Factory::create()->supports_conversation();
+        ?>
+        <input type="hidden" name="aips_conversational_generation" value="0">
+        <label>
+            <input type="checkbox" name="aips_conversational_generation" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Generate post components as one conversation instead of separate prompts', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('The model keeps the article it just wrote in context, so titles and excerpts stay consistent with the body and the article text is not re-sent with every request.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$supported) : ?>
+            <p class="description">
+                <strong><?php esc_html_e('The active AI provider does not support conversation history. This setting has no effect until you switch to one that does.', 'ai-post-scheduler'); ?></strong>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Render the combined metadata turn setting field.
+     *
+     * @return void
+     */
+    public function conversational_metadata_turn_field_callback() {
+        $value  = AIPS_Config::get_instance()->get_option('aips_conversational_metadata_turn');
+        $parent = AIPS_Config::get_instance()->get_option('aips_conversational_generation');
+        ?>
+        <input type="hidden" name="aips_conversational_metadata_turn" value="0">
+        <label>
+            <input type="checkbox" name="aips_conversational_metadata_turn" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Request the title, excerpt, and image prompt in a single structured response', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('Collapses up to four follow-up requests into one, roughly halving the number of AI calls per post. Falls back to separate requests if the response cannot be parsed.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php if (!$parent) : ?>
+            <p class="description">
+                <strong><?php esc_html_e('Requires Conversational Generation to be enabled.', 'ai-post-scheduler'); ?></strong>
+            </p>
+        <?php endif; ?>
         <?php
     }
 
@@ -509,7 +691,7 @@ class AIPS_Settings_UI {
      *
      * Ensures the saved value is a positive integer (≥ 1). An empty submission or
      * a value of zero would silently remove the output token budget and cause the
-     * AI to receive an unexpectedly tiny maxTokens value, so we clamp to 1.
+     * AI to receive an unexpectedly tiny max_tokens value, so we clamp to 1.
      *
      * @param mixed $value Raw input value.
      * @return int Sanitized token budget (minimum 1).
@@ -833,5 +1015,69 @@ class AIPS_Settings_UI {
 
         return in_array($value, $allowed, true) ? $value : 'array';
     }
+
+    /**
+     * Sanitize the AI provider selection.
+     *
+     * Accepts an empty string (auto-detect) or a known provider id; anything
+     * else falls back to auto-detect.
+     *
+     * @param mixed $value Raw submitted value.
+     * @return string
+     */
+    public function sanitize_ai_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+
+        if ($value === '') {
+            return '';
+        }
+
+        $known = array_keys(AIPS_AI_Provider_Factory::all_providers());
+
+        return in_array($value, $known, true) ? $value : '';
+    }
+
+	/**
+	 * Sanitize the WordPress AI connector selection mode.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return string
+	 */
+	public function sanitize_wp_ai_connector_mode($value) {
+		$value = sanitize_key((string) $value);
+
+		return in_array($value, array('all', 'selected'), true) ? $value : 'all';
+	}
+
+	/**
+	 * Sanitize an ordered list of WordPress AI connector IDs.
+	 *
+	 * Unknown IDs are preserved so a temporarily deactivated connector can resume
+	 * its prior position when it is registered again.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return array<int,string>
+	 */
+	public function sanitize_wp_ai_connector_ids($value) {
+		if (!is_array($value)) {
+			return array();
+		}
+
+		$connector_ids = array();
+
+		foreach ($value as $connector_id) {
+			if (!is_scalar($connector_id)) {
+				continue;
+			}
+
+			$connector_id = strtolower(trim((string) $connector_id));
+
+			if ($connector_id !== '' && preg_match('/^[a-z0-9_-]+$/', $connector_id)) {
+				$connector_ids[] = $connector_id;
+			}
+		}
+
+		return array_values(array_unique($connector_ids));
+	}
 
 }

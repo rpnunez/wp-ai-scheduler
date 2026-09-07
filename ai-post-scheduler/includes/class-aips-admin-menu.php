@@ -228,6 +228,24 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Content Indexer', 'ai-post-scheduler'),
+            __('Content Indexer', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-indexer',
+            array($this, 'render_content_indexer_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Affiliate Links', 'ai-post-scheduler'),
+            __('Affiliate Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-affiliate-links',
+            array($this, 'render_affiliate_links_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -253,17 +271,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_status_page')
         );
 
-        if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-            add_submenu_page(
-                null,
-                __('Seeder', 'ai-post-scheduler'),
-                __('Seeder', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-seeder',
-                array($this, 'render_seeder_page')
-            );
-        }
-
         add_submenu_page(
             null,
             __('Operations Insights', 'ai-post-scheduler'),
@@ -284,6 +291,15 @@ class AIPS_Admin_Menu {
             );
         }
 
+        add_submenu_page(
+            null,
+            __('Stress Test', 'ai-post-scheduler'),
+            __('Stress Test', 'ai-post-scheduler'),
+            'manage_options',
+            AIPS_Stress_Test_Controller::PAGE_SLUG,
+            array($this, 'render_stress_test_page')
+        );
+
         if (AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled')) {
             add_submenu_page(
                 null,
@@ -294,6 +310,7 @@ class AIPS_Admin_Menu {
                 array($this, 'render_cache_monitor_page')
             );
         }
+      
         if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
             add_submenu_page(
                 null,
@@ -357,9 +374,9 @@ class AIPS_Admin_Menu {
                 'aips-operations-insights',
                 'aips-status',
                 'aips-telemetry',
-                'aips-seeder',
                 'aips-dev-tools',
                 'aips-cache-monitor',
+                AIPS_Stress_Test_Controller::PAGE_SLUG,
             ),
             true
         );
@@ -383,6 +400,7 @@ class AIPS_Admin_Menu {
                 'aips-source-data',
                 'aips-taxonomy',
                 'aips-internal-links',
+                'aips-affiliate-links',
                 'aips-author-topics',
                 AIPS_Campaigns_Controller::PAGE_SLUG,
                 AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
@@ -709,18 +727,6 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Seeder page.
-     *
-     * Includes the seeder template file.
-     *
-     * @return void
-     */
-    public function render_seeder_page() {
-        $seeder_admin = new AIPS_Seeder_Admin();
-        $seeder_admin->render_page();
-    }
-
-    /**
      * Render the Cache Monitor page.
      *
      * @return void
@@ -740,6 +746,18 @@ class AIPS_Admin_Menu {
     public function render_status_page() {
         $status_handler = new AIPS_System_Status();
         $status_handler->render_page();
+    }
+
+    /**
+     * Render the Stress Test page.
+     *
+     * Delegates rendering to AIPS_Stress_Test_Controller.
+     *
+     * @return void
+     */
+    public function render_stress_test_page() {
+        $controller = new AIPS_Stress_Test_Controller();
+        $controller->render_page();
     }
 
     /**
@@ -776,6 +794,11 @@ class AIPS_Admin_Menu {
      *
      * @return void
      */
+    public function render_affiliate_links_page() {
+        $controller = new AIPS_Affiliate_Links_Controller();
+        $controller->render_page();
+    }
+
     public function render_internal_links_page() {
         global $aips_internal_links_controller;
 
@@ -794,5 +817,16 @@ class AIPS_Admin_Menu {
         echo '<div class="notice notice-error"><p>' .
             esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
         '</p></div>';
+    }
+
+    public function render_content_indexer_page() {
+        try {
+            $controller = new AIPS_Content_Indexer_Controller();
+            $controller->render_page();
+        } catch (Throwable $throwable) {
+            echo '<div class="notice notice-error"><p>' .
+                esc_html__('The Content Indexer page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+            '</p></div>';
+        }
     }
 }

@@ -52,12 +52,14 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 	}
 
 	/**
-	 * Check plugin version, database version, and AI Engine presence.
+	 * Check plugin version, database version, and AI provider readiness.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function check_plugin() {
 		$ai_engine_active  = class_exists( 'Meow_MWAI_Core' );
+		$active_provider   = AIPS_AI_Provider_Factory::create();
+		$provider_ready    = $active_provider->is_available();
 		$db_version_raw    = AIPS_Config::get_instance()->get_option( 'aips_db_version' );
 		$db_version        = is_scalar( $db_version_raw ) ? trim( (string) $db_version_raw ) : 'Unknown';
 		$db_version_is_valid = (bool) preg_match( '/^\d+(?:\.\d+)*(?:[-+~._][0-9A-Za-z.-]+)?$/', $db_version );
@@ -94,7 +96,15 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 			'ai_engine' => array(
 				'label'  => __( 'AI Engine Plugin', 'ai-post-scheduler' ),
 				'value'  => $ai_engine_active ? __( 'Active', 'ai-post-scheduler' ) : __( 'Missing', 'ai-post-scheduler' ),
-				'status' => $ai_engine_active ? 'ok' : 'error',
+				// Meow is one of several possible backends now; its absence is only
+				// informational as long as another provider is available.
+				'status' => $ai_engine_active ? 'ok' : 'info',
+			),
+			'ai_provider' => array(
+				'label'   => __( 'Active AI Provider', 'ai-post-scheduler' ),
+				'value'   => $active_provider->get_label(),
+				'status'  => $provider_ready ? 'ok' : 'error',
+				'details' => $provider_ready ? array() : array( $active_provider->get_unavailable_reason() ),
 			),
 		);
 	}

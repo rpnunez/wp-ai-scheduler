@@ -54,6 +54,37 @@ class AIPS_Settings {
 
 		add_action('update_option_aips_enable_cache_system', $reset_cache_flag);
 		add_action('add_option_aips_enable_cache_system', $reset_cache_flag);
+
+		// Turning AI generation back on queues a one-off sweep that resumes any
+		// large batch the setting stopped part-way through. The sweep runs on
+		// cron rather than inline so saving settings stays a cheap request.
+		add_action(
+			'update_option_aips_prevent_scheduled_ai_generation',
+			array(__CLASS__, 'maybe_queue_batch_resume'),
+			10,
+			2
+		);
+	}
+
+	/**
+	 * Queue a batch-resume sweep when AI generation is re-enabled.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 * @return void
+	 */
+	public static function maybe_queue_batch_resume($old_value, $new_value) {
+		// Only on the on -> off transition. Saving settings without changing this
+		// option, or switching it on, must not queue anything.
+		if (!(bool) $old_value || (bool) $new_value) {
+			return;
+		}
+
+		if (wp_next_scheduled('aips_resume_terminated_batches')) {
+			return;
+		}
+
+		wp_schedule_single_event(AIPS_DateTime::now()->timestamp() + 60, 'aips_resume_terminated_batches');
 	}
 
 	/**
@@ -127,6 +158,22 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_circuit_breaker_timeout'],
 			),
+			'aips_ai_provider' => array(
+				'sanitize_callback' => array($ui, 'sanitize_ai_provider'),
+				'default'           => $defaults['aips_ai_provider'],
+			),
+			'aips_wp_ai_connector_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_wp_ai_connector_mode'),
+				'default'           => $defaults['aips_wp_ai_connector_mode'],
+			),
+			'aips_wp_ai_connector_ids' => array(
+				'sanitize_callback' => array($ui, 'sanitize_wp_ai_connector_ids'),
+				'default'           => $defaults['aips_wp_ai_connector_ids'],
+			),
+			'aips_wp_ai_connector_failover' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_wp_ai_connector_failover'],
+			),
 			'aips_ai_model' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_model'],
@@ -134,6 +181,10 @@ class AIPS_Settings {
 			'aips_ai_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_ai_env_id'],
+			),
+			'aips_prevent_scheduled_ai_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_prevent_scheduled_ai_generation'],
 			),
 			'aips_max_tokens_limit' => array(
 				'sanitize_callback' => 'absint',
@@ -150,6 +201,14 @@ class AIPS_Settings {
 			'aips_max_tokens_content' => array(
 				'sanitize_callback' => array($ui, 'sanitize_token_budget'),
 				'default'           => $defaults['aips_max_tokens_content'],
+			),
+			'aips_conversational_generation' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_generation'],
+			),
+			'aips_conversational_metadata_turn' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_conversational_metadata_turn'],
 			),
 			'aips_unsplash_access_key' => array(
 				'sanitize_callback' => 'sanitize_text_field',
@@ -182,6 +241,38 @@ class AIPS_Settings {
 			'aips_cache_default_ttl' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
+			),
+			'aips_embeddings_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_embeddings_provider'],
+			),
+			'aips_embeddings_model' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_model'],
+			),
+			'aips_indexer_verbose_history' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_verbose_history'],
+			),
+			'aips_embeddings_env_id' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_env_id'],
+			),
+			'aips_embeddings_dimensions' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_dimensions'],
+			),
+			'aips_indexer_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_indexer_post_types'],
+			),
+			'aips_indexer_similarity_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_similarity_threshold'],
+			),
+			'aips_auto_index_on_publish' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_auto_index_on_publish'],
 			),
 		);
 
@@ -257,6 +348,22 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_ai_provider',
+            __('AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+		add_settings_field(
+			'aips_wp_ai_connectors',
+			__('WordPress AI Connectors', 'ai-post-scheduler'),
+			array($this->ui, 'wp_ai_connectors_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
+
+        add_settings_field(
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this->ui, 'ai_model_field_callback'),
@@ -271,6 +378,14 @@ class AIPS_Settings {
             'aips-settings',
             'aips_ai_section'
         );
+
+		add_settings_field(
+			'aips_prevent_scheduled_ai_generation',
+			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
         add_settings_field(
             'aips_max_tokens_limit',
@@ -300,6 +415,22 @@ class AIPS_Settings {
             'aips_max_tokens_content',
             __('Max Tokens for Post Content', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_content_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_generation',
+            __('Conversational Generation', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_generation_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_conversational_metadata_turn',
+            __('Combined Metadata Turn', 'ai-post-scheduler'),
+            array($this->ui, 'conversational_metadata_turn_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );

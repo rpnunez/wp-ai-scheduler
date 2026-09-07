@@ -51,6 +51,7 @@
 		bindSettingsEvents: function() {
 			$('#aips-settings-form').on('submit', AIPS.onSettingsFormSubmit);
 			$(document).on('aips:tabSwitch', AIPS.onSettingsTabSwitch);
+			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
 		},
 
 		/**
@@ -157,6 +158,15 @@
 		 * @return {void}
 		 */
 		assignNestedSetting: function(payload, name, value) {
+			if (/\[\]$/.test(name)) {
+				var arrayKey = name.slice(0, -2);
+				if (!Array.isArray(payload[arrayKey])) {
+					payload[arrayKey] = [];
+				}
+				payload[arrayKey].push(value);
+				return;
+			}
+
 			var keys = name.match(/([^[\]]+)/g);
 			var cursor = payload;
 
@@ -177,6 +187,37 @@
 				}
 
 				cursor = cursor[key];
+			});
+		},
+
+		/**
+		 * Move selected connector options up or down in failover priority.
+		 *
+		 * @param {Event} e Button click event.
+		 * @return {void}
+		 */
+		onConnectorMove: function(e) {
+			e.preventDefault();
+			var field = document.getElementById('aips_wp_ai_connector_ids');
+			if (!field) {
+				return;
+			}
+
+			var direction = $(this).attr('data-aips-connector-move');
+			var options = Array.prototype.slice.call(field.options);
+			if (direction === 'up') {
+				options.forEach(function(option) {
+					if (option.selected && option.previousElementSibling && !option.previousElementSibling.selected) {
+						field.insertBefore(option, option.previousElementSibling);
+					}
+				});
+				return;
+			}
+
+			options.reverse().forEach(function(option) {
+				if (option.selected && option.nextElementSibling && !option.nextElementSibling.selected) {
+					field.insertBefore(option.nextElementSibling, option);
+				}
 			});
 		},
 

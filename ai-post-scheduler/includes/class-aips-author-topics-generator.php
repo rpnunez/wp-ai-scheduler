@@ -46,9 +46,19 @@ class AIPS_Author_Topics_Generator {
 	private $embeddings_service;
 
 	/**
+	 * @var AIPS_Deduplication_Service Deduplication service
+	 */
+	private $deduplication_service;
+
+	/**
 	 * @var AIPS_Feedback_Repository Feedback repository for building quality context
 	 */
 	private $feedback_repository;
+
+	/**
+	 * @var AIPS_Authors_Repository Repository for authors
+	 */
+	private $authors_repository;
 	
 	/**
 	 * @var AIPS_Prompt_Builder_Topic Topic prompt builder.
@@ -65,14 +75,18 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $embeddings_service Embeddings service (optional for testing).
 	 * @param object|null $feedback_repository Feedback repository (optional for testing).
 	 * @param object|null $prompt_builder Topic prompt builder (optional for testing).
+	 * @param object|null $deduplication_service Deduplication service (optional for testing).
+   * @param object|null $authors_repository Authors repository (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
+		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
 			null,
@@ -83,10 +97,11 @@ class AIPS_Author_Topics_Generator {
 	/**
 	 * Generate topics for an author.
 	 *
-	 * @param object $author Author object from database.
+	 * @param object $author               Author object from database.
+	 * @param bool   $apply_auto_approval  Optional. Whether to apply author auto-approval rules. Default true.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
-	public function generate_topics($author) {
+	public function generate_topics($author, $apply_auto_approval = true) {
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
@@ -106,6 +121,7 @@ class AIPS_Author_Topics_Generator {
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
 			'temperature' => 0.7,
+			'json_schema' => $this->get_topic_json_schema(),
 		));
 		
 		if (is_wp_error($response)) {
@@ -123,6 +139,11 @@ class AIPS_Author_Topics_Generator {
 		
 		// Flag semantically similar candidates before they reach editorial review.
 		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
+
+		// Apply author auto-approval rules if enabled
+		if ($apply_auto_approval) {
+			$topics = $this->apply_auto_approval_rules($author, $topics);
+		}
 		
 		// Save topics to database
 		$saved_topics = array();
@@ -139,11 +160,43 @@ class AIPS_Author_Topics_Generator {
 				$topic_arr = (array) $topic_obj;
 				$saved_topics[] = $topic_arr;
 
-				$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
-					'topic_id' => $topic_arr['id'],
-					'author_id' => $author->id
-				));
+				$meta = !empty($topic_arr['metadata']) ? json_decode($topic_arr['metadata'], true) : array();
+				$status = isset($topic_arr['status']) ? $topic_arr['status'] : 'pending';
+
+				if ($status === 'approved' && !empty($meta['auto_approved'])) {
+					$this->logs_repository->create(array(
+						'author_topic_id' => $topic_arr['id'],
+						'action'          => 'approved',
+						'user_id'         => null,
+						'notes'           => isset($meta['auto_approval_note']) ? $meta['auto_approval_note'] : sprintf(__('Topic auto-approved via %s policy.', 'ai-post-scheduler'), isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto'),
+						'metadata'        => wp_json_encode(array(
+							'source'   => 'auto_rule',
+							'rule'     => isset($meta['auto_approval_rule']) ? $meta['auto_approval_rule'] : 'auto',
+							'reason'   => isset($meta['auto_approval_reason']) ? $meta['auto_approval_reason'] : '',
+						)),
+					));
+				} elseif ($status === 'rejected' && !empty($meta['auto_rejected'])) {
+					$this->logs_repository->create(array(
+						'author_topic_id' => $topic_arr['id'],
+						'action'          => 'rejected',
+						'user_id'         => null,
+						'notes'           => isset($meta['auto_rejection_note']) ? $meta['auto_rejection_note'] : sprintf(__('Topic auto-rejected via %s policy fallback.', 'ai-post-scheduler'), isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto'),
+						'metadata'        => wp_json_encode(array(
+							'source'   => 'auto_rule',
+							'rule'     => isset($meta['auto_rejection_rule']) ? $meta['auto_rejection_rule'] : 'auto',
+							'reason'   => isset($meta['auto_rejection_reason']) ? $meta['auto_rejection_reason'] : '',
+						)),
+					));
+				} else {
+					$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
+						'topic_id' => $topic_arr['id'],
+						'author_id' => $author->id
+					));
+				}
 			}
+
+			// Always record author's topic generation last run timestamp.
+			$this->authors_repository->update_topic_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
 		} else {
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
 			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');
@@ -236,6 +289,26 @@ class AIPS_Author_Topics_Generator {
 		}
 
 		return $section . "\n";
+	}
+
+	/**
+	 * JSON schema for the topic array returned by the AI.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_topic_json_schema(): array {
+		return array(
+			'type'  => 'array',
+			'items' => array(
+				'type'       => 'object',
+				'properties' => array(
+					'title'    => array('type' => 'string'),
+					'score'    => array('type' => 'integer'),
+					'keywords' => array('type' => 'array', 'items' => array('type' => 'string')),
+				),
+				'required' => array('title', 'score', 'keywords'),
+			),
+		);
 	}
 
 	/**
@@ -356,75 +429,119 @@ class AIPS_Author_Topics_Generator {
 	/**
 	 * Flag semantically similar generated topics as potential duplicates.
 	 *
+	 * Uses AIPS_Deduplication_Service to check candidates against both existing
+	 * topics and existing published WordPress articles.
+	 *
 	 * @param object $author Author object.
 	 * @param array  $topics Generated topic arrays.
 	 * @return array Topics with updated metadata and score adjustments.
 	 */
 	private function apply_fuzzy_duplicate_flags($author, $topics) {
-		if (empty($topics) || !$this->embeddings_service->is_embeddings_supported()) {
+		return $this->deduplication_service->evaluate_topics_for_duplicates($topics, $author->id);
+	}
+
+	/**
+	 * Apply author auto-approval rules to generated topics.
+	 *
+	 * Evaluates topics against the author's configured auto-approval policy (all, score, similarity),
+	 * setting status to 'approved' (or fallback 'rejected'/'pending') and enriching metadata.
+	 *
+	 * @param object $author Author object.
+	 * @param array  $topics List of topic arrays.
+	 * @return array Processed topic arrays.
+	 */
+	public function apply_auto_approval_rules($author, array $topics): array {
+		$mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'manual';
+		if ($mode === 'manual') {
 			return $topics;
 		}
 
-		$existing_topics = $this->topics_repository->get_by_author($author->id);
-		if (empty($existing_topics)) {
-			return $topics;
-		}
+		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
+		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
+		$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'pending';
+		$now            = AIPS_DateTime::now()->timestamp();
 
-		$candidate_existing = array();
-		foreach ($existing_topics as $existing_topic) {
-			$metadata = !empty($existing_topic->metadata) ? json_decode($existing_topic->metadata, true) : array();
-			if (!is_array($metadata) || empty($metadata['embedding']) || !is_array($metadata['embedding'])) {
-				continue;
-			}
-
-			$candidate_existing[] = array(
-				'topic_title' => $existing_topic->topic_title,
-				'embedding' => $metadata['embedding'],
-			);
-		}
-
-		if (empty($candidate_existing)) {
-			return $topics;
-		}
-
-		$threshold = (float) AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
 		foreach ($topics as &$topic) {
-			$text = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
-			if (empty($text)) {
-				continue;
+			$meta = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
+			if (!is_array($meta)) {
+				$meta = array();
 			}
 
-			$embedding = $this->embeddings_service->generate_embedding($text);
-			if (is_wp_error($embedding) || !is_array($embedding)) {
-				continue;
+			$qualifies = false;
+			$reason    = '';
+			$note      = '';
+
+			switch ($mode) {
+				case 'all':
+					$qualifies = true;
+					$reason    = 'auto_approve_all';
+					$note      = __('Auto-approved: Author policy is set to auto-approve all topics.', 'ai-post-scheduler');
+					break;
+
+				case 'score':
+					$score = isset($topic['score']) ? (int) $topic['score'] : 50;
+					if ($score >= $min_score) {
+						$qualifies = true;
+						$reason    = 'quality_score_threshold_met';
+						$note      = sprintf(__('Auto-approved: Quality score %d met or exceeded minimum threshold of %d.', 'ai-post-scheduler'), $score, $min_score);
+					} else {
+						$qualifies = false;
+						$reason    = 'quality_score_below_threshold';
+						$note      = sprintf(__('Did not qualify: Quality score %d is below minimum threshold of %d.', 'ai-post-scheduler'), $score, $min_score);
+					}
+					$meta['auto_approval_score']     = $score;
+					$meta['auto_approval_min_score'] = $min_score;
+					break;
+
+				case 'similarity':
+					$dup_sim = isset($meta['duplicate_similarity']) ? (float) $meta['duplicate_similarity'] : (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
+					if ($dup_sim < $max_similarity) {
+						$qualifies = true;
+						$reason    = 'similarity_dedupe_guard_passed';
+						$note      = sprintf(__('Auto-approved: Duplicate similarity %.2f%% is below maximum threshold of %.2f%%.', 'ai-post-scheduler'), $dup_sim * 100, $max_similarity * 100);
+					} else {
+						$qualifies = false;
+						$reason    = 'similarity_dedupe_guard_exceeded';
+						$note      = sprintf(__('Did not qualify: Duplicate similarity %.2f%% met or exceeded maximum threshold of %.2f%%.', 'ai-post-scheduler'), $dup_sim * 100, $max_similarity * 100);
+					}
+					$meta['auto_approval_similarity']     = round($dup_sim, 4);
+					$meta['auto_approval_max_similarity'] = round($max_similarity, 4);
+					break;
+
+				default:
+					$qualifies = false;
+					break;
 			}
 
-			$best_similarity = 0;
-			$best_match = '';
-			foreach ($candidate_existing as $existing) {
-				$similarity = $this->embeddings_service->calculate_similarity($embedding, $existing['embedding']);
-				if (!is_wp_error($similarity) && $similarity > $best_similarity) {
-					$best_similarity = $similarity;
-					$best_match = (string) $existing['topic_title'];
+			if ($qualifies) {
+				$topic['status']              = 'approved';
+				$topic['reviewed_at']         = $now;
+				$topic['reviewed_by']         = 0;
+				$meta['auto_approved']        = true;
+				$meta['auto_approval_rule']   = $mode;
+				$meta['auto_approval_reason'] = $reason;
+				$meta['auto_approval_note']   = $note;
+			} else {
+				if ($fallback === 'rejected') {
+					$topic['status']              = 'rejected';
+					$topic['reviewed_at']         = $now;
+					$topic['reviewed_by']         = 0;
+					$meta['auto_rejected']        = true;
+					$meta['auto_rejection_rule']   = $mode;
+					$meta['auto_rejection_reason'] = $reason;
+					$meta['auto_rejection_note']   = $note;
+				} else {
+					$topic['status']                 = 'pending';
+					$topic['reviewed_at']            = 0;
+					$topic['reviewed_by']            = null;
+					$meta['auto_approval_evaluated'] = true;
+					$meta['auto_approval_rule']      = $mode;
+					$meta['auto_approval_reason']    = $reason;
+					$meta['auto_approval_note']      = $note;
 				}
 			}
 
-			$metadata = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
-			if (!is_array($metadata)) {
-				$metadata = array();
-			}
-			$metadata['embedding'] = $embedding;
-
-			if ($best_similarity >= $threshold) {
-				$metadata['potential_duplicate'] = true;
-				$metadata['duplicate_similarity'] = round($best_similarity, 4);
-				$metadata['duplicate_match'] = $best_match;
-				$topic['score'] = max(0, ((int) (isset($topic['score']) ? $topic['score'] : 50)) - 15);
-			} else {
-				$metadata['potential_duplicate'] = false;
-			}
-
-			$topic['metadata'] = wp_json_encode($metadata);
+			$topic['metadata'] = wp_json_encode($meta);
 		}
 		unset($topic);
 

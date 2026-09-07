@@ -265,6 +265,10 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		return is_array($decoded) ? array_map('intval', $decoded) : array();
 	}
 
+	public function get_affiliate_links_enabled() {
+		return !empty($this->template->affiliate_links_enabled);
+	}
+
 	/**
 	 * Get all context data as an array.
 	 *

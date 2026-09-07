@@ -6,25 +6,39 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PLUGIN_DIR="$REPO_ROOT/ai-post-scheduler"
 INSTALL_SCRIPT="$REPO_ROOT/scripts/install-wp-tests.sh"
 
+# Load environment variables from .env if present
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  set -o allexport
+  # Load .env variables while ignoring comments and blank lines
+  eval "$(grep -v '^#' "$REPO_ROOT/.env" | grep -v '^[[:space:]]*$' | sed 's/=/="/;s/$/"/')"
+  set +o allexport
+fi
+
+
 MODE="${1:-test}"
 case "$MODE" in
   test)
     COMPOSER_COMMAND="composer test"
     ;;
+  ai-api|ai_api)
+    COMPOSER_COMMAND="composer test:setup && php vendor/bin/phpunit --configuration phpunit.xml tests/Test_AIPS_AI_Service.php tests/Test_AIPS_AI_Service_With_Provider.php tests/Test_AIPS_AI_Provider_Factory.php tests/Test_AIPS_WP_AI_Client_Provider.php tests/Test_AIPS_Provider_Availability.php tests/Test_AIPS_Resilience_Service.php tests/Test_AIPS_Resilience_Improvements.php"
+    ;;
   coverage|--coverage)
     COMPOSER_COMMAND="XDEBUG_MODE=coverage composer test:coverage"
     ;;
   *)
-    echo "Usage: bash scripts/run-wp-tests-docker.sh [test|coverage]" >&2
+    echo "Usage: bash scripts/run-wp-tests-docker.sh [test|ai-api|coverage]" >&2
     exit 1
     ;;
 esac
 
-DB_CONTAINER="${AIPS_DOCKER_DB_CONTAINER:-wp-ai-scheduler-db}"
+# Resolve the DB container/port from the per-instance values loaded from .env
+# above (AIPS_DB_CONTAINER / MYSQL_PORT), falling back to the shared defaults.
+DB_CONTAINER="${AIPS_DOCKER_DB_CONTAINER:-${AIPS_DB_CONTAINER:-wp-ai-scheduler-db}}"
 DB_NAME="${AIPS_WP_TEST_DB_NAME:-wp_ns_tests_docker}"
 DB_USER="${AIPS_WP_TEST_DB_USER:-root}"
 DB_PASS="${AIPS_WP_TEST_DB_PASS:-root}"
-DB_HOST="${AIPS_WP_TEST_DB_HOST:-127.0.0.1:3307}"
+DB_HOST="${AIPS_WP_TEST_DB_HOST:-127.0.0.1:${MYSQL_PORT:-3307}}"
 WP_VERSION="${AIPS_WP_TEST_WP_VERSION:-latest}"
 
 # Default paths are only Windows-style (C:/tmp/...) on Git-Bash/Cygwin, where
