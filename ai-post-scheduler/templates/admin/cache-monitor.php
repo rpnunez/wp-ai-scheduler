@@ -408,7 +408,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 						<div class="aips-modal-header">
 							<h2><?php esc_html_e('Inspect Cache Entry', 'ai-post-scheduler'); ?></h2>
 							<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-no-alt"></span>
+								<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 							</button>
 						</div>
 						<div class="aips-modal-body" id="aips-cache-inspect-body">

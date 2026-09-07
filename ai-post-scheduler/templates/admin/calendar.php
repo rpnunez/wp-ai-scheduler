@@ -130,7 +130,7 @@ if (!defined('ABSPATH')) {
 			<div class="aips-calendar-modal-header">
 				<h2 class="aips-modal-title"><?php esc_html_e('Schedule Details', 'ai-post-scheduler'); ?></h2>
 				<button type="button" class="aips-calendar-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">
-					<span class="dashicons dashicons-no-alt"></span>
+					<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
 				</button>
 			</div>
 			<div class="aips-calendar-modal-body">
