@@ -221,6 +221,8 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Prompt_Builder_Post_Featured_Image' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-post-featured-image.php',
         'AIPS_Prompt_Builder_Post_Metadata' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-post-metadata.php',
         'AIPS_Prompt_Builder_Post_Title' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-post-title.php',
+        'AIPS_Prompt_Builder_Section' => __DIR__ . '/../..' . '/includes/interface-aips-prompt-builder-section.php',
+        'AIPS_Prompt_Builder_Section_Base' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-section-base.php',
         'AIPS_Prompt_Builder_Taxonomy' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-taxonomy.php',
         'AIPS_Prompt_Builder_Topic' => __DIR__ . '/../..' . '/includes/class-aips-prompt-builder-topic.php',
         'AIPS_Prompt_Section_Repository' => __DIR__ . '/../..' . '/includes/class-aips-prompt-section-repository.php',

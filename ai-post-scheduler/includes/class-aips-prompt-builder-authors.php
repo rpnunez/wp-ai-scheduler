@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Builds AI prompts for author persona suggestion generation.
  */
-class AIPS_Prompt_Builder_Authors {
+class AIPS_Prompt_Builder_Authors extends AIPS_Prompt_Builder_Section_Base {
 
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
@@ -31,6 +31,8 @@ class AIPS_Prompt_Builder_Authors {
 	 * @param AIPS_Prompt_Builder|null $base_builder Optional; instantiated automatically when null.
 	 */
 	public function __construct($base_builder = null) {
+		parent::__construct();
+
 		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
 	}
 

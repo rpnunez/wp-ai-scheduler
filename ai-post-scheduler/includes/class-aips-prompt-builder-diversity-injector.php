@@ -15,6 +15,11 @@ if (!defined('ABSPATH')) {
 
 /**
  * Class AIPS_Prompt_Builder_Diversity_Injector
+ *
+ * Helper collaborator that the prompt-builder sections consume for diversity
+ * blocks. Intentionally NOT an AIPS_Prompt_Builder_Section: it exposes several
+ * narrow `build_*_block()` snippet builders rather than assembling a whole
+ * prompt section, so it stays a collaborator rather than an implementor.
  */
 class AIPS_Prompt_Builder_Diversity_Injector {
 

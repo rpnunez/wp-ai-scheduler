@@ -20,17 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for post title generation.
  */
-class AIPS_Prompt_Builder_Post_Title {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
-
-	/**
-	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
-	 */
-	private $diversity_injector;
+class AIPS_Prompt_Builder_Post_Title extends AIPS_Prompt_Builder_Section_Base {
 
 	/** @var AIPS_Content_Digest */
 	private $content_digest;
@@ -41,8 +31,8 @@ class AIPS_Prompt_Builder_Post_Title {
 	 * @param AIPS_Content_Digest|null                    $content_digest Optional stateless content digest.
 	 */
 	public function __construct($template_processor = null, $diversity_injector = null, $content_digest = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		parent::__construct($template_processor, $diversity_injector);
+
 		$this->content_digest = $content_digest ?: new AIPS_Content_Digest();
 	}
 
@@ -71,14 +61,14 @@ class AIPS_Prompt_Builder_Post_Title {
 			if ($context->get_type() === 'template' && $context->get_voice_id()) {
 				$voice_obj = $context->get_voice();
 				if ($voice_obj && !empty($voice_obj->title_prompt)) {
-					$title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
+					$title_instructions = $this->get_template_processor()->process($voice_obj->title_prompt, $topic_str);
 				}
 			}
 
 			if (empty($title_instructions)) {
 				$title_prompt = $context->get_title_prompt();
 				if (!empty($title_prompt)) {
-					$title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+					$title_instructions = $this->get_template_processor()->process($title_prompt, $topic_str);
 				}
 			}
 
@@ -90,9 +80,9 @@ class AIPS_Prompt_Builder_Post_Title {
 		$template = $template_or_context;
 
 		if ($voice && !empty($voice->title_prompt)) {
-			$title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
+			$title_instructions = $this->get_template_processor()->process($voice->title_prompt, $topic);
 		} elseif (!empty($template->title_prompt)) {
-			$title_instructions = $this->template_processor->process($template->title_prompt, $topic);
+			$title_instructions = $this->get_template_processor()->process($template->title_prompt, $topic);
 		}
 
 		$prompt = $this->build_base_prompt($title_instructions, $content, $template);
@@ -122,14 +112,14 @@ class AIPS_Prompt_Builder_Post_Title {
 		if ($context->get_type() === 'template' && $context->get_voice_id()) {
 			$voice_obj = $context->get_voice();
 			if ($voice_obj && !empty($voice_obj->title_prompt)) {
-				$title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
+				$title_instructions = $this->get_template_processor()->process($voice_obj->title_prompt, $topic_str);
 			}
 		}
 
 		if (empty($title_instructions)) {
 			$title_prompt = $context->get_title_prompt();
 			if (!empty($title_prompt)) {
-				$title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+				$title_instructions = $this->get_template_processor()->process($title_prompt, $topic_str);
 			}
 		}
 
@@ -179,9 +169,9 @@ class AIPS_Prompt_Builder_Post_Title {
 	 */
 	private function append_diversity_blocks($prompt, $subject) {
 		$blocks = array(
-			$this->diversity_injector->build_avoid_titles_block($subject),
-			$this->diversity_injector->build_content_format_block($subject),
-			$this->diversity_injector->build_post_slice_block($subject),
+			$this->get_diversity_injector()->build_avoid_titles_block($subject),
+			$this->get_diversity_injector()->build_content_format_block($subject),
+			$this->get_diversity_injector()->build_post_slice_block($subject),
 		);
 
 		foreach ($blocks as $block) {

@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
  * - Historical feedback (approved/rejected topic titles)
  * - Qualitative feedback guidance (admin-supplied rejection/approval reasons)
  */
-class AIPS_Prompt_Builder_Topic {
+class AIPS_Prompt_Builder_Topic extends AIPS_Prompt_Builder_Section_Base {
 
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
@@ -31,17 +31,13 @@ class AIPS_Prompt_Builder_Topic {
 	private $base_builder;
 
 	/**
-	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
-	 */
-	private $diversity_injector;
-
-	/**
 	 * @param AIPS_Prompt_Builder|null                  $base_builder Optional; instantiated automatically when null.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
 	 */
 	public function __construct($base_builder = null, $diversity_injector = null) {
+		parent::__construct(null, $diversity_injector);
+
 		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
-		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
 	}
 
 	/**
@@ -155,7 +151,7 @@ class AIPS_Prompt_Builder_Topic {
 			$prompt .= "{$author->topic_generation_prompt}\n\n";
 		}
 
-		$created_titles_block = $this->diversity_injector->build_created_topic_titles_block($author);
+		$created_titles_block = $this->get_diversity_injector()->build_created_topic_titles_block($author);
 		if (!empty($created_titles_block)) {
 			$prompt .= $created_titles_block . "\n\n";
 		}
