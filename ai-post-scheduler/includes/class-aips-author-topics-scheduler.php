@@ -86,6 +86,7 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 		$this->history_service = new AIPS_History_Service();
 		$this->notifications = new AIPS_Notifications();
 		$this->job_scheduler = new AIPS_Job_Scheduler();
+		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
 	}
 
 	/**
@@ -188,14 +189,14 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 		
 		// Below threshold — process inline (original behaviour).
 		foreach ($due_authors as $author) {
-			AIPS_Correlation_ID::generate();
-			try {
-				$this->generate_topics_for_author($author);
-			} finally {
-				AIPS_Correlation_ID::reset();
-			}
+			$this->run_slice(
+				function() use ($author) {
+					$this->generate_topics_for_author($author);
+				},
+				array('author_id' => $author->id)
+			);
 		}
-		
+
 		$this->logger->log('Completed scheduled topic generation', 'info');
 	}
 
@@ -211,22 +212,28 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	public function process_author_slice( int $author_id, string $correlation_id = '' ): void {
 		if ( ! empty( $correlation_id ) ) {
 			AIPS_Correlation_ID::set( $correlation_id );
-		} else {
-			AIPS_Correlation_ID::generate();
 		}
 
-		try {
-			$author = $this->authors_repository->get_by_id( $author_id );
-			if ( ! $author ) {
-				$this->logger->log(
-					"Author topics slice: author {$author_id} not found — skipping.",
-					'warning'
-				);
-				return;
+		$author = $this->authors_repository->get_by_id( $author_id );
+		if ( ! $author ) {
+			$this->logger->log(
+				"Author topics slice: author {$author_id} not found — skipping.",
+				'warning'
+			);
+			if ( ! empty( $correlation_id ) ) {
+				AIPS_Correlation_ID::reset();
 			}
+			return;
+		}
 
-			$this->generate_topics_for_author( $author );
-		} finally {
+		$this->run_slice(
+			function() use ($author) {
+				$this->generate_topics_for_author( $author );
+			},
+			array('author_id' => $author->id)
+		);
+
+		if ( ! empty( $correlation_id ) ) {
 			AIPS_Correlation_ID::reset();
 		}
 	}
