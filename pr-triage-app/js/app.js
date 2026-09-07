@@ -975,7 +975,283 @@ class App {
       document.getElementById("repoInput").value = val;
     }
   }
+
+  /* --- EXPORT FUNCTIONALITY --- */
+  getFilteredPRs() {
+    let filtered = this.prs;
+    if (this.currentHubFilter !== "all") {
+      filtered = filtered.filter(p => p.hub === this.currentHubFilter);
+    }
+    return this.filterPRs(filtered);
+  }
+
+  openExportModal() {
+    const allCountEl = document.getElementById("exportScopeAllCount");
+    const filteredCountEl = document.getElementById("exportScopeFilteredCount");
+    const fileNameEl = document.getElementById("exportFileNamePreview");
+
+    const [owner, repo] = this.parseRepo(this.activeRepo);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const defaultFileName = `${repo}_prs_export_${dateStamp}.json`;
+
+    if (allCountEl) allCountEl.innerText = this.prs.length;
+    if (filteredCountEl) filteredCountEl.innerText = this.getFilteredPRs().length;
+    if (fileNameEl) fileNameEl.innerText = defaultFileName;
+
+    this.updateExportPreview();
+    const modal = document.getElementById("exportModal");
+    if (modal) modal.classList.add("open");
+  }
+
+  closeExportModal() {
+    const modal = document.getElementById("exportModal");
+    if (modal) modal.classList.remove("open");
+  }
+
+  applyExportPreset(preset) {
+    const bodySelect = document.getElementById("exp_prop_body_mode");
+    const setCheck = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = val;
+    };
+
+    if (preset === "agent") {
+      if (bodySelect) bodySelect.value = "partial_300";
+      setCheck("exp_prop_status", true);
+      setCheck("exp_prop_created", true);
+      setCheck("exp_prop_updated", true);
+      setCheck("exp_prop_author", true);
+      setCheck("exp_prop_labels", true);
+      setCheck("exp_prop_branch", true);
+      setCheck("exp_prop_subsystems", true);
+      setCheck("exp_prop_risk", true);
+      setCheck("exp_prop_hub", true);
+      setCheck("exp_prop_diff_stats", false);
+      setCheck("exp_prop_url", true);
+    } else if (preset === "minimal") {
+      if (bodySelect) bodySelect.value = "none";
+      setCheck("exp_prop_status", true);
+      setCheck("exp_prop_created", false);
+      setCheck("exp_prop_updated", false);
+      setCheck("exp_prop_author", true);
+      setCheck("exp_prop_labels", false);
+      setCheck("exp_prop_branch", false);
+      setCheck("exp_prop_subsystems", true);
+      setCheck("exp_prop_risk", false);
+      setCheck("exp_prop_hub", true);
+      setCheck("exp_prop_diff_stats", false);
+      setCheck("exp_prop_url", false);
+    } else if (preset === "full") {
+      if (bodySelect) bodySelect.value = "full";
+      setCheck("exp_prop_status", true);
+      setCheck("exp_prop_created", true);
+      setCheck("exp_prop_updated", true);
+      setCheck("exp_prop_author", true);
+      setCheck("exp_prop_labels", true);
+      setCheck("exp_prop_branch", true);
+      setCheck("exp_prop_subsystems", true);
+      setCheck("exp_prop_risk", true);
+      setCheck("exp_prop_hub", true);
+      setCheck("exp_prop_diff_stats", true);
+      setCheck("exp_prop_url", true);
+    }
+
+    this.updateExportPreview();
+  }
+
+  getExportOptions() {
+    const isFiltered = document.querySelector('input[name="exportScope"]:checked')?.value === "filtered";
+    const format = document.querySelector('input[name="exportFormat"]:checked')?.value || "pretty";
+    const bodyMode = document.getElementById("exp_prop_body_mode")?.value || "partial_300";
+
+    const getVal = (id) => !!document.getElementById(id)?.checked;
+
+    return {
+      scope: isFiltered ? "filtered" : "all",
+      format,
+      bodyMode,
+      status: getVal("exp_prop_status"),
+      created: getVal("exp_prop_created"),
+      updated: getVal("exp_prop_updated"),
+      author: getVal("exp_prop_author"),
+      labels: getVal("exp_prop_labels"),
+      branch: getVal("exp_prop_branch"),
+      subsystems: getVal("exp_prop_subsystems"),
+      risk: getVal("exp_prop_risk"),
+      hub: getVal("exp_prop_hub"),
+      diff_stats: getVal("exp_prop_diff_stats"),
+      url: getVal("exp_prop_url")
+    };
+  }
+
+  serializePRForExport(pr, options) {
+    const item = {
+      id: pr.number,
+      title: pr.title || ""
+    };
+
+    if (options.bodyMode === "full") {
+      item.body = pr.body || "";
+    } else if (options.bodyMode === "partial_300") {
+      const b = (pr.body || "").trim();
+      item.body = b.length > 300 ? b.slice(0, 300) + "..." : b;
+    } else if (options.bodyMode === "partial_100") {
+      const b = (pr.body || "").trim();
+      item.body = b.length > 100 ? b.slice(0, 100) + "..." : b;
+    }
+
+    if (options.status) {
+      item.status = pr.mergeable || "UNKNOWN";
+      item.merge_state = pr.merge_state || "unknown";
+      item.is_draft = !!pr.is_draft;
+    }
+
+    if (options.created) item.created_at = pr.created_at || "";
+    if (options.updated) item.updated_at = pr.updated_at || "";
+
+    if (options.author) {
+      const authorLogin = typeof pr.author === "string" ? pr.author : (pr.author?.login || "unknown");
+      item.author = authorLogin;
+      item.bot_type = pr.bot_type || authorLogin;
+    }
+
+    if (options.labels) item.labels = pr.labels || [];
+    if (options.branch) {
+      item.branch = pr.branch || "";
+      item.base_branch = pr.base_branch || "main";
+    }
+
+    if (options.subsystems) item.subsystems = Array.from(pr.subsystems || []);
+
+    if (options.risk) {
+      item.risk_level = pr.risk_level || "MEDIUM";
+      item.risk_reason = pr.risk_reason || "";
+      item.risk_weight = pr.risk_weight || 2;
+    }
+
+    if (options.hub) {
+      item.hub = pr.hub || pr.assigned_hub || "general";
+      if (pr.notes && pr.notes.length) item.notes = pr.notes;
+      if (pr.duplicate_group_id) {
+        item.cluster_id = pr.duplicate_group_id;
+        item.is_cluster_winner = !!pr.is_winner;
+      }
+    }
+
+    if (options.diff_stats) {
+      item.changed_files = pr.changed_files !== undefined ? pr.changed_files : (pr.files ? pr.files.length : 0);
+      item.additions = pr.additions || 0;
+      item.deletions = pr.deletions || 0;
+    }
+
+    if (options.url) {
+      item.url = Templates.getPrUrl(pr, this.activeRepo);
+    }
+
+    return item;
+  }
+
+  buildExportPayload(options = null) {
+    const opts = options || this.getExportOptions();
+    const sourcePRs = opts.scope === "filtered" ? this.getFilteredPRs() : this.prs;
+
+    const serialized = sourcePRs.map(pr => this.serializePRForExport(pr, opts));
+
+    return {
+      repository: this.activeRepo,
+      exported_at: new Date().toISOString(),
+      total_prs: serialized.length,
+      scope: opts.scope,
+      prs: serialized
+    };
+  }
+
+  updateExportPreview() {
+    const opts = this.getExportOptions();
+    const sourcePRs = opts.scope === "filtered" ? this.getFilteredPRs() : this.prs;
+    const samplePR = sourcePRs[0] || (this.prs[0] || {
+      number: 2062,
+      title: "NunezScheduler: Optimized Research Planner Flow",
+      body: "This PR optimizes the research planner workflow and reduces memory allocations.",
+      branch: "fix/planner-search",
+      author: "rpnunez",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      mergeable: "MERGEABLE",
+      subsystems: ["Admin UI & Planner", "Documentation"],
+      risk_level: "LOW"
+    });
+
+    const sampleItem = this.serializePRForExport(samplePR, opts);
+    const samplePayload = {
+      repository: this.activeRepo,
+      exported_at: new Date().toISOString(),
+      total_prs: sourcePRs.length,
+      scope: opts.scope,
+      prs: [sampleItem]
+    };
+
+    const codeEl = document.getElementById("exportPreviewCode");
+    const sizeEl = document.getElementById("exportPayloadSizeEstimate");
+
+    const jsonStr = JSON.stringify(samplePayload, null, opts.format === "pretty" ? 2 : 0);
+    if (codeEl) codeEl.innerText = jsonStr;
+
+    // Estimate full size
+    const avgItemLen = JSON.stringify(sampleItem).length;
+    const estTotalBytes = (avgItemLen * sourcePRs.length) + 150;
+    const estKB = Math.round(estTotalBytes / 1024 * 10) / 10;
+    if (sizeEl) sizeEl.innerText = `Total: ${sourcePRs.length} PRs (~${estKB} KB)`;
+  }
+
+  downloadExportJSON() {
+    const opts = this.getExportOptions();
+    const payload = this.buildExportPayload(opts);
+    const jsonStr = JSON.stringify(payload, null, opts.format === "pretty" ? 2 : 0);
+
+    const [owner, repo] = this.parseRepo(this.activeRepo);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const fileName = `${repo}_prs_export_${dateStamp}.json`;
+
+    const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    if (window.logger) {
+      window.logger.info(`Exported ${payload.total_prs} PRs to ${fileName} (${opts.scope} scope, ${opts.format} format)`, {
+        component: "Export",
+        meta: { totalPrs: payload.total_prs, fileName, options: opts }
+      });
+    }
+
+    this.showToast(`✅ Exported ${payload.total_prs} PRs to ${fileName}`);
+    this.closeExportModal();
+  }
+
+  async copyExportJSON() {
+    const opts = this.getExportOptions();
+    const payload = this.buildExportPayload(opts);
+    const jsonStr = JSON.stringify(payload, null, opts.format === "pretty" ? 2 : 0);
+
+    try {
+      await navigator.clipboard.writeText(jsonStr);
+      if (window.logger) {
+        window.logger.info(`Copied ${payload.total_prs} PRs JSON to clipboard`, { component: "Export" });
+      }
+      this.showToast(`📋 Copied ${payload.total_prs} PRs JSON to clipboard!`);
+    } catch (err) {
+      alert(`Could not copy to clipboard: ${err.message}`);
+    }
+  }
 }
+
+window.App = App;
 
 window.addEventListener("DOMContentLoaded", () => {
   window.app = new App();

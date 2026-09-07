@@ -19,6 +19,7 @@
       <div id="rateLimitInfo" class="rate-limit-pill">API Rate Limit: 5000 / 5000</div>
       <button class="btn btn-wizard" onclick="window.app.openTriageWizard()">⚡ Triage PRs Wizard</button>
       <button class="btn btn-primary" onclick="window.app.syncAll()">🔄 Sync / Refresh</button>
+      <button class="btn" onclick="window.app.openExportModal()">📥 Export</button>
       <button class="btn" onclick="window.app.openLogModal()">📜 Logs <span id="logBtnBadge" class="log-btn-badge">0</span></button>
       <button class="btn" onclick="window.app.openSettingsModal()">⚙️ Settings</button>
       <button class="btn" id="themeToggleBtn" onclick="window.app.toggleTheme()">☀️ Light Mode</button>
@@ -352,6 +353,155 @@
       <div class="u-flex u-gap-10">
         <button class="btn" onclick="window.app.closeSettingsModal()">Cancel</button>
         <button class="btn btn-primary" onclick="window.app.saveSettings()">Save &amp; Apply Rules</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export PR Data Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal-card modal-card-export">
+    <div class="modal-header">
+      <h3>📥 Export Pull Requests Data (JSON)</h3>
+      <button class="modal-close" onclick="window.app.closeExportModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Quick Presets Bar -->
+      <div class="export-presets-bar">
+        <span class="u-text-xs u-font-bold u-text-secondary">Presets:</span>
+        <button class="btn btn-sm export-preset-btn" onclick="window.app.applyExportPreset('agent')">🤖 Agent-Optimized</button>
+        <button class="btn btn-sm export-preset-btn" onclick="window.app.applyExportPreset('minimal')">⚡ Minimal (ID, Title, Status)</button>
+        <button class="btn btn-sm export-preset-btn" onclick="window.app.applyExportPreset('full')">📋 Full Dump</button>
+      </div>
+
+      <!-- Scope Selection -->
+      <div class="export-option-box">
+        <span class="export-option-title">1. Export Scope</span>
+        <div class="u-flex u-gap-16 u-flex-wrap">
+          <label class="export-checkbox-item">
+            <input type="radio" name="exportScope" id="exp_scope_all" value="all" checked onchange="window.app.updateExportPreview()">
+            <span>All Cached PRs (<strong id="exportScopeAllCount">0</strong> PRs)</span>
+          </label>
+          <label class="export-checkbox-item">
+            <input type="radio" name="exportScope" id="exp_scope_filtered" value="filtered" onchange="window.app.updateExportPreview()">
+            <span>Currently Filtered View (<strong id="exportScopeFilteredCount">0</strong> PRs)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Properties Selection -->
+      <div class="export-grid-2col">
+        <!-- Left Column: Core & Metadata -->
+        <div class="export-option-box">
+          <span class="export-option-title">2. Core &amp; Metadata</span>
+          <div class="export-checkbox-list">
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_id" checked disabled>
+              <span>ID / PR # (Mandatory)</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_title" checked disabled>
+              <span>Title (Mandatory)</span>
+            </label>
+            <div class="form-group u-mt-4">
+              <label class="form-label u-text-xs">PR Body Content:</label>
+              <select id="exp_prop_body_mode" class="date-select u-w-full" onchange="window.app.updateExportPreview()">
+                <option value="partial_300" selected>Partial Body (First 300 chars - Recommended)</option>
+                <option value="partial_100">Short Snippet (First 100 chars)</option>
+                <option value="full">Full Body (Complete Markdown)</option>
+                <option value="none">None (Omit Body)</option>
+              </select>
+            </div>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_status" checked onchange="window.app.updateExportPreview()">
+              <span>Mergeable Status &amp; State</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_created" checked onchange="window.app.updateExportPreview()">
+              <span>Date Created (created_at)</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_updated" checked onchange="window.app.updateExportPreview()">
+              <span>Date Updated (updated_at)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Right Column: Classification & Details -->
+        <div class="export-option-box">
+          <span class="export-option-title">3. Triage &amp; Code Insights</span>
+          <div class="export-checkbox-list">
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_author" checked onchange="window.app.updateExportPreview()">
+              <span>Author &amp; Bot Classification</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_labels" checked onchange="window.app.updateExportPreview()">
+              <span>Labels</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_branch" checked onchange="window.app.updateExportPreview()">
+              <span>Branch Names (Head &amp; Base)</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_subsystems" checked onchange="window.app.updateExportPreview()">
+              <span>Subsystems &amp; Taxonomy</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_risk" checked onchange="window.app.updateExportPreview()">
+              <span>Risk Level &amp; Reason</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_hub" checked onchange="window.app.updateExportPreview()">
+              <span>Hub &amp; Duplicate Cluster Info</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_diff_stats" onchange="window.app.updateExportPreview()">
+              <span>Diff Stats (+adds / -dels / files count)</span>
+            </label>
+            <label class="export-checkbox-item">
+              <input type="checkbox" id="exp_prop_url" checked onchange="window.app.updateExportPreview()">
+              <span>GitHub URL</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Format Options -->
+      <div class="export-option-box">
+        <span class="export-option-title">4. Output Formatting</span>
+        <div class="u-flex u-gap-16 u-flex-wrap">
+          <label class="export-checkbox-item">
+            <input type="radio" name="exportFormat" id="exp_fmt_pretty" value="pretty" checked onchange="window.app.updateExportPreview()">
+            <span>Beautified JSON (2-space indented)</span>
+          </label>
+          <label class="export-checkbox-item">
+            <input type="radio" name="exportFormat" id="exp_fmt_minified" value="minified" onchange="window.app.updateExportPreview()">
+            <span>Minified JSON (Single line compact)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Live Preview -->
+      <div class="export-preview-container">
+        <div class="export-preview-header">
+          <span>Live Structure Preview (Sample PR #1)</span>
+          <span id="exportPayloadSizeEstimate" class="u-text-xs u-text-muted">Estimated: ~12 KB</span>
+        </div>
+        <pre id="exportPreviewCode" class="export-preview-code">// Generating preview...</pre>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <div class="u-text-xs u-text-muted">
+        File: <span class="u-font-mono u-text-primary" id="exportFileNamePreview">prs-export.json</span>
+      </div>
+      <div class="u-flex u-gap-10">
+        <button class="btn" onclick="window.app.closeExportModal()">Cancel</button>
+        <button class="btn" onclick="window.app.copyExportJSON()">📋 Copy JSON</button>
+        <button class="btn btn-primary" onclick="window.app.downloadExportJSON()">📥 Download JSON File</button>
       </div>
     </div>
   </div>

@@ -137,6 +137,7 @@ class GitHubApi {
             nodes {
               number
               title
+              body
               url
               isDraft
               createdAt
@@ -150,6 +151,11 @@ class GitHubApi {
               baseRefName
               author {
                 login
+              }
+              labels(first: 20) {
+                nodes {
+                  name
+                }
               }
               files(first: 100) {
                 nodes {
@@ -198,12 +204,17 @@ class GitHubApi {
         status: f.changeType?.toLowerCase() || "modified"
       }));
 
+      const labelsList = (n.labels?.nodes || []).map(l => l.name);
+
       return {
         number: n.number,
         title: n.title,
+        body: n.body || "",
         branch: n.headRefName,
+        base_branch: n.baseRefName || "main",
         author: authorLogin,
         bot_type: botType,
+        labels: labelsList,
         is_draft: !!n.isDraft,
         mergeable: mergeableStr,
         merge_state: n.mergeStateStatus || "unknown",

@@ -191,12 +191,17 @@ class CacheStore {
     if (raw.mergeable === true) mergeable = "MERGEABLE";
     else if (raw.mergeable === false || raw.mergeable_state === "dirty") mergeable = "CONFLICTING";
 
+    const labelsList = (raw.labels || []).map(l => typeof l === "string" ? l : (l.name || ""));
+
     return {
       number: raw.number,
       title: raw.title || "",
+      body: raw.body || "",
       branch: raw.head?.ref || raw.headRefName || "",
+      base_branch: raw.base?.ref || raw.baseRefName || "main",
       author: authorLogin,
       bot_type: botType,
+      labels: labelsList,
       is_draft: !!raw.draft,
       mergeable: mergeable,
       merge_state: raw.mergeable_state || "unknown",
