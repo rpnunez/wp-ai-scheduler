@@ -59,6 +59,11 @@ final class AIPS_History_Event_Status {
 	const SKIPPED = 'skipped';
 
 	/**
+	 * Work was stopped before it began because an operator setting blocked it.
+	 */
+	const TERMINATED = 'terminated';
+
+	/**
 	 * Legacy status synonyms mapped to their canonical value.
 	 *
 	 * Kept so that historical rows written before the contract existed still
@@ -95,6 +100,7 @@ final class AIPS_History_Event_Status {
 			self::FAILED,
 			self::CANCELLED,
 			self::SKIPPED,
+			self::TERMINATED,
 		);
 	}
 
@@ -179,6 +185,7 @@ final class AIPS_History_Event_Status {
 				self::FAILED,
 				self::CANCELLED,
 				self::SKIPPED,
+				self::TERMINATED,
 			),
 			true
 		);
