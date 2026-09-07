@@ -204,6 +204,30 @@ $site_ctx = AIPS_Site_Context::get();
                                             <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
                                         </span>
                                         <?php endif; ?>
+                                        <?php if (!empty($author->topic_auto_approval_mode) && 'manual' !== $author->topic_auto_approval_mode): ?>
+                                        <div style="margin-top: 4px;">
+                                            <span class="aips-badge aips-badge-info" title="<?php
+                                                if ($author->topic_auto_approval_mode === 'all') {
+                                                    esc_attr_e('Auto-approves all generated topics', 'ai-post-scheduler');
+                                                } elseif ($author->topic_auto_approval_mode === 'score') {
+                                                    echo esc_attr(sprintf(__('Auto-approves topics with score ≥ %d', 'ai-post-scheduler'), isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70));
+                                                } elseif ($author->topic_auto_approval_mode === 'similarity') {
+                                                    echo esc_attr(sprintf(__('Auto-approves topics with duplicate similarity < %.0f%%', 'ai-post-scheduler'), (isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.8) * 100));
+                                                }
+                                            ?>">
+                                                <span class="dashicons dashicons-controls-play"></span>
+                                                <?php
+                                                if ($author->topic_auto_approval_mode === 'all') {
+                                                    esc_html_e('Auto-Approve All', 'ai-post-scheduler');
+                                                } elseif ($author->topic_auto_approval_mode === 'score') {
+                                                    printf(esc_html__('Auto: Score ≥ %d', 'ai-post-scheduler'), (int) $author->topic_auto_approval_min_score);
+                                                } elseif ($author->topic_auto_approval_mode === 'similarity') {
+                                                    printf(esc_html__('Auto: Sim < %.0f%%', 'ai-post-scheduler'), ((float) $author->topic_auto_approval_max_similarity) * 100);
+                                                }
+                                                ?>
+                                            </span>
+                                        </div>
+                                        <?php endif; ?>
                                         <?php if ($policy_flags_count >= 3): ?>
                                         <div style="margin-top: 6px;">
                                             <span class="aips-badge aips-badge-warning">
@@ -554,6 +578,39 @@ $site_ctx = AIPS_Site_Context::get();
                     <option value="biweekly"><?php esc_html_e('Bi-weekly', 'ai-post-scheduler'); ?></option>
                     <option value="monthly"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></option>
                 </select>
+            </div>
+
+            <!-- Topic Auto-Approval Settings -->
+            <div class="form-group">
+                <label for="topic_auto_approval_mode"><?php esc_html_e('Topic Auto-Approval Policy', 'ai-post-scheduler'); ?></label>
+                <select id="topic_auto_approval_mode" name="topic_auto_approval_mode">
+                    <option value="manual" selected><?php esc_html_e('Manual Review (Default)', 'ai-post-scheduler'); ?></option>
+                    <option value="all"><?php esc_html_e('Auto-Approve All Topics', 'ai-post-scheduler'); ?></option>
+                    <option value="score"><?php esc_html_e('Quality Score Threshold', 'ai-post-scheduler'); ?></option>
+                    <option value="similarity"><?php esc_html_e('Similarity / Deduplication Guard', 'ai-post-scheduler'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Configure when generated topics should be automatically approved versus left in pending for review.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group" id="aips-auto-approval-score-group" style="display: none;">
+                <label for="topic_auto_approval_min_score"><?php esc_html_e('Minimum Quality Score for Approval', 'ai-post-scheduler'); ?></label>
+                <input type="number" id="topic_auto_approval_min_score" name="topic_auto_approval_min_score" value="70" min="1" max="100">
+                <p class="description"><?php esc_html_e('Topics with an AI quality score equal to or higher than this value will be auto-approved (1–100).', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group" id="aips-auto-approval-similarity-group" style="display: none;">
+                <label for="topic_auto_approval_max_similarity"><?php esc_html_e('Maximum Duplicate Similarity Threshold', 'ai-post-scheduler'); ?></label>
+                <input type="number" id="topic_auto_approval_max_similarity" name="topic_auto_approval_max_similarity" value="0.80" min="0.10" max="0.99" step="0.01">
+                <p class="description"><?php esc_html_e('Topics with duplicate cosine similarity below this threshold will be auto-approved (e.g. 0.80 = 80%).', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group" id="aips-auto-approval-fallback-group" style="display: none;">
+                <label for="topic_auto_approval_fallback"><?php esc_html_e('Fallback for Non-Qualifying Topics', 'ai-post-scheduler'); ?></label>
+                <select id="topic_auto_approval_fallback" name="topic_auto_approval_fallback">
+                    <option value="pending" selected><?php esc_html_e('Leave as Pending (Queue for Review)', 'ai-post-scheduler'); ?></option>
+                    <option value="rejected"><?php esc_html_e('Auto-Reject', 'ai-post-scheduler'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Choose how non-qualifying topics should be handled.', 'ai-post-scheduler'); ?></p>
             </div>
 
             <div class="form-group">
