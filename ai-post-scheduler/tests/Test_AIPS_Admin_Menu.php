@@ -35,6 +35,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'admin_menu hook should be registered'
 		);
 		$this->assertNotFalse(
+			has_action('admin_head', array($this->admin_menu, 'hide_submenu_pages')),
+			'admin_head hook should be registered'
+		);
+		$this->assertNotFalse(
 			has_filter('parent_file', array($this->admin_menu, 'fix_author_topics_parent_file')),
 			'parent_file hook should be registered'
 		);
@@ -102,17 +106,45 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->admin_menu->add_menu_pages();
 
 		$this->assertArrayHasKey(
-			'admin_page_aips-author-topics',
+			'ai-post-scheduler_page_aips-author-topics',
 			$_registered_pages,
 			'Author Topics page should be registered for direct admin.php?page= access.'
 		);
 
+		$this->admin_menu->hide_submenu_pages();
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
 		$this->assertNotContains(
 			'aips-author-topics',
 			$submenu_pages,
 			'Author Topics page should remain hidden from the visible submenu.'
+		);
+	}
+
+	/**
+	 * Regression test: Source Data page must be registered under ai-post-scheduler and hidden from submenu.
+	 */
+	public function test_source_data_page_is_registered_as_hidden_page() {
+		global $submenu, $_registered_pages;
+
+		$submenu           = array();
+		$_registered_pages = array();
+
+		$this->admin_menu->add_menu_pages();
+
+		$this->assertArrayHasKey(
+			'ai-post-scheduler_page_aips-source-data',
+			$_registered_pages,
+			'Source Data page should be registered for direct admin.php?page= access.'
+		);
+
+		$this->admin_menu->hide_submenu_pages();
+		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
+
+		$this->assertNotContains(
+			'aips-source-data',
+			$submenu_pages,
+			'Source Data page should remain hidden from the visible submenu.'
 		);
 	}
 
@@ -127,6 +159,15 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
+		foreach (array('aips-operations-insights', 'aips-status') as $hidden_page) {
+			$this->assertArrayHasKey(
+				'ai-post-scheduler_page_' . $hidden_page,
+				$_registered_pages,
+				$hidden_page . ' should remain registered for direct admin.php?page= access.'
+			);
+		}
+
+		$this->admin_menu->hide_submenu_pages();
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
 		$this->assertContains(
@@ -140,11 +181,6 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 				$hidden_page,
 				$submenu_pages,
 				$hidden_page . ' should be hidden from the primary submenu.'
-			);
-			$this->assertArrayHasKey(
-				'admin_page_' . $hidden_page,
-				$_registered_pages,
-				$hidden_page . ' should remain registered for direct admin.php?page= access.'
 			);
 		}
 	}
@@ -172,7 +208,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->admin_menu->add_menu_pages();
 
 		$this->assertArrayNotHasKey(
-			'admin_page_aips-seeder',
+			'ai-post-scheduler_page_aips-seeder',
 			$_registered_pages,
 			'Seeder should not be registered when Developer Mode is disabled.'
 		);
@@ -193,7 +229,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->admin_menu->add_menu_pages();
 
 		$this->assertArrayHasKey(
-			'admin_page_aips-seeder',
+			'ai-post-scheduler_page_aips-seeder',
 			$_registered_pages,
 			'Seeder should be registered for direct admin.php?page= access when Developer Mode is enabled.'
 		);
@@ -217,7 +253,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->admin_menu->add_menu_pages();
 
 		$this->assertArrayNotHasKey(
-			'admin_page_aips-cache-monitor',
+			'ai-post-scheduler_page_aips-cache-monitor',
 			$_registered_pages,
 			'Cache Monitor should not be registered when aips_cache_monitor_enabled is disabled.'
 		);
@@ -238,7 +274,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->admin_menu->add_menu_pages();
 
 		$this->assertArrayHasKey(
-			'admin_page_aips-cache-monitor',
+			'ai-post-scheduler_page_aips-cache-monitor',
 			$_registered_pages,
 			'Cache Monitor should be registered for direct admin.php?page= access when enabled.'
 		);
@@ -258,6 +294,15 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 		$this->admin_menu->add_menu_pages();
 
+		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
+			$this->assertArrayHasKey(
+				'ai-post-scheduler_page_' . $hidden_page,
+				$_registered_pages,
+				$hidden_page . ' should remain registered for direct admin.php?page= access.'
+			);
+		}
+
+		$this->admin_menu->hide_submenu_pages();
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
 		$this->assertContains(
@@ -271,11 +316,6 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 				$hidden_page,
 				$submenu_pages,
 				$hidden_page . ' should be hidden from the primary submenu.'
-			);
-			$this->assertArrayHasKey(
-				'admin_page_' . $hidden_page,
-				$_registered_pages,
-				$hidden_page . ' should remain registered for direct admin.php?page= access.'
 			);
 		}
 	}
