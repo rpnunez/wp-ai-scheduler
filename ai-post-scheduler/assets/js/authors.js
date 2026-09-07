@@ -179,7 +179,7 @@
 							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
 							if (successCount > 0) {
 								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
-								setTimeout(() => location.reload(), 800);
+								if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 800); } else { setTimeout(() => location.reload(), 800); }
 							} else {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
 							}
@@ -219,7 +219,7 @@
 							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
 							if (successCount > 0) {
 								AIPS.Utilities.showToast((aipsAuthorsL10n.authorDeletedBulk || '%d author(s) deleted.').replace('%d', successCount), 'success');
-								setTimeout(() => location.reload(), 800);
+								if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 800); } else { setTimeout(() => location.reload(), 800); }
 							} else {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting authors.', 'error');
 							}
@@ -411,7 +411,7 @@
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
 
-						setTimeout(() => location.reload(), 1000);
+						if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 1000); } else { setTimeout(() => location.reload(), 1000); }
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
@@ -455,7 +455,7 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
-									setTimeout(() => location.reload(), 1000);
+									if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 1000); } else { setTimeout(() => location.reload(), 1000); }
 								} else {
 									AIPS.Utilities.showToast(
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting,
@@ -506,7 +506,7 @@
 							success: (response) => {
 								if (response.success) {
 									AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
-									setTimeout(() => location.reload(), 1000);
+									if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { setTimeout(() => AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'), 1000); } else { setTimeout(() => location.reload(), 1000); }
 								} else {
 									AIPS.Utilities.showToast(
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating,
@@ -2333,7 +2333,7 @@
 
 			if (shouldReloadAfterClose) {
 				$visibleModals.promise().done(function () {
-					window.location.reload();
+					if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') { AIPS.refreshContentPanel('.aips-authors-table', '.aips-content-panel'); } else { window.location.reload(); }
 				});
 			}
 		},
