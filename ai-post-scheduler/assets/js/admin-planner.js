@@ -150,10 +150,11 @@
         },
 
         /**
-         * Update the "N selected" label next to the topic list.
+         * Update the "N selected" label next to the topic list and sync Select All state.
          *
-         * Counts the number of checked `.topic-checkbox` elements (regardless of
-         * visibility) and updates every `.selection-count` element.
+         * Counts the total number of checked `.topic-checkbox` elements across all topics,
+         * updates every `.selection-count` element, and synchronizes the `#check-all-topics`
+         * checkbox state with visible checkboxes.
          */
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
@@ -392,7 +393,7 @@
                             var successMsg = data.message || 'Posts generated successfully.';
                             AIPS.Utilities.showToast(successMsg, 'success');
 
-                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                            $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                                 $(this).remove();
                                 window.AIPS.updateSelectionCount();
 
@@ -477,7 +478,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
 
-                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                        $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                             $(this).remove();
                             window.AIPS.updateSelectionCount();
 

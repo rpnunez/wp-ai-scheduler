@@ -280,6 +280,11 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Stagger scheduled topics with frequency 'once' to improve queue management
 **Files Modified:** ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
 **Outcome:** Reduced concurrent background queue spike by staggering 'once' schedules
+## 2026-08-01 - Authors Optimization
+**Target Feature:** Authors UI
+**Improvement:** Replaced hard `window.location.reload()` calls in the Authors admin UI with dynamic AJAX content panel refreshing (`AIPS.refreshContentPanel`) to preserve UI context.
+**Files Modified:** ai-post-scheduler/assets/js/authors.js
+**Outcome:** Faster, smoother transitions when creating, editing, deleting, or fetching authors without losing scroll position or tab context.
 ## 2025-05-15 - Research Planner Optimization
 Target Feature: Research Planner
 Improvement: Replaced the non-standard custom two-click soft confirm behavior in the Planner UI with the standardized AIPS.Utilities.confirm modal for improved UI consistency and accessibility.
