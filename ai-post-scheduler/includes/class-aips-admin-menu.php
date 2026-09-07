@@ -161,17 +161,6 @@ class AIPS_Admin_Menu {
             array($this, 'render_status_page')
         );
 
-        if (AIPS_Config::get_instance()->get_option('aips_developer_mode')) {
-            add_submenu_page(
-                null,
-                __('Seeder', 'ai-post-scheduler'),
-                __('Seeder', 'ai-post-scheduler'),
-                'manage_options',
-                'aips-seeder',
-                array($this, 'render_seeder_page')
-            );
-        }
-
         add_submenu_page(
             null,
             __('Operations Insights', 'ai-post-scheduler'),
@@ -275,7 +264,6 @@ class AIPS_Admin_Menu {
                 'aips-operations-insights',
                 'aips-status',
                 'aips-telemetry',
-                'aips-seeder',
                 'aips-dev-tools',
                 'aips-cache-monitor',
                 AIPS_Stress_Test_Controller::PAGE_SLUG,
@@ -589,18 +577,6 @@ class AIPS_Admin_Menu {
      */
     public function render_settings_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
-    }
-
-    /**
-     * Render the Seeder page.
-     *
-     * Includes the seeder template file.
-     *
-     * @return void
-     */
-    public function render_seeder_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=seeder'));
-        exit;
     }
 
     /**

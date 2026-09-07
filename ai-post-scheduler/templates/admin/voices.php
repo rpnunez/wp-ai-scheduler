@@ -23,7 +23,7 @@ if (!isset($voices) || !is_array($voices)) {
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-voice-search"><?php esc_html_e('Search Voices:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-voice-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-voice-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        <button type="button" id="aips-voice-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
                     </div>
                 </div>
 

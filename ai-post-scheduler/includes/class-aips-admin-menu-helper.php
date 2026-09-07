@@ -38,6 +38,7 @@ class AIPS_Admin_Menu_Helper {
 		'campaign_detail'      => 'aips-campaign-detail',
 		'author_topics'        => 'aips-author-topics',
 		'onboarding'           => 'aips-onboarding',
+		'dev_tools'            => 'aips-dev-tools',
 	);
 
 	/**
@@ -78,7 +79,7 @@ class AIPS_Admin_Menu_Helper {
 	 */
 	private static $diagnostics_tabs = array(
 		'system_status'       => 'status',
-		'seeder'              => 'seeder',
+		'seeder'              => 'dev-tools',
 		'operations_insights' => 'operations-insights',
 		'telemetry'           => 'telemetry',
 		'dev_tools'           => 'dev-tools',

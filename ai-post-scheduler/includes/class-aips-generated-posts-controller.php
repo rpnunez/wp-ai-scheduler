@@ -97,14 +97,14 @@ class AIPS_Generated_Posts_Controller {
 		$time_format = get_option('time_format');
 		$datetime_format = $date_format . ' ' . $time_format;
 
+		// Pre-fetch posts for history items to avoid N+1 query overhead
 		$history_post_ids = array();
-		if (!empty($history['items'])) {
-			foreach ($history['items'] as $item) {
-				if ($item->post_id) {
-					$history_post_ids[] = (int) $item->post_id;
-				}
+		foreach ($history['items'] as $item) {
+			if (!empty($item->post_id)) {
+				$history_post_ids[] = $item->post_id;
 			}
 		}
+
 		if (!empty($history_post_ids) && function_exists('_prime_post_caches')) {
 			_prime_post_caches(array_unique($history_post_ids), false, true);
 		}
@@ -195,14 +195,14 @@ class AIPS_Generated_Posts_Controller {
 			'post_type' => $post_type_filter,
 		));
 
+		// Pre-fetch posts for partial generations to avoid N+1 query overhead
 		$partial_post_ids = array();
-		if (!empty($partial_generations['items'])) {
-			foreach ($partial_generations['items'] as $item) {
-				if ($item->post_id) {
-					$partial_post_ids[] = (int) $item->post_id;
-				}
+		foreach ($partial_generations['items'] as $item) {
+			if (!empty($item->post_id)) {
+				$partial_post_ids[] = $item->post_id;
 			}
 		}
+
 		if (!empty($partial_post_ids) && function_exists('_prime_post_caches')) {
 			_prime_post_caches(array_unique($partial_post_ids), false, true);
 		}

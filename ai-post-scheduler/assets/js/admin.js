@@ -277,7 +277,6 @@
             $(document).on('click', '.aips-run-now-schedule', this.runNowSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-save-schedule-wizard', this.saveScheduleWizard);
-            $(document).on('change', '#schedule_frequency', this.onScheduleFrequencyChange);
             $(document).on('click', '.aips-schedule-day-btn', this.onScheduleDayPick);
             $(document).on('click', '.aips-cadence-tab', this.onScheduleCadenceTabClick);
             $(document).on('click', '.aips-hourly-step-btn', this.onScheduleHourlyStepPick);
