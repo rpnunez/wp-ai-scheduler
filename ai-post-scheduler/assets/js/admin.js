@@ -106,22 +106,25 @@
                 var healthState = d.health_state || 'healthy';
 
                 // Find next upcoming run
+                var l10n = window.aipsScheduleL10n || {};
                 var sortedTimeline = (d.timeline || []).sort(function(a, b) {
                     return a.timestamp - b.timestamp;
                 });
                 var nextRunItem = sortedTimeline.length > 0 ? sortedTimeline[0] : null;
-                var nextRunTitle = nextRunItem ? (nextRunItem.title || nextRunItem.cron_hook || '—') : 'No runs scheduled';
+                var nextRunTitle = nextRunItem ? (nextRunItem.title || nextRunItem.cron_hook || '—') : (l10n.noRunsScheduled || 'No runs scheduled');
                 var nextRunTimeStr = '—';
                 if (nextRunItem) {
                     var diffSec = nextRunItem.timestamp - Math.floor(Date.now() / 1000);
                     if (diffSec <= 0) {
-                        nextRunTimeStr = 'Past due';
+                        nextRunTimeStr = l10n.pastDue || 'Past due';
                     } else if (diffSec < 3600) {
-                        nextRunTimeStr = 'In ' + Math.max(1, Math.ceil(diffSec / 60)) + 'm';
+                        var minsOnly = Math.max(1, Math.ceil(diffSec / 60));
+                        nextRunTimeStr = (l10n.timeInMinutes || 'In %dm').replace('%d', minsOnly);
                     } else {
                         var hrs = Math.floor(diffSec / 3600);
                         var mins = Math.floor((diffSec % 3600) / 60);
-                        nextRunTimeStr = 'In ' + hrs + 'h ' + (mins > 0 ? mins + 'm' : '');
+                        var minsStr = mins > 0 ? ' ' + mins + 'm' : '';
+                        nextRunTimeStr = (l10n.timeInHoursMinutes || 'In %1$dh%2$s').replace('%1$d', hrs).replace('%2$s', minsStr);
                     }
                 }
 
@@ -131,14 +134,34 @@
                 // health_state values.
                 var esc = AIPS.Templates.escape;
                 var healthBadgeMap = {
-                    healthy: { stateClass: 'aips-health-healthy', stateLabel: 'System Operational' },
-                    warning: { stateClass: 'aips-health-warning', stateLabel: 'Attention Needed' },
-                    critical: { stateClass: 'aips-health-critical', stateLabel: 'System Issue' }
+                    healthy: { stateClass: 'aips-health-healthy', stateLabel: l10n.healthOperational || 'System Operational' },
+                    warning: { stateClass: 'aips-health-warning', stateLabel: l10n.healthAttention || 'Attention Needed' },
+                    critical: { stateClass: 'aips-health-critical', stateLabel: l10n.healthCritical || 'System Issue' }
                 };
                 var healthBadgeHtml = AIPS.Templates.render(
                     'aips-tmpl-schedule-health-badge',
                     healthBadgeMap[healthState] || healthBadgeMap.critical
                 );
+
+                var activeCount = counts.active || 0;
+                var activeLabel = (activeCount === 1 ? (l10n.activeCountSingular || '%d Active') : (l10n.activeCountPlural || '%d Active')).replace('%d', activeCount);
+
+                var pausedCount = counts.paused || 0;
+                var pausedLabel = (pausedCount === 1 ? (l10n.pausedCountSingular || '%d Paused') : (l10n.pausedCountPlural || '%d Paused')).replace('%d', pausedCount);
+
+                var completedCount = output24h.completed || 0;
+                var postsLabel = (completedCount === 1 ? (l10n.postsCountSingular || '%d Post') : (l10n.postsCountPlural || '%d Posts')).replace('%d', completedCount);
+
+                var failedCount = output24h.failed || 0;
+                var failedLabel = (failedCount === 1 ? (l10n.failedCountSingular || '%d Failed') : (l10n.failedCountPlural || '%d Failed')).replace('%d', failedCount);
+                var successRateLabel = (l10n.successRate || '%d%% Success Rate').replace('%d', output24h.success_rate || 0);
+
+                var queuePendingLabel = (queueTotal === 1 ? (l10n.queuePendingSingular || '%d Pending') : (l10n.queuePendingPlural || '%d Pending')).replace('%d', queueTotal);
+                var queueValue = queueTotal > 0 ? queuePendingLabel : (l10n.queueIdle || 'Queue Idle');
+
+                var rateLimitLabel = rateLimiter.enabled
+                    ? (l10n.rateLimitStatus || 'Rate Limit: %1$d/%2$d').replace('%1$d', rateLimiter.remaining).replace('%2$d', rateLimiter.max_requests)
+                    : (l10n.rateLimitDisabled || 'Rate Limiting: Off');
 
                 // Each tile's `subHtml` is trusted HTML: either the health badge
                 // (already rendered/escaped above) or a pre-escaped text fragment.
@@ -146,27 +169,27 @@
                 // untouched; the other tokens are escaped here before insertion.
                 var tiles = [
                     {
-                        label: 'Schedule Health',
-                        value: (counts.active || 0) + ' Active',
-                        subHtml: (counts.paused || 0) > 0 ? esc(counts.paused + ' Paused') : healthBadgeHtml,
+                        label: l10n.tileScheduleHealth || 'Schedule Health',
+                        value: activeLabel,
+                        subHtml: pausedCount > 0 ? esc(pausedLabel) : healthBadgeHtml,
                         icon: 'dashicons-calendar-alt'
                     },
                     {
-                        label: 'Next Scheduled Run',
+                        label: l10n.tileNextScheduledRun || 'Next Scheduled Run',
                         value: nextRunTitle,
                         subHtml: esc(nextRunTimeStr),
                         icon: 'dashicons-clock'
                     },
                     {
-                        label: '24h Generation Output',
-                        value: (output24h.completed || 0) + ' Posts',
-                        subHtml: esc(output24h.failed > 0 ? (output24h.failed + ' Failed') : (output24h.success_rate + '% Success Rate')),
+                        label: l10n.tile24hOutput || '24h Generation Output',
+                        value: postsLabel,
+                        subHtml: esc(failedCount > 0 ? failedLabel : successRateLabel),
                         icon: 'dashicons-chart-line'
                     },
                     {
-                        label: 'Queue & Resilience',
-                        value: queueTotal > 0 ? (queueTotal + ' Pending') : 'Queue Idle',
-                        subHtml: esc(rateLimiter.enabled ? ('Rate Limit: ' + rateLimiter.remaining + '/' + rateLimiter.max_requests) : 'Rate Limiting: Off'),
+                        label: l10n.tileQueueResilience || 'Queue & Resilience',
+                        value: queueValue,
+                        subHtml: esc(rateLimitLabel),
                         icon: 'dashicons-admin-generic'
                     }
                 ];
@@ -413,7 +436,6 @@
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
             $(document).on('click', '.aips-view-schedule-history', this.viewScheduleHistory);
-            $(document).on('click', '#aips-schedule-timeline-toggle', this.toggleScheduleTimelineDrawer);
 
             // Schedule Bulk Actions
             $(document).on('change', '#cb-select-all-schedules', this.toggleAllSchedules);
@@ -452,6 +474,7 @@
             $(document).on('click', '.aips-tab', this.switchScheduleTab);
             $(document).on('click', '.aips-reset-circuit', this.resetScheduleCircuit);
             $(document).on('click', '.aips-resume-batch', this.resumeScheduleBatch);
+            $(document).on('click', '#aips-schedule-timeline-toggle', this.toggleScheduleTimelineDrawer);
         },
 
         /**

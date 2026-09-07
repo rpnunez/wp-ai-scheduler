@@ -220,13 +220,15 @@ class AIPS_Schedule_Controller {
         // Timestamp of the most recent completed run per family (null if none),
         // used to show operators when each pipeline last produced a post.
         $last_success = array();
-        foreach ($families as $family => $hook) {
-            $runs = $this->history_repository->get_history(array(
-                'creation_method' => $family,
-                'status' => 'completed',
-                'per_page' => 1,
-            ));
-            $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
+        if ($this->history_repository) {
+            foreach ($families as $family => $hook) {
+                $runs = $this->history_repository->get_history(array(
+                    'creation_method' => $family,
+                    'status' => 'completed',
+                    'per_page' => 1,
+                ));
+                $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
+            }
         }
 
         // Get rate limiter status

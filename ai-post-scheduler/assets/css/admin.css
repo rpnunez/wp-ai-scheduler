@@ -250,7 +250,7 @@
 .aips-status-tile {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--aips-space-2, 8px);
     padding-right: 16px;
     border-right: 1px solid var(--aips-gray-100);
     min-width: 160px;
@@ -268,7 +268,7 @@
     justify-content: center;
     width: 34px;
     height: 34px;
-    border-radius: 6px;
+    border-radius: var(--aips-radius-md, 6px);
     background: var(--aips-gray-50, #f0f0f1);
     color: var(--aips-primary, #2271b1);
     flex-shrink: 0;
@@ -287,8 +287,8 @@
 }
 
 .aips-status-tile-label {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: var(--aips-text-2xs, 11px);
+    font-weight: var(--aips-font-semibold, 600);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     color: var(--aips-gray-500);
@@ -296,8 +296,8 @@
 }
 
 .aips-status-tile-value {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--aips-text-base, 14px);
+    font-weight: var(--aips-font-bold, 700);
     color: var(--aips-gray-900);
     line-height: 1.2;
     margin-top: 2px;
@@ -307,7 +307,7 @@
 }
 
 .aips-status-tile-sub {
-    font-size: 11px;
+    font-size: var(--aips-text-2xs, 11px);
     color: var(--aips-gray-600);
     line-height: 1.2;
     margin-top: 2px;
@@ -320,7 +320,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-weight: 500;
+    font-weight: var(--aips-font-medium, 500);
 }
 
 .aips-status-dot {
@@ -354,7 +354,7 @@
     margin-left: 2px;
     padding: 1px 6px;
     border-radius: 10px;
-    font-size: 11px;
+    font-size: var(--aips-text-2xs, 11px);
 }
 
 .aips-schedule-timeline-drawer {

@@ -189,11 +189,11 @@ if (!function_exists('aips_datetime_from_db_value')) {
 					<span class="aips-schedule-status-loading"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></span>
 				</div>
 				<div class="aips-schedule-status-actions">
-					<button type="button" id="aips-schedule-timeline-toggle" class="aips-btn aips-btn-secondary aips-btn-sm aips-timeline-toggle-btn" aria-expanded="false" style="display:none;">
-						<span class="dashicons dashicons-calendar-alt"></span>
+					<button type="button" id="aips-schedule-timeline-toggle" class="aips-btn aips-btn-secondary aips-btn-sm aips-timeline-toggle-btn" aria-expanded="false" aria-controls="aips-schedule-timeline-drawer" style="display:none;">
+						<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
 						<span class="aips-timeline-toggle-text"><?php esc_html_e('Upcoming Runs', 'ai-post-scheduler'); ?></span>
 						<span class="aips-badge aips-badge-neutral aips-timeline-count-badge">0</span>
-						<span class="dashicons dashicons-arrow-down-alt2 aips-toggle-icon"></span>
+						<span class="dashicons dashicons-arrow-down-alt2 aips-toggle-icon" aria-hidden="true"></span>
 					</button>
 				</div>
 			</div>
@@ -209,7 +209,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		<?php // Client-side templates for the schedule status strip (rendered by AIPS.Templates in admin.js). ?>
 		<script type="text/html" id="aips-tmpl-schedule-status-tile">
 		<div class="aips-status-tile">
-			<div class="aips-status-tile-icon"><span class="dashicons {{icon}}"></span></div>
+			<div class="aips-status-tile-icon"><span class="dashicons {{icon}}" aria-hidden="true"></span></div>
 			<div class="aips-status-tile-content">
 				<div class="aips-status-tile-label">{{label}}</div>
 				<div class="aips-status-tile-value" title="{{valueTitle}}">{{value}}</div>
@@ -219,7 +219,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		</script>
 
 		<script type="text/html" id="aips-tmpl-schedule-health-badge">
-		<span class="aips-health-badge {{stateClass}}"><span class="aips-status-dot"></span> {{stateLabel}}</span>
+		<span class="aips-health-badge {{stateClass}}"><span class="aips-status-dot" aria-hidden="true"></span> {{stateLabel}}</span>
 		</script>
 
 		<script type="text/html" id="aips-tmpl-schedule-timeline-event">
