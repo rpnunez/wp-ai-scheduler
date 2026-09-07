@@ -29,3 +29,9 @@
 **Decision:** Extracted the single topic processing logic into a new private method `process_single_topic_embedding`. `process_approved_embeddings_batch` now serves strictly as an orchestrator.
 **Consequence:** Increased the number of private methods, but significantly improved readability, testability, and adherence to the Single Responsibility Principle. Backwards compatibility remains intact. Added missing DocBlocks for the new function.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-10-25 - [Refactor AIPS_DB_Manager God Method]
+**Context:** `AIPS_DB_Manager::get_schema()` was a God Method of over 670 lines handling the array construction of schema definition SQL statements for 31 tables, violating the Single Responsibility Principle.
+**Decision:** Extracted the schema generation blocks into six logical domain-based private methods (`get_core_schema`, `get_content_schema`, `get_taxonomy_schema`, `get_metrics_schema`, `get_advanced_schema`, `get_caching_schema`).
+**Consequence:** `get_schema()` is now a brief orchestrator function under 20 lines. Separation of Concerns is improved while preserving exact schema generation without adding a new architectural layer. Backwards compatibility is 100% intact.
+**Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
