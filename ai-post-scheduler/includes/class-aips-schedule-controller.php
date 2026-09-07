@@ -215,6 +215,10 @@ class AIPS_Schedule_Controller {
     private function get_generated_post_modal_data($post_ids) {
         $posts = array();
 
+        if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+            _prime_post_caches(array_unique(array_filter(array_map('intval', $post_ids))), false, true);
+        }
+
         foreach ($post_ids as $post_id) {
             $post_id = absint($post_id);
 
@@ -729,33 +733,9 @@ class AIPS_Schedule_Controller {
             array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
         );
 
-        $entries = array();
-        foreach ($logs as $log) {
-            $details = array();
-
-            if (!empty($log->details)) {
-                $decoded_details = json_decode($log->details, true);
-                if (is_array($decoded_details)) {
-                    $details = $decoded_details;
-                }
-            }
-
-            $input = array();
-            if (isset($details['input']) && is_array($details['input'])) {
-                $input = $details['input'];
-            }
-
-            $entries[] = array(
-                'id' => absint($log->id),
-                'timestamp' => esc_html($log->timestamp),
-                'log_type' => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
-                'history_type_id' => absint($log->history_type_id),
-                'message' => isset($details['message']) ? esc_html($details['message']) : '',
-                'event_type' => isset($input['event_type']) ? esc_html($input['event_type']) : '',
-                'event_status' => isset($input['event_status']) ? esc_html($input['event_status']) : '',
-                'context' => (isset($details['context']) && is_array($details['context'])) ? $details['context'] : array(),
-            );
-        }
+        // Normalize via the shared read model so event_type/event_status are
+        // canonicalized and the record shape matches every other consumer.
+        $entries = AIPS_History_Event_View::from_logs($logs);
 
         AIPS_Ajax_Response::success(array('entries' => $entries));
     }
@@ -1155,19 +1135,10 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Circuit reset is only available for template schedules.', 'ai-post-scheduler'));
         }
 
-        // Reset the circuit state to 'closed' for this schedule
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
+        // Reset the circuit state to 'closed' for this schedule.
+        $result = $this->schedule_repository->update($id, array('circuit_state' => 'closed'));
 
-        $result = $wpdb->update(
-            $table_name,
-            array('circuit_state' => 'closed'),
-            array('id' => $id),
-            array('%s'),
-            array('%d')
-        );
-
-        if ($result !== false) {
+        if ($result) {
             AIPS_Ajax_Response::success(array(
                 'message' => __('Circuit breaker reset successfully. The schedule will attempt to run on its next trigger.', 'ai-post-scheduler'),
                 'circuit_state' => 'closed',

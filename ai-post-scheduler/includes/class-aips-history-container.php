@@ -344,6 +344,7 @@ class AIPS_History_Container {
 			'debug' => AIPS_History_Type::DEBUG,
 			'log' => AIPS_History_Type::LOG,
 			'metric_generation_result' => AIPS_History_Type::METRIC,
+			'session_metadata' => AIPS_History_Type::SESSION_METADATA,
 		);
 		
 		return isset($map[$log_type]) ? $map[$log_type] : AIPS_History_Type::LOG;
@@ -404,6 +405,47 @@ class AIPS_History_Container {
 		return $this->record('activity', $message, $action_data, null, $context);
 	}
 	
+	/**
+	 * Complete this history container as terminated.
+	 *
+	 * Used when an operator setting stops the run before any work is attempted.
+	 * The run neither succeeded nor failed, so it is closed with its own
+	 * terminal status rather than being left open in 'processing'.
+	 *
+	 * @param string $message Human-readable reason the run was terminated.
+	 * @param array  $result_data Optional additional columns to persist.
+	 * @return bool True on success, false on failure
+	 */
+	public function complete_terminated($message, $result_data = array()) {
+		if (!$this->is_persisted) {
+			return false;
+		}
+
+		if ($this->session) {
+			$this->session->complete(array(
+				'success' => false,
+				'error'   => $message,
+			));
+		}
+
+		$update_data = apply_filters('aips_history_record_data', array_merge(
+			array(
+				'status'        => AIPS_History_Event_Status::TERMINATED,
+				'error_message' => $message,
+				'completed_at'  => AIPS_DateTime::now()->timestamp(),
+			),
+			$result_data
+		), $this->history_id);
+
+		$success = $this->repository->update($this->history_id, $update_data) !== false;
+
+		if ($success) {
+			do_action('aips_history_updated', $this->history_id, $update_data, 'processing');
+		}
+
+		return $success;
+	}
+
 	/**
 	 * Complete this history container with success
 	 *

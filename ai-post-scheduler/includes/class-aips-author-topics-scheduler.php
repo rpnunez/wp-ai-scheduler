@@ -333,11 +333,10 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		$ran_at = AIPS_DateTime::now()->timestamp();
+		$base_run = !empty($author->topic_generation_next_run) ? (int) $author->topic_generation_next_run : AIPS_DateTime::now()->timestamp();
 
-		// Advance from the actual execution time so the next run reflects when
-		// work really happened instead of preserving a stale missed-run phase.
-		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency, $ran_at);
+		// Advance from the scheduled slot to preserve phase and time-of-day.
+		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency, $base_run);
 		
 		$this->authors_repository->update_topic_generation_schedule($author->id, $next_run);
 		
@@ -347,18 +346,19 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	/**
 	 * Manually trigger topic generation for an author (e.g., from admin UI).
 	 *
-	 * @param int  $author_id        Author ID.
-	 * @param bool $advance_schedule Whether to update the author's next run.
+	 * @param int  $author_id           Author ID.
+	 * @param bool $advance_schedule    Whether to update the author's next run.
+	 * @param bool $apply_auto_approval Whether to apply author auto-approval rules. Default true.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
-	public function generate_now($author_id, $advance_schedule = true) {
+	public function generate_now($author_id, $advance_schedule = true, $apply_auto_approval = true) {
 		$author = $this->authors_repository->get_by_id($author_id);
 		
 		if (!$author) {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 
-		$result = $this->topics_generator->generate_topics($author);
+		$result = $this->topics_generator->generate_topics($author, $apply_auto_approval);
 
 		// Keep manual "Run Now" behavior aligned with cron runs by advancing
 		// schedule timestamps regardless of success/failure to avoid re-running

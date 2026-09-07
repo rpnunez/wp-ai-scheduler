@@ -238,5 +238,30 @@ class AIPS_Author_Topic_Logs_Repository {
 
 		return $counts;
 	}
+
+	/**
+	 * Returns an associative array of author_id => MAX(created_at) for all authors
+	 * that have at least one post_generated log row.
+	 *
+	 * @return array<int, int> Map of author_id => latest created_at timestamp.
+	 */
+	public function get_latest_post_generation_timestamps_grouped_by_author() {
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+
+		$results = $this->wpdb->get_results(
+			"SELECT at.author_id, MAX(atl.created_at) AS latest_ts
+			 FROM {$this->table_name} atl
+			 INNER JOIN {$topics_table} at ON atl.author_topic_id = at.id
+			 WHERE atl.action = 'post_generated'
+			 GROUP BY at.author_id"
+		);
+
+		$timestamps = array();
+		foreach ( $results as $row ) {
+			$timestamps[ (int) $row->author_id ] = (int) $row->latest_ts;
+		}
+
+		return $timestamps;
+	}
 }
 

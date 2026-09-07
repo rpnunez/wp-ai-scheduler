@@ -126,6 +126,13 @@ interface AIPS_Schedule_Repository_Interface {
 	public function update_run_state($id, array $state);
 
 	/**
+	 * Get active schedules that carry a run_state payload.
+	 *
+	 * @return array Array of schedule row objects (may be empty).
+	 */
+	public function get_schedules_with_run_state();
+
+	/**
 	 * Bulk delete schedules.
 	 *
 	 * @param array $ids Schedule IDs.
