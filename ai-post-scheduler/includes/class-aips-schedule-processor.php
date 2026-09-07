@@ -519,9 +519,8 @@ class AIPS_Schedule_Processor {
     public function process_due_schedules() {
         $this->logger->log('Starting scheduled post generation', 'info');
 
-        // Keep the per-tick schedule fetch aligned with the configured batch threshold
-        // so cron throughput scales with the same slicing configuration.
-        $due_limit = $this->get_batch_queue_service()->get_large_batch_threshold();
+        // Fetch due schedules using the configured cron batch size.
+        $due_limit = max(1, (int) AIPS_Config::get_instance()->get_option('aips_cron_batch_size', 3));
         $due_schedules = $this->repository->get_due_schedules(AIPS_DateTime::now()->timestamp(), $due_limit);
 
         if (empty($due_schedules)) {

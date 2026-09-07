@@ -177,7 +177,17 @@ class AIPS_Interval_Calculator {
                     $base_time = $this->calculate_next_timestamp($frequency, $now);
                 }
             }
-            return $base_time;
+        }
+
+        $config = AIPS_Config::get_instance();
+        if ($config->get_option('aips_enable_schedule_jitter', false)) {
+            $jitter_max = (int) $config->get_option('aips_schedule_jitter_minutes', 15) * 60;
+            if ($jitter_max > 0) {
+                $jitter_offset = wp_rand(-$jitter_max, $jitter_max);
+                if ($base_time + $jitter_offset > $now) {
+                    $base_time += $jitter_offset;
+                }
+            }
         }
         
         return $base_time;

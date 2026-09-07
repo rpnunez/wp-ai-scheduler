@@ -274,7 +274,7 @@ class AIPS_Settings {
 				'default'           => $defaults['aips_indexer_post_types'],
 			),
 			'aips_indexer_similarity_threshold' => array(
-				'sanitize_callback' => 'floatval',
+				'sanitize_callback' => array($ui, 'sanitize_similarity_threshold'),
 				'default'           => $defaults['aips_indexer_similarity_threshold'],
 			),
 			'aips_auto_index_on_publish' => array(
