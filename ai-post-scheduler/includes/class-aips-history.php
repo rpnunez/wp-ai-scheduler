@@ -350,11 +350,16 @@ class AIPS_History {
 
         foreach ($logs as $log) {
             $details = !empty($log['details']) && is_array($log['details']) ? $log['details'] : array();
-            if (!empty($details['dimensions'])) {
+            $dimensions_found = false;
+            $dimensions = $this->find_history_detail_value($details, 'dimensions', $dimensions_found);
+            if ($dimensions_found && (int) $dimensions > 0) {
                 $saw_embedding = true;
-                $embedding_dims = (int) $details['dimensions'];
+                $embedding_dims = (int) $dimensions;
             }
-            if (!empty($details['relationships_saved'])) {
+
+            $relationships_found = false;
+            $this->find_history_detail_value($details, 'relationships_saved', $relationships_found);
+            if ($relationships_found) {
                 $saw_relationships = true;
             }
             $this->scan_history_values_for_changes($details, $saw_title_change, $saw_content_change, $saw_image_change, $saw_published_result, $saw_draft_result);
@@ -394,6 +399,37 @@ class AIPS_History {
             'outcome_label' => $outcome,
             'what_changed' => !empty($changes) ? implode('; ', $changes) : __('No major content changes detected', 'ai-post-scheduler'),
         );
+    }
+
+    /**
+     * Find a keyed value anywhere in nested History log details.
+     *
+     * AIPS_History_Container::record() nests caller data below input, output,
+     * or context, so summary metrics cannot assume top-level keys.
+     *
+     * @param mixed  $value Current value to inspect.
+     * @param string $key   Key to find.
+     * @param bool   $found Whether the key was found.
+     * @return mixed|null
+     */
+    private function find_history_detail_value($value, $key, &$found) {
+        if (!is_array($value)) {
+            return null;
+        }
+
+        if (array_key_exists($key, $value)) {
+            $found = true;
+            return $value[$key];
+        }
+
+        foreach ($value as $child) {
+            $result = $this->find_history_detail_value($child, $key, $found);
+            if ($found) {
+                return $result;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1646,6 +1682,7 @@ class AIPS_History {
                 $slice      = array_slice( $items, $i, $run_length );
                 $completed  = 0;
                 $failed     = 0;
+                $processing = 0;
                 $post_types = array();
                 $ids        = array();
 
@@ -1655,6 +1692,8 @@ class AIPS_History {
                         $completed++;
                     } elseif ( $item->status === 'failed' ) {
                         $failed++;
+                    } elseif ( $item->status === 'processing' ) {
+                        $processing++;
                     }
                     if ( ! empty( $item->post_type ) && ! in_array( $item->post_type, $post_types, true ) ) {
                         $post_types[] = $item->post_type;
@@ -1676,6 +1715,7 @@ class AIPS_History {
                     'items'           => $slice,
                     'completed_count' => $completed,
                     'failed_count'    => $failed,
+                    'processing_count'=> $processing,
                     'post_types'      => $post_types,
                     'ids'             => $ids,
                     'first_date'      => $first_date,

@@ -15,6 +15,7 @@ $count = isset($group['count']) ? (int) $group['count'] : 0;
 $label = isset($group['label']) ? $group['label'] : __('Activity', 'ai-post-scheduler');
 $completed = isset($group['completed_count']) ? (int) $group['completed_count'] : 0;
 $failed = isset($group['failed_count']) ? (int) $group['failed_count'] : 0;
+$processing = isset($group['processing_count']) ? (int) $group['processing_count'] : 0;
 $first_date = isset($group['first_date']) ? (string) $group['first_date'] : '';
 $last_date = isset($group['last_date']) ? (string) $group['last_date'] : '';
 $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $group['post_types'] : array();
@@ -62,10 +63,10 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
                     <?php echo esc_html(sprintf(_n('%d Failed', '%d Failed', $failed, 'ai-post-scheduler'), $failed)); ?>
                 </span>
             <?php endif; ?>
-            <?php if ($completed === 0 && $failed === 0): ?>
+            <?php if ($processing > 0): ?>
                 <span class="aips-badge aips-badge-info">
                     <span class="dashicons dashicons-update" aria-hidden="true"></span>
-                    <?php esc_html_e('Processing', 'ai-post-scheduler'); ?>
+                    <?php echo esc_html(sprintf(_n('%d Processing', '%d Processing', $processing, 'ai-post-scheduler'), $processing)); ?>
                 </span>
             <?php endif; ?>
         </div>

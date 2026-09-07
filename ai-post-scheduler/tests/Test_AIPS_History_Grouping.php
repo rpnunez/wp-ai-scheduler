@@ -69,6 +69,37 @@ class Test_AIPS_History_Grouping extends WP_UnitTestCase {
         $this->assertSame(1, $grouped[0]['failed_count']);
     }
 
+    public function test_status_tallies_include_processing_items() {
+        $items = array(
+            $this->make_item(1, 'content_indexing', 'completed'),
+            $this->make_item(2, 'content_indexing', 'processing'),
+        );
+
+        $grouped = $this->history->group_contiguous_items($items);
+
+        $this->assertSame(1, $grouped[0]['processing_count']);
+    }
+
+    public function test_group_row_renders_processing_count_for_mixed_statuses() {
+        $group = array(
+            'group_id'        => 'grp_1_1',
+            'count'           => 2,
+            'label'           => 'Content Indexing',
+            'completed_count' => 1,
+            'failed_count'    => 0,
+            'processing_count'=> 1,
+            'first_date'      => 'just now',
+            'last_date'       => '1 min ago',
+            'post_types'      => array('post'),
+        );
+
+        ob_start();
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-group-row.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('1 Processing', wp_strip_all_tags($html));
+    }
+
     public function test_missing_method_defaults_to_post_generation() {
         $items = array(
             $this->make_item(1, ''),
