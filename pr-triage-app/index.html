@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PR Triage Command Center</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-theme="dark">
+
+<div class="container">
+  
+  <header>
+    <div class="header-title">
+      <h1>🚀 PR Triage Command Center</h1>
+      <p>Multi-repo triage dashboard for <strong id="activeRepoLabel">rpnunez/wp-ai-scheduler</strong> &bull; <span id="lastSyncLabel">Loading cache...</span></p>
+    </div>
+    <div class="header-actions">
+      <div id="rateLimitInfo" class="rate-limit-pill">API Rate Limit: 5000 / 5000</div>
+      <button class="btn btn-wizard" onclick="window.app.openTriageWizard()">⚡ Triage PRs Wizard</button>
+      <button class="btn btn-primary" onclick="window.app.syncAll()">🔄 Sync / Refresh</button>
+      <button class="btn" onclick="window.app.openLogModal()">📜 Logs <span id="logBtnBadge" class="log-btn-badge">0</span></button>
+      <button class="btn" onclick="window.app.openSettingsModal()">⚙️ Settings</button>
+      <button class="btn" id="themeToggleBtn" onclick="window.app.toggleTheme()">☀️ Light Mode</button>
+    </div>
+  </header>
+
+  <!-- Progress Bar for Sync -->
+  <div class="progress-bar-container" id="progressBarContainer">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div id="syncStatusText" class="sync-status-text"></div>
+
+  <!-- KPI Cards Grid -->
+  <div class="kpi-grid">
+    <div class="kpi-card active" onclick="window.app.filterByHub('all')" id="kpi-all">
+      <span class="kpi-label">Total Open PRs</span>
+      <span class="kpi-value" id="kpi-val-total">0</span>
+      <span class="kpi-desc">Active repository inventory</span>
+    </div>
+    <div class="kpi-card" onclick="window.app.filterByHub('ready_to_merge')" id="kpi-ready_to_merge">
+      <span class="kpi-label kpi-label-green">🟢 Ready to Merge</span>
+      <span class="kpi-value kpi-val-green" id="kpi-val-ready">0</span>
+      <span class="kpi-desc">Clean, verified, zero conflicts</span>
+    </div>
+    <div class="kpi-card" onclick="window.app.filterByHub('duplicate_close')" id="kpi-duplicate_close">
+      <span class="kpi-label kpi-label-purple">⚪ Close Duplicates</span>
+      <span class="kpi-value kpi-val-purple" id="kpi-val-close">0</span>
+      <span class="kpi-desc">Jules / Bot duplicate clusters</span>
+    </div>
+    <div class="kpi-card" onclick="window.app.filterByHub('requires_review')" id="kpi-requires_review">
+      <span class="kpi-label kpi-label-yellow">🟡 Architecture Review</span>
+      <span class="kpi-value kpi-val-yellow" id="kpi-val-core">0</span>
+      <span class="kpi-desc">Clean Core &amp; DB PRs</span>
+    </div>
+    <div class="kpi-card" onclick="window.app.filterByHub('needs_rebase')" id="kpi-needs_rebase">
+      <span class="kpi-label kpi-label-red">🔴 Merge Conflicts</span>
+      <span class="kpi-value kpi-val-red" id="kpi-val-rebase">0</span>
+      <span class="kpi-desc">Sub-divided 4A, 4B, 4C</span>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="controls-panel">
+    <div class="search-row">
+      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search PR title, PR #, author, branch, or filename..." oninput="window.app.renderAll()">
+      
+      <!-- Force Fetch PRs Tool (Cache-Bust) -->
+      <div class="force-fetch-group" title="Enter PR numbers to force-refresh from GitHub (e.g. 2063, 1983)">
+        <span class="u-text-xs u-text-muted">Force Refresh #:</span>
+        <input type="text" id="forceFetchInput" class="force-fetch-input" placeholder="2063, 1983...">
+        <button class="btn btn-sm btn-primary" onclick="window.app.forceRefreshSpecificPRs()">Fetch</button>
+      </div>
+
+      <!-- Date Range Filter -->
+      <select id="dateRangeSelect" class="date-select" onchange="window.app.setDateRange(this.value)">
+        <option value="all">📅 All Dates</option>
+        <option value="today">Updated Today</option>
+        <option value="7d">Updated Last 7 Days</option>
+        <option value="30d">Updated Last 30 Days</option>
+      </select>
+
+      <button class="btn" onclick="window.app.resetFilters()">Reset Filters</button>
+      <button class="btn" onclick="window.app.toggleAllHubs(false)">Collapse All</button>
+      <button class="btn" onclick="window.app.toggleAllHubs(true)">Expand All</button>
+    </div>
+
+    <div class="filter-chips-row">
+      <span class="chip-label">Risk Tier:</span>
+      <span class="chip" data-filter="risk" data-val="CRITICAL" onclick="window.app.toggleChip(this)">Critical</span>
+      <span class="chip" data-filter="risk" data-val="HIGH" onclick="window.app.toggleChip(this)">High</span>
+      <span class="chip" data-filter="risk" data-val="MEDIUM" onclick="window.app.toggleChip(this)">Medium</span>
+      <span class="chip" data-filter="risk" data-val="LOW" onclick="window.app.toggleChip(this)">Low</span>
+      
+      <span class="chip-label chip-label-margin">Author:</span>
+      <span class="chip" data-filter="author" data-val="Human" onclick="window.app.toggleChip(this)">Human (rpnunez)</span>
+      <span class="chip" data-filter="author" data-val="Jules" onclick="window.app.toggleChip(this)">Jules Bot</span>
+      <span class="chip" data-filter="author" data-val="Copilot" onclick="window.app.toggleChip(this)">Copilot Bot</span>
+    </div>
+  </div>
+
+  <!-- Action Hubs Container -->
+  <div id="hubsContainer"></div>
+
+</div>
+
+<!-- Modal for More Info -->
+<div class="modal-overlay" id="infoModal" onclick="window.app.closeModal(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modalTitle">PR Details</h3>
+      <button class="modal-close" onclick="window.app.closeModalDirect()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Modal for Interactive Merge -->
+<div class="modal-overlay" id="mergeModal" onclick="if (event.target.id === 'mergeModal') window.app.closeMergeModal()">
+  <div class="modal-card modal-card-sm" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="mergeModalPRTitle">⚡ Execute Merge</h3>
+      <button class="modal-close" onclick="window.app.closeMergeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Merge Method:</label>
+        <select id="mergeMethodSelect" class="date-select u-w-full">
+          <option value="squash">Squash and Merge (Recommended)</option>
+          <option value="rebase">Rebase and Merge</option>
+          <option value="merge">Create Merge Commit</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Commit Title:</label>
+        <input type="text" id="mergeCommitTitle" class="search-input u-w-full">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Commit Message:</label>
+        <textarea id="mergeCommitMsg" class="search-input modal-textarea"></textarea>
+      </div>
+      <div class="modal-footer modal-footer-end">
+        <button class="btn" onclick="window.app.closeMergeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="window.app.executeMerge()">Confirm &amp; Merge</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for Interactive Close -->
+<div class="modal-overlay" id="closeModal" onclick="if (event.target.id === 'closeModal') window.app.closeCloseModal()">
+  <div class="modal-card modal-card-sm" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="closeModalPRTitle" class="u-text-red">✕ Close Pull Request</h3>
+      <button class="modal-close" onclick="window.app.closeCloseModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Optional Closure Comment:</label>
+        <textarea id="closeCommentInput" class="search-input modal-textarea"></textarea>
+      </div>
+      <div class="modal-footer modal-footer-end">
+        <button class="btn" onclick="window.app.closeCloseModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="window.app.executeClose()">Confirm &amp; Close PR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for Live Logs -->
+<div class="modal-overlay" id="logModal" onclick="if (event.target.id === 'logModal') window.app.closeLogModal()">
+  <div class="modal-card modal-card-lg" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>📜 Session Logs</h3>
+      <div class="u-flex u-gap-8">
+        <button class="btn btn-sm btn-primary" onclick="window.logger.exportLogFile('log')">💾 Export .log</button>
+        <button class="btn btn-sm" onclick="window.logger.exportLogFile('json')">💾 Export .json</button>
+        <button class="btn btn-sm btn-danger" onclick="window.logger.clearLogs(); window.app.renderLogsInModal();">🗑️ Clear</button>
+        <button class="modal-close" onclick="window.app.closeLogModal()">&times;</button>
+      </div>
+    </div>
+    <div class="log-toolbar">
+      <select id="logLevelFilter" class="date-select" onchange="window.app.renderLogsInModal()">
+        <option value="ALL">All Levels</option>
+        <option value="API_ONLY">API Calls Only</option>
+        <option value="ERRORS_ONLY">Errors &amp; Warnings</option>
+      </select>
+      <input type="text" id="logSearchInput" class="search-input u-w-full" placeholder="Search log entries..." oninput="window.app.renderLogsInModal()">
+    </div>
+    <div class="modal-body log-body" id="logModalContent"></div>
+  </div>
+</div>
+
+<!-- Modal for Live Sync Stream Feed -->
+<div class="modal-overlay" id="syncLiveModal" onclick="if (event.target.id === 'syncLiveModal') window.app.closeSyncLiveModal()">
+  <div class="modal-card modal-card-lg" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="u-flex u-gap-10">
+        <h3>🔄 Live GitHub Sync Feed</h3>
+        <span class="badge badge-blue" id="syncLiveStatusBadge">Syncing...</span>
+      </div>
+      <button class="modal-close" onclick="window.app.closeSyncLiveModal()">&times;</button>
+    </div>
+    
+    <div class="progress-bar-container" id="syncLiveProgressBarContainer">
+      <div class="progress-bar" id="syncLiveProgressBar"></div>
+    </div>
+
+    <div class="modal-body log-body" id="syncLiveLogContent"></div>
+
+    <div class="modal-footer">
+      <div class="u-text-xs u-text-muted" id="syncLiveSummaryText">Connecting to GitHub API...</div>
+      <button class="btn btn-primary btn-sm" id="syncLiveDoneBtn" onclick="window.app.closeSyncLiveModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for Triage PRs Guided Wizard -->
+<div class="modal-overlay" id="triageWizardModal" onclick="if (event.target.id === 'triageWizardModal') window.wizard.close()">
+  <div class="modal-card modal-card-wizard" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="u-flex u-gap-12">
+        <h3>⚡ PR Triage Wizard</h3>
+      </div>
+      <button class="modal-close" onclick="window.wizard.close()">&times;</button>
+    </div>
+
+    <!-- Stepper Navigation Header -->
+    <div class="wizard-stepper-nav" id="wizardStepNav"></div>
+
+    <!-- Wizard Step Content Pane -->
+    <div class="modal-body" id="wizardStepContent"></div>
+  </div>
+</div>
+
+<!-- Modal for Settings & Custom Rule Editor -->
+<div class="modal-overlay" id="settingsModal" onclick="if (event.target.id === 'settingsModal') window.app.closeSettingsModal()">
+  <div class="modal-card modal-card-settings" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>⚙️ Configuration &amp; Custom Rules</h3>
+      <button class="modal-close" onclick="window.app.closeSettingsModal()">&times;</button>
+    </div>
+
+    <!-- Settings Tabs -->
+    <div class="settings-tabs-bar">
+      <button class="settings-tab-btn active" data-tab="general" onclick="window.app.switchSettingsTab('general')">⚙️ General &amp; Connection</button>
+      <button class="settings-tab-btn" data-tab="rules" onclick="window.app.switchSettingsTab('rules')">🏷️ Subsystem &amp; Risk Rules</button>
+    </div>
+
+    <div class="modal-body">
+      
+      <!-- PANE 1: General Settings -->
+      <div id="settingsPaneGeneral">
+        <div class="form-group">
+          <label class="form-label">GitHub Personal Access Token (PAT):</label>
+          <input type="password" id="patInput" class="search-input u-w-full" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+          <p class="form-hint">
+            Stored locally in your browser only. Required for raising rate limits from 60 to 5,000 requests/hr.
+          </p>
+        </div>
+
+        <div class="form-group u-mt-12">
+          <label class="form-label">Target Repository (owner/repo):</label>
+          <input type="text" id="repoInput" class="search-input u-w-full" placeholder="owner/repository">
+          <select id="userReposSelect" class="date-select u-w-full u-mt-6" onchange="window.app.selectUserRepo(this.value)"></select>
+        </div>
+
+        <div class="form-group u-mt-12">
+          <label class="form-label">Sync Engine Mode:</label>
+          <select id="syncModeSelect" class="date-select u-w-full">
+            <option value="graphql">GraphQL Turbo-Sync (1 Request per 100 PRs - Recommended)</option>
+            <option value="rest">Differential REST API Sync</option>
+          </select>
+          <p class="form-hint">
+            GraphQL queries up to 100 PRs, mergeable status, files, and line changes in a single request.
+          </p>
+        </div>
+
+        <div class="form-group u-mt-12">
+          <label class="form-label">Default Action Execution Mode:</label>
+          <select id="execModeSelect" class="date-select u-w-full">
+            <option value="api">Direct GitHub API (Immediate Interactive Mutations)</option>
+            <option value="cli">Terminal Script Mode (Offline CLI Commands / PowerShell Scripts)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- PANE 2: Subsystems & Risk Rules Editor -->
+      <div id="settingsPaneRules">
+        
+        <!-- Risk Rules Sliders & Checkbox -->
+        <div class="rules-section-box">
+          <h4 class="rules-section-title">⚡ Risk Weighting Thresholds</h4>
+          <div class="rules-grid-2col">
+            <div>
+              <label class="form-label u-text-xs">Large File Count Threshold (High Risk):</label>
+              <input type="number" id="riskLargeFileThreshold" class="search-input u-w-full" min="1" max="100" value="15" onchange="window.app.syncRulesToRawJSON()">
+            </div>
+            <div>
+              <label class="form-label u-text-xs">Diff Lines Changed Threshold (High Risk):</label>
+              <input type="number" id="riskLineThreshold" class="search-input u-w-full" min="50" max="5000" step="50" value="500" onchange="window.app.syncRulesToRawJSON()">
+            </div>
+          </div>
+          <div class="u-mt-8">
+            <label class="u-flex u-gap-6 u-cursor-pointer u-text-xs">
+              <input type="checkbox" id="riskCoreDbCheck" checked onchange="window.app.syncRulesToRawJSON()">
+              <span>Mark <strong>CRITICAL Risk</strong> whenever Core Engine touches Database Schema tables</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Subsystems Visual List -->
+        <div class="u-mt-14">
+          <div class="u-flex-between u-mb-8">
+            <div>
+              <h4 class="rules-subsystem-title">🏷️ Subsystem Categorization Taxonomy</h4>
+              <p class="u-text-xs u-text-muted u-mt-2">Add or modify keyword and path patterns matched against changed files.</p>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="window.app.addSubsystem()">+ Add Subsystem</button>
+          </div>
+
+          <div id="subsystemsListEditor" class="subsystems-list-container"></div>
+        </div>
+
+        <!-- Raw JSON Editor (Hybrid Mode) -->
+        <details class="rules-raw-json-details">
+          <summary class="rules-raw-json-summary">
+            🛠️ Advanced: View / Edit Raw JSON Rules
+          </summary>
+          <div class="u-mt-8">
+            <textarea id="rawRulesJSON" class="search-input rules-raw-json-textarea"></textarea>
+            <div class="u-flex u-gap-6 u-mt-6 u-flex-wrap">
+              <button class="btn btn-sm" onclick="window.app.syncRawJSONToVisual()">Apply JSON to Form</button>
+              <button class="btn btn-sm" onclick="window.app.formatRawJSON()">Format JSON</button>
+              <button class="btn btn-sm" onclick="window.app.exportRulesJSON()">💾 Export JSON</button>
+              <label class="btn btn-sm u-cursor-pointer">
+                📂 Import JSON
+                <input type="file" accept=".json" class="u-hidden" onchange="window.app.importRulesJSON(this)">
+              </label>
+              <button class="btn btn-sm btn-danger" onclick="window.app.resetRulesToDefault()">↺ Reset Defaults</button>
+            </div>
+          </div>
+        </details>
+
+      </div>
+
+    </div>
+
+    <!-- Footer Actions for Settings Modal -->
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="window.app.clearActiveRepoCache()">🗑️ Clear Repo Cache</button>
+      <div class="u-flex u-gap-10">
+        <button class="btn" onclick="window.app.closeSettingsModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="window.app.saveSettings()">Save &amp; Apply Rules</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Action Button (FAB) for Quick Triage Launch -->
+<button class="triage-fab" onclick="window.app.openTriageWizard()" title="Launch PR Triage Wizard">
+  ⚡ Triage PRs
+</button>
+
+<div class="toast" id="toastMsg">Action complete!</div>
+
+<!-- Scripts in strict load order -->
+<script src="js/logger.js"></script>
+<script src="js/config.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/github-api.js"></script>
+<script src="js/cache-store.js"></script>
+<script src="js/classifier.js"></script>
+<script src="js/clustering.js"></script>
+<script src="js/triage-wizard.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
