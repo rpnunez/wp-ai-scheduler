@@ -69,6 +69,7 @@ class AIPS_Templates {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'language' => isset($data['language']) ? sanitize_text_field($data['language']) : 'en',
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
