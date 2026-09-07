@@ -13,6 +13,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Feedback_Repository
  *
@@ -20,26 +28,28 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to topic feedback.
  */
 class AIPS_Feedback_Repository {
-	
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
+
 	/**
 	 * @var string The feedback table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_topic_feedback';
+		$this->table_name = $this->table('aips_topic_feedback');
 	}
-	
+
 	/**
 	 * Get feedback for a topic.
 	 *
@@ -49,19 +59,28 @@ class AIPS_Feedback_Repository {
 	 */
 	public function get_by_topic($author_topic_id, $limit = 100) {
 		$limit = absint($limit);
-		if ($limit > 0) {
-			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC LIMIT %d",
-				$author_topic_id,
-				$limit
-			));
-		}
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC",
-			$author_topic_id
-		));
+		return $this->cache_read(
+			'feedback.get_by_topic',
+			array(
+				'author_topic_id' => (int) $author_topic_id,
+				'limit'           => $limit,
+			),
+			function() use ( $author_topic_id, $limit ) {
+				if ($limit > 0) {
+					return $this->wpdb->get_results($this->wpdb->prepare(
+						"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC LIMIT %d",
+						$author_topic_id,
+						$limit
+					));
+				}
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE author_topic_id = %d ORDER BY created_at DESC",
+					$author_topic_id
+				));
+			}
+		);
 	}
-	
+
 	/**
 	 * Get feedback for an author.
 	 *
@@ -70,30 +89,39 @@ class AIPS_Feedback_Repository {
 	 * @return array Array of feedback objects with topic information.
 	 */
 	public function get_by_author($author_id, $limit = 100) {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 		$limit = absint($limit);
-		if ($limit > 0) {
-			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT f.*, t.topic_title, t.author_id 
-				FROM {$this->table_name} f
-				INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
-				WHERE t.author_id = %d
-				ORDER BY f.created_at DESC
-				LIMIT %d",
-				$author_id,
-				$limit
-			));
-		}
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT f.*, t.topic_title, t.author_id 
-			FROM {$this->table_name} f
-			INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
-			WHERE t.author_id = %d
-			ORDER BY f.created_at DESC",
-			$author_id
-		));
+		return $this->cache_read(
+			'feedback.get_by_author',
+			array(
+				'author_id' => (int) $author_id,
+				'limit'     => $limit,
+			),
+			function() use ( $author_id, $limit ) {
+				$topics_table = $this->table('aips_author_topics');
+				if ($limit > 0) {
+					return $this->wpdb->get_results($this->wpdb->prepare(
+						"SELECT f.*, t.topic_title, t.author_id
+						FROM {$this->table_name} f
+						INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+						WHERE t.author_id = %d
+						ORDER BY f.created_at DESC
+						LIMIT %d",
+						$author_id,
+						$limit
+					));
+				}
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT f.*, t.topic_title, t.author_id
+					FROM {$this->table_name} f
+					INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+					WHERE t.author_id = %d
+					ORDER BY f.created_at DESC",
+					$author_id
+				));
+			}
+		);
 	}
-	
+
 	/**
 	 * Get feedback by ID.
 	 *
@@ -101,12 +129,20 @@ class AIPS_Feedback_Repository {
 	 * @return object|null Feedback object or null if not found.
 	 */
 	public function get_by_id($id) {
-		return $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE id = %d",
-			$id
-		));
+		return $this->cache_read(
+			'feedback.get_by_id',
+			array(
+				'id' => (int) $id,
+			),
+			function() use ( $id ) {
+				return $this->wpdb->get_row($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE id = %d",
+					$id
+				));
+			}
+		);
 	}
-	
+
 	/**
 	 * Create a feedback entry.
 	 *
@@ -134,11 +170,14 @@ class AIPS_Feedback_Repository {
 			'notes' => isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '',
 			'created_at' => AIPS_DateTime::now()->timestamp()
 		);
-		
+
 		$result = $this->wpdb->insert($this->table_name, $insert_data);
+		if ($result) {
+			$this->invalidate_feedback_cache($data['author_topic_id'], 'feedback_created');
+		}
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Record approval feedback.
 	 *
@@ -161,7 +200,7 @@ class AIPS_Feedback_Repository {
 			'source' => $source
 		));
 	}
-	
+
 	/**
 	 * Record rejection feedback.
 	 *
@@ -184,7 +223,7 @@ class AIPS_Feedback_Repository {
 			'source' => $source
 		));
 	}
-	
+
 	/**
 	 * Delete feedback by ID.
 	 *
@@ -192,13 +231,17 @@ class AIPS_Feedback_Repository {
 	 * @return int|false The number of rows deleted, or false on error.
 	 */
 	public function delete($id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table_name,
 			array('id' => $id),
 			array('%d')
 		);
+		if ($result) {
+			$this->invalidate_feedback_cache(0, 'feedback_deleted');
+		}
+		return $result;
 	}
-	
+
 	/**
 	 * Delete all feedback for a topic.
 	 *
@@ -206,13 +249,17 @@ class AIPS_Feedback_Repository {
 	 * @return int|false The number of rows deleted, or false on error.
 	 */
 	public function delete_by_topic($author_topic_id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table_name,
 			array('author_topic_id' => $author_topic_id),
 			array('%d')
 		);
+		if ($result) {
+			$this->invalidate_feedback_cache($author_topic_id, 'feedback_deleted_by_topic');
+		}
+		return $result;
 	}
-	
+
 	/**
 	 * Get feedback statistics for an author.
 	 *
@@ -220,26 +267,34 @@ class AIPS_Feedback_Repository {
 	 * @return array Statistics array with counts.
 	 */
 	public function get_statistics($author_id) {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		
-		$results = $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT
-				COUNT(*) as total,
-				SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END) as approved,
-				SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END) as rejected
-			FROM {$this->table_name} f
-			INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
-			WHERE t.author_id = %d",
-			$author_id
-		));
-		
-		return array(
-			'total' => isset($results->total) ? (int) $results->total : 0,
-			'approved' => isset($results->approved) ? (int) $results->approved : 0,
-			'rejected' => isset($results->rejected) ? (int) $results->rejected : 0
+		return $this->cache_read(
+			'feedback.get_statistics',
+			array(
+				'author_id' => (int) $author_id,
+			),
+			function() use ( $author_id ) {
+				$topics_table = $this->table('aips_author_topics');
+
+				$results = $this->wpdb->get_row($this->wpdb->prepare(
+					"SELECT
+						COUNT(*) as total,
+						SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END) as approved,
+						SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END) as rejected
+					FROM {$this->table_name} f
+					INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+					WHERE t.author_id = %d",
+					$author_id
+				));
+
+				return array(
+					'total' => isset($results->total) ? (int) $results->total : 0,
+					'approved' => isset($results->approved) ? (int) $results->approved : 0,
+					'rejected' => isset($results->rejected) ? (int) $results->rejected : 0
+				);
+			}
 		);
 	}
-	
+
 	/**
 	 * Get feedback by reason category.
 	 *
@@ -248,26 +303,35 @@ class AIPS_Feedback_Repository {
 	 * @return array Array of feedback objects.
 	 */
 	public function get_by_reason_category($reason_category, $author_id = null) {
-		if ($author_id) {
-			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-			
-			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT f.*, t.topic_title, t.author_id 
-				FROM {$this->table_name} f
-				INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
-				WHERE f.reason_category = %s AND t.author_id = %d
-				ORDER BY f.created_at DESC",
-				$reason_category,
-				$author_id
-			));
-		}
-		
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE reason_category = %s ORDER BY created_at DESC",
-			$reason_category
-		));
+		return $this->cache_read(
+			'feedback.get_by_reason_category',
+			array(
+				'reason_category' => (string) $reason_category,
+				'author_id'       => null === $author_id ? 0 : (int) $author_id,
+			),
+			function() use ( $reason_category, $author_id ) {
+				if ($author_id) {
+					$topics_table = $this->table('aips_author_topics');
+
+					return $this->wpdb->get_results($this->wpdb->prepare(
+						"SELECT f.*, t.topic_title, t.author_id
+						FROM {$this->table_name} f
+						INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+						WHERE f.reason_category = %s AND t.author_id = %d
+						ORDER BY f.created_at DESC",
+						$reason_category,
+						$author_id
+					));
+				}
+
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE reason_category = %s ORDER BY created_at DESC",
+					$reason_category
+				));
+			}
+		);
 	}
-	
+
 	/**
 	 * Get feedback statistics by reason category.
 	 *
@@ -275,35 +339,43 @@ class AIPS_Feedback_Repository {
 	 * @return array Array of reason category counts.
 	 */
 	public function get_reason_category_statistics($author_id = null) {
-		if ($author_id) {
-			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-			
-			$results = $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT f.reason_category, f.action, COUNT(*) as count
-				FROM {$this->table_name} f
-				INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
-				WHERE t.author_id = %d
-				GROUP BY f.reason_category, f.action",
-				$author_id
-			), ARRAY_A);
-		} else {
-			$results = $this->wpdb->get_results(
-				"SELECT reason_category, action, COUNT(*) as count
-				FROM {$this->table_name}
-				GROUP BY reason_category, action",
-				ARRAY_A
-			);
-		}
-		
-		$stats = array();
-		foreach ($results as $row) {
-			if (!isset($stats[$row['reason_category']])) {
-				$stats[$row['reason_category']] = array('approved' => 0, 'rejected' => 0);
+		return $this->cache_read(
+			'feedback.get_reason_category_statistics',
+			array(
+				'author_id' => null === $author_id ? 0 : (int) $author_id,
+			),
+			function() use ( $author_id ) {
+				if ($author_id) {
+					$topics_table = $this->table('aips_author_topics');
+
+					$results = $this->wpdb->get_results($this->wpdb->prepare(
+						"SELECT f.reason_category, f.action, COUNT(*) as count
+						FROM {$this->table_name} f
+						INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+						WHERE t.author_id = %d
+						GROUP BY f.reason_category, f.action",
+						$author_id
+					), ARRAY_A);
+				} else {
+					$results = $this->wpdb->get_results(
+						"SELECT reason_category, action, COUNT(*) as count
+						FROM {$this->table_name}
+						GROUP BY reason_category, action",
+						ARRAY_A
+					);
+				}
+
+				$stats = array();
+				foreach ($results as $row) {
+					if (!isset($stats[$row['reason_category']])) {
+						$stats[$row['reason_category']] = array('approved' => 0, 'rejected' => 0);
+					}
+					$stats[$row['reason_category']][$row['action']] = (int) $row['count'];
+				}
+
+				return $stats;
 			}
-			$stats[$row['reason_category']][$row['action']] = (int) $row['count'];
-		}
-		
-		return $stats;
+		);
 	}
 
 	/**
@@ -317,34 +389,43 @@ class AIPS_Feedback_Repository {
 		if (empty($author_ids)) {
 			return array();
 		}
+		sort($author_ids); // Order-independent result map; sort so equal sets share a cache key.
 
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		$placeholders = implode(',', array_fill(0, count($author_ids), '%d'));
+		return $this->cache_read(
+			'feedback.get_statistics_bulk',
+			array(
+				'author_ids' => array_values($author_ids),
+			),
+			function() use ( $author_ids ) {
+				$topics_table = $this->table('aips_author_topics');
+				$placeholders = implode(',', array_fill(0, count($author_ids), '%d'));
 
-		$sql = "SELECT
-				t.author_id,
-				COUNT(*) as total,
-				SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END) as approved,
-				SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END) as rejected
-			FROM {$this->table_name} f
-			INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
-			WHERE t.author_id IN ({$placeholders})
-			GROUP BY t.author_id";
+				$sql = "SELECT
+						t.author_id,
+						COUNT(*) as total,
+						SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END) as approved,
+						SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END) as rejected
+					FROM {$this->table_name} f
+					INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+					WHERE t.author_id IN ({$placeholders})
+					GROUP BY t.author_id";
 
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare($sql, $author_ids)
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare($sql, $author_ids)
+				);
+
+				$result = array();
+				foreach ($rows as $row) {
+					$result[(int) $row->author_id] = array(
+						'total'    => (int) $row->total,
+						'approved' => (int) $row->approved,
+						'rejected' => (int) $row->rejected,
+					);
+				}
+
+				return $result;
+			}
 		);
-
-		$result = array();
-		foreach ($rows as $row) {
-			$result[(int) $row->author_id] = array(
-				'total'    => (int) $row->total,
-				'approved' => (int) $row->approved,
-				'rejected' => (int) $row->rejected,
-			);
-		}
-
-		return $result;
 	}
 
 	/**
@@ -361,33 +442,135 @@ class AIPS_Feedback_Repository {
 		if (empty($topic_ids)) {
 			return array();
 		}
+		sort($topic_ids); // Order-independent result map; sort so equal sets share a cache key.
 
-		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
-		$sql = "
-			SELECT f.*
-			FROM {$this->table_name} f
-			INNER JOIN (
-				SELECT author_topic_id, MAX(id) AS latest_id
-				FROM {$this->table_name}
-				WHERE author_topic_id IN ({$placeholders})
-				GROUP BY author_topic_id
-			) latest
-			ON latest.author_topic_id = f.author_topic_id
-			AND latest.latest_id = f.id
-			ORDER BY f.author_topic_id ASC
-		";
+		return $this->cache_read(
+			'feedback.get_latest_by_topics',
+			array(
+				'topic_ids' => array_values($topic_ids),
+			),
+			function() use ( $topic_ids ) {
+				$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+				$sql = "
+					SELECT f.*
+					FROM {$this->table_name} f
+					INNER JOIN (
+						SELECT author_topic_id, MAX(id) AS latest_id
+						FROM {$this->table_name}
+						WHERE author_topic_id IN ({$placeholders})
+						GROUP BY author_topic_id
+					) latest
+					ON latest.author_topic_id = f.author_topic_id
+					AND latest.latest_id = f.id
+					ORDER BY f.author_topic_id ASC
+				";
 
-		$prepared = $this->wpdb->prepare($sql, $topic_ids);
-		$rows = $this->wpdb->get_results($prepared);
+				$prepared = $this->wpdb->prepare($sql, $topic_ids);
+				$rows = $this->wpdb->get_results($prepared);
 
-		$result = array();
-		foreach ($rows as $row) {
-			$result[(int) $row->author_topic_id] = $row;
+				$result = array();
+				foreach ($rows as $row) {
+					$result[(int) $row->author_topic_id] = $row;
+				}
+
+				return $result;
+			}
+		);
+	}
+
+	/**
+	 * Return the repository cache group for topic feedback reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_topic_feedback';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for topic feedback reads.
+	 *
+	 * Every cached read carries the broad `topic_feedback` tag, so bumping that
+	 * tag on any write invalidates all feedback read caches (guaranteed
+	 * correctness). Finer topic/author-scoped tags are additive for future
+	 * granular invalidation.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'feedback.get_by_topic' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback', 'topic_feedback:topic:{author_topic_id}' ),
+				'description' => 'Cache per-topic feedback reads.',
+			),
+			'feedback.get_by_author' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback', 'topic_feedback:author:{author_id}' ),
+				'description' => 'Cache per-author feedback reads.',
+			),
+			'feedback.get_by_id' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback' ),
+				'cache_null'  => false,
+				'description' => 'Cache single-feedback reads by ID.',
+			),
+			'feedback.get_statistics' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback', 'topic_feedback:author:{author_id}' ),
+				'description' => 'Cache per-author approval/rejection stat rollups.',
+			),
+			'feedback.get_by_reason_category' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback' ),
+				'description' => 'Cache reason-category feedback reads.',
+			),
+			'feedback.get_reason_category_statistics' => array(
+				'tier'           => 'medium',
+				'ttl'            => 300,
+				'tags'           => array( 'topic_feedback' ),
+				'bypass_on_cron' => true,
+				'bypass_ajax'    => true,
+				'description'    => 'Cache reason-category rollups for admin reads; bypass during generation (cron/ajax) so topic generation always sees fresh feedback.',
+			),
+			'feedback.get_statistics_bulk' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback' ),
+				'description' => 'Cache multi-author feedback stat rollups.',
+			),
+			'feedback.get_latest_by_topics' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'topic_feedback' ),
+				'description' => 'Cache latest-feedback-per-topic reads.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate feedback read caches after a write.
+	 *
+	 * Bumps the broad `topic_feedback` tag (present on every cached read) plus an
+	 * optional topic-scoped tag when the affected topic is known.
+	 *
+	 * @param int    $author_topic_id Topic ID, or 0 when unknown.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_feedback_cache($author_topic_id, $reason) {
+		$tags = array( 'topic_feedback' );
+
+		$author_topic_id = absint($author_topic_id);
+		if ($author_topic_id > 0) {
+			$tags[] = 'topic_feedback:topic:' . $author_topic_id;
 		}
 
-		return $result;
+		$this->invalidate_cache_tags($tags, (string) $reason);
 	}
 }
-
-
-

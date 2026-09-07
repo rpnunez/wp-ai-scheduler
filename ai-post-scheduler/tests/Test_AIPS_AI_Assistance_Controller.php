@@ -22,6 +22,7 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 
 		$this->repository        = new AIPS_AI_Assistance_Repository();
 		$this->admin_user_id     = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -33,6 +34,7 @@ class Test_AIPS_AI_Assistance_Controller extends WP_UnitTestCase {
 	public function tearDown(): void {
 		$_POST = array();
 		$_REQUEST = array();
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

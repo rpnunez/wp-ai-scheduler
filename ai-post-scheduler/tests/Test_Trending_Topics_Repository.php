@@ -12,6 +12,7 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     
     public function setUp(): void {
         parent::setUp();
+        AIPS_Cache_Factory::reset();
         if (!class_exists('WP_Error')) {
             $this->markTestSkipped('Database tests cannot run in limited mode without WP Test Lib.');
         }
@@ -63,6 +64,7 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
         $table_name = $wpdb->prefix . 'aips_trending_topics';
         $wpdb->query("TRUNCATE TABLE {$table_name}");
         
+        AIPS_Cache_Factory::reset();
         parent::tearDown();
     }
     

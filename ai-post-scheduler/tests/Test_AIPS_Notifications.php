@@ -26,6 +26,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 
 		AIPS_DB_Manager::install_tables();
 
@@ -41,6 +42,7 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notifications" );
 		$this->created_ids = array();
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

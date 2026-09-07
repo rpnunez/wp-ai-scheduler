@@ -14,6 +14,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Sources_Data_Repository
  *
@@ -22,6 +30,8 @@ if (!defined('ABSPATH')) {
  * Rows are deduplicated by content_hash; num_used tracks prompt usage for round-robin selection.
  */
 class AIPS_Sources_Data_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -56,7 +66,7 @@ class AIPS_Sources_Data_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb       = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_sources_data';
+		$this->table_name = $this->table('aips_sources_data');
 	}
 
 	/**
@@ -129,6 +139,11 @@ class AIPS_Sources_Data_Repository {
 
 		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d' );
 		$result = $this->wpdb->insert( $this->table_name, $row, $format );
+
+		if ( $result !== false ) {
+			$this->invalidate_sources_data_cache( $source_id, 'source_data_inserted' );
+		}
+
 		return $result !== false;
 	}
 
@@ -277,7 +292,7 @@ class AIPS_Sources_Data_Repository {
 		$page          = max( 1, absint( $page ) );
 		$offset        = ( $page - 1 ) * $per_page;
 		$search        = is_string( $search ) ? trim( $search ) : '';
-		$sources_table = $this->wpdb->prefix . 'aips_sources';
+		$sources_table = $this->table('aips_sources');
 
 		$filter_source_id = isset( $filters['source_id'] ) ? absint( $filters['source_id'] ) : 0;
 		$norm             = $this->normalize_pagination_filters( $filters );
@@ -493,6 +508,10 @@ class AIPS_Sources_Data_Repository {
 			array( '%d' )
 		);
 
+		if ( false !== $result ) {
+			$this->invalidate_sources_data_cache( 0, 'source_data_updated' );
+		}
+
 		return false !== $result;
 	}
 
@@ -508,6 +527,10 @@ class AIPS_Sources_Data_Repository {
 			array( 'id' => absint( $id ) ),
 			array( '%d' )
 		);
+
+		if ( false !== $result && $result > 0 ) {
+			$this->invalidate_sources_data_cache( 0, 'source_data_deleted' );
+		}
 
 		return false !== $result && $result > 0;
 	}
@@ -527,8 +550,8 @@ class AIPS_Sources_Data_Repository {
 			return array();
 		}
 
-		$history_table     = $this->wpdb->prefix . 'aips_history';
-		$history_log_table = $this->wpdb->prefix . 'aips_history_log';
+		$history_table     = $this->table('aips_history');
+		$history_log_table = $this->table('aips_history_log');
 		$candidate_limit   = $limit * 5;
 
 		$candidates = $this->wpdb->get_results(
@@ -798,12 +821,20 @@ class AIPS_Sources_Data_Repository {
 	 * @return int Number of archived content rows.
 	 */
 	public function get_count_by_source_id( $source_id ) {
-		return (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name}
-				 WHERE source_id = %d AND fetch_status = 'success' AND extracted_text != ''",
-				absint( $source_id )
-			)
+		return $this->cache_read(
+			'sources_data.get_count_by_source_id',
+			array(
+				'source_id' => absint( $source_id ),
+			),
+			function() use ( $source_id ) {
+				return (int) $this->wpdb->get_var(
+					$this->wpdb->prepare(
+						"SELECT COUNT(*) FROM {$this->table_name}
+						 WHERE source_id = %d AND fetch_status = 'success' AND extracted_text != ''",
+						absint( $source_id )
+					)
+				);
+			}
 		);
 	}
 
@@ -821,28 +852,38 @@ class AIPS_Sources_Data_Repository {
 		}
 
 		$source_ids   = array_map( 'absint', $source_ids );
-		$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
+		sort( $source_ids ); // Order-independent result map; sort so equal sets share a cache key.
 
-		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT source_id, COUNT(*) AS content_count
-				 FROM {$this->table_name}
-				 WHERE source_id IN ($placeholders)
-				   AND fetch_status = 'success'
-				   AND extracted_text != ''
-				 GROUP BY source_id",
-				...$source_ids
-			)
+		return $this->cache_read(
+			'sources_data.get_counts_by_source_ids',
+			array(
+				'source_ids' => array_values( $source_ids ),
+			),
+			function() use ( $source_ids ) {
+				$placeholders = implode( ',', array_fill( 0, count( $source_ids ), '%d' ) );
+
+				// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				$rows = $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						"SELECT source_id, COUNT(*) AS content_count
+						 FROM {$this->table_name}
+						 WHERE source_id IN ($placeholders)
+						   AND fetch_status = 'success'
+						   AND extracted_text != ''
+						 GROUP BY source_id",
+						...$source_ids
+					)
+				);
+				// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+				$map = array();
+				foreach ( $rows as $row ) {
+					$map[ (int) $row->source_id ] = (int) $row->content_count;
+				}
+				return $map;
+			}
 		);
-		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-
-		$map = array();
-		foreach ( $rows as $row ) {
-			$map[ (int) $row->source_id ] = (int) $row->content_count;
-		}
-		return $map;
 	}
 
 	/**
@@ -857,6 +898,8 @@ class AIPS_Sources_Data_Repository {
 			array( 'source_id' => absint( $source_id ) ),
 			array( '%d' )
 		);
+
+		$this->invalidate_sources_data_cache( $source_id, 'source_data_deleted_by_source' );
 	}
 
 	/**
@@ -913,5 +956,69 @@ class AIPS_Sources_Data_Repository {
 				array( '%d', '%s', '%d', '%s', '%d', '%d', '%d' )
 			);
 		}
+
+		$this->invalidate_sources_data_cache( $source_id, 'source_data_fetch_failed' );
+	}
+
+	/**
+	 * Return the repository cache group for source-data reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_sources_data';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for source-data reads.
+	 *
+	 * Only the archived-content aggregate counts are cached — they change solely on
+	 * insert/update/delete/mark-failed, all of which invalidate the broad
+	 * `sources_data` tag. Snapshot reads, the round-robin selection reads
+	 * (pick_next_for_prompt_bulk / get_extracted_texts_by_source_ids, which depend
+	 * on the volatile num_used counter), the paginated browsers, and the
+	 * history-joined usage read are intentionally left uncached.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'sources_data.get_count_by_source_id' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources_data', 'sources_data:source:{source_id}' ),
+				'description' => 'Cache the archived-content count for a single source.',
+			),
+			'sources_data.get_counts_by_source_ids' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'sources_data' ),
+				'description' => 'Cache bulk archived-content counts.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate source-data read caches after a write.
+	 *
+	 * Bumps the broad `sources_data` tag (present on every cached read) plus an
+	 * optional source-scoped tag when the affected source is known. Note that
+	 * increment_num_used() deliberately does not invalidate: the round-robin reads
+	 * it affects are uncached, and the counts that are cached do not depend on
+	 * num_used.
+	 *
+	 * @param int    $source_id Source ID, or 0 when unknown.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_sources_data_cache( $source_id, $reason ) {
+		$tags = array( 'sources_data' );
+
+		$source_id = absint( $source_id );
+		if ( $source_id > 0 ) {
+			$tags[] = 'sources_data:source:' . $source_id;
+		}
+
+		$this->invalidate_cache_tags( $tags, (string) $reason );
 	}
 }

@@ -13,30 +13,40 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Post_Review_Repository
  *
  * Repository for querying and managing draft posts that need review.
  */
 class AIPS_Post_Review_Repository {
-	
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
+
 	/**
 	 * @var string The history table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_history';
+		$this->table_name = $this->table('aips_history');
 	}
 	
 	/**
@@ -118,7 +128,7 @@ class AIPS_Post_Review_Repository {
 			$orderby_sql = "h.$orderby $order";
 		}
 		
-		$templates_table = $this->wpdb->prefix . 'aips_templates';
+		$templates_table = $this->table('aips_templates');
 		$posts_table = $this->wpdb->posts;
 		
 		// Query for items
@@ -163,6 +173,32 @@ class AIPS_Post_Review_Repository {
 			'pages' => ceil($total / $args['per_page']),
 			'current_page' => $args['page'],
 		);
+	}
+
+	/**
+	 * Return the repository cache group for post-review reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_post_review';
+	}
+
+	/**
+	 * No cached policies for post-review reads.
+	 *
+	 * Both reads (get_draft_posts, get_draft_count) INNER JOIN wp_posts and depend
+	 * on post_status = 'draft', which changes outside this plugin (publishing or
+	 * trashing a post) with no invalidation hook here — and this repository has no
+	 * write methods to invalidate on. Caching would risk showing already-published
+	 * posts as pending review, so these reads are intentionally left uncached. The
+	 * trait is still adopted for construction/table() standardization and to enable
+	 * future post-transition-driven invalidation.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array();
 	}
 	
 	/**

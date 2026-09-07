@@ -136,7 +136,11 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 		} finally {
 			$this->repository->enable_foreign_key_checks();
 		}
-		
+
+		// Bulk writes bypass the feature repositories, so clear plugin cache to
+		// avoid serving pre-import data from repository caches.
+		$this->flush_plugin_cache();
+
 		if ($error_count > 0) {
 			return new WP_Error(
 				'import_errors',

@@ -3,6 +3,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Cache_Monitor_Repository
  *
@@ -15,6 +23,8 @@ if (!defined('ABSPATH')) {
  * @since   2.9.0
  */
 class AIPS_Cache_Monitor_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	// -----------------------------------------------------------------------
 	// Cache Index queries
@@ -33,7 +43,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function get_index_entries( array $filters = array(), string $orderby = 'updated_at', string $order = 'DESC', int $per_page = 50, int $page = 1 ): array {
 		global $wpdb;
 
-		$table  = $wpdb->prefix . 'aips_cache_index';
+		$table  = $this->table('aips_cache_index');
 		$now    = AIPS_DateTime::now()->timestamp();
 		$offset = max( 0, ($page - 1) * $per_page );
 		$limit  = max( 1, min( 500, $per_page ) );
@@ -68,7 +78,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function count_index_entries( array $filters = array() ): int {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_index';
+		$table = $this->table('aips_cache_index');
 		$now   = AIPS_DateTime::now()->timestamp();
 
 		list($where_sql, $params) = $this->build_index_where( $filters, $now );
@@ -92,7 +102,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function get_index_summary(): array {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_index';
+		$table = $this->table('aips_cache_index');
 		$now   = AIPS_DateTime::now()->timestamp();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -150,7 +160,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function get_index_entry_by_hash( string $key_hash ): ?array {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_index';
+		$table = $this->table('aips_cache_index');
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$row = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM `{$table}` WHERE key_hash = %s LIMIT 1", $key_hash ),
@@ -169,7 +179,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function delete_index_entry( string $key_hash ): bool {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_index';
+		$table = $this->table('aips_cache_index');
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$wpdb->delete( $table, array( 'key_hash' => $key_hash ), array( '%s' ) );
 
@@ -188,7 +198,7 @@ class AIPS_Cache_Monitor_Repository {
 		}
 
 		global $wpdb;
-		$table       = $wpdb->prefix . 'aips_cache_index';
+		$table       = $this->table('aips_cache_index');
 		$placeholders = implode( ',', array_fill( 0, count( $key_hashes ), '%s' ) );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$deleted = $wpdb->query(
@@ -207,7 +217,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function delete_index_group( string $group ): int {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_index';
+		$table = $this->table('aips_cache_index');
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$deleted = $wpdb->delete( $table, array( 'cache_group' => $group ), array( '%s' ) );
 
@@ -222,7 +232,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function list_tags(): array {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_index';
+		$table = $this->table('aips_cache_index');
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			"SELECT tags, COUNT(*) as entry_count FROM `{$table}` WHERE tags != '' GROUP BY tags ORDER BY entry_count DESC LIMIT 200",
@@ -270,7 +280,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function list_operations( array $filters = array() ): array {
 		global $wpdb;
 
-		$table  = $wpdb->prefix . 'aips_cache_index';
+		$table  = $this->table('aips_cache_index');
 		$where  = array( "operation_id != ''" );
 		$params = array();
 
@@ -312,7 +322,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function insert_event( array $event ): bool {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'aips_cache_events';
+		$table = $this->table('aips_cache_events');
 		$now   = AIPS_DateTime::now()->timestamp();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -349,7 +359,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function get_events( array $filters = array(), int $per_page = 50, int $page = 1 ): array {
 		global $wpdb;
 
-		$table  = $wpdb->prefix . 'aips_cache_events';
+		$table  = $this->table('aips_cache_events');
 		$offset = max( 0, ($page - 1) * $per_page );
 		$limit  = max( 1, min( 200, $per_page ) );
 		$where  = array( '1=1' );
@@ -387,7 +397,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function count_events( array $filters = array() ): int {
 		global $wpdb;
 
-		$table  = $wpdb->prefix . 'aips_cache_events';
+		$table  = $this->table('aips_cache_events');
 		$where  = array( '1=1' );
 		$params = array();
 
@@ -418,7 +428,7 @@ class AIPS_Cache_Monitor_Repository {
 	public function prune_events( int $before_timestamp ): int {
 		global $wpdb;
 
-		$table   = $wpdb->prefix . 'aips_cache_events';
+		$table   = $this->table('aips_cache_events');
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE created_at < %d", $before_timestamp ) );
 
@@ -495,5 +505,29 @@ class AIPS_Cache_Monitor_Repository {
 		}
 
 		return array( implode( ' AND ', $where ), $params );
+	}
+
+	/**
+	 * Return the repository cache group for cache-monitor reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_cache_monitor';
+	}
+
+	/**
+	 * No cached policies for cache-monitor reads.
+	 *
+	 * This repository is the observability layer for the cache subsystem itself;
+	 * caching its index/event reads would be self-referential and would surface
+	 * stale snapshots of live cache state. insert_event() is also called on the
+	 * hot cache-event path. Reads are therefore intentionally left uncached. The
+	 * trait is still adopted for table()/construction standardization.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array();
 	}
 }

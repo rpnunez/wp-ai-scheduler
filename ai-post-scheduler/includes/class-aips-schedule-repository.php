@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
     require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+    require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Schedule_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     use AIPS_Cacheable_Repository;
+    use AIPS_Repository_Tables;
 
     /**
      * @var self|null Singleton instance.
@@ -64,8 +69,8 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
+        $this->schedule_table = $this->table('aips_schedule');
+        $this->templates_table = $this->table('aips_templates');
     }
     
     /**

@@ -12,12 +12,22 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Internal_Links_Repository
  *
  * Manages CRUD operations for the aips_internal_links table.
  */
 class AIPS_Internal_Links_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var wpdb WordPress database object.
@@ -42,7 +52,9 @@ class AIPS_Internal_Links_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_internal_links';
+		// Note: table() is the AIPS_Repository_Tables trait method; $this->table is
+		// the cached table-name property. PHP keeps method/property names separate.
+		$this->table = $this->table('aips_internal_links');
 	}
 
 	/**
@@ -74,17 +86,26 @@ class AIPS_Internal_Links_Repository {
 	 * @return object[] Array of row objects.
 	 */
 	public function get_by_source_post($source_post_id, $status = '') {
-		$where = $this->wpdb->prepare(
-			'WHERE source_post_id = %d',
-			absint($source_post_id)
-		);
+		return $this->cache_read(
+			'internal_links.get_by_source_post',
+			array(
+				'source_post_id' => absint($source_post_id),
+				'status'         => (string) $status,
+			),
+			function() use ( $source_post_id, $status ) {
+				$where = $this->wpdb->prepare(
+					'WHERE source_post_id = %d',
+					absint($source_post_id)
+				);
 
-		if ($status && in_array($status, self::VALID_STATUSES, true)) {
-			$where .= $this->wpdb->prepare( ' AND status = %s', $status );
-		}
+				if ($status && in_array($status, self::VALID_STATUSES, true)) {
+					$where .= $this->wpdb->prepare( ' AND status = %s', $status );
+				}
 
-		return $this->wpdb->get_results(
-			"SELECT * FROM {$this->table} {$where} ORDER BY similarity_score DESC"
+				return $this->wpdb->get_results(
+					"SELECT * FROM {$this->table} {$where} ORDER BY similarity_score DESC"
+				);
+			}
 		);
 	}
 
@@ -230,6 +251,10 @@ class AIPS_Internal_Links_Repository {
 			array('%d', '%d', '%f', '%s', '%s', '%d', '%d')
 		);
 
+		if ($result) {
+			$this->invalidate_internal_links_cache($source_post_id, 'internal_link_inserted');
+		}
+
 		return $result ? $this->wpdb->insert_id : false;
 	}
 
@@ -245,7 +270,7 @@ class AIPS_Internal_Links_Repository {
 			return false;
 		}
 
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table,
 			array(
 				'status'     => $status,
@@ -255,6 +280,12 @@ class AIPS_Internal_Links_Repository {
 			array('%s', '%d'),
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_internal_links_cache(0, 'internal_link_status_updated');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -265,7 +296,7 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of updated rows or false on failure.
 	 */
 	public function update_anchor_text($id, $anchor_text) {
-		return $this->wpdb->update(
+		$result = $this->wpdb->update(
 			$this->table,
 			array(
 				'anchor_text' => sanitize_text_field($anchor_text),
@@ -275,6 +306,12 @@ class AIPS_Internal_Links_Repository {
 			array('%s', '%d'),
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_internal_links_cache(0, 'internal_link_anchor_updated');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -284,11 +321,17 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete($id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table,
 			array('id' => absint($id)),
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_internal_links_cache(0, 'internal_link_deleted');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -298,11 +341,17 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete_by_source_post($source_post_id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table,
 			array('source_post_id' => absint($source_post_id)),
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_internal_links_cache($source_post_id, 'internal_links_deleted_by_source');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -315,7 +364,7 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete_pending_by_source_post($source_post_id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table,
 			array(
 				'source_post_id' => absint($source_post_id),
@@ -323,6 +372,12 @@ class AIPS_Internal_Links_Repository {
 			),
 			array('%d', '%s')
 		);
+
+		if ($result) {
+			$this->invalidate_internal_links_cache($source_post_id, 'internal_links_pending_deleted_by_source');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -332,11 +387,17 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
 	public function delete_by_target_post($target_post_id) {
-		return $this->wpdb->delete(
+		$result = $this->wpdb->delete(
 			$this->table,
 			array('target_post_id' => absint($target_post_id)),
 			array('%d')
 		);
+
+		if ($result) {
+			$this->invalidate_internal_links_cache(0, 'internal_links_deleted_by_target');
+		}
+
+		return $result;
 	}
 
 	/**
@@ -350,6 +411,10 @@ class AIPS_Internal_Links_Repository {
 		$a       = (int) $this->wpdb->delete( $this->table, array('source_post_id' => $post_id), array('%d') );
 		$b       = (int) $this->wpdb->delete( $this->table, array('target_post_id' => $post_id), array('%d') );
 
+		if ($a + $b > 0) {
+			$this->invalidate_internal_links_cache($post_id, 'internal_links_deleted_for_post');
+		}
+
 		return $a + $b;
 	}
 
@@ -359,16 +424,22 @@ class AIPS_Internal_Links_Repository {
 	 * @return array Associative array of status => count.
 	 */
 	public function get_status_counts() {
-		$rows = $this->wpdb->get_results(
-			"SELECT status, COUNT(*) AS cnt FROM {$this->table} GROUP BY status"
+		return $this->cache_read(
+			'internal_links.get_status_counts',
+			array(),
+			function() {
+				$rows = $this->wpdb->get_results(
+					"SELECT status, COUNT(*) AS cnt FROM {$this->table} GROUP BY status"
+				);
+
+				$counts = array_fill_keys(self::VALID_STATUSES, 0);
+				foreach ($rows as $row) {
+					$counts[$row->status] = (int) $row->cnt;
+				}
+
+				return $counts;
+			}
 		);
-
-		$counts = array_fill_keys(self::VALID_STATUSES, 0);
-		foreach ($rows as $row) {
-			$counts[$row->status] = (int) $row->cnt;
-		}
-
-		return $counts;
 	}
 
 	/**
@@ -377,6 +448,70 @@ class AIPS_Internal_Links_Repository {
 	 * @return int|false Number of rows deleted or false on failure.
 	 */
 	public function delete_all() {
-		return $this->wpdb->query( "DELETE FROM {$this->table}" );
+		$result = $this->wpdb->query( "DELETE FROM {$this->table}" );
+
+		if ($result) {
+			$this->invalidate_internal_links_cache(0, 'internal_links_deleted_all');
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Return the repository cache group for internal-link reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_internal_links';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for internal-link reads.
+	 *
+	 * Only reads over the internal-links table itself are cached, under the broad
+	 * `internal_links` tag that every write invalidates. Reads that LEFT JOIN
+	 * wp_posts for post titles/statuses (get_by_id, get_paginated,
+	 * get_paginated_count) are left uncached since they depend on external post
+	 * state, and the exists() dedup gate is left uncached.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'internal_links.get_by_source_post' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'internal_links', 'internal_links:source:{source_post_id}' ),
+				'description' => 'Cache per-source internal-link suggestion reads.',
+			),
+			'internal_links.get_status_counts' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array( 'internal_links' ),
+				'description' => 'Cache per-status internal-link summary counts.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate internal-link read caches after a write.
+	 *
+	 * Bumps the broad `internal_links` tag (present on every cached read) plus an
+	 * optional source-scoped tag when the affected source post is known.
+	 *
+	 * @param int    $source_post_id Source post ID, or 0 when unknown.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_internal_links_cache($source_post_id, $reason) {
+		$tags = array( 'internal_links' );
+
+		$source_post_id = absint($source_post_id);
+		if ($source_post_id > 0) {
+			$tags[] = 'internal_links:source:' . $source_post_id;
+		}
+
+		$this->invalidate_cache_tags($tags, (string) $reason);
 	}
 }
