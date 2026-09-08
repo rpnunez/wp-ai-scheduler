@@ -71,11 +71,13 @@ abstract class AIPS_List_Table extends WP_List_Table {
 	/**
 	 * Prepares data items for table display.
 	 *
-	 * Must be implemented by child classes to populate `$this->items` and call `$this->set_pagination_args()`.
+	 * Subclasses should override this method to populate `$this->items` and call `$this->set_pagination_args()`.
 	 *
 	 * @return void
 	 */
-	abstract public function prepare_items();
+	public function prepare_items() {
+		// Subclasses override this method to load and prepare items.
+	}
 
 	/**
 	 * Render table empty state when no records are found.
