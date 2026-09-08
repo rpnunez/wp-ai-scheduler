@@ -299,15 +299,15 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 		$html .= '</div>';
 
 		// Editable container (hidden by default, revealed when editing)
-		$html .= '<div class="aips-topic-edit-form" id="topic-edit-' . $topic_id . '" style="display:none;margin-top:8px;">';
-		$html .= '<input type="text" class="aips-form-input aips-topic-edit-input" value="' . esc_attr($item->topic ?? '') . '" style="width:100%;margin-bottom:6px;" />';
+		$html .= '<div class="aips-topic-edit-form" id="topic-edit-' . $topic_id . '">';
+		$html .= '<input type="text" class="aips-form-input aips-topic-edit-input" value="' . esc_attr($item->topic ?? '') . '" />';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-save-topic" data-topic-id="' . $topic_id . '">' . esc_html__('Save', 'ai-post-scheduler') . '</button> ';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-cancel-edit-topic" data-topic-id="' . $topic_id . '">' . esc_html__('Cancel', 'ai-post-scheduler') . '</button>';
 		$html .= '</div>';
 
 		// Expandable prompt container
 		if (!empty($prompt)) {
-			$html .= '<div class="aips-topic-detail" id="topic-detail-' . $topic_id . '" style="display:none;margin-top:8px;padding:8px 12px;background:#f6f7f7;border-left:3px solid #2271b1;font-size:12px;color:#50575e;border-radius:2px;">';
+			$html .= '<div class="aips-topic-detail" id="topic-detail-' . $topic_id . '">';
 			$html .= '<strong>' . esc_html__('Generation Prompt:', 'ai-post-scheduler') . '</strong> ';
 			$html .= $prompt;
 			$html .= '</div>';
@@ -390,7 +390,7 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 		$topic_id = (int) $item->id;
 		$status   = $item->status ?? 'pending';
 
-		$html = '<div class="cell-actions" style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;">';
+		$html = '<div class="cell-actions">';
 
 		if ('approved' !== $status && 'posts_generated' !== $status) {
 			$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-success aips-approve-topic" data-topic-id="' . $topic_id . '" title="' . esc_attr__('Approve Topic', 'ai-post-scheduler') . '"><span class="dashicons dashicons-yes" aria-hidden="true"></span> ' . esc_html__('Approve', 'ai-post-scheduler') . '</button>';

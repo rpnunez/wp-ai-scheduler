@@ -7238,3 +7238,75 @@ ol.aips-breadcrumb-trail,
 	color: var(--aips-info-dark, #135e96);
 	border-color: rgba(34, 113, 177, 0.25);
 }
+
+/* ==========================================================================
+   List Tables (WP_List_Table standardizations)
+   ========================================================================== */
+
+/* Cell actions container */
+.cell-actions {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	flex-wrap: nowrap;
+}
+
+/* Quality Score Indicators */
+.aips-quality-indicator {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+}
+
+.aips-quality-indicator.aips-quality-healthy {
+	background-color: var(--aips-success, #00a32a);
+}
+
+.aips-quality-indicator.aips-quality-warning {
+	background-color: var(--aips-warning, #dba617);
+}
+
+.aips-quality-indicator.aips-quality-critical {
+	background-color: var(--aips-error, #d63638);
+}
+
+/* Topic Status Counts in Authors Table */
+.aips-topic-status-counts {
+	font-size: 11px;
+	margin-top: 4px;
+}
+
+.aips-topic-count-pending {
+	color: var(--aips-error, #d63638);
+}
+
+.aips-topic-count-approved {
+	color: var(--aips-success, #00a32a);
+}
+
+.aips-topic-count-rejected {
+	color: var(--aips-gray-500, #646970);
+}
+
+/* Topic Inline Edit & Prompt Details */
+.aips-topic-edit-form {
+	display: none;
+	margin-top: 8px;
+}
+
+.aips-topic-edit-input {
+	width: 100%;
+	margin-bottom: 6px;
+}
+
+.aips-topic-detail {
+	display: none;
+	margin-top: 8px;
+	padding: 8px 12px;
+	background: var(--aips-gray-50, #f6f7f7);
+	border-left: 3px solid var(--aips-primary, #2271b1);
+	font-size: 12px;
+	color: var(--aips-gray-600, #50575e);
+	border-radius: 2px;
+}

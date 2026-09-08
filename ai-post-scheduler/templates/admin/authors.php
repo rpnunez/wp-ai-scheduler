@@ -9,18 +9,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$authors_repository = new AIPS_Authors_Repository();
-$authors = $authors_repository->get_all();
-
-if (!empty($authors)) {
-    $topics_repository = new AIPS_Author_Topics_Repository();
-    $logs_repository = new AIPS_Author_Topic_Logs_Repository();
-    // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
-    $feedback_repository = new AIPS_Feedback_Repository();
-    $author_ids = array_map(function($a) { return $a->id; }, $authors);
-    $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
-}
-
 // Load article structures for the dropdown
 $structures_repository = new AIPS_Article_Structure_Repository();
 $article_structures = $structures_repository->get_all(true); // Get active structures only

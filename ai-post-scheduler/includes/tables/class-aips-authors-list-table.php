@@ -271,23 +271,19 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 
 		if ($policy_flags_count >= 3 || ($approval_rate !== null && $approval_rate < 50)) {
 			$quality_state = 'critical';
-			$quality_color = '#d63638';
 			$quality_label = __('Critical Quality Issue', 'ai-post-scheduler');
 		} elseif ($policy_flags_count >= 1 || ($approval_rate !== null && $approval_rate < 75)) {
 			$quality_state = 'warning';
-			$quality_color = '#dba617';
 			$quality_label = __('Quality Attention Needed', 'ai-post-scheduler');
 		} else {
 			$quality_state = 'healthy';
-			$quality_color = '#00a32a';
 			$quality_label = __('Healthy Author', 'ai-post-scheduler');
 		}
 
 		return sprintf(
-			'<span class="aips-quality-indicator aips-quality-%s" title="%s" style="display:inline-block;width:10px;height:10px;border-radius:50%%;background-color:%s;" aria-label="%s"></span>',
+			'<span class="aips-quality-indicator aips-quality-%s" title="%s" aria-label="%s"></span>',
 			esc_attr($quality_state),
 			esc_attr($quality_label),
-			esc_attr($quality_color),
 			esc_attr($quality_label)
 		);
 	}
@@ -363,10 +359,10 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$html .= '<a href="' . esc_url($topics_url) . '" class="aips-badge aips-badge-secondary" title="' . esc_attr__('View all topics', 'ai-post-scheduler') . '">';
 		$html .= '<span class="dashicons dashicons-visibility" aria-hidden="true"></span> ' . sprintf(esc_html__('%d Topics', 'ai-post-scheduler'), $total_topics);
 		$html .= '</a>';
-		$html .= '<div class="cell-meta" style="font-size:11px;margin-top:4px;">';
-		$html .= '<span style="color:#d63638;">' . sprintf(esc_html__('%d pending', 'ai-post-scheduler'), $status_counts['pending']) . '</span> | ';
-		$html .= '<span style="color:#00a32a;">' . sprintf(esc_html__('%d approved', 'ai-post-scheduler'), $status_counts['approved']) . '</span> | ';
-		$html .= '<span style="color:#646970;">' . sprintf(esc_html__('%d rejected', 'ai-post-scheduler'), $status_counts['rejected']) . '</span>';
+		$html .= '<div class="cell-meta aips-topic-status-counts">';
+		$html .= '<span class="aips-topic-count-pending">' . sprintf(esc_html__('%d pending', 'ai-post-scheduler'), $status_counts['pending']) . '</span> | ';
+		$html .= '<span class="aips-topic-count-approved">' . sprintf(esc_html__('%d approved', 'ai-post-scheduler'), $status_counts['approved']) . '</span> | ';
+		$html .= '<span class="aips-topic-count-rejected">' . sprintf(esc_html__('%d rejected', 'ai-post-scheduler'), $status_counts['rejected']) . '</span>';
 		$html .= '</div>';
 		$html .= '</div>';
 
@@ -397,7 +393,7 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$author_id   = (int) $item->id;
 		$author_name = esc_attr($item->name ?? '');
 
-		$html  = '<div class="cell-actions" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">';
+		$html  = '<div class="cell-actions">';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '" title="' . esc_attr__('Generate Topics Now', 'ai-post-scheduler') . '"><span class="dashicons dashicons-update" aria-hidden="true"></span> ' . esc_html__('Generate Topics', 'ai-post-scheduler') . '</button>';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-success aips-generate-author-posts-now" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '" title="' . esc_attr__('Generate Posts Now', 'ai-post-scheduler') . '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' . esc_html__('Generate Posts', 'ai-post-scheduler') . '</button>';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-author-id="' . $author_id . '" title="' . esc_attr__('Edit Author', 'ai-post-scheduler') . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span> ' . esc_html__('Edit', 'ai-post-scheduler') . '</button>';
