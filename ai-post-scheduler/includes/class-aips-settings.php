@@ -522,6 +522,14 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_persist_table_filters',
+            __('Persist Table Filters', 'ai-post-scheduler'),
+            array($this->ui, 'persist_table_filters_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
             'aips_developer_mode',
             __('Developer Mode', 'ai-post-scheduler'),
             array($this->ui, 'developer_mode_field_callback'),

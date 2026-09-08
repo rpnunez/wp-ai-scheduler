@@ -5051,7 +5051,126 @@
         }
     });
 
+
+    /**
+     * Dense Table Progressive Disclosure & Filter Persistence Engine
+     */
+    AIPS.initDenseTables = function() {
+        // 1. Kebab Overflow Action Toggle
+        $(document).on('click', '.aips-row-action-overflow-toggle', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            var $toggle = $(this);
+            var controlsId = $toggle.attr('aria-controls');
+            var $menu = $('#' + controlsId);
+            var isExpanded = $toggle.attr('aria-expanded') === 'true';
+
+            $('.aips-row-action-menu').not($menu).attr('hidden', true);
+            $('.aips-row-action-overflow-toggle').not($toggle).attr('aria-expanded', 'false');
+
+            if (isExpanded) {
+                $menu.attr('hidden', true);
+                $toggle.attr('aria-expanded', 'false');
+            } else {
+                $menu.removeAttr('hidden');
+                $toggle.attr('aria-expanded', 'true');
+            }
+        });
+
+        // Close kebab dropdowns when clicking outside
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.cell-actions-wrapper').length) {
+                $('.aips-row-action-menu').attr('hidden', true);
+                $('.aips-row-action-overflow-toggle').attr('aria-expanded', 'false');
+            }
+        });
+
+        // 2. Expandable Row Details Toggle
+        $(document).on('click', '.aips-row-expand-toggle', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var controlsId = $btn.attr('aria-controls');
+            var $detailsRow = $('#' + controlsId);
+            var isExpanded = $btn.attr('aria-expanded') === 'true';
+
+            if (isExpanded) {
+                $detailsRow.attr('hidden', true);
+                $btn.attr('aria-expanded', 'false').find('.dashicons')
+                    .removeClass('dashicons-arrow-down-alt2')
+                    .addClass('dashicons-arrow-right-alt2');
+            } else {
+                $detailsRow.removeAttr('hidden');
+                $btn.attr('aria-expanded', 'true').find('.dashicons')
+                    .removeClass('dashicons-arrow-right-alt2')
+                    .addClass('dashicons-arrow-down-alt2');
+            }
+        });
+
+        // 3. Bulk Action Selection & Toolbar Management
+        $(document).on('change', '.aips-select-all-cb', function() {
+            var $wrap = $(this).closest('.aips-table-wrap');
+            var isChecked = $(this).is(':checked');
+            $wrap.find('.aips-row-cb').prop('checked', isChecked).trigger('change');
+        });
+
+        $(document).on('change', '.aips-row-cb', function() {
+            var $wrap = $(this).closest('.aips-table-wrap');
+            var totalCbs = $wrap.find('.aips-row-cb').length;
+            var selectedCbs = $wrap.find('.aips-row-cb:checked').length;
+            var $selectAll = $wrap.find('.aips-select-all-cb');
+            var $toolbar = $wrap.find('.aips-table-bulk-toolbar');
+
+            if (selectedCbs === totalCbs && totalCbs > 0) {
+                $selectAll.prop('checked', true).prop('indeterminate', false);
+            } else if (selectedCbs > 0) {
+                $selectAll.prop('checked', false).prop('indeterminate', true);
+            } else {
+                $selectAll.prop('checked', false).prop('indeterminate', false);
+            }
+
+            if (selectedCbs > 0) {
+                $toolbar.removeAttr('hidden');
+                $toolbar.find('.aips-bulk-selected-count').text(selectedCbs);
+            } else {
+                $toolbar.attr('hidden', true);
+            }
+        });
+
+        // 4. Filter Persistence in localStorage (if enabled)
+        var persistEnabled = typeof aipsAdminL10n !== 'undefined' && aipsAdminL10n.persistTableFilters;
+        if (persistEnabled && window.localStorage) {
+            $('.aips-table-wrap[data-persist-filters="true"][data-table-id]').each(function() {
+                var tableId = $(this).data('table-id');
+                var $form = $(this).closest('.aips-panel-body, .aips-card, .aips-stage').find('.aips-filter-form, form.search-form');
+                if (!$form.length) {
+                    $form = $('.aips-filter-form, form.search-form').first();
+                }
+                if (!$form.length) return;
+
+                var storageKey = 'aips_table_filters_' + tableId;
+
+                // Save filters on submit
+                $form.on('submit', function() {
+                    var formData = $form.serializeArray();
+                    var filterState = {};
+                    $.each(formData, function(_, field) {
+                        if (field.value && field.name !== '_wpnonce') {
+                            filterState[field.name] = field.value;
+                        }
+                    });
+                    localStorage.setItem(storageKey, JSON.stringify(filterState));
+                });
+
+                // Clear persistence if clear button clicked
+                $form.find('a.aips-btn-ghost, .aips-clear-filters').on('click', function() {
+                    localStorage.removeItem(storageKey);
+                });
+            });
+        }
+    };
+
     $(document).ready(function() {
+        AIPS.initDenseTables();
         AIPS.init();
         // Load voices on template page load
         if ($('#voice_search').length) {

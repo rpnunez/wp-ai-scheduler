@@ -233,6 +233,33 @@ class AIPS_Admin_UI_Primitives {
 	 *  - 'details': (string) Optional technical diagnostics (stack trace, exception details).
 	 * @return void
 	 */
+
+	/**
+	 * Render a standardized High-Density Data Table supporting progressive disclosure.
+	 *
+	 * Supports row actions kebab menu, expandable details drawer, bulk selection toolbar,
+	 * and filter persistence markers.
+	 *
+	 * @param array<string, mixed> $args Table configuration:
+	 *  - 'id': (string) Table ID attribute.
+	 *  - 'class': (string) Additional table CSS classes.
+	 *  - 'aria_label': (string) Table aria-label attribute.
+	 *  - 'columns': (array) Column key => label or definition array.
+	 *  - 'rows': (array) Row definitions array (id, cells, actions, details, checkbox_value).
+	 *  - 'bulk_actions': (array) Action key => label array for bulk operations.
+	 *  - 'persist_filters': (bool) Whether filter persistence in localStorage is enabled.
+	 *  - 'empty_state': (array) Arguments for empty state primitive if no rows.
+	 *  - 'footer_count': (string) Footer total count text.
+	 *  - 'pagination': (string) Rendered HTML pagination links.
+	 * @return void
+	 */
+	public static function render_table($args = array()) {
+		$partial = self::get_partials_dir() . 'admin-table.php';
+		if (file_exists($partial)) {
+			include $partial;
+		}
+	}
+
 	public static function render_error_fallback($args = array()) {
 		self::include_partial('admin-error-fallback.php', (array) $args);
 	}
