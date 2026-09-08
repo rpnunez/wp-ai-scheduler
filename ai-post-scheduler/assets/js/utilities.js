@@ -37,18 +37,26 @@
         },
 
         /**
-         * Global in-flight click & AJAX multi-submit protection.
+         * Initialize action lock handlers.
          *
-         * Intercepts action button clicks and form submissions:
-         * - Prevents duplicate clicks while an action or AJAX request is already in-flight.
-         * - Auto-disables clicked action buttons and adds '.is-busy' visual indicator.
-         * - Safe auto-release with 300s timeout for long-running AI generation jobs.
+         * Only binds to explicitly marked async forms (`form[data-aips-async]`) and
+         * buttons with `[data-aips-lock]`, avoiding blanket interference with native
+         * WordPress forms or non-AJAX controls.
          */
         initActionLock: function() {
             var self = this;
 
-            // Intercept form submissions across all AIPS forms to prevent multi-submit
-            $(document).on('submit', 'form', function(e) {
+            // Blanket block any click on busy or in-flight controls
+            $(document).on('click', '.is-busy, [data-aips-in-flight], [disabled]', function(e) {
+                if ($(this).data('aips-in-flight') || $(this).hasClass('is-busy')) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            });
+
+            // Handle explicitly marked async forms
+            $(document).on('submit', 'form[data-aips-async]', function(e) {
                 var $form = $(this);
                 if ($form.data('aips-submitting')) {
                     e.preventDefault();
@@ -56,87 +64,136 @@
                     return false;
                 }
 
-                // If this is an AJAX-handled form, lock it
                 var $submitBtn = $form.find('input[type="submit"], button[type="submit"]').first();
                 if ($submitBtn.length) {
                     $form.data('aips-submitting', true);
-                    self.lockButton($submitBtn);
+                    self.setButtonLoading($submitBtn, true);
                 }
             });
 
-            // Intercept direct action button clicks
-            $(document).on('click', '.aips-btn-primary, .aips-btn-danger, .aips-btn-secondary, button[type="submit"], input[type="submit"], .aips-action-btn', function(e) {
+            // Handle declarative locked buttons
+            $(document).on('click', '[data-aips-lock]', function(e) {
                 var $btn = $(this);
-
-                // Ignore navigation rail items, tab links, or modal/toast close buttons
-                if ($btn.hasClass('aips-rail-item') || $btn.hasClass('aips-modal-close') || $btn.hasClass('aips-toast-close') || $btn.hasClass('aips-tab-link')) {
-                    return;
-                }
-
-                // If already in-flight or disabled, stop immediately
-                if ($btn.data('aips-in-flight') || $btn.hasClass('is-busy')) {
+                if ($btn.data('aips-in-flight') || $btn.hasClass('is-busy') || $btn.prop('disabled')) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     return false;
                 }
 
-                // Set in-flight lock with 300s safety timeout
-                self.lockButton($btn);
+                var href = $btn.attr('href');
+                if ($btn.is('a') && (!href || href === '#' || href.indexOf('javascript:') === 0 || $btn.data('aips-prevent-default') || $btn.data('aips-async'))) {
+                    e.preventDefault();
+                }
+
+                var loadingText = $btn.data('aips-loading-text') || '';
+                var timeout = parseInt($btn.data('aips-timeout'), 10) || 30000;
+                self.lockButton($btn, timeout, loadingText);
             });
         },
 
         /**
-         * Lock a button in-flight.
+         * Lock a button in-flight with an automatic safety fallback timeout.
          *
-         * @param {jQuery} $btn
-         * @param {number} [timeout=300000] Fallback timeout in ms (default 5 minutes).
+         * @param {jQuery|string|HTMLElement} btn
+         * @param {number} [timeout=30000] Fallback timeout in ms (default 30 seconds).
+         * @param {string} [loadingLabel] Optional loading text.
+         * @param {Object} [opts] Optional settings passed to setButtonLoading.
+         * @return {jQuery}
          */
-        lockButton: function($btn, timeout) {
+        lockButton: function(btn, timeout, loadingLabel, opts) {
+            var $btn = $(btn);
             if (!$btn || !$btn.length || $btn.data('aips-in-flight')) {
-                return;
+                return $btn;
             }
 
-            var fallbackTimeout = typeof timeout === 'number' && timeout > 0 ? timeout : 300000;
+            this.setButtonLoading($btn, true, loadingLabel, opts);
 
-            $btn.data('aips-in-flight', true);
-            $btn.addClass('is-busy');
-
-            // Auto-fallback timer for long-running AI generation jobs (up to 5 min)
+            var fallbackTimeout = typeof timeout === 'number' && timeout > 0 ? timeout : 30000;
             var timer = setTimeout(function() {
                 AIPS.Utilities.unlockButton($btn);
             }, fallbackTimeout);
 
             $btn.data('aips-lock-timer', timer);
+            return $btn;
         },
 
         /**
-         * Unlock a specific button.
+         * Unlock a specific button and restore its previous state.
          *
-         * @param {jQuery} $btn
+         * @param {jQuery|string|HTMLElement} btn
+         * @return {jQuery}
          */
-        unlockButton: function($btn) {
-            if (!$btn || !$btn.length) {
-                return;
-            }
-
-            var timer = $btn.data('aips-lock-timer');
-            if (timer) {
-                clearTimeout(timer);
-                $btn.removeData('aips-lock-timer');
-            }
-
-            var $form = $btn.closest('form');
-            if ($form.length) {
-                $form.removeData('aips-submitting');
-            }
-
-            $btn.removeData('aips-in-flight');
-            $btn.removeClass('is-busy');
-            $btn.prop('disabled', false);
+        unlockButton: function(btn) {
+            return this.setButtonLoading(btn, false);
         },
 
         /**
-         * Release all currently locked action buttons.
+         * Execute an asynchronous action with bulletproof button locking and automatic restoration.
+         *
+         * Accepts a button and either a Promise / jQuery Deferred or an async executor function.
+         * Automatically sets button loading state, sets a safety fallback timeout, and guarantees
+         * unlocking on success, error, or abort.
+         *
+         * @param {jQuery|string|HTMLElement} btn
+         * @param {Promise|jQuery.Deferred|Function} asyncAction
+         * @param {Object} [options]
+         * @param {string} [options.loadingText] Optional loading text (e.g. 'Saving...').
+         * @param {number} [options.timeout=30000] Safety timeout in ms (default 30 seconds).
+         * @param {boolean} [options.isHtml] Whether loadingText is raw HTML.
+         * @return {Promise|jQuery.Deferred}
+         */
+        withLock: function(btn, asyncAction, options) {
+            options = options || {};
+            var $btn = $(btn);
+            var self = this;
+            var timeout = options.timeout || 30000;
+            var loadingText = options.loadingText || '';
+            var opts = { isHtml: options.isHtml || false };
+
+            if ($btn && $btn.length) {
+                self.lockButton($btn, timeout, loadingText, opts);
+            }
+
+            var promise;
+            if (typeof asyncAction === 'function') {
+                try {
+                    promise = asyncAction();
+                } catch (err) {
+                    if ($btn && $btn.length) {
+                        self.unlockButton($btn);
+                    }
+                    throw err;
+                }
+            } else {
+                promise = asyncAction;
+            }
+
+            if (promise && typeof promise.always === 'function') {
+                // jQuery Deferred / jqXHR
+                promise.always(function() {
+                    if ($btn && $btn.length) {
+                        self.unlockButton($btn);
+                    }
+                });
+            } else if (promise && typeof promise.finally === 'function') {
+                // Native ES6 Promise
+                promise.finally(function() {
+                    if ($btn && $btn.length) {
+                        self.unlockButton($btn);
+                    }
+                });
+            } else {
+                // Synchronous or non-promise return
+                if ($btn && $btn.length) {
+                    self.unlockButton($btn);
+                }
+            }
+
+            return promise;
+        },
+
+        /**
+         * Release all currently locked action buttons and submitting forms.
          */
         releaseAllLockedButtons: function() {
             var self = this;
@@ -235,7 +292,7 @@
             reposition();
 
             var resizeTimer;
-            $(window).on('resize.aips-toast', function() {
+            $(window).off('resize.aips-toast').on('resize.aips-toast', function() {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(reposition, 100);
             });
@@ -896,40 +953,108 @@
          *
          * Saves the button's current HTML to a private data attribute so that
          * `resetButton()` can restore it exactly, then disables the button and
-         * replaces its visible content with a loading label.
+        /**
+         * Set or reset the visual and functional loading state on a button.
          *
-         * Pair every call with a corresponding `resetButton()` call (typically
-         * in the AJAX `complete` callback) to re-enable the button and restore
-         * its original label.
+         * Supports both:
+         * - setButtonLoading($btn, true/false, loadingLabel, opts)
+         * - setButtonLoading($btn, loadingLabel, opts)  (defaults to true)
          *
-         * @param {jQuery} $btn         - The button element to update.
-         * @param {string} loadingLabel - The text (or HTML when opts.isHtml=true)
-         *                                to display while loading.
-         * @param {Object} [opts]       - Optional settings.
-         * @param {boolean} [opts.isHtml] - When true, loadingLabel is inserted as
-         *                                  raw HTML rather than escaped text.
+         * When entering loading state:
+         * - Saves original HTML and disabled state in jQuery data cache.
+         * - Disables the button, marks in-flight, and adds '.is-busy'.
+         * - Injects a rotating Dashicon spinner with loading text.
          *
-         * @example
-         * // Simple text label
-         * AIPS.Utilities.setButtonLoading($saveBtn, aipsAdminL10n.saving);
+         * When exiting loading state:
+         * - Restores original HTML and original disabled state.
+         * - Removes '.is-busy' and clears in-flight flags and timers.
          *
-         * @example
-         * // HTML label with a dashicon
-         * AIPS.Utilities.setButtonLoading(
-         *     $draftBtn,
-         *     '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving,
-         *     { isHtml: true }
-         * );
+         * @param {jQuery|string|HTMLElement} btn          - The button element to update.
+         * @param {string|boolean}           loadingLabel - The loading text or boolean toggle.
+         * @param {Object|string}            [opts]       - Optional settings or loading text if param 2 is boolean.
+         * @return {jQuery}
          */
-        setButtonLoading: function($btn, loadingLabel, opts) {
-            opts = opts || {};
-            $btn.data('aips-btn-original', $btn.html());
-            $btn.prop('disabled', true);
-            if (opts.isHtml) {
-                $btn.html(loadingLabel);
-            } else {
-                $btn.text(loadingLabel);
+        setButtonLoading: function(btn, loadingLabel, opts) {
+            var $btn = $(btn);
+            if (!$btn || !$btn.length) {
+                return $btn;
             }
+
+            var isLoading = true;
+            var text = '';
+            var options = {};
+
+            if (typeof loadingLabel === 'boolean') {
+                isLoading = loadingLabel;
+                if (typeof opts === 'string') {
+                    text = opts;
+                } else if (opts && typeof opts === 'object') {
+                    options = opts;
+                    text = options.text || options.label || '';
+                }
+            } else if (typeof loadingLabel === 'string') {
+                isLoading = true;
+                text = loadingLabel;
+                options = opts || {};
+            } else if (loadingLabel && typeof loadingLabel === 'object') {
+                isLoading = true;
+                options = loadingLabel;
+                text = options.text || options.label || '';
+            }
+
+            if (isLoading) {
+                if ($btn.data('aips-in-flight')) {
+                    return $btn;
+                }
+
+                $btn.data('aips-btn-original', $btn.html());
+                $btn.data('aips-original-disabled', $btn.prop('disabled'));
+                $btn.data('aips-in-flight', true);
+                $btn.addClass('is-busy');
+                $btn.prop('disabled', true);
+
+                if (text) {
+                    if (options.isHtml || text.indexOf('<') !== -1) {
+                        $btn.html(text);
+                    } else {
+                        var safeText = $('<div>').text(text).html();
+                        $btn.html('<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ' + safeText);
+                    }
+                } else if (!$btn.find('.aips-spin').length) {
+                    $btn.prepend('<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span> ');
+                }
+
+                var $form = $btn.closest('form');
+                if ($form.length) {
+                    $form.data('aips-submitting', true);
+                }
+            } else {
+                var timer = $btn.data('aips-lock-timer');
+                if (timer) {
+                    clearTimeout(timer);
+                    $btn.removeData('aips-lock-timer');
+                }
+
+                var original = $btn.data('aips-btn-original');
+                if (original !== undefined) {
+                    $btn.html(original);
+                    $btn.removeData('aips-btn-original');
+                }
+
+                var origDisabled = $btn.data('aips-original-disabled');
+                $btn.prop('disabled', origDisabled !== undefined ? origDisabled : false);
+                $btn.removeData('aips-original-disabled');
+
+                var $parentForm = $btn.closest('form');
+                if ($parentForm.length) {
+                    $parentForm.removeData('aips-submitting');
+                }
+
+                $btn.removeData('aips-in-flight');
+                $btn.removeClass('is-busy');
+            }
+
+            return $btn;
         },
 
         /**
@@ -939,21 +1064,11 @@
          * `setButtonLoading()`). Safe to call even if `setButtonLoading()` was
          * never called — the button will simply be re-enabled with no label change.
          *
-         * @param {jQuery} $btn - The button element to reset.
-         *
-         * @example
-         * $.ajax({
-         *     ...
-         *     complete: function() { AIPS.Utilities.resetButton($saveBtn); }
-         * });
+         * @param {jQuery|string|HTMLElement} btn - The button element to reset.
+         * @return {jQuery}
          */
-        resetButton: function($btn) {
-            var original = $btn.data('aips-btn-original');
-            if (original !== undefined) {
-                $btn.html(original);
-                $btn.removeData('aips-btn-original');
-            }
-            $btn.prop('disabled', false);
+        resetButton: function(btn) {
+            return this.setButtonLoading(btn, false);
         },
 
         // ── String / escaping helpers ───────────────────────────────────────────

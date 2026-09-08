@@ -27,7 +27,7 @@ $empty_id      = isset($args['id']) ? $args['id'] : '';
 ?>
 <div class="aips-empty-state"<?php echo $empty_id ? ' id="' . esc_attr($empty_id) . '"' : ''; ?>>
 	<div class="aips-empty-state-icon">
-		<span class="dashicons <?php echo esc_attr($icon); ?>" style="font-size:48px;width:48px;height:48px;color:#a7aaad;"></span>
+		<span class="dashicons <?php echo esc_attr($icon); ?> aips-empty-state-icon-dashicon" aria-hidden="true"></span>
 	</div>
 	<h3 class="aips-empty-state-title"><?php echo esc_html($title); ?></h3>
 	<?php if (!empty($message)) : ?>
@@ -35,19 +35,19 @@ $empty_id      = isset($args['id']) ? $args['id'] : '';
 	<?php endif; ?>
 
 	<?php if (!empty($cta_label) || !empty($secondary_cta)) : ?>
-		<div class="aips-empty-state-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:center;align-items:center;">
+		<div class="aips-empty-state-actions">
 			<?php if (!empty($cta_label)) : ?>
 				<?php if (!empty($cta_url)) : ?>
 					<a href="<?php echo esc_url($cta_url); ?>" class="<?php echo esc_attr($cta_class); ?>"<?php echo $cta_id ? ' id="' . esc_attr($cta_id) . '"' : ''; ?>>
 						<?php if (!empty($cta_icon)) : ?>
-							<span class="dashicons <?php echo esc_attr($cta_icon); ?>"></span>
+							<span class="dashicons <?php echo esc_attr($cta_icon); ?>" aria-hidden="true"></span>
 						<?php endif; ?>
 						<?php echo esc_html($cta_label); ?>
 					</a>
 				<?php else : ?>
 					<button type="button" class="<?php echo esc_attr($cta_class); ?>"<?php echo $cta_id ? ' id="' . esc_attr($cta_id) . '"' : ''; ?>>
 						<?php if (!empty($cta_icon)) : ?>
-							<span class="dashicons <?php echo esc_attr($cta_icon); ?>"></span>
+							<span class="dashicons <?php echo esc_attr($cta_icon); ?>" aria-hidden="true"></span>
 						<?php endif; ?>
 						<?php echo esc_html($cta_label); ?>
 					</button>
@@ -64,14 +64,14 @@ $empty_id      = isset($args['id']) ? $args['id'] : '';
 				<?php if (!empty($sec_url)) : ?>
 					<a href="<?php echo esc_url($sec_url); ?>" class="<?php echo esc_attr($sec_class); ?>"<?php echo $sec_id ? ' id="' . esc_attr($sec_id) . '"' : ''; ?>>
 						<?php if (!empty($sec_icon)) : ?>
-							<span class="dashicons <?php echo esc_attr($sec_icon); ?>"></span>
+							<span class="dashicons <?php echo esc_attr($sec_icon); ?>" aria-hidden="true"></span>
 						<?php endif; ?>
 						<?php echo esc_html($secondary_cta['label']); ?>
 					</a>
 				<?php else : ?>
 					<button type="button" class="<?php echo esc_attr($sec_class); ?>"<?php echo $sec_id ? ' id="' . esc_attr($sec_id) . '"' : ''; ?>>
 						<?php if (!empty($sec_icon)) : ?>
-							<span class="dashicons <?php echo esc_attr($sec_icon); ?>"></span>
+							<span class="dashicons <?php echo esc_attr($sec_icon); ?>" aria-hidden="true"></span>
 						<?php endif; ?>
 						<?php echo esc_html($secondary_cta['label']); ?>
 					</button>

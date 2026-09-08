@@ -225,7 +225,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 			</div>
 			<div class="aips-modal-body">
-				<form id="aips-structure-form">
+				<form id="aips-structure-form" data-aips-async="true">
 					<input type="hidden" name="structure_id" id="structure_id" value="">
 
 					<div class="aips-form-row">
@@ -277,7 +277,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 			</div>
 			<div class="aips-modal-body">
-				<form id="aips-section-form">
+				<form id="aips-section-form" data-aips-async="true">
 					<input type="hidden" name="section_id" id="section_id" value="">
 
 					<div class="aips-form-row">

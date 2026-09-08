@@ -42,8 +42,8 @@ $nav_id     = isset($args['id']) ? $args['id'] : '';
 			?>
 			<li>
 				<?php if (!empty($item_url)) : ?>
-					<a href="<?php echo esc_url($item_url); ?>" class="<?php echo esc_attr($class_names); ?>" data-tab="<?php echo esc_attr($item_key); ?>">
-						<span class="dashicons <?php echo esc_attr($item_icon); ?> aips-rail-icon"></span>
+					<a href="<?php echo esc_url($item_url); ?>" class="<?php echo esc_attr($class_names); ?>" data-tab="<?php echo esc_attr($item_key); ?>"<?php echo $is_active ? ' aria-current="page"' : ''; ?>>
+						<span class="dashicons <?php echo esc_attr($item_icon); ?> aips-rail-icon" aria-hidden="true"></span>
 						<span class="aips-rail-text">
 							<span class="aips-rail-title"><?php echo esc_html($item_label); ?></span>
 							<?php if (!empty($item_desc)) : ?>
@@ -53,11 +53,11 @@ $nav_id     = isset($args['id']) ? $args['id'] : '';
 						<?php if ('' !== $item_badge) : ?>
 							<span class="aips-badge <?php echo esc_attr($item_badge_cl); ?>"><?php echo esc_html($item_badge); ?></span>
 						<?php endif; ?>
-						<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
+						<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow" aria-hidden="true"></span>
 					</a>
 				<?php else : ?>
-					<button type="button" class="<?php echo esc_attr($class_names); ?>" data-tab="<?php echo esc_attr($item_key); ?>">
-						<span class="dashicons <?php echo esc_attr($item_icon); ?> aips-rail-icon"></span>
+					<button type="button" class="<?php echo esc_attr($class_names); ?>" data-tab="<?php echo esc_attr($item_key); ?>"<?php echo $is_active ? ' aria-current="page"' : ''; ?>>
+						<span class="dashicons <?php echo esc_attr($item_icon); ?> aips-rail-icon" aria-hidden="true"></span>
 						<span class="aips-rail-text">
 							<span class="aips-rail-title"><?php echo esc_html($item_label); ?></span>
 							<?php if (!empty($item_desc)) : ?>
@@ -67,7 +67,7 @@ $nav_id     = isset($args['id']) ? $args['id'] : '';
 						<?php if ('' !== $item_badge) : ?>
 							<span class="aips-badge <?php echo esc_attr($item_badge_cl); ?>"><?php echo esc_html($item_badge); ?></span>
 						<?php endif; ?>
-						<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
+						<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow" aria-hidden="true"></span>
 					</button>
 				<?php endif; ?>
 			</li>

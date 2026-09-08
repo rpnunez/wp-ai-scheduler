@@ -2,6 +2,8 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+$page_context = AIPS_Admin_Page_Context::resolve('ai-post-scheduler');
 ?>
 <div class="wrap aips-wrap">
 	<?php if (empty($ai_provider_available)): ?>
@@ -16,8 +18,11 @@ if (!defined('ABSPATH')) {
 		<!-- Page Header -->
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Analytics Dashboard', 'ai-post-scheduler'); ?></h1>
+				<div class="aips-page-header-info">
+					<h1 class="aips-page-title">
+						<span class="dashicons dashicons-chart-pie aips-page-title-icon" aria-hidden="true"></span>
+						<span><?php esc_html_e('Analytics Dashboard', 'ai-post-scheduler'); ?></span>
+					</h1>
 					<p class="aips-page-description"><?php esc_html_e('Observe your AI content generation pipelines, success rates, and upcoming schedules.', 'ai-post-scheduler'); ?></p>
 				</div>
 				

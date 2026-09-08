@@ -113,7 +113,7 @@ $initial_tab = ($categories_total === 0 && $tags_total > 0) ? 'tags' : 'categori
 			<h2 class="aips-modal-title"><?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
-		<form id="aips-generate-taxonomy-form">
+		<form id="aips-generate-taxonomy-form" data-aips-async="true">
 			<div class="aips-modal-body">
 			<div class="form-group">
 				<label for="taxonomy_type"><?php esc_html_e('Taxonomy Type', 'ai-post-scheduler'); ?></label>

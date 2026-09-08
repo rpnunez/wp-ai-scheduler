@@ -344,7 +344,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		     TAB 4: SETTINGS & THRESHOLDS
 		     ===================================================================== -->
 		<div id="settings-tab" class="aips-tab-content" role="tabpanel" style="display:none;" aria-hidden="true">
-			<form id="aips-indexer-settings-form">
+			<form id="aips-indexer-settings-form" data-aips-async="true">
 				<div class="aips-content-panel" style="margin-bottom:20px;">
 					<div class="aips-panel-header">
 						<h3 class="aips-panel-title"><?php esc_html_e('Embeddings Provider & Connection Configuration', 'ai-post-scheduler'); ?></h3>

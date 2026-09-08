@@ -211,9 +211,8 @@
 			}
 
 			var submitBtn = $('#generate-taxonomy-submit-btn');
-			submitBtn.prop('disabled', true).text(aipsTaxonomyL10n.generating);
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
@@ -232,11 +231,10 @@
 					} else {
 						alert(response.data.message || aipsTaxonomyL10n.generationFailed);
 					}
-				}.bind(this),
-				complete: function() {
-					submitBtn.prop('disabled', false).text(aipsTaxonomyL10n.generate);
-				}
+				}.bind(this)
 			});
+
+			AIPS.Utilities.withLock(submitBtn, req, { loadingText: aipsTaxonomyL10n.generating, timeout: 120000 });
 		},
 
 		/**
@@ -467,8 +465,9 @@
 		 */
 		approveTaxonomy: function(e) {
 			e.preventDefault();
-			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_approve_taxonomy');
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
+			this.updateItemStatus(itemId, 'aips_approve_taxonomy', $btn);
 		},
 
 		/**
@@ -478,8 +477,9 @@
 		 */
 		rejectTaxonomy: function(e) {
 			e.preventDefault();
-			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_reject_taxonomy');
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
+			this.updateItemStatus(itemId, 'aips_reject_taxonomy', $btn);
 		},
 
 		/**
@@ -494,9 +494,10 @@
 				return;
 			}
 
-			var itemId = $(e.currentTarget).data('id');
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
@@ -513,6 +514,8 @@
 					}
 				}.bind(this)
 			});
+
+			AIPS.Utilities.withLock($btn, req);
 		},
 
 		/**
@@ -527,9 +530,10 @@
 				return;
 			}
 
-			var itemId = $(e.currentTarget).data('id');
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
@@ -547,6 +551,8 @@
 					}
 				}.bind(this)
 			});
+
+			AIPS.Utilities.withLock($btn, req);
 		},
 
 		/**
@@ -554,9 +560,10 @@
 		 *
 		 * @param {number} itemId Taxonomy item ID.
 		 * @param {string} action AJAX action name.
+		 * @param {jQuery} [$btn] Optional button element.
 		 */
-		updateItemStatus: function(itemId, action) {
-			$.ajax({
+		updateItemStatus: function(itemId, action, $btn) {
+			var req = $.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
@@ -573,6 +580,10 @@
 					}
 				}.bind(this)
 			});
+
+			if ($btn && $btn.length) {
+				AIPS.Utilities.withLock($btn, req);
+			}
 		},
 
 		/**

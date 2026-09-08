@@ -161,9 +161,7 @@
 			var $btn    = $(e.currentTarget);
 			var $result = $btn.siblings('.aips-reset-circuit-result');
 
-			$btn.prop('disabled', true);
-
-			$.post(
+			var req = $.post(
 				ajaxurl,
 				{
 					action: 'aips_reset_circuit_breaker',
@@ -178,13 +176,13 @@
 							? response.data.message
 							: (l10n.resetFailed || 'Reset failed.');
 						$result.text(msg).show();
-						$btn.prop('disabled', false);
 					}
 				}
 			).fail(function() {
 				$result.text(l10n.requestFailed || 'Request failed. Please try again.').show();
-				$btn.prop('disabled', false);
 			});
+
+			AIPS.Utilities.withLock($btn, req, { timeout: 30000 });
 		},
 
 		/**
@@ -217,18 +215,17 @@
 
 			var nonce = nonceMap[action] || '';
 
-			$btn.prop('disabled', true);
-			$.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
+			var req = $.post(ajaxurl, { action: action, nonce: nonce }, function(response) {
 				if (response && response.success) {
 					$result.text((response.data && response.data.message) ? response.data.message : 'Done.').show();
 				} else {
 					$result.text((response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Request failed.')).show();
 				}
-				$btn.prop('disabled', false);
 			}).fail(function() {
 				$result.text(l10n.requestFailed || 'Request failed.').show();
-				$btn.prop('disabled', false);
 			});
+
+			AIPS.Utilities.withLock($btn, req, { timeout: 60000 });
 		},
 
 		/**
@@ -252,14 +249,13 @@
 				return;
 			}
 
-			$btn.prop('disabled', true);
 			$spinner.addClass('is-active');
 
 			if (AIPS.Utilities && AIPS.Utilities.showToast) {
 				AIPS.Utilities.showToast(l10n.rebuildingCaches || 'Rebuilding caches…', 'info');
 			}
 
-			$.post(
+			var req = $.post(
 				ajaxurl,
 				{
 					action: 'aips_rebuild_caches',
@@ -280,17 +276,19 @@
 							AIPS.Utilities.showToast(errMsg, 'error');
 						}
 					}
-					$btn.prop('disabled', false);
-					$spinner.removeClass('is-active');
 				}
 			).fail(function() {
-				var failMsg = l10n.requestFailed || 'Request failed.';
-				$result.text(failMsg).show();
+				$result.text(l10n.requestFailed || 'Request failed.').show();
 				if (AIPS.Utilities && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast(failMsg, 'error');
+					AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
 				}
-				$btn.prop('disabled', false);
+			}).always(function() {
 				$spinner.removeClass('is-active');
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: l10n.rebuildingCaches || 'Rebuilding caches…',
+				timeout: 60000
 			});
 		},
 
@@ -370,7 +368,6 @@
 				return;
 			}
 
-			$btn.prop('disabled', true);
 			$spinner.addClass('is-active');
 			$results.hide().empty();
 
@@ -378,7 +375,7 @@
 				AIPS.Utilities.showToast(l10n.refreshRunning || 'Refreshing system…', 'info');
 			}
 
-			$.post(ajaxurl, { action: 'aips_status_refresh_system', nonce: l10n.nonceRefreshSystem || '', tasks: selectedTasks }, function(response) {
+			var req = $.post(ajaxurl, { action: 'aips_status_refresh_system', nonce: l10n.nonceRefreshSystem || '', tasks: selectedTasks }, function(response) {
 				if (response && response.success && response.data) {
 					var data = response.data;
 					var failed = data.failed || 0;
@@ -394,14 +391,17 @@
 						AIPS.Utilities.showToast(errMsg, 'error');
 					}
 				}
-				$btn.prop('disabled', false);
-				$spinner.removeClass('is-active');
 			}).fail(function() {
 				if (AIPS.Utilities && AIPS.Utilities.showToast) {
 					AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
 				}
-				$btn.prop('disabled', false);
+			}).always(function() {
 				$spinner.removeClass('is-active');
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: l10n.refreshRunning || 'Refreshing system…',
+				timeout: 120000
 			});
 		},
 

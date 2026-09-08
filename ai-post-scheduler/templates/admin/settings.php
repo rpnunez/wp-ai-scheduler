@@ -1,126 +1,97 @@
 <?php
+/**
+ * Settings Admin Template
+ *
+ * @package AI_Post_Scheduler
+ * @since   3.7.0
+ */
+
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+$settings_rail_items = array(
+	array(
+		'key'         => 'settings-general',
+		'label'       => __('General', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-admin-generic',
+		'description' => __('Defaults & post settings', 'ai-post-scheduler'),
+		'active'      => true,
+	),
+	array(
+		'key'         => 'settings-ai',
+		'label'       => __('AI Engine', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-rest-api',
+		'description' => __('Models & AI connection', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-feedback',
+		'label'       => __('Feedback', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-thumbs-up',
+		'description' => __('Deduplication & scoring', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-notifications',
+		'label'       => __('Notifications', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-email-alt',
+		'description' => __('Email & alert channels', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-resilience',
+		'label'       => __('Resilience & Limits', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-shield',
+		'description' => __('Failover & circuit breaker', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-content-strategy',
+		'label'       => __('Content Strategy', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-art',
+		'description' => __('Brand voice & persona', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-cache',
+		'label'       => __('Performance', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-performance',
+		'description' => __('Caching layer & driver', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-api-keys',
+		'label'       => __('API Keys', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-admin-network',
+		'description' => __('Third-party credentials', 'ai-post-scheduler'),
+	),
+	array(
+		'key'         => 'settings-developers',
+		'label'       => __('Developers', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-editor-code',
+		'description' => __('Debug & dev tools', 'ai-post-scheduler'),
+	),
+);
+$active_settings_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'settings-general';
+$page_context = AIPS_Admin_Page_Context::resolve(
+	'aips-settings',
+	$active_settings_tab
+);
 ?>
-<div class="wrap aips-wrap">
+<div class="wrap aips-wrap aips-settings-wrap">
 	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-admin-settings aips-page-title-icon"></span>
-						<?php esc_html_e('Settings', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description"><?php esc_html_e('Configure plugin settings, check system status, and manage AI Engine connection.', 'ai-post-scheduler'); ?></p>
-				</div>
-			</div>
-		</div>
+		<?php AIPS_Admin_UI_Primitives::render_page_header($page_context); ?>
 
 		<!-- Vertical Sidebar Rail Layout -->
 		<div class="aips-rail-layout">
-			<!-- Rail Navigation Sidebar -->
-			<nav class="aips-rail-sidebar" id="aips-settings-tab-nav" aria-label="<?php esc_attr_e('Settings Navigation', 'ai-post-scheduler'); ?>">
-				<ul class="aips-rail-nav">
-					<li>
-						<button type="button" class="aips-rail-item active" data-tab="settings-general">
-							<span class="dashicons dashicons-admin-generic aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('General', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Defaults & post settings', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-ai">
-							<span class="dashicons dashicons-rest-api aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('AI Engine', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Models & AI connection', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-feedback">
-							<span class="dashicons dashicons-thumbs-up aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Deduplication & scoring', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-notifications">
-							<span class="dashicons dashicons-email-alt aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Email & alert channels', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-resilience">
-							<span class="dashicons dashicons-shield aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('Resilience & Limits', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Failover & circuit breaker', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-content-strategy">
-							<span class="dashicons dashicons-art aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('Content Strategy', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Brand voice & persona', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-cache">
-							<span class="dashicons dashicons-performance aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('Performance', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Caching layer & driver', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-api-keys">
-							<span class="dashicons dashicons-admin-network aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('API Keys', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Third-party credentials', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-					<li>
-						<button type="button" class="aips-rail-item" data-tab="settings-developers">
-							<span class="dashicons dashicons-editor-code aips-rail-icon"></span>
-							<span class="aips-rail-text">
-								<span class="aips-rail-title"><?php esc_html_e('Developers', 'ai-post-scheduler'); ?></span>
-								<span class="aips-rail-desc"><?php esc_html_e('Debug & dev tools', 'ai-post-scheduler'); ?></span>
-							</span>
-							<span class="dashicons dashicons-arrow-right-alt2 aips-rail-arrow"></span>
-						</button>
-					</li>
-				</ul>
-			</nav>
+			<?php
+			AIPS_Admin_UI_Primitives::render_rail(array(
+				'id'         => 'aips-settings-tab-nav',
+				'aria_label' => __('Settings Navigation', 'ai-post-scheduler'),
+				'items'      => $settings_rail_items,
+			));
+			?>
 
 			<!-- Main Stage Area -->
 			<main class="aips-rail-main">
 				<div class="aips-content-panel">
 					<div class="aips-panel-body">
-						<form method="post" action="options.php" id="aips-settings-form">
+						<form method="post" action="options.php" id="aips-settings-form" data-aips-async="true">
 							<?php settings_fields('aips_settings'); ?>
 
 							<!-- General Tab -->

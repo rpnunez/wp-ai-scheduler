@@ -15,11 +15,21 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$wrap_class = isset($args['wrap_class']) ? $args['wrap_class'] : 'wrap aips-wrap';
-$header_args = isset($args['header']) ? (array) $args['header'] : array();
-$rail_args   = isset($args['rail']) ? (array) $args['rail'] : array();
-$content     = isset($args['content']) ? $args['content'] : '';
-$callback    = isset($args['content_callback']) && is_callable($args['content_callback'])
+$wrap_class = 'wrap aips-wrap';
+$header_args = array();
+$rail_args   = array();
+$content     = '';
+
+if ($args instanceof AIPS_Admin_Page_Context) {
+	$header_args = $args;
+} elseif (is_array($args)) {
+	$wrap_class  = isset($args['wrap_class']) ? $args['wrap_class'] : 'wrap aips-wrap';
+	$header_args = isset($args['header']) ? $args['header'] : array();
+	$rail_args   = isset($args['rail']) ? (array) $args['rail'] : array();
+	$content     = isset($args['content']) ? $args['content'] : '';
+}
+
+$callback    = is_array($args) && isset($args['content_callback']) && is_callable($args['content_callback'])
 	? $args['content_callback']
 	: $content_callback;
 ?>
@@ -40,7 +50,7 @@ $callback    = isset($args['content_callback']) && is_callable($args['content_ca
 					if (is_callable($callback)) {
 						call_user_func($callback);
 					} else {
-						echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						echo wp_kses_post($content);
 					}
 					?>
 				</main>
@@ -51,7 +61,7 @@ $callback    = isset($args['content_callback']) && is_callable($args['content_ca
 				if (is_callable($callback)) {
 					call_user_func($callback);
 				} else {
-					echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					echo wp_kses_post($content);
 				}
 				?>
 			</div>

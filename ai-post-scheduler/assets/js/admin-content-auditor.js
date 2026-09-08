@@ -102,9 +102,8 @@
 			if (!topic || !authorId) return;
 
 			var $btn = $('#aips-confirm-add-topic-btn');
-			$btn.prop('disabled', true);
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -115,18 +114,21 @@
 					status: 'approved'
 				},
 				success: function (res) {
-					$btn.prop('disabled', false);
 					if (res && res.success) {
-						alert(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!');
+						AIPS.Utilities.showToast(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!', 'success');
 						$('#aips-add-to-author-modal').hide();
 					} else {
-						alert(res && res.data && res.data.message ? res.data.message : 'Error saving topic.');
+						AIPS.Utilities.showToast(res && res.data && res.data.message ? res.data.message : 'Error saving topic.', 'error');
 					}
 				},
 				error: function () {
-					$btn.prop('disabled', false);
-					alert('Network error while saving topic.');
+					AIPS.Utilities.showToast('Network error while saving topic.', 'error');
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Saving...',
+				timeout: 30000
 			});
 		});
 

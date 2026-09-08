@@ -108,6 +108,8 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 
 		$this->assertStringContainsString('First Tab', $output);
 		$this->assertStringContainsString('active', $output);
+		$this->assertStringContainsString('aria-current="page"', $output);
+		$this->assertStringContainsString('aria-hidden="true"', $output);
 		$this->assertStringContainsString('Second Tab', $output);
 		$this->assertStringContainsString('dashicons-schedule', $output);
 		$this->assertStringContainsString('Tab description', $output);
@@ -140,7 +142,7 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test card rendering with header and body callback.
+	 * Test card rendering with header, actions, and body callback.
 	 */
 	public function test_render_card() {
 		ob_start();
@@ -149,6 +151,13 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 			'title'       => 'Test Card Panel',
 			'icon'        => 'dashicons-info',
 			'description' => 'Card subtitle explanation',
+			'actions'     => array(
+				array(
+					'label'      => 'Edit',
+					'aria_label' => 'Edit this card',
+					'data_attrs' => array('target' => 'modal'),
+				),
+			),
 		), function() {
 			echo '<p class="test-body-content">Inside card body</p>';
 		});
@@ -157,6 +166,8 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$this->assertStringContainsString('test-card-id', $output);
 		$this->assertStringContainsString('Test Card Panel', $output);
 		$this->assertStringContainsString('dashicons-info', $output);
+		$this->assertStringContainsString('aria-label="Edit this card"', $output);
+		$this->assertStringContainsString('data-target="modal"', $output);
 		$this->assertStringContainsString('Inside card body', $output);
 	}
 
@@ -178,6 +189,8 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$this->assertStringContainsString('Get started by clicking create below.', $output);
 		$this->assertStringContainsString('Add First Record', $output);
 		$this->assertStringContainsString('admin.php?page=aips-studio', $output);
+		$this->assertStringContainsString('aips-empty-state-icon-dashicon', $output);
+		$this->assertStringContainsString('aria-hidden="true"', $output);
 	}
 
 	/**
@@ -254,5 +267,97 @@ class Test_AIPS_Admin_UI_Primitives extends WP_UnitTestCase {
 		$this->assertStringContainsString('Database query timed out.', $output);
 		$this->assertStringContainsString('Try Again', $output);
 		$this->assertStringContainsString('Exception at line 42', $output);
+		$this->assertStringContainsString('aips-error-fallback', $output);
+	}
+
+	/**
+	 * Test missing partial safety handling.
+	 */
+	public function test_missing_partial_safety() {
+		ob_start();
+		AIPS_Admin_UI_Primitives::include_partial('non-existent-partial.php');
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('aips-error-fallback', $output);
+	}
+
+	/**
+	 * Test that raw HTML strings passed into card body and footer are sanitized with wp_kses_post.
+	 */
+	public function test_render_card_sanitizes_raw_html_body_and_footer_strings() {
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_card(array(
+			'id'     => 'test-xss-card',
+			'title'  => 'Security Test Card',
+			'body'   => '<p>Safe paragraph</p><script>alert("xss-body")</script><img src="x" onerror="alert(1)">',
+			'footer' => '<span>Safe Footer</span><script>alert("xss-footer")</script>',
+		));
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('<p>Safe paragraph</p>', $output);
+		$this->assertStringContainsString('<span>Safe Footer</span>', $output);
+		$this->assertStringNotContainsString('<script>alert("xss-body")</script>', $output);
+		$this->assertStringNotContainsString('<script>alert("xss-footer")</script>', $output);
+		$this->assertStringNotContainsString('onerror=', $output);
+	}
+
+	/**
+	 * Test that raw HTML string passed into hub shell content is sanitized with wp_kses_post.
+	 */
+	public function test_render_hub_shell_sanitizes_raw_html_content_string() {
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_hub_shell(array(
+			'content' => '<div class="hub-main-safe">Safe Content</div><script>alert("xss-shell")</script>',
+		));
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('<div class="hub-main-safe">Safe Content</div>', $output);
+		$this->assertStringNotContainsString('<script>alert("xss-shell")</script>', $output);
+	}
+
+	/**
+	 * Test breadcrumbs primitive rendering.
+	 */
+	public function test_render_breadcrumbs() {
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_breadcrumbs(array(
+			array('label' => 'Automations', 'url' => 'admin.php?page=aips-automations'),
+			array('label' => 'Schedules', 'url' => 'admin.php?page=aips-automations&tab=schedules'),
+			array('label' => 'Edit Rule'),
+		));
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('aips-title-breadcrumb-trail', $output);
+		$this->assertStringContainsString('aips-title-breadcrumb-link', $output);
+		$this->assertStringContainsString('aips-title-breadcrumb-current', $output);
+		$this->assertStringContainsString('aips-page-context-separator', $output);
+		$this->assertStringContainsString('Automations', $output);
+		$this->assertStringContainsString('Schedules', $output);
+		$this->assertStringContainsString('Edit Rule', $output);
+	}
+
+	/**
+	 * Test page header rendering with contextual title, breadcrumbs, and summary chips.
+	 */
+	public function test_render_page_header_with_context_and_summary_strip() {
+		$ctx = AIPS_Admin_Page_Context::resolve('aips-automations', 'schedules', null, array(
+			'summary_items' => array(
+				array('label' => 'Active Pipelines', 'value' => 7, 'type' => 'success'),
+			),
+		));
+
+		ob_start();
+		AIPS_Admin_UI_Primitives::render_page_header($ctx);
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString('aips-title-breadcrumb-trail', $output);
+		$this->assertStringContainsString('aips-title-breadcrumb-link', $output);
+		$this->assertStringContainsString('aips-title-breadcrumb-current', $output);
+		$this->assertStringContainsString('Automations', $output);
+		$this->assertStringContainsString('Schedules', $output);
+		$this->assertStringContainsString('aips-page-summary-strip', $output);
+		$this->assertStringContainsString('aips-summary-chip-success', $output);
+		$this->assertStringContainsString('Active Pipelines', $output);
+		$this->assertStringContainsString('7', $output);
 	}
 }

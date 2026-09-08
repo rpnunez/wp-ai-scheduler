@@ -164,16 +164,6 @@ if (!function_exists('aips_datetime_from_db_value')) {
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
 			<div class="aips-panel-body">
 				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
-				<div class="aips-schedule-status-columns">
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-				</div>
 				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
 			</div>
 		</div>
@@ -582,7 +572,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-schedule-form">
+			<form id="aips-schedule-form" data-aips-async="true">
 				<input type="hidden" name="schedule_id" id="schedule_id" value="">
 				<div class="aips-form-row">
 					<label for="schedule_title"><?php esc_html_e('Title (Optional)', 'ai-post-scheduler'); ?></label>

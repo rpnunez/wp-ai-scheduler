@@ -126,7 +126,7 @@ if (!isset($voices) || !is_array($voices)) {
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
-                <form id="aips-voice-form">
+                <form id="aips-voice-form" data-aips-async="true">
                     <input type="hidden" name="voice_id" id="voice_id" value="">
                     
                     <div class="aips-form-row">

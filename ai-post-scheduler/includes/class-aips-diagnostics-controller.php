@@ -32,11 +32,51 @@ class AIPS_Diagnostics_Controller {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
 
-		$tabs = $this->get_tabs();
-		$active_tab = self::get_active_tab_key();
+		$tabs                   = $this->get_tabs();
+		$active_tab             = self::get_active_tab_key();
+		$page_context           = $this->get_page_context($active_tab);
 		$diagnostics_controller = $this;
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/diagnostics.php';
+	}
+
+	/**
+	 * Build contextual page context object for the active tab.
+	 *
+	 * @param string $active_tab Active tab key.
+	 * @return AIPS_Admin_Page_Context
+	 */
+	public function get_page_context($active_tab) {
+		$summary_items = array();
+
+		try {
+			if ('system-info' === $active_tab) {
+				$php_v = defined('PHP_VERSION') ? PHP_VERSION : phpversion();
+				$summary_items = array(
+					array('label' => __('PHP Version', 'ai-post-scheduler'), 'value' => $php_v, 'type' => 'neutral', 'icon' => 'dashicons-info'),
+					array('label' => __('WP Version', 'ai-post-scheduler'), 'value' => get_bloginfo('version'), 'type' => 'neutral', 'icon' => 'dashicons-wordpress'),
+				);
+			} elseif ('health' === $active_tab) {
+				$summary_items = array(
+					array('label' => __('System Status', 'ai-post-scheduler'), 'value' => __('Operational', 'ai-post-scheduler'), 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
+				);
+			} elseif ('telemetry' === $active_tab) {
+				$summary_items = array(
+					array('label' => __('Telemetry Stream', 'ai-post-scheduler'), 'value' => __('Active', 'ai-post-scheduler'), 'type' => 'info', 'icon' => 'dashicons-performance'),
+				);
+			}
+		} catch (\Throwable $e) {
+			// Fail-safe: empty summary items
+		}
+
+		return AIPS_Admin_Page_Context::resolve(
+			self::PAGE_SLUG,
+			$active_tab,
+			null,
+			array(
+				'summary_items' => $summary_items,
+			)
+		);
 	}
 
 	/**

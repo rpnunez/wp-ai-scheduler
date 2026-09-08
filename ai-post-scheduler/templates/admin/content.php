@@ -61,18 +61,29 @@ $rail_items = array(
 		'active'      => ($active_tab === 'aips-content-indexer'),
 	),
 );
+$summary_items = array();
+if ('aips-generated-posts' === $active_tab && isset($history['total'])) {
+	$summary_items[] = array('label' => __('Generated Posts', 'ai-post-scheduler'), 'value' => (int) $history['total'], 'type' => 'neutral', 'icon' => 'dashicons-admin-post');
+} elseif ('aips-partial-generations' === $active_tab && isset($partial_generations['total'])) {
+	$p_cnt = (int) $partial_generations['total'];
+	$summary_items[] = array('label' => __('Incomplete Runs', 'ai-post-scheduler'), 'value' => $p_cnt, 'type' => $p_cnt > 0 ? 'warning' : 'success', 'icon' => 'dashicons-warning');
+} elseif ('aips-pending-review' === $active_tab && isset($draft_posts['total'])) {
+	$d_cnt = (int) $draft_posts['total'];
+	$summary_items[] = array('label' => __('Pending Approval', 'ai-post-scheduler'), 'value' => $d_cnt, 'type' => $d_cnt > 0 ? 'warning' : 'neutral', 'icon' => 'dashicons-visibility');
+}
+
+$page_context = AIPS_Admin_Page_Context::resolve(
+	'aips-generated-posts',
+	$active_tab,
+	null,
+	array('summary_items' => $summary_items)
+);
 ?>
 
 <div class="wrap aips-wrap aips-content-wrap">
 	<div class="aips-page-container">
 		<!-- Page Header -->
-		<?php
-		AIPS_Admin_UI_Primitives::render_page_header(array(
-			'title'       => __('Content', 'ai-post-scheduler'),
-			'icon'        => 'dashicons-admin-post',
-			'description' => __('View and manage all AI-generated posts including published articles, drafts pending review, and semantic embeddings.', 'ai-post-scheduler'),
-		));
-		?>
+		<?php AIPS_Admin_UI_Primitives::render_page_header($page_context); ?>
 
 		<!-- Vertical Sidebar Rail Layout -->
 		<div class="aips-rail-layout">

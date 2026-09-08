@@ -926,10 +926,9 @@
 
 		runCleanup: function () {
 			var self = this;
+			var $btn = $('#aips-stress-cleanup');
 
-			$('#aips-stress-cleanup').prop('disabled', true);
-
-			$.ajax({
+			var req = $.ajax({
 				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
@@ -946,8 +945,11 @@
 				AIPS.Utilities.showToast(t('requestFailed', 'Request failed.'), 'error');
 			}).fail(function () {
 				AIPS.Utilities.showToast(t('requestFailed', 'Request failed.'), 'error');
-			}).always(function () {
-				$('#aips-stress-cleanup').prop('disabled', false);
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: t('cleaningUp', 'Cleaning up…'),
+				timeout: 60000
 			});
 		},
 

@@ -393,7 +393,7 @@ $site_ctx = AIPS_Site_Context::get();
             <p><?php esc_html_e('Loading author data...', 'ai-post-scheduler'); ?></p>
         </div>
 
-        <form id="aips-author-form">
+        <form id="aips-author-form" data-aips-async="true">
             <input type="hidden" id="author_id" name="author_id" value="">
 
             <div class="form-group">
@@ -685,7 +685,7 @@ $site_ctx = AIPS_Site_Context::get();
             </p>
         </div>
         <div class="aips-modal-body">
-            <form id="aips-suggest-authors-form">
+            <form id="aips-suggest-authors-form" data-aips-async="true">
                 <div class="form-group">
                     <label for="aips-suggest-site-niche"><?php esc_html_e('Site Niche / Primary Topic', 'ai-post-scheduler'); ?> *</label>
                     <input type="text" id="aips-suggest-site-niche" name="site_niche" required

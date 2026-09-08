@@ -33,12 +33,16 @@ foreach ($tabs as $tab_key => $tab) {
 
 		<!-- Page Header -->
 		<?php
-		AIPS_Admin_UI_Primitives::render_page_header(array(
-			'title'       => __('Automations', 'ai-post-scheduler'),
-			'icon'        => 'dashicons-rest-api',
-			'description' => __('Orchestrate generation schedules, goal-based campaigns, authors, data sources, monetization, and SEO linking.', 'ai-post-scheduler'),
-			'actions'     => !empty($tab_actions) ? $tab_actions : array(),
-		));
+		if (isset($page_context) && $page_context instanceof AIPS_Admin_Page_Context) {
+			AIPS_Admin_UI_Primitives::render_page_header($page_context);
+		} else {
+			AIPS_Admin_UI_Primitives::render_page_header(array(
+				'title'       => __('Automations', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-rest-api',
+				'description' => __('Orchestrate generation schedules, goal-based campaigns, authors, data sources, monetization, and SEO linking.', 'ai-post-scheduler'),
+				'actions'     => !empty($tab_actions) ? $tab_actions : array(),
+			));
+		}
 		?>
 
 		<!-- Vertical Sidebar Rail Layout -->

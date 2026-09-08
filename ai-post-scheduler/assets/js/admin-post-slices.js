@@ -137,10 +137,8 @@
 			}
 
 			var $btn = $('#aips-save-post-slice-btn');
-			$btn.prop('disabled', true).text(aipsPostSlicesL10n.saving);
-
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:      'aips_save_post_slice',
 				nonce:       aipsAjax.nonce,
 				slice_id:    this.currentSliceId,
@@ -149,8 +147,6 @@
 				sort_order:  parseInt($('#aips-post-slice-sort-order').val(), 10) || 0,
 				is_active:   $('#aips-post-slice-is-active').is(':checked') ? 1 : 0,
 			}, function (response) {
-				$btn.prop('disabled', false).text(aipsPostSlicesL10n.saveSlice);
-
 				if (!response.success) {
 					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.saveFailed, 'error');
 					return;
@@ -160,8 +156,12 @@
 				$('#aips-post-slice-modal').hide();
 				self.refreshPage();
 			}).fail(function () {
-				$btn.prop('disabled', false).text(aipsPostSlicesL10n.saveSlice);
 				AIPS.Utilities.showToast(aipsPostSlicesL10n.saveFailed, 'error');
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: aipsPostSlicesL10n.saving,
+				timeout: 30000
 			});
 		},
 
@@ -174,28 +174,32 @@
 		deleteSlice: function (e) {
 			e.preventDefault();
 
-			var id = parseInt($(e.currentTarget).data('id'), 10);
-
-			if (!confirm(aipsPostSlicesL10n.deleteConfirm)) {
-				return;
-			}
-
+			var $btn = $(e.currentTarget);
+			var id = parseInt($btn.data('id'), 10);
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
-				action:   'aips_delete_post_slice',
-				nonce:    aipsAjax.nonce,
-				slice_id: id,
-			}, function (response) {
-				if (!response.success) {
-					AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.deleteFailed, 'error');
-					return;
-				}
 
-				AIPS.Utilities.showToast(response.data.message, 'success');
-				self.refreshPage();
-			}).fail(function () {
-				AIPS.Utilities.showToast(aipsPostSlicesL10n.deleteFailed, 'error');
-			});
+			AIPS.Utilities.confirm(aipsPostSlicesL10n.deleteConfirm, 'Confirm', [
+				{ label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsAdminL10n.confirmDeleteButton || 'Delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					var req = $.post(aipsAjax.ajaxUrl, {
+						action:   'aips_delete_post_slice',
+						nonce:    aipsAjax.nonce,
+						slice_id: id,
+					}, function (response) {
+						if (!response.success) {
+							AIPS.Utilities.showToast(response.data.message || aipsPostSlicesL10n.deleteFailed, 'error');
+							return;
+						}
+
+						AIPS.Utilities.showToast(response.data.message, 'success');
+						self.refreshPage();
+					}).fail(function () {
+						AIPS.Utilities.showToast(aipsPostSlicesL10n.deleteFailed, 'error');
+					});
+
+					AIPS.Utilities.withLock($btn, req, { timeout: 30000 });
+				}}
+			]);
 		},
 
 		/**
@@ -213,7 +217,7 @@
 			var newStatus = isActive === 1 ? 0 : 1;
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:    'aips_toggle_post_slice_active',
 				nonce:     aipsAjax.nonce,
 				slice_id:  id,
@@ -229,6 +233,8 @@
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsPostSlicesL10n.toggleFailed, 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req, { timeout: 30000 });
 		},
 
 		/**

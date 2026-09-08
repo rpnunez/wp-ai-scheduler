@@ -400,10 +400,7 @@
 			const $submitBtn = $form.find('[type="submit"]');
 			const formData = $form.serialize();
 
-			// Disable submit button
-			AIPS.Utilities.setButtonLoading($submitBtn, aipsAuthorsL10n.saving);
-
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
@@ -418,11 +415,10 @@
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSaving, 'error');
-				},
-				complete: () => {
-					AIPS.Utilities.resetButton($submitBtn);
 				}
 			});
+
+			AIPS.Utilities.withLock($submitBtn, req, { loadingText: aipsAuthorsL10n.saving });
 		},
 
 		/**
@@ -493,9 +489,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
-
-						$.ajax({
+						var req = $.ajax({
 							url: ajaxurl,
 							type: 'POST',
 							data: {
@@ -516,11 +510,10 @@
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
-							},
-							complete: () => {
-								AIPS.Utilities.resetButton($btn);
 							}
 						});
+
+						AIPS.Utilities.withLock($btn, req, { loadingText: aipsAuthorsL10n.generating, timeout: 120000 });
 					}
 				}
 			]);
@@ -578,10 +571,7 @@
 						className: 'aips-btn aips-btn-author-posts',
 						submit: true,
 						action: (formData) => {
-							// Set button to loading state
-							AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
-
-							$.ajax({
+							var req = $.ajax({
 								url: aipsAjax.ajaxUrl,
 								type: 'POST',
 								data: {
@@ -621,11 +611,10 @@
 								},
 								error: () => {
 									AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPosts, 'error');
-								},
-								complete: () => {
-									AIPS.Utilities.resetButton($btn);
 								}
 							});
+
+							AIPS.Utilities.withLock($btn, req, { loadingText: aipsAuthorsL10n.generating || 'Generating...', timeout: 180000 });
 						}
 					}
 				]
@@ -1637,9 +1626,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($btn, aipsAuthorsL10n.generating);
-
-						$.ajax({
+						var req = $.ajax({
 							url: ajaxurl,
 							type: 'POST',
 							data: {
@@ -1657,14 +1644,14 @@
 										response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost,
 										'error'
 									);
-									AIPS.Utilities.resetButton($btn);
 								}
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
-								AIPS.Utilities.resetButton($btn);
 							}
 						});
+
+						AIPS.Utilities.withLock($btn, req, { loadingText: aipsAuthorsL10n.generating, timeout: 180000 });
 					}
 				}
 			]);
@@ -2369,13 +2356,8 @@
 			}
 
 			const $btn = $('#aips-suggest-authors-submit');
-			AIPS.Utilities.setButtonLoading($btn,
-				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...'),
-				{ isHtml: true }
-			);
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -2399,11 +2381,10 @@
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
-				},
-				complete: () => {
-					AIPS.Utilities.resetButton($btn);
 				}
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...', timeout: 120000 });
 		},
 
 		/**
@@ -2480,13 +2461,8 @@
 			}
 
 			const suggestion = suggestions[index];
-			AIPS.Utilities.setButtonLoading($btn,
-				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.importingAuthor || 'Importing...'),
-				{ isHtml: true }
-			);
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -2526,14 +2502,14 @@
 							? response.data.message
 							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
 						AIPS.Utilities.showToast(msg, 'error');
-						AIPS.Utilities.resetButton($btn);
 					}
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
-					AIPS.Utilities.resetButton($btn);
 				}
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsAuthorsL10n.importingAuthor || 'Importing...' });
 		}
 	};
 	
@@ -2899,9 +2875,7 @@
 					label: 'Yes, generate',
 					className: 'aips-btn aips-btn-danger-solid',
 					action: () => {
-						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.generating || 'Generating...');
-
-						$.ajax({
+						var req = $.ajax({
 							url: ajaxurl,
 							type: 'POST',
 							data: {
@@ -2928,11 +2902,10 @@
 							},
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
-							},
-							complete: () => {
-								AIPS.Utilities.resetButton($button);
 							}
 						});
+
+						AIPS.Utilities.withLock($button, req, { loadingText: aipsAuthorsL10n.generating || 'Generating...', timeout: 180000 });
 					}
 				}
 			]);

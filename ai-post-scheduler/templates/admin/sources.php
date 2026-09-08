@@ -234,7 +234,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-source-form" novalidate>
+			<form id="aips-source-form" data-aips-async="true" novalidate>
 				<input type="hidden" name="source_id" id="aips-source-id" value="0">
 
 				<div class="aips-form-row">

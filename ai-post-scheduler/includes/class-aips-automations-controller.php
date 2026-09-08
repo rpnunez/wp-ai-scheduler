@@ -37,12 +37,76 @@ class AIPS_Automations_Controller {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
 
-		$active_tab = self::get_active_tab_key();
-		$tabs = $this->get_tabs($active_tab);
-		$tab_actions = $this->get_tab_actions($active_tab);
+		$active_tab             = self::get_active_tab_key();
+		$tabs                   = $this->get_tabs($active_tab);
+		$tab_actions            = $this->get_tab_actions($active_tab);
+		$page_context           = $this->get_page_context($active_tab);
 		$automations_controller = $this;
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/automations.php';
+	}
+
+	/**
+	 * Build contextual page context object for the active tab.
+	 *
+	 * @param string $active_tab Active tab key.
+	 * @return AIPS_Admin_Page_Context
+	 */
+	public function get_page_context($active_tab) {
+		$summary_items = array();
+
+		try {
+			if ('schedules' === $active_tab && class_exists('AIPS_Schedule_Repository')) {
+				$schedules  = AIPS_Schedule_Repository::instance()->get_all();
+				$active_cnt = count(array_filter($schedules, function($s) {
+					if (is_object($s)) {
+						return !empty($s->is_active);
+					}
+					return is_array($s) && !empty($s['is_active']);
+				}));
+				$summary_items = array(
+					array('label' => __('Active Pipelines', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
+					array('label' => __('Total Schedules', 'ai-post-scheduler'), 'value' => count($schedules), 'type' => 'neutral', 'icon' => 'dashicons-clock'),
+				);
+			} elseif ('campaigns' === $active_tab && class_exists('AIPS_Campaigns_Repository')) {
+				$stats = AIPS_Campaigns_Repository::instance()->get_summary_stats();
+				$summary_items = array(
+					array('label' => __('Active Campaigns', 'ai-post-scheduler'), 'value' => $stats['active'], 'type' => 'success', 'icon' => 'dashicons-calendar-alt'),
+					array('label' => __('Total Batches', 'ai-post-scheduler'), 'value' => $stats['total'], 'type' => 'neutral'),
+				);
+			} elseif ('authors' === $active_tab && class_exists('AIPS_Authors_Repository')) {
+				$authors       = (new AIPS_Authors_Repository())->get_all();
+				$summary_items = array(
+					array('label' => __('Author Personas', 'ai-post-scheduler'), 'value' => count($authors), 'type' => 'neutral', 'icon' => 'dashicons-admin-users'),
+				);
+			} elseif ('sources' === $active_tab && class_exists('AIPS_Sources_Repository')) {
+				$sources    = (new AIPS_Sources_Repository())->get_all(false);
+				$active_cnt = count(array_filter($sources, function($s) {
+					if (is_object($s)) {
+						return !empty($s->is_active);
+					}
+					return is_array($s) && !empty($s['is_active']);
+				}));
+				$summary_items = array(
+					array('label' => __('Active Feeds', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-rss'),
+					array('label' => __('Total Sources', 'ai-post-scheduler'), 'value' => count($sources), 'type' => 'neutral'),
+				);
+			}
+		} catch (\Throwable $e) {
+			// Fail-safe: empty summary items
+		}
+
+		$tab_actions = $this->get_tab_actions($active_tab);
+
+		return AIPS_Admin_Page_Context::resolve(
+			self::PAGE_SLUG,
+			$active_tab,
+			null,
+			array(
+				'summary_items' => $summary_items,
+				'actions'       => $tab_actions,
+			)
+		);
 	}
 
 	/**

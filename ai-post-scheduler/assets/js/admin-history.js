@@ -1297,17 +1297,12 @@
 
 			var self     = this;
 			var $btn     = $(e.currentTarget);
-			var origHtml = $btn.html();
 			var msg      = aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.';
 
 			AIPS.Utilities.confirm(msg, 'Notice', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$btn.prop('disabled', true).html(
-						'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026')
-					);
-
-					$.ajax({
+					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
 						data: {
@@ -1326,13 +1321,17 @@
 										: (aipsHistoryL10n.errorDeleting || 'Error deleting items.'),
 									'error'
 								);
-								$btn.prop('disabled', false).html(origHtml);
 							}
 						},
 						error: function () {
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
-							$btn.prop('disabled', false).html(origHtml);
 						}
+					});
+
+					AIPS.Utilities.withLock($btn, req, {
+						loadingText: '<span class="dashicons dashicons-update aips-spin"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026'),
+						isHtml: true,
+						timeout: 60000
 					});
 				}}
 			]);
@@ -1347,7 +1346,8 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			var id = $(e.currentTarget).data('id');
+			var $singleBtn = $(e.currentTarget);
+			var id = $singleBtn.data('id');
 			if (!id) {
 				return;
 			}
@@ -1358,7 +1358,7 @@
 			AIPS.Utilities.confirm(msg, 'Notice', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$.ajax({
+					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
 						data: {
@@ -1383,6 +1383,8 @@
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
 						}
 					});
+
+					AIPS.Utilities.withLock($singleBtn, req, { timeout: 30000 });
 				}}
 			]);
 		},
@@ -1403,15 +1405,10 @@
 			e.preventDefault();
 
 			var self     = this;
-			var id       = $(e.currentTarget).data('id');
 			var $btn     = $(e.currentTarget);
-			var origHtml = $btn.html();
+			var id       = $btn.data('id');
 
-			$btn.prop('disabled', true).html(
-				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026')
-			);
-
-			$.ajax({
+			var req = $.ajax({
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
@@ -1425,13 +1422,17 @@
 						self.reload();
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
-						$btn.prop('disabled', false).html(origHtml);
 					}
 				},
 				error: function () {
 					AIPS.Utilities.showToast(aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.', 'error');
-					$btn.prop('disabled', false).html(origHtml);
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: '<span class="dashicons dashicons-update aips-spin"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026'),
+				isHtml: true,
+				timeout: 180000
 			});
 		},
 

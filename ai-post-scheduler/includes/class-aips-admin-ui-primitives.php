@@ -42,41 +42,71 @@ class AIPS_Admin_UI_Primitives {
 	}
 
 	/**
-	 * Render a complete Hub Shell (Wrap + Header + Rail Navigation + Main Stage).
+	 * Safely include a partial template with arguments and optional callback.
 	 *
-	 * @param array<string, mixed> $args Shell configuration parameters:
-	 *  - 'wrap_class': (string) CSS class for the outermost wrap. Default 'wrap aips-wrap'.
-	 *  - 'header': (array) Parameters passed to `render_page_header()`.
-	 *  - 'rail': (array) Parameters passed to `render_rail()`.
-	 *  - 'content': (string) Raw HTML or template output for the main content stage.
-	 *  - 'content_callback': (callable|null) Optional callback to render main stage content.
-	 * @param callable|null        $content_callback Optional callback if not provided in $args.
+	 * @param string        $partial_name Partial filename without directory.
+	 * @param array         $args         Component configuration.
+	 * @param callable|null $content_callback Optional callback.
 	 * @return void
 	 */
-	public static function render_hub_shell($args = array(), $content_callback = null) {
-		$partial = self::get_partials_dir() . 'admin-hub-shell.php';
+	public static function include_partial($partial_name, $args = array(), $content_callback = null) {
+		$partial = self::get_partials_dir() . $partial_name;
 		if (file_exists($partial)) {
 			include $partial;
+		} else {
+			if (class_exists('AIPS_Logger')) {
+				AIPS_Logger::log('UI Primitive partial not found: ' . $partial_name, 'warning');
+			}
+			echo '<div class="notice notice-error aips-error-fallback"><p>' . sprintf(esc_html__('UI component %s could not be loaded.', 'ai-post-scheduler'), esc_html($partial_name)) . '</p></div>';
 		}
 	}
 
 	/**
-	 * Render a standardized Admin Page Header.
+	 * Render a complete Hub Shell (Wrap + Header + Rail Navigation + Main Stage).
 	 *
-	 * @param array<string, mixed> $args Header configuration:
-	 *  - 'title': (string) Page title (e.g. 'Content', 'Studio', 'Automations').
+	 * @param array<string, mixed>|AIPS_Admin_Page_Context $args Shell configuration parameters:
+	 *  - 'wrap_class': (string) CSS class for the outermost wrap. Default 'wrap aips-wrap'.
+	 *  - 'header': (array|AIPS_Admin_Page_Context) Parameters passed to `render_page_header()`.
+	 *  - 'rail': (array) Parameters passed to `render_rail()`.
+	 *  - 'content': (string) Raw HTML or template output for the main content stage.
+	 *  - 'content_callback': (callable|null) Optional callback to render main stage content.
+	 * @param callable|null                                $content_callback Optional callback if not provided in $args.
+	 * @return void
+	 */
+	public static function render_hub_shell($args = array(), $content_callback = null) {
+		self::include_partial('admin-hub-shell.php', $args, $content_callback);
+	}
+
+	/**
+	 * Render a Breadcrumb Navigation Trail.
+	 *
+	 * @param array<int, array{label:string, url?:string, icon?:string}> $breadcrumbs Array of breadcrumb items.
+	 * @return void
+	 */
+	public static function render_breadcrumbs($breadcrumbs = array()) {
+		self::include_partial('admin-breadcrumbs.php', (array) $breadcrumbs);
+	}
+
+	/**
+	 * Render a standardized Admin Page Header with Contextual Breadcrumbs, Summary Chips, and Actions.
+	 *
+	 * @param array<string, mixed>|AIPS_Admin_Page_Context $args Header configuration:
+	 *  - 'title': (string) Page / Hub title (e.g. 'Content', 'Studio', 'Automations').
+	 *  - 'context_title': (string) Optional active section/tab/view title (e.g. 'Schedules').
 	 *  - 'icon': (string) Dashicon slug (e.g. 'dashicons-admin-post').
 	 *  - 'icon_color': (string) Optional icon color style/token.
 	 *  - 'description': (string) Short descriptive subtitle.
+	 *  - 'breadcrumbs': (array) Optional array of breadcrumb items.
+	 *  - 'summary_items': (array) Optional array of micro-metric summary chips.
 	 *  - 'badges': (array) Optional array of badge definitions for status/counts.
 	 *  - 'actions': (array) Array of action button arrays (label, icon, url/id, class, type, data_attrs).
 	 * @return void
 	 */
 	public static function render_page_header($args = array()) {
-		$partial = self::get_partials_dir() . 'admin-page-header.php';
-		if (file_exists($partial)) {
-			include $partial;
+		if ($args instanceof AIPS_Admin_Page_Context) {
+			$args = $args->to_header_args();
 		}
+		self::include_partial('admin-page-header.php', (array) $args);
 	}
 
 	/**
@@ -97,10 +127,7 @@ class AIPS_Admin_UI_Primitives {
 	 * @return void
 	 */
 	public static function render_rail($args = array()) {
-		$partial = self::get_partials_dir() . 'admin-rail.php';
-		if (file_exists($partial)) {
-			include $partial;
-		}
+		self::include_partial('admin-rail.php', (array) $args);
 	}
 
 	/**
@@ -114,10 +141,7 @@ class AIPS_Admin_UI_Primitives {
 	 * @return void
 	 */
 	public static function render_action_toolbar($args = array()) {
-		$partial = self::get_partials_dir() . 'admin-action-toolbar.php';
-		if (file_exists($partial)) {
-			include $partial;
-		}
+		self::include_partial('admin-action-toolbar.php', (array) $args);
 	}
 
 	/**
@@ -138,10 +162,7 @@ class AIPS_Admin_UI_Primitives {
 	 * @return void
 	 */
 	public static function render_card($args = array(), $body_callback = null) {
-		$partial = self::get_partials_dir() . 'admin-card.php';
-		if (file_exists($partial)) {
-			include $partial;
-		}
+		self::include_partial('admin-card.php', (array) $args, $body_callback);
 	}
 
 	/**
@@ -160,10 +181,7 @@ class AIPS_Admin_UI_Primitives {
 	 * @return void
 	 */
 	public static function render_empty_state($args = array()) {
-		$partial = self::get_partials_dir() . 'admin-empty-state.php';
-		if (file_exists($partial)) {
-			include $partial;
-		}
+		self::include_partial('admin-empty-state.php', (array) $args);
 	}
 
 	/**
@@ -196,7 +214,7 @@ class AIPS_Admin_UI_Primitives {
 
 		$html = '<span class="aips-badge ' . esc_attr($badge_class . $class) . '">';
 		if (!empty($icon)) {
-			$html .= '<span class="dashicons ' . esc_attr($icon) . '"></span> ';
+			$html .= '<span class="dashicons ' . esc_attr($icon) . '" aria-hidden="true"></span> ';
 		}
 		$html .= esc_html($label);
 		$html .= '</span>';
@@ -243,9 +261,6 @@ class AIPS_Admin_UI_Primitives {
 	}
 
 	public static function render_error_fallback($args = array()) {
-		$partial = self::get_partials_dir() . 'admin-error-fallback.php';
-		if (file_exists($partial)) {
-			include $partial;
-		}
+		self::include_partial('admin-error-fallback.php', (array) $args);
 	}
 }

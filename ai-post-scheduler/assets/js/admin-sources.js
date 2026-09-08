@@ -214,12 +214,9 @@
 				data.is_active = 1;
 			}
 
-			$('#aips-save-source-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
-
+			var $btn = $('#aips-save-source-btn');
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, data, function (response) {
-				$('#aips-save-source-btn').prop('disabled', false).text(aipsSourcesL10n.saveSource);
-
+			var req = $.post(aipsAjax.ajaxUrl, data, function (response) {
 				if (!response.success) {
 					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveFailed, 'error');
 					return;
@@ -229,9 +226,10 @@
 				$('#aips-source-modal').hide();
 				self.refreshPage();
 			}).fail(function () {
-				$('#aips-save-source-btn').prop('disabled', false).text(aipsSourcesL10n.saveSource);
 				AIPS.Utilities.showToast(aipsSourcesL10n.saveFailed, 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsSourcesL10n.saving });
 		},
 
 		// -----------------------------------------------------------------
@@ -246,14 +244,15 @@
 		 */
 		deleteSource: function (e) {
 			e.preventDefault();
-			var id = parseInt($(e.currentTarget).data('id'), 10);
+			var $btn = $(e.currentTarget);
+			var id = parseInt($btn.data('id'), 10);
 
 			if (!confirm(aipsSourcesL10n.deleteConfirm)) {
 				return;
 			}
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:    'aips_delete_source',
 				nonce:     aipsAjax.nonce,
 				source_id: id,
@@ -268,6 +267,8 @@
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.deleteFailed, 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req);
 		},
 
 		// -----------------------------------------------------------------
@@ -288,7 +289,7 @@
 			var newStatus = isActive === 1 ? 0 : 1;
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:    'aips_toggle_source_active',
 				nonce:     aipsAjax.nonce,
 				source_id: id,
@@ -304,6 +305,8 @@
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.toggleFailed, 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req);
 		},
 
 		// -----------------------------------------------------------------
@@ -415,10 +418,9 @@
 				fetched_at:       $('#aips-source-data-fetched-at').val(),
 			};
 
-			$('#aips-save-source-data-btn').prop('disabled', true).text(aipsSourcesL10n.saving);
+			var $btn = $('#aips-save-source-data-btn');
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, data, function (response) {
-				$('#aips-save-source-data-btn').prop('disabled', false).text(aipsSourcesL10n.saveData);
+			var req = $.post(aipsAjax.ajaxUrl, data, function (response) {
 				if (!response.success) {
 					AIPS.Utilities.showToast(response.data.message || aipsSourcesL10n.saveDataFailed, 'error');
 					return;
@@ -427,9 +429,10 @@
 				self.closeSourceDataModal($.Event('click'));
 				window.location.reload();
 			}).fail(function () {
-				$('#aips-save-source-data-btn').prop('disabled', false).text(aipsSourcesL10n.saveData);
 				AIPS.Utilities.showToast(aipsSourcesL10n.saveDataFailed, 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsSourcesL10n.saving });
 		},
 
 		/**
@@ -553,15 +556,12 @@
 			}
 
 			var $btn = $('#aips-add-group-btn');
-			$btn.prop('disabled', true);
-
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action: 'aips_save_source_group',
 				nonce:  aipsAjax.nonce,
 				name:   name,
 			}, function (response) {
-				$btn.prop('disabled', false);
 				if (!response.success) {
 					AIPS.Utilities.showToast(response.data.message || 'Failed to create group.', 'error');
 					return;
@@ -569,9 +569,10 @@
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
-				$btn.prop('disabled', false);
 				AIPS.Utilities.showToast('Failed to create group.', 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req);
 		},
 
 		/**
@@ -582,14 +583,15 @@
 		 */
 		deleteSourceGroup: function (e) {
 			e.preventDefault();
-			var termId = parseInt($(e.currentTarget).data('term-id'), 10);
+			var $btn = $(e.currentTarget);
+			var termId = parseInt($btn.data('term-id'), 10);
 
 			if (!confirm(aipsSourcesL10n.deleteGroupConfirm || 'Delete this Source Group? Sources in this group will not be deleted.')) {
 				return;
 			}
 
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:  'aips_delete_source_group',
 				nonce:   aipsAjax.nonce,
 				term_id: termId,
@@ -603,6 +605,8 @@
 			}).fail(function () {
 				AIPS.Utilities.showToast('Failed to delete group.', 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req);
 		},
 
 		// -----------------------------------------------------------------
@@ -620,19 +624,12 @@
 			var $btn = $(e.currentTarget);
 			var id   = parseInt($btn.data('id'), 10);
 
-			$btn.prop('disabled', true);
-			var $icon = $btn.find('.dashicons');
-			$icon.removeClass('dashicons-download').addClass('dashicons-update aips-spin');
-
 			var self = this;
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:    'aips_fetch_source_now',
 				nonce:     aipsAjax.nonce,
 				source_id: id,
 			}, function (response) {
-				$btn.prop('disabled', false);
-				$icon.removeClass('dashicons-update aips-spin').addClass('dashicons-download');
-
 				if (!response.success) {
 					AIPS.Utilities.showToast(response.data.message || 'Fetch failed.', 'error');
 					return;
@@ -641,10 +638,10 @@
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.refreshPage();
 			}).fail(function () {
-				$btn.prop('disabled', false);
-				$icon.removeClass('dashicons-update aips-spin').addClass('dashicons-download');
 				AIPS.Utilities.showToast('Fetch failed.', 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req, { timeout: 120000 });
 		},
 
 		// -----------------------------------------------------------------

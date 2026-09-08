@@ -174,7 +174,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-post-slice-form" novalidate>
+			<form id="aips-post-slice-form" data-aips-async="true" novalidate>
 				<input type="hidden" name="slice_id" id="aips-post-slice-id" value="0">
 
 				<div class="aips-form-row">

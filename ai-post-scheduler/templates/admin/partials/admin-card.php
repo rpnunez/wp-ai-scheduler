@@ -62,18 +62,24 @@ $has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge
 						$action_icon  = isset($action['icon']) ? $action['icon'] : '';
 						$action_id    = isset($action['id']) ? $action['id'] : '';
 						$action_label = isset($action['label']) ? $action['label'] : '';
+						$data_attrs   = isset($action['data_attrs']) && is_array($action['data_attrs']) ? $action['data_attrs'] : array();
+						$data_attr_str = '';
+						foreach ($data_attrs as $dk => $dv) {
+							$data_attr_str .= ' data-' . esc_attr(sanitize_key($dk)) . '="' . esc_attr($dv) . '"';
+						}
+						$aria_label   = isset($action['aria_label']) ? ' aria-label="' . esc_attr($action['aria_label']) . '"' : '';
 						?>
 						<?php if ('link' === $action_type && !empty($action['url'])) : ?>
-							<a href="<?php echo esc_url($action['url']); ?>" class="<?php echo esc_attr($action_class); ?>"<?php echo $action_id ? ' id="' . esc_attr($action_id) . '"' : ''; ?>>
+							<a href="<?php echo esc_url($action['url']); ?>" class="<?php echo esc_attr($action_class); ?>"<?php echo $action_id ? ' id="' . esc_attr($action_id) . '"' : ''; ?><?php echo $data_attr_str; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $aria_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 								<?php if ($action_icon) : ?>
-									<span class="dashicons <?php echo esc_attr($action_icon); ?>"></span>
+									<span class="dashicons <?php echo esc_attr($action_icon); ?>" aria-hidden="true"></span>
 								<?php endif; ?>
 								<?php echo esc_html($action_label); ?>
 							</a>
 						<?php else : ?>
-							<button type="button" class="<?php echo esc_attr($action_class); ?>"<?php echo $action_id ? ' id="' . esc_attr($action_id) . '"' : ''; ?>>
+							<button type="button" class="<?php echo esc_attr($action_class); ?>"<?php echo $action_id ? ' id="' . esc_attr($action_id) . '"' : ''; ?><?php echo $data_attr_str; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $aria_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 								<?php if ($action_icon) : ?>
-									<span class="dashicons <?php echo esc_attr($action_icon); ?>"></span>
+									<span class="dashicons <?php echo esc_attr($action_icon); ?>" aria-hidden="true"></span>
 								<?php endif; ?>
 								<?php echo esc_html($action_label); ?>
 							</button>
@@ -89,14 +95,14 @@ $has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge
 		if (is_callable($callback)) {
 			call_user_func($callback);
 		} else {
-			echo $card_body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo wp_kses_post($card_body);
 		}
 		?>
 	</div>
 
 	<?php if (!empty($card_footer)) : ?>
 		<div class="aips-panel-footer">
-			<?php echo $card_footer; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php echo wp_kses_post($card_footer); ?>
 		</div>
 	<?php endif; ?>
 </div>

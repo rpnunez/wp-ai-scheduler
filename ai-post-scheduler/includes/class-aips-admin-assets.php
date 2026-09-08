@@ -63,7 +63,59 @@ class AIPS_Admin_Assets {
      */
     public function __construct() {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_filter('style_loader_src', array($this, 'filter_asset_version_for_dev'), 999, 2);
+        add_filter('script_loader_src', array($this, 'filter_asset_version_for_dev'), 999, 2);
     }
+
+	/**
+	 * Get asset version string.
+	 *
+	 * Uses file modification timestamp in development mode (WP_DEBUG or SCRIPT_DEBUG)
+	 * for instant automatic cache-busting, otherwise falls back to AIPS_VERSION.
+	 *
+	 * @param string $relative_path Path relative to plugin root (e.g. 'assets/css/admin.css').
+	 * @return string|int
+	 */
+	public static function get_asset_version($relative_path = '') {
+		$is_debug = (defined('WP_DEBUG') && WP_DEBUG) || (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG);
+		if ($is_debug && !empty($relative_path)) {
+			$file = AIPS_PLUGIN_DIR . ltrim($relative_path, '/');
+			if (file_exists($file)) {
+				return filemtime($file);
+			}
+			return time();
+		}
+
+		return AIPS_VERSION;
+	}
+
+	/**
+	 * Filter script and style loader URLs to auto-cache-bust in development (WP_DEBUG/SCRIPT_DEBUG).
+	 *
+	 * @param string $src    The source URL of the enqueued style or script.
+	 * @param string $handle The style or script handle.
+	 * @return string
+	 */
+	public function filter_asset_version_for_dev($src, $handle) {
+		$is_debug = (defined('WP_DEBUG') && WP_DEBUG) || (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG);
+		if (!$is_debug || empty($src)) {
+			return $src;
+		}
+
+		if (strpos($handle, 'aips-') === 0 || strpos($src, 'ai-post-scheduler/assets/') !== false) {
+			$parsed = wp_parse_url($src);
+			if (!empty($parsed['path']) && preg_match('#ai-post-scheduler/(assets/.+)$#', $parsed['path'], $matches)) {
+				$rel_file = $matches[1];
+				$full_file = AIPS_PLUGIN_DIR . $rel_file;
+				if (file_exists($full_file)) {
+					return add_query_arg('ver', (string) filemtime($full_file), remove_query_arg('ver', $src));
+				}
+			}
+			return add_query_arg('ver', (string) time(), remove_query_arg('ver', $src));
+		}
+
+		return $src;
+	}
 
     /**
      * Enqueue admin styles and scripts.

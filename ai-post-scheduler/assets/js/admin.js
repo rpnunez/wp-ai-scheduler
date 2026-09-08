@@ -123,11 +123,6 @@
                         label: rateLimiter.enabled ? 'Rate Limit Remaining' : 'Rate Limiting',
                         value: rateLimiter.enabled ? (rateLimiter.remaining + ' / ' + rateLimiter.max_requests) : 'Disabled',
                         tone: rateLimiter.enabled && rateLimiter.remaining === 0 ? 'error' : (rateLimiter.enabled ? 'success' : 'neutral')
-                    },
-                    {
-                        label: aipsScheduleL10n.bulkFailedLabel,
-                        value: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10),
-                        tone: parseInt((d.bulk_jobs && d.bulk_jobs.failed) || 0, 10) > 0 ? 'error' : 'neutral'
                     }
                 ];
 
@@ -139,42 +134,46 @@
                 });
                 $('#aips-schedule-status-summary').html(cardsHtml.join(''));
 
-                var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var typeLabel = typeLabels[item.type] || item.type || '';
-                    var dt = new Date(item.timestamp * 1000);
-                    dt.setSeconds(0, 0);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + AIPS.Utilities.escapeHtml(typeLabel) + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + AIPS.Utilities.escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + AIPS.Utilities.escapeHtml(item.title || item.cron_hook || '') + '</div>' +
-                    '</div>';
-                });
+                if ($('#aips-schedule-status-timeline').length) {
+                    var scheduleTimelineItems = (d.timeline || []).sort(function(a, b) {
+                        return a.timestamp - b.timestamp;
+                    }).slice(0, 12).map(function(item) {
+                        var typeLabel = typeLabels[item.type] || item.type || '';
+                        var dt = new Date(item.timestamp * 1000);
+                        dt.setSeconds(0, 0);
+                        return '<div class="aips-schedule-status-event">' +
+                            '<div class="aips-schedule-status-event-top">' +
+                                '<span class="aips-badge aips-badge-neutral">' + AIPS.Utilities.escapeHtml(typeLabel) + '</span>' +
+                                '<span class="aips-schedule-status-event-time">' + AIPS.Utilities.escapeHtml(dt.toLocaleString()) + '</span>' +
+                            '</div>' +
+                            '<div class="aips-schedule-status-event-title">' + AIPS.Utilities.escapeHtml(item.title || item.cron_hook || '') + '</div>' +
+                        '</div>';
+                    });
 
-                $('#aips-schedule-status-timeline').html(
-                    scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
-                );
+                    $('#aips-schedule-status-timeline').html(
+                        scheduleTimelineItems.length ? scheduleTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.noScheduleRunsNext24h) + '</div>'
+                    );
+                }
 
-                var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
-                    return a.timestamp - b.timestamp;
-                }).slice(0, 12).map(function(item) {
-                    var dt = new Date(item.timestamp * 1000);
-                    dt.setSeconds(0, 0);
-                    return '<div class="aips-schedule-status-event">' +
-                        '<div class="aips-schedule-status-event-top">' +
-                            '<span class="aips-badge aips-badge-neutral">' + AIPS.Utilities.escapeHtml(item.hook || '') + '</span>' +
-                            '<span class="aips-schedule-status-event-time">' + AIPS.Utilities.escapeHtml(dt.toLocaleString()) + '</span>' +
-                        '</div>' +
-                        '<div class="aips-schedule-status-event-title">' + AIPS.Utilities.escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
-                    '</div>';
-                });
+                if ($('#aips-schedule-status-queue-timeline').length) {
+                    var queueTimelineItems = (d.queue_timeline || []).sort(function(a, b) {
+                        return a.timestamp - b.timestamp;
+                    }).slice(0, 12).map(function(item) {
+                        var dt = new Date(item.timestamp * 1000);
+                        dt.setSeconds(0, 0);
+                        return '<div class="aips-schedule-status-event">' +
+                            '<div class="aips-schedule-status-event-top">' +
+                                '<span class="aips-badge aips-badge-neutral">' + AIPS.Utilities.escapeHtml(item.hook || '') + '</span>' +
+                                '<span class="aips-schedule-status-event-time">' + AIPS.Utilities.escapeHtml(dt.toLocaleString()) + '</span>' +
+                            '</div>' +
+                            '<div class="aips-schedule-status-event-title">' + AIPS.Utilities.escapeHtml((item.count || 0) + ' job(s)') + '</div>' +
+                        '</div>';
+                    });
 
-                $('#aips-schedule-status-queue-timeline').html(
-                    queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
-                );
+                    $('#aips-schedule-status-queue-timeline').html(
+                        queueTimelineItems.length ? queueTimelineItems.join('') : '<div class="aips-schedule-status-empty">' + AIPS.Utilities.escapeHtml(aipsScheduleL10n.noQueueEventsNext24h) + '</div>'
+                    );
+                }
 
                 var warnings = [];
                 if (d.last_error) {
@@ -926,9 +925,7 @@
             AIPS.Utilities.confirm('Are you sure you want to clone this template?', 'Confirm', [
                 { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    AIPS.Utilities.setButtonLoading($btn, 'Cloning...');
-
-                    $.ajax({
+                    var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
@@ -941,14 +938,14 @@
                                 AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
                             } else {
                                 AIPS.Utilities.showToast(response.data.message, 'error');
-                                AIPS.Utilities.resetButton($btn);
                             }
                         },
                         error: function() {
                             AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                            AIPS.Utilities.resetButton($btn);
                         }
                     });
+
+                    AIPS.Utilities.withLock($btn, req, { loadingText: 'Cloning...' });
                 }}
             ]);
         },
@@ -971,9 +968,7 @@
             AIPS.Utilities.confirm(aipsAdminL10n.deleteTemplateConfirm || 'Are you sure you want to delete this template?', 'Confirm', [
                 { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: aipsAdminL10n.confirmDeleteButton || 'Delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    AIPS.Utilities.setButtonLoading($btn, 'Deleting...');
-
-                    $.ajax({
+                    var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
@@ -988,14 +983,14 @@
                                 });
                             } else {
                                 AIPS.Utilities.showToast(response.data.message || 'Failed to delete template.', 'error');
-                                AIPS.Utilities.resetButton($btn);
                             }
                         },
                         error: function() {
                             AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain || 'Failed to delete template.', 'error');
-                            AIPS.Utilities.resetButton($btn);
                         }
                     });
+
+                    AIPS.Utilities.withLock($btn, req, { loadingText: 'Deleting...' });
                 }}
             ]);
         },
@@ -1028,9 +1023,7 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
-
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -1076,11 +1069,10 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
             });
+
+            AIPS.Utilities.withLock($btn, req, { loadingText: aipsAdminL10n.saving });
         },
 
         /**
@@ -1105,10 +1097,7 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving, {isHtml: true});
-
-            // Save with is_active set to 0 (inactive)
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -1166,10 +1155,13 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: '<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving,
+                isHtml: true,
+                timeout: 30000
             });
         },
 
@@ -1195,7 +1187,6 @@
             }
 
             var $btn = $(this);
-            AIPS.Utilities.setButtonLoading($btn, '<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating, {isHtml: true});
 
             // Gather all form data
             var data = {
@@ -1219,7 +1210,7 @@
                 post_author: $('#post_author').val(),
             };
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: data,
@@ -1246,10 +1237,13 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: '<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating,
+                isHtml: true,
+                timeout: 180000
             });
         },
 
@@ -1268,9 +1262,7 @@
             var id = $(this).data('id');
             var $btn = $(this);
 
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.generating);
-
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -1287,10 +1279,12 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: aipsAdminL10n.generating,
+                timeout: 180000
             });
         },
 
@@ -1538,8 +1532,7 @@
                 $form[0].reportValidity();
                 return;
             }
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -1565,10 +1558,12 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: aipsAdminL10n.saving,
+                timeout: 30000
             });
         },
 
@@ -2047,12 +2042,10 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
-
             var frequency = $('#schedule_frequency').val() || 'weekly';
             var startTime = $('#schedule_start_time').val() || '';
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -2083,10 +2076,12 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: aipsAdminL10n.saving,
+                timeout: 30000
             });
         },
 
@@ -2114,9 +2109,7 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
-
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -2147,10 +2140,12 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: aipsAdminL10n.saving,
+                timeout: 30000
             });
         },
 
@@ -2213,9 +2208,7 @@
                 return;
             }
 
-            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
-
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -2241,10 +2234,13 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: '<span class="dashicons dashicons-update aips-spin"></span>',
+                isHtml: true,
+                timeout: 180000
             });
         },
 
@@ -3341,9 +3337,7 @@
 
         /** Execute a unified schedule using the selected schedule-advance mode. */
         executeUnifiedRunNow: function($btn, id, type, advanceSchedule) {
-            AIPS.Utilities.setButtonLoading($btn, '<span class="dashicons dashicons-update aips-spin"></span>', { isHtml: true });
-
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -3369,10 +3363,13 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    AIPS.Utilities.resetButton($btn);
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: '<span class="dashicons dashicons-update aips-spin"></span>',
+                isHtml: true,
+                timeout: 180000
             });
         },
 
@@ -3991,7 +3988,6 @@
          */
         saveStructure: function() {
             var $btn = $(this);
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             var data = {
                 action: 'aips_save_structure',
@@ -4004,8 +4000,7 @@
                 is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
             };
 
-            $.post(aipsAjax.ajaxUrl, data, function(response){
-                AIPS.Utilities.resetButton($btn);
+            var req = $.post(aipsAjax.ajaxUrl, data, function(response){
                 if (response.success) {
                     AIPS.Utilities.showToast(response.data.message || 'Structure saved successfully', 'success');
                     $('#aips-structure-modal').hide();
@@ -4040,8 +4035,12 @@
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveStructureFailed, 'error');
                 }
             }).fail(function(){
-                AIPS.Utilities.resetButton($btn);
                 AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: aipsAdminL10n.saving,
+                timeout: 30000
             });
         },
 
@@ -4148,7 +4147,6 @@
          */
         saveSection: function() {
             var $btn = $(this);
-            AIPS.Utilities.setButtonLoading($btn, aipsAdminL10n.saving);
 
             var data = {
                 action: 'aips_save_prompt_section',
@@ -4161,8 +4159,7 @@
                 is_active: $('#section_is_active').is(':checked') ? 1 : 0
             };
 
-            $.post(aipsAjax.ajaxUrl, data, function(response){
-                AIPS.Utilities.resetButton($btn);
+            var req = $.post(aipsAjax.ajaxUrl, data, function(response){
                 if (response.success) {
                     AIPS.Utilities.showToast(response.data.message || 'Section saved successfully', 'success');
                     $('#aips-section-modal').hide();
@@ -4210,8 +4207,12 @@
                     AIPS.Utilities.showToast(response.data.message || aipsStructuresL10n.saveSectionFailed, 'error');
                 }
             }).fail(function(){
-                AIPS.Utilities.resetButton($btn);
                 AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: aipsAdminL10n.saving,
+                timeout: 30000
             });
         },
 

@@ -231,7 +231,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-modal-body">
-                <form id="aips-template-form">
+                <form id="aips-template-form" data-aips-async="true">
                     <input type="hidden" name="template_id" id="template_id" value="">
                     
                     <!-- Step 1: Basic Info & Title -->

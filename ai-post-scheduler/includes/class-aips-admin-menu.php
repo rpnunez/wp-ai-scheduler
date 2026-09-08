@@ -224,7 +224,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page)) {
+        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page) || $this->is_studio_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -234,7 +234,7 @@ class AIPS_Admin_Menu {
      * Highlight consolidated submenu items for hidden child pages.
      *
      * Hidden pages registered with a null parent do not automatically activate a submenu
-     * item in WordPress. This filter maps Diagnostics and Automations child pages to
+     * item in WordPress. This filter maps Diagnostics, Automations, and Studio child pages to
      * their corresponding visible submenu entries.
      *
      * @param string $submenu_file The current submenu file slug.
@@ -248,6 +248,9 @@ class AIPS_Admin_Menu {
         if ($this->is_automations_child_page($page)) {
             return 'aips-automations';
         }
+        if ($this->is_studio_child_page($page)) {
+            return 'aips-studio';
+        }
         return $submenu_file;
     }
 
@@ -258,18 +261,10 @@ class AIPS_Admin_Menu {
      * @return bool
      */
     private function is_diagnostics_child_page($page) {
-        return in_array(
-            $page,
-            array(
-                'aips-operations-insights',
-                'aips-status',
-                'aips-telemetry',
-                'aips-dev-tools',
-                'aips-cache-monitor',
-                AIPS_Stress_Test_Controller::PAGE_SLUG,
-            ),
-            true
-        );
+        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_DIAGNOSTICS)) {
+            return true;
+        }
+        return $page === AIPS_Stress_Test_Controller::PAGE_SLUG;
     }
 
     /**
@@ -279,24 +274,23 @@ class AIPS_Admin_Menu {
      * @return bool
      */
     private function is_automations_child_page($page) {
-        return in_array(
-            $page,
-            array(
-                'aips-schedule',
-                'aips-campaigns',
-                'aips-templates',
-                'aips-authors',
-                'aips-sources',
-                'aips-source-data',
-                'aips-taxonomy',
-                'aips-internal-links',
-                'aips-affiliate-links',
-                'aips-author-topics',
-                AIPS_Campaigns_Controller::PAGE_SLUG,
-                AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
-            ),
-            true
-        );
+        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_AUTOMATIONS)) {
+            return true;
+        }
+        return in_array($page, array(AIPS_Campaigns_Controller::PAGE_SLUG, AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG), true);
+    }
+
+    /**
+     * Determine whether a hidden page belongs under Studio.
+     *
+     * @param string $page Current admin page slug.
+     * @return bool
+     */
+    private function is_studio_child_page($page) {
+        if (class_exists('AIPS_Admin_Page_Context') && AIPS_Admin_Page_Context::is_child_page($page, AIPS_Admin_Page_Context::HUB_STUDIO)) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -339,6 +333,46 @@ class AIPS_Admin_Menu {
     }
 
     /**
+     * Safely redirect a legacy or consolidated subpage to its new hub and tab,
+     * preserving all existing query parameters (filters, search, pagination, etc.).
+     *
+     * @param string $hub_page   Target parent hub slug (e.g. 'aips-studio').
+     * @param string $tab        Optional target tab identifier within the hub.
+     * @param array  $extra_args Additional query parameters to include or override.
+     * @return void
+     */
+    public function redirect_to_hub($hub_page, $tab = '', $extra_args = array()) {
+        $query_args = array();
+
+        if (!empty($_GET) && is_array($_GET)) {
+            foreach ($_GET as $key => $val) {
+                $sanitized_key = sanitize_key(wp_unslash($key));
+                if ('page' === $sanitized_key) {
+                    continue;
+                }
+                if (is_array($val)) {
+                    $query_args[$sanitized_key] = array_map('sanitize_text_field', wp_unslash($val));
+                } else {
+                    $query_args[$sanitized_key] = sanitize_text_field(wp_unslash($val));
+                }
+            }
+        }
+
+        $query_args['page'] = $hub_page;
+        if (!empty($tab)) {
+            $query_args['tab'] = $tab;
+        }
+
+        if (!empty($extra_args)) {
+            $query_args = array_merge($query_args, $extra_args);
+        }
+
+        $target_url = add_query_arg($query_args, admin_url('admin.php'));
+        wp_safe_redirect($target_url);
+        exit;
+    }
+
+    /**
      * Render the Voices management page.
      *
      * Delegates rendering to the AIPS_Voices class.
@@ -346,8 +380,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_voices_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-studio&tab=voices'));
-        exit;
+        $this->redirect_to_hub('aips-studio', 'voices');
     }
 
     /**
@@ -358,8 +391,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_templates_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-studio&tab=templates'));
-        exit;
+        $this->redirect_to_hub('aips-studio', 'templates');
     }
 
     /**
@@ -370,8 +402,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_schedule_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=schedules'));
-        exit;
+        $this->redirect_to_hub('aips-automations', 'schedules');
     }
 
     /**
@@ -430,8 +461,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_authors_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=authors'));
-        exit;
+        $this->redirect_to_hub('aips-automations', 'authors');
     }
 
     /**
@@ -440,8 +470,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_post_slices_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-studio&tab=post-slices'));
-        exit;
+        $this->redirect_to_hub('aips-studio', 'post-slices');
     }
 
     /**
@@ -453,17 +482,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_author_topics_page() {
-        $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-        $url = add_query_arg(
-            array(
-                'page'      => 'aips-automations',
-                'tab'       => 'author-topics',
-                'author_id' => $author_id,
-            ),
-            admin_url('admin.php')
-        );
-        wp_safe_redirect($url);
-        exit;
+        $this->redirect_to_hub('aips-automations', 'author-topics');
     }
 
     /**
@@ -486,8 +505,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_structures_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-studio&tab=structures'));
-        exit;
+        $this->redirect_to_hub('aips-studio', 'structures');
     }
 
     /**
@@ -517,8 +535,7 @@ class AIPS_Admin_Menu {
     }
 
     public function render_operations_insights_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=insights'));
-        exit;
+        $this->redirect_to_hub('aips-diagnostics', 'insights');
     }
 
     /**
@@ -527,8 +544,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_telemetry_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=telemetry'));
-        exit;
+        $this->redirect_to_hub('aips-diagnostics', 'telemetry');
     }
 
     /**
@@ -539,8 +555,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_sources_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=sources'));
-        exit;
+        $this->redirect_to_hub('aips-automations', 'sources');
     }
 
     /**
@@ -609,8 +624,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_cache_monitor_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=cache-monitor'));
-        exit;
+        $this->redirect_to_hub('aips-diagnostics', 'cache-monitor');
     }
 
     /**
@@ -621,8 +635,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_status_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=status'));
-        exit;
+        $this->redirect_to_hub('aips-diagnostics', 'status');
     }
 
     /**
@@ -633,8 +646,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_stress_test_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=stress-test'));
-        exit;
+        $this->redirect_to_hub('aips-diagnostics', 'stress-test');
     }
 
     /**
@@ -645,8 +657,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_dev_tools_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-diagnostics&tab=dev-tools'));
-        exit;
+        $this->redirect_to_hub('aips-diagnostics', 'dev-tools');
     }
 
     /**
@@ -657,8 +668,7 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_taxonomy_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=taxonomy'));
-        exit;
+        $this->redirect_to_hub('aips-automations', 'taxonomy');
     }
 
     /**
@@ -670,13 +680,11 @@ class AIPS_Admin_Menu {
      * @return void
      */
     public function render_affiliate_links_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=affiliate-links'));
-        exit;
+        $this->redirect_to_hub('aips-automations', 'affiliate-links');
     }
 
     public function render_internal_links_page() {
-        wp_safe_redirect(admin_url('admin.php?page=aips-automations&tab=internal-links'));
-        exit;
+        $this->redirect_to_hub('aips-automations', 'internal-links');
     }
 
     public function render_content_indexer_page() {
