@@ -147,16 +147,33 @@ class AIPS_Config {
             // Conversational generation (requires a provider with supports_conversation())
             'aips_conversational_generation' => false,
             'aips_conversational_metadata_turn' => false,
+            'aips_global_system_prompt' => '',
+            'aips_max_tokens_outline' => 800,
+            'aips_max_tokens_faq' => 600,
+            'aips_ai_fallback_provider' => '',
+            'aips_ai_fallback_model' => '',
             // Post defaults
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
-            // General
+            'aips_default_post_format' => 'standard',
+            'aips_default_comment_status' => 'open',
+            'aips_default_ping_status' => 'open',
+            'aips_auto_generate_meta_description' => true,
+            'aips_auto_generate_tags' => true,
+            'aips_max_tags_count' => 5,
+            // General & Integrations
             'aips_unsplash_access_key' => '',
+            'aips_webhook_url' => '',
+            'aips_webhook_secret' => '',
+            'aips_webhook_events' => array('generation_completed', 'generation_failed', 'post_ready_for_review'),
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
+            'aips_history_retention_days' => 90,
             'aips_topic_similarity_threshold' => 0.85,
+            'aips_max_topic_suggestions_batch' => 10,
+            'aips_topics_retention_days' => 60,
             // Notifications
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
@@ -176,16 +193,24 @@ class AIPS_Config {
             'aips_notif_daily_digest_last_sent' => '',
             'aips_notif_weekly_summary_last_sent' => '',
             'aips_notif_monthly_report_last_sent' => '',
-            // Resilience
+            // Resilience & Scheduler
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
+            'aips_retry_jitter' => true,
             'aips_enable_rate_limiting' => false,
             'aips_rate_limit_requests' => 10,
             'aips_rate_limit_period' => 60,
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            'aips_enable_schedule_jitter' => false,
+            'aips_schedule_jitter_minutes' => 15,
+            'aips_cron_batch_size' => 3,
+            'aips_large_batch_threshold' => 5,
+            'aips_batch_max_slices' => 10,
+            'aips_batch_queue_window_seconds' => 600,
+            'aips_generation_timeout_seconds' => 120,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
             'aips_site_target_audience' => '',
@@ -478,7 +503,7 @@ class AIPS_Config {
             'max_attempts' => (int) $this->get_option('aips_retry_max_attempts'),
             'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
             'exponential' => true,
-            'jitter' => true,
+            'jitter' => (bool) $this->get_option('aips_retry_jitter', true),
         );
     }
     

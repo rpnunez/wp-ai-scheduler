@@ -361,11 +361,12 @@ class AIPS_Batch_Queue_Service {
 	 * @return int
 	 */
 	public function get_large_batch_threshold(): int {
+		$default_threshold = (int) AIPS_Config::get_instance()->get_option('aips_large_batch_threshold', self::DEFAULT_THRESHOLD);
 		$threshold = (int) apply_filters(
 			'aips_large_batch_threshold',
 			apply_filters(
 				'aips_batch_threshold_schedule',
-				apply_filters('aips_batch_threshold', self::DEFAULT_THRESHOLD)
+				apply_filters('aips_batch_threshold', $default_threshold)
 			)
 		);
 
@@ -378,11 +379,12 @@ class AIPS_Batch_Queue_Service {
 	 * @return int
 	 */
 	private function get_max_batches(): int {
+		$default_max = (int) AIPS_Config::get_instance()->get_option('aips_batch_max_slices', self::DEFAULT_MAX_BATCHES);
 		$max_batches = (int) apply_filters(
 			'aips_batch_max_jobs',
 			apply_filters(
 				'aips_batch_max_slices_schedule',
-				apply_filters('aips_batch_max_slices', self::DEFAULT_MAX_BATCHES)
+				apply_filters('aips_batch_max_slices', $default_max)
 			)
 		);
 
@@ -395,11 +397,12 @@ class AIPS_Batch_Queue_Service {
 	 * @return int
 	 */
 	private function get_batch_window_seconds(): int {
+		$default_window = (int) AIPS_Config::get_instance()->get_option('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS);
 		$window_seconds = (int) apply_filters(
 			'aips_batch_queue_window_seconds',
 			apply_filters(
 				'aips_batch_window_seconds_schedule',
-				apply_filters('aips_batch_window_seconds', self::DEFAULT_WINDOW_SECONDS)
+				apply_filters('aips_batch_window_seconds', $default_window)
 			)
 		);
 

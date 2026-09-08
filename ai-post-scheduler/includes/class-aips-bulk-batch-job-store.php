@@ -337,7 +337,8 @@ class AIPS_Bulk_Batch_Job_Store {
 	public function cleanup_old_jobs(): int {
 		global $wpdb;
 
-		$cutoff = time() - ( self::CLEANUP_DAYS * DAY_IN_SECONDS );
+		$retention_days = max(1, (int) AIPS_Config::get_instance()->get_option('aips_history_retention_days', self::CLEANUP_DAYS));
+		$cutoff = time() - ( $retention_days * DAY_IN_SECONDS );
 
 		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prepare(
