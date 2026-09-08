@@ -212,6 +212,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_retry_initial_delay'],
 			),
+			'aips_retry_jitter' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_retry_jitter'],
+			),
 			'aips_enable_rate_limiting' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_rate_limiting'],
@@ -247,6 +251,18 @@ class AIPS_Settings {
 			'aips_cron_batch_size' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cron_batch_size'],
+			),
+			'aips_large_batch_threshold' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_large_batch_threshold'],
+			),
+			'aips_batch_max_slices' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_batch_max_slices'],
+			),
+			'aips_batch_queue_window_seconds' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_batch_queue_window_seconds'],
 			),
 			'aips_generation_timeout_seconds' => array(
 				'sanitize_callback' => 'absint',
@@ -854,6 +870,14 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_retry_jitter',
+            __('Retry Delay Jitter', 'ai-post-scheduler'),
+            array($this->ui, 'retry_jitter_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
             'aips_enable_rate_limiting',
             __('Enable Rate Limiting', 'ai-post-scheduler'),
             array($this->ui, 'enable_rate_limiting_field_callback'),
@@ -919,8 +943,32 @@ class AIPS_Settings {
 
         add_settings_field(
             'aips_cron_batch_size',
-            __('Cron Batch Size', 'ai-post-scheduler'),
+            __('Cron Batch Size (Due Schedules)', 'ai-post-scheduler'),
             array($this->ui, 'cron_batch_size_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_large_batch_threshold',
+            __('Batch Queue Slicing Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'large_batch_threshold_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_batch_max_slices',
+            __('Batch Queue Max Slices', 'ai-post-scheduler'),
+            array($this->ui, 'batch_max_slices_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_batch_queue_window_seconds',
+            __('Batch Queue Window (Seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'batch_queue_window_seconds_field_callback'),
             'aips-settings',
             'aips_resilience_section'
         );

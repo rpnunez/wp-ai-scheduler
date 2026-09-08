@@ -358,6 +358,21 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the retry delay jitter setting field.
+     */
+    public function retry_jitter_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_retry_jitter');
+        ?>
+        <input type="hidden" name="aips_retry_jitter" value="0">
+        <label>
+            <input type="checkbox" name="aips_retry_jitter" value="1" <?php checked(!empty($value)); ?>>
+            <?php esc_html_e('Add randomized jitter (0–25%) to retry delays to prevent thundering herd', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Randomizes exponential backoff intervals between network retries against upstream AI providers.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the enable rate limiting setting field.
      */
     public function enable_rate_limiting_field_callback() {
@@ -1425,7 +1440,46 @@ class AIPS_Settings_UI {
 		$value = (int) AIPS_Config::get_instance()->get_option('aips_cron_batch_size');
 		?>
 		<input type="number" name="aips_cron_batch_size" value="<?php echo esc_attr($value); ?>" min="1" max="20" class="small-text">
-		<p class="description"><?php esc_html_e('Maximum number of scheduled posts processed in a single cron runner cycle. Default: 3.', 'ai-post-scheduler'); ?></p>
+		<p class="description"><?php esc_html_e('Maximum number of due schedules processed per cron runner tick. Default: 3.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render large batch slicing threshold field.
+	 *
+	 * @return void
+	 */
+	public function large_batch_threshold_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_large_batch_threshold');
+		?>
+		<input type="number" name="aips_large_batch_threshold" value="<?php echo esc_attr($value); ?>" min="2" max="50" class="small-text">
+		<p class="description"><?php esc_html_e('Minimum post quantity that triggers background queue slicing instead of running all posts in a single cron tick. Default: 5.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render batch queue max slices field.
+	 *
+	 * @return void
+	 */
+	public function batch_max_slices_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_batch_max_slices');
+		?>
+		<input type="number" name="aips_batch_max_slices" value="<?php echo esc_attr($value); ?>" min="1" max="50" class="small-text">
+		<p class="description"><?php esc_html_e('Maximum number of asynchronous cron slices created per large batch run. Default: 10.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render batch queue window seconds field.
+	 *
+	 * @return void
+	 */
+	public function batch_queue_window_seconds_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_batch_queue_window_seconds');
+		?>
+		<input type="number" name="aips_batch_queue_window_seconds" value="<?php echo esc_attr($value); ?>" min="60" max="7200" step="30" class="small-text">
+		<p class="description"><?php esc_html_e('Time window (in seconds) across which sliced batch jobs are spread (600s = 10 minutes). Default: 600.', 'ai-post-scheduler'); ?></p>
 		<?php
 	}
 

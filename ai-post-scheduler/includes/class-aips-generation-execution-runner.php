@@ -86,6 +86,11 @@ class AIPS_Generation_Execution_Runner {
 	 * @return mixed Whatever the work callable returns, or WP_Error on caught Throwable.
 	 */
 	public function run(callable $work, $history_type, array $history_meta, $on_exception = null): mixed {
+		$timeout = (int) AIPS_Config::get_instance()->get_option('aips_generation_timeout_seconds', 120);
+		if (function_exists('set_time_limit') && $timeout > 0) {
+			@set_time_limit($timeout);
+		}
+
 		$correlation_id = AIPS_Correlation_ID::generate();
 		$result = null;
 

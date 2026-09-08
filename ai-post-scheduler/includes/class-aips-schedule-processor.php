@@ -196,6 +196,11 @@ class AIPS_Schedule_Processor {
         int $batch_size,
         int $total_quantity
     ): void {
+        $timeout = (int) AIPS_Config::get_instance()->get_option('aips_generation_timeout_seconds', 120);
+        if (function_exists('set_time_limit') && $timeout > 0) {
+            @set_time_limit($timeout);
+        }
+
         $this->logger->log(
             sprintf(
                 'Batch slice: schedule %d, posts %d-%d of %d',

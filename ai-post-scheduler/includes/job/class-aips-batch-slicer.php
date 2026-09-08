@@ -65,7 +65,8 @@ class AIPS_Batch_Slicer {
 			$filter_name .= '_' . $context;
 		}
 
-		$threshold = (int) apply_filters($filter_name, self::DEFAULT_THRESHOLD);
+		$default_threshold = (int) AIPS_Config::get_instance()->get_option('aips_large_batch_threshold', self::DEFAULT_THRESHOLD);
+		$threshold = (int) apply_filters($filter_name, $default_threshold);
 
 		// Preserve legacy schedule-specific extension points.
 		if ($context === 'schedule') {
@@ -176,7 +177,8 @@ class AIPS_Batch_Slicer {
 			$filter_name .= '_' . $context;
 		}
 
-		$max = (int) apply_filters($filter_name, self::DEFAULT_MAX_SLICES);
+		$default_max = (int) AIPS_Config::get_instance()->get_option('aips_batch_max_slices', self::DEFAULT_MAX_SLICES);
+		$max = (int) apply_filters($filter_name, $default_max);
 
 		// Preserve legacy schedule-specific extension points.
 		if ($context === 'schedule') {
@@ -198,7 +200,8 @@ class AIPS_Batch_Slicer {
 			$filter_name .= '_' . $context;
 		}
 
-		$window = (int) apply_filters($filter_name, self::DEFAULT_WINDOW_SECONDS);
+		$default_window = (int) AIPS_Config::get_instance()->get_option('aips_batch_queue_window_seconds', self::DEFAULT_WINDOW_SECONDS);
+		$window = (int) apply_filters($filter_name, $default_window);
 
 		// Preserve legacy schedule-specific extension points.
 		if ($context === 'schedule') {

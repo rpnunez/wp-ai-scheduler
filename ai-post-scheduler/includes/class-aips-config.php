@@ -196,6 +196,7 @@ class AIPS_Config {
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
+            'aips_retry_jitter' => true,
             'aips_enable_rate_limiting' => false,
             'aips_rate_limit_requests' => 10,
             'aips_rate_limit_period' => 60,
@@ -205,6 +206,9 @@ class AIPS_Config {
             'aips_enable_schedule_jitter' => false,
             'aips_schedule_jitter_minutes' => 15,
             'aips_cron_batch_size' => 3,
+            'aips_large_batch_threshold' => 5,
+            'aips_batch_max_slices' => 10,
+            'aips_batch_queue_window_seconds' => 600,
             'aips_generation_timeout_seconds' => 120,
             // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
             'aips_site_niche' => '',
@@ -472,7 +476,7 @@ class AIPS_Config {
             'max_attempts' => (int) $this->get_option('aips_retry_max_attempts'),
             'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
             'exponential' => true,
-            'jitter' => true,
+            'jitter' => (bool) $this->get_option('aips_retry_jitter', true),
         );
     }
     
