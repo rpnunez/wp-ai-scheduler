@@ -569,7 +569,7 @@ class AIPS_Config {
             'max_attempts' => (int) $this->get_option('aips_retry_max_attempts'),
             'initial_delay' => (int) $this->get_option('aips_retry_initial_delay'),
             'exponential' => true,
-            'jitter' => true,
+            'jitter' => (bool) $this->get_option('aips_retry_jitter', true),
         );
     }
     
