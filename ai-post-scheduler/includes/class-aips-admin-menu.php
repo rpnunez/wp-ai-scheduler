@@ -91,7 +91,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Authors', 'ai-post-scheduler'),
             __('Authors', 'ai-post-scheduler'),
             'manage_options',
@@ -395,7 +395,6 @@ class AIPS_Admin_Menu {
                 'aips-schedule',
                 'aips-campaigns',
                 'aips-templates',
-                'aips-authors',
                 'aips-sources',
                 'aips-source-data',
                 'aips-taxonomy',
