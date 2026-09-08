@@ -318,3 +318,8 @@ Target Feature: Research Planner
 Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js
 Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
+## 2024-09-08 - Authors Optimization
+Target Feature: Authors UI
+Improvement: Exposed the Authors page in the main navigation menu by changing its parent slug from null to ai-post-scheduler and removing it from the automations child page array, improving visibility and workflow flow/efficiency.
+Files Modified: ai-post-scheduler/includes/class-aips-admin-menu.php
+Outcome: Users can now directly access the Authors page without needing to navigate through buried menus or knowing the direct URL.
