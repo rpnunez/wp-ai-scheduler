@@ -75,9 +75,9 @@
 			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Bulk actions
-			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
-			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
-			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
+			$(document).on('click change', '.aips-select-all-topics, #aips-topics-select-all, #cb-select-all-1, #cb-select-all-2', this.toggleSelectAll.bind(this));
+			$(document).on('click change', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
+			$(document).on('click', '.aips-bulk-action-execute, #doaction, #doaction2', this.executeBulkAction.bind(this));
 			
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge[data-context="author-topic"]', this.viewTopicPosts.bind(this));
@@ -88,12 +88,12 @@
 			$(document).on('click', '.topic-title-cell', this.onTopicTitleCellClick.bind(this));
 
 			// Topic search (author-topics page)
-			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
+			$(document).on('keyup search', '#aips-topic-search, input[name="s"]', this.filterTopics.bind(this));
 			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
 
 			// Authors list bulk actions
-			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
-			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
+			$(document).on('change', '#aips-authors-select-all, #cb-select-all-1, #cb-select-all-2', this.toggleSelectAllAuthors.bind(this));
+			$(document).on('click', '#aips-authors-bulk-apply, #doaction, #doaction2', this.executeAuthorsBulkAction.bind(this));
 
 			// Author Suggestions
 			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
@@ -108,7 +108,7 @@
 		 */
 		toggleSelectAllAuthors: function (e) {
 			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-author-checkbox').prop('checked', isChecked);
+			$('.aips-author-checkbox, input[name="author_ids[]"]').prop('checked', isChecked);
 		},
 
 		/**
@@ -121,8 +121,8 @@
 		executeAuthorsBulkAction: function (e) {
 			e.preventDefault();
 
-			const action = $('#aips-authors-bulk-action-select').val();
-			const authorIds = $('.aips-author-checkbox:checked').map(function () {
+			const action = $('#aips-authors-bulk-action-select, select[name="action"], select[name="action2"]').filter(function() { return $(this).val(); }).first().val();
+			const authorIds = $('.aips-author-checkbox:checked, input[name="author_ids[]"]:checked').map(function () {
 				return parseInt($(this).val(), 10);
 			}).get().filter(function (id) { return Number.isInteger(id) && id > 0; });
 
@@ -2014,7 +2014,7 @@
 		 */
 		toggleSelectAll: function (e) {
 			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-topic-checkbox').prop('checked', isChecked);
+			$('.aips-topic-checkbox, input[name="topic_ids[]"]').prop('checked', isChecked);
 		},
 
 		/**
@@ -2043,11 +2043,11 @@
 		executeBulkAction: function (e) {
 			e.preventDefault();
 
-			// Get the dropdown closest to the clicked button
+			// Get the dropdown closest to the clicked button or standard form dropdown
 			const $button = $(e.currentTarget);
-			const $dropdown = $button.siblings('.aips-bulk-action-select');
-			const action = $dropdown.val();
-			const activeTab = $('.aips-tab-link.active').data('tab');
+			const $dropdown = $button.siblings('.aips-bulk-action-select, select[name="action"], select[name="action2"]').first();
+			const action = ($dropdown.length && $dropdown.val()) ? $dropdown.val() : ($('select[name="action"]').val() || $('select[name="action2"]').val() || $('.aips-bulk-action-select').val());
+			const activeTab = $('.aips-tab-link.active').data('tab') || 'pending';
 
 			if (!action) {
 				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
@@ -2061,7 +2061,7 @@
 					ids.push($(this).val());
 				});
 			} else {
-				$('.aips-topic-checkbox:checked').each(function () {
+				$('.aips-topic-checkbox:checked, input[name="topic_ids[]"]:checked').each(function () {
 					ids.push($(this).val());
 				});
 			}

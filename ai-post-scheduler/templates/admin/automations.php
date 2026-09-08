@@ -25,6 +25,7 @@ foreach ($tabs as $tab_key => $tab) {
 		'url'         => $automations_controller->get_tab_url($tab_key),
 		'active'      => ($active_tab === $tab_key),
 		'special'     => !empty($tab['special']),
+		'is_child'    => !empty($tab['is_child']),
 	);
 }
 ?>

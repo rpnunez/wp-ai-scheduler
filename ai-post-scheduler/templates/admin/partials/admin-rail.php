@@ -31,6 +31,7 @@ $nav_id     = isset($args['id']) ? $args['id'] : '';
 			$item_badge_cl = isset($item['badge_class']) ? $item['badge_class'] : 'aips-badge-secondary';
 			$is_active     = !empty($item['active']);
 			$is_special    = !empty($item['special']);
+			$is_child      = !empty($item['is_child']);
 
 			$class_names = 'aips-rail-item';
 			if ($is_active) {
@@ -38,6 +39,9 @@ $nav_id     = isset($args['id']) ? $args['id'] : '';
 			}
 			if ($is_special) {
 				$class_names .= ' aips-rail-item-special';
+			}
+			if ($is_child) {
+				$class_names .= ' aips-rail-item-child';
 			}
 			?>
 			<li>

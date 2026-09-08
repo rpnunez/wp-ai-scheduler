@@ -159,9 +159,11 @@ class AIPS_Automations_Controller {
 				array_slice($tabs, 0, 3, true),
 				array(
 					self::TAB_AUTHOR_TOPICS => array(
-						'label'   => __("Author's Topics", 'ai-post-scheduler'),
-						'icon'    => 'dashicons-list-view',
-						'special' => true,
+						'label'       => __("Author's Topics", 'ai-post-scheduler'),
+						'icon'        => 'dashicons-arrow-right-alt2',
+						'description' => __('Manage generated topic ideas', 'ai-post-scheduler'),
+						'is_child'    => true,
+						'special'     => true,
 					),
 				),
 				array_slice($tabs, 3, null, true)

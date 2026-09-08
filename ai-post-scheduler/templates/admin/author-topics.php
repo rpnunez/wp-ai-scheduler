@@ -70,80 +70,15 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			</div>
 		</div>
 
-		<!-- Topics Panel -->
-		<div class="aips-content-panel" id="aips-author-topics-panel">
-			<!-- Tabs -->
-			<div class="aips-topics-tabs aips-page-tabs">
-				<button class="aips-tab-link active" data-tab="pending">
-					<?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
-				</button>
-				<button class="aips-tab-link" data-tab="approved">
-					<?php esc_html_e('Approved', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="approved-count"><?php echo esc_html($status_counts['approved']); ?></span>
-				</button>
-				<button class="aips-tab-link" data-tab="rejected">
-					<?php esc_html_e('Rejected', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
-				</button>
-				<button class="aips-tab-link" data-tab="posts_generated">
-					<?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="posts-generated-count"><?php echo esc_html($status_counts['posts_generated']); ?></span>
-				</button>
-				<button class="aips-tab-link" data-tab="feedback">
-					<?php esc_html_e('Feedback', 'ai-post-scheduler'); ?>
-				</button>
-			</div>
-
-			<!-- Filter Bar -->
-			<div class="aips-filter-bar">
-				<div class="aips-filter-left aips-btn-group aips-btn-group-inline">
-					<select class="aips-bulk-action-select aips-form-select" style="width: auto;">
-						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-						<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-					</select>
-					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-				</div>
-				<div class="aips-filter-right">
-					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
-					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
-				</div>
-			</div>
-
-			<!-- Topics Content -->
-			<div class="aips-panel-body no-padding">
-				<div id="aips-topics-loading" class="aips-topics-loading">
-					<div class="aips-topics-loading-inner">
-						<div class="aips-topics-loading-icon-wrapper">
-							<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
-						</div>
-						<p class="aips-topics-loading-text"><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
-						<ul class="aips-topics-loading-list" id="aips-topics-loading-list"></ul>
-					</div>
-				</div>
-				<div id="aips-topics-content" style="display: none;"></div>
-			</div>
-		</div>
-		<!-- Table footer -->
-		<div class="tablenav">
-			<span class="aips-table-footer-count" id="aips-topics-result-count">
-				<?php
-				printf(
-					esc_html(
-						_n(
-							'%s topic',
-							'%s topics',
-							$status_counts['pending'],
-							'ai-post-scheduler'
-						)
-					),
-					number_format_i18n( $status_counts['pending'] )
-				);
-				?>
-			</span>
+		<!-- Topics Table -->
+		<div id="aips-author-topics-panel">
+			<?php
+			$author_topics_list_table = new AIPS_Author_Topics_List_Table(array(
+				'author_id' => $author_id,
+			));
+			$author_topics_list_table->prepare_items();
+			$author_topics_list_table->display_page();
+			?>
 		</div>
 
 <!-- Topic Logs Modal -->

@@ -965,6 +965,86 @@
     flex-wrap: nowrap;
 }
 
+/* ==========================================================================
+   AIPS WP_List_Table Standardization Styles
+   ========================================================================== */
+
+.aips-list-table-wrap {
+	background: var(--aips-white);
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-md);
+	padding: var(--aips-space-4);
+	box-shadow: var(--aips-shadow-sm);
+	margin-bottom: var(--aips-space-5);
+}
+
+.aips-list-table-wrap .search-box {
+	margin-bottom: var(--aips-space-3);
+	float: right;
+}
+
+.aips-list-table-wrap .subsubsub {
+	margin: 0 0 var(--aips-space-3) 0;
+	padding: 0;
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-600);
+}
+
+.aips-list-table-wrap .subsubsub a {
+	color: var(--aips-primary);
+	text-decoration: none;
+	font-weight: var(--aips-font-medium);
+}
+
+.aips-list-table-wrap .subsubsub a.current {
+	font-weight: var(--aips-font-bold);
+	color: var(--aips-gray-900);
+}
+
+.aips-list-table-wrap .tablenav.top {
+	margin: var(--aips-space-2) 0 var(--aips-space-3) 0;
+	padding-top: 0;
+}
+
+.aips-list-table-wrap .tablenav.bottom {
+	margin: var(--aips-space-3) 0 var(--aips-space-2) 0;
+}
+
+.aips-list-table-wrap .wp-list-table {
+	border: 1px solid var(--aips-gray-200);
+	border-radius: var(--aips-radius-base);
+	box-shadow: none;
+}
+
+.aips-list-table-wrap .wp-list-table thead th,
+.aips-list-table-wrap .wp-list-table tfoot th {
+	background: var(--aips-gray-50);
+	font-size: var(--aips-text-xs);
+	font-weight: var(--aips-font-semibold);
+	color: var(--aips-gray-700);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	padding: var(--aips-space-3) var(--aips-space-4);
+	border-bottom: 2px solid var(--aips-gray-200);
+}
+
+.aips-list-table-wrap .wp-list-table tbody td {
+	padding: var(--aips-space-3) var(--aips-space-4);
+	vertical-align: middle;
+	font-size: var(--aips-text-sm);
+}
+
+.aips-list-table-wrap .wp-list-table tbody tr:hover {
+	background: var(--aips-gray-50);
+}
+
+.aips-list-table-wrap .row-actions {
+	color: var(--aips-gray-400);
+	font-size: var(--aips-text-xs);
+	padding: 2px 0 0;
+	position: static;
+}
+
 /* History table: checkbox column background (integrate with table) */
 .aips-history-table thead .column-cb,
 .aips-history-table thead .check-column {
@@ -6622,6 +6702,41 @@ button.aips-rail-item.active::before,
 
 .aips-rail-item.active .aips-rail-arrow {
 	color: var(--aips-primary);
+}
+
+/* Sub-Item / Child Rail Item (e.g. Author's Topics under Authors) */
+.aips-rail-nav a.aips-rail-item.aips-rail-item-child,
+.aips-rail-nav button.aips-rail-item.aips-rail-item-child,
+a.aips-rail-item.aips-rail-item-child,
+button.aips-rail-item.aips-rail-item-child,
+.aips-rail-item.aips-rail-item-child {
+	margin-left: 14px !important;
+	width: calc(100% - 14px) !important;
+	padding: 6px 10px 6px 12px !important;
+	font-size: var(--aips-text-xs) !important;
+	border-left: 2px solid var(--aips-gray-200) !important;
+	border-radius: 0 var(--aips-radius-base) var(--aips-radius-base) 0 !important;
+}
+
+.aips-rail-item.aips-rail-item-child .aips-rail-icon {
+	font-size: 15px;
+	width: 15px;
+	height: 15px;
+	color: var(--aips-gray-400);
+}
+
+.aips-rail-nav a.aips-rail-item.aips-rail-item-child.active,
+.aips-rail-nav button.aips-rail-item.aips-rail-item-child.active,
+a.aips-rail-item.aips-rail-item-child.active,
+button.aips-rail-item.aips-rail-item-child.active,
+.aips-rail-item.aips-rail-item-child.active {
+	border-left: 2px solid var(--aips-primary) !important;
+	background: var(--aips-primary-light) !important;
+	color: var(--aips-primary) !important;
+}
+
+.aips-rail-item.aips-rail-item-child.active::before {
+	display: none !important;
 }
 
 .aips-rail-main {
