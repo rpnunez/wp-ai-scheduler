@@ -239,6 +239,20 @@ class AIPS_Settings_UI {
         <?php
     }
 
+	/**
+	 * Render the AI generation prevention setting field.
+	 *
+	 * @return void
+	 */
+	public function prevent_scheduled_ai_generation_field_callback() {
+		$value = AIPS_Config::get_instance()->is_scheduled_ai_generation_prevented();
+		?>
+		<input type="hidden" name="aips_prevent_scheduled_ai_generation" value="0">
+		<input type="checkbox" name="aips_prevent_scheduled_ai_generation" value="1" <?php checked(1, $value); ?>>
+		<p class="description"><?php esc_html_e('Stop schedule runs before they begin AI generation. This applies to cron-started runs and to manual "Run Now" executions. Schedules remain active and record an early-termination history entry instead of generating content while this setting is enabled. A large batch stopped part-way through resumes from where it left off once you turn this back off.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
     /**
      * Render the max tokens limit setting field.
      *
