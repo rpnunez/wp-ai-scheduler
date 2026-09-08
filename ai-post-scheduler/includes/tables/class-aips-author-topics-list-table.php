@@ -236,11 +236,22 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 	}
 
 	/**
+	 * Get default primary column.
+	 *
+	 * @return string
+	 */
+	protected function get_default_primary_column_name() {
+		return 'topic';
+	}
+
+	/**
 	 * Prepare topics data items.
 	 *
 	 * @return void
 	 */
 	public function prepare_items() {
+		$this->_column_headers = $this->get_column_info();
+
 		if ($this->author_id <= 0) {
 			$this->items = array();
 			return;

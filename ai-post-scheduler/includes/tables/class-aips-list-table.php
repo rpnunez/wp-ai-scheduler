@@ -76,7 +76,30 @@ abstract class AIPS_List_Table extends WP_List_Table {
 	 * @return void
 	 */
 	public function prepare_items() {
-		// Subclasses override this method to load and prepare items.
+		$this->_column_headers = $this->get_column_info();
+	}
+
+	/**
+	 * Get column headers, hidden columns, sortable columns, and primary column.
+	 *
+	 * Ensures columns are properly loaded even if the custom admin screen
+	 * has not registered column headers in WordPress screen options.
+	 *
+	 * @return array<int, mixed>
+	 */
+	protected function get_column_info() {
+		if (isset($this->_column_headers)) {
+			return $this->_column_headers;
+		}
+
+		$columns  = $this->get_columns();
+		$hidden   = array();
+		$sortable = $this->get_sortable_columns();
+		$primary  = $this->get_default_primary_column_name();
+
+		$this->_column_headers = array($columns, $hidden, $sortable, $primary);
+
+		return $this->_column_headers;
 	}
 
 	/**

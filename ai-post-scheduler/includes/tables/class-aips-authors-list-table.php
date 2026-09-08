@@ -160,11 +160,22 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	}
 
 	/**
+	 * Get default primary column.
+	 *
+	 * @return string
+	 */
+	protected function get_default_primary_column_name() {
+		return 'name';
+	}
+
+	/**
 	 * Prepare authors data items.
 	 *
 	 * @return void
 	 */
 	public function prepare_items() {
+		$this->_column_headers = $this->get_column_info();
+
 		$all_authors = $this->authors_repository->get_all();
 
 		// Count statuses
