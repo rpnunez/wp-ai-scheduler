@@ -55,4 +55,26 @@ class Test_AIPS_List_Table extends WP_UnitTestCase {
 		$this->assertArrayHasKey('created_at', $columns);
 		$this->assertArrayHasKey('actions', $columns);
 	}
+
+	/**
+	 * Test Author Topics list table bulk actions definition.
+	 */
+	public function test_author_topics_list_table_bulk_actions() {
+		$_GET['topic_status'] = 'pending';
+		$table = new AIPS_Author_Topics_List_Table(array('author_id' => 1));
+		
+		// Use reflection to call protected get_bulk_actions
+		$reflection = new ReflectionClass($table);
+		$method = $reflection->getMethod('get_bulk_actions');
+		$method->setAccessible(true);
+		$bulk_actions = $method->invoke($table);
+
+		$this->assertIsArray($bulk_actions);
+		$this->assertArrayHasKey('approve', $bulk_actions);
+		$this->assertArrayHasKey('approve_feedback', $bulk_actions);
+		$this->assertArrayHasKey('reject', $bulk_actions);
+		$this->assertArrayHasKey('reject_feedback', $bulk_actions);
+		$this->assertArrayHasKey('generate_posts', $bulk_actions);
+		$this->assertArrayHasKey('delete', $bulk_actions);
+	}
 }

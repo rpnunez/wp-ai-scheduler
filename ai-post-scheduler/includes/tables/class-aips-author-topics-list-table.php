@@ -136,11 +136,39 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 	 * @return array<string, string>
 	 */
 	protected function get_bulk_actions() {
+		$current_view = isset($_GET['topic_status']) ? sanitize_key(wp_unslash($_GET['topic_status'])) : 'pending';
+
+		if ('approved' === $current_view) {
+			return array(
+				'generate_posts'  => __('Generate Posts', 'ai-post-scheduler'),
+				'reject'          => __('Reject Topics', 'ai-post-scheduler'),
+				'reject_feedback' => __('Reject with Feedback', 'ai-post-scheduler'),
+				'delete'          => __('Delete', 'ai-post-scheduler'),
+			);
+		}
+
+		if ('rejected' === $current_view) {
+			return array(
+				'approve'          => __('Approve Topics', 'ai-post-scheduler'),
+				'approve_feedback' => __('Approve with Feedback', 'ai-post-scheduler'),
+				'delete'           => __('Delete', 'ai-post-scheduler'),
+			);
+		}
+
+		if ('posts_generated' === $current_view) {
+			return array(
+				'delete' => __('Delete', 'ai-post-scheduler'),
+			);
+		}
+
+		// 'pending' (default) and 'all' views
 		return array(
-			'approve'        => __('Approve Topics', 'ai-post-scheduler'),
-			'reject'         => __('Reject Topics', 'ai-post-scheduler'),
-			'generate_posts' => __('Generate Posts', 'ai-post-scheduler'),
-			'delete'         => __('Delete', 'ai-post-scheduler'),
+			'approve'          => __('Approve Topics', 'ai-post-scheduler'),
+			'approve_feedback' => __('Approve with Feedback', 'ai-post-scheduler'),
+			'reject'           => __('Reject Topics', 'ai-post-scheduler'),
+			'reject_feedback'  => __('Reject with Feedback', 'ai-post-scheduler'),
+			'generate_posts'   => __('Generate Posts', 'ai-post-scheduler'),
+			'delete'           => __('Delete', 'ai-post-scheduler'),
 		);
 	}
 

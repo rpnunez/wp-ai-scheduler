@@ -769,6 +769,10 @@ class AIPS_Admin_Assets {
             'processing' => __('Processing...', 'ai-post-scheduler'),
             'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
             'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
+            'approveTopicsWithFeedbackTitle' => __('Approve %d Topics with Feedback', 'ai-post-scheduler'),
+            'rejectTopicsWithFeedbackTitle' => __('Reject %d Topics with Feedback', 'ai-post-scheduler'),
+            'approveTopicsReasonPlaceholder' => __('Why are you approving these topics? (optional)', 'ai-post-scheduler'),
+            'rejectTopicsReasonPlaceholder' => __('Why are you rejecting these topics? (optional)', 'ai-post-scheduler'),
             // Bulk generate
             'generateNow' => __('Generate Now', 'ai-post-scheduler'),
             'confirmBulkGenerate' => __('Are you sure you want to generate posts for %d topics?', 'ai-post-scheduler'),
