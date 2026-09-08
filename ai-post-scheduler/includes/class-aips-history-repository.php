@@ -415,7 +415,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
                 {$event_domain_case_sql} AS event_domain,
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
@@ -997,9 +997,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     'partial'    => isset($results->partial)    ? (int) $results->partial    : 0,
                 );
 
-                $stats['success_rate'] = $stats['total'] > 0
-                    ? round(($stats['completed'] / $stats['total']) * 100, 1)
-                    : 0;
+                // Only terminal outcomes count toward the rate; `processing`
+                // rows are still in flight and would deflate it.
+                $stats['resolved']     = AIPS_Outcome_Rate::resolved($stats['completed'], $stats['failed'], $stats['partial']);
+                $stats['success_rate'] = AIPS_Outcome_Rate::success_rate($stats['completed'], $stats['failed'], $stats['partial']);
 
                 $durations = $this->wpdb->get_col(
                     $this->wpdb->prepare(

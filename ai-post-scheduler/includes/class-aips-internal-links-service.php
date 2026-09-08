@@ -337,8 +337,9 @@ class AIPS_Internal_Links_Service {
 	 * @return array{total_posts: int, indexed: int, unindexed: int, percent: int}
 	 */
 	public function get_indexing_status($post_type = 'post', $post_status = 'publish') {
-		$total_posts = (int) wp_count_posts($post_type)->$post_status;
-		$indexed     = $this->embeddings_repo->count_indexed_for_type($post_type, $post_status);
+		$counts      = wp_count_posts($post_type);
+		$total_posts = isset($counts->$post_status) ? (int) $counts->$post_status : 0;
+		$indexed     = $this->embeddings_repo->count_indexed_for_types((array) $post_type, $post_status);
 		$unindexed   = max(0, $total_posts - $indexed);
 		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
 

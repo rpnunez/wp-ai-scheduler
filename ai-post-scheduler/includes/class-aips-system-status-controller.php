@@ -91,38 +91,74 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success(array('reset' => true));
 	}
 
+	/**
+	 * AJAX: Reschedule missed cron events and ensure recurrence is healthy.
+	 *
+	 * @return void
+	 */
 	public function ajax_reschedule_missed_cron() {
 		$this->verify_request('aips_status_reschedule_missed_cron');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->reschedule_missed_cron());
 	}
 
+	/**
+	 * AJAX: Re-attempt failed author topic/post generation slices.
+	 *
+	 * @return void
+	 */
 	public function ajax_retry_failed_slices() {
 		$this->verify_request('aips_status_retry_failed_slices');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->retry_failed_slices());
 	}
 
+	/**
+	 * AJAX: Repair and normalize campaign data counters and metadata.
+	 *
+	 * @return void
+	 */
 	public function ajax_repair_campaign_data() {
 		$this->verify_request('aips_status_repair_campaign_data');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->repair_campaign_data());
 	}
 
+	/**
+	 * AJAX: Clear orphaned partial post generations from the system.
+	 *
+	 * @return void
+	 */
 	public function ajax_clear_partial_generations() {
 		$this->verify_request('aips_status_clear_partial_generations');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->clear_partial_generations());
 	}
 
+	/**
+	 * AJAX: Clean up expired batch jobs and stale cache entries.
+	 *
+	 * @return void
+	 */
 	public function ajax_cleanup_stale_jobs_cache() {
 		$this->verify_request('aips_status_cleanup_stale_jobs_cache');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->cleanup_stale_jobs_cache());
 	}
 
+	/**
+	 * AJAX: Rebuild and warm system caches for selected subsystems.
+	 *
+	 * @return void
+	 */
 	public function ajax_rebuild_caches() {
 		$this->verify_request('aips_rebuild_caches');
+
+		if (isset($_POST['subsystems']) && is_array($_POST['subsystems'])) {
+			$subsystems = array_map('sanitize_key', (array) wp_unslash($_POST['subsystems']));
+			AIPS_Ajax_Response::success($this->diagnostics_service->rebuild_caches($subsystems));
+			return;
+		}
 
 		$subsystem = isset($_POST['subsystem']) ? sanitize_key(wp_unslash($_POST['subsystem'])) : 'all';
 
@@ -154,6 +190,11 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success($result);
 	}
 
+	/**
+	 * AJAX: Run scheduled cache maintenance and pruning.
+	 *
+	 * @return void
+	 */
 	public function ajax_cache_maintenance() {
 		$this->verify_request('aips_status_cache_maintenance');
 
@@ -165,12 +206,22 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success($result);
 	}
 
+	/**
+	 * AJAX: Purge old read admin notifications older than 30 days.
+	 *
+	 * @return void
+	 */
 	public function ajax_cleanup_notifications() {
 		$this->verify_request('aips_status_cleanup_notifications');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->cleanup_notifications(30));
 	}
 
+	/**
+	 * AJAX: Reset resilience failure counters and trip circuit breakers.
+	 *
+	 * @return void
+	 */
 	public function ajax_reset_resilience() {
 		$this->verify_request('aips_status_reset_resilience');
 
@@ -182,6 +233,11 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success($result);
 	}
 
+	/**
+	 * AJAX: Normalize database timestamps across legacy timestamp columns.
+	 *
+	 * @return void
+	 */
 	public function ajax_repair_datetime() {
 		$this->verify_request('aips_status_repair_datetime');
 

@@ -335,6 +335,17 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Count indexed posts for a single post type and status.
+	 *
+	 * @param string $post_type   Post type.
+	 * @param string $post_status Post status.
+	 * @return int Count of indexed records.
+	 */
+	public function count_indexed_for_type($post_type = 'post', $post_status = 'publish') {
+		return $this->count_indexed_for_types((array) $post_type, $post_status);
+	}
+
+	/**
 	 * Count total rows in the embeddings table.
 	 *
 	 * @param string $object_type      Optional entity filter.

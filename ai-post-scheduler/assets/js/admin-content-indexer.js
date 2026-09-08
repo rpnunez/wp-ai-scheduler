@@ -141,15 +141,27 @@
 		 * Tab switching.
 		 */
 		initTabs: function () {
-			$('.aips-tab-link').on('click', function (e) {
+			var $indexerContext = $('#aips-content-indexer-tab, .aips-content-indexer-wrap');
+
+			// Hide all inactive subtabs initially and sync aria-hidden
+			$indexerContext.find('.aips-tab-content:not(.active)').hide().attr('aria-hidden', 'true');
+			$indexerContext.find('.aips-tab-content.active').show().attr('aria-hidden', 'false');
+
+			$indexerContext.find('.aips-tab-link').on('click', function (e) {
 				e.preventDefault();
 				var tab = $(this).data('tab');
+				var $nav = $(this).closest('.aips-tab-nav');
+				var $container = $nav.parent();
 
-				$('.aips-tab-link').removeClass('active');
-				$('.aips-tab-content').removeClass('active');
-
+				$nav.find('.aips-tab-link').removeClass('active');
 				$(this).addClass('active');
-				$('#' + tab + '-tab').addClass('active');
+
+				$container.children('.aips-tab-content').hide().removeClass('active').attr('aria-hidden', 'true');
+				var $target = $container.children('#' + tab + '-tab');
+				if (!$target.length) {
+					$target = $('#' + tab + '-tab');
+				}
+				$target.show().addClass('active').attr('aria-hidden', 'false');
 
 				if (tab === 'visualizer' && window.AIPS.ContentIndexer.graphData) {
 					window.AIPS.ContentIndexer.renderSvgGraph(window.AIPS.ContentIndexer.graphData);
@@ -249,31 +261,40 @@
 		 * Clear entire index.
 		 */
 		handleClearIndex: function () {
-			if (!confirm(aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.')) {
-				return;
-			}
-
+			var $btn = $('#aips-clear-index-btn');
 			var self = this;
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'aips_indexer_clear_index',
-					nonce: aipsContentIndexerL10n.nonce
-				},
-				success: function (res) {
-					if (res.success) {
-						self.lastPostId = 0;
-						$('#aips-stat-indexed').text('0');
-						$('#aips-stat-percent').text('0%');
-						$('#aips-index-progress-bar').css('width', '0%');
-						$('#aips-stat-topics').text('0');
-						AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Index cleared.', 'success');
-						self.reloadGraph();
-					}
-				}
-			});
+
+			AIPS.Utilities.confirm(
+				aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.',
+				'Confirm',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
+					{ label: 'Clear Index', className: 'aips-btn aips-btn-danger-solid', action: function () {
+						var req = $.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							dataType: 'json',
+							data: {
+								action: 'aips_indexer_clear_index',
+								nonce: aipsContentIndexerL10n.nonce
+							},
+							success: function (res) {
+								if (res.success) {
+									self.lastPostId = 0;
+									$('#aips-stat-indexed').text('0');
+									$('#aips-stat-percent').text('0%');
+									$('#aips-index-progress-bar').css('width', '0%');
+									$('#aips-stat-topics').text('0');
+									AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Index cleared.', 'success');
+									self.reloadGraph();
+								}
+							}
+						});
+
+						AIPS.Utilities.withLock($btn, req, { timeout: 30000 });
+					}}
+				]
+			);
 		},
 
 		/**
@@ -508,11 +529,10 @@
 			var $tbody = $('#aips-cannibalization-tbody');
 			var $loading = $('#aips-audit-loading');
 
-			$btn.prop('disabled', true);
 			$tbody.empty();
 			$loading.show();
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				dataType: 'json',
@@ -523,7 +543,6 @@
 					limit: 50
 				},
 				success: function (res) {
-					$btn.prop('disabled', false);
 					$loading.hide();
 
 					if (!res.success || !res.data.clusters || res.data.clusters.length === 0) {
@@ -564,10 +583,14 @@
 					$tbody.html(html);
 				},
 				error: function () {
-					$btn.prop('disabled', false);
 					$loading.hide();
 					AIPS.Utilities && AIPS.Utilities.showNotice('Error running cannibalization audit.', 'error');
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Analyzing…',
+				timeout: 180000
 			});
 		},
 
@@ -576,10 +599,8 @@
 		 */
 		fetchMeowEnvironments: function () {
 			var $btn = $('#aips-fetch-meow-envs-btn');
-			var originalHtml = $btn.html();
-			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Discovering…');
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				dataType: 'json',
@@ -588,7 +609,6 @@
 					nonce: aipsContentIndexerL10n.nonce
 				},
 				success: function (res) {
-					$btn.prop('disabled', false).html(originalHtml);
 					if (res.success && res.data.environments) {
 						var envs = res.data.environments;
 						var $select = $('#aips-meow-envs-select');
@@ -617,9 +637,14 @@
 					}
 				},
 				error: function () {
-					$btn.prop('disabled', false).html(originalHtml);
 					AIPS.Utilities && AIPS.Utilities.showNotice('Failed to connect to Meow Apps AI Engine.', 'error');
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: '<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Discovering…',
+				isHtml: true,
+				timeout: 30000
 			});
 		},
 
@@ -628,7 +653,9 @@
 		 */
 		handleSaveSettings: function (e) {
 			e.preventDefault();
-			var formData = $(e.target).serializeArray();
+			var $form = $(e.target);
+			var $submitBtn = $form.find(':submit');
+			var formData = $form.serializeArray();
 			var payload = {
 				action: 'aips_indexer_save_settings',
 				nonce: aipsContentIndexerL10n.nonce,
@@ -643,7 +670,7 @@
 				}
 			});
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				dataType: 'json',
@@ -653,6 +680,11 @@
 						AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Settings saved successfully.', 'success');
 					}
 				}
+			});
+
+			AIPS.Utilities.withLock($submitBtn, req, {
+				loadingText: 'Saving…',
+				timeout: 30000
 			});
 		}
 	};

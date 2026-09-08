@@ -39,7 +39,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_SCHEDULE = 'aips-schedule';
 	private const PAGE_CAMPAIGNS = 'aips-campaigns';
 	private const PAGE_CAMPAIGN_WIZARD = 'aips-campaign-wizard';
-	private const PAGE_SCHEDULE_CALENDAR = 'aips-schedule-calendar';
+	private const PAGE_STUDIO = 'aips-studio';
 	private const PAGE_RESEARCH = 'aips-research';
 	private const PAGE_GENERATED_POSTS = 'aips-generated-posts';
 	private const PAGE_HISTORY = 'aips-history';
@@ -63,7 +63,59 @@ class AIPS_Admin_Assets {
      */
     public function __construct() {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_filter('style_loader_src', array($this, 'filter_asset_version_for_dev'), 999, 2);
+        add_filter('script_loader_src', array($this, 'filter_asset_version_for_dev'), 999, 2);
     }
+
+	/**
+	 * Get asset version string.
+	 *
+	 * Uses file modification timestamp in development mode (WP_DEBUG or SCRIPT_DEBUG)
+	 * for instant automatic cache-busting, otherwise falls back to AIPS_VERSION.
+	 *
+	 * @param string $relative_path Path relative to plugin root (e.g. 'assets/css/admin.css').
+	 * @return string|int
+	 */
+	public static function get_asset_version($relative_path = '') {
+		$is_debug = (defined('WP_DEBUG') && WP_DEBUG) || (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG);
+		if ($is_debug && !empty($relative_path)) {
+			$file = AIPS_PLUGIN_DIR . ltrim($relative_path, '/');
+			if (file_exists($file)) {
+				return filemtime($file);
+			}
+			return time();
+		}
+
+		return AIPS_VERSION;
+	}
+
+	/**
+	 * Filter script and style loader URLs to auto-cache-bust in development (WP_DEBUG/SCRIPT_DEBUG).
+	 *
+	 * @param string $src    The source URL of the enqueued style or script.
+	 * @param string $handle The style or script handle.
+	 * @return string
+	 */
+	public function filter_asset_version_for_dev($src, $handle) {
+		$is_debug = (defined('WP_DEBUG') && WP_DEBUG) || (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG);
+		if (!$is_debug || empty($src)) {
+			return $src;
+		}
+
+		if (strpos($handle, 'aips-') === 0 || strpos($src, 'ai-post-scheduler/assets/') !== false) {
+			$parsed = wp_parse_url($src);
+			if (!empty($parsed['path']) && preg_match('#ai-post-scheduler/(assets/.+)$#', $parsed['path'], $matches)) {
+				$rel_file = $matches[1];
+				$full_file = AIPS_PLUGIN_DIR . $rel_file;
+				if (file_exists($full_file)) {
+					return add_query_arg('ver', (string) filemtime($full_file), remove_query_arg('ver', $src));
+				}
+			}
+			return add_query_arg('ver', (string) time(), remove_query_arg('ver', $src));
+		}
+
+		return $src;
+	}
 
     /**
      * Enqueue admin styles and scripts.
@@ -93,23 +145,18 @@ class AIPS_Admin_Assets {
 			$this->enqueue_authors_assets($hook);
 		}
 
-        if (self::PAGE_POST_SLICES === $page || $this->hook_contains($hook, self::PAGE_POST_SLICES)) {
+        if (
+            self::PAGE_STUDIO === $page
+            || $this->hook_contains($hook, self::PAGE_STUDIO)
+            || in_array($page, array(self::PAGE_TEMPLATES, self::PAGE_VOICES, self::PAGE_STRUCTURES, self::PAGE_POST_SLICES), true)
+        ) {
+			$this->enqueue_templates_assets();
+			$this->enqueue_voices_assets();
+			$this->enqueue_structures_assets();
 			$this->enqueue_post_slices_assets();
 		}
 
-        if (self::PAGE_TEMPLATES === $page || $this->hook_contains($hook, self::PAGE_TEMPLATES) || $this->is_automations_tab($page, 'templates')) {
-			$this->enqueue_templates_assets();
-		}
-
-        if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
-			$this->enqueue_voices_assets();
-		}
-
-        if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
-			$this->enqueue_structures_assets();
-		}
-
-        if ((self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) && self::PAGE_SCHEDULE_CALENDAR !== $page && !$this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
+        if (self::PAGE_SCHEDULE === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE) || $this->is_automations_tab($page, 'schedules')) {
 			$this->enqueue_schedule_assets($hook);
 		}
 
@@ -132,10 +179,7 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
-		}
-
-        if (self::PAGE_SCHEDULE_CALENDAR === $page || $this->hook_contains($hook, self::PAGE_SCHEDULE_CALENDAR)) {
-			$this->enqueue_schedule_calendar_assets();
+			$this->enqueue_content_indexer_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -150,7 +194,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dev_tools_assets();
 		}
 
-		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status')) {
+		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status') || $this->is_diagnostics_tab($page, 'system-info') || $this->is_diagnostics_tab($page, 'health') || $this->is_diagnostics_tab($page, 'operations')) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
 		}
@@ -725,6 +769,10 @@ class AIPS_Admin_Assets {
             'processing' => __('Processing...', 'ai-post-scheduler'),
             'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
             'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
+            'approveTopicsWithFeedbackTitle' => __('Approve %d Topics with Feedback', 'ai-post-scheduler'),
+            'rejectTopicsWithFeedbackTitle' => __('Reject %d Topics with Feedback', 'ai-post-scheduler'),
+            'approveTopicsReasonPlaceholder' => __('Why are you approving these topics? (optional)', 'ai-post-scheduler'),
+            'rejectTopicsReasonPlaceholder' => __('Why are you rejecting these topics? (optional)', 'ai-post-scheduler'),
             // Bulk generate
             'generateNow' => __('Generate Now', 'ai-post-scheduler'),
             'confirmBulkGenerate' => __('Are you sure you want to generate posts for %d topics?', 'ai-post-scheduler'),
@@ -1032,6 +1080,8 @@ class AIPS_Admin_Assets {
                 'typeTemplateLabel'              => __('Post Generation', 'ai-post-scheduler'),
                 'typeAuthorTopicLabel'           => __('Author Topics', 'ai-post-scheduler'),
                 'typeAuthorPostLabel'            => __('Author Posts', 'ai-post-scheduler'),
+                'typeBlueprintLabel'             => __('Blueprint', 'ai-post-scheduler'),
+                'typeAuthorWorkflowLabel'        => __('Author Workflow', 'ai-post-scheduler'),
                 'lastErrorDetected'              => __('Last error detected in bulk jobs.', 'ai-post-scheduler'),
                 'retryPending'                   => __('Retry jobs are pending.', 'ai-post-scheduler'),
                 /* translators: %d: number of overdue schedules */
@@ -1296,26 +1346,6 @@ class AIPS_Admin_Assets {
                 'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
                 'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
             ));
-    }
-
-    /**
-     * Enqueue assets for the schedule-calendar page.
-     */
-    private function enqueue_schedule_calendar_assets() {
-            wp_enqueue_style(
-                'aips-calendar-style',
-                AIPS_PLUGIN_URL . 'assets/css/calendar.css',
-                array(),
-                AIPS_VERSION
-            );
-
-            wp_enqueue_script(
-                'aips-calendar-script',
-                AIPS_PLUGIN_URL . 'assets/js/calendar.js',
-                array('jquery', 'aips-admin-script'),
-                AIPS_VERSION,
-                true
-            );
     }
 
     /**
@@ -1691,6 +1721,9 @@ class AIPS_Admin_Assets {
                 'refreshDone'                           => __('System refresh complete.', 'ai-post-scheduler'),
                 'refreshPartial'                        => __('System refresh finished with some failures.', 'ai-post-scheduler'),
                 'selectTasksRequired'                   => __('Select at least one maintenance task to run.', 'ai-post-scheduler'),
+                'rebuildingCaches'                      => __('Rebuilding caches…', 'ai-post-scheduler'),
+                'rebuildDone'                           => __('Caches rebuilt successfully.', 'ai-post-scheduler'),
+                'selectCachesRequired'                  => __('Select at least one cache subsystem to rebuild.', 'ai-post-scheduler'),
                 'hideDetails'                           => __('Hide Details', 'ai-post-scheduler'),
                 'showDetails'                           => __('Show Details', 'ai-post-scheduler'),
                 'resetSuccess'                          => __('Circuit reset. Reload the page to confirm.', 'ai-post-scheduler'),

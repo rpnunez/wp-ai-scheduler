@@ -1547,9 +1547,10 @@ class AIPS_MCP_Bridge {
 					'processing' => (int) $results->processing,
 				);
 				
-				$stats['success_rate'] = $stats['total'] > 0 
-					? round(($stats['completed'] / $stats['total']) * 100, 1) 
-					: 0;
+				// Rate over terminal outcomes only; `processing` rows are still
+				// in flight and would deflate it.
+				$stats['resolved']     = AIPS_Outcome_Rate::resolved($stats['completed'], $stats['failed']);
+				$stats['success_rate'] = AIPS_Outcome_Rate::success_rate($stats['completed'], $stats['failed']);
 			}
 		} elseif ($template_id) {
 			// Filter by template for all time

@@ -113,78 +113,78 @@ class AIPS_System_Diagnostics_Service {
 	private function get_refresh_task_definitions() {
 		return array(
 			'cache_maintenance' => $this->build_refresh_task_definition(
-				__('Cache maintenance', 'ai-post-scheduler'),
-				__('Prune Cache Data', 'ai-post-scheduler'),
+				__('Prune object cache', 'ai-post-scheduler'),
+				__('Prune Object Cache', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_cache_maintenance',
 				array($this, 'run_cache_maintenance')
 			),
 			'cleanup_notifications' => $this->build_refresh_task_definition(
-				__('Notification cleanup', 'ai-post-scheduler'),
-				__('Clean Old Notifications', 'ai-post-scheduler'),
+				__('Purge old notifications', 'ai-post-scheduler'),
+				__('Purge Old Notifications', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_cleanup_notifications',
 				array($this, 'cleanup_notifications')
 			),
 			'notifications_hygiene' => $this->build_refresh_task_definition(
-				__('Notifications hygiene', 'ai-post-scheduler'),
-				__('Run Notifications Hygiene', 'ai-post-scheduler'),
+				__('Sync notification counters', 'ai-post-scheduler'),
+				__('Sync Notification Counters', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_notifications_hygiene',
 				array($this, 'notifications_hygiene')
 			),
 			'cleanup_stale_jobs_cache' => $this->build_refresh_task_definition(
-				__('Stale batch jobs/cache cleanup', 'ai-post-scheduler'),
-				__('Cleanup Stale Batch Jobs/Cache', 'ai-post-scheduler'),
+				__('Purge expired batch jobs', 'ai-post-scheduler'),
+				__('Purge Expired Batch Jobs', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_cleanup_stale_jobs_cache',
 				array($this, 'cleanup_stale_jobs_cache')
 			),
 			'clear_partial_generations' => $this->build_refresh_task_definition(
-				__('Clear stuck partial generations', 'ai-post-scheduler'),
-				__('Clear Stuck Partial Generations', 'ai-post-scheduler'),
+				__('Purge orphaned drafts', 'ai-post-scheduler'),
+				__('Purge Orphaned Drafts', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_clear_partial_generations',
 				array($this, 'clear_partial_generations')
 			),
 			'repair_campaign_data' => $this->build_refresh_task_definition(
-				__('Campaign data repair', 'ai-post-scheduler'),
-				__('Repair Campaign Data', 'ai-post-scheduler'),
+				__('Rebuild campaign stats', 'ai-post-scheduler'),
+				__('Rebuild Campaign Stats', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_repair_campaign_data',
 				array($this, 'repair_campaign_data')
 			),
 			'repair_datetime' => $this->build_refresh_task_definition(
-				__('Schedule timing repair', 'ai-post-scheduler'),
-				__('Repair Schedule Timings', 'ai-post-scheduler'),
+				__('Normalize timestamps', 'ai-post-scheduler'),
+				__('Normalize Timestamps', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_repair_datetime',
 				array($this, 'repair_datetime')
 			),
 			'reschedule_missed_cron' => $this->build_refresh_task_definition(
-				__('Reschedule cron events', 'ai-post-scheduler'),
-				__('Reschedule Missed Cron Hooks', 'ai-post-scheduler'),
+				__('Resync cron schedules', 'ai-post-scheduler'),
+				__('Resync Cron Schedules', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_reschedule_missed_cron',
 				array($this, 'reschedule_missed_cron')
 			),
 			'retry_failed_slices' => $this->build_refresh_task_definition(
-				__('Retry failed slices', 'ai-post-scheduler'),
-				__('Retry Failed Slices', 'ai-post-scheduler'),
+				__('Requeue failed slices', 'ai-post-scheduler'),
+				__('Requeue Failed Slices', 'ai-post-scheduler'),
 				'recovery',
 				'aips_status_retry_failed_slices',
 				array($this, 'retry_failed_slices')
 			),
 			'reset_resilience' => $this->build_refresh_task_definition(
-				__('Reset resilience state', 'ai-post-scheduler'),
-				__('Reset Resilience', 'ai-post-scheduler'),
+				__('Reset circuit breakers', 'ai-post-scheduler'),
+				__('Reset Circuit Breakers', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_reset_resilience',
 				array($this, 'reset_resilience')
 			),
 			'rebuild_caches' => $this->build_refresh_task_definition(
-				__('Rebuild caches', 'ai-post-scheduler'),
-				__('Rebuild Caches', 'ai-post-scheduler'),
+				__('Warm system caches', 'ai-post-scheduler'),
+				__('Warm System Caches', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_rebuild_caches',
 				array($this, 'rebuild_caches')
@@ -201,7 +201,7 @@ class AIPS_System_Diagnostics_Service {
 		$definitions = $this->get_refresh_task_definitions();
 		$group_map   = array(
 			'recovery'       => array(
-				'label' => __('Recovery', 'ai-post-scheduler'),
+				'label' => __('System Recovery', 'ai-post-scheduler'),
 				'steps' => array(
 					'reschedule_missed_cron',
 					'retry_failed_slices',
@@ -211,7 +211,7 @@ class AIPS_System_Diagnostics_Service {
 				),
 			),
 			'cleanup_repair' => array(
-				'label' => __('Cleanup & repair', 'ai-post-scheduler'),
+				'label' => __('System Maintenance', 'ai-post-scheduler'),
 				'steps' => array(
 					'cache_maintenance',
 					'cleanup_notifications',
@@ -395,14 +395,40 @@ class AIPS_System_Diagnostics_Service {
 	}
 
 	/**
-	 * Rebuild cache subsystems via the invalidation bus.
+	 * Rebuild a specific cache subsystem or all subsystems.
 	 *
-	 * @param string $subsystem Subsystem key or 'all'.
+	 * @param string|array $subsystem Subsystem key(s) or 'all'.
 	 * @return array
 	 */
 	public function rebuild_caches($subsystem = 'all') {
 		$subsystems         = AIPS_Cache_Policy::get_subsystems();
 		$allowed_subsystems = array_keys($subsystems);
+
+		if (is_array($subsystem)) {
+			$selected = array_values(array_intersect($subsystem, $allowed_subsystems));
+			if (empty($selected)) {
+				$selected = $allowed_subsystems;
+			}
+
+			$affected = array();
+			$labels   = array();
+			foreach ($selected as $sub) {
+				$affected = array_merge($affected, AIPS_Cache_Invalidation_Bus::rebuild($sub));
+				$labels[] = isset($subsystems[$sub]['label']) ? (string) $subsystems[$sub]['label'] : $sub;
+			}
+			$affected         = array_values(array_unique($affected));
+			$subsystem_label  = implode(', ', $labels);
+			$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+
+			AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystems' => $selected, 'affected_caches' => $affected));
+
+			return array(
+				'success'    => true,
+				'message'    => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
+				'subsystems' => $selected,
+				'affected'   => $affected,
+			);
+		}
 
 		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
 			$subsystem = 'all';

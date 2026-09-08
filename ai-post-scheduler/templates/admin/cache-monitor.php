@@ -12,7 +12,6 @@ if (!defined('ABSPATH')) {
  *   $dev_mode        (bool)   – Whether developer mode is enabled
  *   $monitor_enabled (bool)   – Whether the Cache Monitor is enabled
  *   $active_tab      (string) – Currently selected tab slug
- *   $embedded        (bool)   – Whether rendered inside Diagnostics tab
  */
 
 if (!function_exists('aips_cache_monitor_format_bytes')) {
@@ -34,40 +33,14 @@ $tabs = array(
 	'maintenance' => __('Maintenance', 'ai-post-scheduler'),
 );
 
-$is_embedded = !empty($embedded);
-$tab_query_key = $is_embedded ? 'cache_tab' : 'tab';
+$tab_query_key = 'cache_tab';
 
 $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 ?>
-<?php if (!$is_embedded) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-<?php endif; ?>
-
-		<!-- Page Header -->
-		<?php if (!$is_embedded) : ?>
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-database-view" style="font-size:30px;vertical-align:middle;margin-right:6px;"></span>
-						<?php esc_html_e('Cache Monitor', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description"><?php esc_html_e('Inspect, manage, and maintain the plugin cache. View entries, tags, domains, and operation metrics.', 'ai-post-scheduler'); ?></p>
-				</div>
-			</div>
-		</div>
-		<?php endif; ?>
 
 			<div class="aips-content-panel">
 				<div class="aips-panel-header">
-					<h2>
-						<?php if ($is_embedded) : ?>
-							<?php esc_html_e('Cache Monitor', 'ai-post-scheduler'); ?>
-						<?php else : ?>
-							<?php esc_html_e('Cache Monitor Tabs', 'ai-post-scheduler'); ?>
-						<?php endif; ?>
-					</h2>
+					<h2><?php esc_html_e('Cache Monitor', 'ai-post-scheduler'); ?></h2>
 					<div class="aips-btn-group">
 						<button type="button" class="aips-btn aips-btn-secondary aips-cache-monitor-refresh" data-nonce="<?php echo esc_attr($nonce); ?>">
 							<span class="dashicons dashicons-update"></span>
@@ -89,9 +62,11 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 							<?php foreach ($tabs as $tab_slug => $tab_label): ?>
 								<li class="aips-tab-item">
 									<?php
-									$link_args = $is_embedded
-										? array('page' => 'aips-diagnostics', 'tab' => 'cache-monitor', $tab_query_key => $tab_slug)
-										: array('page' => 'aips-cache-monitor', $tab_query_key => $tab_slug);
+									$link_args = array(
+										'page'          => 'aips-diagnostics',
+										'tab'           => 'cache-monitor',
+										$tab_query_key => $tab_slug,
+									);
 									?>
 									<a href="<?php echo esc_url(add_query_arg($link_args, admin_url('admin.php'))); ?>"
 								   class="aips-tab-link nav-tab<?php echo $active_tab === $tab_slug ? ' nav-tab-active' : ''; ?>">
@@ -756,7 +731,3 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 			<?php endif; ?>
 
 		</div><!-- /.aips-cache-monitor-content -->
-		<?php if (!$is_embedded) : ?>
-	</div><!-- /.aips-page-container -->
-</div><!-- /.wrap -->
-		<?php endif; ?>

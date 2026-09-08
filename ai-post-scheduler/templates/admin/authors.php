@@ -1,63 +1,21 @@
 <?php
+/**
+ * Authors Admin Partial Template
+ *
+ * @package AI_Post_Scheduler
+ */
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Get authors - only instantiate repository when needed
-$authors_repository = null;
-$topics_repository = null;
-$logs_repository = null;
-$structures_repository = null;
-$authors = array();
-$article_structures = array();
-
-$current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-$is_embedded_authors_view = !empty($embedded);
-
-if ($current_page === 'aips-authors' || $is_embedded_authors_view) {
-    $authors_repository = new AIPS_Authors_Repository();
-    $authors = $authors_repository->get_all();
-
-    if (!empty($authors)) {
-        $topics_repository = new AIPS_Author_Topics_Repository();
-        $logs_repository = new AIPS_Author_Topic_Logs_Repository();
-        // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
-        $feedback_repository = new AIPS_Feedback_Repository();
-        $author_ids = array_map(function($a) { return $a->id; }, $authors);
-        $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
-    }
-
-    // Load article structures for the dropdown
-    $structures_repository = new AIPS_Article_Structure_Repository();
-    $article_structures = $structures_repository->get_all(true); // Get active structures only
-}
+// Load article structures for the dropdown
+$structures_repository = new AIPS_Article_Structure_Repository();
+$article_structures = $structures_repository->get_all(true); // Get active structures only
 
 // Site-wide content settings used to pre-fill the Author Suggestions modal
 $site_ctx = AIPS_Site_Context::get();
 ?>
-<?php if (!$is_embedded_authors_view) : ?>
-<div class="wrap aips-wrap">
-    <div class="aips-page-container">
-        <!-- Page Header -->
-        <div class="aips-page-header">
-            <div class="aips-page-header-top">
-                <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
-                </div>
-                <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
-                        <span class="dashicons dashicons-lightbulb"></span>
-                        <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
-                    </button>
-                    <button class="aips-btn aips-btn-primary aips-add-author-btn">
-                        <span class="dashicons dashicons-plus-alt"></span>
-                        <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
-                    </button>
-                </div>
-            </div>
-<?php endif; ?>
-        </div>
 
         <!-- Add tabs for Authors List and Generation Queue -->
         <div class="aips-tab-nav">
@@ -67,275 +25,11 @@ $site_ctx = AIPS_Site_Context::get();
 
         <!-- Authors List Tab Content -->
         <div id="authors-list-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
-            <?php if (!empty($authors)): ?>
-            <div class="aips-content-panel">
-                <!-- Filter Bar -->
-                <div class="aips-filter-bar">
-                    <div class="aips-filter-right">
-                        <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
-                        <input type="search" id="aips-author-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
-                    </div>
-                </div>
-
-                <!-- Authors Table -->
-                <div class="aips-panel-body no-padding">
-                    <div class="aips-panel-toolbar">
-                        <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-                            <select id="aips-authors-bulk-action-select" class="aips-form-select" style="width: auto;">
-                                <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                                <option value="generate_topics"><?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?></option>
-                                <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                            </select>
-                            <button type="button" id="aips-authors-bulk-apply" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
-                        </div>
-                    </div>
-
-                    <table class="aips-table aips-authors-table">
-                        <thead>
-                            <tr>
-                                <th scope="col" style="width: 30px;">
-                                    <label class="screen-reader-text" for="aips-authors-select-all"><?php esc_html_e('Select all authors', 'ai-post-scheduler'); ?></label>
-                                    <input id="aips-authors-select-all" type="checkbox">
-                                </th>
-                                <th class="column-quality">
-                                    <span class="screen-reader-text"><?php esc_html_e('Quality', 'ai-post-scheduler'); ?></span>
-                                </th>
-                                <th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Posts', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($authors as $author):
-                                $status_counts = $topics_repository->get_status_counts($author->id);
-                                $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-                                $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
-                                // Read policy flags directly from already-loaded author details (no extra DB query).
-                                $author_details = !empty($author->details) ? json_decode($author->details, true) : array();
-                                $policy_flags = (is_array($author_details) && isset($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? $author_details['policy_flags'] : array();
-                                $policy_flags_count = count($policy_flags);
-                                // Quality indicator data — use pre-fetched bulk stats.
-                                $feedback_stats = isset($all_feedback_stats[$author->id]) ? $all_feedback_stats[$author->id] : array('total' => 0, 'approved' => 0, 'rejected' => 0);
-                                $feedback_total = (int) $feedback_stats['total'];
-                                $feedback_approved = (int) $feedback_stats['approved'];
-                                $approval_rate = $feedback_total > 0 ? round(($feedback_approved / $feedback_total) * 100) : null;
-                                $approval_component = $approval_rate !== null ? (int) $approval_rate : 50;
-                                $policy_penalty = min(60, $policy_flags_count * 20);
-                                $quality_score = max(0, min(100, $approval_component - $policy_penalty));
-                                // Determine quality state: Green = healthy, Yellow = warning, Red = critical
-                                if ($policy_flags_count >= 3) {
-                                    $quality_state = 'critical';
-                                } elseif ($policy_flags_count >= 1 || ($approval_rate !== null && $approval_rate < 50)) {
-                                    $quality_state = 'warning';
-                                } else {
-                                    $quality_state = 'healthy';
-                                }
-                                if ($quality_state === 'critical') {
-                                    $indicator_icon = 'dashicons-dismiss';
-                                    $indicator_label = __('Critical', 'ai-post-scheduler');
-                                    $quality_description = __('Critical quality risk. This author has repeated policy issues and/or weak approval performance. Review and adjust prompts before generating more content.', 'ai-post-scheduler');
-                                } elseif ($quality_state === 'warning') {
-                                    $indicator_icon = 'dashicons-warning';
-                                    $indicator_label = __('Warning', 'ai-post-scheduler');
-                                    $quality_description = __('Quality needs attention. Some policy issues or low approvals are reducing reliability. Tune author settings and review recent topics.', 'ai-post-scheduler');
-                                } else {
-                                    $indicator_icon = 'dashicons-heart';
-                                    $indicator_label = __('Healthy', 'ai-post-scheduler');
-                                    $quality_description = __('Quality is stable. Approval performance is healthy and policy issues are low.', 'ai-post-scheduler');
-                                }
-
-                                $quality_score_text = sprintf(
-                                    __('Score: %d/100', 'ai-post-scheduler'),
-                                    (int) $quality_score
-                                );
-                                $quality_meta_text = sprintf(
-                                    __('Approval: %1$s | Policy flags: %2$d | Feedback samples: %3$d', 'ai-post-scheduler'),
-                                    $approval_rate !== null ? sprintf(__('%d%%', 'ai-post-scheduler'), $approval_rate) : __('No feedback yet', 'ai-post-scheduler'),
-                                    (int) $policy_flags_count,
-                                    (int) $feedback_total
-                                );
-                            ?>
-                                <tr data-author-id="<?php echo esc_attr($author->id); ?>" data-field-niche="<?php echo esc_attr($author->field_niche); ?>">
-                                    <td>
-                                        <label class="screen-reader-text" for="aips-author-select-<?php echo esc_attr($author->id); ?>"><?php esc_html_e('Select author', 'ai-post-scheduler'); ?></label>
-                                        <input id="aips-author-select-<?php echo esc_attr($author->id); ?>" type="checkbox" class="aips-author-checkbox" value="<?php echo esc_attr($author->id); ?>">
-                                    </td>
-                                    <td class="column-quality">
-                                        <span
-                                            class="aips-quality-indicator aips-quality-<?php echo esc_attr($quality_state); ?>"
-                                            tabindex="0"
-                                            aria-label="<?php echo esc_attr($indicator_label); ?>"
-                                            aria-describedby="aips-quality-tooltip-<?php echo esc_attr($author->id); ?>"
-                                        >
-                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>"></span>
-                                            <span id="aips-quality-tooltip-<?php echo esc_attr($author->id); ?>" class="aips-quality-tooltip" role="tooltip">
-                                                <span class="aips-quality-tooltip-title"><?php echo esc_html($indicator_label); ?></span>
-                                                <span class="aips-quality-tooltip-score"><?php echo esc_html($quality_score_text); ?></span>
-                                                <span class="aips-quality-tooltip-description"><?php echo esc_html($quality_description); ?></span>
-                                                <span class="aips-quality-tooltip-meta"><?php echo esc_html($quality_meta_text); ?></span>
-                                            </span>
-                                            <span class="screen-reader-text">
-                                                <?php
-                                                printf(
-                                                    esc_html__('%1$s quality score %2$d out of 100', 'ai-post-scheduler'),
-                                                    esc_html($indicator_label),
-                                                    (int) $quality_score
-                                                );
-                                                ?>
-                                            </span>
-                                        </span>
-                                    </td>
-                                    <td class="column-name">
-                                        <div class="cell-primary"><?php echo esc_html($author->name); ?></div>
-                                        <div class="cell-meta"><?php echo esc_html($author->field_niche); ?></div>
-                                    </td>
-                                    <td>
-                                        <?php if ($author->is_active): ?>
-                                        <span class="aips-badge aips-badge-success">
-                                            <span class="dashicons dashicons-yes-alt"></span>
-                                            <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
-                                        </span>
-                                        <?php else: ?>
-                                        <span class="aips-badge aips-badge-neutral">
-                                            <span class="dashicons dashicons-minus"></span>
-                                            <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
-                                        </span>
-                                        <?php endif; ?>
-                                        <?php if (!empty($author->topic_auto_approval_mode) && 'manual' !== $author->topic_auto_approval_mode): ?>
-                                        <div style="margin-top: 4px;">
-                                            <span class="aips-badge aips-badge-info" title="<?php
-                                                if ($author->topic_auto_approval_mode === 'all') {
-                                                    esc_attr_e('Auto-approves all generated topics', 'ai-post-scheduler');
-                                                } elseif ($author->topic_auto_approval_mode === 'score') {
-                                                    echo esc_attr(sprintf(__('Auto-approves topics with score ≥ %d', 'ai-post-scheduler'), isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70));
-                                                } elseif ($author->topic_auto_approval_mode === 'similarity') {
-                                                    echo esc_attr(sprintf(__('Auto-approves topics with duplicate similarity < %.0f%%', 'ai-post-scheduler'), (isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.8) * 100));
-                                                }
-                                            ?>">
-                                                <span class="dashicons dashicons-controls-play"></span>
-                                                <?php
-                                                if ($author->topic_auto_approval_mode === 'all') {
-                                                    esc_html_e('Auto-Approve All', 'ai-post-scheduler');
-                                                } elseif ($author->topic_auto_approval_mode === 'score') {
-                                                    printf(esc_html__('Auto: Score ≥ %d', 'ai-post-scheduler'), (int) $author->topic_auto_approval_min_score);
-                                                } elseif ($author->topic_auto_approval_mode === 'similarity') {
-                                                    printf(esc_html__('Auto: Sim < %.0f%%', 'ai-post-scheduler'), ((float) $author->topic_auto_approval_max_similarity) * 100);
-                                                }
-                                                ?>
-                                            </span>
-                                        </div>
-                                        <?php endif; ?>
-                                        <?php if ($policy_flags_count >= 3): ?>
-                                        <div style="margin-top: 6px;">
-                                            <span class="aips-badge aips-badge-warning">
-                                                <span class="dashicons dashicons-warning"></span>
-                                                <?php
-                                                printf(
-                                                    esc_html__('Policy flags: %d', 'ai-post-scheduler'),
-                                                    (int) $policy_flags_count
-                                                );
-                                                ?>
-                                            </span>
-                                        </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
-                                            <a href="<?php echo esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'author_topics', array( 'author_id' => absint( $author->id ) ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
-                                                <span class="dashicons dashicons-visibility"></span>
-                                                <?php echo esc_html(sprintf(_n('%d Topic', '%d Topics', $total_topics, 'ai-post-scheduler'), $total_topics)); ?>
-                                            </a>
-                                            <div class="cell-meta" style="font-size: 11px;">
-                                                <span style="color: #d63638;"><?php echo esc_html($status_counts['pending']); ?> pending</span> |
-                                                <span style="color: #00a32a;"><?php echo esc_html($status_counts['approved']); ?> approved</span> |
-                                                <span style="color: #999;"><?php echo esc_html($status_counts['rejected']); ?> rejected</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
-                                            <span class="dashicons dashicons-admin-post"></span>
-                                            <?php echo esc_html(sprintf(_n('%d Post', '%d Posts', $posts_count, 'ai-post-scheduler'), $posts_count)); ?>
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div class="cell-actions">
-                                            <div class="aips-author-generation-actions">
-                                                <button class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
-                                                    <span class="dashicons dashicons-update"></span>
-                                                    <?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
-                                                </button>
-                                                <button class="aips-btn aips-btn-sm aips-btn-author-posts aips-generate-author-posts-now" data-id="<?php echo esc_attr($author->id); ?>" data-type="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" data-quantity="<?php echo esc_attr(isset($author->manual_post_generation_quantity) ? max(1, (int) $author->manual_post_generation_quantity) : 1); ?>" title="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate Posts', 'ai-post-scheduler'); ?>">
-                                                    <span class="dashicons dashicons-admin-post"></span>
-                                                    <?php esc_html_e('Generate Posts', 'ai-post-scheduler'); ?>
-                                                </button>
-                                            </div>
-                                            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-                                                <span class="dashicons dashicons-edit"></span>
-                                                <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                                            </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-                                                <span class="dashicons dashicons-trash"></span>
-                                                <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    
-                    <!-- Table footer -->
-                    <div class="tablenav">
-                        <span class="aips-table-footer-count">
-                            <?php
-                            $authors_count = count( $authors );
-                            printf(
-                                esc_html(
-                                    _n(
-                                        '%s author',
-                                        '%s authors',
-                                        $authors_count,
-                                        'ai-post-scheduler'
-                                    )
-                                ),
-                                number_format_i18n( $authors_count )
-                            );
-                            ?>
-                        </span>
-                    </div>
-
-                    <!-- No Search Results State -->
-                    <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
-                        <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-                        <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Found', 'ai-post-scheduler'); ?></h3>
-                        <p class="aips-empty-state-description"><?php esc_html_e('No authors match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
-                        <div class="aips-empty-state-actions">
-                            <button type="button" class="aips-btn aips-btn-ghost aips-clear-author-search-btn" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <?php else: ?>
-            <div class="aips-content-panel">
-                <div class="aips-panel-body">
-                    <div class="aips-empty-state">
-                        <div class="dashicons dashicons-admin-users aips-empty-state-icon" aria-hidden="true"></div>
-                        <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
-                        <p class="aips-empty-state-description"><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
-                        <div class="aips-empty-state-actions">
-                            <button class="aips-btn aips-btn-primary aips-add-author-btn">
-                                <span class="dashicons dashicons-plus-alt"></span>
-                                <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
+            <?php
+            $authors_list_table = new AIPS_Authors_List_Table();
+            $authors_list_table->prepare_items();
+            $authors_list_table->display_page();
+            ?>
         </div>
 
         <!-- Generation Queue Tab Content -->
@@ -395,10 +89,6 @@ $site_ctx = AIPS_Site_Context::get();
                 </div>
             </div>
         </div>
-<?php if (!$is_embedded_authors_view) : ?>
-    </div><!-- .aips-page-container -->
-</div><!-- .wrap.aips-wrap -->
-<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
@@ -427,7 +117,7 @@ $site_ctx = AIPS_Site_Context::get();
             <p><?php esc_html_e('Loading author data...', 'ai-post-scheduler'); ?></p>
         </div>
 
-        <form id="aips-author-form">
+        <form id="aips-author-form" data-aips-async="true">
             <input type="hidden" id="author_id" name="author_id" value="">
 
             <div class="form-group">
@@ -719,7 +409,7 @@ $site_ctx = AIPS_Site_Context::get();
             </p>
         </div>
         <div class="aips-modal-body">
-            <form id="aips-suggest-authors-form">
+            <form id="aips-suggest-authors-form" data-aips-async="true">
                 <div class="form-group">
                     <label for="aips-suggest-site-niche"><?php esc_html_e('Site Niche / Primary Topic', 'ai-post-scheduler'); ?> *</label>
                     <input type="text" id="aips-suggest-site-niche" name="site_niche" required

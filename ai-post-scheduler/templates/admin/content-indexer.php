@@ -26,38 +26,6 @@ $active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default
 $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : 1536;
 ?>
 
-<div class="wrap aips-wrap aips-indexer-page">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-networking" style="font-size:28px;width:28px;height:28px;vertical-align:middle;margin-right:8px;color:#2271b1;"></span>
-						<?php esc_html_e('Content Indexer & Semantic Intelligence', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Centralized semantic vector store for backfilling existing posts, exploring relationship graphs, detecting duplicate content, and powering related posts.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-database-import"></span>
-						<span class="btn-text"><?php esc_html_e('Start Backfill Scan', 'ai-post-scheduler'); ?></span>
-					</button>
-					<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary" style="display:none;">
-						<span class="dashicons dashicons-controls-pause"></span>
-						<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" id="aips-clear-index-btn" class="aips-btn aips-btn-ghost aips-btn-danger">
-						<span class="dashicons dashicons-trash"></span>
-						<?php esc_html_e('Clear Index', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-
 		<!-- Dimension Mismatch Notice -->
 		<?php if (!empty($dimension_mismatch)) : ?>
 		<div class="notice notice-warning inline aips-dimension-mismatch-banner" style="margin: 0 0 20px; padding: 16px; border-left-color: #dba617; background: #fff8e5; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -190,7 +158,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 1: SEMANTIC GRAPH VISUALIZER
 		     ===================================================================== -->
-		<div id="visualizer-tab" class="aips-tab-content active" role="tabpanel">
+		<div id="visualizer-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
 			<div class="aips-content-panel aips-visualizer-panel">
 				
 				<!-- Graph Toolbar -->
@@ -274,7 +242,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 2: BACKFILL SCANNER & SCOPE
 		     ===================================================================== -->
-		<div id="scanner-tab" class="aips-tab-content" role="tabpanel">
+		<div id="scanner-tab" class="aips-tab-content" role="tabpanel" style="display:none;" aria-hidden="true">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header">
 					<h3 class="aips-panel-title"><?php esc_html_e('Backfill Indexing Status & Breakdown', 'ai-post-scheduler'); ?></h3>
@@ -332,7 +300,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 3: CANNIBALIZATION & DUPLICATE AUDIT
 		     ===================================================================== -->
-		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel">
+		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel" style="display:none;" aria-hidden="true">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header" style="display:flex;justify-content:space-between;align-items:center;">
 					<div>
@@ -375,8 +343,8 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 4: SETTINGS & THRESHOLDS
 		     ===================================================================== -->
-		<div id="settings-tab" class="aips-tab-content" role="tabpanel">
-			<form id="aips-indexer-settings-form">
+		<div id="settings-tab" class="aips-tab-content" role="tabpanel" style="display:none;" aria-hidden="true">
+			<form id="aips-indexer-settings-form" data-aips-async="true">
 				<div class="aips-content-panel" style="margin-bottom:20px;">
 					<div class="aips-panel-header">
 						<h3 class="aips-panel-title"><?php esc_html_e('Embeddings Provider & Connection Configuration', 'ai-post-scheduler'); ?></h3>
@@ -558,6 +526,3 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				</div>
 			</form>
 		</div>
-
-	</div><!-- /.aips-page-container -->
-</div><!-- /.aips-wrap -->
