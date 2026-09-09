@@ -40,3 +40,9 @@
 **PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
 **Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
 **Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.
+## 2024-09-09 - Add aria-label to integration field checkboxes
+**Area:** Templates integrations (templates/admin/templates.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to integration field checkboxes
+**Learning:** Dynamically generated input elements within JS templates often lack accessible labels.
+**Action:** Always ensure checkboxes in integration setting templates have explicit localized `aria-label` attributes.

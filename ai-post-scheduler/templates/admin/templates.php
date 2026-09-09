@@ -894,7 +894,7 @@ $is_embedded_templates_view = !empty($embedded);
             <td>{{label}}</td>
             <td>{{native_type}}</td>
             <td>
-                <input type="checkbox" class="aips-integration-field-enabled" {{checked_attr}} {{disabled_attr}}>
+                <input type="checkbox" class="aips-integration-field-enabled" {{checked_attr}} {{disabled_attr}} aria-label="<?php esc_attr_e('Enable field integration', 'ai-post-scheduler'); ?>">
             </td>
             <td>
                 <textarea class="aips-integration-field-prompt regular-text" rows="2" {{disabled_attr}} placeholder="{{prompt_placeholder}}">{{prompt_value}}</textarea>
@@ -922,7 +922,7 @@ $is_embedded_templates_view = !empty($embedded);
                 <span class="aips-integration-field-native-type-display"></span>
             </td>
             <td>
-                <input type="checkbox" class="aips-integration-field-enabled" checked>
+                <input type="checkbox" class="aips-integration-field-enabled" checked aria-label="<?php esc_attr_e('Enable field integration', 'ai-post-scheduler'); ?>">
             </td>
             <td>
                 <textarea class="aips-integration-field-prompt regular-text" rows="2" placeholder="{{prompt_placeholder}}"></textarea>
