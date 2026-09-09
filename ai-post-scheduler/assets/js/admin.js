@@ -4276,26 +4276,65 @@
          * @param {Event} e - Click event.
          */
         quickSchedule: function(e) {
-            // Allow modified clicks (Ctrl/Cmd-click, middle-click) to open in a new tab as usual
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
                 return;
             }
             e.preventDefault();
+
             var $btn = $(this);
             var templateId = $btn.data('template-id');
 
             if (!templateId) return;
 
-            // Use the aipsAjax.schedulePageUrl if available or fallback
-            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl
-                : 'admin.php?page=aips-schedule';
+            // Toggle the inline form instead of redirecting
+            $('#aips-quick-schedule-inline-form').slideDown(200);
 
-            // Build the URL safely, handling whether scheduleUrlBase already contains a query string
-            var url = new URL(scheduleUrlBase, window.location.href);
-            url.searchParams.set('schedule_template', templateId);
-            url.hash = 'open_schedule_modal';
-            window.location.href = url.toString();
+            // Rebind the submit/cancel buttons to ensure we capture this specific templateId
+            $('#aips-quick-schedule-cancel-btn').off('click').on('click', function() {
+                $('#aips-quick-schedule-inline-form').slideUp(200);
+            });
+
+            $('#aips-quick-schedule-submit-btn').off('click').on('click', function() {
+                var $submitBtn = $(this);
+                var frequency = $('#aips-quick-schedule-frequency').val() || 'weekly';
+
+                AIPS.Utilities.setButtonLoading($submitBtn, aipsAdminL10n.saving);
+
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_save_schedule',
+                        nonce: aipsAjax.nonce,
+                        template_id: templateId,
+                        frequency: frequency,
+                        schedule_title: '',
+                        is_active: 1
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            AIPS.Utilities.showToast(response.data.message || 'Schedule created successfully', 'success');
+                            $('#aips-quick-schedule-inline-form').slideUp(200);
+
+                            // Transform the quick schedule button to indicate success
+                            $('#aips-quick-schedule-btn')
+                                .removeClass('aips-btn-primary')
+                                .addClass('aips-btn-success')
+                                .html('<span class="dashicons dashicons-yes-alt"></span> ' + (aipsAdminL10n.scheduled || 'Scheduled'))
+                                .css('pointer-events', 'none');
+
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                    },
+                    complete: function() {
+                        AIPS.Utilities.resetButton($submitBtn);
+                    }
+                });
+            });
         },
 
         /**
