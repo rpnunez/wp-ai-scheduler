@@ -29,3 +29,9 @@
 **Decision:** Extracted the single topic processing logic into a new private method `process_single_topic_embedding`. `process_approved_embeddings_batch` now serves strictly as an orchestrator.
 **Consequence:** Increased the number of private methods, but significantly improved readability, testability, and adherence to the Single Responsibility Principle. Backwards compatibility remains intact. Added missing DocBlocks for the new function.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-08-11 - Extract Similarity Calculation Logic
+**Context:** `AIPS_Topic_Expansion_Service::suggest_related_topics` handled both fetching topics and computing similarity in a nested loop, violating Separation of Concerns.
+**Decision:** Extracted the similarity calculation into a new private method `calculate_max_similarity_for_topic`.
+**Consequence:** Improved readability and adherence to Single Responsibility Principle. Backwards compatibility remains intact. Added DocBlock for the new function.
+**Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
