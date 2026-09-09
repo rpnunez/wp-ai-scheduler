@@ -679,6 +679,24 @@ $is_embedded_templates_view = !empty($embedded);
                                     <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
                                 </button>
                             </div>
+
+                            <!-- Inline Quick Schedule Form -->
+                            <div id="aips-quick-schedule-inline-form" style="display: none; margin: 24px auto 0; max-width: 400px; text-align: left; background: var(--aips-gray-50); padding: 20px; border-radius: var(--aips-radius-base); border: 1px solid var(--aips-gray-200);">
+                                <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: var(--aips-gray-900);"><?php esc_html_e('Quick Schedule', 'ai-post-scheduler'); ?></h4>
+                                <div class="aips-form-row" style="margin-bottom: 16px;">
+                                    <label for="aips-quick-schedule-frequency" style="display: block; margin-bottom: 6px; font-size: 13px;"><?php esc_html_e('Cadence', 'ai-post-scheduler'); ?></label>
+                                    <select id="aips-quick-schedule-frequency" class="aips-form-select" style="width: 100%;">
+                                        <option value="daily"><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+                                        <option value="weekly" selected><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+                                        <option value="monthly"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                    <button type="button" id="aips-quick-schedule-cancel-btn" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                                    <button type="button" id="aips-quick-schedule-submit-btn" class="aips-btn aips-btn-sm aips-btn-primary"><?php esc_html_e('Save Schedule', 'ai-post-scheduler'); ?></button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </form>
