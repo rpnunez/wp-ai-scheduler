@@ -239,25 +239,7 @@ class AIPS_Topic_Expansion_Service {
 				continue;
 			}
 			
-			$max_similarity = 0;
-			
-			// Calculate similarity to each approved topic
-			foreach ($approved_topics as $approved_topic) {
-				$approved_embedding = $this->get_topic_embedding($approved_topic->id);
-				
-				if (!$approved_embedding) {
-					$this->compute_topic_embedding($approved_topic->id);
-					$approved_embedding = $this->get_topic_embedding($approved_topic->id);
-				}
-				
-				if ($approved_embedding) {
-					$similarity = $this->embeddings_service->calculate_similarity($pending_embedding, $approved_embedding);
-					
-					if (!is_wp_error($similarity) && $similarity > $max_similarity) {
-						$max_similarity = $similarity;
-					}
-				}
-			}
+			$max_similarity = $this->calculate_max_similarity_for_topic($pending_embedding, $approved_topics);
 			
 			if ($max_similarity > 0) {
 				$suggestions[] = array(
@@ -276,6 +258,36 @@ class AIPS_Topic_Expansion_Service {
 		return array_slice($suggestions, 0, $limit);
 	}
 	
+	/**
+	 * Calculate the maximum similarity score for a pending embedding against a list of approved topics.
+	 *
+	 * @param array $pending_embedding The embedding array for the pending topic.
+	 * @param array $approved_topics   Array of approved topic objects.
+	 * @return float The highest similarity score found.
+	 */
+	private function calculate_max_similarity_for_topic($pending_embedding, $approved_topics) {
+		$max_similarity = 0;
+
+		foreach ($approved_topics as $approved_topic) {
+			$approved_embedding = $this->get_topic_embedding($approved_topic->id);
+
+			if (!$approved_embedding) {
+				$this->compute_topic_embedding($approved_topic->id);
+				$approved_embedding = $this->get_topic_embedding($approved_topic->id);
+			}
+
+			if ($approved_embedding) {
+				$similarity = $this->embeddings_service->calculate_similarity($pending_embedding, $approved_embedding);
+
+				if (!is_wp_error($similarity) && $similarity > $max_similarity) {
+					$max_similarity = $similarity;
+				}
+			}
+		}
+
+		return (float) $max_similarity;
+	}
+
 	/**
 	 * Get expanded context from approved topics for prompt enhancement.
 	 *
