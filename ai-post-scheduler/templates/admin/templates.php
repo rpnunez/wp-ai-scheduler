@@ -894,10 +894,10 @@ $is_embedded_templates_view = !empty($embedded);
             <td>{{label}}</td>
             <td>{{native_type}}</td>
             <td>
-                <input type="checkbox" class="aips-integration-field-enabled" {{checked_attr}} {{disabled_attr}}>
+                <input type="checkbox" class="aips-integration-field-enabled" {{checked_attr}} {{disabled_attr}} aria-label="<?php echo esc_attr( sprintf( __( 'Enable integration for %s', 'ai-post-scheduler' ), '{{label}}' ) ); ?>">
             </td>
             <td>
-                <textarea class="aips-integration-field-prompt regular-text" rows="2" {{disabled_attr}} placeholder="{{prompt_placeholder}}">{{prompt_value}}</textarea>
+                <textarea class="aips-integration-field-prompt regular-text" rows="2" {{disabled_attr}} placeholder="{{prompt_placeholder}}" aria-label="<?php echo esc_attr( sprintf( __( 'Generation instructions for %s', 'ai-post-scheduler' ), '{{label}}' ) ); ?>">{{prompt_value}}</textarea>
                 <p class="description" style="{{unsupported_note_style}}">{{unsupported_note_text}}</p>
             </td>
         </tr>
@@ -910,11 +910,11 @@ $is_embedded_templates_view = !empty($embedded);
     <script type="text/html" id="aips-tmpl-integration-custom-field-row">
         <tr class="aips-integration-custom-field-row">
             <td class="aips-integration-field-key-cell">
-                <select class="aips-integration-field-key-select"></select>
-                <input type="text" class="aips-integration-custom-field-key-input regular-text" placeholder="{{customKeyPlaceholder}}" style="display:none;">
+                <select class="aips-integration-field-key-select" aria-label="<?php esc_attr_e('Select custom field key', 'ai-post-scheduler'); ?>"></select>
+                <input type="text" class="aips-integration-custom-field-key-input regular-text" placeholder="{{customKeyPlaceholder}}" style="display:none;" aria-label="<?php esc_attr_e('Custom meta key', 'ai-post-scheduler'); ?>">
             </td>
             <td>
-                <select class="aips-integration-custom-field-shape-select" style="display:none;">
+                <select class="aips-integration-custom-field-shape-select" style="display:none;" aria-label="<?php esc_attr_e('Custom field type', 'ai-post-scheduler'); ?>">
                     <option value="freeform_short_text">{{shapeShortText}}</option>
                     <option value="freeform_long_text">{{shapeLongText}}</option>
                     <option value="freeform_html">{{shapeHtml}}</option>
@@ -922,10 +922,10 @@ $is_embedded_templates_view = !empty($embedded);
                 <span class="aips-integration-field-native-type-display"></span>
             </td>
             <td>
-                <input type="checkbox" class="aips-integration-field-enabled" checked>
+                <input type="checkbox" class="aips-integration-field-enabled" checked aria-label="<?php esc_attr_e('Enable custom field integration', 'ai-post-scheduler'); ?>">
             </td>
             <td>
-                <textarea class="aips-integration-field-prompt regular-text" rows="2" placeholder="{{prompt_placeholder}}"></textarea>
+                <textarea class="aips-integration-field-prompt regular-text" rows="2" placeholder="{{prompt_placeholder}}" aria-label="<?php esc_attr_e('Custom field generation instructions', 'ai-post-scheduler'); ?>"></textarea>
                 <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-remove-custom-field-row">{{removeLabel}}</button>
             </td>
         </tr>
