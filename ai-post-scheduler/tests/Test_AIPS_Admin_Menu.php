@@ -246,7 +246,13 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'Automations should be visible in the primary submenu.'
 		);
 
-		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
+		$this->assertContains(
+			'aips-authors',
+			$submenu_pages,
+			'Authors should be visible in the primary submenu.'
+		);
+
+		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
 			$this->assertNotContains(
 				$hidden_page,
 				$submenu_pages,
