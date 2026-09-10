@@ -14,6 +14,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		$this->admin_menu = new AIPS_Admin_Menu();
 	}
 
@@ -73,7 +74,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function test_fix_author_topics_submenu_file() {
 		$_GET['page'] = 'aips-author-topics';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-automations', $result);
+		$this->assertEquals('aips-authors', $result);
 
 		$_GET['page'] = 'aips-campaign-detail';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
@@ -246,7 +247,13 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'Automations should be visible in the primary submenu.'
 		);
 
-		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
+		$this->assertContains(
+			'aips-authors',
+			$submenu_pages,
+			'Authors should be visible in the primary submenu.'
+		);
+
+		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
 			$this->assertNotContains(
 				$hidden_page,
 				$submenu_pages,

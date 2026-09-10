@@ -91,7 +91,7 @@ class AIPS_Admin_Menu {
         );
 
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Authors', 'ai-post-scheduler'),
             __('Authors', 'ai-post-scheduler'),
             'manage_options',
@@ -352,6 +352,9 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_submenu_file($submenu_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page === 'aips-author-topics') {
+            return 'aips-authors';
+        }
         if ($this->is_diagnostics_child_page($page)) {
             return 'aips-diagnostics';
         }
@@ -395,13 +398,11 @@ class AIPS_Admin_Menu {
                 'aips-schedule',
                 'aips-campaigns',
                 'aips-templates',
-                'aips-authors',
                 'aips-sources',
                 'aips-source-data',
                 'aips-taxonomy',
                 'aips-internal-links',
                 'aips-affiliate-links',
-                'aips-author-topics',
                 AIPS_Campaigns_Controller::PAGE_SLUG,
                 AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
             ),
