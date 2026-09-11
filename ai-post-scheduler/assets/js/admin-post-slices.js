@@ -274,7 +274,11 @@
 		 * @return {void}
 		 */
 		refreshPage: function () {
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') {
+				AIPS.refreshContentPanel('.aips-post-slices-table', '.aips-content-panel');
+			} else {
+				window.location.reload();
+			}
 		},
 	};
 

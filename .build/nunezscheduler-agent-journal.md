@@ -318,3 +318,8 @@ Target Feature: Research Planner
 Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js
 Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
+## 2026-09-11 - Post Slices Flow Optimization
+Target Feature: Post Slices UI
+Improvement: Replaced hard window.location.reload() calls in the Post Slices admin UI with dynamic AJAX content panel refreshing (AIPS.refreshContentPanel) to preserve UI context.
+Files Modified: ai-post-scheduler/assets/js/admin-post-slices.js
+Outcome: Faster, smoother transitions without losing scroll position or tab context.
