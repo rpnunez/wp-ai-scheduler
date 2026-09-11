@@ -274,7 +274,18 @@
 		 * @return {void}
 		 */
 		refreshPage: function () {
-			window.location.reload();
+			if (typeof AIPS !== 'undefined' && typeof AIPS.refreshContentPanel === 'function') {
+				AIPS.refreshContentPanel('.aips-post-slices-table', '.aips-content-panel', function ($newDoc) {
+					if ($newDoc && $newDoc.find('.aips-post-slices-summary').length) {
+						$('.aips-post-slices-summary').replaceWith($newDoc.find('.aips-post-slices-summary'));
+					}
+					if ($("#aips-post-slice-search").length && $("#aips-post-slice-search").val().trim()) {
+						$("#aips-post-slice-search").trigger('input');
+					}
+				});
+			} else {
+				window.location.reload();
+			}
 		},
 	};
 
