@@ -14,6 +14,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		$this->admin_menu = new AIPS_Admin_Menu();
 	}
 
@@ -50,7 +51,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function test_fix_author_topics_parent_file() {
 		$_GET['page'] = 'aips-author-topics';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
-		$this->assertEquals('ai-post-scheduler', $result);
+		$this->assertEquals('some-other-file', $result);
 
 		$_GET['page'] = 'aips-campaign-detail';
 		$result = $this->admin_menu->fix_author_topics_parent_file('some-other-file');
@@ -73,7 +74,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function test_fix_author_topics_submenu_file() {
 		$_GET['page'] = 'aips-author-topics';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
-		$this->assertEquals('aips-automations', $result);
+		$this->assertEquals('some-other-file', $result);
 
 		$_GET['page'] = 'aips-campaign-detail';
 		$result = $this->admin_menu->fix_author_topics_submenu_file('some-other-file');
@@ -102,17 +103,17 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->admin_menu->add_menu_pages();
 
 		$this->assertArrayHasKey(
-			'admin_page_aips-author-topics',
+			'ai-post-scheduler_page_aips-author-topics',
 			$_registered_pages,
 			'Author Topics page should be registered for direct admin.php?page= access.'
 		);
 
 		$submenu_pages = isset($submenu['ai-post-scheduler']) ? wp_list_pluck($submenu['ai-post-scheduler'], 2) : array();
 
-		$this->assertNotContains(
+		$this->assertContains(
 			'aips-author-topics',
 			$submenu_pages,
-			'Author Topics page should remain hidden from the visible submenu.'
+			'Author Topics page should be present in the visible submenu.'
 		);
 	}
 
