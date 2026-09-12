@@ -318,3 +318,13 @@ Target Feature: Research Planner
 Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js
 Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
+## 2024-09-12 - Author Topics Optimization
+Target Feature: Author Topics
+Improvement: Unburied the Author Topics page into the main plugin sidebar navigation
+Files Modified: ai-post-scheduler/includes/class-aips-admin-menu.php
+Outcome: Improved efficiency by directly exposing Author Topics in the navigation menu, removing an unnecessary extra click
+## 2026-09-12 - Author Topics Submenu State Optimization
+Target Feature: Author Topics Submenu Highlight
+Improvement: Mapped aips-author-topics to aips-authors submenu state, added administrator context in Test_AIPS_Admin_Menu, and updated menu test assertions.
+Files Modified: ai-post-scheduler/includes/class-aips-admin-menu.php, ai-post-scheduler/tests/Test_AIPS_Admin_Menu.php, .build/nunezscheduler-agent-journal.md
+Outcome: Ensures proper active submenu highlighting for Author Topics and resolves test suite failures.
