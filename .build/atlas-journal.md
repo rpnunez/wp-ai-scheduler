@@ -1460,3 +1460,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+## 2026-10-24 - [Refactor AIPS_DB_Manager God Method]
+**Context:** `AIPS_DB_Manager::get_schema()` was a massive God method (~679 lines), handling the schema definitions for all 31 database tables in a single massive function, violating the Single Responsibility Principle.
+**Decision:** Applied "Separation of Concerns" by extracting the table definitions into five focused private helper methods (`get_core_schema`, `get_content_schema`, `get_author_schema`, `get_ai_schema`, `get_system_schema`). The main `get_schema()` method is now a clean orchestrator.
+**Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility remains 100% intact.
+**Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
