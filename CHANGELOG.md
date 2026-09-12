@@ -26,6 +26,10 @@
 
 ## [Unreleased]
 
+### Changed
+- Refactored `AIPS_DB_Manager::get_schema()` God method into 5 domain-specific private helper methods to enforce Single Responsibility Principle.
+
+
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.

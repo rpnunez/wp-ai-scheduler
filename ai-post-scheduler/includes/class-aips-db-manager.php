@@ -67,6 +67,21 @@ class AIPS_DB_Manager {
     }
 
     public function get_schema() {
+        $sql = array();
+        $sql = array_merge($sql, $this->get_core_schema());
+        $sql = array_merge($sql, $this->get_content_schema());
+        $sql = array_merge($sql, $this->get_author_schema());
+        $sql = array_merge($sql, $this->get_ai_schema());
+        $sql = array_merge($sql, $this->get_system_schema());
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for a specific domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_core_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
         $tables = self::get_full_table_names();
@@ -267,6 +282,53 @@ class AIPS_DB_Manager {
 			KEY is_active (is_active)
         ) $charset_collate;";
 
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for a specific domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_content_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_history = $tables['aips_history'];
+        $table_history_log = $tables['aips_history_log'];
+        $table_campaigns = $tables['aips_campaigns'];
+        $table_templates = $tables['aips_templates'];
+        $table_schedule = $tables['aips_schedule'];
+        $table_voices = $tables['aips_voices'];
+        $table_structures = $tables['aips_article_structures'];
+        $table_sections = $tables['aips_prompt_sections'];
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_notifications        = $tables['aips_notifications'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_embeddings           = $tables['aips_embeddings'];
+        $table_relationships        = $tables['aips_relationships'];
+        $table_internal_links       = $tables['aips_internal_links'];
+        $table_affiliate_links      = $tables['aips_affiliate_links'];
+        $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_cache_index          = $tables['aips_cache_index'];
+        $table_cache_events         = $tables['aips_cache_events'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $table_content_audits       = $tables['aips_content_audits'];
+
+        $sql = array();
+
         $sql[] = "CREATE TABLE $table_sections (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -417,6 +479,53 @@ class AIPS_DB_Manager {
             KEY created_at (created_at)
         ) $charset_collate;";
 
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for a specific domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_author_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_history = $tables['aips_history'];
+        $table_history_log = $tables['aips_history_log'];
+        $table_campaigns = $tables['aips_campaigns'];
+        $table_templates = $tables['aips_templates'];
+        $table_schedule = $tables['aips_schedule'];
+        $table_voices = $tables['aips_voices'];
+        $table_structures = $tables['aips_article_structures'];
+        $table_sections = $tables['aips_prompt_sections'];
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_notifications        = $tables['aips_notifications'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_embeddings           = $tables['aips_embeddings'];
+        $table_relationships        = $tables['aips_relationships'];
+        $table_internal_links       = $tables['aips_internal_links'];
+        $table_affiliate_links      = $tables['aips_affiliate_links'];
+        $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_cache_index          = $tables['aips_cache_index'];
+        $table_cache_events         = $tables['aips_cache_events'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $table_content_audits       = $tables['aips_content_audits'];
+
+        $sql = array();
+
         $sql[] = "CREATE TABLE $table_notifications (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(100) NOT NULL,
@@ -543,6 +652,53 @@ class AIPS_DB_Manager {
             KEY updated_at (updated_at)
         ) $charset_collate;";
 
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for a specific domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_ai_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_history = $tables['aips_history'];
+        $table_history_log = $tables['aips_history_log'];
+        $table_campaigns = $tables['aips_campaigns'];
+        $table_templates = $tables['aips_templates'];
+        $table_schedule = $tables['aips_schedule'];
+        $table_voices = $tables['aips_voices'];
+        $table_structures = $tables['aips_article_structures'];
+        $table_sections = $tables['aips_prompt_sections'];
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_notifications        = $tables['aips_notifications'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_embeddings           = $tables['aips_embeddings'];
+        $table_relationships        = $tables['aips_relationships'];
+        $table_internal_links       = $tables['aips_internal_links'];
+        $table_affiliate_links      = $tables['aips_affiliate_links'];
+        $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_cache_index          = $tables['aips_cache_index'];
+        $table_cache_events         = $tables['aips_cache_events'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $table_content_audits       = $tables['aips_content_audits'];
+
+        $sql = array();
+
         $sql[] = "CREATE TABLE $table_internal_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             source_post_id bigint(20) NOT NULL,
@@ -637,7 +793,7 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY created_at (created_at)
         ) $charset_collate;";
-      
+
         $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
             job_id varchar(36) NOT NULL,
             job_type varchar(100) NOT NULL,
@@ -681,6 +837,53 @@ class AIPS_DB_Manager {
             KEY tier (tier),
             KEY operation_id (operation_id)
         ) $charset_collate;";
+
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for a specific domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_system_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_history = $tables['aips_history'];
+        $table_history_log = $tables['aips_history_log'];
+        $table_campaigns = $tables['aips_campaigns'];
+        $table_templates = $tables['aips_templates'];
+        $table_schedule = $tables['aips_schedule'];
+        $table_voices = $tables['aips_voices'];
+        $table_structures = $tables['aips_article_structures'];
+        $table_sections = $tables['aips_prompt_sections'];
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_notifications        = $tables['aips_notifications'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
+        $table_embeddings           = $tables['aips_embeddings'];
+        $table_relationships        = $tables['aips_relationships'];
+        $table_internal_links       = $tables['aips_internal_links'];
+        $table_affiliate_links      = $tables['aips_affiliate_links'];
+        $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_cache_index          = $tables['aips_cache_index'];
+        $table_cache_events         = $tables['aips_cache_events'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $table_content_audits       = $tables['aips_content_audits'];
+
+        $sql = array();
 
         $sql[] = "CREATE TABLE $table_cache_events (
             id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -744,6 +947,8 @@ class AIPS_DB_Manager {
 
         return $sql;
     }
+
+
 
     public static function install_tables() {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
