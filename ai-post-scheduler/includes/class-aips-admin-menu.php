@@ -108,9 +108,9 @@ class AIPS_Admin_Menu {
             array($this, 'render_post_slices_page')
         );
 
-        // Author Topics page - hidden from menu navigation, accessible via URL.
+        // Author Topics page.
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Author Topics', 'ai-post-scheduler'),
             __('Author Topics', 'ai-post-scheduler'),
             'manage_options',
@@ -334,7 +334,7 @@ class AIPS_Admin_Menu {
      */
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
-        if ($page === 'aips-author-topics' || $page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page)) {
+        if ($page === AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG || $this->is_diagnostics_child_page($page) || $this->is_automations_child_page($page)) {
             return 'ai-post-scheduler';
         }
         return $parent_file;
@@ -401,7 +401,6 @@ class AIPS_Admin_Menu {
                 'aips-taxonomy',
                 'aips-internal-links',
                 'aips-affiliate-links',
-                'aips-author-topics',
                 AIPS_Campaigns_Controller::PAGE_SLUG,
                 AIPS_Campaigns_Controller::DETAIL_PAGE_SLUG,
             ),
