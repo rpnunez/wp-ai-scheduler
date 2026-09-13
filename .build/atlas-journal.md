@@ -1460,3 +1460,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+## 2026-09-13 - [Refactor AIPS_Settings God Method]
+**Context:** `AIPS_Settings::register_settings()` was a massive 440-line God method handling all sections and fields.
+**Decision:** Extracted field registration logic into private helper methods.
+**Consequence:** Increased number of methods, but improved maintainability and readability.
+**Tests:** Ran existing test suite to ensure backwards compatibility.

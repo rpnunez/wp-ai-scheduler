@@ -311,9 +311,21 @@ class AIPS_Settings {
 	public function register_settings() {
 		self::register_setting_schema($this->ui);
         
-        // -----------------------------------------------------------------------
-        // General section: Default Post Status, Default Category
-        // -----------------------------------------------------------------------
+        $this->register_general_settings();
+        $this->register_ai_settings();
+        $this->register_feedback_settings();
+        $this->register_notifications_settings();
+        $this->register_api_keys_settings();
+        $this->register_developers_settings();
+        $this->register_resilience_settings();
+        $this->register_content_strategy_settings();
+        $this->register_cache_settings();
+    }
+
+    /**
+     * Register General settings section and fields.
+     */
+    private function register_general_settings() {
         add_settings_section(
             'aips_general_section',
             __('General Settings', 'ai-post-scheduler'),
@@ -336,10 +348,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
+    }
 
-        // -----------------------------------------------------------------------
-        // AI section: AI Model, Environment ID
-        // -----------------------------------------------------------------------
+    /**
+     * Register AI settings section and fields.
+     */
+    private function register_ai_settings() {
         add_settings_section(
             'aips_ai_section',
             __('AI Settings', 'ai-post-scheduler'),
@@ -434,10 +448,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_ai_section'
         );
+    }
 
-        // -----------------------------------------------------------------------
-        // Feedback section: Topic Similarity Threshold
-        // -----------------------------------------------------------------------
+    /**
+     * Register Feedback settings section and fields.
+     */
+    private function register_feedback_settings() {
         add_settings_section(
             'aips_feedback_section',
             __('Feedback Settings', 'ai-post-scheduler'),
@@ -452,10 +468,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_feedback_section'
         );
+    }
 
-        // -----------------------------------------------------------------------
-        // Notifications section: Email address + all per-type preferences
-        // -----------------------------------------------------------------------
+    /**
+     * Register Notifications settings section and fields.
+     */
+    private function register_notifications_settings() {
         add_settings_section(
             'aips_notifications_section',
             __('Notifications', 'ai-post-scheduler'),
@@ -484,10 +502,12 @@ class AIPS_Settings {
                 )
             );
         }
+    }
 
-        // -----------------------------------------------------------------------
-        // API Keys section: Unsplash Access Key
-        // -----------------------------------------------------------------------
+    /**
+     * Register API Keys settings section and fields.
+     */
+    private function register_api_keys_settings() {
         add_settings_section(
             'aips_api_keys_section',
             __('API Keys', 'ai-post-scheduler'),
@@ -502,10 +522,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_api_keys_section'
         );
+    }
 
-        // -----------------------------------------------------------------------
-        // Developers section: Enable Logging, Developer Mode
-        // -----------------------------------------------------------------------
+    /**
+     * Register Developers settings section and fields.
+     */
+    private function register_developers_settings() {
         add_settings_section(
             'aips_developers_section',
             __('Developer Settings', 'ai-post-scheduler'),
@@ -544,7 +566,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_developers_section'
         );
+    }
 
+    /**
+     * Register Resilience & Limits settings section and fields.
+     */
+    private function register_resilience_settings() {
         add_settings_section(
             'aips_resilience_section',
             __('Resilience & Limits', 'ai-post-scheduler'),
@@ -623,14 +650,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_resilience_section'
         );
+    }
 
-        // -----------------------------------------------------------------------
-        // Site-wide Content Strategy settings
-        //
-        // Options are defined via self::get_content_strategy_options(), so the
-        // full list is maintained in ONE place. Both settings registration here
-        // and AIPS_Site_Context::get() read from that shared list — no duplicates.
-        // -----------------------------------------------------------------------
+    /**
+     * Register Content Strategy settings section and fields.
+     */
+    private function register_content_strategy_settings() {
         add_settings_section(
             'aips_content_strategy_section',
             __('Site Content Strategy', 'ai-post-scheduler'),
@@ -701,10 +726,12 @@ class AIPS_Settings {
             'aips-settings',
             'aips_content_strategy_section'
         );
+    }
 
-        // -----------------------------------------------------------------------
-        // Cache section: Driver selection + per-driver configuration.
-        // -----------------------------------------------------------------------
+    /**
+     * Register Cache settings section and fields.
+     */
+    private function register_cache_settings() {
         add_settings_section(
             'aips_cache_section',
             '',
@@ -743,14 +770,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_cache_section'
         );
-
-
-
-
-
-
     }
-
     /**
      * Return the canonical registry of site-wide content strategy options.
      *
