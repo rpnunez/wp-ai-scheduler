@@ -270,6 +270,15 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the Prompt Profile ID configured on this template.
+	 *
+	 * @return int|null Profile ID or null.
+	 */
+	public function get_prompt_profile_id() {
+		return !empty($this->template->prompt_profile_id) ? absint($this->template->prompt_profile_id) : null;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.
@@ -286,6 +295,7 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 			'post_category' => $this->get_post_category(),
 			'post_tags' => $this->get_post_tags(),
 			'post_author' => $this->get_post_author(),
+			'prompt_profile_id' => $this->get_prompt_profile_id(),
 		);
 
 		if ($this->get_topic()) {

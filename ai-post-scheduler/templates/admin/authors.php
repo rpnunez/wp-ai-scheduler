@@ -472,6 +472,23 @@ $site_ctx = AIPS_Site_Context::get();
             </div>
 
             <div class="form-group">
+                <label for="prompt_profile_id"><?php esc_html_e('Prompt Profile', 'ai-post-scheduler'); ?></label>
+                <select id="prompt_profile_id" name="prompt_profile_id">
+                    <option value=""><?php esc_html_e('— Use Global Default Profile —', 'ai-post-scheduler'); ?></option>
+                    <?php
+                    $author_prompt_profiles = AIPS_Prompt_Profiles_Repository::instance()->get_all(false);
+                    foreach ($author_prompt_profiles as $app) :
+                        $app_obj = (object) $app;
+                    ?>
+                        <option value="<?php echo esc_attr($app_obj->id); ?>">
+                            <?php echo esc_html($app_obj->name) . (!empty($app_obj->is_default) ? ' (' . esc_html__('Default', 'ai-post-scheduler') . ')' : ''); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description"><?php esc_html_e('Optional: Select a prompt profile for this author’s post and topic generation', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
                 <label for="voice_tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></label>
                 <input type="text" id="voice_tone" name="voice_tone" placeholder="<?php esc_attr_e('e.g., Professional, Witty, Academic', 'ai-post-scheduler'); ?>">
                 <p class="description"><?php esc_html_e('Specify the tone of voice for the generated content', 'ai-post-scheduler'); ?></p>

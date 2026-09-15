@@ -431,6 +431,16 @@ final class AI_Post_Scheduler {
             return AIPS_Template_Repository::instance();
         });
 
+        // Register AIPS_Prompt_Profiles_Repository
+        $container->singleton(AIPS_Prompt_Profiles_Repository::class, function( $container ) {
+            return AIPS_Prompt_Profiles_Repository::instance();
+        });
+
+        // Register AIPS_Prompt_Profile_Resolver
+        $container->singleton(AIPS_Prompt_Profile_Resolver::class, function( $container ) {
+            return AIPS_Prompt_Profile_Resolver::instance($container->make(AIPS_Prompt_Profiles_Repository::class));
+        });
+
         // Register AIPS_System_Diagnostics_Service
         $container->singleton(AIPS_System_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Diagnostics_Service();

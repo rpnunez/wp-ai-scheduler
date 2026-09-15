@@ -1,0 +1,334 @@
+/* ==========================================================================
+   Prompt Profiles Admin Styles
+   ========================================================================== */
+
+.aips-prompt-profiles-container {
+    margin-top: 15px;
+}
+
+/* Modal sizing */
+.aips-modal-xl {
+    max-width: 1080px;
+    width: 95%;
+}
+
+.aips-modal-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.aips-modal-section {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.aips-profile-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.aips-profile-meta-grid .aips-form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Workspace layout */
+.aips-prompt-stage-workspace {
+    display: flex;
+    min-height: 480px;
+    background: #ffffff;
+}
+
+/* Stage Nav Sidebar */
+.aips-prompt-stage-nav {
+    width: 260px;
+    border-right: 1px solid #e2e8f0;
+    background: #fcfdfe;
+    padding: 16px 0;
+    flex-shrink: 0;
+}
+
+.aips-stage-nav-title {
+    padding: 0 18px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.aips-stage-tabs-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.aips-stage-tabs-list li {
+    display: flex;
+    align-items: center;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #334155;
+    transition: all 0.15s ease-in-out;
+    border-left: 3px solid transparent;
+    gap: 10px;
+}
+
+.aips-stage-tabs-list li:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.aips-stage-tabs-list li.is-active {
+    background: #eef2ff;
+    color: #4f46e5;
+    border-left-color: #4f46e5;
+    font-weight: 600;
+}
+
+.aips-stage-tabs-list li .dashicons {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    color: #64748b;
+}
+
+.aips-stage-tabs-list li.is-active .dashicons {
+    color: #4f46e5;
+}
+
+.aips-tab-label {
+    flex-grow: 1;
+}
+
+.aips-stage-indicator {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.2s ease;
+}
+
+.aips-stage-indicator.is-customized {
+    background: #3b82f6;
+}
+
+/* Stage Content Area */
+.aips-prompt-stage-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow-y: auto;
+    max-height: 650px;
+}
+
+.aips-stage-panels-wrapper {
+    flex-grow: 1;
+}
+
+.aips-stage-panel {
+    display: none;
+}
+
+.aips-stage-panel.is-active {
+    display: block;
+}
+
+.aips-stage-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 16px;
+}
+
+.aips-stage-heading {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.aips-stage-subtext {
+    margin: 0;
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* Placeholder Chips */
+.aips-stage-chips-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.aips-chips-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.aips-chips-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.aips-placeholder-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.aips-placeholder-chip:hover {
+    background: #c7d2fe;
+    color: #1e1b4b;
+    border-color: #a5b4fc;
+    transform: translateY(-1px);
+}
+
+.aips-placeholder-chip:active {
+    transform: translateY(0);
+}
+
+.aips-stage-textarea {
+    width: 100%;
+    font-family: Consolas, Monaco, "Courier New", monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    resize: vertical;
+}
+
+.aips-stage-textarea:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* Sandbox */
+.aips-prompt-preview-sandbox {
+    margin-top: 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.aips-sandbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: #f1f5f9;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.aips-sandbox-header:hover {
+    background: #e2e8f0;
+}
+
+.aips-sandbox-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #1e293b;
+}
+
+.aips-sandbox-subtitle {
+    font-size: 12px;
+    font-weight: normal;
+    color: #64748b;
+}
+
+.aips-sandbox-chevron {
+    transition: transform 0.2s ease;
+}
+
+.aips-prompt-preview-sandbox.is-expanded .aips-sandbox-chevron {
+    transform: rotate(180deg);
+}
+
+.aips-sandbox-body {
+    padding: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.aips-sandbox-inputs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.aips-sandbox-result {
+    margin-top: 12px;
+}
+
+.aips-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.aips-result-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.aips-prompt-code-output {
+    margin: 0;
+    padding: 14px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 6px;
+    font-family: Consolas, Monaco, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.aips-unsaved-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #d97706;
+    font-weight: 500;
+}
+
+.aips-unsaved-text .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}

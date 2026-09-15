@@ -299,6 +299,15 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the Prompt Profile ID configured on this topic's author.
+	 *
+	 * @return int|null Profile ID or null.
+	 */
+	public function get_prompt_profile_id() {
+		return !empty($this->author->prompt_profile_id) ? absint($this->author->prompt_profile_id) : null;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.
@@ -320,6 +329,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'post_tags' => $this->get_post_tags(),
 			'post_author' => $this->get_post_author(),
 			'article_structure_id' => $this->get_article_structure_id(),
+			'prompt_profile_id' => $this->get_prompt_profile_id(),
 			'voice_tone' => isset($this->author->voice_tone) ? $this->author->voice_tone : '',
 			'writing_style' => isset($this->author->writing_style) ? $this->author->writing_style : '',
 		);

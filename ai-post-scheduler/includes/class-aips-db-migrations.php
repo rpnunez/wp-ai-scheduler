@@ -183,8 +183,12 @@ class AIPS_DB_Migrations {
 
 		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
 			$this->migrate_to_3_6_5();
-    }
-    
+		}
+
+		if ( version_compare( $from_version, '3.7.0', '<' ) ) {
+			$this->migrate_to_3_7_0();
+		}
+
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
 		// stale for the rest of this request.
@@ -1270,5 +1274,22 @@ class AIPS_DB_Migrations {
 		$wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		$this->logger->log( 'Migration 3.6.5: Consolidated aips_post_embeddings into aips_embeddings and dropped legacy table.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.0.
+	 *
+	 * Seeds default Prompt Profile archetypes if the table is empty and
+	 * ensures relational columns are initialized.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_0() {
+		if ( class_exists( 'AIPS_Prompt_Profile_Seeder' ) ) {
+			$seeded = AIPS_Prompt_Profile_Seeder::seed_defaults();
+			if ( $seeded > 0 ) {
+				$this->logger->log( "Migration 3.7.0: Seeded {$seeded} default Prompt Profiles.", 'info' );
+			}
+		}
 	}
 }
