@@ -38,14 +38,21 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $diversity_injector;
 
 	/**
+	 * @var AIPS_Prompt_Profile_Resolver Prompt profile resolver.
+	 */
+	private $profile_resolver;
+
+	/**
 	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
 	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null  $diversity_injector            Optional diversity injector.
+	 * @param AIPS_Prompt_Profile_Resolver|null           $profile_resolver               Optional prompt profile resolver.
 	 */
-	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null) {
+	public function __construct($template_processor = null, $article_structure_section_builder = null, $diversity_injector = null, $profile_resolver = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
 		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		$this->profile_resolver   = $profile_resolver ?: AIPS_Prompt_Profile_Resolver::instance();
 	}
 
 	/**
@@ -95,37 +102,35 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
 		}
 
+		$voice_instructions = '';
 		if ($context->get_type() === 'template' && $context->get_voice_id()) {
 			$voice = $context->get_voice();
 			if ($voice && !empty($voice->content_instructions)) {
 				$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-				$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 			}
 		}
 
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($context);
-		if (!empty($diversity_block)) {
-			$processed_prompt .= "\n\n" . $diversity_block;
-		}
+		$diversity_blocks_str = $this->build_diversity_block($context);
+		$rel_context = $this->get_related_context($topic);
 
-		$content_format_block = $this->diversity_injector->build_content_format_block($context);
-		if (!empty($content_format_block)) {
-			$processed_prompt .= "\n\n" . $content_format_block;
-		}
+		$stage_template = $this->profile_resolver->get_stage_prompt('content_prompt', $context);
+		$placeholders = array(
+			'voice_instructions' => $voice_instructions,
+			'content_prompt'     => $processed_prompt,
+			'structured_content' => $processed_prompt,
+			'topic'              => $topic,
+			'diversity_blocks'   => $diversity_blocks_str,
+			'related_context'    => $rel_context,
+		);
+		$mandatory = array(
+			'content_prompt'   => $processed_prompt,
+			'diversity_blocks' => $diversity_blocks_str,
+			'related_context'  => $rel_context,
+		);
 
-		$post_slice_block = $this->diversity_injector->build_post_slice_block($context);
-		if (!empty($post_slice_block)) {
-			$processed_prompt .= "\n\n" . $post_slice_block;
-		}
+		$final_prompt = $this->profile_resolver->interpolate($stage_template, $placeholders, $mandatory);
 
-		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($context);
-		if (!empty($uniqueness_seed_line_block)) {
-			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
-		}
-
-		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
-
-		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
+		return apply_filters('aips_content_prompt', $final_prompt, $context, $topic);
 	}
 
 	/**
@@ -140,34 +145,87 @@ class AIPS_Prompt_Builder_Post_Content {
 		do_action('aips_before_build_content_prompt', $template, $topic);
 		$processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
 
-		if ($voice) {
+		$voice_instructions = '';
+		if ($voice && !empty($voice->content_instructions)) {
 			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 		}
 
-		$diversity_block = $this->diversity_injector->build_avoid_titles_block($template);
-		if (!empty($diversity_block)) {
-			$processed_prompt .= "\n\n" . $diversity_block;
+		$diversity_blocks_str = $this->build_diversity_block($template);
+		$rel_context = $this->get_related_context($topic);
+
+		$stage_template = $this->profile_resolver->get_stage_prompt('content_prompt', $template);
+		$placeholders = array(
+			'voice_instructions' => $voice_instructions,
+			'content_prompt'     => $processed_prompt,
+			'structured_content' => $processed_prompt,
+			'topic'              => $topic,
+			'diversity_blocks'   => $diversity_blocks_str,
+			'related_context'    => $rel_context,
+		);
+		$mandatory = array(
+			'content_prompt'   => $processed_prompt,
+			'diversity_blocks' => $diversity_blocks_str,
+			'related_context'  => $rel_context,
+		);
+
+		$final_prompt = $this->profile_resolver->interpolate($stage_template, $placeholders, $mandatory);
+
+		return apply_filters('aips_content_prompt', $final_prompt, $template, $topic);
+	}
+
+	/**
+	 * Build concatenated diversity blocks string.
+	 *
+	 * @param mixed $subject Subject entity.
+	 * @return string
+	 */
+	private function build_diversity_block($subject) {
+		$blocks = array(
+			$this->diversity_injector->build_avoid_titles_block($subject),
+			$this->diversity_injector->build_content_format_block($subject),
+			$this->diversity_injector->build_post_slice_block($subject),
+			$this->diversity_injector->build_uniqueness_seed_line_block($subject),
+		);
+
+		$out = array();
+		foreach ($blocks as $b) {
+			if (!empty($b)) {
+				$out[] = $b;
+			}
 		}
 
-		$content_format_block = $this->diversity_injector->build_content_format_block($template);
-		if (!empty($content_format_block)) {
-			$processed_prompt .= "\n\n" . $content_format_block;
+		return implode("\n\n", $out);
+	}
+
+	/**
+	 * Get semantically related published articles context block.
+	 *
+	 * @param string|null $topic Target topic.
+	 * @return string
+	 */
+	private function get_related_context($topic) {
+		if (empty($topic) || !AIPS_Config::get_instance()->get_option('aips_generation_inject_related_context', true)) {
+			return '';
 		}
 
-		$post_slice_block = $this->diversity_injector->build_post_slice_block($template);
-		if (!empty($post_slice_block)) {
-			$processed_prompt .= "\n\n" . $post_slice_block;
+		$container = AIPS_Container::get_instance();
+		if (!$container->has(AIPS_Related_Posts_Service::class)) {
+			return '';
 		}
 
-		$uniqueness_seed_line_block = $this->diversity_injector->build_uniqueness_seed_line_block($template);
-		if (!empty($uniqueness_seed_line_block)) {
-			$processed_prompt .= "\n\n" . $uniqueness_seed_line_block;
+		$related_service = $container->make(AIPS_Related_Posts_Service::class);
+		$related = $related_service->get_related_posts_for_topic($topic, 3, 0.55);
+
+		if (empty($related)) {
+			return '';
 		}
 
-		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+		$rel_context = "Context & Related Published Articles (you may naturally reference or link to these where relevant):\n";
+		foreach ($related as $rel_post) {
+			$rel_context .= "- \"{$rel_post['title']}\" (URL: {$rel_post['url']})\n";
+		}
 
-		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
+		return $rel_context;
 	}
 
 	/**

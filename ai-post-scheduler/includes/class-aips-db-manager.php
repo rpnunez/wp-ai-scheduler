@@ -37,6 +37,7 @@ class AIPS_DB_Manager {
         'aips_cache_events',
         'aips_integration_field_mappings',
         'aips_content_audits',
+        'aips_prompt_profiles',
     );
 
     public function __construct() {
@@ -102,6 +103,7 @@ class AIPS_DB_Manager {
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
+        $table_prompt_profiles      = $tables['aips_prompt_profiles'];
 
         $sql = array();
 
@@ -192,12 +194,14 @@ class AIPS_DB_Manager {
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
+            prompt_profile_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
-            KEY campaign_id (campaign_id)
+            KEY campaign_id (campaign_id),
+            KEY prompt_profile_id (prompt_profile_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
@@ -334,12 +338,14 @@ class AIPS_DB_Manager {
             scheduled_post_generation_quantity int DEFAULT 1,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            prompt_profile_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY article_structure_id (article_structure_id),
+            KEY prompt_profile_id (prompt_profile_id),
             KEY is_active (is_active),
           KEY topic_generation_next_run (topic_generation_next_run),
           KEY post_generation_next_run (post_generation_next_run)
@@ -736,6 +742,30 @@ class AIPS_DB_Manager {
             KEY niche_idx (niche),
             KEY overall_score_idx (overall_score),
             KEY created_at_idx (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_prompt_profiles (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            slug varchar(100) NOT NULL,
+            description text DEFAULT NULL,
+            is_default tinyint(1) NOT NULL DEFAULT 0,
+            title_prompt text DEFAULT NULL,
+            title_followup_prompt text DEFAULT NULL,
+            content_prompt text DEFAULT NULL,
+            excerpt_prompt text DEFAULT NULL,
+            excerpt_followup_prompt text DEFAULT NULL,
+            featured_image_prompt text DEFAULT NULL,
+            topic_ideas_prompt text DEFAULT NULL,
+            metadata_prompt text DEFAULT NULL,
+            taxonomy_prompt text DEFAULT NULL,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY slug (slug),
+            KEY is_default (is_default),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         return $sql;

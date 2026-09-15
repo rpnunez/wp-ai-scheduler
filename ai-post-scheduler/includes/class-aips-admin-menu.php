@@ -83,6 +83,15 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Prompt Profiles', 'ai-post-scheduler'),
+            __('Prompt Profiles', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-prompt-profiles',
+            array($this, 'render_prompt_profiles_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Article Structures', 'ai-post-scheduler'),
             __('Article Structures', 'ai-post-scheduler'),
             'manage_options',
@@ -454,6 +463,16 @@ class AIPS_Admin_Menu {
     public function render_voices_page() {
         $voices_handler = new AIPS_Voices();
         $voices_handler->render_page();
+    }
+
+    /**
+     * Render the Prompt Profiles management page.
+     *
+     * @return void
+     */
+    public function render_prompt_profiles_page() {
+        $controller = new AIPS_Prompt_Profiles_Controller();
+        $controller->render_page();
     }
 
     /**

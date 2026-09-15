@@ -36,12 +36,19 @@ class AIPS_Prompt_Builder_Topic {
 	private $diversity_injector;
 
 	/**
+	 * @var AIPS_Prompt_Profile_Resolver
+	 */
+	private $profile_resolver;
+
+	/**
 	 * @param AIPS_Prompt_Builder|null                  $base_builder Optional; instantiated automatically when null.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
+	 * @param AIPS_Prompt_Profile_Resolver|null           $profile_resolver Optional prompt profile resolver.
 	 */
-	public function __construct($base_builder = null, $diversity_injector = null) {
-		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
+	public function __construct($base_builder = null, $diversity_injector = null, $profile_resolver = null) {
+		$this->base_builder       = $base_builder ?: new AIPS_Prompt_Builder();
 		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		$this->profile_resolver   = $profile_resolver ?: AIPS_Prompt_Profile_Resolver::instance();
 	}
 
 	/**
@@ -71,7 +78,13 @@ class AIPS_Prompt_Builder_Topic {
 			$quantity = max(1, (int) apply_filters('aips_default_topic_quantity', 5));
 		}
 
-		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
+		$stage_template = $this->profile_resolver->get_stage_prompt('topic_ideas_prompt', $author);
+		$initial_prompt = $this->profile_resolver->interpolate($stage_template, array(
+			'quantity' => (string) $quantity,
+			'niche'    => (string) $author->field_niche,
+		));
+
+		$prompt = $initial_prompt . "\n\n";
 
 		// ---- Site-wide context (injected first so author-level settings override if needed) ----
 		$prompt .= $this->base_builder->build_site_context_block();

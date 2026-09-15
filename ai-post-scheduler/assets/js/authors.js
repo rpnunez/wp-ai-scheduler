@@ -309,6 +309,7 @@
 						$('#author_keywords').val(author.keywords || '');
 						$('#author_details').val(author.details || '');
 						$('#article_structure_id').val(author.article_structure_id || '');
+						$('#prompt_profile_id').val(author.prompt_profile_id || '');
 						$('#voice_tone').val(author.voice_tone || '');
 						$('#writing_style').val(author.writing_style || '');
 						// Extended profile fields

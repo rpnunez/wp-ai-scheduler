@@ -35,6 +35,7 @@ class AIPS_Admin_Assets {
 	private const PAGE_POST_SLICES = 'aips-post-slices';
 	private const PAGE_TEMPLATES = 'aips-templates';
 	private const PAGE_VOICES = 'aips-voices';
+	private const PAGE_PROMPT_PROFILES = 'aips-prompt-profiles';
 	private const PAGE_STRUCTURES = 'aips-structures';
 	private const PAGE_SCHEDULE = 'aips-schedule';
 	private const PAGE_CAMPAIGNS = 'aips-campaigns';
@@ -103,6 +104,10 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_VOICES === $page || $this->hook_contains($hook, self::PAGE_VOICES)) {
 			$this->enqueue_voices_assets();
+		}
+
+        if (self::PAGE_PROMPT_PROFILES === $page || $this->hook_contains($hook, self::PAGE_PROMPT_PROFILES)) {
+			$this->enqueue_prompt_profiles_assets();
 		}
 
         if (self::PAGE_STRUCTURES === $page || $this->hook_contains($hook, self::PAGE_STRUCTURES)) {
@@ -932,6 +937,52 @@ class AIPS_Admin_Assets {
                 'saveVoice'          => __('Save Voice', 'ai-post-scheduler'),
                 'deleteVoiceConfirm' => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
             ));
+    }
+
+    /**
+     * Enqueue assets for the prompt profiles page.
+     */
+    private function enqueue_prompt_profiles_assets() {
+        wp_enqueue_style(
+            'aips-prompt-profiles-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-prompt-profiles.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-prompt-profiles-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-prompt-profiles.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-prompt-profiles-script', 'aipsPromptProfilesL10n', array(
+            'nonce'             => wp_create_nonce('aips_ajax_nonce'),
+            'createProfile'     => __('Create Prompt Profile', 'ai-post-scheduler'),
+            'editProfile'       => __('Edit Prompt Profile', 'ai-post-scheduler'),
+            'cloneProfile'      => __('Clone Profile', 'ai-post-scheduler'),
+            'saveProfile'       => __('Save Profile', 'ai-post-scheduler'),
+            'saving'            => __('Saving...', 'ai-post-scheduler'),
+            'profileSaved'      => __('Prompt profile saved successfully.', 'ai-post-scheduler'),
+            'profileDeleted'    => __('Prompt profile deleted successfully.', 'ai-post-scheduler'),
+            'profileCloned'     => __('Prompt profile cloned successfully.', 'ai-post-scheduler'),
+            'defaultSet'        => __('Default prompt profile updated.', 'ai-post-scheduler'),
+            'confirmDelete'     => __('Are you sure you want to delete this prompt profile? Any templates or authors using it will fall back to the global default profile.', 'ai-post-scheduler'),
+            'confirmResetStage' => __('Reset this stage prompt to the core codebase default?', 'ai-post-scheduler'),
+            'errorLoading'      => __('Error loading prompt profile data.', 'ai-post-scheduler'),
+            'errorSaving'       => __('Error saving prompt profile.', 'ai-post-scheduler'),
+            'errorDeleting'     => __('Error deleting prompt profile.', 'ai-post-scheduler'),
+            'errorCloning'      => __('Error cloning prompt profile.', 'ai-post-scheduler'),
+            'errorPreview'      => __('Error generating preview prompt.', 'ai-post-scheduler'),
+            'previewGenerating' => __('Assembling live preview...', 'ai-post-scheduler'),
+            'copiedChip'        => __('Placeholder tag inserted.', 'ai-post-scheduler'),
+            'nameRequired'      => __('Profile Name is required.', 'ai-post-scheduler'),
+            'defaultBadge'      => __('Global Default', 'ai-post-scheduler'),
+            'customBadge'       => __('Custom', 'ai-post-scheduler'),
+            'builtinBadge'      => __('System Preset', 'ai-post-scheduler'),
+        ));
     }
 
     /**

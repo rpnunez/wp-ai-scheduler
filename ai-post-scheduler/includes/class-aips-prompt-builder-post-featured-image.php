@@ -28,10 +28,17 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 	private $template_processor;
 
 	/**
-	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
+	 * @var AIPS_Prompt_Profile_Resolver
 	 */
-	public function __construct($template_processor = null) {
+	private $profile_resolver;
+
+	/**
+	 * @param AIPS_Template_Processor|null      $template_processor Optional template processor.
+	 * @param AIPS_Prompt_Profile_Resolver|null $profile_resolver   Optional prompt profile resolver.
+	 */
+	public function __construct($template_processor = null, $profile_resolver = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+		$this->profile_resolver   = $profile_resolver ?: AIPS_Prompt_Profile_Resolver::instance();
 	}
 
 	/**
@@ -55,12 +62,6 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 	/**
 	 * Build image prompt from a generation context.
 	 *
-	 * Returns the processed image prompt when featured image generation is enabled
-	 * and an image prompt is available. The source check is intentionally omitted
-	 * here so that callers such as AI Edit regeneration can request an AI-generated
-	 * image regardless of the template's original image source setting. Source-based
-	 * routing (Unsplash, media library, AI) is the responsibility of the caller.
-	 *
 	 * @param AIPS_Generation_Context $context Generation context.
 	 * @return string
 	 */
@@ -69,12 +70,18 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 			return '';
 		}
 
-		$image_prompt = $context->get_image_prompt();
-		if (empty($image_prompt)) {
-			return '';
-		}
+		$image_prompt = (string) $context->get_image_prompt();
+		$topic = (string) $context->get_topic();
 
-		return $this->template_processor->process($image_prompt, $context->get_topic());
+		$processed_image_prompt = !empty($image_prompt) ? $this->template_processor->process($image_prompt, $topic) : '';
+
+		$stage_template = $this->profile_resolver->get_stage_prompt('featured_image_prompt', $context);
+		$placeholders = array(
+			'image_prompt' => $processed_image_prompt,
+			'topic'        => $topic,
+		);
+
+		return $this->profile_resolver->interpolate($stage_template, $placeholders, array('image_prompt' => $processed_image_prompt));
 	}
 
 	/**
@@ -87,12 +94,20 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 	private function build_from_template($template, $topic = null) {
 		$should_generate = isset($template->generate_featured_image) && $template->generate_featured_image;
 		$source = isset($template->featured_image_source) ? $template->featured_image_source : 'ai_prompt';
-		$image_prompt = isset($template->image_prompt) ? $template->image_prompt : '';
+		$image_prompt = isset($template->image_prompt) ? (string) $template->image_prompt : '';
 
-		if (!$should_generate || $source !== 'ai_prompt' || empty($image_prompt)) {
+		if (!$should_generate || $source !== 'ai_prompt') {
 			return '';
 		}
 
-		return $this->template_processor->process($image_prompt, $topic);
+		$processed_image_prompt = !empty($image_prompt) ? $this->template_processor->process($image_prompt, $topic) : '';
+
+		$stage_template = $this->profile_resolver->get_stage_prompt('featured_image_prompt', $template);
+		$placeholders = array(
+			'image_prompt' => $processed_image_prompt,
+			'topic'        => (string) $topic,
+		);
+
+		return $this->profile_resolver->interpolate($stage_template, $placeholders, array('image_prompt' => $processed_image_prompt));
 	}
 }

@@ -390,6 +390,26 @@ $is_embedded_templates_view = !empty($embedded);
                                 <p class="description"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
                             </div>
                         </div>
+
+                        <div class="aips-form-row">
+                            <label for="prompt_profile_id"><?php esc_html_e('Prompt Profile', 'ai-post-scheduler'); ?></label>
+                            <div class="aips-prompt-profile-selector">
+                                <select id="prompt_profile_id" name="prompt_profile_id" class="regular-text">
+                                    <option value="0"><?php esc_html_e('Use Global Default Profile', 'ai-post-scheduler'); ?></option>
+                                    <?php
+                                    $prompt_profiles_repo = AIPS_Prompt_Profiles_Repository::instance();
+                                    $all_prompt_profiles = $prompt_profiles_repo->get_all(false);
+                                    foreach ($all_prompt_profiles as $pp) :
+                                        $pp_obj = (object) $pp;
+                                    ?>
+                                        <option value="<?php echo esc_attr($pp_obj->id); ?>">
+                                            <?php echo esc_html($pp_obj->name) . (!empty($pp_obj->is_default) ? ' (' . esc_html__('Default', 'ai-post-scheduler') . ')' : ''); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="description"><?php esc_html_e('Optional. Select a custom prompt profile to override default prompt generation patterns.', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
                         
                         <div class="aips-form-row">
                             <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>

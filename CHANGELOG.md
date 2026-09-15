@@ -19,6 +19,13 @@
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
+- **Configurable Prompt Profiles & Prompt Orchestration System**:
+  - Introduced customizable Prompt Profiles (`wp_aips_prompt_profiles` table, `AIPS_Prompt_Profiles_Repository`, `AIPS_Prompt_Profile_Resolver`) supporting granular stage-by-stage customization across all generation phases (Titles, Follow-up Titles, Content Shell, Excerpts, Follow-up Excerpts, Featured Images, Author Topic Ideas, SEO Metadata, and Taxonomy).
+  - Pre-seeded with 4 specialized archetypes: *Standard Default* (1:1 core fallback), *SEO & Search Intent Maximizer*, *Engaging & Conversational Storyteller*, and *Technical & In-Depth Authority*.
+  - Added 4-tier resolution cascade: `Template/Context Profile -> Author Profile -> Global Default Profile -> Hardcoded Codebase Fallback`.
+  - Rich contextual placeholder tag interpolation (`{{topic}}`, `{{voice_instructions}}`, `{{article_data}}`, `{{sections}}`, `{{word_count_min}}`, `{{word_count_max}}`, `{{diversity_blocks}}`, etc.) with safety auto-append guard for omitted critical reference data.
+  - Dedicated admin interface under **AI Post Scheduler → Prompt Profiles** featuring tabbed stage navigation, clickable placeholder insertion chips, stage-level core default resets, and a tokenless live prompt assembly preview sandbox.
+  - Profile assignment pickers integrated directly into Template and Author editor modals.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.
 
