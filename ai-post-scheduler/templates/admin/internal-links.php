@@ -64,16 +64,15 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 
 		</div><!-- /.aips-stats-row -->
 
-		<!-- Tabs -->
-		<div class="aips-tab-nav">
-			<a href="#suggestions" class="aips-tab-link active" data-tab="suggestions"><?php esc_html_e('Suggestions', 'ai-post-scheduler'); ?></a>
-			<a href="#generate" class="aips-tab-link" data-tab="generate"><?php esc_html_e('Generate for Post', 'ai-post-scheduler'); ?></a>
-		</div>
+		<!-- Tabs & Content Panel -->
+		<div class="aips-content-panel aips-panel-with-tabs">
+			<div class="aips-tab-nav aips-panel-tab-nav">
+				<a href="#suggestions" class="aips-tab-link active" data-tab="suggestions"><?php esc_html_e('Suggestions', 'ai-post-scheduler'); ?></a>
+				<a href="#generate" class="aips-tab-link" data-tab="generate"><?php esc_html_e('Generate for Post', 'ai-post-scheduler'); ?></a>
+			</div>
 
-		<!-- Suggestions Tab -->
-		<div id="suggestions-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
-			<div class="aips-content-panel">
-
+			<!-- Suggestions Tab -->
+			<div id="suggestions-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<div class="aips-filter-left">
@@ -120,12 +119,10 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 						<div class="aips-pagination" id="aips-il-page-controls"></div>
 					</div>
 				</div><!-- /.aips-panel-body -->
-			</div><!-- /.aips-content-panel -->
-		</div><!-- /#suggestions-tab -->
+			</div><!-- /#suggestions-tab -->
 
-		<!-- Generate for Post Tab -->
-		<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
-			<div class="aips-content-panel">
+			<!-- Generate for Post Tab -->
+			<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
 				<div class="aips-panel-body" style="padding:24px;">
 					<h2 style="margin-top:0;"><?php esc_html_e('Generate Suggestions for a Post', 'ai-post-scheduler'); ?></h2>
 					<p><?php esc_html_e('Enter a post ID to generate internal link suggestions for it. The post will be indexed if it has not been indexed yet.', 'ai-post-scheduler'); ?></p>
@@ -172,8 +169,8 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 						<?php esc_html_e('Re-index Post', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
-			</div>
-		</div><!-- /#generate-tab -->
+			</div><!-- /#generate-tab -->
+		</div><!-- /.aips-panel-with-tabs -->
 
 <!-- Insert Link Modal -->
 <div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">

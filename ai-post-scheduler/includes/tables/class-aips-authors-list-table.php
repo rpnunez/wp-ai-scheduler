@@ -82,7 +82,6 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	public function get_columns() {
 		return array(
 			'cb'      => '<input type="checkbox" id="aips-authors-select-all" />',
-			'quality' => '<span class="screen-reader-text">' . esc_html__('Quality', 'ai-post-scheduler') . '</span>',
 			'name'    => esc_html__('Author Name', 'ai-post-scheduler'),
 			'status'  => esc_html__('Status', 'ai-post-scheduler'),
 			'topics'  => esc_html__('Topics', 'ai-post-scheduler'),
@@ -262,14 +261,22 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	}
 
 	/**
-	 * Quality score indicator column rendering.
+	 * Author name column rendering with quality indicator and row actions.
 	 *
 	 * @param object $item Author row object.
 	 * @return string
 	 */
-	protected function column_quality($item) {
-		$author_details = !empty($item->details) ? json_decode($item->details, true) : array();
-		$policy_flags   = (is_array($author_details) && isset($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? $author_details['policy_flags'] : array();
+	protected function column_name($item) {
+		$author_id = (int) $item->id;
+		$topics_url = add_query_arg(array(
+			'page'      => 'aips-automations',
+			'tab'       => 'author-topics',
+			'author_id' => $author_id,
+		), admin_url('admin.php'));
+
+		// Calculate quality indicator
+		$author_details     = !empty($item->details) ? json_decode($item->details, true) : array();
+		$policy_flags       = (is_array($author_details) && isset($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? $author_details['policy_flags'] : array();
 		$policy_flags_count = count($policy_flags);
 
 		$feedback_stats    = isset($this->all_feedback_stats[$item->id]) ? $this->all_feedback_stats[$item->id] : array('total' => 0, 'approved' => 0, 'rejected' => 0);
@@ -291,29 +298,8 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			$quality_label = __('Healthy Author', 'ai-post-scheduler');
 		}
 
-		return sprintf(
-			'<span class="aips-quality-indicator aips-quality-%s" title="%s" aria-label="%s"></span>',
-			esc_attr($quality_state),
-			esc_attr($quality_label),
-			esc_attr($quality_label)
-		);
-	}
-
-	/**
-	 * Author name column rendering with persona details and row actions.
-	 *
-	 * @param object $item Author row object.
-	 * @return string
-	 */
-	protected function column_name($item) {
-		$author_id = (int) $item->id;
-		$topics_url = add_query_arg(array(
-			'page'      => 'aips-automations',
-			'tab'       => 'author-topics',
-			'author_id' => $author_id,
-		), admin_url('admin.php'));
-
-		$html  = '<div class="cell-primary">';
+		$html  = '<div class="cell-primary aips-author-title-cell">';
+		$html .= '<span class="aips-quality-indicator aips-quality-' . esc_attr($quality_state) . '" title="' . esc_attr($quality_label) . '" aria-label="' . esc_attr($quality_label) . '"></span>';
 		$html .= '<strong><a href="' . esc_url($topics_url) . '">' . esc_html($item->name) . '</a></strong>';
 		$html .= '</div>';
 
@@ -321,13 +307,13 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			$html .= '<div class="cell-meta aips-muted">' . esc_html($item->description) . '</div>';
 		}
 
-		// WordPress native row actions
+		// WordPress native row actions (revealed on hover)
 		$actions = array(
-			'topics'         => sprintf('<a href="%s">%s</a>', esc_url($topics_url), esc_html__('Manage Topics', 'ai-post-scheduler')),
-			'generate_topics'=> sprintf('<a href="#" class="aips-generate-topics-now" data-author-id="%d" data-author-name="%s">%s</a>', $author_id, esc_attr($item->name), esc_html__('Generate Topics', 'ai-post-scheduler')),
-			'generate_posts' => sprintf('<a href="#" class="aips-generate-author-posts-now" data-author-id="%d" data-author-name="%s">%s</a>', $author_id, esc_attr($item->name), esc_html__('Generate Posts', 'ai-post-scheduler')),
-			'edit'           => sprintf('<a href="#" class="aips-edit-author" data-author-id="%d">%s</a>', $author_id, esc_html__('Edit', 'ai-post-scheduler')),
-			'delete'         => sprintf('<a href="#" class="aips-delete-author aips-link-danger" data-author-id="%d" data-author-name="%s">%s</a>', $author_id, esc_attr($item->name), esc_html__('Delete', 'ai-post-scheduler')),
+			'topics'          => sprintf('<a href="%s">%s</a>', esc_url($topics_url), esc_html__('Manage Topics', 'ai-post-scheduler')),
+			'generate_topics' => sprintf('<a href="#" class="aips-generate-topics-now" data-id="%d" data-author-id="%d" data-author-name="%s">%s</a>', $author_id, $author_id, esc_attr($item->name), esc_html__('Generate Topics', 'ai-post-scheduler')),
+			'generate_posts'  => sprintf('<a href="#" class="aips-generate-author-posts-now" data-id="%d" data-author-id="%d" data-author-name="%s">%s</a>', $author_id, $author_id, esc_attr($item->name), esc_html__('Generate Posts', 'ai-post-scheduler')),
+			'edit'            => sprintf('<a href="#" class="aips-edit-author" data-id="%d" data-author-id="%d">%s</a>', $author_id, $author_id, esc_html__('Edit', 'ai-post-scheduler')),
+			'delete'          => sprintf('<a href="#" class="aips-delete-author aips-link-danger" data-id="%d" data-author-id="%d" data-author-name="%s">%s</a>', $author_id, $author_id, esc_attr($item->name), esc_html__('Delete', 'ai-post-scheduler')),
 		);
 
 		$html .= $this->row_actions($actions);
@@ -403,12 +389,26 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	protected function column_actions($item) {
 		$author_id   = (int) $item->id;
 		$author_name = esc_attr($item->name ?? '');
+		$topics_url  = add_query_arg(array(
+			'page'      => 'aips-automations',
+			'tab'       => 'author-topics',
+			'author_id' => $author_id,
+		), admin_url('admin.php'));
 
 		$html  = '<div class="cell-actions">';
-		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-generate-topics-now" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '" title="' . esc_attr__('Generate Topics Now', 'ai-post-scheduler') . '"><span class="dashicons dashicons-update" aria-hidden="true"></span> ' . esc_html__('Generate Topics', 'ai-post-scheduler') . '</button>';
-		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-success aips-generate-author-posts-now" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '" title="' . esc_attr__('Generate Posts Now', 'ai-post-scheduler') . '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' . esc_html__('Generate Posts', 'ai-post-scheduler') . '</button>';
-		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-author-id="' . $author_id . '" title="' . esc_attr__('Edit Author', 'ai-post-scheduler') . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span> ' . esc_html__('Edit', 'ai-post-scheduler') . '</button>';
-		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '" title="' . esc_attr__('Delete Author', 'ai-post-scheduler') . '"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>';
+		$html .= '<div class="aips-btn-group aips-btn-group-inline">';
+		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-author" data-id="' . $author_id . '" data-author-id="' . $author_id . '" title="' . esc_attr__('Edit Author', 'ai-post-scheduler') . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span> ' . esc_html__('Edit', 'ai-post-scheduler') . '</button>';
+		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-topics-now" data-id="' . $author_id . '" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '" title="' . esc_attr__('Generate Topics Now', 'ai-post-scheduler') . '"><span class="dashicons dashicons-update" aria-hidden="true"></span> ' . esc_html__('Generate Topics', 'ai-post-scheduler') . '</button>';
+		$html .= '</div>';
+
+		$html .= '<div class="aips-row-action-group">';
+		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="aips-author-actions-' . $author_id . '" title="' . esc_attr__('More actions', 'ai-post-scheduler') . '"><span class="dashicons dashicons-ellipsis"></span><span class="screen-reader-text">' . esc_html__('More actions', 'ai-post-scheduler') . '</span></button>';
+		$html .= '<div id="aips-author-actions-' . $author_id . '" class="aips-row-action-menu" hidden>';
+		$html .= '<a class="aips-row-action-item" href="' . esc_url($topics_url) . '"><span class="dashicons dashicons-list-view"></span> ' . esc_html__('Manage Topics', 'ai-post-scheduler') . '</a>';
+		$html .= '<button type="button" class="aips-row-action-item aips-generate-author-posts-now" data-id="' . $author_id . '" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '"><span class="dashicons dashicons-admin-post"></span> ' . esc_html__('Generate Posts', 'ai-post-scheduler') . '</button>';
+		$html .= '<button type="button" class="aips-row-action-item aips-delete-author aips-text-danger" data-id="' . $author_id . '" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '"><span class="dashicons dashicons-trash"></span> ' . esc_html__('Delete Author', 'ai-post-scheduler') . '</button>';
+		$html .= '</div>';
+		$html .= '</div>';
 		$html .= '</div>';
 
 		return $html;

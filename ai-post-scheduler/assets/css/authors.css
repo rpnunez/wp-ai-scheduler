@@ -1132,3 +1132,49 @@
 	color: #721c24;
 	border: 1px solid #f5c6cb;
 }
+
+/* Inline Health Indicator and Author Title Cell */
+.aips-author-title-cell {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.aips-author-header {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.aips-author-name {
+	font-weight: 600;
+	color: var(--aips-gray-900, #1d2327);
+}
+
+.aips-health-dot {
+	display: inline-block;
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.aips-health-dot.aips-health-good {
+	background-color: var(--aips-success, #00a32a);
+	box-shadow: 0 0 0 2px rgba(0, 163, 42, 0.2);
+}
+
+.aips-health-dot.aips-health-warning {
+	background-color: var(--aips-warning, #dba617);
+	box-shadow: 0 0 0 2px rgba(219, 166, 23, 0.2);
+}
+
+.aips-health-dot.aips-health-poor {
+	background-color: var(--aips-danger, #d63638);
+	box-shadow: 0 0 0 2px rgba(214, 54, 56, 0.2);
+}
+
+.aips-health-dot.aips-health-unknown {
+	background-color: var(--aips-gray-400, #8c8f94);
+}
+

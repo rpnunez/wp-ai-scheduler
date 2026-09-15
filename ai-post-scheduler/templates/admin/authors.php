@@ -17,24 +17,25 @@ $article_structures = $structures_repository->get_all(true); // Get active struc
 $site_ctx = AIPS_Site_Context::get();
 ?>
 
-        <!-- Add tabs for Authors List and Generation Queue -->
-        <div class="aips-tab-nav">
-            <a href="#authors-list" class="aips-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></a>
-            <a href="#generation-queue" class="aips-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></a>
-        </div>
+        <!-- Unified Panel with Sub-Tabs -->
+        <div class="aips-content-panel aips-panel-with-tabs">
+            <!-- Add tabs for Authors List and Generation Queue -->
+            <div class="aips-tab-nav aips-panel-tab-nav">
+                <a href="#authors-list" class="aips-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></a>
+                <a href="#generation-queue" class="aips-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></a>
+            </div>
 
-        <!-- Authors List Tab Content -->
-        <div id="authors-list-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
-            <?php
-            $authors_list_table = new AIPS_Authors_List_Table();
-            $authors_list_table->prepare_items();
-            $authors_list_table->display_page();
-            ?>
-        </div>
+            <!-- Authors List Tab Content -->
+            <div id="authors-list-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+                <?php
+                $authors_list_table = new AIPS_Authors_List_Table();
+                $authors_list_table->prepare_items();
+                $authors_list_table->display_page();
+                ?>
+            </div>
 
-        <!-- Generation Queue Tab Content -->
-        <div id="generation-queue-tab" class="aips-tab-content" style="display: none;" role="tabpanel" aria-hidden="true">
-            <div class="aips-content-panel">
+            <!-- Generation Queue Tab Content -->
+            <div id="generation-queue-tab" class="aips-tab-content" style="display: none;" role="tabpanel" aria-hidden="true">
                 <div class="aips-filter-bar">
                     <div class="aips-filter-left">
                         <select id="aips-queue-author-filter" class="aips-form-select">
@@ -385,7 +386,7 @@ $site_ctx = AIPS_Site_Context::get();
                 </p>
             </div>
 
-            <div class="aips-modal-footer form-actions">
+            <div class="aips-modal-footer">
                 <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="submit" class="aips-btn aips-btn-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
             </div>
@@ -440,7 +441,7 @@ $site_ctx = AIPS_Site_Context::get();
                         <option value="5">5</option>
                     </select>
                 </div>
-                <div class="aips-modal-footer form-actions">
+                <div class="aips-modal-footer">
                     <button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                     <button type="submit" id="aips-suggest-authors-submit" class="aips-btn aips-btn-primary">
                         <span class="dashicons dashicons-lightbulb"></span>

@@ -135,31 +135,33 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			</div>
 		</div>
 
-		<!-- Tab Navigation -->
-		<div class="aips-tab-nav">
-			<a href="#visualizer" class="aips-tab-link active" data-tab="visualizer">
-				<span class="dashicons dashicons-networking"></span>
-				<?php esc_html_e('Semantic Graph Visualizer', 'ai-post-scheduler'); ?>
-			</a>
-			<a href="#scanner" class="aips-tab-link" data-tab="scanner">
-				<span class="dashicons dashicons-database-view"></span>
-				<?php esc_html_e('Backfill Scanner & Scope', 'ai-post-scheduler'); ?>
-			</a>
-			<a href="#cannibalization" class="aips-tab-link" data-tab="cannibalization">
-				<span class="dashicons dashicons-shield"></span>
-				<?php esc_html_e('Duplicate & Cannibalization Audit', 'ai-post-scheduler'); ?>
-			</a>
-			<a href="#settings" class="aips-tab-link" data-tab="settings">
-				<span class="dashicons dashicons-admin-generic"></span>
-				<?php esc_html_e('Settings & Thresholds', 'ai-post-scheduler'); ?>
-			</a>
-		</div>
+		<!-- Unified Panel with Sub-Tabs -->
+		<div class="aips-content-panel aips-panel-with-tabs">
+			<!-- Tab Navigation -->
+			<div class="aips-tab-nav aips-panel-tab-nav">
+				<a href="#visualizer" class="aips-tab-link active" data-tab="visualizer">
+					<span class="dashicons dashicons-networking"></span>
+					<?php esc_html_e('Semantic Graph Visualizer', 'ai-post-scheduler'); ?>
+				</a>
+				<a href="#scanner" class="aips-tab-link" data-tab="scanner">
+					<span class="dashicons dashicons-database-view"></span>
+					<?php esc_html_e('Backfill Scanner & Scope', 'ai-post-scheduler'); ?>
+				</a>
+				<a href="#cannibalization" class="aips-tab-link" data-tab="cannibalization">
+					<span class="dashicons dashicons-shield"></span>
+					<?php esc_html_e('Duplicate & Cannibalization Audit', 'ai-post-scheduler'); ?>
+				</a>
+				<a href="#settings" class="aips-tab-link" data-tab="settings">
+					<span class="dashicons dashicons-admin-generic"></span>
+					<?php esc_html_e('Settings & Thresholds', 'ai-post-scheduler'); ?>
+				</a>
+			</div>
 
-		<!-- =====================================================================
-		     TAB 1: SEMANTIC GRAPH VISUALIZER
-		     ===================================================================== -->
-		<div id="visualizer-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
-			<div class="aips-content-panel aips-visualizer-panel">
+			<!-- =====================================================================
+			     TAB 1: SEMANTIC GRAPH VISUALIZER
+			     ===================================================================== -->
+			<div id="visualizer-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+				<div class="aips-content-panel aips-visualizer-panel">
 				
 				<!-- Graph Toolbar -->
 				<div class="aips-visualizer-toolbar">
@@ -526,3 +528,4 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				</div>
 			</form>
 		</div>
+	</div>

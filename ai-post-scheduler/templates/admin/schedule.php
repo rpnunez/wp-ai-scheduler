@@ -168,15 +168,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			</div>
 		</div>
 
-		<!-- Tabbed Navigation -->
-		<div class="aips-tabs">
-			<a href="#" class="aips-tab aips-tab-active" data-tab="all"><?php esc_html_e('All Schedules', 'ai-post-scheduler'); ?></a>
-			<a href="#" class="aips-tab" data-tab="content"><?php esc_html_e('Content Pipelines', 'ai-post-scheduler'); ?></a>
-			<a href="#" class="aips-tab" data-tab="author"><?php esc_html_e('Blueprints', 'ai-post-scheduler'); ?></a>
-		</div>
-
-		<!-- Content Panel -->
-		<div class="aips-content-panel">
+		<!-- Tabbed Navigation & Content Panel -->
+		<div class="aips-content-panel aips-panel-with-tabs">
+			<div class="aips-tab-nav aips-panel-tab-nav aips-tabs">
+				<a href="#" class="aips-tab aips-tab-link aips-tab-active active" data-tab="all"><?php esc_html_e('All Schedules', 'ai-post-scheduler'); ?></a>
+				<a href="#" class="aips-tab aips-tab-link" data-tab="content"><?php esc_html_e('Content Pipelines', 'ai-post-scheduler'); ?></a>
+				<a href="#" class="aips-tab aips-tab-link" data-tab="author"><?php esc_html_e('Blueprints', 'ai-post-scheduler'); ?></a>
+			</div>
 
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">

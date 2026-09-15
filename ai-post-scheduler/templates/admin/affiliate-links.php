@@ -11,19 +11,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 
-		<!-- Filter Bar -->
-		<div class="aips-content-panel" style="margin-bottom:20px;">
-			<div class="aips-filter-bar" style="padding:12px 16px;">
+		<!-- Mappings Panel -->
+		<div class="aips-content-panel">
+			<!-- Filter Bar -->
+			<div class="aips-filter-bar">
 				<div class="aips-filter-left">
 					<label class="screen-reader-text" for="aips-afl-search"><?php esc_html_e( 'Search mappings:', 'ai-post-scheduler' ); ?></label>
 					<input type="search" id="aips-afl-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search by tag or label…', 'ai-post-scheduler' ); ?>" style="min-width:240px;">
 					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
-		</div>
 
-		<!-- Mappings Table -->
-		<div class="aips-content-panel">
 			<div class="aips-panel-body no-padding">
 				<table class="aips-table" id="aips-afl-table">
 					<thead>

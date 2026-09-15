@@ -294,7 +294,7 @@
 		 */
 		editAuthor: function (e) {
 			e.preventDefault();
-			const authorId = $(e.currentTarget).data('id');
+			const authorId = $(e.currentTarget).data('id') || $(e.currentTarget).data('author-id') || $(e.currentTarget).closest('[data-author-id]').data('author-id');
 			this.currentAuthorId = authorId;
 
 			// Show loading state
@@ -432,7 +432,7 @@
 		 */
 		deleteAuthor: function (e) {
 			e.preventDefault();
-			const authorId = $(e.currentTarget).data('id');
+			const authorId = $(e.currentTarget).data('id') || $(e.currentTarget).data('author-id') || $(e.currentTarget).closest('[data-author-id]').data('author-id');
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDelete, 'Notice', [
 				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
@@ -480,7 +480,7 @@
 		generateTopicsNow: function (e) {
 			e.preventDefault();
 
-			const authorId = $(e.currentTarget).data('id');
+			const authorId = $(e.currentTarget).data('id') || $(e.currentTarget).data('author-id') || $(e.currentTarget).closest('[data-author-id]').data('author-id');
 			const $btn = $(e.currentTarget);
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGenerateTopics, 'Notice', [
@@ -529,7 +529,7 @@
 			e.preventDefault();
 
 			const $btn = $(e.currentTarget);
-			const authorId = parseInt($btn.data('id'), 10);
+			const authorId = parseInt($btn.data('id') || $btn.data('author-id') || $btn.closest('[data-author-id]').data('author-id'), 10);
 			const type = $btn.data('type') || 'author_post_gen';
 
 			if (!Number.isInteger(authorId) || authorId <= 0) {

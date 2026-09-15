@@ -2790,8 +2790,8 @@
             var tabCategory = $tab.data('tab');
 
             // Update active tab
-            $('.aips-tab').removeClass('aips-tab-active');
-            $tab.addClass('aips-tab-active');
+            $('.aips-tab').removeClass('aips-tab-active active');
+            $tab.addClass('aips-tab-active active');
 
             // Filter rows by tab category
             if (tabCategory === 'all') {

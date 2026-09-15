@@ -38,7 +38,7 @@ $tab_query_key = 'cache_tab';
 $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 ?>
 
-			<div class="aips-content-panel">
+			<div class="aips-content-panel aips-panel-with-tabs" style="margin-bottom: 20px;">
 				<div class="aips-panel-header">
 					<h2><?php esc_html_e('Cache Monitor', 'ai-post-scheduler'); ?></h2>
 					<div class="aips-btn-group">
@@ -54,30 +54,24 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 						<?php endif; ?>
 					</div>
 				</div>
-				<div class="aips-panel-body">
 
-					<!-- Tab navigation -->
-					<div class="aips-tab-nav">
-						<ul class="aips-tab-list">
-							<?php foreach ($tabs as $tab_slug => $tab_label): ?>
-								<li class="aips-tab-item">
-									<?php
-									$link_args = array(
-										'page'          => 'aips-diagnostics',
-										'tab'           => 'cache-monitor',
-										$tab_query_key => $tab_slug,
-									);
-									?>
-									<a href="<?php echo esc_url(add_query_arg($link_args, admin_url('admin.php'))); ?>"
-								   class="aips-tab-link nav-tab<?php echo $active_tab === $tab_slug ? ' nav-tab-active' : ''; ?>">
-								<?php echo esc_html($tab_label); ?>
-									</a>
-								</li>
-							<?php endforeach; ?>
-						</ul>
-					</div>
+				<!-- Tab navigation -->
+				<div class="aips-tab-nav aips-panel-tab-nav">
+					<?php foreach ($tabs as $tab_slug => $tab_label): ?>
+						<?php
+						$link_args = array(
+							'page'          => 'aips-diagnostics',
+							'tab'           => 'cache-monitor',
+							$tab_query_key => $tab_slug,
+						);
+						?>
+						<a href="<?php echo esc_url(add_query_arg($link_args, admin_url('admin.php'))); ?>"
+						   class="aips-tab-link<?php echo $active_tab === $tab_slug ? ' active' : ''; ?>">
+							<?php echo esc_html($tab_label); ?>
+						</a>
+					<?php endforeach; ?>
 				</div>
-		</div>
+			</div>
 
 		<!-- Tab Content -->
 		<div class="aips-cache-monitor-content">
