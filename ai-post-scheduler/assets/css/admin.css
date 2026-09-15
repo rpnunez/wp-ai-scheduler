@@ -2201,7 +2201,8 @@ button.aips-btn-secondary:active {
     margin: 0;
 }
 
-.aips-modal-close {
+.aips-modal-header .aips-modal-close,
+.aips-modal-close:not(.aips-btn) {
     background: none;
     border: none;
     font-size: 24px;
@@ -2213,7 +2214,8 @@ button.aips-btn-secondary:active {
     appearance: none;
 }
 
-.aips-modal-close:hover {
+.aips-modal-header .aips-modal-close:hover,
+.aips-modal-close:not(.aips-btn):hover {
     color: #1d2327;
 }
 
@@ -2228,7 +2230,22 @@ button.aips-btn-secondary:active {
     border-top: 1px solid #dcdcde;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 10px;
+}
+
+.aips-modal-footer .aips-btn,
+.aips-btn.aips-modal-close {
+    font-size: var(--aips-text-sm, 13px) !important;
+    line-height: 1.4 !important;
+    padding: 6px 14px !important;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--aips-radius-sm, 4px);
+    cursor: pointer;
+    text-decoration: none;
 }
 
 .aips-post-success-summary {

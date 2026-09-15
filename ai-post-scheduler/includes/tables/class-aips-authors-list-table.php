@@ -182,7 +182,8 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$active_count = 0;
 		$inactive_count = 0;
 		foreach ($all_authors as $author) {
-			if (!empty($author->status) && 'active' === $author->status) {
+			$is_active = !empty($author->is_active) || (isset($author->status) && 'active' === $author->status);
+			if ($is_active) {
 				$active_count++;
 			} else {
 				$inactive_count++;
@@ -202,7 +203,7 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$status_filter = isset($_GET['author_status']) ? sanitize_key(wp_unslash($_GET['author_status'])) : 'all';
 		$filtered_authors = array();
 		foreach ($all_authors as $author) {
-			$is_active = (!empty($author->status) && 'active' === $author->status);
+			$is_active = !empty($author->is_active) || (isset($author->status) && 'active' === $author->status);
 			if ('active' === $status_filter && !$is_active) {
 				continue;
 			}
@@ -230,7 +231,9 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 
 		usort($filtered_authors, function($a, $b) use ($orderby, $order) {
 			if ('status' === $orderby) {
-				$res = strcmp($a->status ?? '', $b->status ?? '');
+				$a_status = (!empty($a->is_active) || (isset($a->status) && 'active' === $a->status)) ? 'active' : 'inactive';
+				$b_status = (!empty($b->is_active) || (isset($b->status) && 'active' === $b->status)) ? 'active' : 'inactive';
+				$res = strcmp($a_status, $b_status);
 			} else {
 				$res = strcasecmp($a->name ?? '', $b->name ?? '');
 			}
@@ -328,7 +331,7 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	 * @return string
 	 */
 	protected function column_status($item) {
-		$is_active = (!empty($item->status) && 'active' === $item->status);
+		$is_active = !empty($item->is_active) || (isset($item->status) && 'active' === $item->status);
 		if ($is_active) {
 			return $this->render_status_badge(__('Active', 'ai-post-scheduler'), 'success', 'dashicons-yes');
 		}
