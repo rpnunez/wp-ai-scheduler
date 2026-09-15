@@ -51,3 +51,9 @@
 **PR:** ⚡ Bolt: Optimize AIPS_Site_Context get_setting linear search
 **Learning:** Avoid repeated O(n) loops over arrays in static methods called frequently.
 **Action:** Use static variables to cache inverted maps for O(1) lookups.
+## 2026-09-15 - [Batch Indexing Optimization]
+**Area:** ai-post-scheduler/includes/class-aips-internal-links-service.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Prevent N+1 queries in Internal Links indexing batch
+**Learning:** The `process_indexing_batch` method looped over unindexed post IDs and called `index_post()` which fetched each post individually, causing N+1 queries.
+**Action:** When processing batches of post IDs that will individually fetch post data, use `_prime_post_caches(array_unique($post_ids), false, true)` before the loop to bulk load the posts into the cache.
