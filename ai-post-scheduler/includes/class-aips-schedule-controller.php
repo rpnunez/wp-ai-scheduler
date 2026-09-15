@@ -1135,19 +1135,10 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Circuit reset is only available for template schedules.', 'ai-post-scheduler'));
         }
 
-        // Reset the circuit state to 'closed' for this schedule
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
+        // Reset the circuit state to 'closed' for this schedule.
+        $result = $this->schedule_repository->update($id, array('circuit_state' => 'closed'));
 
-        $result = $wpdb->update(
-            $table_name,
-            array('circuit_state' => 'closed'),
-            array('id' => $id),
-            array('%s'),
-            array('%d')
-        );
-
-        if ($result !== false) {
+        if ($result) {
             AIPS_Ajax_Response::success(array(
                 'message' => __('Circuit breaker reset successfully. The schedule will attempt to run on its next trigger.', 'ai-post-scheduler'),
                 'circuit_state' => 'closed',

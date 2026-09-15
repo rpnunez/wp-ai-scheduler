@@ -75,6 +75,9 @@ jobs:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
 
+      - name: Enforce repository boundary (no direct wpdb in controllers/services)
+        run: cd ai-post-scheduler && composer lint:repository-boundary
+
       - name: Run PHPCS (WordPress Coding Standards) if installed
         run: |
           cd ai-post-scheduler

@@ -146,6 +146,11 @@ class AIPS_Authors_Controller {
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),
+			// Topic auto-approval configuration
+			'topic_auto_approval_mode' => isset($_POST['topic_auto_approval_mode']) && in_array($_POST['topic_auto_approval_mode'], array('manual', 'all', 'score', 'similarity'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_mode'])) : 'manual',
+			'topic_auto_approval_min_score' => isset($_POST['topic_auto_approval_min_score']) ? max(1, min(100, absint($_POST['topic_auto_approval_min_score']))) : 70,
+			'topic_auto_approval_max_similarity' => isset($_POST['topic_auto_approval_max_similarity']) ? max(0.0, min(1.0, (float) $_POST['topic_auto_approval_max_similarity'])) : 0.80,
+			'topic_auto_approval_fallback' => isset($_POST['topic_auto_approval_fallback']) && in_array($_POST['topic_auto_approval_fallback'], array('pending', 'rejected'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_fallback'])) : 'pending',
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
@@ -422,7 +427,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
-		$result = $this->topics_scheduler->generate_now($author_id);
+		$apply_auto_approval = !isset($_POST['apply_auto_approval']) || filter_var(wp_unslash($_POST['apply_auto_approval']), FILTER_VALIDATE_BOOLEAN);
+		$result = $this->topics_scheduler->generate_now($author_id, true, $apply_auto_approval);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));

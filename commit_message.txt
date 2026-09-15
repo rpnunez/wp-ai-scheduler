@@ -1,6 +1,0 @@
-Atlas: Extract Schedule Logic
-
-- **Tangle**: `AIPS_Schedule_Processor::execute_schedule_logic` was over 400 lines long, tightly coupling setup, batch dispatching, post generation iteration, and cleanup.
-- **Detangle**: Extracted `dispatch_large_batch` and `execute_batch_progress` as separate private methods. The original method now orchestrates these steps cleanly while retaining all internal comments and variable scoping context.
-- **Journal**: Added an entry to `.build/atlas-journal.md`.
-- **Tests**: Ran the existing test suite to verify no regressions were introduced.
