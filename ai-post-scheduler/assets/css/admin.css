@@ -965,6 +965,23 @@
     flex-wrap: nowrap;
 }
 
+.aips-table th.column-status,
+.aips-table td.column-status {
+    white-space: nowrap;
+    min-width: 140px;
+}
+
+.aips-table th.column-stats,
+.aips-table td.column-stats {
+    min-width: 140px;
+}
+
+.aips-table th.column-actions,
+.aips-table td.column-actions {
+    white-space: nowrap;
+    min-width: 150px;
+}
+
 /* ==========================================================================
    AIPS WP_List_Table Standardization Styles
    ========================================================================== */
@@ -1176,8 +1193,36 @@
     vertical-align: middle;
 }
 
+.aips-row-action-overflow-toggle:has(.dashicons)::after {
+    display: none;
+}
+
+.aips-row-action-overflow-toggle .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.aips-btn-group-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.aips-status-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
 .cell-actions {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .aips-row-action-menu {
@@ -1187,10 +1232,11 @@
     border-radius: 6px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
     background: #fff;
-    margin-top: 6px;
+    margin-top: 4px;
     position: absolute;
     right: 0;
-    z-index: 12;
+    top: 100%;
+    z-index: 20;
 }
 
 .aips-row-action-menu[hidden] {
@@ -4299,6 +4345,66 @@ input[type="submit"].is-busy,
 
 .aips-tab-content {
     padding: 20px 0;
+}
+
+/* Seamless Sub-Tabs inside Content Panels */
+.aips-panel-with-tabs {
+    overflow: visible;
+}
+
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav,
+.aips-panel-with-tabs > .aips-tab-nav {
+    margin: 0;
+    padding: 0 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--aips-gray-200, #dcdcde);
+    border-top-left-radius: var(--aips-radius-md, 8px);
+    border-top-right-radius: var(--aips-radius-md, 8px);
+    display: flex;
+    gap: 4px;
+}
+
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav a,
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav button,
+.aips-panel-with-tabs > .aips-tab-nav a,
+.aips-panel-with-tabs > .aips-tab-nav button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--aips-gray-600, #50575e);
+    text-decoration: none;
+    background: transparent;
+    border-radius: 0;
+    transition: all 0.15s ease-in-out;
+}
+
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav a:hover,
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav button:hover,
+.aips-panel-with-tabs > .aips-tab-nav a:hover,
+.aips-panel-with-tabs > .aips-tab-nav button:hover {
+    color: var(--aips-primary, #2271b1);
+}
+
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav a.active,
+.aips-panel-with-tabs > .aips-panel-tab-nav.aips-tab-nav button.active,
+.aips-panel-with-tabs > .aips-tab-nav a.active,
+.aips-panel-with-tabs > .aips-tab-nav button.active {
+    color: var(--aips-primary, #2271b1);
+    border-bottom: 2px solid var(--aips-primary, #2271b1);
+    background: #fff;
+    font-weight: 600;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.aips-panel-with-tabs > .aips-tab-content {
+    padding: 0;
+    margin: 0;
 }
 
 /* Log Entry Styles */

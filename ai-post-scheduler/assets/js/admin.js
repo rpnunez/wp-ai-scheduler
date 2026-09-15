@@ -272,6 +272,7 @@
             $(document).on('keydown', function(e) {
                 if (e.key === 'Escape') {
                     AIPS.closeModal();
+                    AIPS.closeAllRowActionMenus();
                 }
             });
 
@@ -284,6 +285,15 @@
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+
+            // Row Action Menus
+            $(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle);
+            $(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.closeAllRowActionMenus);
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
+                    AIPS.closeAllRowActionMenus();
+                }
+            });
         },
 
         /**
@@ -4287,6 +4297,40 @@
             } else {
                 $('.aips-modal').hide();
             }
+        },
+
+        /**
+         * Toggle the row action overflow dropdown menu.
+         *
+         * @param {Event} e - Click event from `.aips-row-action-overflow-toggle`.
+         */
+        onRowActionOverflowToggle: function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var $toggle = $(this);
+            var menuId = $toggle.attr('aria-controls');
+            var $menu = menuId ? $('#' + menuId) : $toggle.siblings('.aips-row-action-menu');
+
+            if (!$menu.length) {
+                return;
+            }
+
+            var isExpanded = $toggle.attr('aria-expanded') === 'true';
+            AIPS.closeAllRowActionMenus();
+
+            if (!isExpanded) {
+                $toggle.attr('aria-expanded', 'true');
+                $menu.prop('hidden', false);
+            }
+        },
+
+        /**
+         * Close all open row action overflow menus.
+         */
+        closeAllRowActionMenus: function() {
+            $('.aips-row-action-overflow-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
+            $('.aips-row-action-menu').prop('hidden', true);
         },
 
         /**

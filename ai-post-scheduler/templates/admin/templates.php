@@ -27,11 +27,10 @@ if (!defined('ABSPATH')) {
                     <thead>
                         <tr>
                             <th class="column-name"><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?></th>
-                            <th><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></th>
                             <th class="column-category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
-                            <th><?php esc_html_e('Statistics', 'ai-post-scheduler'); ?></th>
-                            <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-                            <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                            <th class="column-stats"><?php esc_html_e('Statistics', 'ai-post-scheduler'); ?></th>
+                            <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                            <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,11 +68,6 @@ if (!defined('ABSPATH')) {
                                     </div>
                                 <?php endif; ?>
                             </td>
-                            <td>
-                                <span class="aips-badge aips-badge-neutral">
-                                    <?php echo esc_html(ucfirst($template->post_status)); ?>
-                                </span>
-                            </td>
                             <td class="column-category">
                                 <?php 
                                 $cats = AIPS_Template_Data::parse_post_categories($template->post_category ?? null);
@@ -94,7 +88,7 @@ if (!defined('ABSPATH')) {
                                 }
                                 ?>
                             </td>
-                            <td>
+                            <td class="column-stats">
                                 <div style="display: flex; flex-direction: column; gap: 4px;">
                                     <div>
                                         <strong style="font-size: 14px;"><?php echo esc_html($generated_count); ?></strong>
@@ -111,41 +105,69 @@ if (!defined('ABSPATH')) {
                                     </div>
                                 </div>
                             </td>
-                            <td>
-                                <?php if ($template->is_active): ?>
-                                <span class="aips-badge aips-badge-success">
-                                    <span class="dashicons dashicons-yes-alt"></span>
-                                    <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
-                                </span>
-                                <?php else: ?>
-                                <span class="aips-badge aips-badge-neutral">
-                                    <span class="dashicons dashicons-minus"></span>
-                                    <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
-                                </span>
-                                <?php endif; ?>
+                            <td class="column-status">
+                                <div class="aips-status-group">
+                                    <span class="aips-badge aips-badge-neutral" title="<?php esc_attr_e('Target Post Status', 'ai-post-scheduler'); ?>">
+                                        <?php echo esc_html(ucfirst($template->post_status)); ?>
+                                    </span>
+                                    <?php if ($template->is_active): ?>
+                                    <span class="aips-badge aips-badge-success" title="<?php esc_attr_e('Template is active', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-yes-alt"></span>
+                                        <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+                                    </span>
+                                    <?php else: ?>
+                                    <span class="aips-badge aips-badge-neutral" title="<?php esc_attr_e('Template is inactive', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-minus"></span>
+                                        <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
+                                    </span>
+                                    <?php endif; ?>
+                                </div>
                             </td>
-                            <td>
+                            <td class="column-actions">
                                 <div class="cell-actions">
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-edit"></span>
-                                        <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                                    </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-controls-play"></span>
-                                        <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
-                                    </button>
-                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_template' => $template->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-calendar-alt"></span>
-                                        <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
-                                    </a>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
-                                        <span class="dashicons dashicons-admin-page"></span>
-                                        <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
-                                    </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>" <?php disabled(!empty($template->campaign_id)); ?>>
-                                        <span class="dashicons dashicons-trash"></span>
-                                        <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
-                                    </button>
+                                    <div class="aips-btn-group aips-btn-group-inline">
+                                        <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-edit"></span>
+                                            <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                                        </button>
+                                        <button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-controls-play"></span>
+                                            <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+                                        </button>
+                                    </div>
+                                    <div class="aips-row-action-group">
+                                        <button type="button"
+                                                class="aips-btn aips-btn-sm aips-btn-secondary aips-row-action-overflow-toggle"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-controls="aips-template-row-actions-<?php echo esc_attr($template->id); ?>"
+                                                title="<?php esc_attr_e('More actions', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-ellipsis"></span>
+                                            <span class="screen-reader-text"><?php esc_html_e('More actions', 'ai-post-scheduler'); ?></span>
+                                        </button>
+                                        <div id="aips-template-row-actions-<?php echo esc_attr($template->id); ?>"
+                                             class="aips-row-action-menu"
+                                             hidden>
+                                            <a class="aips-row-action-item" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_template' => $template->id))); ?>">
+                                                <span class="dashicons dashicons-calendar-alt"></span>
+                                                <?php esc_html_e('Schedule', 'ai-post-scheduler'); ?>
+                                            </a>
+                                            <button type="button"
+                                                    class="aips-row-action-item aips-clone-template"
+                                                    data-id="<?php echo esc_attr($template->id); ?>">
+                                                <span class="dashicons dashicons-admin-page"></span>
+                                                <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                                            </button>
+                                            <button type="button"
+                                                    class="aips-row-action-item aips-delete-template aips-text-danger"
+                                                    data-id="<?php echo esc_attr($template->id); ?>"
+                                                    title="<?php echo !empty($template->campaign_id) ? esc_attr__('This template cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler') : esc_attr__('Delete', 'ai-post-scheduler'); ?>"
+                                                    <?php disabled(!empty($template->campaign_id)); ?>>
+                                                <span class="dashicons dashicons-trash"></span>
+                                                <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
