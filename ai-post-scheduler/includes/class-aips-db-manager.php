@@ -191,6 +191,7 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            language varchar(10) DEFAULT 'en',
             campaign_id bigint(20) DEFAULT NULL,
             affiliate_links_enabled tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
@@ -637,7 +638,7 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY created_at (created_at)
         ) $charset_collate;";
-      
+
         $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
             job_id varchar(36) NOT NULL,
             job_type varchar(100) NOT NULL,

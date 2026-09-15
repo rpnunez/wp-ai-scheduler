@@ -237,6 +237,27 @@ class AIPS_Stress_Test_Service {
                 'creates'     => false,
             ),
             array(
+                'id'          => 'generate_spanish_title',
+                'label'       => __('Spanish Title', 'ai-post-scheduler'),
+                'description' => __('Generates a title in Spanish. Compare the raw response with the cleaned title and verify the language.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
+                'id'          => 'generate_spanish_excerpt',
+                'label'       => __('Spanish Excerpt', 'ai-post-scheduler'),
+                'description' => __('Generates an excerpt in Spanish. Compare the raw response with the stored excerpt and verify the language.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
+                'id'          => 'generate_spanish_content',
+                'label'       => __('Spanish Content', 'ai-post-scheduler'),
+                'description' => __('Generates article content in Spanish. Compare the raw response with the normalized HTML and verify the language.', 'ai-post-scheduler'),
+                'group'       => 'components',
+                'creates'     => false,
+            ),
+            array(
                 'id'          => 'generate_json',
                 'label'       => __('Generate JSON', 'ai-post-scheduler'),
                 'description' => __('Exercises structured output, including the text-extraction fallback.', 'ai-post-scheduler'),
@@ -466,6 +487,15 @@ class AIPS_Stress_Test_Service {
                 case 'generate_excerpt':
                     $result = $this->case_generate_excerpt();
                     break;
+                case 'generate_spanish_title':
+                    $result = $this->case_generate_title('es');
+                    break;
+                case 'generate_spanish_excerpt':
+                    $result = $this->case_generate_excerpt('es');
+                    break;
+                case 'generate_spanish_content':
+                    $result = $this->case_generate_content('es');
+                    break;
                 case 'generate_json':
                     $result = $this->case_generate_json();
                     break;
@@ -665,10 +695,11 @@ class AIPS_Stress_Test_Service {
     /**
      * Title generation: raw response versus the cleaned title.
      *
+     * @param string|null $language Optional target language override (e.g. 'es').
      * @return array<string, mixed>
      */
-    private function case_generate_title() {
-        $context = $this->build_context();
+    private function case_generate_title($language = null) {
+        $context = $this->build_context(0, 'post', 0, $language);
         $result  = $this->get_generator()->generate_title_for_context($context, $this->sample_article());
 
         if (is_wp_error($result)) {
@@ -701,10 +732,11 @@ class AIPS_Stress_Test_Service {
     /**
      * Content generation: raw response versus normalized post HTML.
      *
+     * @param string|null $language Optional target language override (e.g. 'es').
      * @return array<string, mixed>
      */
-    private function case_generate_content() {
-        $context   = $this->build_context();
+    private function case_generate_content($language = null) {
+        $context   = $this->build_context(0, 'post', 0, $language);
         $generator = $this->get_generator();
 
         // Deliberately not generate_preview(): that runs title and excerpt too,
@@ -753,15 +785,19 @@ class AIPS_Stress_Test_Service {
     /**
      * Excerpt generation against a fixed article.
      *
+     * @param string|null $language Optional target language override (e.g. 'es').
      * @return array<string, mixed>
      */
-    private function case_generate_excerpt() {
+    private function case_generate_excerpt($language = null) {
         $article = $this->sample_article();
+        $subject = null !== $language ? $this->build_context(0, 'post', 0, $language) : null;
         $excerpt = $this->get_generator()->generate_excerpt(
             __('Testing the AI Post Scheduler Pipeline', 'ai-post-scheduler'),
             $article,
             null,
-            $this->sample_topic()
+            $this->sample_topic(),
+            array(),
+            $subject
         );
 
         $raw = $this->last_ai_response_text();
@@ -1891,12 +1927,13 @@ class AIPS_Stress_Test_Service {
     /**
      * A synthetic template context so the page works on a site with no templates.
      *
-     * @param int    $index       Optional run index, used to vary bulk-run topics.
-     * @param string $post_type   Target post type. Defaults to 'post'.
-     * @param int    $template_id Synthetic template id exposed via the context.
+     * @param int         $index       Optional run index, used to vary bulk-run topics.
+     * @param string      $post_type   Target post type. Defaults to 'post'.
+     * @param int         $template_id Synthetic template id exposed via the context.
+     * @param string|null $language    Optional target language code.
      * @return AIPS_Template_Context
      */
-    private function build_context($index = 0, $post_type = 'post', $template_id = 0) {
+    private function build_context($index = 0, $post_type = 'post', $template_id = 0, $language = null) {
         $topic = $this->sample_topic();
 
         if ($index > 0) {
@@ -1929,6 +1966,10 @@ class AIPS_Stress_Test_Service {
          * @param string $topic    Topic being generated.
          */
         $template = apply_filters('aips_stress_test_template', $template, $topic);
+
+        if (null !== $language) {
+            $template->language = $language;
+        }
 
         return new AIPS_Template_Context($template, null, $topic, 'manual');
     }
