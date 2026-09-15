@@ -52,6 +52,12 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	public function build($title, $content, $voice = null, $topic = null, $subject = null) {
 		$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
 
+		$lang = $subject instanceof AIPS_Generation_Context
+			? $subject->get_language()
+			: (!empty($subject->language) ? $subject->language : 'en');
+
+		$excerpt_prompt .= AIPS_Prompt_Builder::build_language_instruction($lang, 'excerpt') . "\n\n";
+
 		$voice_instructions = $this->build_instructions($voice, $topic);
 		if (!empty($voice_instructions)) {
 			$excerpt_prompt .= $voice_instructions . "\n\n";
@@ -82,10 +88,17 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 *
 	 * @param object|null $voice Optional voice object with excerpt instructions.
 	 * @param string|null $topic Optional topic to inject into voice instructions.
+	 * @param mixed       $subject Optional template or generation context.
 	 * @return string
 	 */
-	public function build_followup($voice = null, $topic = null) {
+	public function build_followup($voice = null, $topic = null, $subject = null) {
 		$excerpt_prompt = "Now write an excerpt for that article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+
+		$lang = $subject instanceof AIPS_Generation_Context
+			? $subject->get_language()
+			: (!empty($subject->language) ? $subject->language : 'en');
+
+		$excerpt_prompt .= AIPS_Prompt_Builder::build_language_instruction($lang, 'excerpt') . "\n\n";
 
 		$voice_instructions = $this->build_instructions($voice, $topic);
 		if (!empty($voice_instructions)) {

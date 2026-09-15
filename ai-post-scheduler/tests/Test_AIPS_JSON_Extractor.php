@@ -16,6 +16,22 @@ class Test_AIPS_JSON_Extractor extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_removes_trailing_commas_in_nested_structures_with_multilingual_values() {
+		$response = '{"title":"日本語,}","nested":{"escaped":"\"quote,\"}","items":["Français,]",],}, "status":"ok",}';
+
+		$this->assertSame(
+			array(
+				'title'  => '日本語,}',
+				'nested' => array(
+					'escaped' => '"quote,"}',
+					'items'   => array( 'Français,]' ),
+				),
+				'status' => 'ok',
+			),
+			AIPS_JSON_Extractor::decode_json_response( $response )
+		);
+	}
+
 	public function test_extracts_nested_json_from_markdown_fence() {
 		$response = "```json\n{\"items\":[{\"title\":\"A brace: }\"}],\"enabled\":true}\n```";
 

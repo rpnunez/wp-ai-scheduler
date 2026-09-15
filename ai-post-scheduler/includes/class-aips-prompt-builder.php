@@ -143,12 +143,8 @@ class AIPS_Prompt_Builder {
             
             $context_parts[] = $this->get_output_instructions();
 
-            // Inject language instruction when a non-English language is configured.
             $lang = $context->get_language();
-            if (!empty($lang) && $lang !== 'en') {
-                $lang_name = self::get_language_name($lang);
-                $context_parts[] = "LANGUAGE REQUIREMENT: You must write the entire response in {$lang_name}. Do not use English or any other language.";
-            }
+            $context_parts[] = self::build_language_instruction($lang, 'response');
             
             /**
              * Filter the context sent to AI Engine for content generation.
@@ -171,6 +167,9 @@ class AIPS_Prompt_Builder {
 
             $context_parts[] = $this->get_output_instructions();
 
+            $lang = !empty($template->language) ? $template->language : 'en';
+            $context_parts[] = self::build_language_instruction($lang, 'response');
+
             /**
              * Filter the context sent to AI Engine for content generation.
              *
@@ -192,6 +191,35 @@ class AIPS_Prompt_Builder {
         );
 
         return implode("\n\n", $context_parts);
+    }
+
+    /**
+     * Build an explicit language requirement instruction for prompts.
+     *
+     * @param string $code  Language code (e.g. 'en', 'es', 'fr').
+     * @param string $scope Scope of requirement: 'response', 'topics', 'title', 'excerpt', 'metadata'.
+     * @return string Language instruction directive.
+     */
+    public static function build_language_instruction($code, $scope = 'response') {
+        $subjects = array(
+            'response' => 'the article text',
+            'topics'   => 'all topic titles and descriptions',
+            'title'    => 'the title',
+            'excerpt'  => 'the excerpt',
+            'metadata' => 'the title and excerpt values',
+        );
+        $subject = isset($subjects[$scope]) ? $subjects[$scope] : $subjects['response'];
+        $name    = self::get_language_name(!empty($code) ? $code : 'en');
+
+        if ($scope === 'metadata') {
+            return "LANGUAGE REQUIREMENT: Write {$subject} in {$name}. Preserve JSON property names, HTML tags, code, URLs, and proper names as required by the output format.";
+        }
+
+        if ($scope === 'response') {
+            return "LANGUAGE REQUIREMENT: Write {$subject} in {$name}. Do not use any other language.";
+        }
+
+        return "LANGUAGE REQUIREMENT: Write {$subject} in {$name}.";
     }
 
     /**
@@ -360,7 +388,7 @@ INSTRUCTIONS
      *
      * @return string Formatted context block ending with two newlines, or empty string.
      */
-    public function build_site_context_block() {
+    public function build_site_context_block($include_language = true) {
         $ctx   = AIPS_Site_Context::get();
         $lines = array();
 
@@ -380,7 +408,7 @@ INSTRUCTIONS
             $lines[] = 'Brand voice/tone: ' . $ctx['brand_voice'];
         }
 
-        if (!empty($ctx['content_language']) && $ctx['content_language'] !== 'en') {
+        if ($include_language && !empty($ctx['content_language']) && $ctx['content_language'] !== 'en') {
             $lines[] = 'Language: ' . $ctx['content_language'];
         }
 
@@ -504,19 +532,26 @@ INSTRUCTIONS
             $sample_topic = 'Example Topic';
         }
 
+        $template_obj = is_object($template_data) ? $template_data : (object) $template_data;
+        $context = $template_data instanceof AIPS_Generation_Context
+            ? $template_data
+            : new AIPS_Template_Context($template_obj, $voice, $sample_topic, 'preview');
+
+        $content_context = $this->build_content_context($context);
+
         // Build content prompt
-        $content_prompt = $this->get_post_content_builder()->build($template_data, $sample_topic, $voice);
+        $content_prompt = $this->get_post_content_builder()->build($context, $sample_topic, $voice);
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $this->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content);
+        $title_prompt = $this->get_post_title_builder()->build($context, $sample_topic, $voice, $sample_content);
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, $template_data);
+        $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, $context);
 
         // Build image prompt if enabled
-        $image_prompt_processed = $this->get_post_featured_image_builder()->build($template_data, $sample_topic);
+        $image_prompt_processed = $this->get_post_featured_image_builder()->build($context, $sample_topic);
 
         // Get voice name if applicable
         $voice_name = '';
@@ -526,8 +561,8 @@ INSTRUCTIONS
 
         // Get article structure name if applicable
         $structure_name = '';
-        if (isset($template_data->article_structure_id) && $template_data->article_structure_id > 0) {
-            $structure = $this->structure_manager->get_structure($template_data->article_structure_id);
+        if (isset($template_obj->article_structure_id) && $template_obj->article_structure_id > 0) {
+            $structure = $this->structure_manager->get_structure($template_obj->article_structure_id);
             if ($structure && !is_wp_error($structure) && isset($structure['name'])) {
                 $structure_name = $structure['name'];
             }
@@ -535,16 +570,18 @@ INSTRUCTIONS
 
         return array(
             'prompts' => array(
-                'content' => $content_prompt,
-                'title' => $title_prompt,
-                'excerpt' => $excerpt_prompt,
-                'image' => $image_prompt_processed,
+                'content'         => $content_prompt,
+                'content_context' => $content_context,
+                'title'           => $title_prompt,
+                'excerpt'         => $excerpt_prompt,
+                'image'           => $image_prompt_processed,
             ),
             'metadata' => array(
-                'voice' => $voice_name,
+                'voice'             => $voice_name,
                 'article_structure' => $structure_name,
-                'sample_topic' => $sample_topic,
-                'include_sources' => !empty($template_data->include_sources),
+                'sample_topic'      => $sample_topic,
+                'include_sources'   => !empty($template_obj->include_sources),
+                'language'          => $context->get_language(),
             ),
         );
     }

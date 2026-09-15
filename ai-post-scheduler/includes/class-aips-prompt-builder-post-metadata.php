@@ -92,6 +92,11 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$sections[] = $this->build_variables_section($ai_variables);
 		}
 
+		$lang = $context instanceof AIPS_Generation_Context
+			? $context->get_language()
+			: (!empty($context->language) ? $context->language : 'en');
+		$sections[] = AIPS_Prompt_Builder::build_language_instruction($lang, 'metadata');
+
 		$prompt = implode("\n\n", $sections);
 		$prompt = $this->append_diversity_blocks($prompt, $context);
 		$prompt .= "\n\n" . $this->build_response_shape($ai_variables, !empty($image_prompt));

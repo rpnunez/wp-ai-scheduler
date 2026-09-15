@@ -74,7 +74,7 @@ class AIPS_Prompt_Builder_Topic {
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
 
 		// ---- Site-wide context (injected first so author-level settings override if needed) ----
-		$prompt .= $this->base_builder->build_site_context_block();
+		$prompt .= $this->base_builder->build_site_context_block(false);
 
 		// ---- Trusted sources (injected when the author opts in) ----
 		if (!empty($author->include_sources)) {
@@ -131,12 +131,9 @@ class AIPS_Prompt_Builder_Topic {
 			$prompt .= "Preferred post length: {$length_label}\n\n";
 		}
 
-		// Language instruction (only injected for non-English to keep prompts lean)
+		// Language instruction
 		$lang = !empty($author->language) ? $author->language : 'en';
-		if ($lang !== 'en') {
-			$lang_name = AIPS_Prompt_Builder::get_language_name($lang);
-			$prompt .= "LANGUAGE REQUIREMENT: You must generate all topics in {$lang_name}. Do not use English or any other language.\n\n";
-		}
+		$prompt .= AIPS_Prompt_Builder::build_language_instruction($lang, 'topics') . "\n\n";
 
 		// ---- Excluded topics (merge site-wide + author-level) ----
 		$excluded_parts = array();

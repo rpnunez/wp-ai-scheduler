@@ -135,8 +135,11 @@ class AIPS_Prompt_Builder_Post_Title {
 
 		$prompt = 'Now generate a title for the article you just wrote.';
 
+		$lang = $context->get_language();
+		$prompt .= "\n\n" . AIPS_Prompt_Builder::build_language_instruction($lang, 'title');
+
 		if (!empty($title_instructions)) {
-			$prompt .= " Here are your instructions:\n\n" . $title_instructions;
+			$prompt .= "\n\nHere are your instructions:\n\n" . $title_instructions;
 		}
 
 		$prompt = $this->append_diversity_blocks($prompt, $context);
@@ -156,8 +159,14 @@ class AIPS_Prompt_Builder_Post_Title {
 	private function build_base_prompt($title_instructions, $content, $subject = null) {
 		$prompt = 'Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.';
 
+		$lang = $subject instanceof AIPS_Generation_Context
+			? $subject->get_language()
+			: (!empty($subject->language) ? $subject->language : 'en');
+
+		$prompt .= "\n\n" . AIPS_Prompt_Builder::build_language_instruction($lang, 'title');
+
 		if (!empty($title_instructions)) {
-			$prompt .= " Here are your instructions:\n\n" . $title_instructions;
+			$prompt .= "\n\nHere are your instructions:\n\n" . $title_instructions;
 		}
 
 		$max_chars = (int) apply_filters('aips_title_context_max_chars', AIPS_Content_Digest::DEFAULT_MAX_CHARS, $subject);

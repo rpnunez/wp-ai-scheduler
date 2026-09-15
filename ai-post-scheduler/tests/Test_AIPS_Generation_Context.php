@@ -394,15 +394,15 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$result  = $builder->build_content_context($context);
 
 		$this->assertStringContainsString('Spanish', $result);
-		$this->assertStringContainsString('You must write the entire response in Spanish', $result);
+		$this->assertStringContainsString('LANGUAGE REQUIREMENT: Write the article text in Spanish. Do not use any other language.', $result);
 	}
 
 	/**
-	 * Test that build_content_context does NOT inject a language instruction for English.
+	 * Test that build_content_context injects an explicit language instruction for English.
 	 *
 	 * @return void
 	 */
-	public function test_build_content_context_no_language_instruction_for_english() {
+	public function test_build_content_context_explicit_language_instruction_for_english() {
 		$template = (object) array(
 			'id' => 1,
 			'name' => 'Template',
@@ -418,7 +418,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$builder = new AIPS_Prompt_Builder();
 		$result  = $builder->build_content_context($context);
 
-		$this->assertStringNotContainsString('LANGUAGE REQUIREMENT', $result);
+		$this->assertStringContainsString('LANGUAGE REQUIREMENT: Write the article text in English. Do not use any other language.', $result);
 	}
 
 	/**
@@ -448,6 +448,34 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$result  = $builder->build_content_context($context);
 
 		$this->assertStringContainsString('French', $result);
-		$this->assertStringContainsString('You must write the entire response in French', $result);
+		$this->assertStringContainsString('LANGUAGE REQUIREMENT: Write the article text in French. Do not use any other language.', $result);
+	}
+
+	/**
+	 * Test build_language_instruction produces format-safe directives across all scopes.
+	 *
+	 * @return void
+	 */
+	public function test_build_language_instruction_scopes() {
+		$this->assertSame(
+			'LANGUAGE REQUIREMENT: Write the article text in Spanish. Do not use any other language.',
+			AIPS_Prompt_Builder::build_language_instruction('es', 'response')
+		);
+		$this->assertSame(
+			'LANGUAGE REQUIREMENT: Write all topic titles and descriptions in French.',
+			AIPS_Prompt_Builder::build_language_instruction('fr', 'topics')
+		);
+		$this->assertSame(
+			'LANGUAGE REQUIREMENT: Write the title in German.',
+			AIPS_Prompt_Builder::build_language_instruction('de', 'title')
+		);
+		$this->assertSame(
+			'LANGUAGE REQUIREMENT: Write the excerpt in Japanese.',
+			AIPS_Prompt_Builder::build_language_instruction('ja', 'excerpt')
+		);
+		$this->assertSame(
+			'LANGUAGE REQUIREMENT: Write the title and excerpt values in Spanish. Preserve JSON property names, HTML tags, code, URLs, and proper names as required by the output format.',
+			AIPS_Prompt_Builder::build_language_instruction('es', 'metadata')
+		);
 	}
 }
