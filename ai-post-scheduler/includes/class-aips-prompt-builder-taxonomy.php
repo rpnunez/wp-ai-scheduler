@@ -21,6 +21,14 @@ if (!defined('ABSPATH')) {
  * Builds AI prompts for taxonomy suggestion generation.
  */
 class AIPS_Prompt_Builder_Taxonomy {
+	/**
+	 * Get the core default prompt template for taxonomy classification.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Select the most relevant category and tags for the article.";
+	}
 
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.

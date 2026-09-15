@@ -21,6 +21,14 @@ if (!defined('ABSPATH')) {
  * Builds the AI prompt for featured image generation.
  */
 class AIPS_Prompt_Builder_Post_Featured_Image {
+	/**
+	 * Get the core default prompt template for featured image generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "{{image_prompt}}";
+	}
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.

@@ -21,6 +21,14 @@ if (!defined('ABSPATH')) {
  * Builds the AI prompt for post content generation.
  */
 class AIPS_Prompt_Builder_Post_Content {
+	/**
+	 * Get the core default prompt template for content shell generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "{{voice_instructions}}\n\n{{content_prompt}}";
+	}
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.

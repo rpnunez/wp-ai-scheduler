@@ -21,6 +21,23 @@ if (!defined('ABSPATH')) {
  * Builds the AI prompt for post title generation.
  */
 class AIPS_Prompt_Builder_Post_Title {
+	/**
+	 * Get the core default prompt template for standalone title generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.{{instructions_block}}";
+	}
+
+	/**
+	 * Get the core default prompt template for followup title generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_followup_prompt() {
+		return "Now generate a title for the article you just wrote.{{instructions_block}}";
+	}
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.

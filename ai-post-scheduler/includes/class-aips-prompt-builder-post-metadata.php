@@ -19,6 +19,14 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Prompt_Builder_Post_Metadata {
+	/**
+	 * Get the core default prompt template for SEO metadata generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Generate search-optimized metadata for the article.";
+	}
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.

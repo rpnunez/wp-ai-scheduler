@@ -24,6 +24,14 @@ if (!defined('ABSPATH')) {
  * - Qualitative feedback guidance (admin-supplied rejection/approval reasons)
  */
 class AIPS_Prompt_Builder_Topic {
+	/**
+	 * Get the core default prompt template for author topic discovery.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Generate {{quantity}} unique and engaging blog post topic ideas about: {{niche}}";
+	}
 
 	/**
 	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.

@@ -216,50 +216,50 @@ if (!defined('ABSPATH')) {
 						<div class="aips-prompt-stage-nav">
 							<div class="aips-stage-nav-title"><?php esc_html_e('Generation Stages', 'ai-post-scheduler'); ?></div>
 							<ul class="aips-stage-tabs-list">
-								<li class="is-active" data-stage="post_title">
+								<li class="is-active" data-stage="title_prompt">
 									<span class="dashicons dashicons-heading"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="post_title"></span>
+									<span class="aips-stage-indicator" data-stage="title_prompt"></span>
 								</li>
-								<li data-stage="post_title_followup">
+								<li data-stage="title_followup_prompt">
 									<span class="dashicons dashicons-redo"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Follow-up Title', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="post_title_followup"></span>
+									<span class="aips-stage-indicator" data-stage="title_followup_prompt"></span>
 								</li>
-								<li data-stage="post_content">
+								<li data-stage="content_prompt">
 									<span class="dashicons dashicons-editor-alignleft"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Content Shell', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="post_content"></span>
+									<span class="aips-stage-indicator" data-stage="content_prompt"></span>
 								</li>
-								<li data-stage="post_excerpt">
+								<li data-stage="excerpt_prompt">
 									<span class="dashicons dashicons-editor-quote"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Post Excerpt', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="post_excerpt"></span>
+									<span class="aips-stage-indicator" data-stage="excerpt_prompt"></span>
 								</li>
-								<li data-stage="post_excerpt_followup">
+								<li data-stage="excerpt_followup_prompt">
 									<span class="dashicons dashicons-redo"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Follow-up Excerpt', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="post_excerpt_followup"></span>
+									<span class="aips-stage-indicator" data-stage="excerpt_followup_prompt"></span>
 								</li>
-								<li data-stage="featured_image">
+								<li data-stage="featured_image_prompt">
 									<span class="dashicons dashicons-format-image"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="featured_image"></span>
+									<span class="aips-stage-indicator" data-stage="featured_image_prompt"></span>
 								</li>
-								<li data-stage="topic_idea">
+								<li data-stage="topic_ideas_prompt">
 									<span class="dashicons dashicons-lightbulb"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Author Topic Ideas', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="topic_idea"></span>
+									<span class="aips-stage-indicator" data-stage="topic_ideas_prompt"></span>
 								</li>
-								<li data-stage="seo_metadata">
+								<li data-stage="metadata_prompt">
 									<span class="dashicons dashicons-search"></span>
 									<span class="aips-tab-label"><?php esc_html_e('SEO & Metadata', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="seo_metadata"></span>
+									<span class="aips-stage-indicator" data-stage="metadata_prompt"></span>
 								</li>
-								<li data-stage="taxonomy">
+								<li data-stage="taxonomy_prompt">
 									<span class="dashicons dashicons-tag"></span>
 									<span class="aips-tab-label"><?php esc_html_e('Taxonomy Classification', 'ai-post-scheduler'); ?></span>
-									<span class="aips-stage-indicator" data-stage="taxonomy"></span>
+									<span class="aips-stage-indicator" data-stage="taxonomy_prompt"></span>
 								</li>
 							</ul>
 						</div>
@@ -269,13 +269,13 @@ if (!defined('ABSPATH')) {
 							<!-- Container for stage panels -->
 							<div class="aips-stage-panels-wrapper">
 								<!-- Stage: Post Title -->
-								<div class="aips-stage-panel is-active" data-stage-panel="post_title">
+								<div class="aips-stage-panel is-active" data-stage-panel="title_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Post Title Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Generates the standalone blog post headline from the topic context and voice.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="post_title">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="title_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -290,18 +290,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_post_title" name="post_title" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_title_prompt" name="title_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Follow-up Title -->
-								<div class="aips-stage-panel" data-stage-panel="post_title_followup">
+								<div class="aips-stage-panel" data-stage-panel="title_followup_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Follow-up Title Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Generates a refined post title after the post content body has been produced.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="post_title_followup">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="title_followup_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -315,18 +315,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_post_title_followup" name="post_title_followup" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_title_followup_prompt" name="title_followup_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Content Shell -->
-								<div class="aips-stage-panel" data-stage-panel="post_content">
+								<div class="aips-stage-panel" data-stage-panel="content_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Content Shell & Wrapper Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Guides overall article construction, length, structure, formatting, tone, and link injection.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="post_content">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="content_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -347,18 +347,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_post_content" name="post_content" class="aips-form-textarea aips-stage-textarea" rows="9" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_content_prompt" name="content_prompt" class="aips-form-textarea aips-stage-textarea" rows="9" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Post Excerpt -->
-								<div class="aips-stage-panel" data-stage-panel="post_excerpt">
+								<div class="aips-stage-panel" data-stage-panel="excerpt_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Post Excerpt Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Generates a summary excerpt from the topic headline.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="post_excerpt">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="excerpt_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -372,18 +372,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_post_excerpt" name="post_excerpt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_excerpt_prompt" name="excerpt_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Follow-up Excerpt -->
-								<div class="aips-stage-panel" data-stage-panel="post_excerpt_followup">
+								<div class="aips-stage-panel" data-stage-panel="excerpt_followup_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Follow-up Excerpt Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Summarizes the generated post content into a concise meta excerpt.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="post_excerpt_followup">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="excerpt_followup_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -397,18 +397,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_post_excerpt_followup" name="post_excerpt_followup" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_excerpt_followup_prompt" name="excerpt_followup_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Featured Image -->
-								<div class="aips-stage-panel" data-stage-panel="featured_image">
+								<div class="aips-stage-panel" data-stage-panel="featured_image_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Featured Image Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Guides AI image generation prompts from article content and theme styling.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="featured_image">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="featured_image_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -422,18 +422,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_featured_image" name="featured_image" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_featured_image_prompt" name="featured_image_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Topic Discovery -->
-								<div class="aips-stage-panel" data-stage-panel="topic_idea">
+								<div class="aips-stage-panel" data-stage-panel="topic_ideas_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Author Topic Ideas Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Instructs the AI to ideate high-performing topic angles aligned with author niche and previous feedback.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="topic_idea">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="topic_ideas_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -448,18 +448,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_topic_idea" name="topic_idea" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_topic_ideas_prompt" name="topic_ideas_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: SEO Metadata -->
-								<div class="aips-stage-panel" data-stage-panel="seo_metadata">
+								<div class="aips-stage-panel" data-stage-panel="metadata_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('SEO & Metadata JSON Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Extracts meta descriptions, focus keywords, and structured schema in JSON format.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="seo_metadata">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="metadata_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -473,18 +473,18 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_seo_metadata" name="seo_metadata" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_metadata_prompt" name="metadata_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 
 								<!-- Stage: Taxonomy -->
-								<div class="aips-stage-panel" data-stage-panel="taxonomy">
+								<div class="aips-stage-panel" data-stage-panel="taxonomy_prompt">
 									<div class="aips-stage-header">
 										<div>
 											<h3 class="aips-stage-heading"><?php esc_html_e('Taxonomy Classification Prompt', 'ai-post-scheduler'); ?></h3>
 											<p class="aips-stage-subtext"><?php esc_html_e('Matches post content against your existing WordPress categories and tags.', 'ai-post-scheduler'); ?></p>
 										</div>
-										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="taxonomy">
+										<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-reset-stage-btn" data-stage="taxonomy_prompt">
 											<span class="dashicons dashicons-undo"></span>
 											<?php esc_html_e('Reset to Default', 'ai-post-scheduler'); ?>
 										</button>
@@ -499,7 +499,7 @@ if (!defined('ABSPATH')) {
 										</div>
 									</div>
 									<div class="aips-form-group">
-										<textarea id="stage_taxonomy" name="taxonomy" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
+										<textarea id="stage_taxonomy_prompt" name="taxonomy_prompt" class="aips-form-textarea aips-stage-textarea" rows="7" placeholder="<?php esc_attr_e('(Leave blank to inherit core codebase default)', 'ai-post-scheduler'); ?>"></textarea>
 									</div>
 								</div>
 							</div>

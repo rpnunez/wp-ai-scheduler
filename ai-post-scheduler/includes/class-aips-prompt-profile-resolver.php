@@ -59,15 +59,15 @@ class AIPS_Prompt_Profile_Resolver {
 	 */
 	public static function get_core_fallbacks() {
 		return array(
-			'title_prompt'            => "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.{{instructions_block}}",
-			'title_followup_prompt'   => "Now generate a title for the article you just wrote.{{instructions_block}}",
-			'content_prompt'          => "{{voice_instructions}}\n\n{{content_prompt}}",
-			'excerpt_prompt'          => "Write an excerpt for an article. Must be between {{word_count_min}} and {{word_count_max}} words. Write naturally as a human would. Output only the excerpt, no formatting.{{instructions_block}}",
-			'excerpt_followup_prompt' => "Now write an excerpt for that article. Must be between {{word_count_min}} and {{word_count_max}} words. Write naturally as a human would. Output only the excerpt, no formatting.{{instructions_block}}",
-			'featured_image_prompt'   => "{{image_prompt}}",
-			'topic_ideas_prompt'      => "Generate {{quantity}} unique and engaging blog post topic ideas about: {{niche}}",
-			'metadata_prompt'         => "Generate search-optimized metadata for the article.",
-			'taxonomy_prompt'         => "Select the most relevant category and tags for the article.",
+			'title_prompt'            => class_exists('AIPS_Prompt_Builder_Post_Title') ? AIPS_Prompt_Builder_Post_Title::get_default_prompt() : '',
+			'title_followup_prompt'   => class_exists('AIPS_Prompt_Builder_Post_Title') ? AIPS_Prompt_Builder_Post_Title::get_default_followup_prompt() : '',
+			'content_prompt'          => class_exists('AIPS_Prompt_Builder_Post_Content') ? AIPS_Prompt_Builder_Post_Content::get_default_prompt() : '',
+			'excerpt_prompt'          => class_exists('AIPS_Prompt_Builder_Post_Excerpt') ? AIPS_Prompt_Builder_Post_Excerpt::get_default_prompt() : '',
+			'excerpt_followup_prompt' => class_exists('AIPS_Prompt_Builder_Post_Excerpt') ? AIPS_Prompt_Builder_Post_Excerpt::get_default_followup_prompt() : '',
+			'featured_image_prompt'   => class_exists('AIPS_Prompt_Builder_Post_Featured_Image') ? AIPS_Prompt_Builder_Post_Featured_Image::get_default_prompt() : '',
+			'topic_ideas_prompt'      => class_exists('AIPS_Prompt_Builder_Topic') ? AIPS_Prompt_Builder_Topic::get_default_prompt() : '',
+			'metadata_prompt'         => class_exists('AIPS_Prompt_Builder_Post_Metadata') ? AIPS_Prompt_Builder_Post_Metadata::get_default_prompt() : '',
+			'taxonomy_prompt'         => class_exists('AIPS_Prompt_Builder_Taxonomy') ? AIPS_Prompt_Builder_Taxonomy::get_default_prompt() : '',
 		);
 	}
 

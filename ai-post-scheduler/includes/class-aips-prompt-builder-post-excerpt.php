@@ -21,6 +21,23 @@ if (!defined('ABSPATH')) {
  * Builds the AI prompt for post excerpt generation.
  */
 class AIPS_Prompt_Builder_Post_Excerpt {
+	/**
+	 * Get the core default prompt template for standalone excerpt generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_prompt() {
+		return "Write an excerpt for an article. Must be between {{word_count_min}} and {{word_count_max}} words. Write naturally as a human would. Output only the excerpt, no formatting.{{instructions_block}}";
+	}
+
+	/**
+	 * Get the core default prompt template for followup excerpt generation.
+	 *
+	 * @return string
+	 */
+	public static function get_default_followup_prompt() {
+		return "Now write an excerpt for that article. Must be between {{word_count_min}} and {{word_count_max}} words. Write naturally as a human would. Output only the excerpt, no formatting.{{instructions_block}}";
+	}
 
 	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
