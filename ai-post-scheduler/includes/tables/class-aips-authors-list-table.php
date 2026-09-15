@@ -84,8 +84,7 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			'cb'      => '<input type="checkbox" id="aips-authors-select-all" />',
 			'name'    => esc_html__('Author Name', 'ai-post-scheduler'),
 			'status'  => esc_html__('Status', 'ai-post-scheduler'),
-			'topics'  => esc_html__('Topics', 'ai-post-scheduler'),
-			'posts'   => esc_html__('Posts', 'ai-post-scheduler'),
+			'content' => esc_html__('Topics & Posts', 'ai-post-scheduler'),
 			'actions' => esc_html__('Actions', 'ai-post-scheduler'),
 		);
 	}
@@ -302,8 +301,9 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		}
 
 		$html  = '<div class="cell-primary aips-author-title-cell">';
-		$html .= '<span class="aips-quality-indicator aips-quality-' . esc_attr($quality_state) . '" title="' . esc_attr($quality_label) . '" aria-label="' . esc_attr($quality_label) . '"></span>';
-		$html .= '<strong><a href="' . esc_url($topics_url) . '">' . esc_html($item->name) . '</a></strong>';
+		$html .= '<div class="aips-author-header">';
+		$html .= '<span class="aips-health-dot aips-health-' . esc_attr($quality_state) . ' aips-quality-indicator aips-quality-' . esc_attr($quality_state) . '" title="' . esc_attr($quality_label) . '" aria-label="' . esc_attr($quality_label) . '"></span>';
+		$html .= '<strong class="aips-author-name"><a href="' . esc_url($topics_url) . '">' . esc_html($item->name) . '</a></strong>';
 		$html .= '</div>';
 
 		if (!empty($item->description)) {
@@ -320,6 +320,7 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		);
 
 		$html .= $this->row_actions($actions);
+		$html .= '</div>';
 
 		return $html;
 	}
@@ -339,15 +340,16 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 	}
 
 	/**
-	 * Topics count breakdown column rendering.
+	 * Topics and posts combined metrics column rendering.
 	 *
 	 * @param object $item Author row object.
 	 * @return string
 	 */
-	protected function column_topics($item) {
+	protected function column_content($item) {
 		$author_id     = (int) $item->id;
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
 		$total_topics  = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
+		$posts_count   = $this->logs_repository->count_generated_posts_by_author($author_id);
 
 		$topics_url = add_query_arg(array(
 			'page'      => 'aips-automations',
@@ -355,10 +357,15 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			'author_id' => $author_id,
 		), admin_url('admin.php'));
 
-		$html  = '<div class="aips-topic-pills">';
+		$html  = '<div class="aips-author-stats-wrap">';
+		$html .= '<div class="aips-stats-badges-row">';
 		$html .= '<a href="' . esc_url($topics_url) . '" class="aips-badge aips-badge-secondary" title="' . esc_attr__('View all topics', 'ai-post-scheduler') . '">';
 		$html .= '<span class="dashicons dashicons-visibility" aria-hidden="true"></span> ' . sprintf(esc_html__('%d Topics', 'ai-post-scheduler'), $total_topics);
 		$html .= '</a>';
+		$html .= '<span class="aips-badge aips-badge-neutral" title="' . esc_attr__('Generated Posts', 'ai-post-scheduler') . '">';
+		$html .= '<span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' . sprintf(esc_html__('%d Posts', 'ai-post-scheduler'), $posts_count);
+		$html .= '</span>';
+		$html .= '</div>';
 		$html .= '<div class="cell-meta aips-topic-status-counts">';
 		$html .= '<span class="aips-topic-count-pending">' . sprintf(esc_html__('%d pending', 'ai-post-scheduler'), $status_counts['pending']) . '</span> | ';
 		$html .= '<span class="aips-topic-count-approved">' . sprintf(esc_html__('%d approved', 'ai-post-scheduler'), $status_counts['approved']) . '</span> | ';
@@ -367,20 +374,6 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$html .= '</div>';
 
 		return $html;
-	}
-
-	/**
-	 * Generated posts count column rendering.
-	 *
-	 * @param object $item Author row object.
-	 * @return string
-	 */
-	protected function column_posts($item) {
-		$posts_count = $this->logs_repository->count_generated_posts_by_author((int) $item->id);
-		return sprintf(
-			'<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> %s</span>',
-			sprintf(esc_html__('%d Posts', 'ai-post-scheduler'), $posts_count)
-		);
 	}
 
 	/**
