@@ -164,6 +164,7 @@ class AIPS_Ajax_Registry {
 
 		// History
 		'aips_bulk_delete_history'        => 'AIPS_History',
+		'aips_clear_history'              => 'AIPS_History',
 		'aips_export_history'             => 'AIPS_History',
 		'aips_get_history_details'        => 'AIPS_History',
 		'aips_get_history_logs'           => 'AIPS_History',

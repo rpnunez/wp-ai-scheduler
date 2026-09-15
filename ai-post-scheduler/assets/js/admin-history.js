@@ -610,6 +610,9 @@
 			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
 
+			// Clear processing runs
+			$(document).on('click', '#aips-clear-processing-btn', this.clearProcessingHistory.bind(this));
+
 			/* --- Row Action Events --- */
 			// Overflow toggle for the action group
 			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
@@ -1338,6 +1341,59 @@
 		},
 
 		/**
+		 * Clear all in-progress / stalled history records via AJAX.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		clearProcessingHistory: function (e) {
+			e.preventDefault();
+
+			var self = this;
+			var $btn = $(e.currentTarget);
+			var processingCount = parseInt($('#aips-stat-processing').text() || '0', 10);
+			var msg = (aipsHistoryL10n.confirmClearProcessing || 'Clear all %d in-progress history entries? Stalled background runs will be removed.').replace('%d', processingCount || '');
+
+			AIPS.Utilities.confirm(msg, 'Clear In-Progress Runs', [
+				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, clear runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					var req = $.ajax({
+						url: aipsAjax.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_clear_history',
+							nonce: aipsAjax.nonce,
+							status: 'processing'
+						},
+						success: function (response) {
+							if (response.success) {
+								AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Cleared in-progress entries.', 'success');
+								$('#aips-stat-processing').text('0');
+								$('#aips-clear-processing-btn').hide();
+								self.reload();
+							} else {
+								AIPS.Utilities.showToast(
+									response.data && response.data.message
+										? response.data.message
+										: (aipsHistoryL10n.errorClearing || 'Error clearing history.'),
+									'error'
+								);
+							}
+						},
+						error: function () {
+							AIPS.Utilities.showToast(aipsHistoryL10n.errorClearing || 'Error clearing history.', 'error');
+						}
+					});
+
+					AIPS.Utilities.withLock($btn, req, {
+						loadingText: '<span class="dashicons dashicons-update aips-spin"></span> ' + (aipsHistoryL10n.clearing || 'Clearing\u2026'),
+						isHtml: true,
+						timeout: 60000
+					});
+				}}
+			]);
+		},
+
+		/**
 		 * Delete a single history container row.
 		 *
 		 * @param {Event} e - Click event from an `.aips-delete-history` element.
@@ -1540,6 +1596,12 @@
 						$('#aips-stat-processing').text(stats.processing);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
 						$('#aips-stat-median-duration').text(self.formatDuration(stats.median_duration));
+
+						if (parseInt(stats.processing || 0, 10) > 0) {
+							$('#aips-clear-processing-btn').show();
+						} else {
+							$('#aips-clear-processing-btn').hide();
+						}
 					}
 
 					// Keep the URL in sync.

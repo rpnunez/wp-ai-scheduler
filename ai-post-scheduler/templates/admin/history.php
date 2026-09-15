@@ -155,6 +155,10 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <span class="dashicons dashicons-download" aria-hidden="true"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
+                    <button class="aips-btn aips-btn-sm aips-btn-warning-outline" id="aips-clear-processing-btn" style="<?php echo empty($stats['processing']) ? 'display: none;' : ''; ?>" title="<?php esc_attr_e('Purge all stalled in-progress runs', 'ai-post-scheduler'); ?>">
+                        <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
+                        <?php esc_html_e('Clear In-Progress', 'ai-post-scheduler'); ?>
+                    </button>
                 </div>
                 <div class="aips-toolbar-right aips-history-pagination-cell">
                     <div id="aips-history-pagination-wrap">
@@ -186,7 +190,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                             </thead>
                             <tbody id="aips-history-tbody">
                                 <?php if (!empty($items)): ?>
-                                    <?php echo isset($history_handler) ? $history_handler->render_table_rows_html($items) : ''; ?>
+                                    <?php echo isset($history_handler) ? $history_handler->render_table_rows_html($items, $status_filter) : ''; ?>
                                 <?php else: ?>
                                     <tr>
                                         <td colspan="6" style="text-align:center;padding:40px;">

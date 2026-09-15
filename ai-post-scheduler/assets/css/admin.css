@@ -6069,6 +6069,29 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	border-color: #a67106;
 }
 
+.aips-btn.aips-btn-warning-outline {
+	background: #fffdf5;
+	border-color: #dba617;
+	color: #996800;
+}
+
+.aips-btn.aips-btn-warning-outline:hover {
+	background: #fef7e0;
+	border-color: #c08508;
+	color: #7a5200;
+}
+
+.aips-badge.aips-badge-warning.aips-stalled-badge {
+	background: #fef7e0;
+	border-color: #f6d88e;
+	color: #996800;
+	margin-left: 4px;
+}
+
+.aips-text-warning {
+	color: #c08508;
+}
+
 .aips-btn.aips-btn-info {
 	background: #2271b1;
 	border-color: #135e96;
