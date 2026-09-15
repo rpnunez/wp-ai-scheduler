@@ -333,7 +333,7 @@ $build_page_url = static function($page_number) use ($base_url, $search, $filter
 			<button type="button" id="aips-source-data-modal-close-header" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-source-data-form" novalidate>
+			<form id="aips-source-data-form" data-aips-async="true" novalidate>
 				<input type="hidden" id="aips-source-data-id" name="data_id" value="0">
 				<div class="aips-form-grid aips-form-grid-2">
 					<div class="aips-form-row"><label for="aips-source-data-display-id"><?php esc_html_e('ID', 'ai-post-scheduler'); ?></label><input type="number" id="aips-source-data-display-id" class="regular-text" readonly></div>

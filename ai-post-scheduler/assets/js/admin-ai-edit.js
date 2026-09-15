@@ -175,13 +175,8 @@
 				requestData.current_source = 'manual_edit';
 				requestData.current_reason = 'pre_regenerate_manual';
 			}
-			
-			// Disable button and show loading state
-			$btn.prop('disabled', true)
-				.addClass('regenerating')
-				.find('.button-text').text(aipsAIEditL10n.regenerating);
-			
-			$.ajax({
+
+			var req = $.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
 				type: 'POST',
 				data: requestData,
@@ -191,6 +186,11 @@
 				error: function() {
 					window.AIPS.onRegenerateError($btn, component);
 				}
+			});
+
+			window.AIPS.Utilities.withLock($btn, req, {
+				loadingText: aipsAIEditL10n.regenerating,
+				timeout: 120000
 			});
 		},
 
@@ -218,10 +218,9 @@
 			var $button = $(e.currentTarget);
 			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(['title', 'excerpt', 'content', 'featured_image']);
 
-			window.AIPS.Utilities.setButtonLoading($button, aipsAIEditL10n.regeneratingAll);
 			$('.aips-regenerate-btn').prop('disabled', true);
 
-			$.ajax({
+			var req = $.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
 				type: 'POST',
 				data: {
@@ -238,13 +237,17 @@
 					window.AIPS.onRegenerateAllError($button);
 				}
 			});
+
+			window.AIPS.Utilities.withLock($button, req, {
+				loadingText: aipsAIEditL10n.regeneratingAll,
+				timeout: 300000
+			});
 		},
 
 		/**
 		 * Handle Regenerate All success/error payload.
 		 */
 		onRegenerateAllSuccess: function($button, response) {
-			window.AIPS.Utilities.resetButton($button);
 			$('.aips-regenerate-btn').prop('disabled', false);
 
 			if (!response.success) {
@@ -286,7 +289,6 @@
 		 * Handle Regenerate All network error.
 		 */
 		onRegenerateAllError: function($button) {
-			window.AIPS.Utilities.resetButton($button);
 			$('.aips-regenerate-btn').prop('disabled', false);
 			window.AIPS.showAIEditNotice(aipsAIEditL10n.regenerateAllError, 'error');
 		},
@@ -532,10 +534,9 @@
 				}
 			});
 			
-			// Disable save button
-			window.AIPS.Utilities.setButtonLoading($('#aips-ai-edit-save'), aipsAIEditL10n.saving);
+			var $saveBtn = $('#aips-ai-edit-save');
 			
-			$.ajax({
+			var req = $.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
 				type: 'POST',
 				data: {
@@ -547,13 +548,17 @@
 				success: window.AIPS.onAIEditSaveSuccess,
 				error: window.AIPS.onAIEditSaveError
 			});
+
+			window.AIPS.Utilities.withLock($saveBtn, req, {
+				loadingText: aipsAIEditL10n.saving,
+				timeout: 30000
+			});
 		},
 		
 		/**
 		 * Handle successful save
 		 */
 		onAIEditSaveSuccess: function(response) {
-			window.AIPS.Utilities.resetButton($('#aips-ai-edit-save'));
 			
 			if (response.success) {
 				window.AIPS.showAIEditNotice(response.data.message, 'success');
@@ -835,12 +840,10 @@
 			var componentType = $button.data('component');
 			var $item = $button.closest('.aips-revision-item');
 			
-			// Disable button and show loading
-			$button.prop('disabled', true);
 			$item.addClass('restoring');
 			
 			// Make AJAX request
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -854,7 +857,6 @@
 					current_reason: window.AIPS.shouldCaptureManualRevision(componentType) ? 'pre_restore_manual' : ''
 				},
 				success: function(response) {
-					$button.prop('disabled', false);
 					$item.removeClass('restoring');
 					
 					if (response.success && response.data.value) {
@@ -872,11 +874,14 @@
 					}
 				},
 				error: function(xhr, status, error) {
-					$button.prop('disabled', false);
 					$item.removeClass('restoring');
 					console.error('Failed to restore revision:', error);
 					window.AIPS.showComponentStatus(componentType, 'error', 'Failed to restore revision. Please try again.');
 				}
+			});
+
+			window.AIPS.Utilities.withLock($button, req, {
+				timeout: 30000
 			});
 		},
 

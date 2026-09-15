@@ -181,38 +181,44 @@
 			var postId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			if (!confirm('Are you sure you want to publish this post now?')) {
-				return;
-			}
+			AIPS.Utilities.confirm(
+				'Are you sure you want to publish this post now?',
+				'Confirm',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
+					{ label: 'Publish Now', className: 'aips-btn aips-btn-danger-solid', action: function () {
+						var req = $.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							data: {
+								action: 'aips_publish_post',
+								nonce: l10n.nonce,
+								post_id: postId
+							},
+							success: function(response) {
+								if (response.success) {
+									var $tr = $btn.closest('tr');
+									$tr.find('.aips-badge')
+										.removeClass('aips-badge-warning aips-badge-neutral')
+										.addClass('aips-badge-success')
+										.text('Completed');
+									$btn.remove();
+								} else {
+									AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
+								}
+							},
+							error: function() {
+								AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
+							}
+						});
 
-			$btn.text('Publishing...');
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_publish_post',
-					nonce: l10n.nonce,
-					post_id: postId
-				},
-				success: function(response) {
-					if (response.success) {
-						var $tr = $btn.closest('tr');
-						$tr.find('.aips-badge')
-							.removeClass('aips-badge-warning aips-badge-neutral')
-							.addClass('aips-badge-success')
-							.text('Completed');
-						$btn.remove();
-					} else {
-						AIPS.Utilities.showToast(response.data || 'Failed to publish post.', 'error');
-						$btn.text('Publish Now');
-					}
-				},
-				error: function() {
-					AIPS.Utilities.showToast('An error occurred while publishing the post.', 'error');
-					$btn.text('Publish Now');
-				}
-			});
+						AIPS.Utilities.withLock($btn, req, {
+							loadingText: 'Publishing...',
+							timeout: 30000
+						});
+					}}
+				]
+			);
 		},
 
 		/**
@@ -227,7 +233,7 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -251,6 +257,11 @@
 					AIPS.Utilities.showToast('An error occurred while approving the topic.', 'error');
 				}
 			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Approving...',
+				timeout: 30000
+			});
 		},
 
 		/**
@@ -265,7 +276,7 @@
 			var topicId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -289,6 +300,11 @@
 					AIPS.Utilities.showToast('An error occurred while rejecting the topic.', 'error');
 				}
 			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Rejecting...',
+				timeout: 30000
+			});
 		},
 
 		/**
@@ -303,9 +319,7 @@
 			var scheduleId = $btn.data('id');
 			var l10n = window.aipsDashboardL10n || {};
 
-			$btn.text('Running...');
-
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -316,16 +330,18 @@
 				success: function(response) {
 					if (response.success) {
 						AIPS.Utilities.showToast('Automated run triggered successfully!', 'success');
-						$btn.text('Run Now');
 					} else {
 						AIPS.Utilities.showToast(response.data || 'Failed to trigger schedule.', 'error');
-						$btn.text('Run Now');
 					}
 				},
 				error: function() {
 					AIPS.Utilities.showToast('An error occurred while triggering the schedule.', 'error');
-					$btn.text('Run Now');
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: 'Running...',
+				timeout: 180000
 			});
 		},
 

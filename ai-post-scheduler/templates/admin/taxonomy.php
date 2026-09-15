@@ -15,31 +15,11 @@ if (!defined('ABSPATH')) {
 
 $repository = new AIPS_Taxonomy_Repository();
 $status_counts = $repository->get_status_counts();
-$total_items = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'] +
-	$status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
-$is_embedded_taxonomy_view = !empty($embedded);
+$categories_total = $status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected'];
+$tags_total = $status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected'];
+$total_items = $categories_total + $tags_total;
+$initial_tab = ($categories_total === 0 && $tags_total > 0) ? 'tags' : 'categories';
 ?>
-<?php if (!$is_embedded_taxonomy_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Taxonomy', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Generate and manage AI-powered categories and tags based on your existing posts', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-primary aips-generate-taxonomy" id="aips-open-generate-modal">
-						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<!-- Taxonomy Stats -->
 		<div class="aips-author-topics-stats">
@@ -65,13 +45,13 @@ $is_embedded_taxonomy_view = !empty($embedded);
 		<div class="aips-content-panel" id="aips-taxonomy-panel">
 			<!-- Tabs -->
 			<div class="aips-topics-tabs aips-page-tabs">
-				<button class="aips-tab-link active" data-tab="categories">
+				<button class="aips-tab-link<?php echo 'categories' === $initial_tab ? ' active' : ''; ?>" data-tab="categories">
 					<?php esc_html_e('Categories', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="categories-count"><?php echo esc_html($status_counts['categories']['pending'] + $status_counts['categories']['approved'] + $status_counts['categories']['rejected']); ?></span>
+					<span class="aips-tab-count" id="categories-count"><?php echo esc_html($categories_total); ?></span>
 				</button>
-				<button class="aips-tab-link" data-tab="tags">
+				<button class="aips-tab-link<?php echo 'tags' === $initial_tab ? ' active' : ''; ?>" data-tab="tags">
 					<?php esc_html_e('Tags', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="tags-count"><?php echo esc_html($status_counts['tags']['pending'] + $status_counts['tags']['approved'] + $status_counts['tags']['rejected']); ?></span>
+					<span class="aips-tab-count" id="tags-count"><?php echo esc_html($tags_total); ?></span>
 				</button>
 			</div>
 
@@ -125,10 +105,6 @@ $is_embedded_taxonomy_view = !empty($embedded);
 				?>
 			</span>
 		</div>
-<?php if (!$is_embedded_taxonomy_view) : ?>
-	</div>
-</div>
-<?php endif; ?>
 
 <!-- Generate Taxonomy Modal -->
 <div id="aips-generate-taxonomy-modal" class="aips-modal" style="display: none;">
@@ -137,7 +113,7 @@ $is_embedded_taxonomy_view = !empty($embedded);
 			<h2 class="aips-modal-title"><?php esc_html_e('Generate Taxonomy', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
-		<form id="aips-generate-taxonomy-form">
+		<form id="aips-generate-taxonomy-form" data-aips-async="true">
 			<div class="aips-modal-body">
 			<div class="form-group">
 				<label for="taxonomy_type"><?php esc_html_e('Taxonomy Type', 'ai-post-scheduler'); ?></label>
