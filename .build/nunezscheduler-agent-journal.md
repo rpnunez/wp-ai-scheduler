@@ -280,6 +280,11 @@ Outcome: Faster, smoother transitions between states without losing scroll posit
 **Improvement:** Stagger scheduled topics with frequency 'once' to improve queue management
 **Files Modified:** ai-post-scheduler/includes/class-aips-planner.php, ai-post-scheduler/tests/Test_Bulk_Schedule.php
 **Outcome:** Reduced concurrent background queue spike by staggering 'once' schedules
+## 2026-08-01 - Authors Optimization
+**Target Feature:** Authors UI
+**Improvement:** Replaced hard `window.location.reload()` calls in the Authors admin UI with dynamic AJAX content panel refreshing (`AIPS.refreshContentPanel`) to preserve UI context.
+**Files Modified:** ai-post-scheduler/assets/js/authors.js
+**Outcome:** Faster, smoother transitions when creating, editing, deleting, or fetching authors without losing scroll position or tab context.
 ## 2025-05-15 - Research Planner Optimization
 Target Feature: Research Planner
 Improvement: Replaced the non-standard custom two-click soft confirm behavior in the Planner UI with the standardized AIPS.Utilities.confirm modal for improved UI consistency and accessibility.
@@ -290,3 +295,26 @@ Outcome: Simplifies code maintainability and offers a unified UI flow for user c
 **Improvement:** Optimized the search and filter clear buttons in the Generated Posts, Pending Review, and Partial Generations tabs by replacing text buttons with standard dashicon icons, reducing visual clutter and improving UI consistency while preserving full accessibility via aria-labels.
 **Files Modified:** `ai-post-scheduler/templates/admin/tab-generated-posts.php`, `ai-post-scheduler/templates/admin/tab-pending-review.php`, `ai-post-scheduler/templates/admin/tab-partial-generations.php`
 **Outcome:** Improved flow/efficiency and consistency for the Post Generator without expanding scope to unrelated areas.
+## 2024-08-31 - Generated Posts Optimization
+Target Feature: Generated Posts
+Improvement: Ensure pagination resets when clearing filters or searches so users aren't stranded on empty pages.
+Files Modified: ai-post-scheduler/templates/admin/tab-partial-generations.php
+Outcome: Flow improvement for navigating the Generated Posts lists
+
+## 2026-08-27 - Search Clear Flow Optimization
+**Target Feature:** Admin List Tables (Templates, Schedules, Authors, Post Slices, etc.)
+**Improvement:** Optimized the search clear behavior by replacing text buttons (`Clear Search` or `Clear`) with standard accessible dashicon icons (`dashicons-dismiss`). This improves workflow flow/efficiency by standardizing the UI, reducing visual clutter, and aligning with the rest of the recent dashboard improvements, all while preserving proper `aria-label` accessibility.
+**Files Modified:** ai-post-scheduler/templates/admin/affiliate-links.php, ai-post-scheduler/templates/admin/structures.php, ai-post-scheduler/templates/admin/authors.php, ai-post-scheduler/templates/admin/schedule.php, ai-post-scheduler/templates/admin/post-slices.php, ai-post-scheduler/templates/admin/sources.php, ai-post-scheduler/templates/admin/planner.php, ai-post-scheduler/templates/admin/research.php, ai-post-scheduler/templates/admin/taxonomy.php, ai-post-scheduler/templates/admin/voices.php, ai-post-scheduler/templates/admin/internal-links.php, ai-post-scheduler/templates/admin/author-topics.php, ai-post-scheduler/templates/admin/sections.php, ai-post-scheduler/templates/admin/templates.php
+**Outcome:** Enhances the administrative flow by standardizing the search clear buttons across all tables into icon-only buttons, making the interface cleaner and more intuitive.
+
+## 2025-01-20 - Research Planner Optimization
+Target Feature: Research Planner
+Improvement: Ensured 'Select All' checkbox properly syncs with currently visible/filtered checkboxes when searching for topics, improving bulk action UX during search.
+Files Modified: ai-post-scheduler/assets/js/admin-planner.js
+Outcome: Users can now reliably use 'Select All' alongside the search filter without accidentally selecting hidden/unrelated topics.
+
+## 2026-09-05 - Research Planner Search Filter Sync Optimization
+Target Feature: Research Planner
+Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
+Files Modified: ai-post-scheduler/assets/js/admin-planner.js
+Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
