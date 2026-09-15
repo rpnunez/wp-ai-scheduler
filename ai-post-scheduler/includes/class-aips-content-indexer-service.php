@@ -411,6 +411,10 @@ class AIPS_Content_Indexer_Service {
 			$post_status
 		);
 
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		$success     = 0;
 		$failed      = 0;
 		$new_last_id = $last_post_id;

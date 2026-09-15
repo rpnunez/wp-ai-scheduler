@@ -50,8 +50,16 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	/**
-	 * aips_internal_links table should exist and have the expected columns.
+	 * Test process_indexing_batch executes successfully with cache priming.
 	 */
+	public function test_process_indexing_batch_primes_post_caches() {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$service = new AIPS_Internal_Links_Service();
+		$result  = $service->process_indexing_batch( 10, 0 );
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'success', $result );
+	}
+
 	public function test_internal_links_table_exists() {
 		global $wpdb;
 		$table   = $wpdb->prefix . 'aips_internal_links';

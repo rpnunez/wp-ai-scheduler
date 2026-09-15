@@ -148,6 +148,10 @@ class AIPS_Internal_Links_Service {
 		$failed         = 0;
 		$new_last_id    = $last_post_id;
 
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		foreach ($post_ids as $post_id) {
 			$result = $this->index_post($post_id);
 
