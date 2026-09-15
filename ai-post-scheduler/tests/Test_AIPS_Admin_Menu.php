@@ -194,7 +194,8 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Seeder is a dev/test-data tool and must be disabled (unregistered) by default.
+	 * The standalone Seeder admin page has been retired; the Seed Configuration
+	 * UI now lives inside Diagnostics -> Dev Tools.
 	 */
 	public function test_seeder_page_is_not_registered_by_default() {
 		global $submenu, $_registered_pages;

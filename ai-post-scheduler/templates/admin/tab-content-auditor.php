@@ -12,8 +12,8 @@ if (!defined('ABSPATH')) {
 
 $site_context  = AIPS_Site_Context::get();
 $default_niche = !empty($site_context['niche']) ? $site_context['niche'] : '';
-$templates     = (new AIPS_Template_Repository())->get_all(array('active' => 1));
-$authors       = (new AIPS_Author_Repository())->get_all(array('is_active' => 1));
+$templates     = (new AIPS_Template_Repository())->get_all(true);
+$authors       = (new AIPS_Authors_Repository())->get_all(true);
 ?>
 
 <div class="aips-content-auditor-wrapper">

@@ -101,4 +101,148 @@ class Test_Schedule_Result_Handler extends WP_UnitTestCase {
         $result = $this->handler->get_or_create_schedule_history($schedule_id);
         $this->assertSame($container_mock, $result);
     }
+
+	public function test_handle_execution_terminated_by_setting_restores_next_run() {
+		$schedule = (object) array(
+			'schedule_id' => 12,
+			'template_id' => 34,
+			'frequency'   => 'once',
+		);
+		$history = $this->createMock(AIPS_History_Container::class);
+
+		$history->expects($this->once())
+			->method('record')
+			->with(
+				'activity',
+				'Schedule was terminated early due to Prevent Scheduled AI Generation being enabled.',
+				$this->callback(function($meta) {
+					return isset($meta['event_type'], $meta['event_status']) &&
+						$meta['event_type'] === 'schedule_terminated' &&
+						$meta['event_status'] === 'terminated';
+				})
+			);
+
+		$this->repository_mock->expects($this->once())
+			->method('update_run_state')
+			->with(
+				12,
+				$this->callback(function($state) {
+					return isset($state['status'], $state['error_code']) &&
+						$state['status'] === 'terminated' &&
+						$state['error_code'] === 'ai_calls_disabled';
+				})
+			);
+
+		$this->repository_mock->expects($this->once())
+			->method('update')
+			->with(12, array('next_run' => 1234567890));
+
+		// The container must be closed with its own terminal status, otherwise
+		// the history row is left open in 'processing' and never counted.
+		$history->expects($this->once())
+			->method('complete_terminated')
+			->with('Schedule was terminated early due to Prevent Scheduled AI Generation being enabled.');
+
+		$this->logger_mock->expects($this->once())
+			->method('log');
+
+		$result = $this->handler->handle_execution_terminated_by_setting(
+			$schedule,
+			$history,
+			false,
+			'Prevent Scheduled AI Generation',
+			array('restore_next_run' => 1234567890)
+		);
+
+		$this->assertWPError($result);
+		$this->assertSame('ai_calls_disabled', $result->get_error_code());
+	}
+
+	public function test_handle_execution_terminated_by_setting_updates_last_run_when_requested() {
+		$schedule = (object) array(
+			'schedule_id' => 21,
+			'template_id' => 55,
+			'frequency'   => 'daily',
+		);
+		$history = $this->createMock(AIPS_History_Container::class);
+
+		$history->expects($this->once())
+			->method('record');
+
+		$this->repository_mock->expects($this->once())
+			->method('update_run_state');
+
+		$this->repository_mock->expects($this->never())
+			->method('update');
+
+		$this->repository_mock->expects($this->once())
+			->method('update_last_run')
+			->with(21, $this->isType('int'));
+
+		$history->expects($this->once())
+			->method('complete_terminated');
+
+		$this->logger_mock->expects($this->once())
+			->method('log');
+
+		$result = $this->handler->handle_execution_terminated_by_setting(
+			$schedule,
+			$history,
+			false,
+			'Prevent Scheduled AI Generation',
+			array('update_last_run' => true)
+		);
+
+		$this->assertWPError($result);
+		$this->assertSame('ai_calls_disabled', $result->get_error_code());
+	}
+
+	public function test_terminated_is_a_canonical_terminal_history_status() {
+		$this->assertContains(
+			AIPS_History_Event_Status::TERMINATED,
+			AIPS_History_Event_Status::all()
+		);
+		$this->assertTrue(AIPS_History_Event_Status::is_terminal(AIPS_History_Event_Status::TERMINATED));
+		$this->assertSame(
+			AIPS_History_Event_Status::TERMINATED,
+			AIPS_History_Event_Status::canonicalize('terminated')
+		);
+	}
+
+	public function test_manual_termination_uses_the_manual_event_type() {
+		$schedule = (object) array(
+			'schedule_id' => 31,
+			'template_id' => 77,
+			'frequency'   => 'daily',
+		);
+		$history = $this->createMock(AIPS_History_Container::class);
+
+		$history->expects($this->once())
+			->method('record')
+			->with(
+				'activity',
+				$this->anything(),
+				$this->callback(function($meta) {
+					return isset($meta['event_type'], $meta['event_status']) &&
+						$meta['event_type'] === AIPS_History_Event_Type::MANUAL_SCHEDULE_TERMINATED &&
+						$meta['event_status'] === AIPS_History_Event_Status::TERMINATED;
+				})
+			);
+
+		$history->expects($this->once())
+			->method('complete_terminated');
+
+		// A manual run must not consume the schedule's last_run.
+		$this->repository_mock->expects($this->never())
+			->method('update_last_run');
+
+		$result = $this->handler->handle_execution_terminated_by_setting(
+			$schedule,
+			$history,
+			true,
+			'Prevent AI Generation (Scheduled & Manual)'
+		);
+
+		$this->assertWPError($result);
+	}
 }
