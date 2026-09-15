@@ -69,10 +69,6 @@
 			$(document).on('click', '.aips-cancel-edit-topic', this.cancelEditTopic.bind(this));
 			$(document).on('click', '.aips-generate-post-now', this.generatePostNow.bind(this));
 			$(document).on('click', '.aips-view-topic-log', this.viewTopicLog.bind(this));
-			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
-			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
-			$(document).on('click', this.onDocumentClick.bind(this));
-			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Bulk actions
 			$(document).on('click change', '.aips-select-all-topics, #aips-topics-select-all, #cb-select-all-1, #cb-select-all-2', this.toggleSelectAll.bind(this));

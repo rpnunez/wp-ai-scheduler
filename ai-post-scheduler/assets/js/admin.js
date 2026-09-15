@@ -400,16 +400,16 @@
             }
             this._unifiedScheduleEventsBound = true;
 
-            $(document).on('change', '#cb-select-all-unified', this.toggleAllUnified);
+            $(document).on('change', '#cb-select-all-unified, #cb-select-all-1, #cb-select-all-2, #aips-schedules-select-all', this.toggleAllUnified);
             $(document).on('change', '.aips-unified-checkbox', this.toggleUnifiedSelection);
             $(document).on('click', '#aips-unified-select-all', this.selectAllUnified);
             $(document).on('click', '#aips-unified-unselect-all', this.unselectAllUnified);
-            $(document).on('click', '#aips-unified-bulk-apply', this.applyUnifiedBulkAction);
+            $(document).on('click', '#aips-unified-bulk-apply, #doaction, #doaction2', this.applyUnifiedBulkAction);
             $(document).on('change', '.aips-unified-toggle-schedule', this.toggleUnifiedSchedule);
             $(document).on('click', '.aips-unified-run-now', this.runNowUnified);
             $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory);
             $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
-            $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
+            $(document).on('keyup search', '#aips-unified-search, #aips-schedule-search-search-input', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
             $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
             $(document).on('click', '.aips-tab', this.switchScheduleTab);
@@ -2912,6 +2912,7 @@
         toggleAllUnified: function() {
             var isChecked = $(this).prop('checked');
             $('.aips-unified-checkbox:visible').prop('checked', isChecked);
+            $('#cb-select-all-unified, #cb-select-all-1, #cb-select-all-2, #aips-schedules-select-all').prop('checked', isChecked);
             AIPS.updateUnifiedBulkActions();
         },
 
@@ -2921,21 +2922,21 @@
         toggleUnifiedSelection: function() {
             var total   = $('.aips-unified-checkbox:visible').length;
             var checked = $('.aips-unified-checkbox:visible:checked').length;
-            $('#cb-select-all-unified').prop('checked', total > 0 && checked === total);
+            $('#cb-select-all-unified, #cb-select-all-1, #cb-select-all-2, #aips-schedules-select-all').prop('checked', total > 0 && checked === total);
             AIPS.updateUnifiedBulkActions();
         },
 
         /** Check all visible rows. */
         selectAllUnified: function() {
             $('.aips-unified-checkbox:visible').prop('checked', true);
-            $('#cb-select-all-unified').prop('checked', true);
+            $('#cb-select-all-unified, #cb-select-all-1, #cb-select-all-2, #aips-schedules-select-all').prop('checked', true);
             AIPS.updateUnifiedBulkActions();
         },
 
         /** Uncheck all rows. */
         unselectAllUnified: function() {
             $('.aips-unified-checkbox').prop('checked', false);
-            $('#cb-select-all-unified').prop('checked', false);
+            $('#cb-select-all-unified, #cb-select-all-1, #cb-select-all-2, #aips-schedules-select-all').prop('checked', false);
             AIPS.updateUnifiedBulkActions();
         },
 
@@ -2945,7 +2946,7 @@
          */
         updateUnifiedBulkActions: function() {
             var count      = $('.aips-unified-checkbox:checked').length;
-            var $apply     = $('#aips-unified-bulk-apply');
+            var $apply     = $('#aips-unified-bulk-apply, #doaction, #doaction2');
             var $unselect  = $('#aips-unified-unselect-all');
             var $countLbl  = $('#aips-unified-selected-count');
 
@@ -2970,8 +2971,9 @@
         applyUnifiedBulkAction: function(e) {
             e.preventDefault();
 
-            var action = $('#aips-unified-bulk-action').val();
-            if (!action) {
+            var $btn = $(this);
+            var action = $('#aips-unified-bulk-action').val() || $btn.closest('.bulkactions').find('select[name^="action"]').val() || $('select[name="action"]').val() || $('select[name="action2"]').val();
+            if (!action || action === '-1') {
                 AIPS.Utilities.showToast(aipsScheduleL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
                 return;
             }
@@ -3294,7 +3296,7 @@
         updateUnifiedRowStatus: function($row, isActive) {
             var $toggle  = $row.find('.aips-unified-toggle-schedule');
             var $wrapper = $row.find('.aips-schedule-status-wrapper');
-            var $badge   = $wrapper.find('.aips-badge');
+            var $badge   = $wrapper.find('.aips-badge').last();
             var $icon    = $badge.find('.dashicons');
 
             $toggle.prop('checked', isActive === 1);
