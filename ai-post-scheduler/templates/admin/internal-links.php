@@ -97,6 +97,7 @@ $is_embedded_internal_links_view = !empty($embedded);
 		<div class="aips-tab-nav">
 			<a href="#suggestions" class="aips-tab-link active" data-tab="suggestions"><?php esc_html_e('Suggestions', 'ai-post-scheduler'); ?></a>
 			<a href="#generate" class="aips-tab-link" data-tab="generate"><?php esc_html_e('Generate for Post', 'ai-post-scheduler'); ?></a>
+			<a href="#seo-graph" class="aips-tab-link" data-tab="seo-graph"><?php esc_html_e('SEO Link Graph & Orphan Hub', 'ai-post-scheduler'); ?></a>
 		</div>
 
 		<!-- Suggestions Tab -->
@@ -203,6 +204,87 @@ $is_embedded_internal_links_view = !empty($embedded);
 				</div>
 			</div>
 		</div><!-- /#generate-tab -->
+
+		<!-- SEO Link Graph & Orphan Hub Tab -->
+		<div id="seo-graph-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
+			
+			<!-- Metric Summary Cards -->
+			<div class="aips-stats-row" style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+				<div class="aips-content-panel" style="flex:1;min-width:180px;">
+					<div class="aips-panel-body" style="padding:16px 20px;">
+						<p class="aips-stat-label" style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#777;font-weight:600;"><?php esc_html_e('Network Published Posts', 'ai-post-scheduler'); ?></p>
+						<p class="aips-stat-value" style="margin:0;font-size:26px;font-weight:700;color:#1d2327;" id="aips-stat-seo-total">—</p>
+					</div>
+				</div>
+				<div class="aips-content-panel" style="flex:1;min-width:180px;">
+					<div class="aips-panel-body" style="padding:16px 20px;">
+						<p class="aips-stat-label" style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#777;font-weight:600;"><?php esc_html_e('Directed Link Edges', 'ai-post-scheduler'); ?></p>
+						<p class="aips-stat-value" style="margin:0;font-size:26px;font-weight:700;color:#2271b1;" id="aips-stat-seo-edges">—</p>
+					</div>
+				</div>
+				<div class="aips-content-panel" style="flex:1;min-width:180px;">
+					<div class="aips-panel-body" style="padding:16px 20px;">
+						<p class="aips-stat-label" style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#777;font-weight:600;"><?php esc_html_e('Orphan Posts (0 Inbound)', 'ai-post-scheduler'); ?></p>
+						<p class="aips-stat-value" style="margin:0;font-size:26px;font-weight:700;color:#d63638;" id="aips-stat-seo-orphans">—</p>
+					</div>
+				</div>
+				<div class="aips-content-panel" style="flex:1;min-width:180px;">
+					<div class="aips-panel-body" style="padding:16px 20px;">
+						<p class="aips-stat-label" style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#777;font-weight:600;"><?php esc_html_e('Deeply Nested (L3+)', 'ai-post-scheduler'); ?></p>
+						<p class="aips-stat-value" style="margin:0;font-size:26px;font-weight:700;color:#996800;" id="aips-stat-seo-deep">—</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="aips-content-panel">
+				<!-- Filter Bar -->
+				<div class="aips-filter-bar" style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;gap:12px;">
+					<div class="aips-filter-left" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+						<label class="screen-reader-text" for="aips-seo-status-filter"><?php esc_html_e('Filter by SEO status:', 'ai-post-scheduler'); ?></label>
+						<select id="aips-seo-status-filter" class="aips-form-select">
+							<option value="all"><?php esc_html_e('All Posts', 'ai-post-scheduler'); ?></option>
+							<option value="orphans"><?php esc_html_e('⚠️ Orphans Only (0 Inbound)', 'ai-post-scheduler'); ?></option>
+							<option value="deep"><?php esc_html_e('Deeply Nested (L3+ Depth)', 'ai-post-scheduler'); ?></option>
+							<option value="hubs"><?php esc_html_e('Pillar Hubs (5+ Inbound Links)', 'ai-post-scheduler'); ?></option>
+						</select>
+					</div>
+					<div class="aips-filter-right" style="display:flex;gap:8px;align-items:center;">
+						<label class="screen-reader-text" for="aips-seo-search"><?php esc_html_e('Search posts:', 'ai-post-scheduler'); ?></label>
+						<input type="search" id="aips-seo-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search by post title…', 'ai-post-scheduler'); ?>" style="min-width:240px;">
+						<button type="button" id="aips-seo-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					</div>
+				</div>
+
+				<div class="aips-panel-body no-padding">
+					<table class="aips-table aips-internal-links-table" id="aips-seo-graph-table">
+						<thead>
+							<tr>
+								<th><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></th>
+								<th style="width:110px;text-align:center;"><?php esc_html_e('Inbound Links', 'ai-post-scheduler'); ?></th>
+								<th style="width:110px;text-align:center;"><?php esc_html_e('Outbound Links', 'ai-post-scheduler'); ?></th>
+								<th style="width:100px;text-align:center;"><?php esc_html_e('Crawl Depth', 'ai-post-scheduler'); ?></th>
+								<th style="width:140px;text-align:center;"><?php esc_html_e('SEO Status', 'ai-post-scheduler'); ?></th>
+								<th style="width:180px;text-align:center;"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+							</tr>
+						</thead>
+						<tbody id="aips-seo-graph-tbody">
+							<tr class="aips-table-loading">
+								<td colspan="6" style="text-align:center;padding:30px;">
+									<span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>
+									<?php esc_html_e('Loading SEO link graph metrics…', 'ai-post-scheduler'); ?>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					
+					<!-- Pagination -->
+					<div id="aips-seo-pagination-wrap" class="aips-table-footer" style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-top:1px solid #e2e8f0;">
+						<span id="aips-seo-page-info" style="font-size:13px;color:#666;"></span>
+						<div id="aips-seo-pagination-btns" style="display:flex;gap:6px;"></div>
+					</div>
+				</div>
+			</div>
+		</div><!-- /#seo-graph-tab -->
 
 <?php if (!$is_embedded_internal_links_view) : ?>
 	</div><!-- /.aips-page-container -->
@@ -445,3 +527,33 @@ $is_embedded_internal_links_view = !empty($embedded);
 		</div>
 	</div>
 </div>
+
+<!-- Find Linking Opportunities Modal -->
+<div id="aips-opportunities-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
+	<div class="aips-modal-content" style="max-width:780px;width:92%;">
+		<div class="aips-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+			<h2 class="aips-modal-title"><?php esc_html_e('Internal Linking Opportunities', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-no-alt"></span>
+			</button>
+		</div>
+		<div class="aips-modal-body" style="padding:20px 24px;max-height:60vh;overflow-y:auto;">
+			<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 16px;margin-bottom:18px;">
+				<span style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.04em;"><?php esc_html_e('Target Post to Receive Links', 'ai-post-scheduler'); ?></span>
+				<h3 id="aips-opp-target-title" style="margin:4px 0 0;font-size:15px;color:#1e293b;"></h3>
+			</div>
+
+			<p style="margin:0 0 14px;font-size:13px;color:#64748b;">
+				<?php esc_html_e('The following published articles have strong topical relevance or keyword context with this post and do not link to it yet. Open any post in the editor to weave an internal link:', 'ai-post-scheduler'); ?>
+			</p>
+
+			<div id="aips-opp-list-wrap">
+				<span class="spinner is-active" style="float:none;vertical-align:middle;"></span>
+			</div>
+		</div>
+		<div class="aips-modal-footer" style="padding:12px 20px;border-top:1px solid #ddd;display:flex;justify-content:flex-end;">
+			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Done', 'ai-post-scheduler'); ?></button>
+		</div>
+	</div>
+</div>
+

@@ -1,0 +1,356 @@
+/**
+ * Semantic Link Inserter Gutenberg Sidebar Styles
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.0
+ */
+
+.aips-editor-sidebar-panel {
+	padding: 16px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.aips-sidebar-intro {
+	margin-bottom: 14px;
+	font-size: 12px;
+	color: #646970;
+	line-height: 1.4;
+}
+
+.aips-sidebar-toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.aips-status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	font-weight: 500;
+	color: #2271b1;
+	background: #f0f6fc;
+	padding: 2px 8px;
+	border-radius: 12px;
+}
+
+.aips-suggestions-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.aips-suggestion-card {
+	background: #ffffff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 12px;
+	transition: all 0.15s ease-in-out;
+}
+
+.aips-suggestion-card:hover {
+	border-color: #2271b1;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.aips-suggestion-card.is-expanded {
+	border-color: #2271b1;
+}
+
+.aips-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.aips-card-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: #1d2327;
+	margin: 0;
+	line-height: 1.3;
+	flex: 1;
+}
+
+.aips-card-title a {
+	color: #1d2327;
+	text-decoration: none;
+}
+
+.aips-card-title a:hover {
+	color: #2271b1;
+}
+
+.aips-similarity-badge {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+}
+
+.aips-similarity-badge.is-high {
+	background-color: #e7f6eb;
+	color: #008a20;
+}
+
+.aips-similarity-badge.is-medium {
+	background-color: #e5f5fa;
+	color: #0073aa;
+}
+
+.aips-similarity-badge.is-low {
+	background-color: #f6f7f7;
+	color: #646970;
+}
+
+.aips-card-excerpt {
+	font-size: 12px;
+	color: #646970;
+	margin: 0 0 10px 0;
+	line-height: 1.4;
+}
+
+.aips-card-actions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.aips-card-type-tag {
+	font-size: 10px;
+	text-transform: uppercase;
+	color: #8c8f94;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+}
+
+.aips-anchors-container {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px dashed #dcdcde;
+}
+
+.aips-anchors-title {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: #50575e;
+	margin-bottom: 8px;
+}
+
+.aips-anchor-card {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 10px;
+	margin-bottom: 8px;
+}
+
+.aips-anchor-snippet {
+	font-size: 12px;
+	line-height: 1.5;
+	color: #2c3338;
+	margin-bottom: 8px;
+}
+
+.aips-anchor-highlight {
+	background: #dff0d8;
+	color: #2b542c;
+	font-weight: 600;
+	padding: 1px 4px;
+	border-radius: 3px;
+	border-bottom: 2px solid #5cb85c;
+}
+
+.aips-anchor-reason {
+	font-size: 11px;
+	color: #646970;
+	font-style: italic;
+	margin-bottom: 8px;
+}
+
+.aips-empty-box {
+	text-align: center;
+	padding: 24px 12px;
+	background: #f6f7f7;
+	border-radius: 6px;
+	color: #646970;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.aips-loading-box {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 12px;
+	gap: 10px;
+	color: #646970;
+	font-size: 12px;
+}
+
+.aips-editor-sidebar-panel .components-panel__body {
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	margin-bottom: 12px;
+	background: #ffffff;
+}
+
+.aips-editor-sidebar-panel .components-panel__body-title {
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.aips-editor-sidebar-panel .components-base-control {
+	margin-bottom: 12px;
+}
+
+/* Active Post SEO Metric Bar */
+.aips-seo-metrics-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 6px;
+	padding: 8px 10px;
+	margin-bottom: 12px;
+}
+
+.aips-metric-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: #ffffff;
+	border: 1px solid #d0e1fd;
+	border-radius: 4px;
+	padding: 2px 6px;
+	font-size: 11px;
+}
+
+.aips-metric-val {
+	font-weight: 700;
+	color: #0b4b8a;
+}
+
+.aips-metric-label {
+	color: #50575e;
+	font-size: 10px;
+	text-transform: uppercase;
+}
+
+.aips-orphan-alert {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: #fff8e5;
+	border: 1px solid #f0b849;
+	color: #8c5b00;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 500;
+	margin-top: 4px;
+}
+
+/* Card SEO Badges Row */
+.aips-card-seo-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+.aips-seo-pill {
+	display: inline-flex;
+	align-items: center;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 1px 6px;
+	border-radius: 10px;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.aips-seo-pill.is-orphan {
+	background: #fcf0f0;
+	color: #d63638;
+	border: 1px solid #f8d7da;
+}
+
+.aips-seo-pill.is-linked {
+	background: #e7f6eb;
+	color: #008a20;
+	border: 1px solid #c3e6cb;
+}
+
+.aips-seo-pill.is-crosslink {
+	background: #f3e8ff;
+	color: #6b21a8;
+	border: 1px solid #e9d5ff;
+}
+
+/* Mini Link Graph Modal */
+.aips-graph-viz-container {
+	padding: 16px;
+}
+
+.aips-graph-viz-intro {
+	font-size: 12px;
+	color: #646970;
+	margin-bottom: 12px;
+}
+
+.aips-graph-nodes-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+.aips-graph-node-pill {
+	padding: 4px 10px;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 16px;
+	font-size: 11px;
+	font-weight: 500;
+}
+
+.aips-graph-node-pill.is-source {
+	background: #2271b1;
+	color: #ffffff;
+	border-color: #2271b1;
+	font-weight: 700;
+}
+
+.aips-graph-edges-list {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 12px;
+	font-size: 11px;
+	color: #2c3338;
+}
+
+.aips-graph-edge-item {
+	padding: 4px 0;
+	border-bottom: 1px dashed #e0e0e0;
+}
+
+.aips-graph-edge-item:last-child {
+	border-bottom: none;
+}
+
+

@@ -99,6 +99,14 @@ if (!defined('ABSPATH')) {
 
 				<!-- Generated posts table -->
 				<div class="aips-panel-body no-padding">
+					<?php
+					if (!empty($posts_data)) {
+						if (class_exists('AIPS_SEO_Link_Metrics_Component')) {
+							$table_post_ids = wp_list_pluck($posts_data, 'post_id');
+							AIPS_SEO_Link_Metrics_Component::prime_batch_counts($table_post_ids);
+						}
+					}
+					?>
 					<?php if (!empty($posts_data)): ?>
 					<table class="aips-table">
 						<thead>
@@ -108,6 +116,7 @@ if (!defined('ABSPATH')) {
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Internal Links', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 							</tr>
 						</thead>
@@ -140,6 +149,15 @@ if (!defined('ABSPATH')) {
 									<div class="cell-meta">
 										<?php echo esc_html($post_data['date_generated']); ?>
 									</div>
+								</td>
+								<td>
+									<?php
+									if (class_exists('AIPS_SEO_Link_Metrics_Component') && !empty($post_data['post_id'])) {
+										AIPS_SEO_Link_Metrics_Component::render_post_badge((int) $post_data['post_id']);
+									} else {
+										echo '—';
+									}
+									?>
 								</td>
 								<td>
 									<div class="cell-actions">

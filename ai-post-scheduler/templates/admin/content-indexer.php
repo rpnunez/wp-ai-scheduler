@@ -190,7 +190,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 1: SEMANTIC GRAPH VISUALIZER
 		     ===================================================================== -->
-		<div id="visualizer-tab" class="aips-tab-content active" role="tabpanel">
+		<div id="visualizer-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
 			<div class="aips-content-panel aips-visualizer-panel">
 				
 				<!-- Graph Toolbar -->
@@ -242,6 +242,25 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 								<span id="aips-drawer-sim-text">85% Similarity</span>
 							</div>
 							<p class="aips-node-drawer-type"><strong id="aips-drawer-type">post</strong> #<span id="aips-drawer-id">0</span></p>
+
+							<!-- Internal Links & Equity Metrics -->
+							<div id="aips-drawer-link-metrics" class="aips-drawer-link-metrics" style="display:none;margin:12px 0;padding:10px;background:#f6f7f7;border-radius:6px;border:1px solid #dcdcde;">
+								<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+									<strong style="font-size:11px;text-transform:uppercase;color:#50575e;"><?php esc_html_e('Internal Links', 'ai-post-scheduler'); ?></strong>
+									<span id="aips-drawer-orphan-pill" class="aips-badge aips-badge-error" style="display:none;font-size:10px;padding:1px 6px;">
+										<span class="dashicons dashicons-warning" style="font-size:11px;width:11px;height:11px;"></span>
+										<?php esc_html_e('Orphan', 'ai-post-scheduler'); ?>
+									</span>
+									<span id="aips-drawer-hub-pill" class="aips-badge aips-badge-success" style="display:none;font-size:10px;padding:1px 6px;">
+										<span class="dashicons dashicons-star-filled" style="font-size:11px;width:11px;height:11px;"></span>
+										<?php esc_html_e('Hub', 'ai-post-scheduler'); ?>
+									</span>
+								</div>
+								<div style="display:flex;gap:12px;font-size:12px;">
+									<div><span style="color:#646970;"><?php esc_html_e('Inbound:', 'ai-post-scheduler'); ?></span> <strong id="aips-drawer-inbound-cnt">0</strong></div>
+									<div><span style="color:#646970;"><?php esc_html_e('Outbound:', 'ai-post-scheduler'); ?></span> <strong id="aips-drawer-outbound-cnt">0</strong></div>
+								</div>
+							</div>
 							
 							<div class="aips-drawer-actions">
 								<a href="#" id="aips-drawer-edit-link" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank">
@@ -274,7 +293,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 2: BACKFILL SCANNER & SCOPE
 		     ===================================================================== -->
-		<div id="scanner-tab" class="aips-tab-content" role="tabpanel">
+		<div id="scanner-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header">
 					<h3 class="aips-panel-title"><?php esc_html_e('Backfill Indexing Status & Breakdown', 'ai-post-scheduler'); ?></h3>
@@ -332,7 +351,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 3: CANNIBALIZATION & DUPLICATE AUDIT
 		     ===================================================================== -->
-		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel">
+		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header" style="display:flex;justify-content:space-between;align-items:center;">
 					<div>
@@ -375,7 +394,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 4: SETTINGS & THRESHOLDS
 		     ===================================================================== -->
-		<div id="settings-tab" class="aips-tab-content" role="tabpanel">
+		<div id="settings-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
 			<form id="aips-indexer-settings-form">
 				<div class="aips-content-panel" style="margin-bottom:20px;">
 					<div class="aips-panel-header">

@@ -35,6 +35,18 @@
 		/** Debounce timer handle for search input */
 		_searchTimer: null,
 
+		/** SEO Graph current page */
+		seoPage: 1,
+
+		/** SEO Graph filter */
+		seoStatusFilter: 'all',
+
+		/** SEO Graph search query */
+		seoSearchQuery: '',
+
+		/** Debounce timer for SEO search */
+		_seoSearchTimer: null,
+
 		/** Plain-text copy of the post content in the Insert modal */
 		_previewPlainText: '',
 
@@ -52,7 +64,11 @@
 		 */
 		init: function () {
 			this.bindEvents();
-			this.loadSuggestions();
+			if (window.location.hash === '#seo-graph') {
+				$('.aips-tab-link[data-tab="seo-graph"]').trigger('click');
+			} else {
+				this.loadSuggestions();
+			}
 		},
 
 		/**
@@ -109,6 +125,13 @@
 
 			// Pagination
 			$(document).on('click', '.aips-page-btn', this.onPageClick.bind(this));
+
+			// SEO Link Graph events
+			$(document).on('change', '#aips-seo-status-filter', this.onSeoStatusFilterChange.bind(this));
+			$(document).on('input', '#aips-seo-search', this.onSeoSearchInput.bind(this));
+			$(document).on('click', '#aips-seo-search-clear', this.onSeoSearchClear.bind(this));
+			$(document).on('click', '.aips-seo-page-btn', this.onSeoPageClick.bind(this));
+			$(document).on('click', '.aips-seo-opp-btn', this.onFindOpportunitiesClick.bind(this));
 		},
 
 		// -----------------------------------------------------------------------
@@ -127,6 +150,10 @@
 			$(e.currentTarget).addClass('active');
 			$('.aips-tab-content').hide().attr('aria-hidden', 'true');
 			$('#' + tab + '-tab').show().attr('aria-hidden', 'false');
+
+			if (tab === 'seo-graph') {
+				this.loadSeoGraphData();
+			}
 		},
 
 		/**
@@ -1419,6 +1446,264 @@
 			}).fail(function () {
 				$btn.prop('disabled', false).html(originalBtnHtml);
 				AIPS.Utilities.showToast(aipsInternalLinksL10n.updateFailed, 'error');
+			});
+		},
+
+		// -----------------------------------------------------------------------
+		// SEO Link Graph & Orphan Hub
+		// -----------------------------------------------------------------------
+
+		/**
+		 * Handler for status filter dropdown changes.
+		 */
+		onSeoStatusFilterChange: function (e) {
+			this.seoStatusFilter = $(e.currentTarget).val();
+			this.seoPage = 1;
+			this.loadSeoGraphData();
+		},
+
+		/**
+		 * Handler for SEO search input with debounce.
+		 */
+		onSeoSearchInput: function (e) {
+			var self = this;
+			var val = $(e.currentTarget).val().trim();
+			$('#aips-seo-search-clear').toggle(val.length > 0);
+
+			clearTimeout(self._seoSearchTimer);
+			self._seoSearchTimer = setTimeout(function () {
+				self.seoSearchQuery = val;
+				self.seoPage = 1;
+				self.loadSeoGraphData();
+			}, 400);
+		},
+
+		/**
+		 * Clear search query.
+		 */
+		onSeoSearchClear: function (e) {
+			$('#aips-seo-search').val('').trigger('input');
+		},
+
+		/**
+		 * Pagination button handler.
+		 */
+		onSeoPageClick: function (e) {
+			var page = parseInt($(e.currentTarget).data('page'), 10);
+			if (page && page !== this.seoPage) {
+				this.seoPage = page;
+				this.loadSeoGraphData();
+			}
+		},
+
+		/**
+		 * Find Opportunities button handler.
+		 */
+		onFindOpportunitiesClick: function (e) {
+			var $btn = $(e.currentTarget);
+			var targetId = parseInt($btn.data('id'), 10);
+			var targetTitle = $btn.data('title') || ('#' + targetId);
+			this.loadLinkingOpportunities(targetId, targetTitle);
+		},
+
+		/**
+		 * Fetch and render SEO link graph data and summary counters.
+		 */
+		loadSeoGraphData: function () {
+			var self = this;
+			var $tbody = $('#aips-seo-graph-tbody');
+
+			$tbody.html('<tr class="aips-table-loading"><td colspan="6" style="text-align:center;padding:30px;"><span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>' + AIPS.Templates.escape(aipsInternalLinksL10n.loading || 'Loading...') + '</td></tr>');
+
+			$.post(aipsAjax.ajaxUrl, {
+				action: 'aips_get_seo_link_graph_data',
+				nonce: aipsInternalLinksL10n.nonce,
+				status: self.seoStatusFilter,
+				search: self.seoSearchQuery,
+				page: self.seoPage,
+				per_page: 20
+			}, function (response) {
+				if (!response.success || !response.data) {
+					$tbody.html('<tr><td colspan="6" class="aips-table-empty" style="text-align:center;padding:30px;color:#d63638;">' + AIPS.Templates.escape((response.data && response.data.message) || aipsInternalLinksL10n.errorLoading || 'Failed to load SEO data.') + '</td></tr>');
+					return;
+				}
+
+				var data = response.data;
+				var summary = data.summary || {};
+
+				// Update Summary Counters
+				$('#aips-stat-seo-total').text(summary.total_posts !== undefined ? summary.total_posts : '—');
+				$('#aips-stat-seo-edges').text(summary.total_edges !== undefined ? summary.total_edges : '—');
+				$('#aips-stat-seo-orphans').text(summary.orphans_count !== undefined ? summary.orphans_count : '—');
+				$('#aips-stat-seo-deep').text(summary.deep_count !== undefined ? summary.deep_count : '—');
+
+				// Render Table Rows
+				var items = data.items || [];
+				if (items.length === 0) {
+					$tbody.html('<tr><td colspan="6" class="aips-table-empty" style="text-align:center;padding:30px;color:#64748b;">No matching posts found.</td></tr>');
+					$('#aips-seo-page-info').text('');
+					$('#aips-seo-pagination-btns').html('');
+					return;
+				}
+
+				var rowsHtml = '';
+				$.each(items, function (i, item) {
+					rowsHtml += self.renderSeoRow(item);
+				});
+				$tbody.html(rowsHtml);
+
+				// Render Pagination
+				self.renderSeoPagination(data.total, data.total_pages, data.page);
+			}).fail(function () {
+				$tbody.html('<tr><td colspan="6" class="aips-table-empty" style="text-align:center;padding:30px;color:#d63638;">' + AIPS.Templates.escape(aipsInternalLinksL10n.errorLoading || 'Failed to load SEO data.') + '</td></tr>');
+			});
+		},
+
+		/**
+		 * Render a single row in the SEO Link Graph table.
+		 */
+		renderSeoRow: function (item) {
+			var safeTitle = AIPS.Templates.escape(item.title || '(No title)');
+			var editUrl = item.edit_url || ('post.php?post=' + item.id + '&action=edit');
+			var viewUrl = item.view_url || '';
+
+			var titleHtml = '<a href="' + editUrl + '" target="_blank" rel="noopener noreferrer" style="font-weight:600;color:#1e293b;text-decoration:none;">' + safeTitle + '</a>';
+			if (viewUrl) {
+				titleHtml += ' <a href="' + viewUrl + '" target="_blank" rel="noopener noreferrer" style="color:#64748b;margin-left:4px;" title="View Post"><span class="dashicons dashicons-external" style="font-size:14px;vertical-align:middle;"></span></a>';
+			}
+
+			// Inbound / Outbound badges
+			var inboundHtml = '<span class="aips-badge" style="background:#f1f5f9;color:#334155;font-weight:700;font-size:13px;padding:3px 8px;border-radius:4px;">' + (item.inbound_count || 0) + '</span>';
+			var outboundHtml = '<span class="aips-badge" style="background:#f1f5f9;color:#334155;font-weight:700;font-size:13px;padding:3px 8px;border-radius:4px;">' + (item.outbound_count || 0) + '</span>';
+
+			// Crawl depth badge
+			var depth = parseInt(item.depth_level, 10);
+			var depthBadge = '';
+			if (depth === 0) {
+				depthBadge = '<span class="aips-badge" style="background:#e0e7ff;color:#3730a3;font-weight:600;">L0 (Root)</span>';
+			} else if (depth >= 3) {
+				depthBadge = '<span class="aips-badge" style="background:#fef3c7;color:#92400e;font-weight:600;">L' + depth + ' (Deep)</span>';
+			} else {
+				depthBadge = '<span class="aips-badge" style="background:#f1f5f9;color:#475569;">L' + depth + '</span>';
+			}
+
+			// SEO status badge
+			var statusBadge = '';
+			if (item.is_orphan) {
+				statusBadge = '<span class="aips-badge" style="background:#fee2e2;color:#991b1b;font-weight:600;">⚠️ Orphan</span>';
+			} else if (item.equity_tier === 'hub') {
+				statusBadge = '<span class="aips-badge" style="background:#dcfce7;color:#166534;font-weight:600;">🌟 Pillar Hub</span>';
+			} else if (item.equity_tier === 'tier_1') {
+				statusBadge = '<span class="aips-badge" style="background:#f0fdf4;color:#15803d;">Healthy</span>';
+			} else {
+				statusBadge = '<span class="aips-badge" style="background:#f8fafc;color:#64748b;">Standard</span>';
+			}
+
+			// Actions
+			var actionsHtml = '<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm aips-seo-opp-btn" data-id="' + item.id + '" data-title="' + safeTitle + '" style="font-size:12px;padding:4px 8px;"><span class="dashicons dashicons-search" aria-hidden="true" style="font-size:14px;vertical-align:middle;margin-top:-2px;"></span> Find Opportunities</button>';
+
+			return '<tr>' +
+				'<td class="cell-primary">' + titleHtml + '</td>' +
+				'<td style="text-align:center;">' + inboundHtml + '</td>' +
+				'<td style="text-align:center;">' + outboundHtml + '</td>' +
+				'<td style="text-align:center;">' + depthBadge + '</td>' +
+				'<td style="text-align:center;">' + statusBadge + '</td>' +
+				'<td style="text-align:center;">' + actionsHtml + '</td>' +
+			'</tr>';
+		},
+
+		/**
+		 * Render pagination controls for SEO table.
+		 */
+		renderSeoPagination: function (total, totalPages, curPage) {
+			var $info = $('#aips-seo-page-info');
+			var $btns = $('#aips-seo-pagination-btns');
+
+			if (total === 0 || totalPages <= 1) {
+				$info.text(total + ' posts');
+				$btns.html('');
+				return;
+			}
+
+			$info.text('Page ' + curPage + ' of ' + totalPages + ' (' + total + ' posts)');
+
+			var html = '';
+			if (curPage > 1) {
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-seo-page-btn" data-page="' + (curPage - 1) + '">&laquo;</button> ';
+			}
+
+			var start = Math.max(1, curPage - 2);
+			var end = Math.min(totalPages, curPage + 2);
+
+			for (var p = start; p <= end; p++) {
+				var cls = p === curPage ? 'aips-btn-primary' : 'aips-btn-secondary';
+				html += '<button type="button" class="aips-btn aips-btn-sm ' + cls + ' aips-seo-page-btn" data-page="' + p + '">' + p + '</button> ';
+			}
+
+			if (curPage < totalPages) {
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-seo-page-btn" data-page="' + (curPage + 1) + '">&raquo;</button>';
+			}
+
+			$btns.html(html);
+		},
+
+		/**
+		 * Open modal drawer and load candidate posts for linking opportunities.
+		 */
+		loadLinkingOpportunities: function (targetId, targetTitle) {
+			var $modal = $('#aips-opportunities-modal');
+			var $listWrap = $('#aips-opp-list-wrap');
+			var $title = $('#aips-opp-target-title');
+
+			$title.text(targetTitle);
+			$listWrap.html('<div style="text-align:center;padding:24px;"><span class="spinner is-active" style="float:none;vertical-align:middle;margin-right:8px;"></span> Analyzing candidate posts…</div>');
+			$modal.show();
+
+			$.post(aipsAjax.ajaxUrl, {
+				action: 'aips_find_linking_opportunities',
+				nonce: aipsInternalLinksL10n.nonce,
+				target_id: targetId,
+				limit: 10
+			}, function (response) {
+				if (!response.success || !response.data) {
+					$listWrap.html('<div class="aips-notice aips-notice-error">' + AIPS.Templates.escape((response.data && response.data.message) || 'Failed to analyze linking opportunities.') + '</div>');
+					return;
+				}
+
+				var candidates = response.data.candidates || [];
+				if (candidates.length === 0) {
+					$listWrap.html('<div style="text-align:center;padding:30px;color:#64748b;background:#f8fafc;border-radius:6px;"><span class="dashicons dashicons-info" style="font-size:32px;height:32px;width:32px;color:#94a3b8;margin-bottom:8px;"></span><p style="margin:0;font-weight:500;">No unlinked candidate posts found.</p><p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">All relevant articles may already link to this post, or no embeddings/keywords matched.</p></div>');
+					return;
+				}
+
+				var html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+				$.each(candidates, function (i, c) {
+					var safeCandidateTitle = AIPS.Templates.escape(c.title || '(No title)');
+					var editUrl = c.edit_url || ('post.php?post=' + c.id + '&action=edit');
+					var scorePercent = c.similarity_score ? Math.round(parseFloat(c.similarity_score) * 100) + '%' : 'Keyword Match';
+					var excerpt = c.excerpt ? AIPS.Templates.escape(c.excerpt) : '';
+
+					html += '<div style="border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">' +
+						'<div style="flex:1;min-width:0;">' +
+							'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+								'<strong style="font-size:14px;color:#1e293b;">' + safeCandidateTitle + '</strong>' +
+								'<span class="aips-badge" style="background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:600;padding:1px 6px;border-radius:3px;">' + scorePercent + '</span>' +
+							'</div>' +
+							(excerpt ? '<p style="margin:0 0 6px;font-size:12px;color:#64748b;line-height:1.4;">' + excerpt + '</p>' : '') +
+							'<span style="font-size:11px;color:#94a3b8;">Post ID: ' + c.id + '</span>' +
+						'</div>' +
+						'<div style="flex-shrink:0;">' +
+							'<a href="' + editUrl + '" target="_blank" class="aips-btn aips-btn-primary aips-btn-sm" style="text-decoration:none;white-space:nowrap;">' +
+								'<span class="dashicons dashicons-edit" style="font-size:13px;vertical-align:middle;margin-right:2px;"></span> Edit Post to Link' +
+							'</a>' +
+						'</div>' +
+					'</div>';
+				});
+				html += '</div>';
+
+				$listWrap.html(html);
+			}).fail(function () {
+				$listWrap.html('<div class="aips-notice aips-notice-error">AJAX error while searching for linking opportunities.</div>');
 			});
 		},
 	};

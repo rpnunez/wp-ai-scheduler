@@ -136,4 +136,48 @@ class Test_AIPS_Internal_Link_Inserter_Service extends WP_UnitTestCase {
 
 		unset($test_posts);
 	}
+
+	/**
+	 * find_insertion_locations_for_text should work directly on arbitrary draft text.
+	 */
+	public function test_find_insertion_locations_for_text_processes_draft_content() {
+		global $test_posts;
+
+		$links_repo = $this->createMock(AIPS_Internal_Links_Repository::class);
+		$ai_service = $this->getMockBuilder(AIPS_AI_Service::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('generate_json_from_text'))
+			->getMock();
+		$logger     = $this->createMock(AIPS_Logger::class);
+
+		$test_posts = array(
+			303 => (object) array(
+				'ID'         => 303,
+				'post_title' => 'WordPress Caching Strategies',
+			),
+		);
+
+		$ai_service->method('generate_json_from_text')->willReturn(array(
+			array(
+				'reason'              => 'Exact topic mention',
+				'match_snippet'       => 'learn modern performance optimization and caching strategies for fast load times',
+				'replacement_snippet' => 'learn modern performance optimization and [[caching strategies]] for fast load times',
+			),
+		));
+
+		$service = new AIPS_Internal_Link_Inserter_Service($links_repo, $ai_service, $logger);
+		$result  = $service->find_insertion_locations_for_text(
+			'Here we learn modern performance optimization and caching strategies for fast load times in production.',
+			303,
+			'caching strategies',
+			3
+		);
+
+		$this->assertIsArray($result);
+		$this->assertSame(1, $result['valid_count']);
+		$this->assertCount(1, $result['locations']);
+		$this->assertSame(303, $result['target_id']);
+
+		unset($test_posts);
+	}
 }

@@ -277,6 +277,9 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
+		'aips_get_seo_link_graph_data'               => 'AIPS_Internal_Links_Controller',
+		'aips_find_linking_opportunities'            => 'AIPS_Internal_Links_Controller',
+
 		// Content Indexer Controller
 		'aips_indexer_get_status'                    => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_process_batch'                 => 'AIPS_Content_Indexer_Controller',
