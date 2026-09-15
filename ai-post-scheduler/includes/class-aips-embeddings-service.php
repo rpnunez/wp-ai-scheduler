@@ -32,6 +32,11 @@ class AIPS_Embeddings_Service {
 	private $logger;
 	
 	/**
+	 * @var AIPS_Config Config instance
+	 */
+	private $config;
+	
+	/**
 	 * @var array Cache for embeddings to avoid redundant API calls
 	 */
 	private $embedding_cache;
@@ -39,11 +44,21 @@ class AIPS_Embeddings_Service {
 	/**
 	 * Initialize the embeddings service.
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_Config $config = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->config = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
 		$this->embedding_cache = array();
+	}
+	
+	/**
+	 * Check if the embeddings system is enabled in configuration.
+	 *
+	 * @return bool True if embeddings are enabled, false otherwise.
+	 */
+	public function is_enabled(): bool {
+		return (bool) $this->config->get_option('aips_embeddings_enabled', true);
 	}
 	
 	/**
@@ -57,6 +72,10 @@ class AIPS_Embeddings_Service {
 	 * @return array|WP_Error The embedding vector or WP_Error on failure.
 	 */
 	public function generate_embedding($text, $options = array()) {
+		if (!$this->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		if (empty($text)) {
 			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
@@ -67,9 +86,8 @@ class AIPS_Embeddings_Service {
 			return $this->embedding_cache[$cache_key];
 		}
 
-		$config = AIPS_Config::get_instance();
-		$default_env_id = (string) $config->get_option('aips_embeddings_env_id');
-		$default_model  = (string) $config->get_option('aips_embeddings_model');
+		$default_env_id = (string) $this->config->get_option('aips_embeddings_env_id');
+		$default_model  = (string) $this->config->get_option('aips_embeddings_model');
 
 		if (!empty($default_env_id) && !isset($options['embeddings_env_id'])) {
 			$options['embeddings_env_id'] = $default_env_id;
@@ -204,6 +222,6 @@ class AIPS_Embeddings_Service {
 	 * @return bool True if embeddings are supported, false otherwise.
 	 */
 	public function is_embeddings_supported() {
-		return $this->ai_service->is_available() && $this->ai_service->supports_embeddings();
+		return $this->is_enabled() && $this->ai_service->is_available() && $this->ai_service->supports_embeddings();
 	}
 }

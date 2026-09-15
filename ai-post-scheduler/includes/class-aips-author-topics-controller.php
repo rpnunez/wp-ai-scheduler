@@ -768,6 +768,10 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
+			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		$batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 20;
 

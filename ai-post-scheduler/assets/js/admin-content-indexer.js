@@ -628,17 +628,27 @@
 		 */
 		handleSaveSettings: function (e) {
 			e.preventDefault();
-			var formData = $(e.target).serializeArray();
+			var $form = $(e.target);
+			var formData = $form.serializeArray();
 			var payload = {
 				action: 'aips_indexer_save_settings',
 				nonce: aipsContentIndexerL10n.nonce,
-				post_types: []
+				post_types: [],
+				embeddings_enabled: $form.find('input[name="embeddings_enabled"]').is(':checked') ? 1 : 0,
+				auto_index_on_publish: $form.find('input[name="auto_index_on_publish"]').is(':checked') ? 1 : 0,
+				related_posts_enabled: $form.find('input[name="related_posts_enabled"]').is(':checked') ? 1 : 0,
+				related_posts_auto_append: $form.find('input[name="related_posts_auto_append"]').is(':checked') ? 1 : 0
 			};
 
 			formData.forEach(function (item) {
 				if (item.name === 'post_types[]') {
 					payload.post_types.push(item.value);
-				} else {
+				} else if (
+					item.name !== 'embeddings_enabled' &&
+					item.name !== 'auto_index_on_publish' &&
+					item.name !== 'related_posts_enabled' &&
+					item.name !== 'related_posts_auto_append'
+				) {
 					payload[item.name] = item.value;
 				}
 			});

@@ -90,6 +90,10 @@ class AIPS_Content_Indexer_Service {
 	 * @return true|WP_Error
 	 */
 	public function index_post($post_id, $compute_relationships = true) {
+		if (!$this->embeddings_service->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		$post_id = absint($post_id);
 		$post    = get_post($post_id);
 
@@ -358,11 +362,12 @@ class AIPS_Content_Indexer_Service {
 		$percent   = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
 
 		return array(
-			'total_posts' => $total_posts,
-			'indexed'     => $indexed,
-			'unindexed'   => $unindexed,
-			'percent'     => $percent,
-			'post_types'  => $post_types,
+			'total_posts'        => $total_posts,
+			'indexed'            => $indexed,
+			'unindexed'          => $unindexed,
+			'percent'            => $percent,
+			'post_types'         => $post_types,
+			'embeddings_enabled' => $this->embeddings_service->is_enabled(),
 		);
 	}
 
@@ -387,6 +392,10 @@ class AIPS_Content_Indexer_Service {
 	 */
 	public function on_post_save($post_id, $post) {
 		if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+			return;
+		}
+
+		if (!$this->embeddings_service->is_enabled()) {
 			return;
 		}
 

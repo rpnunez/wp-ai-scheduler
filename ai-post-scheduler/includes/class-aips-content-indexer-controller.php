@@ -93,6 +93,7 @@ class AIPS_Content_Indexer_Controller {
 		unset($all_post_types['attachment']);
 
 		$settings = array(
+			'embeddings_enabled'       => (bool) $this->config->get_option('aips_embeddings_enabled', true),
 			'embeddings_provider'      => (string) $this->config->get_option('aips_embeddings_provider', ''),
 			'embeddings_model'         => (string) $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small'),
 			'embeddings_env_id'        => (string) $this->config->get_option('aips_embeddings_env_id', ''),
@@ -127,6 +128,7 @@ class AIPS_Content_Indexer_Controller {
 		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
 
 		AIPS_Ajax_Response::success(array(
+			'embeddings_enabled' => (bool) $this->config->get_option('aips_embeddings_enabled', true),
 			'status'             => $status,
 			'stats'              => $stats,
 			'stored_dimensions'  => $stored_dims,
@@ -140,6 +142,10 @@ class AIPS_Content_Indexer_Controller {
 	 */
 	public function ajax_process_batch() {
 		$this->verify_request();
+
+		if (!$this->config->get_option('aips_embeddings_enabled', true)) {
+			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
 
 		$batch_size   = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 10;
 		$last_post_id = isset($_POST['last_post_id']) ? absint($_POST['last_post_id']) : 0;
@@ -264,6 +270,11 @@ class AIPS_Content_Indexer_Controller {
 	 */
 	public function ajax_save_settings() {
 		$this->verify_request();
+
+		if (isset($_POST['embeddings_enabled'])) {
+			$embeddings_enabled = filter_var($_POST['embeddings_enabled'], FILTER_VALIDATE_BOOLEAN);
+			update_option('aips_embeddings_enabled', $embeddings_enabled);
+		}
 
 		if (isset($_POST['embeddings_provider'])) {
 			update_option('aips_embeddings_provider', sanitize_key($_POST['embeddings_provider']));

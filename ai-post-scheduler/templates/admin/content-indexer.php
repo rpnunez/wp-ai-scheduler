@@ -58,6 +58,23 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			</div>
 		</div>
 
+		<!-- Embeddings Disabled Notice -->
+		<?php if (empty($settings['embeddings_enabled'])) : ?>
+		<div class="notice notice-info inline aips-embeddings-disabled-banner" style="margin: 0 0 20px; padding: 16px; border-left-color: #72aee6; background: #f0f6fc; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+			<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+				<div>
+					<h4 style="margin:0 0 4px;font-size:15px;color:#1d2327;display:flex;align-items:center;gap:6px;">
+						<span class="dashicons dashicons-info" style="color:#2271b1;font-size:20px;width:20px;height:20px;"></span>
+						<?php esc_html_e('Vector Embeddings System is Currently Disabled', 'ai-post-scheduler'); ?>
+					</h4>
+					<p style="margin:0;font-size:13px;color:#50575e;">
+						<?php esc_html_e('Automatic indexing, continuous sync, and semantic vector similarity checks are turned off. You can re-enable the embeddings engine anytime in the Settings & Thresholds tab.', 'ai-post-scheduler'); ?>
+					</p>
+				</div>
+			</div>
+		</div>
+		<?php endif; ?>
+
 		<!-- Dimension Mismatch Notice -->
 		<?php if (!empty($dimension_mismatch)) : ?>
 		<div class="notice notice-warning inline aips-dimension-mismatch-banner" style="margin: 0 0 20px; padding: 16px; border-left-color: #dba617; background: #fff8e5; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -383,6 +400,16 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</div>
 					<div class="aips-panel-body">
 						<table class="form-table">
+							<tr>
+								<th scope="row"><?php esc_html_e('Enable Embeddings System', 'ai-post-scheduler'); ?></th>
+								<td>
+									<label>
+										<input type="checkbox" name="embeddings_enabled" id="aips_embeddings_enabled" value="1" <?php checked($settings['embeddings_enabled']); ?>>
+										<strong><?php esc_html_e('Enable the Vector Embeddings Engine', 'ai-post-scheduler'); ?></strong>
+									</label>
+									<p class="description"><?php esc_html_e('Master switch to enable or disable all vector embedding generation, automated continuous indexing, topic embeddings cron workers, and semantic duplicate detection.', 'ai-post-scheduler'); ?></p>
+								</td>
+							</tr>
 							<tr>
 								<th scope="row"><?php esc_html_e('Vector Embeddings Provider', 'ai-post-scheduler'); ?></th>
 								<td>

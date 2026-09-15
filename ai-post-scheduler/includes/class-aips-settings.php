@@ -207,6 +207,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
 			),
+			'aips_embeddings_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_enabled'],
+			),
 			'aips_embeddings_provider' => array(
 				'sanitize_callback' => 'sanitize_key',
 				'default'           => $defaults['aips_embeddings_provider'],
