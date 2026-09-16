@@ -1131,7 +1131,7 @@ class AIPS_Settings_UI {
 			<p class="description">
 				<?php esc_html_e('Controls which WordPress posts are scanned and indexed into vector embeddings. Defaulting to AIPS-only prevents unintended token consumption on sites with thousands of legacy posts.', 'ai-post-scheduler'); ?>
 			</p>
-			<div id="aips-scope-date-range-fields" style="<?php echo ('date_range' === $scope) ? '' : 'display:none;'; ?> margin-top: 10px; padding: 10px 12px; background: #f6f7f7; border-left: 3px solid #2271b1;">
+			<div id="aips-scope-date-range-fields" class="aips-scope-date-range-box <?php echo ('date_range' === $scope) ? '' : 'aips-hidden'; ?>">
 				<p>
 					<label for="aips_embeddings_date_days">
 						<strong><?php esc_html_e('Index posts published in the last:', 'ai-post-scheduler'); ?></strong>
@@ -1143,21 +1143,10 @@ class AIPS_Settings_UI {
 					<label for="aips_embeddings_date_after">
 						<strong><?php esc_html_e('Or index posts published on/after (YYYY-MM-DD):', 'ai-post-scheduler'); ?></strong>
 					</label>
-					<input type="date" name="aips_embeddings_date_after" id="aips_embeddings_date_after" value="<?php echo esc_attr($date_after); ?>" class="regular-text" style="width: auto;">
+					<input type="date" name="aips_embeddings_date_after" id="aips_embeddings_date_after" value="<?php echo esc_attr($date_after); ?>" class="regular-text aips-scope-date-input">
 				</p>
 			</div>
 		</fieldset>
-		<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			var scopeSelect = document.getElementById('aips_embeddings_scope');
-			var dateRangeDiv = document.getElementById('aips-scope-date-range-fields');
-			if (scopeSelect && dateRangeDiv) {
-				scopeSelect.addEventListener('change', function() {
-					dateRangeDiv.style.display = (scopeSelect.value === 'date_range') ? 'block' : 'none';
-				});
-			}
-		});
-		</script>
 		<?php
 	}
 
@@ -1181,19 +1170,19 @@ class AIPS_Settings_UI {
 			<p class="description">
 				<?php esc_html_e('Protects your AI API budget by capping total embedding calls across rolling 24-hour, 7-day, and 30-day windows. Quota breaches automatically pause indexing and send a Quota Alert.', 'ai-post-scheduler'); ?>
 			</p>
-			<table style="margin-top: 10px;">
+			<table class="aips-rate-limits-table">
 				<tr>
-					<td style="padding-right: 15px;">
+					<td class="aips-rate-limits-cell">
 						<label for="aips_embeddings_daily_limit"><?php esc_html_e('Daily limit (24h):', 'ai-post-scheduler'); ?></label><br>
 						<input type="number" min="0" step="1" name="aips_embeddings_daily_limit" id="aips_embeddings_daily_limit" value="<?php echo esc_attr((string) $daily_limit); ?>" class="small-text">
 						<span class="description"><?php esc_html_e('calls (0 = unlimited)', 'ai-post-scheduler'); ?></span>
 					</td>
-					<td style="padding-right: 15px;">
+					<td class="aips-rate-limits-cell">
 						<label for="aips_embeddings_weekly_limit"><?php esc_html_e('Weekly limit (7d):', 'ai-post-scheduler'); ?></label><br>
 						<input type="number" min="0" step="1" name="aips_embeddings_weekly_limit" id="aips_embeddings_weekly_limit" value="<?php echo esc_attr((string) $weekly_limit); ?>" class="small-text">
 						<span class="description"><?php esc_html_e('calls (0 = unlimited)', 'ai-post-scheduler'); ?></span>
 					</td>
-					<td>
+					<td class="aips-rate-limits-cell">
 						<label for="aips_embeddings_monthly_limit"><?php esc_html_e('Monthly limit (30d):', 'ai-post-scheduler'); ?></label><br>
 						<input type="number" min="0" step="1" name="aips_embeddings_monthly_limit" id="aips_embeddings_monthly_limit" value="<?php echo esc_attr((string) $monthly_limit); ?>" class="small-text">
 						<span class="description"><?php esc_html_e('calls (0 = unlimited)', 'ai-post-scheduler'); ?></span>
