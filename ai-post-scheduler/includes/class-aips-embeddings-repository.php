@@ -31,12 +31,21 @@ class AIPS_Embeddings_Repository {
 	private $table;
 
 	/**
-	 * Initialize the repository.
+	 * @var AIPS_Config Config instance.
 	 */
-	public function __construct() {
+	private $config;
+
+	/**
+	 * Initialize the repository.
+	 *
+	 * @param AIPS_Config|null $config Config instance.
+	 */
+	public function __construct(?AIPS_Config $config = null) {
 		global $wpdb;
-		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_embeddings';
+		$this->wpdb   = $wpdb;
+		$this->table  = $wpdb->prefix . 'aips_embeddings';
+		$container    = AIPS_Container::get_instance();
+		$this->config = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
 	}
 
 	/**
@@ -252,15 +261,56 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
-	 * Get post IDs that do not yet have an embedding, filtered by post types and status.
+	 * Build SQL conditions and joins for the indexing scope filter.
+	 *
+	 * @param string|null $scope      Scope filter ('aips_only', 'date_range', 'all'). If null, falls back to config.
+	 * @param array       $scope_args Optional args (date_days, date_after).
+	 * @return array{join: string, where: string, params: array}
+	 */
+	public function build_scope_conditions($scope = null, array $scope_args = array()) {
+		if ($scope === null) {
+			$scope = (string) $this->config->get_option('aips_embeddings_scope', 'aips_only');
+		}
+
+		$join   = '';
+		$where  = '';
+		$params = array();
+
+		if ('aips_only' === $scope) {
+			$join = "INNER JOIN {$this->wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_aips_generated_post'";
+		} elseif ('date_range' === $scope) {
+			$date_after = isset($scope_args['date_after']) ? (string) $scope_args['date_after'] : (string) $this->config->get_option('aips_embeddings_date_after', '');
+			$date_days  = isset($scope_args['date_days']) ? (int) $scope_args['date_days'] : (int) $this->config->get_option('aips_embeddings_date_days', 30);
+
+			if (!empty($date_after)) {
+				$where    = "AND p.post_date >= %s";
+				$params[] = $date_after . ' 00:00:00';
+			} elseif ($date_days > 0) {
+				$cutoff   = gmdate('Y-m-d H:i:s', time() - ($date_days * DAY_IN_SECONDS));
+				$where    = "AND p.post_date >= %s";
+				$params[] = $cutoff;
+			}
+		}
+
+		return array(
+			'join'   => $join,
+			'where'  => $where,
+			'params' => $params,
+		);
+	}
+
+	/**
+	 * Get post IDs that do not yet have an embedding, filtered by post types, status, and scope.
 	 *
 	 * @param int             $limit        Batch limit.
 	 * @param int             $last_post_id Cursor pagination: return IDs > this value.
 	 * @param string[]|string $post_types   Post types to index.
 	 * @param string          $post_status  Post status to index.
+	 * @param string|null     $scope        Scope filter ('aips_only', 'date_range', 'all').
+	 * @param array           $scope_args   Scope arguments (date_days, date_after).
 	 * @return int[] Array of unindexed post IDs.
 	 */
-	public function get_unindexed_post_ids($limit = 20, $last_post_id = 0, $post_types = array('post'), $post_status = 'publish') {
+	public function get_unindexed_post_ids($limit = 20, $last_post_id = 0, $post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
 		$post_types   = (array) $post_types;
 		$post_types   = array_map('sanitize_key', $post_types);
 		$post_status  = sanitize_key($post_status);
@@ -273,30 +323,41 @@ class AIPS_Embeddings_Repository {
 
 		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
 
+		$scope_clause = $this->build_scope_conditions($scope, $scope_args);
+		$join_sql     = $scope_clause['join'];
+		$where_sql    = $scope_clause['where'];
+		$scope_params = $scope_clause['params'];
+
 		if ($last_post_id > 0) {
+			$params = array_merge($post_types, array($post_status, $last_post_id), $scope_params, array($limit));
 			$sql = $this->wpdb->prepare(
-				"SELECT p.ID
+				"SELECT DISTINCT p.ID
 				FROM {$this->wpdb->posts} p
+				{$join_sql}
 				LEFT JOIN {$this->table} e ON p.ID = e.object_id AND e.object_type = 'post'
 				WHERE p.post_type IN ($placeholders)
 				AND p.post_status = %s
 				AND p.ID > %d
+				{$where_sql}
 				AND e.id IS NULL
 				ORDER BY p.ID ASC
 				LIMIT %d",
-				...array_merge($post_types, array($post_status, $last_post_id, $limit))
+				...$params
 			);
 		} else {
+			$params = array_merge($post_types, array($post_status), $scope_params, array($limit));
 			$sql = $this->wpdb->prepare(
-				"SELECT p.ID
+				"SELECT DISTINCT p.ID
 				FROM {$this->wpdb->posts} p
+				{$join_sql}
 				LEFT JOIN {$this->table} e ON p.ID = e.object_id AND e.object_type = 'post'
 				WHERE p.post_type IN ($placeholders)
 				AND p.post_status = %s
+				{$where_sql}
 				AND e.id IS NULL
 				ORDER BY p.ID ASC
 				LIMIT %d",
-				...array_merge($post_types, array($post_status, $limit))
+				...$params
 			);
 		}
 
@@ -305,13 +366,15 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
-	 * Count total indexed objects matching post types and status.
+	 * Count total indexed objects matching post types, status, and scope.
 	 *
 	 * @param string[]|string $post_types  Post types.
 	 * @param string          $post_status Post status.
+	 * @param string|null     $scope       Scope filter ('aips_only', 'date_range', 'all').
+	 * @param array           $scope_args  Scope arguments.
 	 * @return int Count of indexed records.
 	 */
-	public function count_indexed_for_types($post_types = array('post'), $post_status = 'publish') {
+	public function count_indexed_for_types($post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
 		$post_types  = (array) $post_types;
 		$post_types  = array_map('sanitize_key', $post_types);
 		$post_status = sanitize_key($post_status);
@@ -322,13 +385,62 @@ class AIPS_Embeddings_Repository {
 
 		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
 
+		$scope_clause = $this->build_scope_conditions($scope, $scope_args);
+		$join_sql     = $scope_clause['join'];
+		$where_sql    = $scope_clause['where'];
+		$scope_params = $scope_clause['params'];
+
+		$params = array_merge($post_types, array($post_status), $scope_params);
+
 		$sql = $this->wpdb->prepare(
-			"SELECT COUNT(*)
+			"SELECT COUNT(DISTINCT e.id)
 			FROM {$this->table} e
 			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID AND e.object_type = 'post'
+			{$join_sql}
 			WHERE p.post_type IN ($placeholders)
-			AND p.post_status = %s",
-			...array_merge($post_types, array($post_status))
+			AND p.post_status = %s
+			{$where_sql}",
+			...$params
+		);
+
+		return (int) $this->wpdb->get_var($sql);
+	}
+
+	/**
+	 * Count total WordPress posts matching post types, status, and scope.
+	 *
+	 * @param string[]|string $post_types  Post types.
+	 * @param string          $post_status Post status.
+	 * @param string|null     $scope       Scope filter ('aips_only', 'date_range', 'all').
+	 * @param array           $scope_args  Scope arguments.
+	 * @return int Total posts within scope.
+	 */
+	public function count_total_posts_for_scope($post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
+		$post_types  = (array) $post_types;
+		$post_types  = array_map('sanitize_key', $post_types);
+		$post_status = sanitize_key($post_status);
+
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$scope_clause = $this->build_scope_conditions($scope, $scope_args);
+		$join_sql     = $scope_clause['join'];
+		$where_sql    = $scope_clause['where'];
+		$scope_params = $scope_clause['params'];
+
+		$params = array_merge($post_types, array($post_status), $scope_params);
+
+		$sql = $this->wpdb->prepare(
+			"SELECT COUNT(DISTINCT p.ID)
+			FROM {$this->wpdb->posts} p
+			{$join_sql}
+			WHERE p.post_type IN ($placeholders)
+			AND p.post_status = %s
+			{$where_sql}",
+			...$params
 		);
 
 		return (int) $this->wpdb->get_var($sql);

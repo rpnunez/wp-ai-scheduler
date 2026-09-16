@@ -220,6 +220,13 @@ class AIPS_Config {
             'aips_embeddings_model'                    => 'text-embedding-3-small',
             'aips_embeddings_env_id'                   => '',
             'aips_embeddings_dimensions'               => 1536,
+            'aips_embeddings_scope'                    => 'aips_only', // 'aips_only', 'all', 'date_range'
+            'aips_embeddings_date_days'                => 30,
+            'aips_embeddings_date_after'               => '',
+            'aips_embeddings_rate_limits_enabled'      => true,
+            'aips_embeddings_daily_limit'              => 50,
+            'aips_embeddings_weekly_limit'             => 200,
+            'aips_embeddings_monthly_limit'            => 500,
             'aips_indexer_verbose_history'             => false,
             'aips_indexer_post_types'                  => array('post'),
             'aips_indexer_similarity_threshold'        => 0.65,

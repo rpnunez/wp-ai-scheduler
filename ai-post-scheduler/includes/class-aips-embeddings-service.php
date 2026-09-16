@@ -37,6 +37,11 @@ class AIPS_Embeddings_Service {
 	private $config;
 	
 	/**
+	 * @var AIPS_Embeddings_Rate_Limiter Rate limiter instance
+	 */
+	private $rate_limiter;
+
+	/**
 	 * @var array Cache for embeddings to avoid redundant API calls
 	 */
 	private $embedding_cache;
@@ -44,14 +49,24 @@ class AIPS_Embeddings_Service {
 	/**
 	 * Initialize the embeddings service.
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_Config $config = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_Config $config = null, ?AIPS_Embeddings_Rate_Limiter $rate_limiter = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->config = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
+		$this->rate_limiter = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter($this->config, $this->logger));
 		$this->embedding_cache = array();
 	}
 	
+	/**
+	 * Get the rate limiter instance.
+	 *
+	 * @return AIPS_Embeddings_Rate_Limiter
+	 */
+	public function get_rate_limiter(): AIPS_Embeddings_Rate_Limiter {
+		return $this->rate_limiter;
+	}
+
 	/**
 	 * Check if the embeddings system is enabled in configuration.
 	 *
@@ -80,10 +95,16 @@ class AIPS_Embeddings_Service {
 			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
 
-		// Check cache
+		// Check cache (cached embeddings do not count towards quota)
 		$cache_key = md5($text);
 		if (isset($this->embedding_cache[$cache_key])) {
 			return $this->embedding_cache[$cache_key];
+		}
+
+		// Enforce rate limits before dispatching AI provider request
+		$limit_check = $this->rate_limiter->check_limits(1);
+		if (is_wp_error($limit_check)) {
+			return $limit_check;
 		}
 
 		$default_env_id = (string) $this->config->get_option('aips_embeddings_env_id');
@@ -106,6 +127,9 @@ class AIPS_Embeddings_Service {
 			$this->logger->log('Embedding generation failed: ' . $embedding->get_error_message(), 'error');
 			return $embedding;
 		}
+
+		// Record quota consumption on successful generation
+		$this->rate_limiter->record_usage(1);
 
 		// Cache the result
 		$this->embedding_cache[$cache_key] = $embedding;

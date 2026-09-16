@@ -105,6 +105,41 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		</div>
 		<?php endif; ?>
 
+		<!-- Rate Limit Notice -->
+		<?php
+		$rate_limits_info = isset($status['rate_limits']) ? $status['rate_limits'] : array();
+		$is_rate_limited  = !empty($rate_limits_info['is_rate_limited']);
+		?>
+		<div id="aips-rate-limit-warning-banner" class="notice notice-error inline aips-quota-alert-banner <?php echo $is_rate_limited ? '' : 'aips-hidden'; ?>">
+			<div class="aips-banner-inner">
+				<div>
+					<h4 class="aips-banner-title">
+						<span class="dashicons dashicons-shield-alt aips-banner-icon"></span>
+						<?php esc_html_e('Embedding Generation Rate Limit Reached', 'ai-post-scheduler'); ?>
+					</h4>
+					<p class="aips-banner-desc" id="aips-rate-limit-warning-msg">
+						<?php
+						if (!empty($rate_limits_info['exceeded_limit'])) {
+							printf(
+								/* translators: 1: period */
+								esc_html__('The %1$s vector embedding rate limit quota has been reached to protect your API budget. Background scanning is paused.', 'ai-post-scheduler'),
+								esc_html($rate_limits_info['exceeded_limit'])
+							);
+						} else {
+							esc_html_e('Vector embedding rate limit quota reached. Scanning paused.', 'ai-post-scheduler');
+						}
+						?>
+					</p>
+				</div>
+				<div>
+					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#settings-ai')); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+						<span class="dashicons dashicons-admin-generic"></span>
+						<?php esc_html_e('Adjust Limits in Settings', 'ai-post-scheduler'); ?>
+					</a>
+				</div>
+			</div>
+		</div>
+
 		<!-- Status / Metric Cards -->
 		<div class="aips-stats-row">
 
@@ -393,6 +428,95 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		     TAB 4: SETTINGS & THRESHOLDS
 		     ===================================================================== -->
 		<div id="settings-tab" class="aips-tab-content" role="tabpanel">
+			<!-- Quota Protection & Live Limit Gauges -->
+			<?php
+			$rate_limits = isset($settings['rate_limits']) ? $settings['rate_limits'] : array();
+			$daily_cnt   = isset($rate_limits['daily_count']) ? (int) $rate_limits['daily_count'] : 0;
+			$daily_lim   = isset($rate_limits['daily_limit']) ? (int) $rate_limits['daily_limit'] : 50;
+			$weekly_cnt  = isset($rate_limits['weekly_count']) ? (int) $rate_limits['weekly_count'] : 200;
+			$weekly_lim  = isset($rate_limits['weekly_limit']) ? (int) $rate_limits['weekly_limit'] : 200;
+			$monthly_cnt = isset($rate_limits['monthly_count']) ? (int) $rate_limits['monthly_count'] : 500;
+			$monthly_lim = isset($rate_limits['monthly_limit']) ? (int) $rate_limits['monthly_limit'] : 500;
+			$scope_val   = isset($settings['embeddings_scope']) ? $settings['embeddings_scope'] : 'aips_only';
+
+			$daily_pct   = $daily_lim > 0 ? min(100, (int) round(($daily_cnt / $daily_lim) * 100)) : 0;
+			$weekly_pct  = $weekly_lim > 0 ? min(100, (int) round(($weekly_cnt / $weekly_lim) * 100)) : 0;
+			$monthly_pct = $monthly_lim > 0 ? min(100, (int) round(($monthly_cnt / $monthly_lim) * 100)) : 0;
+			?>
+			<div class="aips-content-panel aips-settings-panel aips-rate-limits-meter-panel">
+				<div class="aips-panel-header aips-panel-header-flex">
+					<div>
+						<h3 class="aips-panel-title"><?php esc_html_e('Rate Limiting & Quota Safeguards', 'ai-post-scheduler'); ?></h3>
+						<p class="aips-panel-header-desc description">
+							<?php esc_html_e('Live sliding-window usage tracking protecting against runaway token and credit consumption.', 'ai-post-scheduler'); ?>
+						</p>
+					</div>
+					<div>
+						<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#settings-ai')); ?>" class="aips-btn aips-btn-secondary aips-btn-sm">
+							<span class="dashicons dashicons-admin-generic"></span>
+							<?php esc_html_e('Manage in Settings > AI', 'ai-post-scheduler'); ?>
+						</a>
+					</div>
+				</div>
+				<div class="aips-panel-body">
+					<div class="aips-quota-meters-grid">
+						<!-- Daily Meter -->
+						<div class="aips-quota-meter-item">
+							<div class="aips-quota-meter-header">
+								<span class="aips-quota-meter-label"><?php esc_html_e('Daily Quota (24h)', 'ai-post-scheduler'); ?></span>
+								<span class="aips-quota-meter-count" id="aips-meter-daily-count">
+									<strong><?php echo esc_html($daily_cnt); ?></strong> / <?php echo $daily_lim > 0 ? esc_html($daily_lim) : '∞'; ?>
+								</span>
+							</div>
+							<div class="aips-quota-bar-track">
+								<div class="aips-quota-bar-fill <?php echo $daily_pct >= 90 ? 'aips-quota-danger' : ($daily_pct >= 70 ? 'aips-quota-warning' : ''); ?>" id="aips-meter-daily-bar" style="width: <?php echo esc_attr($daily_pct); ?>%;"></div>
+							</div>
+						</div>
+
+						<!-- Weekly Meter -->
+						<div class="aips-quota-meter-item">
+							<div class="aips-quota-meter-header">
+								<span class="aips-quota-meter-label"><?php esc_html_e('Weekly Quota (7d)', 'ai-post-scheduler'); ?></span>
+								<span class="aips-quota-meter-count" id="aips-meter-weekly-count">
+									<strong><?php echo esc_html($weekly_cnt); ?></strong> / <?php echo $weekly_lim > 0 ? esc_html($weekly_lim) : '∞'; ?>
+								</span>
+							</div>
+							<div class="aips-quota-bar-track">
+								<div class="aips-quota-bar-fill <?php echo $weekly_pct >= 90 ? 'aips-quota-danger' : ($weekly_pct >= 70 ? 'aips-quota-warning' : ''); ?>" id="aips-meter-weekly-bar" style="width: <?php echo esc_attr($weekly_pct); ?>%;"></div>
+							</div>
+						</div>
+
+						<!-- Monthly Meter -->
+						<div class="aips-quota-meter-item">
+							<div class="aips-quota-meter-header">
+								<span class="aips-quota-meter-label"><?php esc_html_e('Monthly Quota (30d)', 'ai-post-scheduler'); ?></span>
+								<span class="aips-quota-meter-count" id="aips-meter-monthly-count">
+									<strong><?php echo esc_html($monthly_cnt); ?></strong> / <?php echo $monthly_lim > 0 ? esc_html($monthly_lim) : '∞'; ?>
+								</span>
+							</div>
+							<div class="aips-quota-bar-track">
+								<div class="aips-quota-bar-fill <?php echo $monthly_pct >= 90 ? 'aips-quota-danger' : ($monthly_pct >= 70 ? 'aips-quota-warning' : ''); ?>" id="aips-meter-monthly-bar" style="width: <?php echo esc_attr($monthly_pct); ?>%;"></div>
+							</div>
+						</div>
+					</div>
+
+					<div class="aips-scope-badge-wrap">
+						<span class="aips-scope-badge-label"><?php esc_html_e('Active Indexing Scope:', 'ai-post-scheduler'); ?></span>
+						<span class="aips-scope-badge">
+							<?php
+							if ('aips_only' === $scope_val) {
+								esc_html_e('AIPS-Generated Posts Only (Safe Mode)', 'ai-post-scheduler');
+							} elseif ('date_range' === $scope_val) {
+								esc_html_e('Posts Within Configured Date Range', 'ai-post-scheduler');
+							} else {
+								esc_html_e('All Posts (Entire Archive)', 'ai-post-scheduler');
+							}
+							?>
+						</span>
+					</div>
+				</div>
+			</div>
+
 			<form id="aips-indexer-settings-form">
 				<div class="aips-content-panel aips-settings-panel">
 					<div class="aips-panel-header">

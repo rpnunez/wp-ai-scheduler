@@ -1080,4 +1080,207 @@ class AIPS_Settings_UI {
 		return array_values(array_unique($connector_ids));
 	}
 
+	/**
+	 * Render header description for embeddings section in AI settings.
+	 *
+	 * @return void
+	 */
+	public function embeddings_header_callback() {
+		echo '<p class="description">' . esc_html__('Configure vector embeddings, semantic search models, indexing scope, and rate-limiting safeguards to prevent unexpected AI API costs.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render the master toggle for Vector Embeddings.
+	 *
+	 * @return void
+	 */
+	public function embeddings_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true);
+		?>
+		<label for="aips_embeddings_enabled">
+			<input type="checkbox" name="aips_embeddings_enabled" id="aips_embeddings_enabled" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Enable Vector Embeddings System', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('When disabled, all semantic vector generation, background content indexing, and semantic similarity queries are halted.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the Indexing Scope Filter setting field.
+	 *
+	 * @return void
+	 */
+	public function embeddings_scope_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$scope      = (string) $config->get_option('aips_embeddings_scope', 'aips_only');
+		$date_days  = (int) $config->get_option('aips_embeddings_date_days', 30);
+		$date_after = (string) $config->get_option('aips_embeddings_date_after', '');
+		?>
+		<fieldset class="aips-embeddings-scope-settings">
+			<select name="aips_embeddings_scope" id="aips_embeddings_scope">
+				<option value="aips_only" <?php selected($scope, 'aips_only'); ?>>
+					<?php esc_html_e('AIPS-Generated Posts Only (Recommended)', 'ai-post-scheduler'); ?>
+				</option>
+				<option value="date_range" <?php selected($scope, 'date_range'); ?>>
+					<?php esc_html_e('Posts Within Date Range (Recent Posts)', 'ai-post-scheduler'); ?>
+				</option>
+				<option value="all" <?php selected($scope, 'all'); ?>>
+					<?php esc_html_e('All Posts (Entire Site Archive)', 'ai-post-scheduler'); ?>
+				</option>
+			</select>
+			<p class="description">
+				<?php esc_html_e('Controls which WordPress posts are scanned and indexed into vector embeddings. Defaulting to AIPS-only prevents unintended token consumption on sites with thousands of legacy posts.', 'ai-post-scheduler'); ?>
+			</p>
+			<div id="aips-scope-date-range-fields" style="<?php echo ('date_range' === $scope) ? '' : 'display:none;'; ?> margin-top: 10px; padding: 10px 12px; background: #f6f7f7; border-left: 3px solid #2271b1;">
+				<p>
+					<label for="aips_embeddings_date_days">
+						<strong><?php esc_html_e('Index posts published in the last:', 'ai-post-scheduler'); ?></strong>
+					</label>
+					<input type="number" min="1" max="3650" step="1" name="aips_embeddings_date_days" id="aips_embeddings_date_days" value="<?php echo esc_attr((string) $date_days); ?>" class="small-text">
+					<?php esc_html_e('days', 'ai-post-scheduler'); ?>
+				</p>
+				<p>
+					<label for="aips_embeddings_date_after">
+						<strong><?php esc_html_e('Or index posts published on/after (YYYY-MM-DD):', 'ai-post-scheduler'); ?></strong>
+					</label>
+					<input type="date" name="aips_embeddings_date_after" id="aips_embeddings_date_after" value="<?php echo esc_attr($date_after); ?>" class="regular-text" style="width: auto;">
+				</p>
+			</div>
+		</fieldset>
+		<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			var scopeSelect = document.getElementById('aips_embeddings_scope');
+			var dateRangeDiv = document.getElementById('aips-scope-date-range-fields');
+			if (scopeSelect && dateRangeDiv) {
+				scopeSelect.addEventListener('change', function() {
+					dateRangeDiv.style.display = (scopeSelect.value === 'date_range') ? 'block' : 'none';
+				});
+			}
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Render the Rate Limiting and Quota Protection fields.
+	 *
+	 * @return void
+	 */
+	public function embeddings_rate_limits_field_callback() {
+		$config        = AIPS_Config::get_instance();
+		$enabled       = (bool) $config->get_option('aips_embeddings_rate_limits_enabled', true);
+		$daily_limit   = (int) $config->get_option('aips_embeddings_daily_limit', 50);
+		$weekly_limit  = (int) $config->get_option('aips_embeddings_weekly_limit', 200);
+		$monthly_limit = (int) $config->get_option('aips_embeddings_monthly_limit', 500);
+		?>
+		<fieldset class="aips-embeddings-rate-limits">
+			<label for="aips_embeddings_rate_limits_enabled">
+				<input type="checkbox" name="aips_embeddings_rate_limits_enabled" id="aips_embeddings_rate_limits_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Enforce sliding-window rate limits & quota protection', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p class="description">
+				<?php esc_html_e('Protects your AI API budget by capping total embedding calls across rolling 24-hour, 7-day, and 30-day windows. Quota breaches automatically pause indexing and send a Quota Alert.', 'ai-post-scheduler'); ?>
+			</p>
+			<table style="margin-top: 10px;">
+				<tr>
+					<td style="padding-right: 15px;">
+						<label for="aips_embeddings_daily_limit"><?php esc_html_e('Daily limit (24h):', 'ai-post-scheduler'); ?></label><br>
+						<input type="number" min="0" step="1" name="aips_embeddings_daily_limit" id="aips_embeddings_daily_limit" value="<?php echo esc_attr((string) $daily_limit); ?>" class="small-text">
+						<span class="description"><?php esc_html_e('calls (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+					</td>
+					<td style="padding-right: 15px;">
+						<label for="aips_embeddings_weekly_limit"><?php esc_html_e('Weekly limit (7d):', 'ai-post-scheduler'); ?></label><br>
+						<input type="number" min="0" step="1" name="aips_embeddings_weekly_limit" id="aips_embeddings_weekly_limit" value="<?php echo esc_attr((string) $weekly_limit); ?>" class="small-text">
+						<span class="description"><?php esc_html_e('calls (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+					</td>
+					<td>
+						<label for="aips_embeddings_monthly_limit"><?php esc_html_e('Monthly limit (30d):', 'ai-post-scheduler'); ?></label><br>
+						<input type="number" min="0" step="1" name="aips_embeddings_monthly_limit" id="aips_embeddings_monthly_limit" value="<?php echo esc_attr((string) $monthly_limit); ?>" class="small-text">
+						<span class="description"><?php esc_html_e('calls (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+					</td>
+				</tr>
+			</table>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render auto-index on publish toggle.
+	 *
+	 * @return void
+	 */
+	public function auto_index_on_publish_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_auto_index_on_publish', true);
+		?>
+		<label for="aips_auto_index_on_publish">
+			<input type="checkbox" name="aips_auto_index_on_publish" id="aips_auto_index_on_publish" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Automatically vectorize and index newly published posts', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('When enabled, newly published or updated posts matching the Indexing Scope are immediately vectorized and added to the semantic index.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings provider selection field.
+	 *
+	 * @return void
+	 */
+	public function embeddings_provider_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_provider', '');
+		?>
+		<input type="text" name="aips_embeddings_provider" id="aips_embeddings_provider" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="auto-detect">
+		<p class="description"><?php esc_html_e('Embeddings AI provider (leave empty for auto-detect / Meow AI Engine).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings model field.
+	 *
+	 * @return void
+	 */
+	public function embeddings_model_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_model', 'text-embedding-3-small');
+		?>
+		<input type="text" name="aips_embeddings_model" id="aips_embeddings_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="text-embedding-3-small">
+		<p class="description"><?php esc_html_e('AI model used for embedding generation (e.g., text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings environment ID field.
+	 *
+	 * @return void
+	 */
+	public function embeddings_env_id_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_env_id', '');
+		?>
+		<input type="text" name="aips_embeddings_env_id" id="aips_embeddings_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="e.g. default or custom env ID">
+		<p class="description"><?php esc_html_e('Optional Meow AI Engine Environment ID specifically for vector embeddings (leave empty to use default).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings dimensions field.
+	 *
+	 * @return void
+	 */
+	public function embeddings_dimensions_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_embeddings_dimensions', 1536);
+		?>
+		<input type="number" min="1" max="8192" step="1" name="aips_embeddings_dimensions" id="aips_embeddings_dimensions" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Expected dimensions of the embedding vectors (e.g. 1536 for text-embedding-3-small).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Sanitize indexing scope option.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string Sanitized scope ('aips_only', 'date_range', 'all').
+	 */
+	public function sanitize_embeddings_scope($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('aips_only', 'date_range', 'all'), true) ? $value : 'aips_only';
+	}
+
 }
