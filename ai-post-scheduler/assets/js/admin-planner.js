@@ -507,6 +507,7 @@
     // Bind Planner Events
     $(document).ready(function() {
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
+        $(document).on('keypress', '#planner-niche', function(e) { if (e.which === 13) { e.preventDefault(); $('#btn-generate-topics').click(); } });
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('click', '#btn-bulk-generate-now', window.AIPS.bulkGenerateNow);

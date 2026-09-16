@@ -318,3 +318,8 @@ Target Feature: Research Planner
 Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js
 Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
+## 2026-09-17 - Research Planner Optimization
+- Target Feature: Research Planner
+- Improvement: Added keyboard support for the '#planner-niche' input to trigger topic generation on Enter key press, streamlining the topic brainstorming workflow.
+- Files Modified: ai-post-scheduler/assets/js/admin-planner.js
+- Outcome: Users can now seamlessly type a niche and press Enter to generate ideas, saving time and removing the friction of clicking the button manually.
