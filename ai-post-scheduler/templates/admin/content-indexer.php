@@ -248,8 +248,10 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				<!-- Graph Toolbar -->
 				<div class="aips-visualizer-toolbar">
 					<div class="aips-visualizer-search-wrap">
-						<label for="aips-graph-post-select" class="screen-reader-text"><?php esc_html_e('Select Post to Inspect:', 'ai-post-scheduler'); ?></label>
-						<input type="text" id="aips-graph-post-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search post title to inspect node network…', 'ai-post-scheduler'); ?>" autocomplete="off">
+						<label for="aips-graph-post-search" class="screen-reader-text"><?php esc_html_e('Select Post to Inspect:', 'ai-post-scheduler'); ?></label>
+						<span class="dashicons dashicons-search aips-search-input-icon"></span>
+						<input type="text" id="aips-graph-post-search" class="aips-form-input aips-search-with-icon" placeholder="<?php esc_attr_e('Search post title to inspect node network…', 'ai-post-scheduler'); ?>" autocomplete="off">
+						<button type="button" id="aips-graph-search-clear" class="aips-search-clear-btn aips-hidden" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>">&times;</button>
 						<div id="aips-graph-post-dropdown" class="aips-autocomplete-dropdown aips-hidden"></div>
 						<input type="hidden" id="aips-graph-selected-post-id" value="">
 					</div>
@@ -272,8 +274,36 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</div>
 				</div>
 
+				<!-- Active Post Banner (Full Title Display) -->
+				<div id="aips-active-post-bar" class="aips-active-post-bar aips-hidden">
+					<div class="aips-active-post-info">
+						<span class="aips-active-post-tag"><?php esc_html_e('Inspecting:', 'ai-post-scheduler'); ?></span>
+						<strong id="aips-active-post-title" class="aips-active-post-title"></strong>
+						<span id="aips-active-post-meta" class="aips-active-post-meta"></span>
+					</div>
+					<button type="button" id="aips-active-post-clear" class="aips-btn aips-btn-ghost aips-btn-xs" title="<?php esc_attr_e('Reset Selection', 'ai-post-scheduler'); ?>">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+
 				<!-- Graph Canvas Area -->
 				<div class="aips-graph-viewport-container">
+					
+					<!-- Floating Zoom Toolbar -->
+					<div id="aips-graph-zoom-toolbar" class="aips-graph-zoom-toolbar">
+						<button type="button" id="aips-zoom-in" class="aips-zoom-btn" title="<?php esc_attr_e('Zoom In', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-plus-alt2"></span>
+						</button>
+						<span id="aips-zoom-level" class="aips-zoom-level">100%</span>
+						<button type="button" id="aips-zoom-out" class="aips-zoom-btn" title="<?php esc_attr_e('Zoom Out', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-minus"></span>
+						</button>
+						<button type="button" id="aips-zoom-reset" class="aips-zoom-btn" title="<?php esc_attr_e('Reset Zoom & Position', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-image-rotate"></span>
+						</button>
+					</div>
+
 					<div id="aips-graph-canvas-wrap" class="aips-graph-canvas-wrap">
 						<svg id="aips-graph-svg" width="100%" height="560"></svg>
 						<div id="aips-graph-empty" class="aips-graph-placeholder aips-hidden">
@@ -281,6 +311,14 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 							<h3><?php esc_html_e('Select an indexed post to explore its semantic network', 'ai-post-scheduler'); ?></h3>
 							<p><?php esc_html_e('Nodes represent related posts and topics with edge weights proportional to cosine similarity.', 'ai-post-scheduler'); ?></p>
 						</div>
+					</div>
+
+					<!-- Rich Hover Tooltip Card -->
+					<div id="aips-graph-tooltip" class="aips-graph-tooltip aips-hidden">
+						<div class="aips-tooltip-badge" id="aips-tooltip-badge"></div>
+						<div class="aips-tooltip-title" id="aips-tooltip-title"></div>
+						<div class="aips-tooltip-meta" id="aips-tooltip-meta"></div>
+						<div class="aips-tooltip-hint"><?php esc_html_e('Click node to open flyout details & actions', 'ai-post-scheduler'); ?></div>
 					</div>
 
 					<!-- Node Detail Flyout Drawer -->

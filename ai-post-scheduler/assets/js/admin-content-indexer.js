@@ -18,6 +18,14 @@
 		activePostId: null,
 		graphData: null,
 		simulation: null,
+		zoomScale: 1.0,
+		panX: 0,
+		panY: 0,
+		isPanning: false,
+		startPanX: 0,
+		startPanY: 0,
+		minZoom: 0.3,
+		maxZoom: 3.0,
 
 		/**
 		 * Initialize component.
@@ -60,13 +68,76 @@
 				self.reloadGraph();
 			});
 
+			// Floating Zoom Toolbar Controls
+			$('#aips-zoom-in').on('click', function () {
+				var svg = document.getElementById('aips-graph-svg');
+				var width = svg ? (svg.clientWidth || 900) : 900;
+				var height = 560;
+				self.setZoom(self.zoomScale * 1.25, width / 2, height / 2);
+			});
+
+			$('#aips-zoom-out').on('click', function () {
+				var svg = document.getElementById('aips-graph-svg');
+				var width = svg ? (svg.clientWidth || 900) : 900;
+				var height = 560;
+				self.setZoom(self.zoomScale * 0.8, width / 2, height / 2);
+			});
+
+			$('#aips-zoom-reset').on('click', function () {
+				self.resetZoom();
+			});
+
+			// Mousewheel Zoom & Pan on SVG Canvas
+			var $svg = $('#aips-graph-svg');
+
+			$svg.on('wheel', function (e) {
+				e.preventDefault();
+				var svgEl = this;
+				var rect = svgEl.getBoundingClientRect();
+				var mouseX = e.clientX - rect.left;
+				var mouseY = e.clientY - rect.top;
+				var delta = (e.originalEvent.deltaY || e.originalEvent.wheelDelta) < 0 ? 1.15 : 0.87;
+				self.setZoom(self.zoomScale * delta, mouseX, mouseY);
+			});
+
+			$svg.on('mousedown', function (e) {
+				if ($(e.target).closest('.graph-node, .edge-pill, .aips-zoom-btn').length) {
+					return;
+				}
+				self.isPanning = true;
+				self.startPanX = e.clientX - self.panX;
+				self.startPanY = e.clientY - self.panY;
+				$svg.addClass('is-dragging');
+			});
+
+			$(document).on('mousemove', function (e) {
+				if (self.isPanning) {
+					self.panX = e.clientX - self.startPanX;
+					self.panY = e.clientY - self.startPanY;
+					self.applyTransform();
+				}
+			});
+
+			$(document).on('mouseup', function () {
+				if (self.isPanning) {
+					self.isPanning = false;
+					$svg.removeClass('is-dragging');
+				}
+			});
+
 			// Autocomplete search
 			var searchTimer = null;
 			$('#aips-graph-post-search').on('input', function () {
 				var query = $(this).val();
+				if (query.length > 0) {
+					$('#aips-graph-search-clear').show();
+				} else {
+					$('#aips-graph-search-clear').hide();
+					$('#aips-graph-post-dropdown').hide().empty();
+				}
+
 				clearTimeout(searchTimer);
 				if (query.length < 2) {
-					$('#aips-graph-post-dropdown').hide().empty();
 					return;
 				}
 				searchTimer = setTimeout(function () {
@@ -74,12 +145,40 @@
 				}, 250);
 			});
 
+			$('#aips-graph-search-clear').on('click', function () {
+				$('#aips-graph-post-search').val('');
+				$(this).hide();
+				$('#aips-graph-post-dropdown').hide().empty();
+			});
+
+			$('#aips-active-post-clear').on('click', function () {
+				$('#aips-graph-selected-post-id').val('');
+				$('#aips-graph-post-search').val('');
+				$('#aips-graph-search-clear').hide();
+				$('#aips-active-post-bar').hide();
+				self.loadGraphForPost(0);
+			});
+
 			$(document).on('click', '.aips-autocomplete-item', function () {
 				var postId = $(this).data('id');
-				var title = $(this).text();
+				var rawTitle = $(this).data('title') || $(this).find('.aips-autocomplete-title').text();
+				var postType = $(this).data('type') || 'post';
+				var isIndexed = $(this).data('indexed') === '1' || $(this).data('indexed') === 1;
+
 				$('#aips-graph-selected-post-id').val(postId);
-				$('#aips-graph-post-search').val(title);
+				$('#aips-graph-post-search').val(rawTitle);
+				$('#aips-graph-search-clear').show();
 				$('#aips-graph-post-dropdown').hide().empty();
+
+				// Update active post banner
+				$('#aips-active-post-title').text(rawTitle);
+				$('#aips-active-post-meta').text(postType.toUpperCase() + ' #' + postId + (isIndexed ? ' • Indexed' : ' • Pending Indexing'));
+				$('#aips-active-post-bar').show();
+
+				if (!isIndexed) {
+					AIPS.Utilities && AIPS.Utilities.showNotice('Selected post has not been indexed yet. Backfill indexing will create its embeddings.', 'warning');
+				}
+
 				self.loadGraphForPost(postId);
 			});
 
@@ -135,6 +234,41 @@
 
 			// Settings Form Save
 			$('#aips-indexer-settings-form').on('submit', this.handleSaveSettings.bind(this));
+		},
+
+		/**
+		 * Apply SVG Viewport Transform (Pan & Zoom).
+		 */
+		applyTransform: function () {
+			var viewport = document.getElementById('aips-graph-viewport');
+			if (viewport) {
+				viewport.setAttribute('transform', 'translate(' + this.panX + ',' + this.panY + ') scale(' + this.zoomScale + ')');
+			}
+			$('#aips-zoom-level').text(Math.round(this.zoomScale * 100) + '%');
+		},
+
+		/**
+		 * Set zoom scale centered on a pivot coordinate.
+		 */
+		setZoom: function (newScale, pivotX, pivotY) {
+			newScale = Math.max(this.minZoom, Math.min(this.maxZoom, newScale));
+			if (pivotX !== undefined && pivotY !== undefined) {
+				var ratio = newScale / this.zoomScale;
+				this.panX = pivotX - (pivotX - this.panX) * ratio;
+				this.panY = pivotY - (pivotY - this.panY) * ratio;
+			}
+			this.zoomScale = newScale;
+			this.applyTransform();
+		},
+
+		/**
+		 * Reset pan & zoom to default centered view.
+		 */
+		resetZoom: function () {
+			this.zoomScale = 1.0;
+			this.panX = 0;
+			this.panY = 0;
+			this.applyTransform();
 		},
 
 		/**
@@ -305,7 +439,7 @@
 		},
 
 		/**
-		 * Search posts for autocomplete.
+		 * Search posts for autocomplete with indexed status badges.
 		 */
 		searchPosts: function (q) {
 			$.ajax({
@@ -322,7 +456,16 @@
 						var items = res.data.results;
 						var html = '';
 						items.forEach(function (it) {
-							html += '<div class="aips-autocomplete-item" data-id="' + it.id + '">' + $('<div>').text(it.title).html() + '</div>';
+							var badgeHtml = it.is_indexed
+								? '<span class="aips-badge-indexed">' + (aipsContentIndexerL10n.indexed || 'Indexed') + '</span>'
+								: '<span class="aips-badge-unindexed">' + (aipsContentIndexerL10n.pendingIndex || 'Pending Index') + '</span>';
+							var rawTitle = it.title || '';
+							var pType = it.post_type || 'post';
+
+							html += '<div class="aips-autocomplete-item" data-id="' + it.id + '" data-title="' + $('<div>').text(rawTitle).html() + '" data-type="' + pType + '" data-indexed="' + (it.is_indexed ? '1' : '0') + '">';
+							html += '<span class="aips-autocomplete-title">' + $('<div>').text(rawTitle).html() + ' <small style="color:#64748b;">(' + pType + ' #' + it.id + ')</small></span>';
+							html += badgeHtml;
+							html += '</div>';
 						});
 						if (items.length) {
 							$('#aips-graph-post-dropdown').html(html).show();
@@ -375,15 +518,17 @@
 					} else {
 						$('#aips-graph-svg').empty();
 						$('#aips-graph-empty').show();
+						$('#aips-active-post-bar').hide();
 					}
 				}
 			});
 		},
 
 		/**
-		 * Render the Interactive SVG Node-Link Graph.
+		 * Render the Interactive SVG Node-Link Graph with Viewport Zoom/Pan, Edge Pills, Tooltips, and Highlighting.
 		 */
 		renderSvgGraph: function (graph) {
+			var self = this;
 			var svg = document.getElementById('aips-graph-svg');
 			if (!svg) {
 				return;
@@ -410,6 +555,13 @@
 			centerNode.x = centerX;
 			centerNode.y = centerY;
 
+			// Update Active Post Bar
+			if (centerNode) {
+				$('#aips-active-post-title').text(centerNode.label);
+				$('#aips-active-post-meta').text((centerNode.type || 'post').toUpperCase() + ' #' + (centerNode.raw_id || centerNode.id));
+				$('#aips-active-post-bar').show();
+			}
+
 			var neighbors = nodes.filter(function (n) { return !n.is_center; });
 			var angleStep = (2 * Math.PI) / Math.max(1, neighbors.length);
 			var radius = Math.min(centerX, centerY) * 0.68;
@@ -425,7 +577,11 @@
 			var nodeMap = {};
 			nodes.forEach(function (n) { nodeMap[n.id] = n; });
 
-			// 1. Draw Edges
+			// Create Viewport container for pan & zoom transforms
+			var gViewport = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+			gViewport.setAttribute('id', 'aips-graph-viewport');
+
+			// 1. Draw Edges & Edge Pills
 			var gEdges = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 			gEdges.setAttribute('class', 'edges-group');
 
@@ -439,6 +595,8 @@
 				line.setAttribute('y1', src.y);
 				line.setAttribute('x2', tgt.x);
 				line.setAttribute('y2', tgt.y);
+				line.setAttribute('data-source', edge.source);
+				line.setAttribute('data-target', edge.target);
 
 				var weight = edge.weight || 0.6;
 				var edgeClass = 'graph-edge';
@@ -450,15 +608,34 @@
 				line.setAttribute('stroke-width', Math.max(1.5, weight * 3.5));
 				gEdges.appendChild(line);
 
-				// Edge weight label
+				// Edge Label Pill (Contrast Background + Text)
+				var midX = (src.x + tgt.x) / 2;
+				var midY = (src.y + tgt.y) / 2;
+				var pillG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+				pillG.setAttribute('class', 'edge-pill');
+				pillG.setAttribute('data-source', edge.source);
+				pillG.setAttribute('data-target', edge.target);
+
+				var pillBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+				pillBg.setAttribute('class', 'edge-pill-bg');
+				pillBg.setAttribute('x', midX - 20);
+				pillBg.setAttribute('y', midY - 10);
+				pillBg.setAttribute('width', 40);
+				pillBg.setAttribute('height', 20);
+				pillBg.setAttribute('rx', 4);
+				pillBg.setAttribute('ry', 4);
+				pillG.appendChild(pillBg);
+
 				var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-				text.setAttribute('x', (src.x + tgt.x) / 2);
-				text.setAttribute('y', (src.y + tgt.y) / 2 - 4);
-				text.setAttribute('class', 'graph-edge-text');
+				text.setAttribute('x', midX);
+				text.setAttribute('y', midY);
+				text.setAttribute('class', 'edge-pill-text');
 				text.textContent = edge.label;
-				gEdges.appendChild(text);
+				pillG.appendChild(text);
+
+				gEdges.appendChild(pillG);
 			});
-			svg.appendChild(gEdges);
+			gViewport.appendChild(gEdges);
 
 			// 2. Draw Nodes
 			var gNodes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -474,6 +651,7 @@
 					else if (node.similarity < 0.65) nodeClass += ' node-low';
 				}
 				g.setAttribute('class', nodeClass);
+				g.setAttribute('data-id', node.id);
 				g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
 
 				var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -487,14 +665,94 @@
 				label.textContent = truncated;
 				g.appendChild(label);
 
+				// Hover Connection Highlighting & Dimming + Tooltip
+				$(g).on('mouseenter', function (e) {
+					var nodeId = node.id;
+					
+					// Find connected node IDs
+					var connectedNodeIds = {};
+					connectedNodeIds[nodeId] = true;
+					edges.forEach(function (ed) {
+						if (ed.source === nodeId) connectedNodeIds[ed.target] = true;
+						if (ed.target === nodeId) connectedNodeIds[ed.source] = true;
+					});
+
+					// Dim unrelated nodes and edges
+					$('.graph-node').each(function () {
+						var nid = $(this).attr('data-id');
+						if (connectedNodeIds[nid]) {
+							$(this).addClass('is-highlighted').removeClass('is-dimmed');
+						} else {
+							$(this).addClass('is-dimmed').removeClass('is-highlighted');
+						}
+					});
+
+					$('.graph-edge, .edge-pill').each(function () {
+						var src = $(this).attr('data-source');
+						var tgt = $(this).attr('data-target');
+						if (src === nodeId || tgt === nodeId) {
+							$(this).addClass('is-highlighted').removeClass('is-dimmed');
+						} else {
+							$(this).addClass('is-dimmed').removeClass('is-highlighted');
+						}
+					});
+
+					// Show Rich Tooltip
+					var $tooltip = $('#aips-graph-tooltip');
+					var badgeClass = 'badge-med';
+					var badgeText = 'Semantic Match';
+
+					if (node.is_center) {
+						badgeClass = 'badge-center';
+						badgeText = 'Inspected Post (Center)';
+					} else if (node.similarity !== undefined) {
+						var simPercent = Math.round(node.similarity * 100);
+						if (simPercent >= 80) {
+							badgeClass = 'badge-high';
+							badgeText = simPercent + '% Strong Match';
+						} else if (simPercent < 65) {
+							badgeClass = 'badge-low';
+							badgeText = simPercent + '% Related Topic';
+						} else {
+							badgeText = simPercent + '% Semantic Match';
+						}
+					}
+
+					$('#aips-tooltip-badge').attr('class', 'aips-tooltip-badge ' + badgeClass).text(badgeText);
+					$('#aips-tooltip-title').text(node.label);
+					$('#aips-tooltip-meta').text('Type: ' + (node.type || 'post') + ' • ID: #' + (node.raw_id || node.id));
+
+					// Position tooltip within viewport
+					var containerOffset = $('.aips-graph-viewport-container').offset();
+					var posX = e.pageX - containerOffset.left;
+					var posY = e.pageY - containerOffset.top;
+					$tooltip.css({ left: posX + 'px', top: posY + 'px' }).removeClass('aips-hidden').show();
+				});
+
+				$(g).on('mousemove', function (e) {
+					var containerOffset = $('.aips-graph-viewport-container').offset();
+					var posX = e.pageX - containerOffset.left;
+					var posY = e.pageY - containerOffset.top;
+					$('#aips-graph-tooltip').css({ left: posX + 'px', top: posY + 'px' });
+				});
+
+				$(g).on('mouseleave', function () {
+					$('.graph-node, .graph-edge, .edge-pill').removeClass('is-dimmed is-highlighted');
+					$('#aips-graph-tooltip').addClass('aips-hidden').hide();
+				});
+
 				// Click handler for node flyout
 				$(g).on('click', function () {
-					ContentIndexer.openNodeDrawer(node);
+					self.openNodeDrawer(node);
 				});
 
 				gNodes.appendChild(g);
 			});
-			svg.appendChild(gNodes);
+			gViewport.appendChild(gNodes);
+			svg.appendChild(gViewport);
+
+			// Re-apply active pan & zoom
+			self.applyTransform();
 		},
 
 		/**

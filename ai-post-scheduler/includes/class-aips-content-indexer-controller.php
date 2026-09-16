@@ -243,11 +243,20 @@ class AIPS_Content_Indexer_Controller {
 		));
 
 		$results = array();
-		foreach ($posts as $p) {
-			$results[] = array(
-				'id'    => $p->ID,
-				'title' => $p->post_title . " ({$p->post_type} #{$p->ID})",
-			);
+		if (!empty($posts)) {
+			$post_ids    = wp_list_pluck($posts, 'ID');
+			$indexed_map = $this->embeddings_repo->get_by_post_ids($post_ids);
+
+			foreach ($posts as $p) {
+				$is_indexed = isset($indexed_map[$p->ID]);
+				$results[]  = array(
+					'id'         => $p->ID,
+					'title'      => $p->post_title,
+					'label'      => $p->post_title . " ({$p->post_type} #{$p->ID})",
+					'post_type'  => $p->post_type,
+					'is_indexed' => $is_indexed,
+				);
+			}
 		}
 
 		AIPS_Ajax_Response::success(array('results' => $results));
