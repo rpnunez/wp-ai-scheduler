@@ -6032,3 +6032,25 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	margin-top: 2px;
 	line-height: 1.3;
 }
+
+/* Embeddings & Scope Settings */
+.aips-scope-date-range-box {
+	margin-top: 10px;
+	padding: 10px 12px;
+	background: #f6f7f7;
+	border-left: 3px solid #2271b1;
+}
+
+.aips-scope-date-input {
+	width: auto;
+}
+
+.aips-rate-limits-table {
+	margin-top: 10px;
+	border-collapse: collapse;
+}
+
+.aips-rate-limits-cell {
+	padding-right: 15px;
+	vertical-align: top;
+}
