@@ -130,10 +130,10 @@
 			$('#aips-graph-post-search').on('input', function () {
 				var query = $(this).val();
 				if (query.length > 0) {
-					$('#aips-graph-search-clear').show();
+					$('#aips-graph-search-clear').removeClass('aips-hidden').show();
 				} else {
-					$('#aips-graph-search-clear').hide();
-					$('#aips-graph-post-dropdown').hide().empty();
+					$('#aips-graph-search-clear').addClass('aips-hidden').hide();
+					$('#aips-graph-post-dropdown').addClass('aips-hidden').hide().empty();
 				}
 
 				clearTimeout(searchTimer);
@@ -147,15 +147,15 @@
 
 			$('#aips-graph-search-clear').on('click', function () {
 				$('#aips-graph-post-search').val('');
-				$(this).hide();
-				$('#aips-graph-post-dropdown').hide().empty();
+				$(this).addClass('aips-hidden').hide();
+				$('#aips-graph-post-dropdown').addClass('aips-hidden').hide().empty();
 			});
 
 			$('#aips-active-post-clear').on('click', function () {
 				$('#aips-graph-selected-post-id').val('');
 				$('#aips-graph-post-search').val('');
-				$('#aips-graph-search-clear').hide();
-				$('#aips-active-post-bar').hide();
+				$('#aips-graph-search-clear').addClass('aips-hidden').hide();
+				$('#aips-active-post-bar').addClass('aips-hidden').hide();
 				self.loadGraphForPost(0);
 			});
 
@@ -163,17 +163,17 @@
 				var postId = $(this).data('id');
 				var rawTitle = $(this).data('title') || $(this).find('.aips-autocomplete-title').text();
 				var postType = $(this).data('type') || 'post';
-				var isIndexed = $(this).data('indexed') === '1' || $(this).data('indexed') === 1;
+				var isIndexed = $(this).data('indexed') === 1 || $(this).data('indexed') === '1' || $(this).data('indexed') === true;
 
 				$('#aips-graph-selected-post-id').val(postId);
 				$('#aips-graph-post-search').val(rawTitle);
-				$('#aips-graph-search-clear').show();
-				$('#aips-graph-post-dropdown').hide().empty();
+				$('#aips-graph-search-clear').removeClass('aips-hidden').show();
+				$('#aips-graph-post-dropdown').addClass('aips-hidden').hide().empty();
 
 				// Update active post banner
 				$('#aips-active-post-title').text(rawTitle);
 				$('#aips-active-post-meta').text(postType.toUpperCase() + ' #' + postId + (isIndexed ? ' • Indexed' : ' • Pending Indexing'));
-				$('#aips-active-post-bar').show();
+				$('#aips-active-post-bar').removeClass('aips-hidden').show();
 
 				if (!isIndexed) {
 					AIPS.Utilities && AIPS.Utilities.showNotice('Selected post has not been indexed yet. Backfill indexing will create its embeddings.', 'warning');
@@ -184,19 +184,19 @@
 
 			$(document).on('click', function (e) {
 				if (!$(e.target).closest('.aips-visualizer-search-wrap').length) {
-					$('#aips-graph-post-dropdown').hide();
+					$('#aips-graph-post-dropdown').addClass('aips-hidden').hide();
 				}
 			});
 
 			// Drawer Controls
 			$('#aips-drawer-close').on('click', function () {
-				$('#aips-node-drawer').hide();
+				$('#aips-node-drawer').addClass('aips-hidden').hide();
 			});
 
 			$('#aips-drawer-focus-btn').on('click', function () {
 				var targetId = $(this).data('raw-id');
 				if (targetId) {
-					$('#aips-node-drawer').hide();
+					$('#aips-node-drawer').addClass('aips-hidden').hide();
 					self.loadGraphForPost(targetId);
 				}
 			});
@@ -454,24 +454,43 @@
 				success: function (res) {
 					if (res.success && res.data.results) {
 						var items = res.data.results;
-						var html = '';
+						var $dropdown = $('#aips-graph-post-dropdown').empty();
+
+						if (!items.length) {
+							$dropdown.addClass('aips-hidden').hide();
+							return;
+						}
+
 						items.forEach(function (it) {
-							var badgeHtml = it.is_indexed
-								? '<span class="aips-badge-indexed">' + (aipsContentIndexerL10n.indexed || 'Indexed') + '</span>'
-								: '<span class="aips-badge-unindexed">' + (aipsContentIndexerL10n.pendingIndex || 'Pending Index') + '</span>';
+							var isIndexed = !!it.is_indexed;
+							var badgeText = isIndexed
+								? (aipsContentIndexerL10n.indexed || 'Indexed')
+								: (aipsContentIndexerL10n.pendingIndex || 'Pending Index');
+							var badgeClass = isIndexed ? 'aips-badge-indexed' : 'aips-badge-unindexed';
 							var rawTitle = it.title || '';
 							var pType = it.post_type || 'post';
 
-							html += '<div class="aips-autocomplete-item" data-id="' + it.id + '" data-title="' + $('<div>').text(rawTitle).html() + '" data-type="' + pType + '" data-indexed="' + (it.is_indexed ? '1' : '0') + '">';
-							html += '<span class="aips-autocomplete-title">' + $('<div>').text(rawTitle).html() + ' <small style="color:#64748b;">(' + pType + ' #' + it.id + ')</small></span>';
-							html += badgeHtml;
-							html += '</div>';
+							var $item = $('<div>')
+								.addClass('aips-autocomplete-item')
+								.data('id', it.id)
+								.data('title', rawTitle)
+								.data('type', pType)
+								.data('indexed', isIndexed ? 1 : 0);
+
+							var $titleSpan = $('<span>')
+								.addClass('aips-autocomplete-title')
+								.text(rawTitle)
+								.append($('<small>').css('color', '#64748b').text(' (' + pType + ' #' + it.id + ')'));
+
+							var $badgeSpan = $('<span>')
+								.addClass(badgeClass)
+								.text(badgeText);
+
+							$item.append($titleSpan).append($badgeSpan);
+							$dropdown.append($item);
 						});
-						if (items.length) {
-							$('#aips-graph-post-dropdown').html(html).show();
-						} else {
-							$('#aips-graph-post-dropdown').hide().empty();
-						}
+
+						$dropdown.removeClass('aips-hidden').show();
 					}
 				}
 			});
@@ -488,13 +507,13 @@
 		 * Reload currently active graph with updated thresholds.
 		 */
 		reloadGraph: function () {
-			this.loadGraphForPost(this.activePostId || 0);
+			this.loadGraphForPost(this.activePostId || 0, true);
 		},
 
 		/**
 		 * Load graph data for a specific post.
 		 */
-		loadGraphForPost: function (postId) {
+		loadGraphForPost: function (postId, preserveView) {
 			var self = this;
 			var simThreshold = parseFloat($('#aips-graph-sim-threshold').val()) || 0.60;
 			var maxNodes = parseInt($('#aips-graph-max-nodes').val(), 10) || 15;
@@ -514,11 +533,14 @@
 					if (res.success && res.data.graph) {
 						self.activePostId = res.data.post_id;
 						self.graphData = res.data.graph;
+						if (!preserveView) {
+							self.resetZoom();
+						}
 						self.renderSvgGraph(res.data.graph);
 					} else {
 						$('#aips-graph-svg').empty();
-						$('#aips-graph-empty').show();
-						$('#aips-active-post-bar').hide();
+						$('#aips-graph-empty').removeClass('aips-hidden').show();
+						$('#aips-active-post-bar').addClass('aips-hidden').hide();
 					}
 				}
 			});
@@ -540,10 +562,10 @@
 			$(svg).empty();
 
 			if (!graph.nodes || graph.nodes.length === 0) {
-				$('#aips-graph-empty').show();
+				$('#aips-graph-empty').removeClass('aips-hidden').show();
 				return;
 			}
-			$('#aips-graph-empty').hide();
+			$('#aips-graph-empty').addClass('aips-hidden').hide();
 
 			var centerX = width / 2;
 			var centerY = height / 2;
@@ -555,11 +577,16 @@
 			centerNode.x = centerX;
 			centerNode.y = centerY;
 
-			// Update Active Post Bar
+			// Update Active Post Bar and sync Search Input
 			if (centerNode) {
 				$('#aips-active-post-title').text(centerNode.label);
 				$('#aips-active-post-meta').text((centerNode.type || 'post').toUpperCase() + ' #' + (centerNode.raw_id || centerNode.id));
-				$('#aips-active-post-bar').show();
+				$('#aips-active-post-bar').removeClass('aips-hidden').show();
+
+				// Keep search input and selection in sync with the active center post
+				$('#aips-graph-selected-post-id').val(centerNode.raw_id || centerNode.id);
+				$('#aips-graph-post-search').val(centerNode.label);
+				$('#aips-graph-search-clear').removeClass('aips-hidden').show();
 			}
 
 			var neighbors = nodes.filter(function (n) { return !n.is_center; });
@@ -636,6 +663,30 @@
 				gEdges.appendChild(pillG);
 			});
 			gViewport.appendChild(gEdges);
+
+			// Helper for smart tooltip boundary positioning
+			function updateTooltipPosition(e) {
+				var $container = $('.aips-graph-viewport-container');
+				var containerOffset = $container.offset();
+				if (!containerOffset) return;
+
+				var containerWidth = $container.width() || 900;
+				var rawX = e.pageX - containerOffset.left;
+				var rawY = e.pageY - containerOffset.top;
+
+				// Clamp X within container bounds
+				var clampedX = Math.max(140, Math.min(containerWidth - 140, rawX));
+
+				// If hovering near top edge, flip below cursor
+				var isTopClipped = rawY < 130;
+				var translateY = isTopClipped ? '20px' : '-120%';
+
+				$('#aips-graph-tooltip').css({
+					left: clampedX + 'px',
+					top: rawY + 'px',
+					transform: 'translate(-50%, ' + translateY + ')'
+				});
+			}
 
 			// 2. Draw Nodes
 			var gNodes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -722,18 +773,12 @@
 					$('#aips-tooltip-title').text(node.label);
 					$('#aips-tooltip-meta').text('Type: ' + (node.type || 'post') + ' • ID: #' + (node.raw_id || node.id));
 
-					// Position tooltip within viewport
-					var containerOffset = $('.aips-graph-viewport-container').offset();
-					var posX = e.pageX - containerOffset.left;
-					var posY = e.pageY - containerOffset.top;
-					$tooltip.css({ left: posX + 'px', top: posY + 'px' }).removeClass('aips-hidden').show();
+					updateTooltipPosition(e);
+					$tooltip.removeClass('aips-hidden').show();
 				});
 
 				$(g).on('mousemove', function (e) {
-					var containerOffset = $('.aips-graph-viewport-container').offset();
-					var posX = e.pageX - containerOffset.left;
-					var posY = e.pageY - containerOffset.top;
-					$('#aips-graph-tooltip').css({ left: posX + 'px', top: posY + 'px' });
+					updateTooltipPosition(e);
 				});
 
 				$(g).on('mouseleave', function () {
@@ -783,7 +828,7 @@
 			}
 
 			$('#aips-drawer-focus-btn').data('raw-id', node.raw_id);
-			$('#aips-node-drawer').show();
+			$('#aips-node-drawer').removeClass('aips-hidden').show();
 		},
 
 		/**
