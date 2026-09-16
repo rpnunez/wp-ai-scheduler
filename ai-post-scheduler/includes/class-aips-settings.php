@@ -242,6 +242,38 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_default_ttl'],
 			),
+			'aips_embeddings_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_enabled'],
+			),
+			'aips_embeddings_scope' => array(
+				'sanitize_callback' => array($ui, 'sanitize_embeddings_scope'),
+				'default'           => $defaults['aips_embeddings_scope'],
+			),
+			'aips_embeddings_date_days' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_date_days'],
+			),
+			'aips_embeddings_date_after' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_embeddings_date_after'],
+			),
+			'aips_embeddings_rate_limits_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_rate_limits_enabled'],
+			),
+			'aips_embeddings_daily_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_daily_limit'],
+			),
+			'aips_embeddings_weekly_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_weekly_limit'],
+			),
+			'aips_embeddings_monthly_limit' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_monthly_limit'],
+			),
 			'aips_embeddings_provider' => array(
 				'sanitize_callback' => 'sanitize_key',
 				'default'           => $defaults['aips_embeddings_provider'],
@@ -431,6 +463,81 @@ class AIPS_Settings {
             'aips_conversational_metadata_turn',
             __('Combined Metadata Turn', 'ai-post-scheduler'),
             array($this->ui, 'conversational_metadata_turn_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Vector Embeddings & Content Indexer Settings
+        // -----------------------------------------------------------------------
+        add_settings_field(
+            'aips_embeddings_header',
+            '<strong>' . esc_html__('Vector Embeddings & Content Indexer', 'ai-post-scheduler') . '</strong>',
+            array($this->ui, 'embeddings_header_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_enabled',
+            __('Enable Vector Embeddings', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_scope',
+            __('Indexing Scope Filter', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_scope_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_rate_limits',
+            __('Rate Limiting & Quotas', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_rate_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_auto_index_on_publish',
+            __('Auto-Index on Publish', 'ai-post-scheduler'),
+            array($this->ui, 'auto_index_on_publish_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_provider',
+            __('Embeddings Provider', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_provider_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_model',
+            __('Embeddings Model', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_model_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_env_id',
+            __('Embeddings Environment ID', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_env_id_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_dimensions',
+            __('Vector Dimensions', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_dimensions_field_callback'),
             'aips-settings',
             'aips_ai_section'
         );

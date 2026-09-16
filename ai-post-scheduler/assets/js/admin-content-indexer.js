@@ -225,6 +225,34 @@
 					$('#aips-stat-unindexed').text(Math.max(0, data.total_posts - data.total_indexed));
 					$('#aips-indexer-slice-count').text(data.total_indexed + ' / ' + data.total_posts);
 
+					// Update live rate limit meters if returned
+					if (data.rate_limits) {
+						var rl = data.rate_limits;
+						var dCnt = rl.daily_count || 0, dLim = rl.daily_limit || 0;
+						var wCnt = rl.weekly_count || 0, wLim = rl.weekly_limit || 0;
+						var mCnt = rl.monthly_count || 0, mLim = rl.monthly_limit || 0;
+						$('#aips-meter-daily-count').html('<strong>' + dCnt + '</strong> / ' + (dLim > 0 ? dLim : '∞'));
+						$('#aips-meter-weekly-count').html('<strong>' + wCnt + '</strong> / ' + (wLim > 0 ? wLim : '∞'));
+						$('#aips-meter-monthly-count').html('<strong>' + mCnt + '</strong> / ' + (mLim > 0 ? mLim : '∞'));
+						if (dLim > 0) $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%');
+						if (wLim > 0) $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%');
+						if (mLim > 0) $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%');
+					}
+
+					if (data.rate_limit_exceeded) {
+						self.isIndexing = false;
+						self.isPaused = false;
+						$('#aips-pause-indexing-btn').hide();
+						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Backfill Scan');
+						$('#aips-indexer-live-banner').slideUp(200);
+
+						var errorMsg = (data.rate_limit_error && data.rate_limit_error.message) ? data.rate_limit_error.message : 'Embedding rate limit reached. Indexing paused.';
+						$('#aips-rate-limit-warning-msg').text(errorMsg);
+						$('#aips-rate-limit-warning-banner').removeClass('aips-hidden').slideDown(200);
+						AIPS.Utilities && AIPS.Utilities.showNotice(errorMsg, 'warning');
+						return;
+					}
+
 					if (data.done) {
 						self.isIndexing = false;
 						$('#aips-pause-indexing-btn').hide();
@@ -628,17 +656,27 @@
 		 */
 		handleSaveSettings: function (e) {
 			e.preventDefault();
-			var formData = $(e.target).serializeArray();
+			var $form = $(e.target);
+			var formData = $form.serializeArray();
 			var payload = {
 				action: 'aips_indexer_save_settings',
 				nonce: aipsContentIndexerL10n.nonce,
-				post_types: []
+				post_types: [],
+				embeddings_enabled: $form.find('input[name="embeddings_enabled"]').is(':checked') ? 1 : 0,
+				auto_index_on_publish: $form.find('input[name="auto_index_on_publish"]').is(':checked') ? 1 : 0,
+				related_posts_enabled: $form.find('input[name="related_posts_enabled"]').is(':checked') ? 1 : 0,
+				related_posts_auto_append: $form.find('input[name="related_posts_auto_append"]').is(':checked') ? 1 : 0
 			};
 
 			formData.forEach(function (item) {
 				if (item.name === 'post_types[]') {
 					payload.post_types.push(item.value);
-				} else {
+				} else if (
+					item.name !== 'embeddings_enabled' &&
+					item.name !== 'auto_index_on_publish' &&
+					item.name !== 'related_posts_enabled' &&
+					item.name !== 'related_posts_auto_append'
+				) {
 					payload[item.name] = item.value;
 				}
 			});

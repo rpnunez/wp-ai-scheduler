@@ -52,6 +52,10 @@
 			$('#aips-settings-form').on('submit', AIPS.onSettingsFormSubmit);
 			$(document).on('aips:tabSwitch', AIPS.onSettingsTabSwitch);
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
+			$(document).on('change', '#aips_embeddings_scope', function() {
+				var isDateRange = $(this).val() === 'date_range';
+				$('#aips-scope-date-range-fields').toggleClass('aips-hidden', !isDateRange);
+			});
 		},
 
 		/**
