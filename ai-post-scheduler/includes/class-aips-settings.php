@@ -306,6 +306,34 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_auto_index_on_publish'],
 			),
+			'aips_related_posts_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_related_posts_enabled'],
+			),
+			'aips_related_posts_auto_append' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_related_posts_auto_append'],
+			),
+			'aips_related_posts_heading' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_related_posts_heading'],
+			),
+			'aips_related_posts_count' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_related_posts_count'],
+			),
+			'aips_related_posts_layout' => array(
+				'sanitize_callback' => array($ui, 'sanitize_related_posts_layout'),
+				'default'           => $defaults['aips_related_posts_layout'],
+			),
+			'aips_deduplication_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_deduplication_mode'),
+				'default'           => $defaults['aips_deduplication_mode'],
+			),
+			'aips_deduplication_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_deduplication_threshold'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
@@ -370,12 +398,12 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
-        // AI section: AI Model, Environment ID
+        // Card 1: Content Generation AI Provider
         // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_ai_section',
-            __('AI Settings', 'ai-post-scheduler'),
-            array($this->ui, 'ai_section_callback'),
+            'aips_ai_provider_section',
+            __('Content Generation AI Provider', 'ai-post-scheduler'),
+            array($this->ui, 'ai_provider_section_callback'),
             'aips-settings'
         );
 
@@ -384,7 +412,7 @@ class AIPS_Settings {
             __('AI Provider', 'ai-post-scheduler'),
             array($this->ui, 'ai_provider_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_provider_section'
         );
 
 		add_settings_field(
@@ -392,7 +420,7 @@ class AIPS_Settings {
 			__('WordPress AI Connectors', 'ai-post-scheduler'),
 			array($this->ui, 'wp_ai_connectors_field_callback'),
 			'aips-settings',
-			'aips_ai_section'
+			'aips_ai_provider_section'
 		);
 
         add_settings_field(
@@ -400,7 +428,7 @@ class AIPS_Settings {
             __('AI Model', 'ai-post-scheduler'),
             array($this->ui, 'ai_model_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_provider_section'
         );
 
         add_settings_field(
@@ -408,7 +436,7 @@ class AIPS_Settings {
             __('Environment ID', 'ai-post-scheduler'),
             array($this->ui, 'ai_env_id_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_provider_section'
         );
 
 		add_settings_field(
@@ -416,15 +444,25 @@ class AIPS_Settings {
 			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
 			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
 			'aips-settings',
-			'aips_ai_section'
+			'aips_ai_provider_section'
 		);
+
+        // -----------------------------------------------------------------------
+        // Card 2: Token Budgets & Prompt Optimization
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_tokens_section',
+            __('Token Budgets & Prompt Optimization', 'ai-post-scheduler'),
+            array($this->ui, 'ai_tokens_section_callback'),
+            'aips-settings'
+        );
 
         add_settings_field(
             'aips_max_tokens_limit',
             __('Max Tokens Limit', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_limit_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -432,7 +470,7 @@ class AIPS_Settings {
             __('Max Tokens for Post Titles', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_title_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -440,7 +478,7 @@ class AIPS_Settings {
             __('Max Tokens for Post Excerpts', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_excerpt_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -448,7 +486,7 @@ class AIPS_Settings {
             __('Max Tokens for Post Content', 'ai-post-scheduler'),
             array($this->ui, 'max_tokens_content_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -456,7 +494,7 @@ class AIPS_Settings {
             __('Conversational Generation', 'ai-post-scheduler'),
             array($this->ui, 'conversational_generation_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         add_settings_field(
@@ -464,74 +502,49 @@ class AIPS_Settings {
             __('Combined Metadata Turn', 'ai-post-scheduler'),
             array($this->ui, 'conversational_metadata_turn_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_tokens_section'
         );
 
         // -----------------------------------------------------------------------
-        // Vector Embeddings & Content Indexer Settings
+        // Card 3: Vector Embeddings Engine & Model
         // -----------------------------------------------------------------------
-        add_settings_field(
-            'aips_embeddings_header',
-            '<strong>' . esc_html__('Vector Embeddings & Content Indexer', 'ai-post-scheduler') . '</strong>',
-            array($this->ui, 'embeddings_header_callback'),
-            'aips-settings',
-            'aips_ai_section'
+        add_settings_section(
+            'aips_ai_embeddings_section',
+            __('Vector Embeddings Engine & Model', 'ai-post-scheduler'),
+            array($this->ui, 'ai_embeddings_section_callback'),
+            'aips-settings'
         );
 
         add_settings_field(
             'aips_embeddings_enabled',
-            __('Enable Vector Embeddings', 'ai-post-scheduler'),
+            __('Enable Embeddings System', 'ai-post-scheduler'),
             array($this->ui, 'embeddings_enabled_field_callback'),
             'aips-settings',
-            'aips_ai_section'
-        );
-
-        add_settings_field(
-            'aips_embeddings_scope',
-            __('Indexing Scope Filter', 'ai-post-scheduler'),
-            array($this->ui, 'embeddings_scope_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
-
-        add_settings_field(
-            'aips_embeddings_rate_limits',
-            __('Rate Limiting & Quotas', 'ai-post-scheduler'),
-            array($this->ui, 'embeddings_rate_limits_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
-
-        add_settings_field(
-            'aips_auto_index_on_publish',
-            __('Auto-Index on Publish', 'ai-post-scheduler'),
-            array($this->ui, 'auto_index_on_publish_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
+            'aips_ai_embeddings_section'
         );
 
         add_settings_field(
             'aips_embeddings_provider',
-            __('Embeddings Provider', 'ai-post-scheduler'),
+            __('Vector Embeddings Provider', 'ai-post-scheduler'),
             array($this->ui, 'embeddings_provider_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_embeddings_section'
         );
 
         add_settings_field(
             'aips_embeddings_model',
-            __('Embeddings Model', 'ai-post-scheduler'),
+            __('Embedding Model', 'ai-post-scheduler'),
             array($this->ui, 'embeddings_model_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_embeddings_section'
         );
 
         add_settings_field(
             'aips_embeddings_env_id',
-            __('Embeddings Environment ID', 'ai-post-scheduler'),
+            __('Meow AI Engine Environment', 'ai-post-scheduler'),
             array($this->ui, 'embeddings_env_id_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_embeddings_section'
         );
 
         add_settings_field(
@@ -539,7 +552,141 @@ class AIPS_Settings {
             __('Vector Dimensions', 'ai-post-scheduler'),
             array($this->ui, 'embeddings_dimensions_field_callback'),
             'aips-settings',
-            'aips_ai_section'
+            'aips_ai_embeddings_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 4: Indexing Scope, Continuous Sync & Rate Limits
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_scope_section',
+            __('Indexing Scope, Continuous Sync & Rate Limits', 'ai-post-scheduler'),
+            array($this->ui, 'ai_scope_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_embeddings_quota_meters',
+            __('Usage & Rate Limits Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_quota_meters_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_scope',
+            __('Content Ingestion Scope', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_scope_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_post_types',
+            __('Post Types to Index', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_post_types_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_auto_index_on_publish',
+            __('Auto-Sync on Publish', 'ai-post-scheduler'),
+            array($this->ui, 'auto_index_on_publish_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_verbose_history',
+            __('Activity Logging', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_verbose_history_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_rate_limits',
+            __('Rate Limits & Quota Protections', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_rate_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_similarity_threshold',
+            __('Related Posts Similarity Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_similarity_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 5: Frontend Related Posts Engine
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_related_posts_section',
+            __('Frontend Related Posts Engine', 'ai-post-scheduler'),
+            array($this->ui, 'ai_related_posts_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_related_posts_enabled',
+            __('Enable Related Posts Engine', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_auto_append',
+            __('Auto-Append to Post Content', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_auto_append_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_heading',
+            __('Section Heading', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_heading_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        add_settings_field(
+            'aips_related_posts_count_layout',
+            __('Default Count & Layout', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_count_layout_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 6: Semantic Duplicate Detection & Gatekeeper Guard
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_deduplication_section',
+            __('Semantic Duplicate Detection & Gatekeeper Guard', 'ai-post-scheduler'),
+            array($this->ui, 'ai_deduplication_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_deduplication_mode',
+            __('Gatekeeper Action on Duplicate', 'ai-post-scheduler'),
+            array($this->ui, 'deduplication_mode_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_deduplication_threshold',
+            __('Duplicate Similarity Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'deduplication_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
         );
 
         // -----------------------------------------------------------------------

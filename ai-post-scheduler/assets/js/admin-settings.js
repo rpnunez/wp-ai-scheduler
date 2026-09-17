@@ -52,9 +52,108 @@
 			$('#aips-settings-form').on('submit', AIPS.onSettingsFormSubmit);
 			$(document).on('aips:tabSwitch', AIPS.onSettingsTabSwitch);
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
-			$(document).on('change', '#aips_embeddings_scope', function() {
-				var isDateRange = $(this).val() === 'date_range';
-				$('#aips-scope-date-range-fields').toggleClass('aips-hidden', !isDateRange);
+			$(document).on('change', 'input[name="aips_embeddings_scope"], #aips_embeddings_scope', function() {
+				var val = $(this).val();
+				if ($(this).is(':radio')) {
+					val = $('input[name="aips_embeddings_scope"]:checked').val();
+				}
+				var isDateRange = val === 'date_range';
+				var $box = $('#aips-scope-date-range-fields');
+				$box.toggleClass('aips-hidden', !isDateRange);
+				if (isDateRange) {
+					$box.show();
+				} else {
+					$box.hide();
+				}
+			});
+			$(document).on('click', '#aips-fetch-meow-envs-btn', AIPS.onFetchMeowEnvironments);
+			$(document).on('change', '#aips-meow-envs-select', function() {
+				var selected = $(this).find(':selected');
+				if (!selected.val()) {
+					return;
+				}
+				$('#aips_embeddings_env_id').val(selected.val());
+				if (selected.data('model')) {
+					$('#aips_embeddings_model').val(selected.data('model'));
+				}
+				if (selected.data('dimensions')) {
+					$('#aips_embeddings_dimensions').val(selected.data('dimensions'));
+				}
+			});
+		},
+
+		/**
+		 * Fetch configured embedding environments from Meow AI Engine.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onFetchMeowEnvironments: function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var originalHtml = $btn.html();
+			$btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> ' + ((window.aipsSettingsL10n && aipsSettingsL10n.discovering) ? aipsSettingsL10n.discovering : 'Discovering...'));
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_indexer_fetch_meow_environments',
+					nonce: aipsAjax.nonce
+				},
+				success: function(response) {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (response.success && response.data && response.data.environments) {
+						var envs = response.data.environments;
+						var $select = $('#aips-meow-envs-select');
+						$select.empty();
+						$select.append($('<option>', {
+							value: '',
+							text: '— Select a discovered environment (' + envs.length + ' found) —'
+						}));
+
+						envs.forEach(function(env) {
+							var label = env.name || env.id;
+							if (env.type) {
+								label += ' (' + env.type + ')';
+							}
+							var $opt = $('<option>', {
+								value: env.id,
+								text: label
+							});
+							if (env.model) {
+								$opt.attr('data-model', env.model);
+							}
+							if (env.dimensions) {
+								$opt.attr('data-dimensions', env.dimensions);
+							}
+							$select.append($opt);
+						});
+
+						$('#aips-meow-envs-dropdown-container').removeClass('aips-hidden').show();
+						if (envs.length === 0) {
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast('No custom embedding environments detected in Meow AI Engine.', 'info');
+							}
+						}
+					} else {
+						var errMsg = (response.data && response.data.message) ? response.data.message : 'Could not fetch Meow environments.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(errMsg, 'error');
+						} else {
+							alert(errMsg);
+						}
+					}
+				},
+				error: function() {
+					$btn.prop('disabled', false).html(originalHtml);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Failed to connect to Meow Apps AI Engine.', 'error');
+					} else {
+						alert('Failed to connect to Meow Apps AI Engine.');
+					}
+				}
 			});
 		},
 
@@ -139,6 +238,14 @@
 		 */
 		collectSettingsPayload: function($scope) {
 			var payload = {};
+
+			// First, ensure non-array checkboxes in the active tab default to 0 if unchecked
+			$scope.find('input[type="checkbox"][name]').each(function() {
+				var name = $(this).attr('name');
+				if (name && !/\[\]$/.test(name) && !$(this).is(':checked')) {
+					AIPS.assignNestedSetting(payload, name, 0);
+				}
+			});
 
 			$scope.find(':input[name]').serializeArray().forEach(function(field) {
 				if (!field.name || field.name === 'action' || field.name === 'option_page' || field.name === '_wpnonce' || field.name === '_wp_http_referer') {
