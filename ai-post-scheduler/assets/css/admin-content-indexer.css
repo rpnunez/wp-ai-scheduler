@@ -343,7 +343,8 @@
 .graph-edge {
 	stroke: #334155;
 	stroke-opacity: 0.7;
-	transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease;
+	vector-effect: non-scaling-stroke;
+	transition: stroke 0.2s ease, opacity 0.2s ease;
 }
 
 .graph-edge.edge-high {
@@ -379,6 +380,7 @@
 	fill-opacity: 0.92;
 	stroke: #334155;
 	stroke-width: 1px;
+	vector-effect: non-scaling-stroke;
 	rx: 4px;
 	ry: 4px;
 	transition: stroke 0.2s ease, fill 0.2s ease;
@@ -407,10 +409,11 @@
 
 .graph-node {
 	cursor: pointer;
-	transition: transform 0.2s ease, opacity 0.2s ease;
+	transition: opacity 0.2s ease;
 }
 
 .graph-node circle {
+	vector-effect: non-scaling-stroke;
 	transition: r 0.2s ease, fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
 }
 

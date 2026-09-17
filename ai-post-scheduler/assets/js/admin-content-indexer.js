@@ -229,6 +229,23 @@
 				viewport.setAttribute('transform', 'translate(' + this.panX + ',' + this.panY + ') scale(' + this.zoomScale + ')');
 			}
 			$('#aips-zoom-level').text(Math.round(this.zoomScale * 100) + '%');
+
+			var invScale = 1 / this.zoomScale;
+			$('.graph-node').each(function () {
+				var ox = this.getAttribute('data-orig-x');
+				var oy = this.getAttribute('data-orig-y');
+				if (ox !== null && oy !== null) {
+					this.setAttribute('transform', 'translate(' + ox + ',' + oy + ') scale(' + invScale + ')');
+				}
+			});
+
+			$('.edge-pill').each(function () {
+				var ox = this.getAttribute('data-orig-x');
+				var oy = this.getAttribute('data-orig-y');
+				if (ox !== null && oy !== null) {
+					this.setAttribute('transform', 'translate(' + ox + ',' + oy + ') scale(' + invScale + ')');
+				}
+			});
 		},
 
 		/**
@@ -608,6 +625,7 @@
 				line.setAttribute('y2', tgt.y);
 				line.setAttribute('data-source', edge.source);
 				line.setAttribute('data-target', edge.target);
+				line.setAttribute('vector-effect', 'non-scaling-stroke');
 
 				var weight = edge.weight || 0.6;
 				var edgeClass = 'graph-edge';
@@ -626,20 +644,24 @@
 				pillG.setAttribute('class', 'edge-pill');
 				pillG.setAttribute('data-source', edge.source);
 				pillG.setAttribute('data-target', edge.target);
+				pillG.setAttribute('data-orig-x', midX);
+				pillG.setAttribute('data-orig-y', midY);
+				pillG.setAttribute('transform', 'translate(' + midX + ',' + midY + ') scale(' + (1 / self.zoomScale) + ')');
 
 				var pillBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
 				pillBg.setAttribute('class', 'edge-pill-bg');
-				pillBg.setAttribute('x', midX - 20);
-				pillBg.setAttribute('y', midY - 10);
+				pillBg.setAttribute('x', -20);
+				pillBg.setAttribute('y', -10);
 				pillBg.setAttribute('width', 40);
 				pillBg.setAttribute('height', 20);
 				pillBg.setAttribute('rx', 4);
 				pillBg.setAttribute('ry', 4);
+				pillBg.setAttribute('vector-effect', 'non-scaling-stroke');
 				pillG.appendChild(pillBg);
 
 				var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-				text.setAttribute('x', midX);
-				text.setAttribute('y', midY);
+				text.setAttribute('x', 0);
+				text.setAttribute('y', 0);
 				text.setAttribute('class', 'edge-pill-text');
 				text.textContent = edge.label;
 				pillG.appendChild(text);
@@ -687,10 +709,13 @@
 				}
 				g.setAttribute('class', nodeClass);
 				g.setAttribute('data-id', node.id);
-				g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+				g.setAttribute('data-orig-x', node.x);
+				g.setAttribute('data-orig-y', node.y);
+				g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ') scale(' + (1 / self.zoomScale) + ')');
 
 				var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
 				circle.setAttribute('r', node.is_center ? 24 : 16);
+				circle.setAttribute('vector-effect', 'non-scaling-stroke');
 				g.appendChild(circle);
 
 				var label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
