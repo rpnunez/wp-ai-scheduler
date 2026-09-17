@@ -360,7 +360,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 2: BACKFILL SCANNER & SCOPE
 		     ===================================================================== -->
-		<div id="scanner-tab" class="aips-tab-content" role="tabpanel">
+		<div id="scanner-tab" class="aips-tab-content" role="tabpanel" style="display: none;">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header">
 					<h3 class="aips-panel-title"><?php esc_html_e('Backfill Indexing Status & Breakdown', 'ai-post-scheduler'); ?></h3>
@@ -418,7 +418,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 3: CANNIBALIZATION & DUPLICATE AUDIT
 		     ===================================================================== -->
-		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel">
+		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel" style="display: none;">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header aips-panel-header-flex">
 					<div>

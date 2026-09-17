@@ -5541,9 +5541,14 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 }
 
 .aips-tab-content {
+    display: none;
     padding: var(--aips-space-2) 0;
     background: var(--aips-white);
     min-height: 250px;
+}
+
+.aips-tab-content.active {
+    display: block;
 }
 
 .aips-tab-panel {

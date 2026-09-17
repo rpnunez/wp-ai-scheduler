@@ -13,11 +13,11 @@
 
 /* Tab Navigation & Panel Visibility */
 .aips-tab-content {
-	display: none;
+	display: none !important;
 }
 
 .aips-tab-content.active {
-	display: block;
+	display: block !important;
 }
 
 /* Live Indexing Progress Banner */

@@ -31,6 +31,9 @@
 		 * Initialize component.
 		 */
 		init: function () {
+			$('.aips-tab-content:not(.active)').hide();
+			$('.aips-tab-content.active').show();
+
 			this.bindEvents();
 			this.initTabs();
 			this.loadInitialGraph();
@@ -261,10 +264,10 @@
 				var tab = $(this).data('tab');
 
 				$('.aips-tab-link').removeClass('active');
-				$('.aips-tab-content').removeClass('active');
+				$('.aips-tab-content').removeClass('active').hide();
 
 				$(this).addClass('active');
-				$('#' + tab + '-tab').addClass('active');
+				$('#' + tab + '-tab').addClass('active').show();
 
 				if (tab === 'visualizer' && window.AIPS.ContentIndexer.graphData) {
 					window.AIPS.ContentIndexer.renderSvgGraph(window.AIPS.ContentIndexer.graphData);
