@@ -663,6 +663,14 @@ class AIPS_Settings {
             'aips_ai_related_posts_section'
         );
 
+        add_settings_field(
+            'aips_related_posts_shortcode',
+            __('Shortcode & Block Integration', 'ai-post-scheduler'),
+            array($this->ui, 'related_posts_shortcode_field_callback'),
+            'aips-settings',
+            'aips_ai_related_posts_section'
+        );
+
         // -----------------------------------------------------------------------
         // Card 6: Semantic Duplicate Detection & Gatekeeper Guard
         // -----------------------------------------------------------------------

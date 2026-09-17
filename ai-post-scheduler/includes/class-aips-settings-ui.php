@@ -1518,6 +1518,32 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render related posts shortcode and block integration helper with copy button (Card 5).
+	 *
+	 * @return void
+	 */
+	public function related_posts_shortcode_field_callback() {
+		?>
+		<div class="aips-shortcode-preview-card">
+			<div class="aips-shortcode-code-wrap">
+				<code class="aips-shortcode-display" id="aips-related-posts-shortcode">[aips_related_posts]</code>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-btn" id="aips-copy-shortcode-btn" data-clipboard-text="[aips_related_posts]" title="<?php esc_attr_e('Copy shortcode to clipboard', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-clipboard"></span>
+					<span class="aips-copy-text"><?php esc_html_e('Copy Shortcode', 'ai-post-scheduler'); ?></span>
+				</button>
+			</div>
+			<p class="description">
+				<?php esc_html_e('Place this shortcode anywhere in your content, page builders (Elementor, Divi, Beaver Builder), or widget templates to insert semantic related recommendations.', 'ai-post-scheduler'); ?>
+			</p>
+			<div class="aips-shortcode-attributes-hint">
+				<span class="aips-hint-tag"><strong><?php esc_html_e('Gutenberg Block:', 'ai-post-scheduler'); ?></strong> <code>/Related Posts (AIPS)</code></span>
+				<span class="aips-hint-tag"><strong><?php esc_html_e('Attributes:', 'ai-post-scheduler'); ?></strong> <code>count="4"</code>, <code>heading="Related Articles"</code>, <code>layout="grid|list"</code></span>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Render deduplication gatekeeper action select (Card 6).
 	 *
 	 * @return void

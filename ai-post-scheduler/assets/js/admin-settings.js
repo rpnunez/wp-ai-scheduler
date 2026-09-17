@@ -67,6 +67,7 @@
 				}
 			});
 			$(document).on('click', '#aips-fetch-meow-envs-btn', AIPS.onFetchMeowEnvironments);
+			$(document).on('click', '#aips-copy-shortcode-btn', AIPS.onCopyShortcode);
 			$(document).on('change', '#aips-meow-envs-select', function() {
 				var selected = $(this).find(':selected');
 				if (!selected.val()) {
@@ -80,6 +81,62 @@
 					$('#aips_embeddings_dimensions').val(selected.data('dimensions'));
 				}
 			});
+		},
+
+		/**
+		 * Copy shortcode text to clipboard with visual feedback.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onCopyShortcode: function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var textToCopy = $btn.attr('data-clipboard-text') || $('#aips-related-posts-shortcode').text().trim() || '[aips_related_posts]';
+
+			var doFeedback = function() {
+				var $text = $btn.find('.aips-copy-text');
+				var origText = $text.text();
+				$btn.addClass('copied');
+				$text.text((window.aipsSettingsL10n && aipsSettingsL10n.copied) ? aipsSettingsL10n.copied : 'Copied!');
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast('Shortcode copied to clipboard: ' + textToCopy, 'success');
+				}
+				setTimeout(function() {
+					$btn.removeClass('copied');
+					$text.text(origText);
+				}, 2000);
+			};
+
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(textToCopy).then(doFeedback).catch(function() {
+					AIPS.fallbackCopyText(textToCopy, doFeedback);
+				});
+			} else {
+				AIPS.fallbackCopyText(textToCopy, doFeedback);
+			}
+		},
+
+		/**
+		 * Fallback copy helper using textarea and execCommand.
+		 *
+		 * @param {string}   text     Text to copy.
+		 * @param {Function} callback Callback on success.
+		 * @return {void}
+		 */
+		fallbackCopyText: function(text, callback) {
+			var $temp = $('<textarea>');
+			$('body').append($temp);
+			$temp.val(text).select();
+			try {
+				document.execCommand('copy');
+				if (typeof callback === 'function') {
+					callback();
+				}
+			} catch (err) {
+				// Fallback failed
+			}
+			$temp.remove();
 		},
 
 		/**
