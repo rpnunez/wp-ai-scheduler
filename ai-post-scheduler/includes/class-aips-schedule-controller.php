@@ -66,6 +66,59 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::success($cached);
         }
 
+        $now = time();
+        $next_24h = $now + DAY_IN_SECONDS;
+
+        $next_runs = $this->get_next_runs_status();
+
+        $queue_data = $this->build_queue_timeline($now, $next_24h);
+        $queue_timeline = $queue_data['timeline'];
+        $queue_depth = $queue_data['depth'];
+
+        $schedule_data = $this->build_schedule_timeline($now, $next_24h);
+        $timeline = $schedule_data['timeline'];
+        $active_schedules = $schedule_data['active'];
+        $overdue_schedules = $schedule_data['overdue'];
+
+        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
+        $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
+
+        $last_success = $this->get_last_success_times();
+        $rate_limiter_status = $this->fetch_rate_limiter_status();
+
+        $payload = array(
+            'next_runs' => $next_runs,
+            'timeline' => $timeline,
+            'queue_timeline' => $queue_timeline,
+            'queue_depth' => $queue_depth,
+            'bulk_jobs' => $bulk_counts,
+            'schedule_counts' => array(
+                'active' => $active_schedules,
+                'upcoming_24h' => count($timeline),
+                'overdue' => $overdue_schedules,
+            ),
+            'last_success' => $last_success,
+            'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
+            'last_error' => $bulk_counts['failed'] > 0,
+            'rate_limiter' => $rate_limiter_status,
+            'quick_links' => array(
+                'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
+                'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
+                'telemetry' => AIPS_Admin_Menu_Helper::get_page_url('telemetry'),
+                'system_status' => AIPS_Admin_Menu_Helper::get_page_url('system-status'),
+            ),
+        );
+
+        $cache->set($cache_key, $payload, 60);
+        AIPS_Ajax_Response::success($payload);
+    }
+
+    /**
+     * Get next scheduled runs for main schedule families.
+     *
+     * @return array
+     */
+    private function get_next_runs_status(): array {
         $families = array(
             AIPS_Unified_Schedule_Service::TYPE_TEMPLATE => 'aips_generate_scheduled_posts',
             AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC => 'aips_generate_author_topics',
@@ -76,7 +129,17 @@ class AIPS_Schedule_Controller {
         foreach ($families as $family => $hook) {
             $next_runs[$family] = wp_next_scheduled($hook) ?: null;
         }
+        return $next_runs;
+    }
 
+    /**
+     * Parse the WordPress cron array to build a timeline of queue operations.
+     *
+     * @param int $now
+     * @param int $next_24h
+     * @return array {timeline: array, depth: array}
+     */
+    private function build_queue_timeline(int $now, int $next_24h): array {
         $queue_hooks = array(
             'aips_process_schedule_batch',
             'aips_process_author_topics_slice',
@@ -89,8 +152,7 @@ class AIPS_Schedule_Controller {
         );
         $queue_depth = array_fill_keys($queue_hooks, 0);
         $queue_timeline = array();
-        $now = time();
-        $next_24h = $now + DAY_IN_SECONDS;
+
         $cron = _get_cron_array();
         if (is_array($cron)) {
             foreach ($cron as $timestamp => $hooks) {
@@ -112,8 +174,20 @@ class AIPS_Schedule_Controller {
             }
         }
 
-        // Build schedule timeline from the same unified source the table uses,
-        // so the strip matches "Next Run" values shown to operators.
+        return array(
+            'timeline' => $queue_timeline,
+            'depth' => $queue_depth,
+        );
+    }
+
+    /**
+     * Query unified schedule service and build schedule timeline.
+     *
+     * @param int $now
+     * @param int $next_24h
+     * @return array {timeline: array, active: int, overdue: int}
+     */
+    private function build_schedule_timeline(int $now, int $next_24h): array {
         $unified_service = new AIPS_Unified_Schedule_Service();
         $all_schedules = $unified_service->get_all('', false);
         $timeline = array();
@@ -153,11 +227,27 @@ class AIPS_Schedule_Controller {
             return (int) $a['timestamp'] - (int) $b['timestamp'];
         });
 
-        $bulk_job_store = new AIPS_Bulk_Batch_Job_Store();
-        $bulk_counts = $bulk_job_store->get_status_counts(array('pending', 'processing', 'failed'));
+        return array(
+            'timeline' => $timeline,
+            'active' => $active_schedules,
+            'overdue' => $overdue_schedules,
+        );
+    }
+
+    /**
+     * Fetch the most recent success timestamp for main schedules.
+     *
+     * @return array
+     */
+    private function get_last_success_times(): array {
+        $families = array(
+            AIPS_Unified_Schedule_Service::TYPE_TEMPLATE,
+            AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC,
+            AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST,
+        );
 
         $last_success = array();
-        foreach ($families as $family => $hook) {
+        foreach ($families as $family) {
             $runs = $this->history_repository->get_history(array(
                 'creation_method' => $family,
                 'status' => 'completed',
@@ -165,13 +255,21 @@ class AIPS_Schedule_Controller {
             ));
             $last_success[$family] = !empty($runs[0]->completed_at) ? (int) $runs[0]->completed_at : null;
         }
+        return $last_success;
+    }
 
-        // Get rate limiter status
+    /**
+     * Fetch the API rate limiter status if the service exists.
+     *
+     * @return array
+     */
+    private function fetch_rate_limiter_status(): array {
         $rate_limiter_status = array(
             'enabled' => false,
             'remaining' => 0,
             'max_requests' => 0,
         );
+
         if (class_exists('AIPS_Resilience_Service')) {
             $resilience_service = new AIPS_Resilience_Service();
             if (method_exists($resilience_service, 'get_rate_limiter_status')) {
@@ -179,33 +277,8 @@ class AIPS_Schedule_Controller {
             }
         }
 
-        $payload = array(
-            'next_runs' => $next_runs,
-            'timeline' => $timeline,
-            'queue_timeline' => $queue_timeline,
-            'queue_depth' => $queue_depth,
-            'bulk_jobs' => $bulk_counts,
-            'schedule_counts' => array(
-                'active' => $active_schedules,
-                'upcoming_24h' => count($timeline),
-                'overdue' => $overdue_schedules,
-            ),
-            'last_success' => $last_success,
-            'retry_pending' => ($queue_depth['aips_retry_failed_author_slices_topics'] + $queue_depth['aips_retry_failed_author_slices_posts']) > 0,
-            'last_error' => $bulk_counts['failed'] > 0,
-            'rate_limiter' => $rate_limiter_status,
-            'quick_links' => array(
-                'history' => AIPS_Admin_Menu_Helper::get_page_url('history'),
-                'notifications' => AIPS_Admin_Menu_Helper::get_page_url('settings', array('tab' => 'notifications')),
-                'telemetry' => AIPS_Admin_Menu_Helper::get_page_url('telemetry'),
-                'system_status' => AIPS_Admin_Menu_Helper::get_page_url('system-status'),
-            ),
-        );
-
-        $cache->set($cache_key, $payload, 60);
-        AIPS_Ajax_Response::success($payload);
+        return $rate_limiter_status;
     }
-
     /**
      * Build the generated-post preview payload used by the Templates run-now modal.
      *
