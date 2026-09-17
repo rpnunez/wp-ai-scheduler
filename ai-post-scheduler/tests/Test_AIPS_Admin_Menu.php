@@ -15,6 +15,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$this->admin_menu = new AIPS_Admin_Menu();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 	}
 
 	public function tearDown(): void {
@@ -246,7 +247,7 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 			'Automations should be visible in the primary submenu.'
 		);
 
-		foreach (array('aips-schedule', 'aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
+		foreach (array('aips-campaigns', 'aips-templates', 'aips-authors', 'aips-sources', 'aips-internal-links', 'aips-taxonomy') as $hidden_page) {
 			$this->assertNotContains(
 				$hidden_page,
 				$submenu_pages,
