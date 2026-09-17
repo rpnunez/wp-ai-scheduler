@@ -40,3 +40,9 @@
 **PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
 **Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
 **Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.
+## 2026-09-17 - Add aria-label and aria-hidden to Content Indexer range sliders and buttons
+**Area:** Content Indexer (templates/admin/content-indexer.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add accessible labels & aria-hidden to Content Indexer controls (#2100 review)
+**Learning:** Range sliders (<input type="range">) lack default ARIA labels and adjacent button Dashicons should have aria-hidden="true".
+**Action:** Always ensure custom range sliders have explicit localized aria-labels and decorative Dashicons have aria-hidden="true".
