@@ -31,6 +31,54 @@ class AIPS_Settings_UI {
         echo '<p>' . esc_html__('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler') . '</p>';
     }
 
+	/**
+	 * Render the description for Card 1: Content Generation AI Provider.
+	 *
+	 * @return void
+	 */
+	public function ai_provider_section_callback() {
+	}
+
+	/**
+	 * Render the description for Card 2: Token Budgets & Prompt Optimization.
+	 *
+	 * @return void
+	 */
+	public function ai_tokens_section_callback() {
+	}
+
+	/**
+	 * Render the description for Card 3: Vector Embeddings Engine & Model.
+	 *
+	 * @return void
+	 */
+	public function ai_embeddings_section_callback() {
+	}
+
+	/**
+	 * Render the description for Card 4: Indexing Scope, Continuous Sync & Rate Limits.
+	 *
+	 * @return void
+	 */
+	public function ai_scope_section_callback() {
+	}
+
+	/**
+	 * Render the description for Card 5: Frontend Related Posts Engine.
+	 *
+	 * @return void
+	 */
+	public function ai_related_posts_section_callback() {
+	}
+
+	/**
+	 * Render the description for Card 6: Semantic Duplicate Detection & Gatekeeper Guard.
+	 *
+	 * @return void
+	 */
+	public function ai_deduplication_section_callback() {
+	}
+
     /**
      * Render the description for the feedback settings section.
      *
@@ -1080,4 +1128,503 @@ class AIPS_Settings_UI {
 		return array_values(array_unique($connector_ids));
 	}
 
+	/**
+	 * Render header description for embeddings section in AI settings.
+	 *
+	 * @return void
+	 */
+	public function embeddings_header_callback() {
+		echo '<p class="description">' . esc_html__('Configure vector embeddings, semantic search models, indexing scope, and rate-limiting safeguards to prevent unexpected AI API costs.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render the master toggle for Vector Embeddings (Card 3).
+	 *
+	 * @return void
+	 */
+	public function embeddings_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true);
+		?>
+		<label for="aips_embeddings_enabled">
+			<input type="checkbox" name="aips_embeddings_enabled" id="aips_embeddings_enabled" value="1" <?php checked($value); ?>>
+			<strong><?php esc_html_e('Enable the Vector Embeddings Engine', 'ai-post-scheduler'); ?></strong>
+		</label>
+		<p class="description"><?php esc_html_e('Master switch to enable or disable all vector embedding generation, automated continuous indexing, topic embeddings cron workers, and semantic duplicate detection.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings provider selection field (Card 3).
+	 *
+	 * @return void
+	 */
+	public function embeddings_provider_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_provider', '');
+		?>
+		<select name="aips_embeddings_provider" id="aips_embeddings_provider" class="regular-text">
+			<option value="" <?php selected($value, ''); ?>><?php esc_html_e('Auto-detect (Meow Apps AI Engine preferred)', 'ai-post-scheduler'); ?></option>
+			<option value="meow" <?php selected($value, 'meow'); ?>><?php esc_html_e('Meow Apps AI Engine', 'ai-post-scheduler'); ?></option>
+			<option value="wp_ai_client" <?php selected($value, 'wp_ai_client'); ?>><?php esc_html_e('WordPress AI Client (WP AI API)', 'ai-post-scheduler'); ?></option>
+		</select>
+		<p class="description"><?php esc_html_e('Select which AI subsystem produces vector embeddings. Decoupled from the primary post generation provider.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings model field (Card 3).
+	 *
+	 * @return void
+	 */
+	public function embeddings_model_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_model', 'text-embedding-3-small');
+		?>
+		<input type="text" name="aips_embeddings_model" id="aips_embeddings_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="text-embedding-3-small">
+		<p class="description"><?php esc_html_e('Model identifier (e.g. text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002, all-minilm).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings environment ID field with discovery button (Card 3).
+	 *
+	 * @return void
+	 */
+	public function embeddings_env_id_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_embeddings_env_id', '');
+		?>
+		<div class="aips-env-input-wrap">
+			<input type="text" name="aips_embeddings_env_id" id="aips_embeddings_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g. default, percona_db, pinecone_env', 'ai-post-scheduler'); ?>">
+			<button type="button" id="aips-fetch-meow-envs-btn" class="aips-btn aips-btn-secondary aips-btn-sm">
+				<span class="dashicons dashicons-rest-api"></span>
+				<?php esc_html_e('Fetch Environments from Meow Apps', 'ai-post-scheduler'); ?>
+			</button>
+		</div>
+		<div id="aips-meow-envs-dropdown-container" class="aips-meow-envs-container aips-hidden">
+			<select id="aips-meow-envs-select" class="regular-text">
+				<option value=""><?php esc_html_e('— Select a discovered environment —', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('Optional connection / environment ID from Meow AI Engine (e.g. Percona Server vector database, OpenAI, Pinecone, Qdrant, Ollama).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the embeddings dimensions field (Card 3).
+	 *
+	 * @return void
+	 */
+	public function embeddings_dimensions_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_embeddings_dimensions', 1536);
+		?>
+		<input type="number" min="1" max="8192" step="1" name="aips_embeddings_dimensions" id="aips_embeddings_dimensions" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Number of vector dimensions produced by the model (e.g. 1536 for OpenAI, 768 for Percona / Sentence-Transformers, 384 for all-MiniLM).', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render live quota meters and active scope badge (Card 4).
+	 *
+	 * @return void
+	 */
+	public function embeddings_quota_meters_field_callback() {
+		$config      = AIPS_Config::get_instance();
+		$scope_val   = (string) $config->get_option('aips_embeddings_scope', 'aips_only');
+		$daily_lim   = (int) $config->get_option('aips_embeddings_daily_limit', 50);
+		$weekly_lim  = (int) $config->get_option('aips_embeddings_weekly_limit', 200);
+		$monthly_lim = (int) $config->get_option('aips_embeddings_monthly_limit', 500);
+
+		$daily_cnt   = 0;
+		$weekly_cnt  = 0;
+		$monthly_cnt = 0;
+
+		if (class_exists('AIPS_Content_Indexer_Service')) {
+			$indexer = new AIPS_Content_Indexer_Service();
+			$status  = $indexer->get_indexing_status();
+			if (isset($status['rate_limits'])) {
+				$daily_cnt   = isset($status['rate_limits']['daily_count']) ? (int) $status['rate_limits']['daily_count'] : 0;
+				$weekly_cnt  = isset($status['rate_limits']['weekly_count']) ? (int) $status['rate_limits']['weekly_count'] : 0;
+				$monthly_cnt = isset($status['rate_limits']['monthly_count']) ? (int) $status['rate_limits']['monthly_count'] : 0;
+			}
+		}
+
+		$daily_pct   = $daily_lim > 0 ? min(100, (int) round(($daily_cnt / $daily_lim) * 100)) : 0;
+		$weekly_pct  = $weekly_lim > 0 ? min(100, (int) round(($weekly_cnt / $weekly_lim) * 100)) : 0;
+		$monthly_pct = $monthly_lim > 0 ? min(100, (int) round(($monthly_cnt / $monthly_lim) * 100)) : 0;
+		?>
+		<div class="aips-quota-meters-grid">
+			<div class="aips-quota-meter-item">
+				<div class="aips-quota-meter-header">
+					<span class="aips-quota-meter-label"><?php esc_html_e('Daily Quota (24h)', 'ai-post-scheduler'); ?></span>
+					<span class="aips-quota-meter-count" id="aips-meter-daily-count">
+						<strong><?php echo esc_html($daily_cnt); ?></strong> / <?php echo $daily_lim > 0 ? esc_html($daily_lim) : '∞'; ?>
+					</span>
+				</div>
+				<div class="aips-quota-bar-track">
+					<div class="aips-quota-bar-fill <?php echo $daily_pct >= 90 ? 'aips-quota-danger' : ($daily_pct >= 70 ? 'aips-quota-warning' : ''); ?>" style="width: <?php echo esc_attr($daily_pct); ?>%;"></div>
+				</div>
+			</div>
+
+			<div class="aips-quota-meter-item">
+				<div class="aips-quota-meter-header">
+					<span class="aips-quota-meter-label"><?php esc_html_e('Weekly Quota (7d)', 'ai-post-scheduler'); ?></span>
+					<span class="aips-quota-meter-count" id="aips-meter-weekly-count">
+						<strong><?php echo esc_html($weekly_cnt); ?></strong> / <?php echo $weekly_lim > 0 ? esc_html($weekly_lim) : '∞'; ?>
+					</span>
+				</div>
+				<div class="aips-quota-bar-track">
+					<div class="aips-quota-bar-fill <?php echo $weekly_pct >= 90 ? 'aips-quota-danger' : ($weekly_pct >= 70 ? 'aips-quota-warning' : ''); ?>" style="width: <?php echo esc_attr($weekly_pct); ?>%;"></div>
+				</div>
+			</div>
+
+			<div class="aips-quota-meter-item">
+				<div class="aips-quota-meter-header">
+					<span class="aips-quota-meter-label"><?php esc_html_e('Monthly Quota (30d)', 'ai-post-scheduler'); ?></span>
+					<span class="aips-quota-meter-count" id="aips-meter-monthly-count">
+						<strong><?php echo esc_html($monthly_cnt); ?></strong> / <?php echo $monthly_lim > 0 ? esc_html($monthly_lim) : '∞'; ?>
+					</span>
+				</div>
+				<div class="aips-quota-bar-track">
+					<div class="aips-quota-bar-fill <?php echo $monthly_pct >= 90 ? 'aips-quota-danger' : ($monthly_pct >= 70 ? 'aips-quota-warning' : ''); ?>" style="width: <?php echo esc_attr($monthly_pct); ?>%;"></div>
+				</div>
+			</div>
+		</div>
+
+		<div class="aips-scope-badge-wrap">
+			<span class="aips-scope-badge-label"><?php esc_html_e('Active Indexing Scope:', 'ai-post-scheduler'); ?></span>
+			<span class="aips-scope-badge">
+				<?php
+				if ('aips_only' === $scope_val) {
+					esc_html_e('AIPS-Generated Posts Only (Safe Mode)', 'ai-post-scheduler');
+				} elseif ('date_range' === $scope_val) {
+					esc_html_e('Posts Within Configured Date Range', 'ai-post-scheduler');
+				} else {
+					esc_html_e('All Posts (Entire Site Archive)', 'ai-post-scheduler');
+				}
+				?>
+			</span>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the Indexing Scope Filter setting field (Card 4).
+	 *
+	 * @return void
+	 */
+	public function embeddings_scope_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$scope      = (string) $config->get_option('aips_embeddings_scope', 'aips_only');
+		$date_days  = (int) $config->get_option('aips_embeddings_date_days', 30);
+		$date_after = (string) $config->get_option('aips_embeddings_date_after', '');
+		?>
+		<div class="aips-scope-selector-wrap">
+			<label class="aips-scope-radio-label">
+				<input type="radio" name="aips_embeddings_scope" value="aips_only" <?php checked($scope, 'aips_only'); ?>>
+				<strong><?php esc_html_e('AIPS-Generated Posts Only', 'ai-post-scheduler'); ?></strong>
+				<span class="description"><?php esc_html_e('(Recommended for targeted semantic linking between scheduled articles)', 'ai-post-scheduler'); ?></span>
+			</label>
+			<label class="aips-scope-radio-label">
+				<input type="radio" name="aips_embeddings_scope" value="all" <?php checked($scope === 'all' || $scope === 'all_posts', true); ?>>
+				<strong><?php esc_html_e('All WordPress Posts (Entire Site Library)', 'ai-post-scheduler'); ?></strong>
+				<span class="description"><?php esc_html_e('(Indexes all historical and manual posts across selected post types)', 'ai-post-scheduler'); ?></span>
+			</label>
+			<label class="aips-scope-radio-label">
+				<input type="radio" name="aips_embeddings_scope" value="date_range" <?php checked($scope, 'date_range'); ?>>
+				<strong><?php esc_html_e('Specific Publication Date Range', 'ai-post-scheduler'); ?></strong>
+				<span class="description"><?php esc_html_e('(Index only posts published within a specific historical time window)', 'ai-post-scheduler'); ?></span>
+			</label>
+			<div id="aips-scope-date-range-fields" class="aips-scope-date-range-box" style="<?php echo $scope === 'date_range' ? '' : 'display: none;'; ?>">
+				<p>
+					<label for="aips_embeddings_date_days">
+						<strong><?php esc_html_e('Index posts published in the last:', 'ai-post-scheduler'); ?></strong>
+					</label>
+					<input type="number" min="1" max="3650" step="1" name="aips_embeddings_date_days" id="aips_embeddings_date_days" value="<?php echo esc_attr((string) $date_days); ?>" class="small-text">
+					<?php esc_html_e('days', 'ai-post-scheduler'); ?>
+				</p>
+				<p>
+					<label for="aips_embeddings_date_after">
+						<strong><?php esc_html_e('Or index posts published on/after (YYYY-MM-DD):', 'ai-post-scheduler'); ?></strong>
+					</label>
+					<input type="date" name="aips_embeddings_date_after" id="aips_embeddings_date_after" value="<?php echo esc_attr($date_after); ?>" class="regular-text aips-scope-date-input">
+				</p>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the Indexed Post Types setting field (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_post_types_field_callback() {
+		$selected_pts  = (array) AIPS_Config::get_instance()->get_option('aips_indexer_post_types', array('post'));
+		$available_pts = get_post_types(array('public' => true), 'objects');
+		unset($available_pts['attachment']);
+		?>
+		<fieldset>
+			<?php foreach ($available_pts as $pt_slug => $pt_obj) : ?>
+				<label class="aips-checkbox-label-block">
+					<input type="checkbox" name="aips_indexer_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected_pts, true)); ?>>
+					<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
+				</label>
+			<?php endforeach; ?>
+			<p class="description"><?php esc_html_e('Select which post types to generate embeddings for and include in Related Posts.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render auto-index on publish toggle (Card 4).
+	 *
+	 * @return void
+	 */
+	public function auto_index_on_publish_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_auto_index_on_publish', true);
+		?>
+		<label for="aips_auto_index_on_publish">
+			<input type="checkbox" name="aips_auto_index_on_publish" id="aips_auto_index_on_publish" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Automatically compute vector embeddings whenever a new post is published or updated', 'ai-post-scheduler'); ?>
+		</label>
+		<?php
+	}
+
+	/**
+	 * Render verbose activity logging toggle (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_verbose_history_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_indexer_verbose_history', false);
+		?>
+		<label for="aips_indexer_verbose_history">
+			<input type="checkbox" name="aips_indexer_verbose_history" id="aips_indexer_verbose_history" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Enable verbose indexer run logging in History tab', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Leave disabled for large reindex runs to limit History log volume.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Rate Limiting and Quota Protection fields (Card 4).
+	 *
+	 * @return void
+	 */
+	public function embeddings_rate_limits_field_callback() {
+		$config        = AIPS_Config::get_instance();
+		$enabled       = (bool) $config->get_option('aips_embeddings_rate_limits_enabled', true);
+		$daily_limit   = (int) $config->get_option('aips_embeddings_daily_limit', 50);
+		$weekly_limit  = (int) $config->get_option('aips_embeddings_weekly_limit', 200);
+		$monthly_limit = (int) $config->get_option('aips_embeddings_monthly_limit', 500);
+		?>
+		<fieldset class="aips-embeddings-rate-limits">
+			<label for="aips_embeddings_rate_limits_enabled">
+				<input type="checkbox" name="aips_embeddings_rate_limits_enabled" id="aips_embeddings_rate_limits_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Block further vector embedding API calls when spending limits are reached', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p class="description">
+				<?php esc_html_e('Protects your AI API budget by capping total embedding calls across rolling 24-hour, 7-day, and 30-day windows.', 'ai-post-scheduler'); ?>
+			</p>
+			<div class="aips-rate-limits-grid">
+				<div class="aips-rate-limit-field">
+					<label for="aips_embeddings_daily_limit"><?php esc_html_e('24-Hour Limit:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0" step="1" name="aips_embeddings_daily_limit" id="aips_embeddings_daily_limit" value="<?php echo esc_attr((string) $daily_limit); ?>" class="small-text">
+					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+				</div>
+				<div class="aips-rate-limit-field">
+					<label for="aips_embeddings_weekly_limit"><?php esc_html_e('7-Day Limit:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0" step="1" name="aips_embeddings_weekly_limit" id="aips_embeddings_weekly_limit" value="<?php echo esc_attr((string) $weekly_limit); ?>" class="small-text">
+					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+				</div>
+				<div class="aips-rate-limit-field">
+					<label for="aips_embeddings_monthly_limit"><?php esc_html_e('30-Day Limit:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0" step="1" name="aips_embeddings_monthly_limit" id="aips_embeddings_monthly_limit" value="<?php echo esc_attr((string) $monthly_limit); ?>" class="small-text">
+					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
+				</div>
+			</div>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render related posts similarity threshold setting (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_similarity_threshold_field_callback() {
+		$value = (float) AIPS_Config::get_instance()->get_option('aips_indexer_similarity_threshold', 0.65);
+		?>
+		<input type="number" step="0.05" min="0.40" max="0.95" name="aips_indexer_similarity_threshold" id="aips_indexer_similarity_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Minimum cosine similarity (0.40 - 0.95) for two posts to be considered related. Default: 0.65', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render related posts enable toggle (Card 5).
+	 *
+	 * @return void
+	 */
+	public function related_posts_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_related_posts_enabled', true);
+		?>
+		<label for="aips_related_posts_enabled">
+			<input type="checkbox" name="aips_related_posts_enabled" id="aips_related_posts_enabled" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Enable semantic recommendations via vector similarity', 'ai-post-scheduler'); ?>
+		</label>
+		<?php
+	}
+
+	/**
+	 * Render related posts auto-append toggle (Card 5).
+	 *
+	 * @return void
+	 */
+	public function related_posts_auto_append_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_related_posts_auto_append', false);
+		?>
+		<label for="aips_related_posts_auto_append">
+			<input type="checkbox" name="aips_related_posts_auto_append" id="aips_related_posts_auto_append" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Automatically render related articles below single post content', 'ai-post-scheduler'); ?>
+		</label>
+		<?php
+	}
+
+	/**
+	 * Render related posts heading title (Card 5).
+	 *
+	 * @return void
+	 */
+	public function related_posts_heading_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_related_posts_heading', 'Related Articles');
+		?>
+		<input type="text" name="aips_related_posts_heading" id="aips_related_posts_heading" value="<?php echo esc_attr($value); ?>" class="regular-text">
+		<?php
+	}
+
+	/**
+	 * Render related posts count and layout options (Card 5).
+	 *
+	 * @return void
+	 */
+	public function related_posts_count_layout_field_callback() {
+		$count  = (int) AIPS_Config::get_instance()->get_option('aips_related_posts_count', 4);
+		$layout = (string) AIPS_Config::get_instance()->get_option('aips_related_posts_layout', 'grid');
+		?>
+		<input type="number" min="1" max="12" name="aips_related_posts_count" id="aips_related_posts_count" value="<?php echo esc_attr((string) $count); ?>" class="small-text"> <?php esc_html_e('articles', 'ai-post-scheduler'); ?>
+		<select name="aips_related_posts_layout" id="aips_related_posts_layout" class="aips-select-inline-gap">
+			<option value="grid" <?php selected($layout, 'grid'); ?>><?php esc_html_e('Card Grid', 'ai-post-scheduler'); ?></option>
+			<option value="list" <?php selected($layout, 'list'); ?>><?php esc_html_e('List Layout', 'ai-post-scheduler'); ?></option>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Render related posts shortcode and block integration helper with copy button (Card 5).
+	 *
+	 * @return void
+	 */
+	public function related_posts_shortcode_field_callback() {
+		?>
+		<div class="aips-shortcode-preview-card">
+			<div class="aips-shortcode-code-wrap">
+				<code class="aips-shortcode-display" id="aips-related-posts-shortcode">[aips_related_posts]</code>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-btn" id="aips-copy-shortcode-btn" data-clipboard-text="[aips_related_posts]" title="<?php esc_attr_e('Copy shortcode to clipboard', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-clipboard"></span>
+					<span class="aips-copy-text"><?php esc_html_e('Copy Shortcode', 'ai-post-scheduler'); ?></span>
+				</button>
+			</div>
+			<p class="description">
+				<?php esc_html_e('Place this shortcode anywhere in your content, page builders (Elementor, Divi, Beaver Builder), or widget templates to insert semantic related recommendations.', 'ai-post-scheduler'); ?>
+			</p>
+			<div class="aips-shortcode-attributes-hint">
+				<span class="aips-hint-tag"><strong><?php esc_html_e('Gutenberg Block:', 'ai-post-scheduler'); ?></strong> <code>/Related Posts (AIPS)</code></span>
+				<span class="aips-hint-tag"><strong><?php esc_html_e('Attributes:', 'ai-post-scheduler'); ?></strong> <code>count="4"</code>, <code>heading="Related Articles"</code>, <code>layout="grid|list"</code></span>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render deduplication gatekeeper action select (Card 6).
+	 *
+	 * @return void
+	 */
+	public function deduplication_mode_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_deduplication_mode', 'warn');
+		?>
+		<select name="aips_deduplication_mode" id="aips_deduplication_mode">
+			<option value="warn" <?php selected($value, 'warn'); ?>><?php esc_html_e('Warn & Flag (Lowers Score & shows Duplicate Badge)', 'ai-post-scheduler'); ?></option>
+			<option value="block" <?php selected($value, 'block'); ?>><?php esc_html_e('Strict Block (Skip automated generation if duplicate exists)', 'ai-post-scheduler'); ?></option>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Render deduplication similarity threshold number input (Card 6).
+	 *
+	 * @return void
+	 */
+	public function deduplication_threshold_field_callback() {
+		$value = (float) AIPS_Config::get_instance()->get_option('aips_deduplication_threshold', 0.85);
+		?>
+		<input type="number" step="0.05" min="0.70" max="0.99" name="aips_deduplication_threshold" id="aips_deduplication_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Cosine similarity threshold to classify a topic or post as a duplicate candidate. Default: 0.85', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Sanitize indexing scope option.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string Sanitized scope ('aips_only', 'date_range', 'all').
+	 */
+	public function sanitize_embeddings_scope($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('aips_only', 'date_range', 'all'), true) ? $value : 'aips_only';
+	}
+
+	/**
+	 * Sanitize related posts layout option.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string ('grid', 'list').
+	 */
+	public function sanitize_related_posts_layout($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('grid', 'list'), true) ? $value : 'grid';
+	}
+
+	/**
+	 * Sanitize deduplication mode option.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string ('warn', 'block').
+	 */
+	public function sanitize_deduplication_mode($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('warn', 'block'), true) ? $value : 'warn';
+	}
+
+	/**
+	 * Sanitize post types array.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return array<string>
+	 */
+	public function sanitize_post_types($value) {
+		if (!is_array($value)) {
+			return array('post');
+		}
+		$sanitized = array();
+		foreach ($value as $pt) {
+			if (is_scalar($pt)) {
+				$pt = sanitize_key((string) $pt);
+				if (!empty($pt)) {
+					$sanitized[] = $pt;
+				}
+			}
+		}
+		return !empty($sanitized) ? array_values(array_unique($sanitized)) : array('post');
+	}
+
 }
+

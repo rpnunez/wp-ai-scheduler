@@ -51,10 +51,84 @@ if (!defined('ABSPATH')) {
 
 					<!-- AI Tab -->
 					<div id="settings-ai-tab" class="aips-tab-content" style="display:none;">
-						<p class="description"><?php esc_html_e('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler'); ?></p>
-						<table class="form-table" role="presentation">
-							<?php do_settings_fields('aips-settings', 'aips_ai_section'); ?>
-						</table>
+						<!-- Card 1: AI Provider -->
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Content Generation AI Provider', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Configure the primary AI provider and model used to generate post content and metadata.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_ai_provider_section'); ?>
+								</table>
+							</div>
+						</div>
+
+						<!-- Card 2: Token Budgets & Optimization -->
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Token Budgets & Prompt Optimization', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Tune token limits per content section and manage multi-turn conversational generation.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_ai_tokens_section'); ?>
+								</table>
+							</div>
+						</div>
+
+						<!-- Card 3: Vector Embeddings Engine & Model -->
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Vector Embeddings Engine & Model', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Configure the vector embedding provider, model, dimensions, and Meow environment used for semantic search, relationships, and indexing.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_ai_embeddings_section'); ?>
+								</table>
+							</div>
+						</div>
+
+						<!-- Card 4: Indexing Scope, Continuous Sync & Rate Limits -->
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Indexing Scope, Continuous Sync & Rate Limits', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Define which post types and publication ranges are vectorized, configure real-time sync, and enforce sliding-window API quotas.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_ai_scope_section'); ?>
+								</table>
+							</div>
+						</div>
+
+						<!-- Card 5: Frontend Related Posts Engine -->
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Frontend Related Posts Engine', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Configure automated semantic recommendations, layout styling, and post injection.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_ai_related_posts_section'); ?>
+								</table>
+							</div>
+						</div>
+
+						<!-- Card 6: Semantic Duplicate Detection & Gatekeeper Guard -->
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Semantic Duplicate Detection & Gatekeeper Guard', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Prevent cannibalization and duplicate topics during schedule execution and indexing.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_ai_deduplication_section'); ?>
+								</table>
+							</div>
+						</div>
+
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 						</p>

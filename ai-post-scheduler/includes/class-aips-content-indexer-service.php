@@ -90,6 +90,10 @@ class AIPS_Content_Indexer_Service {
 	 * @return true|WP_Error
 	 */
 	public function index_post($post_id, $compute_relationships = true) {
+		if (!$this->embeddings_service->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		$post_id = absint($post_id);
 		$post    = get_post($post_id);
 
@@ -422,12 +426,21 @@ class AIPS_Content_Indexer_Service {
 			$generated_correlation = true;
 		}
 
+		$rate_limit_error = null;
+
 		try {
 			foreach ($post_ids as $post_id) {
 				$result = $this->index_post($post_id, true);
 
 				if (is_wp_error($result)) {
 					$failed++;
+					if ($result->get_error_code() === 'rate_limit_exceeded') {
+						$rate_limit_error = array(
+							'message' => $result->get_error_message(),
+							'data'    => $result->get_error_data(),
+						);
+						break;
+					}
 				} else {
 					$success++;
 				}
@@ -441,16 +454,19 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$status = $this->get_indexing_status($post_types, $post_status);
-		$done   = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0;
+		$done   = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0 || !empty($rate_limit_error);
 
 		return array(
-			'success'       => $success,
-			'failed'        => $failed,
-			'last_post_id'  => $new_last_id,
-			'done'          => $done,
-			'total_indexed' => $status['indexed'],
-			'total_posts'   => $status['total_posts'],
-			'percent'       => $status['percent'],
+			'success'             => $success,
+			'failed'              => $failed,
+			'last_post_id'        => $new_last_id,
+			'done'                => $done,
+			'total_indexed'       => $status['indexed'],
+			'total_posts'         => $status['total_posts'],
+			'percent'             => $status['percent'],
+			'rate_limit_exceeded' => !empty($rate_limit_error),
+			'rate_limit_error'    => $rate_limit_error,
+			'rate_limits'         => $status['rate_limits'],
 		);
 	}
 
@@ -518,11 +534,50 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Get indexing status across configured post types.
+	 * Check if a post is within the configured indexing scope.
+	 *
+	 * @param int|WP_Post $post Post ID or WP_Post object.
+	 * @return bool True if within scope, false otherwise.
+	 */
+	public function is_post_in_scope($post): bool {
+		$post = get_post($post);
+		if (!$post) {
+			return false;
+		}
+
+		$scope = (string) $this->config->get_option('aips_embeddings_scope', 'aips_only');
+
+		if ('aips_only' === $scope) {
+			$meta = get_post_meta($post->ID, '_aips_generated_post', true);
+			return !empty($meta);
+		}
+
+		if ('date_range' === $scope) {
+			$date_after = (string) $this->config->get_option('aips_embeddings_date_after', '');
+			$date_days  = (int) $this->config->get_option('aips_embeddings_date_days', 30);
+
+			$post_time = strtotime($post->post_date_gmt && '0000-00-00 00:00:00' !== $post->post_date_gmt ? $post->post_date_gmt : $post->post_date);
+
+			if (!empty($date_after)) {
+				$after_time = strtotime($date_after . ' 00:00:00');
+				return $post_time >= $after_time;
+			}
+
+			if ($date_days > 0) {
+				$cutoff = time() - ($date_days * DAY_IN_SECONDS);
+				return $post_time >= $cutoff;
+			}
+		}
+
+		return true; // 'all' scope
+	}
+
+	/**
+	 * Get indexing status across configured post types and scope.
 	 *
 	 * @param string[]|string $post_types  Post types to check.
 	 * @param string          $post_status Status to filter.
-	 * @return array{total_posts: int, indexed: int, unindexed: int, percent: int, post_types: array}
+	 * @return array
 	 */
 	public function get_indexing_status($post_types = array('post'), $post_status = 'publish') {
 		$post_types  = (array) $post_types;
@@ -532,24 +587,24 @@ class AIPS_Content_Indexer_Service {
 			$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		}
 
-		$total_posts = 0;
-		foreach ($post_types as $pt) {
-			$counts = wp_count_posts($pt);
-			if (isset($counts->$post_status)) {
-				$total_posts += (int) $counts->$post_status;
-			}
-		}
+		$scope       = (string) $this->config->get_option('aips_embeddings_scope', 'aips_only');
+		$total_posts = $this->embeddings_repo->count_total_posts_for_scope($post_types, $post_status, $scope);
+		$indexed     = $this->embeddings_repo->count_indexed_for_types($post_types, $post_status, $scope);
+		$unindexed   = max(0, $total_posts - $indexed);
+		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
 
-		$indexed   = $this->embeddings_repo->count_indexed_for_types($post_types, $post_status);
-		$unindexed = max(0, $total_posts - $indexed);
-		$percent   = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		$usage_stats  = $rate_limiter->get_usage_stats();
 
 		return array(
-			'total_posts' => $total_posts,
-			'indexed'     => $indexed,
-			'unindexed'   => $unindexed,
-			'percent'     => $percent,
-			'post_types'  => $post_types,
+			'total_posts'        => $total_posts,
+			'indexed'            => $indexed,
+			'unindexed'          => $unindexed,
+			'percent'            => $percent,
+			'post_types'         => $post_types,
+			'scope'              => $scope,
+			'embeddings_enabled' => $this->embeddings_service->is_enabled(),
+			'rate_limits'        => $usage_stats,
 		);
 	}
 
@@ -577,12 +632,21 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
+		if (!$this->embeddings_service->is_enabled()) {
+			return;
+		}
+
 		if (!$this->config->get_option('aips_auto_index_on_publish', true)) {
 			return;
 		}
 
 		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		if (!in_array($post->post_type, $post_types, true)) {
+			return;
+		}
+
+		// Enforce scope check on real-time continuous indexing
+		if (!$this->is_post_in_scope($post)) {
 			return;
 		}
 

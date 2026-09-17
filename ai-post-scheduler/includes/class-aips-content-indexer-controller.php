@@ -93,21 +93,28 @@ class AIPS_Content_Indexer_Controller {
 		unset($all_post_types['attachment']);
 
 		$settings = array(
+			'embeddings_enabled'       => (bool) $this->config->get_option('aips_embeddings_enabled', true),
 			'embeddings_provider'      => (string) $this->config->get_option('aips_embeddings_provider', ''),
 			'embeddings_model'         => (string) $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small'),
 			'embeddings_env_id'        => (string) $this->config->get_option('aips_embeddings_env_id', ''),
 			'embeddings_dimensions'    => $active_dims,
-			'post_types'               => $post_types,
-			'similarity_threshold'     => (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65),
-			'auto_index_on_publish'    => (bool) $this->config->get_option('aips_auto_index_on_publish', true),
-			'verbose_history'          => (bool) $this->config->get_option('aips_indexer_verbose_history', false),
-			'related_posts_enabled'    => (bool) $this->config->get_option('aips_related_posts_enabled', true),
-			'related_posts_auto_append'=> (bool) $this->config->get_option('aips_related_posts_auto_append', false),
-			'related_posts_count'      => (int) $this->config->get_option('aips_related_posts_count', 4),
-			'related_posts_heading'    => (string) $this->config->get_option('aips_related_posts_heading', 'Related Articles'),
-			'related_posts_layout'     => (string) $this->config->get_option('aips_related_posts_layout', 'grid'),
-			'deduplication_mode'       => (string) $this->config->get_option('aips_deduplication_mode', 'warn'),
-			'deduplication_threshold'  => (float) $this->config->get_option('aips_deduplication_threshold', 0.85),
+			'post_types'                     => $post_types,
+			'similarity_threshold'           => (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65),
+			'auto_index_on_publish'          => (bool) $this->config->get_option('aips_auto_index_on_publish', true),
+			'verbose_history'                => (bool) $this->config->get_option('aips_indexer_verbose_history', false),
+			'embeddings_scope'               => (string) $this->config->get_option('aips_embeddings_scope', 'aips_only'),
+			'embeddings_rate_limits_enabled' => (bool) $this->config->get_option('aips_embeddings_rate_limits_enabled', true),
+			'embeddings_daily_limit'         => (int) $this->config->get_option('aips_embeddings_daily_limit', 50),
+			'embeddings_weekly_limit'        => (int) $this->config->get_option('aips_embeddings_weekly_limit', 200),
+			'embeddings_monthly_limit'       => (int) $this->config->get_option('aips_embeddings_monthly_limit', 500),
+			'rate_limits'                    => isset($status['rate_limits']) ? $status['rate_limits'] : array(),
+			'related_posts_enabled'          => (bool) $this->config->get_option('aips_related_posts_enabled', true),
+			'related_posts_auto_append'      => (bool) $this->config->get_option('aips_related_posts_auto_append', false),
+			'related_posts_count'            => (int) $this->config->get_option('aips_related_posts_count', 4),
+			'related_posts_heading'          => (string) $this->config->get_option('aips_related_posts_heading', 'Related Articles'),
+			'related_posts_layout'           => (string) $this->config->get_option('aips_related_posts_layout', 'grid'),
+			'deduplication_mode'             => (string) $this->config->get_option('aips_deduplication_mode', 'warn'),
+			'deduplication_threshold'        => (float) $this->config->get_option('aips_deduplication_threshold', 0.85),
 		);
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/content-indexer.php';
@@ -128,6 +135,7 @@ class AIPS_Content_Indexer_Controller {
 		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
 
 		AIPS_Ajax_Response::success(array(
+			'embeddings_enabled' => (bool) $this->config->get_option('aips_embeddings_enabled', true),
 			'status'             => $status,
 			'stats'              => $stats,
 			'stored_dimensions'  => $stored_dims,
@@ -141,6 +149,10 @@ class AIPS_Content_Indexer_Controller {
 	 */
 	public function ajax_process_batch() {
 		$this->verify_request();
+
+		if (!$this->config->get_option('aips_embeddings_enabled', true)) {
+			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
 
 		$batch_size   = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 10;
 		$last_post_id = isset($_POST['last_post_id']) ? absint($_POST['last_post_id']) : 0;
@@ -231,11 +243,20 @@ class AIPS_Content_Indexer_Controller {
 		));
 
 		$results = array();
-		foreach ($posts as $p) {
-			$results[] = array(
-				'id'    => $p->ID,
-				'title' => $p->post_title . " ({$p->post_type} #{$p->ID})",
-			);
+		if (!empty($posts)) {
+			$post_ids    = wp_list_pluck($posts, 'ID');
+			$indexed_map = $this->embeddings_repo->get_by_post_ids($post_ids);
+
+			foreach ($posts as $p) {
+				$is_indexed = isset($indexed_map[$p->ID]);
+				$results[]  = array(
+					'id'         => $p->ID,
+					'title'      => $p->post_title,
+					'label'      => $p->post_title . " ({$p->post_type} #{$p->ID})",
+					'post_type'  => $p->post_type,
+					'is_indexed' => $is_indexed,
+				);
+			}
 		}
 
 		AIPS_Ajax_Response::success(array('results' => $results));
@@ -265,6 +286,11 @@ class AIPS_Content_Indexer_Controller {
 	 */
 	public function ajax_save_settings() {
 		$this->verify_request();
+
+		if (isset($_POST['embeddings_enabled'])) {
+			$embeddings_enabled = filter_var($_POST['embeddings_enabled'], FILTER_VALIDATE_BOOLEAN);
+			update_option('aips_embeddings_enabled', $embeddings_enabled);
+		}
 
 		if (isset($_POST['embeddings_provider'])) {
 			update_option('aips_embeddings_provider', sanitize_key($_POST['embeddings_provider']));

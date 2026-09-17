@@ -34,7 +34,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			<div class="aips-page-header-top">
 				<div>
 					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-networking" style="font-size:28px;width:28px;height:28px;vertical-align:middle;margin-right:8px;color:#2271b1;"></span>
+						<span class="dashicons dashicons-networking aips-indexer-title-icon"></span>
 						<?php esc_html_e('Content Indexer & Semantic Intelligence', 'ai-post-scheduler'); ?>
 					</h1>
 					<p class="aips-page-description">
@@ -46,7 +46,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<span class="dashicons dashicons-database-import"></span>
 						<span class="btn-text"><?php esc_html_e('Start Backfill Scan', 'ai-post-scheduler'); ?></span>
 					</button>
-					<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary" style="display:none;">
+					<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary aips-hidden">
 						<span class="dashicons dashicons-controls-pause"></span>
 						<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
 					</button>
@@ -58,16 +58,33 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			</div>
 		</div>
 
+		<!-- Embeddings Disabled Notice -->
+		<?php if (empty($settings['embeddings_enabled'])) : ?>
+		<div class="notice notice-info inline aips-embeddings-disabled-banner">
+			<div class="aips-banner-inner">
+				<div>
+					<h4 class="aips-banner-title">
+						<span class="dashicons dashicons-info aips-banner-icon"></span>
+						<?php esc_html_e('Vector Embeddings System is Currently Disabled', 'ai-post-scheduler'); ?>
+					</h4>
+					<p class="aips-banner-desc">
+						<?php esc_html_e('Automatic indexing, continuous sync, and semantic vector similarity checks are turned off. You can re-enable the embeddings engine anytime in the Settings & Thresholds tab.', 'ai-post-scheduler'); ?>
+					</p>
+				</div>
+			</div>
+		</div>
+		<?php endif; ?>
+
 		<!-- Dimension Mismatch Notice -->
 		<?php if (!empty($dimension_mismatch)) : ?>
-		<div class="notice notice-warning inline aips-dimension-mismatch-banner" style="margin: 0 0 20px; padding: 16px; border-left-color: #dba617; background: #fff8e5; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-			<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+		<div class="notice notice-warning inline aips-dimension-mismatch-banner">
+			<div class="aips-banner-inner">
 				<div>
-					<h4 style="margin:0 0 4px;font-size:15px;color:#614700;display:flex;align-items:center;gap:6px;">
-						<span class="dashicons dashicons-warning" style="color:#dba617;font-size:20px;width:20px;height:20px;"></span>
+					<h4 class="aips-banner-title">
+						<span class="dashicons dashicons-warning aips-banner-icon"></span>
 						<?php esc_html_e('Vector Dimension Mismatch Detected', 'ai-post-scheduler'); ?>
 					</h4>
-					<p style="margin:0;font-size:13px;color:#705300;">
+					<p class="aips-banner-desc">
 						<?php
 						printf(
 							/* translators: 1: stored dimensions, 2: active dimensions */
@@ -88,64 +105,99 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		</div>
 		<?php endif; ?>
 
-		<!-- Status / Metric Cards -->
-		<div class="aips-stats-row" style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+		<!-- Rate Limit Notice -->
+		<?php
+		$rate_limits_info = isset($status['rate_limits']) ? $status['rate_limits'] : array();
+		$is_rate_limited  = !empty($rate_limits_info['is_rate_limited']);
+		?>
+		<div id="aips-rate-limit-warning-banner" class="notice notice-error inline aips-quota-alert-banner <?php echo $is_rate_limited ? '' : 'aips-hidden'; ?>">
+			<div class="aips-banner-inner">
+				<div>
+					<h4 class="aips-banner-title">
+						<span class="dashicons dashicons-shield-alt aips-banner-icon"></span>
+						<?php esc_html_e('Embedding Generation Rate Limit Reached', 'ai-post-scheduler'); ?>
+					</h4>
+					<p class="aips-banner-desc" id="aips-rate-limit-warning-msg">
+						<?php
+						if (!empty($rate_limits_info['exceeded_limit'])) {
+							printf(
+								/* translators: 1: period */
+								esc_html__('The %1$s vector embedding rate limit quota has been reached to protect your API budget. Background scanning is paused.', 'ai-post-scheduler'),
+								esc_html($rate_limits_info['exceeded_limit'])
+							);
+						} else {
+							esc_html_e('Vector embedding rate limit quota reached. Scanning paused.', 'ai-post-scheduler');
+						}
+						?>
+					</p>
+				</div>
+				<div>
+					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#settings-ai')); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+						<span class="dashicons dashicons-admin-generic"></span>
+						<?php esc_html_e('Adjust Limits in Settings', 'ai-post-scheduler'); ?>
+					</a>
+				</div>
+			</div>
+		</div>
 
-			<div class="aips-content-panel" style="flex:1.4;min-width:240px;">
-				<div class="aips-panel-body" style="padding:20px;">
-					<p class="aips-stat-label" style="margin:0 0 4px;font-size:12px;text-transform:uppercase;color:#777;font-weight:600;">
+		<!-- Status / Metric Cards -->
+		<div class="aips-stats-row">
+
+			<div class="aips-content-panel aips-stat-card-lg">
+				<div class="aips-panel-body">
+					<p class="aips-stat-label">
 						<?php esc_html_e('Indexed Posts & CPTs', 'ai-post-scheduler'); ?>
 					</p>
-					<div style="display:flex;align-items:baseline;gap:8px;">
-						<p class="aips-stat-value" style="margin:0;font-size:32px;font-weight:800;color:#1d2327;" id="aips-stat-indexed">
+					<div class="aips-stat-value-wrap">
+						<p class="aips-stat-value" id="aips-stat-indexed">
 							<?php echo esc_html($indexed); ?>
 						</p>
-						<span style="font-size:15px;color:#888;">/ <span id="aips-stat-total"><?php echo esc_html($total_posts); ?></span></span>
-						<span id="aips-stat-percent" style="margin-left:auto;font-size:14px;font-weight:700;color:#2271b1;"><?php echo esc_html($percent); ?>%</span>
+						<span class="aips-stat-total">/ <span id="aips-stat-total"><?php echo esc_html($total_posts); ?></span></span>
+						<span id="aips-stat-percent" class="aips-stat-percent"><?php echo esc_html($percent); ?>%</span>
 					</div>
-					<div style="margin-top:12px;background:#e2e4e7;border-radius:6px;height:8px;overflow:hidden;">
-						<div id="aips-index-progress-bar" style="width:<?php echo esc_attr($percent); ?>%;background:linear-gradient(90deg, #2271b1, #3858e9);height:100%;border-radius:6px;transition:width .4s ease;"></div>
+					<div class="aips-stat-progress-track">
+						<div id="aips-index-progress-bar" class="aips-stat-progress-bar" style="width:<?php echo esc_attr($percent); ?>%;"></div>
 					</div>
 				</div>
 			</div>
 
-			<div class="aips-content-panel" style="flex:1;min-width:180px;">
-				<div class="aips-panel-body" style="padding:20px;">
-					<p class="aips-stat-label" style="margin:0 0 4px;font-size:12px;text-transform:uppercase;color:#777;font-weight:600;">
+			<div class="aips-content-panel aips-stat-card-md">
+				<div class="aips-panel-body">
+					<p class="aips-stat-label">
 						<?php esc_html_e('Unindexed Content', 'ai-post-scheduler'); ?>
 					</p>
-					<p class="aips-stat-value" style="margin:0;font-size:32px;font-weight:800;color:#d67500;" id="aips-stat-unindexed">
+					<p class="aips-stat-value aips-stat-value-warning" id="aips-stat-unindexed">
 						<?php echo esc_html($unindexed); ?>
 					</p>
-					<p style="margin:8px 0 0;font-size:12px;color:#888;">
+					<p class="aips-stat-subtext">
 						<?php esc_html_e('Ready for vector generation', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
 			</div>
 
-			<div class="aips-content-panel" style="flex:1;min-width:180px;">
-				<div class="aips-panel-body" style="padding:20px;">
-					<p class="aips-stat-label" style="margin:0 0 4px;font-size:12px;text-transform:uppercase;color:#777;font-weight:600;">
+			<div class="aips-content-panel aips-stat-card-md">
+				<div class="aips-panel-body">
+					<p class="aips-stat-label">
 						<?php esc_html_e('Topic Embeddings', 'ai-post-scheduler'); ?>
 					</p>
-					<p class="aips-stat-value" style="margin:0;font-size:32px;font-weight:800;color:#00a32a;" id="aips-stat-topics">
+					<p class="aips-stat-value aips-stat-value-success" id="aips-stat-topics">
 						<?php echo esc_html($topic_count); ?>
 					</p>
-					<p style="margin:8px 0 0;font-size:12px;color:#888;">
+					<p class="aips-stat-subtext">
 						<?php esc_html_e('Deduplication ready', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
 			</div>
 
-			<div class="aips-content-panel" style="flex:1;min-width:200px;">
-				<div class="aips-panel-body" style="padding:20px;">
-					<p class="aips-stat-label" style="margin:0 0 4px;font-size:12px;text-transform:uppercase;color:#777;font-weight:600;">
+			<div class="aips-content-panel aips-stat-card-dims">
+				<div class="aips-panel-body">
+					<p class="aips-stat-label">
 						<?php esc_html_e('Vector Model & Dims', 'ai-post-scheduler'); ?>
 					</p>
-					<p class="aips-stat-value" style="margin:0;font-size:20px;font-weight:700;color:#2271b1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+					<p class="aips-stat-value aips-stat-value-dims">
 						<?php echo esc_html($active_model); ?>
 					</p>
-					<p style="margin:8px 0 0;font-size:12px;color:#666;">
+					<p class="aips-stat-subtext-dims">
 						<strong><?php echo esc_html($active_dims); ?></strong> <?php esc_html_e('dimensions', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
@@ -154,9 +206,9 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		</div><!-- /.aips-stats-row -->
 
 		<!-- Live Progress Banner (Hidden by default, shown while batch running) -->
-		<div id="aips-indexer-live-banner" class="aips-indexer-banner" style="display:none;">
+		<div id="aips-indexer-live-banner" class="aips-indexer-banner aips-hidden">
 			<div class="aips-indexer-banner-spinner">
-				<span class="spinner is-active" style="float:none;margin:0;"></span>
+				<span class="spinner is-active"></span>
 			</div>
 			<div class="aips-indexer-banner-text">
 				<strong id="aips-indexer-banner-title"><?php esc_html_e('Indexing Content in Progress…', 'ai-post-scheduler'); ?></strong>
@@ -181,10 +233,6 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				<span class="dashicons dashicons-shield"></span>
 				<?php esc_html_e('Duplicate & Cannibalization Audit', 'ai-post-scheduler'); ?>
 			</a>
-			<a href="#settings" class="aips-tab-link" data-tab="settings">
-				<span class="dashicons dashicons-admin-generic"></span>
-				<?php esc_html_e('Settings & Thresholds', 'ai-post-scheduler'); ?>
-			</a>
 		</div>
 
 		<!-- =====================================================================
@@ -196,9 +244,11 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				<!-- Graph Toolbar -->
 				<div class="aips-visualizer-toolbar">
 					<div class="aips-visualizer-search-wrap">
-						<label for="aips-graph-post-select" class="screen-reader-text"><?php esc_html_e('Select Post to Inspect:', 'ai-post-scheduler'); ?></label>
-						<input type="text" id="aips-graph-post-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search post title to inspect node network…', 'ai-post-scheduler'); ?>" autocomplete="off">
-						<div id="aips-graph-post-dropdown" class="aips-autocomplete-dropdown" style="display:none;"></div>
+						<label for="aips-graph-post-search" class="screen-reader-text"><?php esc_html_e('Select Post to Inspect:', 'ai-post-scheduler'); ?></label>
+						<span class="dashicons dashicons-search aips-search-input-icon"></span>
+						<input type="text" id="aips-graph-post-search" class="aips-form-input aips-search-with-icon" placeholder="<?php esc_attr_e('Search post title to inspect node network…', 'ai-post-scheduler'); ?>" autocomplete="off">
+						<button type="button" id="aips-graph-search-clear" class="aips-search-clear-btn aips-hidden" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>">&times;</button>
+						<div id="aips-graph-post-dropdown" class="aips-autocomplete-dropdown aips-hidden"></div>
 						<input type="hidden" id="aips-graph-selected-post-id" value="">
 					</div>
 
@@ -220,19 +270,68 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</div>
 				</div>
 
+				<!-- Active Post Banner (Full Title Display & Exploration Trail) -->
+				<div id="aips-active-post-bar" class="aips-active-post-bar aips-hidden">
+					<div class="aips-active-post-left">
+						<button type="button" id="aips-history-back-btn" class="aips-btn aips-btn-xs aips-btn-secondary aips-hidden" title="<?php esc_attr_e('Back to Previous Post', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-arrow-left-alt"></span>
+							<?php esc_html_e('Back', 'ai-post-scheduler'); ?>
+						</button>
+						<div class="aips-active-post-info">
+							<span class="aips-active-post-tag"><?php esc_html_e('Inspecting:', 'ai-post-scheduler'); ?></span>
+							<strong id="aips-active-post-title" class="aips-active-post-title"></strong>
+							<span id="aips-active-post-meta" class="aips-active-post-meta"></span>
+						</div>
+						<div id="aips-graph-breadcrumbs" class="aips-graph-breadcrumbs aips-hidden"></div>
+					</div>
+					<div class="aips-active-post-actions">
+						<button type="button" id="aips-drawer-open-btn" class="aips-btn aips-btn-xs aips-btn-secondary" title="<?php esc_attr_e('View Node Details', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-info-outline"></span>
+							<?php esc_html_e('Inspect Details', 'ai-post-scheduler'); ?>
+						</button>
+						<button type="button" id="aips-active-post-clear" class="aips-btn aips-btn-ghost aips-btn-xs" title="<?php esc_attr_e('Reset Selection', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-dismiss"></span>
+							<?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
+				</div>
+
 				<!-- Graph Canvas Area -->
 				<div class="aips-graph-viewport-container">
+					
+					<!-- Floating Zoom Toolbar -->
+					<div id="aips-graph-zoom-toolbar" class="aips-graph-zoom-toolbar">
+						<button type="button" id="aips-zoom-in" class="aips-zoom-btn" title="<?php esc_attr_e('Zoom In', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-plus-alt2"></span>
+						</button>
+						<span id="aips-zoom-level" class="aips-zoom-level">100%</span>
+						<button type="button" id="aips-zoom-out" class="aips-zoom-btn" title="<?php esc_attr_e('Zoom Out', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-minus"></span>
+						</button>
+						<button type="button" id="aips-zoom-reset" class="aips-zoom-btn" title="<?php esc_attr_e('Reset Zoom & Position', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-image-rotate"></span>
+						</button>
+					</div>
+
 					<div id="aips-graph-canvas-wrap" class="aips-graph-canvas-wrap">
 						<svg id="aips-graph-svg" width="100%" height="560"></svg>
-						<div id="aips-graph-empty" class="aips-graph-placeholder" style="display:none;">
-							<span class="dashicons dashicons-share" style="font-size:48px;width:48px;height:48px;color:#c3c4c7;"></span>
+						<div id="aips-graph-empty" class="aips-graph-placeholder aips-hidden">
+							<span class="dashicons dashicons-share"></span>
 							<h3><?php esc_html_e('Select an indexed post to explore its semantic network', 'ai-post-scheduler'); ?></h3>
 							<p><?php esc_html_e('Nodes represent related posts and topics with edge weights proportional to cosine similarity.', 'ai-post-scheduler'); ?></p>
 						</div>
 					</div>
 
+					<!-- Rich Hover Tooltip Card -->
+					<div id="aips-graph-tooltip" class="aips-graph-tooltip aips-hidden">
+						<div class="aips-tooltip-badge" id="aips-tooltip-badge"></div>
+						<div class="aips-tooltip-title" id="aips-tooltip-title"></div>
+						<div class="aips-tooltip-meta" id="aips-tooltip-meta"></div>
+						<div class="aips-tooltip-hint"><?php esc_html_e('Click node to drill down and explore neighborhood', 'ai-post-scheduler'); ?></div>
+					</div>
+
 					<!-- Node Detail Flyout Drawer -->
-					<div id="aips-node-drawer" class="aips-node-drawer" style="display:none;">
+					<div id="aips-node-drawer" class="aips-node-drawer aips-hidden">
 						<div class="aips-node-drawer-header">
 							<h4 id="aips-drawer-title"><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></h4>
 							<button type="button" id="aips-drawer-close" class="aips-btn aips-btn-ghost aips-btn-sm" aria-label="<?php esc_attr_e('Close drawer', 'ai-post-scheduler'); ?>">&times;</button>
@@ -274,13 +373,13 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 2: BACKFILL SCANNER & SCOPE
 		     ===================================================================== -->
-		<div id="scanner-tab" class="aips-tab-content" role="tabpanel">
+		<div id="scanner-tab" class="aips-tab-content" role="tabpanel" style="display: none;">
 			<div class="aips-content-panel">
 				<div class="aips-panel-header">
 					<h3 class="aips-panel-title"><?php esc_html_e('Backfill Indexing Status & Breakdown', 'ai-post-scheduler'); ?></h3>
 				</div>
 				<div class="aips-panel-body">
-					<p class="description" style="margin-bottom:16px;">
+					<p class="description aips-panel-desc">
 						<?php esc_html_e('Unlike traditional plugins, AI Post Scheduler backfills existing posts and custom post types with vector embeddings. Indexing runs progressively to avoid API rate limits and PHP execution timeouts.', 'ai-post-scheduler'); ?>
 					</p>
 
@@ -314,11 +413,11 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 									<td><?php echo esc_html($pt_published); ?></td>
 									<td><?php echo esc_html($pt_indexed); ?></td>
 									<td>
-										<div style="display:flex;align-items:center;gap:8px;">
-											<div style="flex:1;background:#e2e4e7;border-radius:4px;height:6px;overflow:hidden;">
-												<div style="width:<?php echo esc_attr($pt_pct); ?>%;background:#2271b1;height:100%;"></div>
+										<div class="aips-coverage-cell">
+											<div class="aips-coverage-track">
+												<div class="aips-coverage-bar" style="width:<?php echo esc_attr($pt_pct); ?>%;"></div>
 											</div>
-											<span style="font-size:12px;font-weight:600;min-width:36px;"><?php echo esc_html($pt_pct); ?>%</span>
+											<span class="aips-coverage-pct"><?php echo esc_html($pt_pct); ?>%</span>
 										</div>
 									</td>
 								</tr>
@@ -332,12 +431,12 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<!-- =====================================================================
 		     TAB 3: CANNIBALIZATION & DUPLICATE AUDIT
 		     ===================================================================== -->
-		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel">
+		<div id="cannibalization-tab" class="aips-tab-content" role="tabpanel" style="display: none;">
 			<div class="aips-content-panel">
-				<div class="aips-panel-header" style="display:flex;justify-content:space-between;align-items:center;">
+				<div class="aips-panel-header aips-panel-header-flex">
 					<div>
 						<h3 class="aips-panel-title"><?php esc_html_e('Content Cannibalization & Semantic Duplicate Audit', 'ai-post-scheduler'); ?></h3>
-						<p class="description" style="margin:4px 0 0;"><?php esc_html_e('Identifies published posts with unusually high semantic similarity that may compete against each other in search engines.', 'ai-post-scheduler'); ?></p>
+						<p class="description aips-panel-header-desc"><?php esc_html_e('Identifies published posts with unusually high semantic similarity that may compete against each other in search engines.', 'ai-post-scheduler'); ?></p>
 					</div>
 					<button type="button" id="aips-run-audit-btn" class="aips-btn aips-btn-secondary">
 						<span class="dashicons dashicons-search"></span>
@@ -345,8 +444,8 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</button>
 				</div>
 				<div class="aips-panel-body no-padding">
-					<div id="aips-audit-loading" style="padding:40px;text-align:center;display:none;">
-						<span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>
+					<div id="aips-audit-loading" class="aips-audit-loading aips-hidden">
+						<span class="spinner is-active"></span>
 						<?php esc_html_e('Scanning relationship matrix for cannibalization clusters…', 'ai-post-scheduler'); ?>
 					</div>
 
@@ -362,7 +461,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						</thead>
 						<tbody id="aips-cannibalization-tbody">
 							<tr>
-								<td colspan="5" style="text-align:center;padding:32px;color:#888;">
+								<td colspan="5" class="aips-table-empty-cell">
 									<?php esc_html_e('Click "Run Audit Scan" above to analyze potential duplicate and cannibalizing posts.', 'ai-post-scheduler'); ?>
 								</td>
 							</tr>
@@ -370,193 +469,6 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</table>
 				</div>
 			</div>
-		</div>
-
-		<!-- =====================================================================
-		     TAB 4: SETTINGS & THRESHOLDS
-		     ===================================================================== -->
-		<div id="settings-tab" class="aips-tab-content" role="tabpanel">
-			<form id="aips-indexer-settings-form">
-				<div class="aips-content-panel" style="margin-bottom:20px;">
-					<div class="aips-panel-header">
-						<h3 class="aips-panel-title"><?php esc_html_e('Embeddings Provider & Connection Configuration', 'ai-post-scheduler'); ?></h3>
-					</div>
-					<div class="aips-panel-body">
-						<table class="form-table">
-							<tr>
-								<th scope="row"><?php esc_html_e('Vector Embeddings Provider', 'ai-post-scheduler'); ?></th>
-								<td>
-									<select name="embeddings_provider" id="aips_embeddings_provider" class="regular-text">
-										<option value="" <?php selected($settings['embeddings_provider'], ''); ?>><?php esc_html_e('Auto-detect (Meow Apps AI Engine preferred)', 'ai-post-scheduler'); ?></option>
-										<option value="meow" <?php selected($settings['embeddings_provider'], 'meow'); ?>><?php esc_html_e('Meow Apps AI Engine', 'ai-post-scheduler'); ?></option>
-										<option value="wp_ai_client" <?php selected($settings['embeddings_provider'], 'wp_ai_client'); ?>><?php esc_html_e('WordPress AI Client (WP AI API)', 'ai-post-scheduler'); ?></option>
-									</select>
-									<p class="description"><?php esc_html_e('Select which AI subsystem produces vector embeddings. Decoupled from the primary post generation provider.', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Embedding Model', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="text" name="embeddings_model" id="aips_embeddings_model" value="<?php echo esc_attr($settings['embeddings_model']); ?>" class="regular-text" placeholder="text-embedding-3-small">
-									<p class="description"><?php esc_html_e('Model identifier (e.g. text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002, all-minilm).', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Meow AI Engine Environment', 'ai-post-scheduler'); ?></th>
-								<td>
-									<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
-										<input type="text" name="embeddings_env_id" id="aips_embeddings_env_id" value="<?php echo esc_attr($settings['embeddings_env_id']); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g. default, percona_db, pinecone_env', 'ai-post-scheduler'); ?>">
-										<button type="button" id="aips-fetch-meow-envs-btn" class="aips-btn aips-btn-secondary aips-btn-sm">
-											<span class="dashicons dashicons-rest-api"></span>
-											<?php esc_html_e('Fetch Environments from Meow Apps', 'ai-post-scheduler'); ?>
-										</button>
-									</div>
-									<div id="aips-meow-envs-dropdown-container" style="display:none;margin-top:8px;">
-										<select id="aips-meow-envs-select" class="regular-text">
-											<option value=""><?php esc_html_e('— Select a discovered environment —', 'ai-post-scheduler'); ?></option>
-										</select>
-									</div>
-									<p class="description"><?php esc_html_e('Optional connection / environment ID from Meow AI Engine (e.g. Percona Server vector database, OpenAI, Pinecone, Qdrant, Ollama).', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Vector Dimensions', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="number" name="embeddings_dimensions" id="aips_embeddings_dimensions" value="<?php echo esc_attr($settings['embeddings_dimensions']); ?>" min="1" step="1" class="small-text">
-									<p class="description"><?php esc_html_e('Number of vector dimensions produced by the model (e.g. 1536 for OpenAI, 768 for Percona / Sentence-Transformers, 384 for all-MiniLM).', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-						</table>
-					</div>
-				</div>
-
-				<div class="aips-content-panel" style="margin-bottom:20px;">
-					<div class="aips-panel-header">
-						<h3 class="aips-panel-title"><?php esc_html_e('Index Scope & Continuous Sync', 'ai-post-scheduler'); ?></h3>
-					</div>
-					<div class="aips-panel-body">
-						<table class="form-table">
-							<tr>
-								<th scope="row"><?php esc_html_e('Indexed Post Types', 'ai-post-scheduler'); ?></th>
-								<td>
-									<fieldset>
-										<?php foreach ($all_post_types as $pt_slug => $pt_obj) : ?>
-											<label style="display:block;margin-bottom:8px;">
-												<input type="checkbox" name="post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $settings['post_types'], true)); ?>>
-												<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
-											</label>
-										<?php endforeach; ?>
-										<p class="description"><?php esc_html_e('Select which post types to generate embeddings for and include in Related Posts.', 'ai-post-scheduler'); ?></p>
-									</fieldset>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Automatic Continuous Indexing', 'ai-post-scheduler'); ?></th>
-								<td>
-									<label>
-										<input type="checkbox" name="auto_index_on_publish" value="1" <?php checked($settings['auto_index_on_publish']); ?>>
-										<?php esc_html_e('Automatically generate embeddings and compute relationships whenever a post is published or updated.', 'ai-post-scheduler'); ?>
-									</label>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Verbose History Logging', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="hidden" name="verbose_history" value="false">
-									<label>
-										<input type="checkbox" name="verbose_history" value="true" <?php checked($settings['verbose_history']); ?>>
-										<?php esc_html_e('Record embedding request metadata, response previews, and relationship details in History.', 'ai-post-scheduler'); ?>
-									</label>
-									<p class="description"><?php esc_html_e('Leave disabled for large reindex runs to limit History log volume.', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Related Posts Similarity Threshold', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="number" step="0.05" min="0.40" max="0.95" name="similarity_threshold" value="<?php echo esc_attr($settings['similarity_threshold']); ?>" class="small-text">
-									<p class="description"><?php esc_html_e('Minimum cosine similarity (0.40 - 0.95) for two posts to be considered related. Default: 0.65', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-						</table>
-					</div>
-				</div>
-
-				<div class="aips-content-panel" style="margin-bottom:20px;">
-					<div class="aips-panel-header">
-						<h3 class="aips-panel-title"><?php esc_html_e('Frontend Related Posts Display', 'ai-post-scheduler'); ?></h3>
-					</div>
-					<div class="aips-panel-body">
-						<table class="form-table">
-							<tr>
-								<th scope="row"><?php esc_html_e('Enable Related Posts', 'ai-post-scheduler'); ?></th>
-								<td>
-									<label>
-										<input type="checkbox" name="related_posts_enabled" value="1" <?php checked($settings['related_posts_enabled']); ?>>
-										<?php esc_html_e('Enable the Related Posts engine, shortcode, and Gutenberg block.', 'ai-post-scheduler'); ?>
-									</label>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Automatic Content Injection', 'ai-post-scheduler'); ?></th>
-								<td>
-									<label>
-										<input type="checkbox" name="related_posts_auto_append" value="1" <?php checked($settings['related_posts_auto_append']); ?>>
-										<?php esc_html_e('Automatically append Related Posts to the bottom of single post content.', 'ai-post-scheduler'); ?>
-									</label>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Heading Title', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="text" name="related_posts_heading" value="<?php echo esc_attr($settings['related_posts_heading']); ?>" class="regular-text">
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Default Count & Layout', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="number" min="1" max="12" name="related_posts_count" value="<?php echo esc_attr($settings['related_posts_count']); ?>" class="small-text"> <?php esc_html_e('articles', 'ai-post-scheduler'); ?>
-									<select name="related_posts_layout" style="margin-left:12px;">
-										<option value="grid" <?php selected($settings['related_posts_layout'], 'grid'); ?>><?php esc_html_e('Card Grid', 'ai-post-scheduler'); ?></option>
-										<option value="list" <?php selected($settings['related_posts_layout'], 'list'); ?>><?php esc_html_e('List Layout', 'ai-post-scheduler'); ?></option>
-									</select>
-								</td>
-							</tr>
-						</table>
-					</div>
-				</div>
-
-				<div class="aips-content-panel" style="margin-bottom:20px;">
-					<div class="aips-panel-header">
-						<h3 class="aips-panel-title"><?php esc_html_e('Duplicate Detection & Gatekeeper Guard', 'ai-post-scheduler'); ?></h3>
-					</div>
-					<div class="aips-panel-body">
-						<table class="form-table">
-							<tr>
-								<th scope="row"><?php esc_html_e('Gatekeeper Action on Duplicate', 'ai-post-scheduler'); ?></th>
-								<td>
-									<select name="deduplication_mode">
-										<option value="warn" <?php selected($settings['deduplication_mode'], 'warn'); ?>><?php esc_html_e('Warn & Flag (Lowers Score & shows Duplicate Badge)', 'ai-post-scheduler'); ?></option>
-										<option value="block" <?php selected($settings['deduplication_mode'], 'block'); ?>><?php esc_html_e('Strict Block (Skip automated generation if duplicate exists)', 'ai-post-scheduler'); ?></option>
-									</select>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><?php esc_html_e('Duplicate Similarity Threshold', 'ai-post-scheduler'); ?></th>
-								<td>
-									<input type="number" step="0.05" min="0.70" max="0.99" name="deduplication_threshold" value="<?php echo esc_attr($settings['deduplication_threshold']); ?>" class="small-text">
-									<p class="description"><?php esc_html_e('Cosine similarity threshold to classify a topic or post as a duplicate candidate. Default: 0.85', 'ai-post-scheduler'); ?></p>
-								</td>
-							</tr>
-						</table>
-
-						<div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee;">
-							<button type="submit" class="aips-btn aips-btn-primary">
-								<?php esc_html_e('Save Configuration', 'ai-post-scheduler'); ?>
-							</button>
-						</div>
-					</div>
-				</div>
-			</form>
 		</div>
 
 	</div><!-- /.aips-page-container -->
