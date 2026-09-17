@@ -26,7 +26,7 @@
 		startPanX: 0,
 		startPanY: 0,
 		minZoom: 0.3,
-		maxZoom: 3.0,
+		maxZoom: 5.0,
 
 		/**
 		 * Initialize component.

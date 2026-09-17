@@ -379,13 +379,14 @@
 }
 
 .aips-zoom-level {
-	font-size: 12px;
-	font-weight: 600;
+	font-size: 11px;
+	font-weight: 500;
 	color: #94a3b8;
-	padding: 0 8px;
-	min-width: 48px;
+	padding: 0 6px;
+	min-width: 44px;
 	text-align: center;
 	user-select: none;
+	letter-spacing: -0.01em;
 }
 
 /* SVG Nodes and Edges */
