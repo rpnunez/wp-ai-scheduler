@@ -270,17 +270,30 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</div>
 				</div>
 
-				<!-- Active Post Banner (Full Title Display) -->
+				<!-- Active Post Banner (Full Title Display & Exploration Trail) -->
 				<div id="aips-active-post-bar" class="aips-active-post-bar aips-hidden">
-					<div class="aips-active-post-info">
-						<span class="aips-active-post-tag"><?php esc_html_e('Inspecting:', 'ai-post-scheduler'); ?></span>
-						<strong id="aips-active-post-title" class="aips-active-post-title"></strong>
-						<span id="aips-active-post-meta" class="aips-active-post-meta"></span>
+					<div class="aips-active-post-left">
+						<button type="button" id="aips-history-back-btn" class="aips-btn aips-btn-xs aips-btn-secondary aips-hidden" title="<?php esc_attr_e('Back to Previous Post', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-arrow-left-alt"></span>
+							<?php esc_html_e('Back', 'ai-post-scheduler'); ?>
+						</button>
+						<div class="aips-active-post-info">
+							<span class="aips-active-post-tag"><?php esc_html_e('Inspecting:', 'ai-post-scheduler'); ?></span>
+							<strong id="aips-active-post-title" class="aips-active-post-title"></strong>
+							<span id="aips-active-post-meta" class="aips-active-post-meta"></span>
+						</div>
+						<div id="aips-graph-breadcrumbs" class="aips-graph-breadcrumbs aips-hidden"></div>
 					</div>
-					<button type="button" id="aips-active-post-clear" class="aips-btn aips-btn-ghost aips-btn-xs" title="<?php esc_attr_e('Reset Selection', 'ai-post-scheduler'); ?>">
-						<span class="dashicons dashicons-dismiss"></span>
-						<?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?>
-					</button>
+					<div class="aips-active-post-actions">
+						<button type="button" id="aips-drawer-open-btn" class="aips-btn aips-btn-xs aips-btn-secondary" title="<?php esc_attr_e('View Node Details', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-info-outline"></span>
+							<?php esc_html_e('Inspect Details', 'ai-post-scheduler'); ?>
+						</button>
+						<button type="button" id="aips-active-post-clear" class="aips-btn aips-btn-ghost aips-btn-xs" title="<?php esc_attr_e('Reset Selection', 'ai-post-scheduler'); ?>">
+							<span class="dashicons dashicons-dismiss"></span>
+							<?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
 				</div>
 
 				<!-- Graph Canvas Area -->
@@ -314,7 +327,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<div class="aips-tooltip-badge" id="aips-tooltip-badge"></div>
 						<div class="aips-tooltip-title" id="aips-tooltip-title"></div>
 						<div class="aips-tooltip-meta" id="aips-tooltip-meta"></div>
-						<div class="aips-tooltip-hint"><?php esc_html_e('Click node to open flyout details & actions', 'ai-post-scheduler'); ?></div>
+						<div class="aips-tooltip-hint"><?php esc_html_e('Click node to drill down and explore neighborhood', 'ai-post-scheduler'); ?></div>
 					</div>
 
 					<!-- Node Detail Flyout Drawer -->
