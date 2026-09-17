@@ -205,12 +205,12 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					<div class="aips-visualizer-controls">
 						<div class="aips-slider-control">
 							<span class="aips-control-label"><?php esc_html_e('Min Similarity:', 'ai-post-scheduler'); ?> <strong id="aips-sim-val">60%</strong></span>
-							<input type="range" id="aips-graph-sim-threshold" min="0.40" max="0.95" step="0.05" value="0.60">
+							<input type="range" id="aips-graph-sim-threshold" min="0.40" max="0.95" step="0.05" value="0.60" aria-label="<?php esc_attr_e('Minimum similarity threshold', 'ai-post-scheduler'); ?>">
 						</div>
 
 						<div class="aips-slider-control">
 							<span class="aips-control-label"><?php esc_html_e('Max Nodes:', 'ai-post-scheduler'); ?> <strong id="aips-nodes-val">15</strong></span>
-							<input type="range" id="aips-graph-max-nodes" min="5" max="30" step="1" value="15">
+							<input type="range" id="aips-graph-max-nodes" min="5" max="30" step="1" value="15" aria-label="<?php esc_attr_e('Maximum number of nodes to display', 'ai-post-scheduler'); ?>">
 						</div>
 
 						<button type="button" id="aips-refresh-graph-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
