@@ -46,3 +46,9 @@
 **PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Planner template
 **Learning:** Screen readers announce decorative Dashicons unnecessarily when they are grouped with visible descriptive text (e.g. inside buttons or headers), confusing users.
 **Action:** Always add `aria-hidden="true"` to decorative Dashicons included in buttons or elements that already have descriptive text or are otherwise purely aesthetic.
+## 2024-11-23 - Accessibility Fix for Campaign Wizard Remove Button
+**Area:** Campaign Wizard Template (`templates/admin/campaign-wizard.php`, `assets/js/campaign-wizard.js`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label and aria-hidden to Campaign Wizard remove buttons
+**Learning:** Icon-only remove buttons dynamically injected via JS and statically rendered in PHP require explicit `aria-label`s for screen reader accessibility, and the decorative Dashicon inside needs `aria-hidden="true"`.
+**Action:** Always ensure that icon-only buttons have an explicit `aria-label` and `aria-hidden="true"` applied to decorative icons.
