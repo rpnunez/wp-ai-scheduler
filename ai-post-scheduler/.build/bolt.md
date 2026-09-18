@@ -40,3 +40,16 @@
 **PR:** ⚡ Bolt: Fix N+1 post queries in Related Posts Service
 **Learning:** Precomputing and looping over `target_id`s in related posts logic before calling `get_post()` sequentially eliminates N+1 DB lookups.
 **Action:** Ensure vector embeddings operations also prime their target posts.
+## 2026-08-31 - [N+1 Query Fix for Terms]
+**Area:** ai-post-scheduler/includes/class-aips-content-auditor.php, ai-post-scheduler/includes/class-aips-content-auditor-scanner.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Fix N+1 post term queries by pre-fetching bulk caches
+**Learning:** Calling `get_the_category()` or `get_the_tags()` in a loop without `update_object_term_cache()` causes N+1 queries even if `_prime_post_caches()` is used.
+**Action:** Use `update_object_term_cache()` alongside `_prime_post_caches()` when terms are queried in bulk.
+
+## 2026-09-18 - [Code Review Assessment for N+1 Query Fix for Terms]
+**Area:** ai-post-scheduler/includes/class-aips-content-auditor.php, ai-post-scheduler/includes/class-aips-content-auditor-scanner.php
+**Status:** reviewed PR
+**PR:** ⚡ Bolt: Fix N+1 post term queries by pre-fetching bulk caches
+**Learning:** Verified that calling update_object_term_cache() alongside _prime_post_caches() correctly primes term caches for categories and tags before looping, eliminating N+1 DB queries during bulk post scanning.
+**Action:** Retain term cache priming implementation across all bulk post queries.
