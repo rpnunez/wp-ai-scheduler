@@ -29,3 +29,9 @@
 **Decision:** Extracted the single topic processing logic into a new private method `process_single_topic_embedding`. `process_approved_embeddings_batch` now serves strictly as an orchestrator.
 **Consequence:** Increased the number of private methods, but significantly improved readability, testability, and adherence to the Single Responsibility Principle. Backwards compatibility remains intact. Added missing DocBlocks for the new function.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-09-18 - Extract Source Parsing Logic
+**Context:** `AIPS_Sources_Fetcher` was acting as a "God Object" by handling network request orchestration, API fetching, *and* complex content type detection and payload parsing (HTML, RSS, Atom, JSON).
+**Decision:** Created a new utility class, `AIPS_Source_Parser`, to handle extracting and formatting content from arbitrary payloads based on content types. This adheres to "Separation of Concerns" and "Single Responsibility" principles.
+**Consequence:** A new class is introduced to the autoloader. The fetcher service is now decoupled from string manipulation and DOM logic. Tests were updated to reflect the `AIPS_Source_Parser` class.
+**Tests:** Ran the existing PHPUnit test suite against `Test_AIPS_Sources_Fetcher` (which covers parsing private methods via reflection) to ensure no regressions were introduced.

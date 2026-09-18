@@ -60,12 +60,12 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_extract_page_title_returns_title_text() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_page_title' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_page_title' );
 		$method->setAccessible( true );
 
 		$html  = '<html><head><title>Hello World</title></head><body>body</body></html>';
-		$title = $method->invoke( $fetcher, $html );
+		$title = $method->invoke( new AIPS_Source_Parser(), $html );
 
 		$this->assertSame( 'Hello World', $title );
 	}
@@ -73,23 +73,23 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_extract_page_title_returns_empty_when_no_title_tag() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_page_title' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_page_title' );
 		$method->setAccessible( true );
 
-		$title = $method->invoke( $fetcher, '<html><body>no title</body></html>' );
+		$title = $method->invoke( new AIPS_Source_Parser(), '<html><body>no title</body></html>' );
 		$this->assertSame( '', $title );
 	}
 
 	/** @test */
 	public function test_extract_meta_description_returns_content_attribute() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_meta_description' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_meta_description' );
 		$method->setAccessible( true );
 
 		$html = '<html><head><meta name="description" content="A great article about testing."></head></html>';
-		$desc = $method->invoke( $fetcher, $html );
+		$desc = $method->invoke( new AIPS_Source_Parser(), $html );
 
 		$this->assertSame( 'A great article about testing.', $desc );
 	}
@@ -97,12 +97,12 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_extract_meta_description_supports_reversed_attribute_order() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_meta_description' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_meta_description' );
 		$method->setAccessible( true );
 
 		$html = '<meta content="Reversed attr order." name="description">';
-		$desc = $method->invoke( $fetcher, $html );
+		$desc = $method->invoke( new AIPS_Source_Parser(), $html );
 
 		$this->assertSame( 'Reversed attr order.', $desc );
 	}
@@ -110,12 +110,12 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_extract_text_strips_script_and_style_tags() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_text' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_text' );
 		$method->setAccessible( true );
 
 		$html = '<body><p>Real content.</p><script>alert("no")</script><style>.x{color:red}</style></body>';
-		$text = $method->invoke( $fetcher, $html );
+		$text = $method->invoke( new AIPS_Source_Parser(), $html );
 
 		$this->assertStringContainsString( 'Real content', $text );
 		$this->assertStringNotContainsString( 'alert', $text );
@@ -125,8 +125,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_extract_text_strips_nav_footer_aside() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_text' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_text' );
 		$method->setAccessible( true );
 
 		$html = '<body>'
@@ -135,7 +135,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			. '<footer>Footer text</footer>'
 			. '<aside>Sidebar</aside>'
 			. '</body>';
-		$text = $method->invoke( $fetcher, $html );
+		$text = $method->invoke( new AIPS_Source_Parser(), $html );
 
 		$this->assertStringContainsString( 'Main article body', $text );
 		$this->assertStringNotContainsString( 'Footer text', $text );
@@ -146,12 +146,12 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_extract_text_collapses_whitespace() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'extract_text' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'extract_text' );
 		$method->setAccessible( true );
 
 		$html = '<body><p>Word   with   spaces.</p></body>';
-		$text = $method->invoke( $fetcher, $html );
+		$text = $method->invoke( new AIPS_Source_Parser(), $html );
 
 		$this->assertStringNotContainsString( '   ', $text );
 	}
@@ -319,61 +319,61 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_detect_content_format_identifies_rss_from_header() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'detect_content_format' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'detect_content_format' );
 		$method->setAccessible( true );
 
-		$this->assertSame( 'feed', $method->invoke( $fetcher, 'application/rss+xml; charset=utf-8', '' ) );
-		$this->assertSame( 'feed', $method->invoke( $fetcher, 'application/atom+xml', '' ) );
-		$this->assertSame( 'feed', $method->invoke( $fetcher, 'text/xml', '' ) );
+		$this->assertSame( 'feed', $method->invoke( new AIPS_Source_Parser(), 'application/rss+xml; charset=utf-8', '' ) );
+		$this->assertSame( 'feed', $method->invoke( new AIPS_Source_Parser(), 'application/atom+xml', '' ) );
+		$this->assertSame( 'feed', $method->invoke( new AIPS_Source_Parser(), 'text/xml', '' ) );
 	}
 
 	/** @test */
 	public function test_detect_content_format_identifies_json_from_header() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'detect_content_format' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'detect_content_format' );
 		$method->setAccessible( true );
 
-		$this->assertSame( 'json', $method->invoke( $fetcher, 'application/json', '' ) );
-		$this->assertSame( 'json', $method->invoke( $fetcher, 'application/feed+json', '' ) );
+		$this->assertSame( 'json', $method->invoke( new AIPS_Source_Parser(), 'application/json', '' ) );
+		$this->assertSame( 'json', $method->invoke( new AIPS_Source_Parser(), 'application/feed+json', '' ) );
 	}
 
 	/** @test */
 	public function test_detect_content_format_sniffs_rss_from_body() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'detect_content_format' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'detect_content_format' );
 		$method->setAccessible( true );
 
 		$rss_body  = '<?xml version="1.0"?><rss version="2.0"><channel></channel></rss>';
 		$atom_body = '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>';
 
-		$this->assertSame( 'feed', $method->invoke( $fetcher, 'text/plain', $rss_body ) );
-		$this->assertSame( 'feed', $method->invoke( $fetcher, 'text/plain', $atom_body ) );
-		$this->assertSame( 'feed', $method->invoke( $fetcher, '', '<rss version="2.0"></rss>' ) );
+		$this->assertSame( 'feed', $method->invoke( new AIPS_Source_Parser(), 'text/plain', $rss_body ) );
+		$this->assertSame( 'feed', $method->invoke( new AIPS_Source_Parser(), 'text/plain', $atom_body ) );
+		$this->assertSame( 'feed', $method->invoke( new AIPS_Source_Parser(), '', '<rss version="2.0"></rss>' ) );
 	}
 
 	/** @test */
 	public function test_detect_content_format_sniffs_json_from_body() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'detect_content_format' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'detect_content_format' );
 		$method->setAccessible( true );
 
-		$this->assertSame( 'json', $method->invoke( $fetcher, '', '{"title":"hello"}' ) );
-		$this->assertSame( 'json', $method->invoke( $fetcher, '', '[{"id":1}]' ) );
+		$this->assertSame( 'json', $method->invoke( new AIPS_Source_Parser(), '', '{"title":"hello"}' ) );
+		$this->assertSame( 'json', $method->invoke( new AIPS_Source_Parser(), '', '[{"id":1}]' ) );
 	}
 
 	/** @test */
 	public function test_detect_content_format_defaults_to_html() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'detect_content_format' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'detect_content_format' );
 		$method->setAccessible( true );
 
-		$this->assertSame( 'html', $method->invoke( $fetcher, 'text/html', '<html><body></body></html>' ) );
-		$this->assertSame( 'html', $method->invoke( $fetcher, '', '<html><body>test</body></html>' ) );
+		$this->assertSame( 'html', $method->invoke( new AIPS_Source_Parser(), 'text/html', '<html><body></body></html>' ) );
+		$this->assertSame( 'html', $method->invoke( new AIPS_Source_Parser(), '', '<html><body>test</body></html>' ) );
 	}
 
 	// ------------------------------------------------------------------
@@ -383,8 +383,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_feed_extracts_rss2_items() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_feed' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_feed' );
 		$method->setAccessible( true );
 
 		$rss = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -403,7 +403,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			. '</channel>'
 			. '</rss>';
 
-		$result = $method->invoke( $fetcher, $rss );
+		$result = $method->invoke( new AIPS_Source_Parser(), $rss );
 
 		$this->assertSame( 'My Blog', $result['page_title'] );
 		$this->assertSame( 'A great blog.', $result['meta_description'] );
@@ -415,8 +415,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_feed_extracts_atom_entries() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_feed' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_feed' );
 		$method->setAccessible( true );
 
 		$atom = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -433,7 +433,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			. '</entry>'
 			. '</feed>';
 
-		$result = $method->invoke( $fetcher, $atom );
+		$result = $method->invoke( new AIPS_Source_Parser(), $atom );
 
 		$this->assertSame( 'Atom Feed', $result['page_title'] );
 		$this->assertStringContainsString( 'Atom Entry One', $result['extracted_text'] );
@@ -444,11 +444,11 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_feed_returns_empty_for_malformed_xml() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_feed' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_feed' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $fetcher, 'this is not xml at all' );
+		$result = $method->invoke( new AIPS_Source_Parser(), 'this is not xml at all' );
 
 		$this->assertSame( '', $result['page_title'] );
 		$this->assertSame( '', $result['extracted_text'] );
@@ -461,8 +461,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_json_extracts_wp_rest_api_single_post() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_json' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_json' );
 		$method->setAccessible( true );
 
 		$json = json_encode( array(
@@ -472,7 +472,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			'content' => array( 'rendered' => '<p>Full post content goes here.</p>' ),
 		) );
 
-		$result = $method->invoke( $fetcher, $json );
+		$result = $method->invoke( new AIPS_Source_Parser(), $json );
 
 		$this->assertSame( 'My WP Post', $result['page_title'] );
 		$this->assertSame( 'Post excerpt here.', $result['meta_description'] );
@@ -482,8 +482,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_json_extracts_wp_rest_api_post_array() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_json' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_json' );
 		$method->setAccessible( true );
 
 		$json = json_encode( array(
@@ -499,7 +499,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			),
 		) );
 
-		$result = $method->invoke( $fetcher, $json );
+		$result = $method->invoke( new AIPS_Source_Parser(), $json );
 
 		$this->assertStringContainsString( 'Post Alpha', $result['extracted_text'] );
 		$this->assertStringContainsString( 'Alpha excerpt', $result['extracted_text'] );
@@ -509,8 +509,8 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_json_extracts_json_feed_items() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_json' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_json' );
 		$method->setAccessible( true );
 
 		$json = json_encode( array(
@@ -531,7 +531,7 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 			),
 		) );
 
-		$result = $method->invoke( $fetcher, $json );
+		$result = $method->invoke( new AIPS_Source_Parser(), $json );
 
 		$this->assertSame( 'JSON Feed Blog', $result['page_title'] );
 		$this->assertSame( 'A blog using JSON Feed.', $result['meta_description'] );
@@ -544,11 +544,11 @@ class Test_AIPS_Sources_Fetcher extends WP_UnitTestCase {
 	/** @test */
 	public function test_parse_json_returns_empty_for_invalid_json() {
 		$fetcher    = new AIPS_Sources_Fetcher();
-		$reflection = new ReflectionClass( $fetcher );
-		$method     = $reflection->getMethod( 'parse_json' );
+		$reflection = new ReflectionClass(AIPS_Source_Parser::class);
+		$method = $reflection->getMethod( 'parse_json' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $fetcher, 'not valid json {{{' );
+		$result = $method->invoke( new AIPS_Source_Parser(), 'not valid json {{{' );
 
 		$this->assertSame( '', $result['page_title'] );
 		$this->assertSame( '', $result['extracted_text'] );
