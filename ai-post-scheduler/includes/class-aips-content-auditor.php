@@ -166,7 +166,13 @@ class AIPS_Content_Auditor {
 
 		if ($query->have_posts()) {
 			if (!empty($query->posts) && function_exists('_prime_post_caches')) {
-				_prime_post_caches(array_unique(array_filter(array_map('intval', $query->posts))), false, true);
+				$post_ids = array_unique(array_filter(array_map('intval', $query->posts)));
+				if (!empty($post_ids)) {
+					_prime_post_caches($post_ids, false, true);
+					if (function_exists('update_object_term_cache')) {
+						update_object_term_cache($post_ids, 'post');
+					}
+				}
 			}
 			foreach ($query->posts as $post_id) {
 				$title = get_the_title($post_id);
