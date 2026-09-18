@@ -77,6 +77,9 @@ class AIPS_Content_Auditor_Scanner {
 				$post_ids = array_unique(array_filter(array_map('intval', wp_list_pluck($query->posts, 'ID'))));
 				if (!empty($post_ids)) {
 					_prime_post_caches($post_ids, true, true);
+					if (function_exists('update_object_term_cache')) {
+						update_object_term_cache($post_ids, 'post');
+					}
 				}
 			}
 
