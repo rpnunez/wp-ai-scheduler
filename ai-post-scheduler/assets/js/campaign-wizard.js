@@ -1030,8 +1030,8 @@
 							'<input type="number" name="post_type_rules[' + nextIndex + '][quantity]" min="1" max="100" value="1" style="width: 100%;">' +
 						'</div>' +
 						'<div style="padding-top: 20px;">' +
-							'<button type="button" class="button button-small aips-remove-post-type-rule" title="Remove">' +
-								'<span class="dashicons dashicons-no-alt" style="margin-top: 2px;"></span>' +
+							'<button type="button" class="button button-small aips-remove-post-type-rule" title="Remove Post Type Rule" aria-label="Remove Post Type Rule">' +
+								'<span class="dashicons dashicons-no-alt" aria-hidden="true" style="margin-top: 2px;"></span>' +
 							'</button>' +
 						'</div>' +
 					'</div>' +
