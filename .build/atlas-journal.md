@@ -1460,3 +1460,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+**Decision:** Applied "Separation of Concerns" by extracting table definitions into domain-specific private methods: `get_core_schema()`, `get_content_schema()`, `get_author_schema()`, and `get_system_schema()`. The `get_schema()` method is now an orchestrator that merges the results.
+**Consequence:** Increased the number of private methods, but significantly improved the readability, maintainability, and domain grouping of the database schema. Backwards compatibility for the actual SQL array remains 100% intact (the exact same 31 tables are generated).
+**Tests:** Ran the full PHPUnit test suite to ensure no regressions were introduced.
+
+## 2026-09-19 - [Refactor AIPS_DB_Manager God Method]
+**Context:** `AIPS_DB_Manager::get_schema()` was a massive God method (nearly 700 lines), creating 31 tables in one monolithic block, violating the Single Responsibility Principle and making the database schema hard to maintain.
+**Decision:** Applied "Separation of Concerns" by extracting table definitions into domain-specific private methods: `get_core_schema()`, `get_content_schema()`, `get_author_schema()`, and `get_system_schema()`. The `get_schema()` method is now an orchestrator that merges the results.
+**Consequence:** Increased the number of private methods, but significantly improved the readability, maintainability, and domain grouping of the database schema. Backwards compatibility for the actual SQL array remains 100% intact (the exact same 31 tables are generated).
+**Tests:** Ran the full PHPUnit test suite to ensure no regressions were introduced.
