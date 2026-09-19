@@ -40,3 +40,10 @@
 **PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
 **Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
 **Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.
+
+## 2026-09-19 - Add aria-hidden to decorative Dashicons in Onboarding Wizard (#2108 review)
+**Area:** Onboarding Wizard (`ai-post-scheduler/templates/admin/onboarding.php`)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-hidden to decorative Dashicons in Onboarding Wizard (#2108 review)
+**Learning:** When auditing decorative Dashicons in templates, ensure all icon instances across all wizard steps and header actions are updated consistently with `aria-hidden="true"`.
+**Action:** Always inspect every `dashicons` element in a template to ensure comprehensive accessibility coverage.
