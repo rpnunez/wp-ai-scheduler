@@ -40,3 +40,9 @@
 **PR:** ⚡ Bolt: Fix N+1 post queries in Related Posts Service
 **Learning:** Precomputing and looping over `target_id`s in related posts logic before calling `get_post()` sequentially eliminates N+1 DB lookups.
 **Action:** Ensure vector embeddings operations also prime their target posts.
+## 2024-06-08 - Fix N+1 post queries in Post Review Controller bulk delete
+**Area:** ai-post-scheduler/includes/class-aips-post-review.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Fix N+1 post queries in bulk post deletion
+**Learning:** Sequential calls to get_post in loops inside AJAX handlers can be optimized by batching.
+**Action:** Always pre-fetch WP post caches before loops referencing multiple post IDs in AJAX action lists.
