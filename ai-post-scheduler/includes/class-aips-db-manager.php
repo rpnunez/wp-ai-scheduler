@@ -66,44 +66,38 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
-    public function get_schema() {
+        public function get_schema() {
+        $sql = array();
+        $sql = array_merge($sql, $this->get_core_schema());
+        $sql = array_merge($sql, $this->get_content_schema());
+        $sql = array_merge($sql, $this->get_author_schema());
+        $sql = array_merge($sql, $this->get_system_schema());
+        return $sql;
+    }
+
+
+
+    /**
+     * Get schema definitions for the core domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_core_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
         $tables = self::get_full_table_names();
 
+        $sql = array();
+
         $table_history = $tables['aips_history'];
         $table_history_log = $tables['aips_history_log'];
         $table_campaigns = $tables['aips_campaigns'];
-        $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
-        $table_voices = $tables['aips_voices'];
-        $table_structures = $tables['aips_article_structures'];
-        $table_sections = $tables['aips_prompt_sections'];
-        $table_trending_topics = $tables['aips_trending_topics'];
-        $table_authors = $tables['aips_authors'];
-        $table_post_slices = $tables['aips_post_slices'];
-        $table_author_topics = $tables['aips_author_topics'];
-        $table_author_topic_logs = $tables['aips_author_topic_logs'];
-        $table_topic_feedback = $tables['aips_topic_feedback'];
-        $table_notifications        = $tables['aips_notifications'];
-        $table_sources              = $tables['aips_sources'];
-        $table_source_group_terms   = $tables['aips_source_group_terms'];
-        $table_sources_data         = $tables['aips_sources_data'];
-        $table_taxonomy             = $tables['aips_taxonomy'];
-        $table_embeddings           = $tables['aips_embeddings'];
-        $table_relationships        = $tables['aips_relationships'];
-        $table_internal_links       = $tables['aips_internal_links'];
-        $table_affiliate_links      = $tables['aips_affiliate_links'];
-        $table_cache                = $tables['aips_cache'];
-        $table_telemetry            = $tables['aips_telemetry'];
-        $table_ai_assistance        = $tables['aips_ai_assistance'];
-        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
-        $table_cache_index          = $tables['aips_cache_index'];
-        $table_cache_events         = $tables['aips_cache_events'];
-        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
-        $table_content_audits       = $tables['aips_content_audits'];
-
-        $sql = array();
+        $table_cache = $tables['aips_cache'];
+        $table_telemetry = $tables['aips_telemetry'];
+        $table_bulk_batch_jobs = $tables['aips_bulk_batch_jobs'];
+        $table_cache_index = $tables['aips_cache_index'];
+        $table_cache_events = $tables['aips_cache_events'];
 
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -171,35 +165,6 @@ class AIPS_DB_Manager {
             KEY active_archived (is_active, is_archived)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_templates (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            name varchar(255) NOT NULL,
-            description text,
-            prompt_template text NOT NULL,
-            title_prompt text,
-            voice_id bigint(20) DEFAULT NULL,
-            post_quantity int DEFAULT 1,
-            image_prompt text,
-            generate_featured_image tinyint(1) DEFAULT 0,
-            featured_image_source varchar(50) DEFAULT 'ai_prompt',
-            featured_image_unsplash_keywords text,
-            featured_image_media_ids text,
-            post_status varchar(50) DEFAULT 'draft',
-            post_type varchar(50) DEFAULT 'post',
-            post_category text DEFAULT NULL,
-            post_tags text,
-            post_author bigint(20) DEFAULT NULL,
-            include_sources tinyint(1) DEFAULT 0,
-            source_group_ids text DEFAULT NULL,
-            campaign_id bigint(20) DEFAULT NULL,
-            affiliate_links_enabled tinyint(1) DEFAULT 0,
-            is_active tinyint(1) DEFAULT 1,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY campaign_id (campaign_id)
-        ) $charset_collate;";
-
         $sql[] = "CREATE TABLE $table_schedule (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             template_id bigint(20) NOT NULL,
@@ -242,6 +207,173 @@ class AIPS_DB_Manager {
             KEY circuit_state (circuit_state),
             KEY campaign_mode (campaign_mode),
             KEY season_end_date (season_end_date)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            cache_key varchar(191) NOT NULL,
+            cache_group varchar(100) NOT NULL DEFAULT 'default',
+            value longtext NOT NULL,
+            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY cache_key_group (cache_key, cache_group),
+            KEY expires_at (expires_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_telemetry (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            type varchar(50) NOT NULL DEFAULT '',
+            page varchar(191) NOT NULL DEFAULT '',
+            event_categories varchar(191) NOT NULL DEFAULT '',
+            request_method varchar(10) NOT NULL DEFAULT '',
+            user_id bigint(20) NOT NULL DEFAULT 0,
+            num_queries int(11) NOT NULL DEFAULT 0,
+            total_events int(11) NOT NULL DEFAULT 0,
+            cache_calls int(11) NOT NULL DEFAULT 0,
+            cache_hits int(11) NOT NULL DEFAULT 0,
+            cache_misses int(11) NOT NULL DEFAULT 0,
+            slow_query_count int(11) NOT NULL DEFAULT 0,
+            duplicate_query_count int(11) NOT NULL DEFAULT 0,
+            peak_memory_bytes bigint(20) NOT NULL DEFAULT 0,
+            elapsed_ms float NOT NULL DEFAULT 0,
+            payload longtext DEFAULT NULL,
+            inserted_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY type (type),
+            KEY page (page),
+            KEY request_method (request_method),
+            KEY user_id (user_id),
+            KEY slow_query_count (slow_query_count),
+            KEY duplicate_query_count (duplicate_query_count),
+            KEY cache_hits (cache_hits),
+            KEY cache_misses (cache_misses),
+            KEY inserted_at (inserted_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
+            job_id varchar(36) NOT NULL,
+            job_type varchar(100) NOT NULL,
+            items_json longtext NOT NULL,
+            options_json longtext NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (job_id),
+            KEY job_type (job_type),
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY status_updated (status, updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache_index (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            cache_key varchar(512) NOT NULL DEFAULT '',
+            key_hash varchar(64) NOT NULL DEFAULT '',
+            cache_group varchar(128) NOT NULL DEFAULT 'default',
+            driver varchar(64) NOT NULL DEFAULT '',
+            tier varchar(32) NOT NULL DEFAULT '',
+            operation_id varchar(128) NOT NULL DEFAULT '',
+            repository_class varchar(128) NOT NULL DEFAULT '',
+            tags text NOT NULL,
+            domain varchar(128) NOT NULL DEFAULT '',
+            ttl int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            value_size int(11) NOT NULL DEFAULT 0,
+            value_type varchar(32) NOT NULL DEFAULT '',
+            last_accessed_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY key_hash_group (key_hash, cache_group),
+            KEY cache_group (cache_group),
+            KEY expires_at (expires_at),
+            KEY driver (driver),
+            KEY tier (tier),
+            KEY operation_id (operation_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_cache_events (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            event_type varchar(64) NOT NULL DEFAULT '',
+            user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            correlation_id varchar(36) NOT NULL DEFAULT '',
+            cache_group varchar(128) NOT NULL DEFAULT '',
+            key_hash varchar(64) NOT NULL DEFAULT '',
+            operation_id varchar(128) NOT NULL DEFAULT '',
+            tags text NOT NULL,
+            domain varchar(128) NOT NULL DEFAULT '',
+            affected_count int(11) NOT NULL DEFAULT 0,
+            elapsed_ms float NOT NULL DEFAULT 0,
+            message text NOT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY event_type (event_type),
+            KEY created_at (created_at),
+            KEY user_id (user_id)
+        ) $charset_collate;";
+
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for the content domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_content_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $sql = array();
+
+        $table_templates = $tables['aips_templates'];
+        $table_voices = $tables['aips_voices'];
+        $table_structures = $tables['aips_article_structures'];
+        $table_sections = $tables['aips_prompt_sections'];
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $table_post_slices = $tables['aips_post_slices'];
+        $table_sources = $tables['aips_sources'];
+        $table_source_group_terms = $tables['aips_source_group_terms'];
+        $table_sources_data = $tables['aips_sources_data'];
+        $table_taxonomy = $tables['aips_taxonomy'];
+        $table_embeddings = $tables['aips_embeddings'];
+        $table_relationships = $tables['aips_relationships'];
+        $table_internal_links = $tables['aips_internal_links'];
+        $table_affiliate_links = $tables['aips_affiliate_links'];
+        $table_ai_assistance = $tables['aips_ai_assistance'];
+        $table_content_audits = $tables['aips_content_audits'];
+
+        $sql[] = "CREATE TABLE $table_templates (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            prompt_template text NOT NULL,
+            title_prompt text,
+            voice_id bigint(20) DEFAULT NULL,
+            post_quantity int DEFAULT 1,
+            image_prompt text,
+            generate_featured_image tinyint(1) DEFAULT 0,
+            featured_image_source varchar(50) DEFAULT 'ai_prompt',
+            featured_image_unsplash_keywords text,
+            featured_image_media_ids text,
+            post_status varchar(50) DEFAULT 'draft',
+            post_type varchar(50) DEFAULT 'post',
+            post_category text DEFAULT NULL,
+            post_tags text,
+            post_author bigint(20) DEFAULT NULL,
+            include_sources tinyint(1) DEFAULT 0,
+            source_group_ids text DEFAULT NULL,
+            campaign_id bigint(20) DEFAULT NULL,
+            affiliate_links_enabled tinyint(1) DEFAULT 0,
+            is_active tinyint(1) DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY campaign_id (campaign_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
@@ -297,58 +429,6 @@ class AIPS_DB_Manager {
             KEY researched_at_idx (researched_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_authors (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            name varchar(255) NOT NULL,
-            field_niche varchar(500) NOT NULL,
-            description text,
-            keywords text,
-            details text,
-            article_structure_id bigint(20) DEFAULT NULL,
-            topic_generation_prompt text,
-            topic_generation_frequency varchar(50) DEFAULT 'weekly',
-            topic_generation_quantity int DEFAULT 5,
-            topic_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
-            topic_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
-            topic_generation_is_active tinyint(1) DEFAULT 1,
-            post_generation_frequency varchar(50) DEFAULT 'daily',
-            post_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
-            post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
-            post_generation_is_active tinyint(1) DEFAULT 1,
-            post_status varchar(50) DEFAULT 'draft',
-            post_category bigint(20) DEFAULT NULL,
-            post_tags text,
-            post_author bigint(20) DEFAULT NULL,
-            generate_featured_image tinyint(1) DEFAULT 0,
-            featured_image_source varchar(50) DEFAULT 'ai_prompt',
-            voice_tone varchar(500) DEFAULT NULL,
-            writing_style varchar(500) DEFAULT NULL,
-            target_audience varchar(500) DEFAULT NULL,
-            expertise_level varchar(50) DEFAULT NULL,
-            content_goals text DEFAULT NULL,
-            excluded_topics text DEFAULT NULL,
-            preferred_content_length varchar(50) DEFAULT NULL,
-            language varchar(10) DEFAULT 'en',
-            max_posts_per_topic int DEFAULT 1,
-            manual_post_generation_quantity int DEFAULT 1,
-            scheduled_post_generation_quantity int DEFAULT 1,
-            include_sources tinyint(1) DEFAULT 0,
-            source_group_ids text DEFAULT NULL,
-            affiliate_links_enabled tinyint(1) DEFAULT 0,
-            topic_auto_approval_mode varchar(50) DEFAULT 'manual',
-            topic_auto_approval_min_score int DEFAULT 70,
-            topic_auto_approval_max_similarity decimal(5,4) DEFAULT 0.8000,
-            topic_auto_approval_fallback varchar(50) DEFAULT 'pending',
-            is_active tinyint(1) DEFAULT 1,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY article_structure_id (article_structure_id),
-            KEY is_active (is_active),
-          KEY topic_generation_next_run (topic_generation_next_run),
-          KEY post_generation_next_run (post_generation_next_run)
-        ) $charset_collate;";
-
         $sql[] = "CREATE TABLE $table_post_slices (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
@@ -361,82 +441,6 @@ class AIPS_DB_Manager {
             UNIQUE KEY name (name),
             KEY is_active (is_active),
             KEY sort_order (sort_order)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_author_topics (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            author_id bigint(20) NOT NULL,
-            topic_title varchar(500) NOT NULL,
-            topic_prompt text,
-            status varchar(20) DEFAULT 'pending',
-            score int DEFAULT 50,
-            metadata longtext,
-            generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            reviewed_by bigint(20) DEFAULT NULL,
-            PRIMARY KEY  (id),
-            KEY author_id (author_id),
-            KEY status (status),
-            KEY generated_at (generated_at),
-            KEY author_id_status (author_id, status),
-            KEY status_score_reviewed (status, score, reviewed_at)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_author_topic_logs (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            author_topic_id bigint(20) NOT NULL,
-            post_id bigint(20) DEFAULT NULL,
-            action varchar(50) NOT NULL,
-            user_id bigint(20) DEFAULT NULL,
-            notes text,
-            metadata longtext,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY author_topic_id (author_topic_id),
-            KEY post_id (post_id),
-            KEY action (action),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_topic_feedback (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            author_topic_id bigint(20) NOT NULL,
-            action varchar(20) NOT NULL,
-            user_id bigint(20) DEFAULT NULL,
-            reason text,
-            reason_category varchar(50) DEFAULT 'other',
-            source varchar(50) DEFAULT 'UI',
-            notes text,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY author_topic_id (author_topic_id),
-            KEY action (action),
-            KEY user_id (user_id),
-            KEY reason_category (reason_category),
-            KEY source (source),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_notifications (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            type varchar(100) NOT NULL,
-            title varchar(255) DEFAULT NULL,
-            message text NOT NULL,
-            url varchar(500) DEFAULT NULL,
-            level varchar(20) NOT NULL DEFAULT 'info',
-            meta longtext DEFAULT NULL,
-            dedupe_key varchar(191) DEFAULT NULL,
-            is_read tinyint(1) NOT NULL DEFAULT 0,
-            read_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY type (type),
-            KEY level (level),
-            KEY dedupe_key (dedupe_key),
-            KEY is_read (is_read),
-            KEY created_at (created_at),
-            KEY is_read_created_at (is_read, created_at),
-            KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sources (
@@ -579,48 +583,6 @@ class AIPS_DB_Manager {
             KEY enabled (enabled)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_cache (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            cache_key varchar(191) NOT NULL,
-            cache_group varchar(100) NOT NULL DEFAULT 'default',
-            value longtext NOT NULL,
-            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            UNIQUE KEY cache_key_group (cache_key, cache_group),
-            KEY expires_at (expires_at)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_telemetry (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            type varchar(50) NOT NULL DEFAULT '',
-            page varchar(191) NOT NULL DEFAULT '',
-            event_categories varchar(191) NOT NULL DEFAULT '',
-            request_method varchar(10) NOT NULL DEFAULT '',
-            user_id bigint(20) NOT NULL DEFAULT 0,
-            num_queries int(11) NOT NULL DEFAULT 0,
-            total_events int(11) NOT NULL DEFAULT 0,
-            cache_calls int(11) NOT NULL DEFAULT 0,
-            cache_hits int(11) NOT NULL DEFAULT 0,
-            cache_misses int(11) NOT NULL DEFAULT 0,
-            slow_query_count int(11) NOT NULL DEFAULT 0,
-            duplicate_query_count int(11) NOT NULL DEFAULT 0,
-            peak_memory_bytes bigint(20) NOT NULL DEFAULT 0,
-            elapsed_ms float NOT NULL DEFAULT 0,
-            payload longtext DEFAULT NULL,
-            inserted_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY type (type),
-            KEY page (page),
-            KEY request_method (request_method),
-            KEY user_id (user_id),
-            KEY slow_query_count (slow_query_count),
-            KEY duplicate_query_count (duplicate_query_count),
-            KEY cache_hits (cache_hits),
-            KEY cache_misses (cache_misses),
-            KEY inserted_at (inserted_at)
-        ) $charset_collate;";
-
         $sql[] = "CREATE TABLE $table_ai_assistance (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             session_id varchar(64) NOT NULL,
@@ -636,88 +598,6 @@ class AIPS_DB_Manager {
             KEY form_context_field (form_context, field_key),
             KEY user_id (user_id),
             KEY created_at (created_at)
-        ) $charset_collate;";
-      
-        $sql[] = "CREATE TABLE $table_bulk_batch_jobs (
-            job_id varchar(36) NOT NULL,
-            job_type varchar(100) NOT NULL,
-            items_json longtext NOT NULL,
-            options_json longtext NOT NULL,
-            status varchar(20) NOT NULL DEFAULT 'pending',
-            total int(11) NOT NULL DEFAULT 0,
-            processed int(11) NOT NULL DEFAULT 0,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (job_id),
-            KEY job_type (job_type),
-            KEY status (status),
-            KEY created_at (created_at),
-            KEY status_updated (status, updated_at)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_cache_index (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            cache_key varchar(512) NOT NULL DEFAULT '',
-            key_hash varchar(64) NOT NULL DEFAULT '',
-            cache_group varchar(128) NOT NULL DEFAULT 'default',
-            driver varchar(64) NOT NULL DEFAULT '',
-            tier varchar(32) NOT NULL DEFAULT '',
-            operation_id varchar(128) NOT NULL DEFAULT '',
-            repository_class varchar(128) NOT NULL DEFAULT '',
-            tags text NOT NULL,
-            domain varchar(128) NOT NULL DEFAULT '',
-            ttl int(11) NOT NULL DEFAULT 0,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            expires_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            value_size int(11) NOT NULL DEFAULT 0,
-            value_type varchar(32) NOT NULL DEFAULT '',
-            last_accessed_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            UNIQUE KEY key_hash_group (key_hash, cache_group),
-            KEY cache_group (cache_group),
-            KEY expires_at (expires_at),
-            KEY driver (driver),
-            KEY tier (tier),
-            KEY operation_id (operation_id)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_cache_events (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            event_type varchar(64) NOT NULL DEFAULT '',
-            user_id bigint(20) unsigned NOT NULL DEFAULT 0,
-            correlation_id varchar(36) NOT NULL DEFAULT '',
-            cache_group varchar(128) NOT NULL DEFAULT '',
-            key_hash varchar(64) NOT NULL DEFAULT '',
-            operation_id varchar(128) NOT NULL DEFAULT '',
-            tags text NOT NULL,
-            domain varchar(128) NOT NULL DEFAULT '',
-            affected_count int(11) NOT NULL DEFAULT 0,
-            elapsed_ms float NOT NULL DEFAULT 0,
-            message text NOT NULL,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY event_type (event_type),
-            KEY created_at (created_at),
-            KEY user_id (user_id)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_integration_field_mappings (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            template_id bigint(20) DEFAULT NULL,
-            integration_id varchar(50) NOT NULL,
-            source_key varchar(191) NOT NULL,
-            field_key varchar(191) NOT NULL,
-            field_label varchar(191) DEFAULT NULL,
-            field_type varchar(50) DEFAULT NULL,
-            custom_prompt text,
-            is_active tinyint(1) DEFAULT 1,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            UNIQUE KEY template_integration_field (template_id, integration_id, field_key),
-            KEY template_id (template_id),
-            KEY integration_id (integration_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_content_audits (
@@ -740,6 +620,192 @@ class AIPS_DB_Manager {
             KEY niche_idx (niche),
             KEY overall_score_idx (overall_score),
             KEY created_at_idx (created_at)
+        ) $charset_collate;";
+
+
+
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for the author domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_author_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $sql = array();
+
+        $table_authors = $tables['aips_authors'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+
+        $sql[] = "CREATE TABLE $table_authors (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            field_niche varchar(500) NOT NULL,
+            description text,
+            keywords text,
+            details text,
+            article_structure_id bigint(20) DEFAULT NULL,
+            topic_generation_prompt text,
+            topic_generation_frequency varchar(50) DEFAULT 'weekly',
+            topic_generation_quantity int DEFAULT 5,
+            topic_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            topic_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            topic_generation_is_active tinyint(1) DEFAULT 1,
+            post_generation_frequency varchar(50) DEFAULT 'daily',
+            post_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
+            post_generation_is_active tinyint(1) DEFAULT 1,
+            post_status varchar(50) DEFAULT 'draft',
+            post_category bigint(20) DEFAULT NULL,
+            post_tags text,
+            post_author bigint(20) DEFAULT NULL,
+            generate_featured_image tinyint(1) DEFAULT 0,
+            featured_image_source varchar(50) DEFAULT 'ai_prompt',
+            voice_tone varchar(500) DEFAULT NULL,
+            writing_style varchar(500) DEFAULT NULL,
+            target_audience varchar(500) DEFAULT NULL,
+            expertise_level varchar(50) DEFAULT NULL,
+            content_goals text DEFAULT NULL,
+            excluded_topics text DEFAULT NULL,
+            preferred_content_length varchar(50) DEFAULT NULL,
+            language varchar(10) DEFAULT 'en',
+            max_posts_per_topic int DEFAULT 1,
+            manual_post_generation_quantity int DEFAULT 1,
+            scheduled_post_generation_quantity int DEFAULT 1,
+            include_sources tinyint(1) DEFAULT 0,
+            source_group_ids text DEFAULT NULL,
+            affiliate_links_enabled tinyint(1) DEFAULT 0,
+            topic_auto_approval_mode varchar(50) DEFAULT 'manual',
+            topic_auto_approval_min_score int DEFAULT 70,
+            topic_auto_approval_max_similarity decimal(5,4) DEFAULT 0.8000,
+            topic_auto_approval_fallback varchar(50) DEFAULT 'pending',
+            is_active tinyint(1) DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY article_structure_id (article_structure_id),
+            KEY is_active (is_active),
+          KEY topic_generation_next_run (topic_generation_next_run),
+          KEY post_generation_next_run (post_generation_next_run)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_author_topics (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            author_id bigint(20) NOT NULL,
+            topic_title varchar(500) NOT NULL,
+            topic_prompt text,
+            status varchar(20) DEFAULT 'pending',
+            score int DEFAULT 50,
+            metadata longtext,
+            generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            reviewed_by bigint(20) DEFAULT NULL,
+            PRIMARY KEY  (id),
+            KEY author_id (author_id),
+            KEY status (status),
+            KEY generated_at (generated_at),
+            KEY author_id_status (author_id, status),
+            KEY status_score_reviewed (status, score, reviewed_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_author_topic_logs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            author_topic_id bigint(20) NOT NULL,
+            post_id bigint(20) DEFAULT NULL,
+            action varchar(50) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            notes text,
+            metadata longtext,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY author_topic_id (author_topic_id),
+            KEY post_id (post_id),
+            KEY action (action),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_topic_feedback (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            author_topic_id bigint(20) NOT NULL,
+            action varchar(20) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            reason text,
+            reason_category varchar(50) DEFAULT 'other',
+            source varchar(50) DEFAULT 'UI',
+            notes text,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY author_topic_id (author_topic_id),
+            KEY action (action),
+            KEY user_id (user_id),
+            KEY reason_category (reason_category),
+            KEY source (source),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        return $sql;
+    }
+
+    /**
+     * Get schema definitions for the system domain.
+     *
+     * @return array Array of CREATE TABLE statements.
+     */
+    private function get_system_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $sql = array();
+
+        $table_notifications = $tables['aips_notifications'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+
+        $sql[] = "CREATE TABLE $table_notifications (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            type varchar(100) NOT NULL,
+            title varchar(255) DEFAULT NULL,
+            message text NOT NULL,
+            url varchar(500) DEFAULT NULL,
+            level varchar(20) NOT NULL DEFAULT 'info',
+            meta longtext DEFAULT NULL,
+            dedupe_key varchar(191) DEFAULT NULL,
+            is_read tinyint(1) NOT NULL DEFAULT 0,
+            read_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY type (type),
+            KEY level (level),
+            KEY dedupe_key (dedupe_key),
+            KEY is_read (is_read),
+            KEY created_at (created_at),
+            KEY is_read_created_at (is_read, created_at),
+            KEY dedupe_key_created_at (dedupe_key, created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_integration_field_mappings (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            template_id bigint(20) DEFAULT NULL,
+            integration_id varchar(50) NOT NULL,
+            source_key varchar(191) NOT NULL,
+            field_key varchar(191) NOT NULL,
+            field_label varchar(191) DEFAULT NULL,
+            field_type varchar(50) DEFAULT NULL,
+            custom_prompt text,
+            is_active tinyint(1) DEFAULT 1,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY template_integration_field (template_id, integration_id, field_key),
+            KEY template_id (template_id),
+            KEY integration_id (integration_id)
         ) $charset_collate;";
 
         return $sql;
