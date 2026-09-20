@@ -36,6 +36,7 @@ class AIPS_Post_History_UI {
 
 		add_filter('post_row_actions', array($this, 'add_post_row_action'), 10, 2);
 		add_action('post_submitbox_misc_actions', array($this, 'render_submitbox_action'));
+		add_filter('the_posts', array($this, 'prefetch_history_for_posts'));
 	}
 
 	/**
@@ -146,6 +147,41 @@ class AIPS_Post_History_UI {
 		}
 
 		return AIPS_Admin_Menu_Helper::get_page_url('history', $args);
+	}
+
+	/**
+	 * Pre-fetch history records for the current list of posts.
+	 *
+	 * Eliminates N+1 queries when rendering the History row action on lists.
+	 *
+	 * @param array $posts Array of WP_Post objects.
+	 * @return array
+	 */
+	public function prefetch_history_for_posts($posts) {
+		if (empty($posts) || !is_admin() || !current_user_can('manage_options')) {
+			return $posts;
+		}
+
+		$post_ids_to_fetch = array();
+		foreach ($posts as $post) {
+			if ($post instanceof WP_Post && !array_key_exists($post->ID, $this->history_cache)) {
+				$post_ids_to_fetch[] = $post->ID;
+			}
+		}
+
+		if (!empty($post_ids_to_fetch)) {
+			// Check if our repository has the bulk fetch method (it should now)
+			if (method_exists($this->history_repository, 'get_by_post_ids')) {
+				$bulk_history = $this->history_repository->get_by_post_ids($post_ids_to_fetch);
+
+				foreach ($post_ids_to_fetch as $pid) {
+					// Prime cache with result or null (to prevent subsequent single queries)
+					$this->history_cache[$pid] = isset($bulk_history[$pid]) ? $bulk_history[$pid] : null;
+				}
+			}
+		}
+
+		return $posts;
 	}
 
 	/**

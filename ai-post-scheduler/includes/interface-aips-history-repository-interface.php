@@ -57,6 +57,14 @@ interface AIPS_History_Repository_Interface {
 	public function get_by_post_id($post_id);
 
 	/**
+	 * Get multiple history records by post IDs.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 * @return array Array of history objects keyed by post_id.
+	 */
+	public function get_by_post_ids(array $post_ids);
+
+	/**
 	 * Count completed history rows for a schedule.
 	 *
 	 * @param int|object $schedule Schedule ID or object.

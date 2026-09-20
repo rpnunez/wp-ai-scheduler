@@ -36,6 +36,7 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 
 		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
 		wp_set_current_user($admin_id);
+		set_current_screen('edit-post');
 
 		$actions = $ui->add_post_row_action(array(), $post);
 
@@ -53,10 +54,39 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 
 		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
 		wp_set_current_user($admin_id);
+		set_current_screen('edit-post');
 
 		$actions = $ui->add_post_row_action(array(), $post);
 
 		$this->assertArrayNotHasKey('aips_history', $actions);
+	}
+
+	public function test_prefetch_history_for_posts_populates_cache_in_bulk() {
+		$post_id1 = self::factory()->post->create();
+		$post_id2 = self::factory()->post->create();
+
+		$repo = new AIPS_Test_Stub_History_Repository();
+		$repo->history_by_post[$post_id1] = (object) array('id' => 101, 'post_id' => $post_id1);
+
+		$ui = new AIPS_Post_History_UI($repo);
+
+		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($admin_id);
+		set_current_screen('edit-post');
+
+		$posts = array(get_post($post_id1), get_post($post_id2));
+		$returned_posts = $ui->prefetch_history_for_posts($posts);
+
+		$this->assertSame($posts, $returned_posts);
+
+		$ref_cache = new ReflectionProperty($ui, 'history_cache');
+		$ref_cache->setAccessible(true);
+		$cache = $ref_cache->getValue($ui);
+
+		$this->assertArrayHasKey($post_id1, $cache);
+		$this->assertArrayHasKey($post_id2, $cache);
+		$this->assertEquals(101, $cache[$post_id1]->id);
+		$this->assertNull($cache[$post_id2]);
 	}
 
 	public function test_row_action_hidden_for_non_admin() {
@@ -89,6 +119,16 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		}
 		public function get_by_id($id) {
 			return null;
+		}
+		public function get_partial_generations($limit = 10, $offset = 0) { return array(); }
+		public function get_by_post_ids(array $post_ids) {
+			$results = array();
+			foreach ($post_ids as $id) {
+				if (isset($this->history_by_post[$id])) {
+					$results[$id] = $this->history_by_post[$id];
+				}
+			}
+			return $results;
 		}
 		public function get_by_post_id($post_id) {
 			return isset($this->history_by_post[$post_id]) ? $this->history_by_post[$post_id] : null;

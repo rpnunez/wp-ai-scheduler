@@ -318,3 +318,8 @@ Target Feature: Research Planner
 Improvement: Fixed bulk actions (copy, generate now, schedule) to operate only on visible checked topics when filtered, while keeping overall selection count accurate across all checked items.
 Files Modified: ai-post-scheduler/assets/js/admin-planner.js
 Outcome: Prevents accidental bulk operations on hidden/filtered topics while maintaining accurate selection counts.
+## 2024-05-28 - Post History UI Optimization
+- Target Feature: Post History UI
+- Improvement: Eliminated N+1 queries when rendering the "History" row action on post lists by adding a `the_posts` filter to pre-fetch history records in bulk.
+- Files Modified: ai-post-scheduler/includes/interface-aips-history-repository-interface.php, ai-post-scheduler/includes/class-aips-history-repository.php, ai-post-scheduler/includes/class-aips-post-history-ui.php
+- Outcome: Faster loading times for the WordPress admin post lists by doing 1 query instead of 1 query per post when rendering the History row actions.
