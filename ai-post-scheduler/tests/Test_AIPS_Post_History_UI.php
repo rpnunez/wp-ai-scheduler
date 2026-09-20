@@ -90,6 +90,8 @@ if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {
 		public function get_by_id($id) {
 			return null;
 		}
+		public function get_partial_generations($limit = 10, $offset = 0) { return array(); }
+		public function get_by_post_ids(array $post_ids) { return array(); }
 		public function get_by_post_id($post_id) {
 			return isset($this->history_by_post[$post_id]) ? $this->history_by_post[$post_id] : null;
 		}

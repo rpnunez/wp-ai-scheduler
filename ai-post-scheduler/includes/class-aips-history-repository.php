@@ -801,6 +801,43 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $post_id
         ));
     }
+
+    /**
+     * Get multiple history records by post IDs.
+     *
+     * @param array $post_ids Array of post IDs.
+     * @return array Array of history objects keyed by post_id.
+     */
+    public function get_by_post_ids(array $post_ids) {
+        if (empty($post_ids)) {
+            return array();
+        }
+
+        $clean_ids = array_unique(array_filter(array_map('absint', $post_ids)));
+        if (empty($clean_ids)) {
+            return array();
+        }
+
+        $placeholders = implode(',', array_fill(0, count($clean_ids), '%d'));
+
+        $results = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
+                    creation_method, status, generated_title, error_message,
+                    created_at, completed_at
+             FROM {$this->table_name} WHERE post_id IN ($placeholders) ORDER BY created_at DESC",
+            $clean_ids
+        ));
+
+        $keyed_results = array();
+        if ($results) {
+            foreach ($results as $row) {
+                if (!isset($keyed_results[$row->post_id])) {
+                    $keyed_results[$row->post_id] = $row;
+                }
+            }
+        }
+        return $keyed_results;
+    }
     
     /**
      * Add a log entry to a history item.
