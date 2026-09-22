@@ -209,9 +209,7 @@ class AIPS_Container {
 		}
 
 		// Binding not found
-		if (defined('WP_DEBUG') && WP_DEBUG) {
-			error_log("AIPS_Container: Binding not found for [{$id}].");
-		}
+		$this->log_error("Binding not found for [{$id}].", array('id' => $id));
 		return new WP_Error('aips_binding_not_found', "Binding not found for: {$id}");
 	}
 
@@ -224,9 +222,10 @@ class AIPS_Container {
 	 */
 	public function build($class_name, array $parameters = array()) {
 		if (in_array($class_name, $this->resolving, true)) {
-			if (defined('WP_DEBUG') && WP_DEBUG) {
-				error_log("AIPS_Container: Circular dependency detected while resolving [{$class_name}].");
-			}
+			$this->log_error("Circular dependency detected while resolving [{$class_name}].", array(
+				'class' => $class_name,
+				'stack' => $this->resolving,
+			));
 			return new WP_Error('aips_circular_dependency', "Circular dependency detected while resolving: {$class_name}");
 		}
 
@@ -240,9 +239,7 @@ class AIPS_Container {
 			$reflector = $this->reflection_cache[$class_name];
 
 			if (!$reflector->isInstantiable()) {
-				if (defined('WP_DEBUG') && WP_DEBUG) {
-					error_log("AIPS_Container: Target [{$class_name}] is not instantiable.");
-				}
+				$this->log_error("Target [{$class_name}] is not instantiable.", array('class' => $class_name));
 				return new WP_Error('aips_not_instantiable', "Target [{$class_name}] is not instantiable.");
 			}
 
@@ -337,13 +334,41 @@ class AIPS_Container {
 				continue;
 			}
 
-			if (defined('WP_DEBUG') && WP_DEBUG) {
-				error_log("AIPS_Container: Unresolvable dependency [{$name}] in class [{$class_name}].");
-			}
+			$this->log_error("Unresolvable dependency [{$name}] in class [{$class_name}].", array(
+				'parameter' => $name,
+				'class'     => $class_name,
+			));
 			return new WP_Error('aips_unresolvable_dependency', "Unresolvable dependency [{$name}] in class [{$class_name}].");
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Log a container error via AIPS_Logger if available, falling back to error_log.
+	 *
+	 * @param string $message The log message.
+	 * @param array  $context Optional context data.
+	 * @return void
+	 */
+	private function log_error($message, array $context = array()) {
+		if (class_exists('AIPS_Logger')) {
+			try {
+				if (!in_array(AIPS_Logger::class, $this->resolving, true)) {
+					$logger = isset($this->singletons[AIPS_Logger::class])
+						? $this->singletons[AIPS_Logger::class]
+						: new AIPS_Logger();
+					$logger->error($message, $context);
+					return;
+				}
+			} catch (\Throwable $e) {
+				// Fall through to error_log
+			}
+		}
+
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			error_log('[AI Post Scheduler] AIPS_Container: ' . $message);
+		}
 	}
 
 	/**
