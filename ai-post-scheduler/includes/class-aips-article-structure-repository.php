@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Article_Structure_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Article_Structure_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -59,7 +64,7 @@ class AIPS_Article_Structure_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_article_structures';
+		$this->table_name = $this->table('aips_article_structures');
 	}
 
 	/**
@@ -162,12 +167,14 @@ class AIPS_Article_Structure_Repository {
 		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ( $result ) {
 			$this->invalidate_cache_domain( 'article_structure', array(), 'article_structure_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -312,12 +319,10 @@ class AIPS_Article_Structure_Repository {
 		return array(
 			'article_structures.get_all'   => array(
 				'tier'        => 'long',
-				'tags'        => array( 'article_structures' ),
 				'description' => 'Cache article structure list reads including active-only filtering.',
 			),
 			'article_structures.get_by_id' => array(
 				'tier'        => 'long',
-				'tags'        => array( 'article_structures', 'article_structure:{structure_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single article structure reads by ID.',
 			),

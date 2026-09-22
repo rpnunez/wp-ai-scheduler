@@ -7,6 +7,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * AIPS_Dashboard_Repository
  *
@@ -14,6 +18,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Dashboard_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var wpdb WordPress database abstraction object.
@@ -58,12 +63,12 @@ class AIPS_Dashboard_Repository {
 
 		$this->wpdb = $wpdb;
 
-		$this->history_table = $wpdb->prefix . 'aips_history';
-		$this->history_log_table = $wpdb->prefix . 'aips_history_log';
-		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
-		$this->templates_table = $wpdb->prefix . 'aips_templates';
-		$this->author_topics_table = $wpdb->prefix . 'aips_author_topics';
-		$this->authors_table = $wpdb->prefix . 'aips_authors';
+		$this->history_table = $this->table('aips_history');
+		$this->history_log_table = $this->table('aips_history_log');
+		$this->schedule_table = $this->table('aips_schedule');
+		$this->templates_table = $this->table('aips_templates');
+		$this->author_topics_table = $this->table('aips_author_topics');
+		$this->authors_table = $this->table('aips_authors');
 	}
 
 	/**

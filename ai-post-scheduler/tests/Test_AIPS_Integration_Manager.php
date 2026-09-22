@@ -21,6 +21,7 @@ class Test_AIPS_Integration_Manager extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 
 		$this->repo = new AIPS_Integration_Mappings_Repository();
 		$this->ai_service = new AIPS_Test_Stub_AI_Service();

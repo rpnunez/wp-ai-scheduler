@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
     require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+    require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Template_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Template_Repository {
     use AIPS_Cacheable_Repository;
+    use AIPS_Repository_Tables;
 
     /**
      * @var self|null Singleton instance.
@@ -59,7 +64,7 @@ class AIPS_Template_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_templates';
+        $this->table_name = $this->table('aips_templates');
     }
 
     /**
@@ -197,12 +202,14 @@ class AIPS_Template_Repository {
         $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        // Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+        $insert_id = (int) $this->wpdb->insert_id;
 
         if ( $result ) {
             $this->invalidate_cache_domain( 'template', array(), 'template_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $result ? $insert_id : false;
     }
 
     /**
@@ -437,12 +444,10 @@ class AIPS_Template_Repository {
         return array(
             'templates.get_all'   => array(
                 'tier'        => 'long',
-                'tags'        => array( 'templates' ),
                 'description' => 'Cache template list reads including active-only filtering.',
             ),
             'templates.get_by_id' => array(
                 'tier'        => 'long',
-                'tags'        => array( 'templates', 'template:{template_id}' ),
                 'cache_null'  => false,
                 'description' => 'Cache single-template reads by ID.',
             ),

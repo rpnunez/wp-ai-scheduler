@@ -12,6 +12,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_AI_Assistance_Repository
  *
@@ -19,6 +27,8 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to AI field suggestions.
  */
 class AIPS_AI_Assistance_Repository {
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var wpdb WordPress database abstraction object.
@@ -36,7 +46,7 @@ class AIPS_AI_Assistance_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb       = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_ai_assistance';
+		$this->table_name = $this->table('aips_ai_assistance');
 	}
 
 	/**
@@ -69,7 +79,14 @@ class AIPS_AI_Assistance_Repository {
 			),
 			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
 		);
-		return $result ? $this->wpdb->insert_id : false;
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
+
+		if ( $result ) {
+			$this->invalidate_cache_domain( 'ai_assistance', array(), 'ai_assistance_created' );
+		}
+
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -82,19 +99,30 @@ class AIPS_AI_Assistance_Repository {
 	 * @return array Array of record objects.
 	 */
 	public function get_by_session_and_field( string $session_id, string $form_context, string $field_key, int $limit = 15 ): array {
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
-				WHERE session_id = %s
-				AND form_context = %s
-				AND field_key = %s
-				ORDER BY created_at DESC
-				LIMIT %d",
-				$session_id,
-				$form_context,
-				$field_key,
-				$limit
-			)
+		return $this->cache_read(
+			'ai_assistance.get_by_session_and_field',
+			array(
+				'session_id'   => $session_id,
+				'form_context' => $form_context,
+				'field_key'    => $field_key,
+				'limit'        => $limit,
+			),
+			function() use ( $session_id, $form_context, $field_key, $limit ) {
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
+						WHERE session_id = %s
+						AND form_context = %s
+						AND field_key = %s
+						ORDER BY created_at DESC
+						LIMIT %d",
+						$session_id,
+						$form_context,
+						$field_key,
+						$limit
+					)
+				);
+			}
 		);
 	}
 
@@ -107,17 +135,59 @@ class AIPS_AI_Assistance_Repository {
 	 * @return array Array of record objects.
 	 */
 	public function get_by_field( string $form_context, string $field_key, int $limit = 20 ): array {
-		return $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
-				WHERE form_context = %s
-				AND field_key = %s
-				ORDER BY created_at DESC
-				LIMIT %d",
-				$form_context,
-				$field_key,
-				$limit
-			)
+		return $this->cache_read(
+			'ai_assistance.get_by_field',
+			array(
+				'form_context' => $form_context,
+				'field_key'    => $field_key,
+				'limit'        => $limit,
+			),
+			function() use ( $form_context, $field_key, $limit ) {
+				return $this->wpdb->get_results(
+					$this->wpdb->prepare(
+						"SELECT id, session_id, form_context, field_key, response, created_at FROM {$this->table_name}
+						WHERE form_context = %s
+						AND field_key = %s
+						ORDER BY created_at DESC
+						LIMIT %d",
+						$form_context,
+						$field_key,
+						$limit
+					)
+				);
+			}
+		);
+	}
+
+	/**
+	 * Return the repository cache group for AI assistance reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_ai_assistance';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for AI assistance reads.
+	 *
+	 * Both suggestion-history reads are cached under the broad `ai_assistance` tag
+	 * that create() invalidates.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'ai_assistance.get_by_session_and_field' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'description' => 'Cache per-session, per-field suggestion history reads.',
+			),
+			'ai_assistance.get_by_field' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'description' => 'Cache all-time per-field suggestion history reads.',
+			),
 		);
 	}
 }

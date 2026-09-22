@@ -13,6 +13,7 @@ class Test_AIPS_Content_Auditor_Repository extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 
 		AIPS_DB_Manager::install_tables();
 		$this->repository = new AIPS_Content_Auditor_Repository();

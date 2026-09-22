@@ -16,11 +16,16 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Post_Slices_Repository
  */
 class AIPS_Post_Slices_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var self|null
@@ -54,7 +59,7 @@ class AIPS_Post_Slices_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_post_slices';
+		$this->table_name = $this->table('aips_post_slices');
 	}
 
 	/**
@@ -131,12 +136,14 @@ class AIPS_Post_Slices_Repository {
 			$insert_data,
 			array('%s', '%s', '%d', '%d', '%d', '%d')
 		);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ($result) {
 			$this->invalidate_cache_domain( 'post_slice', array(), 'post_slice_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -391,12 +398,10 @@ class AIPS_Post_Slices_Repository {
 		return array(
 			'post_slices.get_all'   => array(
 				'tier'        => 'long',
-				'tags'        => array( 'post_slices' ),
 				'description' => 'Cache post slice list reads including active-only filtering.',
 			),
 			'post_slices.get_by_id' => array(
 				'tier'        => 'long',
-				'tags'        => array( 'post_slices', 'post_slice:{slice_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single post slice reads by ID.',
 			),

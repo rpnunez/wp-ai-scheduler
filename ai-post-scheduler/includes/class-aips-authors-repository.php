@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Authors_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Authors_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 
 	/**
 	 * @var self|null Singleton instance.
@@ -59,7 +64,7 @@ class AIPS_Authors_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_authors';
+		$this->table_name = $this->table('aips_authors');
 	}
 	
 	/**
@@ -136,6 +141,8 @@ class AIPS_Authors_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author',
@@ -143,7 +150,7 @@ class AIPS_Authors_Repository {
 				'author_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 	
 	/**
@@ -416,12 +423,10 @@ class AIPS_Authors_Repository {
 			'authors.get_all'   => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'authors' ),
 				'description' => 'Cache author list reads, including active-only filtering.',
 			),
 			'authors.get_by_id' => array(
 				'tier'        => 'medium',
-				'tags'        => array( 'authors', 'author:{author_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single-author reads by ID.',
 			),

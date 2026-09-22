@@ -18,6 +18,7 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		AIPS_DB_Manager::install_tables();
 
 		$this->relationships_repo = new AIPS_Relationships_Repository();
@@ -32,6 +33,7 @@ class Test_AIPS_Related_Posts_Service extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

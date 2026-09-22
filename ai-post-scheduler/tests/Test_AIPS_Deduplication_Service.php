@@ -18,6 +18,7 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		AIPS_DB_Manager::install_tables();
 
 		$this->embeddings_repo    = new AIPS_Embeddings_Repository();
@@ -51,6 +52,7 @@ class Test_AIPS_Deduplication_Service extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

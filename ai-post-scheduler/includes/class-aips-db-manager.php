@@ -66,6 +66,30 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Resolve a single plugin table's full (prefixed) name by its bare key.
+     *
+     * Provides a single source of truth for table-name resolution so repositories
+     * no longer hardcode `$wpdb->prefix . 'aips_x'`. The returned value is identical
+     * to the corresponding entry in get_full_table_names().
+     *
+     * @param string $key Bare table key (e.g. 'aips_authors').
+     * @return string Fully prefixed table name.
+     */
+    public static function get_table($key) {
+        global $wpdb;
+
+        if (!in_array($key, self::$tables, true)) {
+            _doing_it_wrong(
+                __METHOD__,
+                sprintf('Unknown plugin table key "%s".', esc_html((string) $key)),
+                '3.4.2'
+            );
+        }
+
+        return $wpdb->prefix . $key;
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();

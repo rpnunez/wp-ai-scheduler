@@ -17,6 +17,10 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
 	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
 }
 
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
 /**
  * Class AIPS_Author_Topics_Repository
  *
@@ -25,6 +29,7 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  */
 class AIPS_Author_Topics_Repository {
 	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
 	
 	/**
 	 * @var string The author_topics table name (with prefix)
@@ -42,7 +47,7 @@ class AIPS_Author_Topics_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_author_topics';
+		$this->table_name = $this->table('aips_author_topics');
 	}
 	
 	/**
@@ -116,17 +121,19 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author_topic',
 				array(
 					'author_id' => isset( $data['author_id'] ) ? absint( $data['author_id'] ) : 0,
-					'topic_id'  => (int) $this->wpdb->insert_id,
+					'topic_id'  => $insert_id,
 				),
 				'author_topic_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 	
 	/**
@@ -298,8 +305,10 @@ class AIPS_Author_Topics_Repository {
 			array('%d')
 		);
 		if ( false !== $result ) {
+			// author_topic_removed also evicts feedback / topic-log reads that
+			// INNER JOIN this table (see AIPS_Repository_Cache_Dependencies::DEPENDENTS).
 			$this->invalidate_cache_domain(
-				'author_topic',
+				'author_topic_removed',
 				$context,
 				'author_topic_deleted'
 			);
@@ -322,7 +331,7 @@ class AIPS_Author_Topics_Repository {
 		);
 		if ( false !== $result ) {
 			$this->invalidate_cache_domain(
-				'author_topic',
+				'author_topic_removed',
 				array(
 					'author_id' => absint( $author_id ),
 				),
@@ -342,7 +351,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects.
 	 */
 	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$logs_table = $this->table('aips_author_topic_logs');
 
 		return $this->cache_read(
 			'author_topics.get_approved_for_generation',
@@ -467,7 +476,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Associative array of bucket => count.
 	 */
 	public function get_status_counts($author_id) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$logs_table = $this->table('aips_author_topic_logs');
 
 		return $this->cache_read(
 			'author_topics.get_status_counts',
@@ -551,7 +560,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects with author info.
 	 */
 	public function get_all_approved_for_queue() {
-		$authors_table = $this->wpdb->prefix . 'aips_authors';
+		$authors_table = $this->table('aips_authors');
 		
 		return $this->cache_read(
 			'author_topics.get_all_approved_for_queue',
@@ -729,6 +738,7 @@ class AIPS_Author_Topics_Repository {
 			),
 		);
 	}
+
 
 	/**
 	 * Invalidate author-topic caches using topic context when available.
