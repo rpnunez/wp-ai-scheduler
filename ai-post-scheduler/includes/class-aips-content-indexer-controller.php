@@ -161,6 +161,9 @@ class AIPS_Content_Indexer_Controller {
 			'error_pause_unit'               => (string) $this->config->get_option('aips_indexer_error_pause_unit', 'minutes'),
 			'consecutive_error_threshold'    => (int) $this->config->get_option('aips_indexer_consecutive_error_threshold', 2),
 			'post_cluster_threshold'         => (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65),
+			'scan_entity_scope'              => (string) $this->config->get_option('aips_indexer_scan_entity_scope', 'all'),
+			'topics_continuous_sync'         => (bool) $this->config->get_option('aips_indexer_topics_continuous_sync', true),
+			'topics_execution_timing'        => (string) $this->config->get_option('aips_indexer_topics_execution_timing', 'immediate'),
 			'cooldown'                       => $cooldown_status,
 			'queue_status'                   => $queue_status,
 		);
@@ -206,9 +209,10 @@ class AIPS_Content_Indexer_Controller {
 
 		$batch_size   = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 10;
 		$last_post_id = isset($_POST['last_post_id']) ? absint($_POST['last_post_id']) : 0;
+		$entity_scope = isset($_POST['entity_scope']) ? sanitize_key($_POST['entity_scope']) : (string) $this->config->get_option('aips_indexer_scan_entity_scope', 'all');
 		$post_types   = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 
-		$result = $this->indexer_service->process_indexing_batch($batch_size, $last_post_id, $post_types, 'publish');
+		$result = $this->indexer_service->process_indexing_batch($batch_size, $last_post_id, $post_types, 'publish', $entity_scope);
 
 		AIPS_Ajax_Response::success($result);
 	}
@@ -233,26 +237,34 @@ class AIPS_Content_Indexer_Controller {
 		$this->verify_request();
 
 		$post_id        = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$source_type    = isset($_POST['source_type']) ? sanitize_key($_POST['source_type']) : 'post';
 		$limit          = isset($_POST['limit']) ? absint($_POST['limit']) : 15;
 		$min_similarity = isset($_POST['min_similarity']) ? (float) $_POST['min_similarity'] : 0.50;
 
 		if ($post_id <= 0) {
-			// If no post_id provided, pick the first indexed post
-			$indexed_ids = $this->embeddings_repo->get_all_for_similarity('post', array('post'), 'publish');
-			if (!empty($indexed_ids)) {
-				$post_id = (int) $indexed_ids[0]->object_id;
+			if ('topic' === $source_type) {
+				$indexed_topics = $this->embeddings_repo->get_all_topics_for_similarity();
+				if (!empty($indexed_topics)) {
+					$post_id = (int) $indexed_topics[0]->object_id;
+				}
+			} else {
+				$indexed_ids = $this->embeddings_repo->get_all_for_similarity('post', array('post'), 'publish');
+				if (!empty($indexed_ids)) {
+					$post_id = (int) $indexed_ids[0]->object_id;
+				}
 			}
 		}
 
 		if ($post_id <= 0) {
-			AIPS_Ajax_Response::error(__('No indexed posts found to visualize.', 'ai-post-scheduler'));
+			AIPS_Ajax_Response::error(__('No indexed items found to visualize.', 'ai-post-scheduler'));
 		}
 
-		$graph = $this->related_service->get_graph_data_for_post($post_id, $limit, $min_similarity);
+		$graph = $this->related_service->get_graph_data_for_post($post_id, $limit, $min_similarity, $source_type);
 
 		AIPS_Ajax_Response::success(array(
-			'post_id' => $post_id,
-			'graph'   => $graph,
+			'post_id'     => $post_id,
+			'source_type' => $source_type,
+			'graph'       => $graph,
 		));
 	}
 
@@ -262,14 +274,16 @@ class AIPS_Content_Indexer_Controller {
 	public function ajax_run_cannibalization_audit() {
 		$this->verify_request();
 
-		$threshold = isset($_POST['threshold']) ? (float) $_POST['threshold'] : 0.80;
-		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
+		$threshold   = isset($_POST['threshold']) ? (float) $_POST['threshold'] : 0.80;
+		$limit       = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
+		$entity_type = isset($_POST['entity_type']) ? sanitize_key($_POST['entity_type']) : 'all';
 
-		$results = $this->deduplication_service->get_cannibalization_audit_results($threshold, $limit);
+		$results = $this->deduplication_service->get_cannibalization_audit_results($threshold, $limit, $entity_type);
 
 		AIPS_Ajax_Response::success(array(
-			'clusters' => $results,
-			'count'    => count($results),
+			'clusters'    => $results,
+			'count'       => count($results),
+			'entity_type' => $entity_type,
 		));
 	}
 
@@ -466,6 +480,20 @@ class AIPS_Content_Indexer_Controller {
 
 		if (isset($_POST['embeddings_monthly_limit'])) {
 			$this->config->set_option('aips_embeddings_monthly_limit', absint($_POST['embeddings_monthly_limit']));
+		}
+
+		if (isset($_POST['scan_entity_scope'])) {
+			$scope = sanitize_key($_POST['scan_entity_scope']);
+			$this->config->set_option('aips_indexer_scan_entity_scope', in_array($scope, array('all', 'posts', 'topics'), true) ? $scope : 'all');
+		}
+
+		if (isset($_POST['topics_continuous_sync'])) {
+			$this->config->set_option('aips_indexer_topics_continuous_sync', filter_var($_POST['topics_continuous_sync'], FILTER_VALIDATE_BOOLEAN));
+		}
+
+		if (isset($_POST['topics_execution_timing'])) {
+			$timing = sanitize_key($_POST['topics_execution_timing']);
+			$this->config->set_option('aips_indexer_topics_execution_timing', in_array($timing, array('immediate', 'queued'), true) ? $timing : 'immediate');
 		}
 
 		AIPS_Ajax_Response::success(array(

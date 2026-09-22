@@ -374,6 +374,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_post_insights_ui'],
 			),
+			'aips_indexer_topics_continuous_sync' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_topics_continuous_sync'],
+			),
+			'aips_indexer_topics_execution_timing' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_indexer_topics_execution_timing'],
+			),
+			'aips_indexer_scan_entity_scope' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_indexer_scan_entity_scope'],
+			),
 			'aips_author_topic_auto_approval_mode' => array(
 				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_mode'),
 				'default'           => $defaults['aips_author_topic_auto_approval_mode'],
@@ -713,6 +725,14 @@ class AIPS_Settings {
             'aips_enable_post_insights_ui',
             __('Enable AI Insights in WP Post List & Editors', 'ai-post-scheduler'),
             array($this->ui, 'enable_post_insights_ui_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_topics_continuous_sync',
+            __('Run Embeddings when Topics are Generated', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_topics_continuous_sync_field_callback'),
             'aips-settings',
             'aips_ai_scope_section'
         );

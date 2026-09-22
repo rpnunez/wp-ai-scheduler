@@ -259,6 +259,12 @@
 			// Convex Hull Toggle in Graph
 			$('#aips-toggle-clusters').on('change', this.onToggleClustersChange.bind(this));
 
+			// Show Author Topics Toggle in Graph
+			$('#aips-toggle-topics').on('change', this.onToggleTopicsChange.bind(this));
+
+			// Cannibalization Entity Type Filter
+			$('#aips-audit-entity-type').on('change', this.onAuditEntityTypeChange.bind(this));
+
 			// Cooldown Resume Now button
 			$('#aips-resume-cooldown-btn').on('click', this.onResumeCooldownClick.bind(this));
 		},
@@ -531,6 +537,37 @@
 			$('#aips-graph-search-clear').addClass('aips-hidden').hide();
 			$('#aips-active-post-bar').addClass('aips-hidden').hide();
 			this.loadGraphForPost(0);
+		},
+
+		/**
+		 * Handle toggling convex hulls for post clusters in the graph visualizer.
+		 *
+		 * @return {void}
+		 */
+		onToggleClustersChange: function () {
+			if (this.graphData) {
+				this.renderSvgGraph(this.graphData);
+			}
+		},
+
+		/**
+		 * Handle toggling visibility of Author Topics in the graph visualizer.
+		 *
+		 * @return {void}
+		 */
+		onToggleTopicsChange: function () {
+			if (this.graphData) {
+				this.renderSvgGraph(this.graphData);
+			}
+		},
+
+		/**
+		 * Handle filtering duplicate and cannibalization audit results by entity.
+		 *
+		 * @return {void}
+		 */
+		onAuditEntityTypeChange: function () {
+			this.runCannibalizationAudit();
 		},
 
 		/**
@@ -998,6 +1035,8 @@
 				return;
 			}
 
+			var entityScope = $('#aips-scan-entity-scope').val() || 'all';
+
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
@@ -1006,7 +1045,8 @@
 					action: 'aips_indexer_process_batch',
 					nonce: aipsContentIndexerL10n.nonce,
 					batch_size: self.batchSize,
-					last_post_id: self.lastPostId
+					last_post_id: self.lastPostId,
+					entity_scope: entityScope
 				},
 				success: function (res) {
 					if (!res.success) {
@@ -1019,12 +1059,35 @@
 					self.lastPostId = data.last_post_id;
 
 					// Update DOM metrics
-					$('#aips-stat-indexed').text(data.total_indexed);
-					$('#aips-stat-total').text(data.total_posts);
-					$('#aips-stat-percent').text(data.percent + '%');
-					$('#aips-index-progress-bar').css('width', data.percent + '%');
-					$('#aips-stat-unindexed').text(Math.max(0, data.total_posts - data.total_indexed));
-					$('#aips-indexer-slice-count').text(data.total_indexed + ' / ' + data.total_posts);
+					if (data.status) {
+						var st = data.status;
+						$('#aips-stat-indexed').text(st.indexed);
+						$('#aips-stat-total').text(st.total_posts);
+						$('#aips-stat-percent').text(st.percent + '%');
+						$('#aips-index-progress-bar').css('width', st.percent + '%');
+
+						$('#aips-stat-topics-indexed').text(st.indexed_topics || 0);
+						$('#aips-stat-topics-total').text(st.total_topics || 0);
+						$('#aips-stat-topics-percent').text((st.topics_percent || 0) + '%');
+						$('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
+
+						var totalUnindexed = (st.unindexed || 0) + (st.unindexed_topics || 0);
+						$('#aips-stat-unindexed').text(totalUnindexed);
+						$('#aips-stat-unindexed-breakdown').text(st.unindexed + ' posts, ' + st.unindexed_topics + ' topics pending');
+
+						if (entityScope === 'topics') {
+							$('#aips-indexer-slice-count').text((st.indexed_topics || 0) + ' / ' + (st.total_topics || 0));
+						} else {
+							$('#aips-indexer-slice-count').text(st.indexed + ' / ' + st.total_posts);
+						}
+					} else {
+						$('#aips-stat-indexed').text(data.total_indexed);
+						$('#aips-stat-total').text(data.total_posts);
+						$('#aips-stat-percent').text(data.percent + '%');
+						$('#aips-index-progress-bar').css('width', data.percent + '%');
+						$('#aips-stat-unindexed').text(Math.max(0, data.total_posts - data.total_indexed));
+						$('#aips-indexer-slice-count').text(data.total_indexed + ' / ' + data.total_posts);
+					}
 
 					// Update live rate limit meters if returned
 					if (data.rate_limits) {
@@ -1317,11 +1380,18 @@
 			// 1. Draw Edges & Edge Pills
 			var gEdges = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 			gEdges.setAttribute('class', 'edges-group');
+			var showTopics = $('#aips-toggle-topics').is(':checked');
 
 			edges.forEach(function (edge) {
 				var src = nodeMap[edge.source];
 				var tgt = nodeMap[edge.target];
 				if (!src || !tgt) return;
+
+				if (!showTopics) {
+					if ((src.entity_type === 'topic' && !src.is_center) || (tgt.entity_type === 'topic' && !tgt.is_center)) {
+						return;
+					}
+				}
 
 				var isSpoke = (edge.source === centerNode.id || edge.target === centerNode.id);
 				var weight = edge.weight || 0.6;
@@ -1383,6 +1453,10 @@
 			gNodes.setAttribute('class', 'nodes-group');
 
 			nodes.forEach(function (node) {
+				if (!showTopics && node.entity_type === 'topic' && !node.is_center) {
+					return;
+				}
+
 				var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 				var nodeClass = 'graph-node';
 				if (node.is_center) nodeClass += ' node-center';
@@ -1390,6 +1464,9 @@
 					nodeClass += ' node-neighbor';
 					if (node.similarity >= 0.80) nodeClass += ' node-high';
 					else if (node.similarity < 0.65) nodeClass += ' node-low';
+				}
+				if (node.entity_type === 'topic') {
+					nodeClass += ' node-topic';
 				}
 				g.setAttribute('class', nodeClass);
 				g.setAttribute('data-id', node.id);
@@ -1429,7 +1506,9 @@
 		 */
 		openNodeDrawer: function (node) {
 			$('#aips-drawer-title').text(node.label);
-			$('#aips-drawer-type').text(node.type || 'post');
+			var isTopic = (node.entity_type === 'topic' || node.type === 'topic');
+			var typeLabel = isTopic ? (aipsContentIndexerL10n.authorTopic || 'Author Topic') : (node.type || 'post');
+			$('#aips-drawer-type').text(typeLabel);
 			$('#aips-drawer-id').text(node.raw_id);
 
 			if (node.similarity !== undefined) {
@@ -1462,6 +1541,7 @@
 			var $btn = $('#aips-run-audit-btn');
 			var $tbody = $('#aips-cannibalization-tbody');
 			var $loading = $('#aips-audit-loading');
+			var entityType = $('#aips-audit-entity-type').val() || 'all';
 
 			$btn.prop('disabled', true);
 			$tbody.empty();
@@ -1475,7 +1555,8 @@
 					action: 'aips_indexer_run_cannibalization_audit',
 					nonce: aipsContentIndexerL10n.nonce,
 					threshold: 0.75,
-					limit: 50
+					limit: 50,
+					entity_type: entityType
 				},
 				success: function (res) {
 					$btn.prop('disabled', false);
@@ -1500,10 +1581,12 @@
 						if (!sourceGroups[c.source_id]) {
 							sourceGroups[c.source_id] = {
 								source_id: c.source_id,
+								source_type: c.source_type || 'post',
 								title: c.source_title,
 								post_type: c.source_post_type,
 								date: c.source_date,
 								url: c.source_url,
+								audit_type: c.audit_type || 'post_duplicate',
 								max_similarity: 0,
 								max_risk_class: 'aips-risk-low',
 								max_risk_label: 'Low Risk',
@@ -1552,6 +1635,19 @@
 						groupIndex++;
 						var groupId = 'aips-sg-' + groupIndex;
 
+						var sgSourceType = sg.source_type || 'post';
+						var entityBadgeType = sgSourceType === 'topic' ? 'topic' : 'post';
+						var entityBadgeLabel = sgSourceType === 'topic' ? (aipsContentIndexerL10n.authorTopic || 'Author Topic') : (aipsContentIndexerL10n.post || 'Post');
+						var entityBadge = '';
+						if (hasTemplates && AIPS.Templates.has('aips-tmpl-indexer-entity-badge')) {
+							entityBadge = AIPS.Templates.render('aips-tmpl-indexer-entity-badge', {
+								type: entityBadgeType,
+								label: entityBadgeLabel
+							});
+						} else {
+							entityBadge = '<span class="aips-entity-badge aips-entity-badge-' + entityBadgeType + '">' + entityBadgeLabel + '</span>';
+						}
+
 						// Render Post A Parent Group Header
 						if (hasTemplates) {
 							html += AIPS.Templates.render('aips-tmpl-indexer-audit-group-header', {
@@ -1561,13 +1657,16 @@
 								sourceId: sg.source_id,
 								riskClass: sg.max_risk_class,
 								riskLabel: sg.max_risk_label,
-								maxSimilarityPct: (sg.max_similarity * 100).toFixed(1)
+								maxSimilarityPct: (sg.max_similarity * 100).toFixed(1),
+								entityBadgeHtml: entityBadge,
+								auditType: sg.audit_type || 'post_duplicate'
 							});
 						} else {
-							html += '<tr class="aips-audit-group-header" data-toggle-target=".' + groupId + '">';
+							html += '<tr class="aips-audit-group-header" data-toggle-target=".' + groupId + '" data-audit-type="' + (sg.audit_type || 'post_duplicate') + '">';
 							html += '<td colspan="5">';
 							html += '<span class="dashicons dashicons-arrow-down-alt2 aips-group-toggle-icon aips-audit-group-toggle-icon"></span>';
 							html += '<strong class="aips-audit-group-title">' + $('<div>').text(sg.title).html() + '</strong>';
+							html += entityBadge;
 							html += '<span class="aips-audit-group-meta">' + sg.post_type + ' #' + sg.source_id + '</span>';
 							html += '<span class="aips-risk-badge ' + sg.max_risk_class + ' aips-audit-group-badge">Max: ' + sg.max_risk_label + ' (' + (sg.max_similarity * 100).toFixed(1) + '%)</span>';
 							html += '</td></tr>';
@@ -1612,7 +1711,7 @@
 								html += '</td></tr>';
 							}
 
-							// Render each duplicate candidate (Post B)
+							// Render each duplicate candidate (Entity B)
 							sg.risk_groups[riskDef.key].forEach(function (c) {
 								var actions = '';
 								var editSourceLabel = (aipsContentIndexerL10n && aipsContentIndexerL10n.editSource) ? aipsContentIndexerL10n.editSource : 'Edit Source';
@@ -1639,6 +1738,26 @@
 									}
 								}
 
+								var targetBadgeType = 'post';
+								var targetBadgeLabel = aipsContentIndexerL10n.post || 'Post';
+								if (c.audit_type === 'cannibalization') {
+									targetBadgeType = 'cannibalization';
+									targetBadgeLabel = aipsContentIndexerL10n.cannibalizationRisk || 'Cannibalization Risk';
+								} else if (c.target_type === 'topic') {
+									targetBadgeType = 'topic';
+									targetBadgeLabel = aipsContentIndexerL10n.authorTopic || 'Author Topic';
+								}
+
+								var targetBadge = '';
+								if (hasTemplates && AIPS.Templates.has('aips-tmpl-indexer-entity-badge')) {
+									targetBadge = AIPS.Templates.render('aips-tmpl-indexer-entity-badge', {
+										type: targetBadgeType,
+										label: targetBadgeLabel
+									});
+								} else {
+									targetBadge = '<span class="aips-entity-badge aips-entity-badge-' + targetBadgeType + '">' + targetBadgeLabel + '</span>';
+								}
+
 								if (hasTemplates) {
 									html += AIPS.Templates.renderRaw('aips-tmpl-indexer-audit-row', {
 										groupId: groupId,
@@ -1651,12 +1770,14 @@
 										similarityPct: c.similarity_pct,
 										riskClass: riskDef.class,
 										riskLabel: AIPS.Templates.escape(riskDef.label),
-										actions: actions
+										actions: actions,
+										entityBadgeHtml: targetBadge,
+										auditType: c.audit_type || 'post_duplicate'
 									});
 								} else {
-									html += '<tr class="aips-audit-row ' + groupId + ' ' + riskGroupId + (isExpanded ? '' : ' is-collapsed') + '">';
+									html += '<tr class="aips-audit-row ' + groupId + ' ' + riskGroupId + (isExpanded ? '' : ' is-collapsed') + '" data-audit-type="' + (c.audit_type || 'post_duplicate') + '">';
 									html += '<td class="aips-audit-tree-indent">&rdsh;</td>';
-									html += '<td><strong>' + $('<div>').text(c.target_title).html() + '</strong><br><small class="aips-audit-target-meta">' + c.target_post_type + ' #' + c.target_id + ' (' + c.target_date + ')</small></td>';
+									html += '<td><strong>' + $('<div>').text(c.target_title).html() + '</strong>' + targetBadge + '<br><small class="aips-audit-target-meta">' + c.target_post_type + ' #' + c.target_id + ' (' + c.target_date + ')</small></td>';
 									html += '<td><strong class="aips-audit-similarity-score">' + c.similarity_pct + '%</strong></td>';
 									html += '<td><span class="aips-risk-badge ' + riskDef.class + '">' + riskDef.label + '</span></td>';
 									html += '<td>' + actions + '</td>';

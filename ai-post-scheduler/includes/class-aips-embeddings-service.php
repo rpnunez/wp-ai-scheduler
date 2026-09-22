@@ -127,9 +127,12 @@ class AIPS_Embeddings_Service {
 		$this->rate_limiter->record_usage(1);
 
 		if (is_wp_error($embedding)) {
+			$this->rate_limiter->record_failure($embedding);
 			$this->logger->log('Embedding generation failed: ' . $embedding->get_error_message(), 'error');
 			return $embedding;
 		}
+
+		$this->rate_limiter->record_success();
 
 		// Cache the result
 		$this->embedding_cache[$cache_key] = $embedding;

@@ -1592,6 +1592,22 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render Run Embeddings when Topics are Generated setting.
+	 *
+	 * @return void
+	 */
+	public function indexer_topics_continuous_sync_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_indexer_topics_continuous_sync', true);
+		?>
+		<label for="aips_indexer_topics_continuous_sync">
+			<input type="checkbox" name="aips_indexer_topics_continuous_sync" id="aips_indexer_topics_continuous_sync" value="1" <?php checked($value, true); ?>>
+			<?php esc_html_e('Automatically generate and persist vector embeddings immediately when Author Topics are created or generated.', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('Enables real-time duplicate idea detection and cross-referencing between Author Topics and published WordPress articles.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
 	 * Render Global Author Topic Auto-Approval Mode.
 	 *
 	 * @return void

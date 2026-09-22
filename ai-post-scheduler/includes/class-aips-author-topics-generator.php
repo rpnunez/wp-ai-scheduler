@@ -71,6 +71,11 @@ class AIPS_Author_Topics_Generator {
 	private $embeddings_repo;
 
 	/**
+	 * @var AIPS_Embeddings_Rate_Limiter Rate limiter instance.
+	 */
+	private $rate_limiter;
+
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param AIPS_AI_Service_Interface|null $ai_service AI service instance (optional for testing).
@@ -83,8 +88,9 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $deduplication_service Deduplication service (optional for testing).
 	 * @param object|null $authors_repository Authors repository (optional for testing).
 	 * @param object|null $embeddings_repo Embeddings repository (optional for testing).
+	 * @param AIPS_Embeddings_Rate_Limiter|null $rate_limiter Rate limiter (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null, $embeddings_repo = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null, $embeddings_repo = null, ?AIPS_Embeddings_Rate_Limiter $rate_limiter = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -92,7 +98,8 @@ class AIPS_Author_Topics_Generator {
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 		$this->embeddings_repo = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger, null, null, $this->embeddings_repo);
+		$this->rate_limiter = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter());
+		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger, null, null, $this->embeddings_repo, $this->rate_limiter);
 		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service($this->embeddings_repo, null, $this->embeddings_service, null, $this->logger));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
@@ -204,6 +211,28 @@ class AIPS_Author_Topics_Generator {
 
 			// Always record author's topic generation last run timestamp.
 			$this->authors_repository->update_topic_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
+
+			// Continuous Topic Vector Indexing: persist embeddings if enabled
+			$config = AIPS_Config::get_instance();
+			$sync_topics = (bool) $config->get_option('aips_indexer_topics_continuous_sync', true);
+			if ($sync_topics && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
+				foreach ($saved_topics as $saved_topic) {
+					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
+					if ($t_status !== 'rejected' && !empty($saved_topic['topic_title'])) {
+						$t_id  = (int) $saved_topic['id'];
+						$t_vec = $this->embeddings_service->generate_embedding($saved_topic['topic_title']);
+						if (is_wp_error($t_vec)) {
+							if ($this->rate_limiter->is_rate_limit_or_exhaustion_error($t_vec)) {
+								break;
+							}
+						} elseif (is_array($t_vec) && !empty($t_vec)) {
+							$model = $this->embeddings_service->get_active_model();
+							$dims  = count($t_vec);
+							$this->embeddings_repo->upsert('topic', $t_id, $t_vec, $model, $dims, md5($saved_topic['topic_title']));
+						}
+					}
+				}
+			}
 		} else {
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
 			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');
@@ -479,7 +508,7 @@ class AIPS_Author_Topics_Generator {
 			!empty($author->niche) ? $author->niche : '',
 		);
 		$profile_text = trim(implode(' ', array_filter($profile_parts)));
-		if (empty($profile_text)) {
+		if (empty($profile_text) || !$this->embeddings_service->is_enabled() || $this->rate_limiter->is_in_cooldown()) {
 			return null;
 		}
 
@@ -575,6 +604,30 @@ class AIPS_Author_Topics_Generator {
 		$author_baseline_vec = null;
 
 		if (in_array($mode, array('similarity', 'embeddings'), true)) {
+			// Check rate limits and auto-cooldown before attempting remote embedding calls
+			if ($this->rate_limiter->is_in_cooldown()) {
+				$cooldown_info = $this->rate_limiter->get_cooldown_status();
+				$this->logger->log(
+					sprintf('Author topic auto-approval skipped: Embeddings API in cooldown until %s. Reason: %s',
+						gmdate('Y-m-d H:i:s', (int) $cooldown_info['until']),
+						$cooldown_info['reason']
+					),
+					'warning'
+				);
+				return $topics; // Graceful fallback: topics remain pending
+			}
+
+			$limits = $this->rate_limiter->check_limits();
+			if (!$limits['allowed']) {
+				$this->logger->log(
+					sprintf('Author topic auto-approval skipped: Embeddings rate limit quota (%s) reached.',
+						$limits['exceeded_limit']
+					),
+					'warning'
+				);
+				return $topics; // Graceful fallback: topics remain pending
+			}
+
 			$author_baseline_vec = $this->get_author_composite_embedding($author);
 		}
 
@@ -618,7 +671,7 @@ class AIPS_Author_Topics_Generator {
 
 					// Compute topic relevance to author composite baseline vector
 					$rel_sim = 0.70;
-					if (!empty($author_baseline_vec) && !empty($topic_title)) {
+					if (!empty($author_baseline_vec) && !empty($topic_title) && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
 						$tvec = $this->embeddings_service->generate_embedding($topic_title);
 						if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
 							$sim_calc = $this->embeddings_service->calculate_similarity($tvec, $author_baseline_vec);

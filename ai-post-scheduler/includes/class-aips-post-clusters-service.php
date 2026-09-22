@@ -567,7 +567,6 @@ class AIPS_Post_Clusters_Service {
 	 * @return int
 	 */
 	private function count_incoming_internal_links(int $post_id): int {
-		global $wpdb;
 		$permalink = get_permalink($post_id);
 		if (empty($permalink)) {
 			return 0;
@@ -576,15 +575,6 @@ class AIPS_Post_Clusters_Service {
 		$path = wp_parse_url($permalink, PHP_URL_PATH);
 		$search_term = !empty($path) ? $path : $permalink;
 
-		$count = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(ID) FROM {$wpdb->posts}
-			WHERE post_status = 'publish'
-			AND ID != %d
-			AND post_content LIKE %s",
-			$post_id,
-			'%' . $wpdb->esc_like($search_term) . '%'
-		));
-
-		return (int) $count;
+		return $this->relationships_repo->count_incoming_internal_links($post_id, $search_term);
 	}
 }

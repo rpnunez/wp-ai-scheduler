@@ -658,4 +658,101 @@ class AIPS_Embeddings_Repository {
 
 		return array_map('intval', (array) $results);
 	}
+
+	/**
+	 * Get unindexed topic IDs up to a given limit.
+	 *
+	 * @param int $limit Maximum topic IDs to retrieve. Default 50.
+	 * @return int[] Array of unindexed topic IDs.
+	 */
+	public function get_unindexed_topic_ids(int $limit = 50): array {
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$limit = max(1, min(500, absint($limit)));
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$results = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT t.id 
+				 FROM {$topics_table} t
+				 LEFT JOIN {$this->table} e ON t.id = e.object_id AND e.object_type = 'topic'
+				 WHERE e.id IS NULL 
+				   AND t.status IN ('pending', 'approved', 'used')
+				 ORDER BY t.id ASC
+				 LIMIT %d",
+				$limit
+			)
+		);
+
+		return array_map('intval', (array) $results);
+	}
+
+	/**
+	 * Get total count of unindexed topics.
+	 *
+	 * @return int
+	 */
+	public function get_unindexed_topic_count(): int {
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$count = $this->wpdb->get_var(
+			"SELECT COUNT(*) 
+			 FROM {$topics_table} t
+			 LEFT JOIN {$this->table} e ON t.id = e.object_id AND e.object_type = 'topic'
+			 WHERE e.id IS NULL 
+			   AND t.status IN ('pending', 'approved', 'used')"
+		);
+
+		return absint($count);
+	}
+
+	/**
+	 * Get total count of active topics (pending, approved, used).
+	 *
+	 * @return int
+	 */
+	public function get_total_topic_count(): int {
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$count = $this->wpdb->get_var(
+			"SELECT COUNT(*) 
+			 FROM {$topics_table} 
+			 WHERE status IN ('pending', 'approved', 'used')"
+		);
+
+		return absint($count);
+	}
+
+	/**
+	 * Get all indexed topic IDs.
+	 *
+	 * @return int[]
+	 */
+	public function get_all_indexed_topic_ids(): array {
+		$results = $this->wpdb->get_col(
+			"SELECT object_id FROM {$this->table} WHERE object_type = 'topic' ORDER BY object_id ASC"
+		);
+
+		return array_map('intval', (array) $results);
+	}
+
+	/**
+	 * Get all indexed topics with their embeddings for similarity searches.
+	 *
+	 * @return object[] Array of topic objects with topic_id, topic_title, author_id, status, and embedding.
+	 */
+	public function get_all_topics_for_similarity(): array {
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (array) $this->wpdb->get_results(
+			"SELECT e.object_id AS topic_id, t.topic_title, t.author_id, t.status, e.embedding
+			 FROM {$this->table} e
+			 INNER JOIN {$topics_table} t ON e.object_id = t.id
+			 WHERE e.object_type = 'topic'
+			   AND t.status IN ('pending', 'approved', 'used')
+			 ORDER BY e.object_id ASC"
+		);
+	}
 }

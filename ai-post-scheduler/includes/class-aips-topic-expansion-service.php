@@ -46,6 +46,16 @@ class AIPS_Topic_Expansion_Service {
 	private $history_service;
 
 	/**
+	 * @var AIPS_Embeddings_Rate_Limiter Rate limiter instance
+	 */
+	private $rate_limiter;
+
+	/**
+	 * @var AIPS_Embeddings_Repository Embeddings repository
+	 */
+	private $embeddings_repo;
+
+	/**
 	 * Initialize the topic expansion service.
 	 *
 	 * @param AIPS_Embeddings_Service|null        $embeddings_service Embeddings service.
@@ -53,14 +63,26 @@ class AIPS_Topic_Expansion_Service {
 	 * @param AIPS_Logger_Interface|null          $logger Logger instance.
 	 * @param AIPS_Authors_Repository|null        $authors_repository Authors repository.
 	 * @param AIPS_History_Service_Interface|null $history_service History service.
+	 * @param AIPS_Embeddings_Rate_Limiter|null   $rate_limiter Rate limiter.
+	 * @param AIPS_Embeddings_Repository|null     $embeddings_repo Embeddings repository.
 	 */
-	public function __construct($embeddings_service = null, $topics_repository = null, ?AIPS_Logger_Interface $logger = null, $authors_repository = null, ?AIPS_History_Service_Interface $history_service = null) {
+	public function __construct(
+		$embeddings_service = null,
+		$topics_repository = null,
+		?AIPS_Logger_Interface $logger = null,
+		$authors_repository = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
+		?AIPS_Embeddings_Repository $embeddings_repo = null
+	) {
 		$container = AIPS_Container::get_instance();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->topics_repository  = $topics_repository ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->authors_repository = $authors_repository ?: ($container->has(AIPS_Authors_Repository::class) ? $container->make(AIPS_Authors_Repository::class) : new AIPS_Authors_Repository());
+		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->rate_limiter       = $rate_limiter ?: $this->embeddings_service->get_rate_limiter();
+		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 	}
 	
 	/**
@@ -70,6 +92,19 @@ class AIPS_Topic_Expansion_Service {
 	 * @return bool|WP_Error True on success, WP_Error on failure.
 	 */
 	public function compute_topic_embedding($topic_id) {
+		if (!$this->embeddings_service->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
+		if ($this->rate_limiter->is_in_cooldown()) {
+			return new WP_Error('embeddings_cooldown_active', __('Embeddings generation is currently paused due to rate limits.', 'ai-post-scheduler'));
+		}
+
+		$limit_check = $this->rate_limiter->check_limits(1);
+		if (is_wp_error($limit_check)) {
+			return $limit_check;
+		}
+
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
@@ -85,11 +120,26 @@ class AIPS_Topic_Expansion_Service {
 		$embedding = $this->embeddings_service->generate_embedding($text);
 		
 		if (is_wp_error($embedding)) {
+			$this->rate_limiter->record_failure($embedding);
 			$this->logger->log('Failed to generate embedding for topic ' . $topic_id . ': ' . $embedding->get_error_message(), 'error');
 			return $embedding;
 		}
+
+		$this->rate_limiter->record_success();
+
+		// Upsert into central aips_embeddings table
+		$model = $this->embeddings_service->get_active_model();
+		$dimensions = count($embedding);
+		$this->embeddings_repo->upsert(
+			'topic',
+			$topic_id,
+			$embedding,
+			$model,
+			$dimensions,
+			md5($text)
+		);
 		
-		// Store embedding in metadata
+		// Store embedding in metadata for backwards compatibility
 		$metadata = !empty($topic->metadata) ? json_decode($topic->metadata, true) : array();
 		if (!is_array($metadata)) {
 			$metadata = array();
@@ -116,6 +166,14 @@ class AIPS_Topic_Expansion_Service {
 	 * @return array|null Embedding vector or null if not found.
 	 */
 	public function get_topic_embedding($topic_id) {
+		$repo_record = $this->embeddings_repo->get_by_source('topic', (int) $topic_id);
+		if ($repo_record && !empty($repo_record->embedding)) {
+			$vec = $this->embeddings_repo->decode_embedding($repo_record->embedding);
+			if (is_array($vec) && !empty($vec)) {
+				return $vec;
+			}
+		}
+
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic || empty($topic->metadata)) {
@@ -148,6 +206,9 @@ class AIPS_Topic_Expansion_Service {
 		$target_embedding = $this->get_topic_embedding($topic_id);
 		
 		if (!$target_embedding) {
+			if (!$this->embeddings_service->is_enabled() || $this->rate_limiter->is_in_cooldown()) {
+				return array();
+			}
 			// If no embedding exists, compute it
 			$result = $this->compute_topic_embedding($topic_id);
 			if (is_wp_error($result)) {
@@ -174,7 +235,7 @@ class AIPS_Topic_Expansion_Service {
 			// Get or compute embedding
 			$embedding = $this->get_topic_embedding($candidate_topic->id);
 			
-			if (!$embedding) {
+			if (!$embedding && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
 				// Try to compute it
 				$this->compute_topic_embedding($candidate_topic->id);
 				$embedding = $this->get_topic_embedding($candidate_topic->id);
@@ -230,7 +291,7 @@ class AIPS_Topic_Expansion_Service {
 		foreach ($pending_topics as $pending_topic) {
 			$pending_embedding = $this->get_topic_embedding($pending_topic->id);
 			
-			if (!$pending_embedding) {
+			if (!$pending_embedding && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
 				$this->compute_topic_embedding($pending_topic->id);
 				$pending_embedding = $this->get_topic_embedding($pending_topic->id);
 			}
@@ -245,7 +306,7 @@ class AIPS_Topic_Expansion_Service {
 			foreach ($approved_topics as $approved_topic) {
 				$approved_embedding = $this->get_topic_embedding($approved_topic->id);
 				
-				if (!$approved_embedding) {
+				if (!$approved_embedding && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
 					$this->compute_topic_embedding($approved_topic->id);
 					$approved_embedding = $this->get_topic_embedding($approved_topic->id);
 				}
@@ -335,6 +396,9 @@ class AIPS_Topic_Expansion_Service {
 			
 			if (is_wp_error($result)) {
 				$stats['failed']++;
+				if ($this->rate_limiter->is_rate_limit_or_exhaustion_error($result)) {
+					break;
+				}
 			} else {
 				$stats['success']++;
 			}
@@ -364,6 +428,9 @@ class AIPS_Topic_Expansion_Service {
 			$stats['success'] += (int) $author_stats['success'];
 			$stats['failed'] += (int) $author_stats['failed'];
 			$stats['skipped'] += (int) $author_stats['skipped'];
+			if ($this->rate_limiter->is_in_cooldown()) {
+				break;
+			}
 		}
 
 		return $stats;
@@ -419,12 +486,15 @@ class AIPS_Topic_Expansion_Service {
 
 		// Process each topic in the batch
 		foreach ($topics as $topic) {
-			$this->process_single_topic_embedding($topic, $history, $stats);
+			$res = $this->process_single_topic_embedding($topic, $history, $stats);
+			if (is_wp_error($res) && $this->rate_limiter->is_rate_limit_or_exhaustion_error($res)) {
+				break;
+			}
 		}
 
 		// Check if there are more topics to process
-		// We're done if we got fewer topics than requested
-		$stats['done'] = (count($topics) < $batch_size);
+		// We're done if we got fewer topics than requested or entered cooldown
+		$stats['done'] = (count($topics) < $batch_size) || $this->rate_limiter->is_in_cooldown();
 
 		return $stats;
 	}
@@ -438,6 +508,7 @@ class AIPS_Topic_Expansion_Service {
 	 * @param object                 $topic   The topic object to process.
 	 * @param AIPS_History_Container $history The history container for logging.
 	 * @param array                  $stats   Reference to the batch statistics array.
+	 * @return true|WP_Error
 	 */
 	private function process_single_topic_embedding($topic, $history, &$stats) {
 		$stats['last_processed_id'] = $topic->id;
@@ -464,7 +535,7 @@ class AIPS_Topic_Expansion_Service {
 					'topic_title' => $topic->topic_title,
 				)
 			);
-			return;
+			return true;
 		}
 
 		// Compute embedding for this topic
@@ -490,6 +561,7 @@ class AIPS_Topic_Expansion_Service {
 					'error' => $result->get_error_message(),
 				)
 			);
+			return $result;
 		} else {
 			$stats['success']++;
 			$history->record(
@@ -508,6 +580,7 @@ class AIPS_Topic_Expansion_Service {
 					'topic_title' => $topic->topic_title,
 				)
 			);
+			return true;
 		}
 	}
 

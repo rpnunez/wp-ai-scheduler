@@ -16,12 +16,18 @@ if (!defined('ABSPATH')) {
 // Variables injected by AIPS_Content_Indexer_Controller:
 // $status, $stats, $all_post_types, $settings
 
-$total_posts = isset($status['total_posts']) ? (int) $status['total_posts'] : 0;
-$indexed     = isset($status['indexed']) ? (int) $status['indexed'] : 0;
-$unindexed   = isset($status['unindexed']) ? (int) $status['unindexed'] : 0;
-$percent     = isset($status['percent']) ? (int) $status['percent'] : 0;
+$total_posts    = isset($status['total_posts']) ? (int) $status['total_posts'] : 0;
+$indexed        = isset($status['indexed']) ? (int) $status['indexed'] : 0;
+$unindexed      = isset($status['unindexed']) ? (int) $status['unindexed'] : 0;
+$percent        = isset($status['percent']) ? (int) $status['percent'] : 0;
 
-$topic_count = isset($stats['topics']) ? (int) $stats['topics'] : 0;
+$total_topics       = isset($status['total_topics']) ? (int) $status['total_topics'] : 0;
+$indexed_topics     = isset($status['indexed_topics']) ? (int) $status['indexed_topics'] : 0;
+$unindexed_topics   = isset($status['unindexed_topics']) ? (int) $status['unindexed_topics'] : 0;
+$topics_percent     = isset($status['topics_percent']) ? (int) $status['topics_percent'] : 0;
+$combined_unindexed = $unindexed + $unindexed_topics;
+
+$topic_count  = isset($stats['topics']) ? (int) $stats['topics'] : 0;
 $active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default (AI Engine)';
 $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : 1536;
 ?>
@@ -42,6 +48,14 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</p>
 				</div>
 				<div class="aips-page-actions">
+					<div class="aips-scan-scope-wrap">
+						<label for="aips-scan-entity-scope" class="screen-reader-text"><?php esc_html_e('Scan Entity Scope', 'ai-post-scheduler'); ?></label>
+						<select id="aips-scan-entity-scope" class="aips-select aips-select-sm" title="<?php esc_attr_e('Select entity scope to backfill', 'ai-post-scheduler'); ?>">
+							<option value="all" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'all'); ?>><?php esc_html_e('All Content (Posts & Topics)', 'ai-post-scheduler'); ?></option>
+							<option value="posts" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'posts'); ?>><?php esc_html_e('Posts & Pages Only', 'ai-post-scheduler'); ?></option>
+							<option value="topics" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'topics'); ?>><?php esc_html_e('Author Topics Only', 'ai-post-scheduler'); ?></option>
+						</select>
+					</div>
 					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
 						<span class="dashicons dashicons-database-import"></span>
 						<span class="btn-text"><?php esc_html_e('Start Backfill Scan', 'ai-post-scheduler'); ?></span>
@@ -207,28 +221,39 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			<div class="aips-content-panel aips-stat-card-md">
 				<div class="aips-panel-body">
 					<p class="aips-stat-label">
-						<?php esc_html_e('Unindexed Content', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Unindexed Items', 'ai-post-scheduler'); ?>
 					</p>
 					<p class="aips-stat-value aips-stat-value-warning" id="aips-stat-unindexed">
-						<?php echo esc_html($unindexed); ?>
+						<?php echo esc_html($combined_unindexed); ?>
 					</p>
-					<p class="aips-stat-subtext">
-						<?php esc_html_e('Ready for vector generation', 'ai-post-scheduler'); ?>
+					<p class="aips-stat-subtext" id="aips-stat-unindexed-breakdown">
+						<?php
+						printf(
+							/* translators: 1: unindexed posts, 2: unindexed topics */
+							esc_html__('%1$d posts, %2$d topics pending', 'ai-post-scheduler'),
+							$unindexed,
+							$unindexed_topics
+						);
+						?>
 					</p>
 				</div>
 			</div>
 
-			<div class="aips-content-panel aips-stat-card-md">
+			<div class="aips-content-panel aips-stat-card-lg">
 				<div class="aips-panel-body">
 					<p class="aips-stat-label">
-						<?php esc_html_e('Topic Embeddings', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Indexed Author Topics', 'ai-post-scheduler'); ?>
 					</p>
-					<p class="aips-stat-value aips-stat-value-success" id="aips-stat-topics">
-						<?php echo esc_html($topic_count); ?>
-					</p>
-					<p class="aips-stat-subtext">
-						<?php esc_html_e('Deduplication ready', 'ai-post-scheduler'); ?>
-					</p>
+					<div class="aips-stat-value-wrap">
+						<p class="aips-stat-value aips-stat-value-success" id="aips-stat-topics-indexed">
+							<?php echo esc_html($indexed_topics); ?>
+						</p>
+						<span class="aips-stat-total">/ <span id="aips-stat-topics-total"><?php echo esc_html($total_topics); ?></span></span>
+						<span id="aips-stat-topics-percent" class="aips-stat-percent"><?php echo esc_html($topics_percent); ?>%</span>
+					</div>
+					<div class="aips-stat-progress-track">
+						<div id="aips-topics-progress-bar" class="aips-stat-progress-bar aips-stat-progress-bar-topic" style="width:<?php echo esc_attr($topics_percent); ?>%;"></div>
+					</div>
 				</div>
 			</div>
 
@@ -313,6 +338,11 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<label class="aips-checkbox-control">
 							<input type="checkbox" id="aips-toggle-clusters" value="1">
 							<span class="aips-control-label"><?php esc_html_e('Show Post Clusters', 'ai-post-scheduler'); ?></span>
+						</label>
+
+						<label class="aips-checkbox-control">
+							<input type="checkbox" id="aips-toggle-topics" value="1" checked>
+							<span class="aips-control-label"><?php esc_html_e('Show Author Topics', 'ai-post-scheduler'); ?></span>
 						</label>
 
 						<button type="button" id="aips-refresh-graph-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
@@ -488,12 +518,22 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				<div class="aips-panel-header aips-panel-header-flex">
 					<div>
 						<h3 class="aips-panel-title"><?php esc_html_e('Content Cannibalization & Semantic Duplicate Audit', 'ai-post-scheduler'); ?></h3>
-						<p class="description aips-panel-header-desc"><?php esc_html_e('Identifies published posts with unusually high semantic similarity that may compete against each other in search engines.', 'ai-post-scheduler'); ?></p>
+						<p class="description aips-panel-header-desc"><?php esc_html_e('Identifies published posts and candidate Author Topics with unusually high semantic similarity that may compete or overlap in search engines.', 'ai-post-scheduler'); ?></p>
 					</div>
-					<button type="button" id="aips-run-audit-btn" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-search"></span>
-						<?php esc_html_e('Run Audit Scan', 'ai-post-scheduler'); ?>
-					</button>
+					<div class="aips-audit-actions">
+						<div class="aips-audit-filter-wrap">
+							<label for="aips-audit-entity-type" class="screen-reader-text"><?php esc_html_e('Filter Audit Entity', 'ai-post-scheduler'); ?></label>
+							<select id="aips-audit-entity-type" class="aips-select aips-select-sm" title="<?php esc_attr_e('Filter audit results by entity', 'ai-post-scheduler'); ?>">
+								<option value="all"><?php esc_html_e('All Audits (Posts & Topics)', 'ai-post-scheduler'); ?></option>
+								<option value="posts"><?php esc_html_e('Post Duplicates (Post vs Post)', 'ai-post-scheduler'); ?></option>
+								<option value="topics"><?php esc_html_e('Topics & Cannibalization (Topic vs Post / Topic)', 'ai-post-scheduler'); ?></option>
+							</select>
+						</div>
+						<button type="button" id="aips-run-audit-btn" class="aips-btn aips-btn-secondary">
+							<span class="dashicons dashicons-search"></span>
+							<?php esc_html_e('Run Audit Scan', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
 				</div>
 				<div class="aips-panel-body no-padding">
 					<div id="aips-audit-loading" class="aips-audit-loading aips-hidden">
@@ -504,10 +544,10 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					<table class="aips-table" id="aips-cannibalization-table">
 						<thead>
 							<tr>
-								<th><?php esc_html_e('Post A (Source)', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Post B (Candidate Duplicate)', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Entity A (Source)', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Entity B (Candidate Duplicate)', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Similarity Score', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Risk Level', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Audit Type / Risk', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 							</tr>
 						</thead>
@@ -771,12 +811,13 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 	</tr>
 </script>
 
-<!-- Template: Audit group header for Post A -->
+<!-- Template: Audit group header for Entity A -->
 <script type="text/html" id="aips-tmpl-indexer-audit-group-header">
-	<tr class="aips-audit-group-header" data-toggle-target=".{{groupId}}">
+	<tr class="aips-audit-group-header" data-toggle-target=".{{groupId}}" data-audit-type="{{auditType}}">
 		<td colspan="5">
 			<span class="dashicons dashicons-arrow-down-alt2 aips-group-toggle-icon aips-audit-group-toggle-icon"></span>
 			<strong class="aips-audit-group-title">{{title}}</strong>
+			{{entityBadgeHtml}}
 			<span class="aips-audit-group-meta">{{postType}} #{{sourceId}}</span>
 			<span class="aips-risk-badge {{riskClass}} aips-audit-group-badge">Max: {{riskLabel}} ({{maxSimilarityPct}}%)</span>
 		</td>
@@ -796,9 +837,13 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 
 <!-- Template: Audit candidate duplicate row -->
 <script type="text/html" id="aips-tmpl-indexer-audit-row">
-	<tr class="aips-audit-row {{groupId}} {{riskGroupId}} {{collapseClass}}">
+	<tr class="aips-audit-row {{groupId}} {{riskGroupId}} {{collapseClass}}" data-audit-type="{{auditType}}">
 		<td class="aips-audit-tree-indent">&rdsh;</td>
-		<td><strong>{{title}}</strong><br><small class="aips-audit-target-meta">{{postType}} #{{targetId}} ({{date}})</small></td>
+		<td>
+			<strong>{{title}}</strong>
+			{{entityBadgeHtml}}
+			<br><small class="aips-audit-target-meta">{{postType}} #{{targetId}} ({{date}})</small>
+		</td>
 		<td><strong class="aips-audit-similarity-score">{{similarityPct}}%</strong></td>
 		<td><span class="aips-risk-badge {{riskClass}}">{{riskLabel}}</span></td>
 		<td>{{actions}}</td>
@@ -856,5 +901,10 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 			<strong>{{message}}</strong>
 		</td>
 	</tr>
+</script>
+
+<!-- Template: Entity badge -->
+<script type="text/html" id="aips-tmpl-indexer-entity-badge">
+	<span class="aips-entity-badge aips-entity-badge-{{type}}">{{label}}</span>
 </script>
 

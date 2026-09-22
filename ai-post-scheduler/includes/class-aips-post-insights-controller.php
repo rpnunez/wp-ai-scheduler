@@ -21,39 +21,23 @@ class AIPS_Post_Insights_Controller {
 	private $config;
 
 	/**
-	 * @var AIPS_History_Repository_Interface
+	 * @var AIPS_Post_Insights_Repository
 	 */
-	private $history_repo;
-
-	/**
-	 * @var AIPS_Embeddings_Repository
-	 */
-	private $embeddings_repo;
-
-	/**
-	 * @var AIPS_Relationships_Repository
-	 */
-	private $relationships_repo;
+	private $insights_repo;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Config|null                       $config
-	 * @param AIPS_History_Repository_Interface|null $history_repo
-	 * @param AIPS_Embeddings_Repository|null        $embeddings_repo
-	 * @param AIPS_Relationships_Repository|null     $relationships_repo
+	 * @param AIPS_Config|null                   $config
+	 * @param AIPS_Post_Insights_Repository|null $insights_repo
 	 */
 	public function __construct(
 		?AIPS_Config $config = null,
-		?AIPS_History_Repository_Interface $history_repo = null,
-		?AIPS_Embeddings_Repository $embeddings_repo = null,
-		?AIPS_Relationships_Repository $relationships_repo = null
+		?AIPS_Post_Insights_Repository $insights_repo = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->config             = $config ?: AIPS_Config::get_instance();
-		$this->history_repo       = $history_repo ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
-		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$container           = AIPS_Container::get_instance();
+		$this->config        = $config ?: AIPS_Config::get_instance();
+		$this->insights_repo = $insights_repo ?: ($container->has(AIPS_Post_Insights_Repository::class) ? $container->make(AIPS_Post_Insights_Repository::class) : new AIPS_Post_Insights_Repository());
 
 		add_action('wp_ajax_aips_get_post_ai_insights', array($this, 'ajax_get_post_ai_insights'));
 		add_action('wp_ajax_aips_reindex_single_post', array($this, 'ajax_reindex_single_post'));
@@ -158,74 +142,48 @@ class AIPS_Post_Insights_Controller {
 	 * @return array
 	 */
 	public function compile_post_insights(int $post_id): array {
-		global $wpdb;
-
 		$post = get_post($post_id);
 		if (!$post) {
 			return array();
 		}
 
-		// 1. Embedding status
-		$emb_row = $wpdb->get_row($wpdb->prepare(
-			"SELECT id, dimensions, created_at FROM {$wpdb->prefix}aips_embeddings WHERE post_id = %d LIMIT 1",
-			$post_id
-		));
+		// 1. Embedding status via repository
+		$emb_row = $this->insights_repo->get_post_embedding_status($post_id);
 
 		$is_indexed = !empty($emb_row);
+		$indexed_ts = ($is_indexed && !empty($emb_row->indexed_at)) ? (int) $emb_row->indexed_at : 0;
 		$embedding_info = array(
 			'is_indexed'  => $is_indexed,
 			'dimensions'  => $is_indexed ? (int) $emb_row->dimensions : 0,
-			'indexed_at'  => $is_indexed ? $emb_row->created_at : null,
-			'indexed_str' => $is_indexed ? human_time_diff(strtotime($emb_row->created_at), time()) . ' ' . __('ago', 'ai-post-scheduler') : __('Not indexed', 'ai-post-scheduler'),
+			'indexed_at'  => $is_indexed ? $indexed_ts : null,
+			'indexed_str' => ($is_indexed && $indexed_ts > 0) ? human_time_diff($indexed_ts, time()) . ' ' . __('ago', 'ai-post-scheduler') : __('Not indexed', 'ai-post-scheduler'),
 		);
 
-		// 2. Generation Context & History
-		$history = $this->history_repo->get_by_post_id($post_id);
+		// 2. Generation Context & History via repository
+		$history = $this->insights_repo->get_post_generation_details($post_id);
 		$history_info = null;
 
 		if ($history) {
-			$author_name = '';
-			if (!empty($history->author_id)) {
-				$auth = $wpdb->get_row($wpdb->prepare("SELECT name FROM {$wpdb->prefix}aips_authors WHERE id = %d", $history->author_id));
-				if ($auth) {
-					$author_name = $auth->name;
-				}
-			}
-
-			$template_title = '';
-			if (!empty($history->template_id)) {
-				$tpl = $wpdb->get_row($wpdb->prepare("SELECT title FROM {$wpdb->prefix}aips_templates WHERE id = %d", $history->template_id));
-				if ($tpl) {
-					$template_title = $tpl->title;
-				}
-			}
-
-			$topic_title = '';
-			if (!empty($history->topic_id)) {
-				$top = $wpdb->get_row($wpdb->prepare("SELECT topic FROM {$wpdb->prefix}aips_author_topics WHERE id = %d", $history->topic_id));
-				if ($top) {
-					$topic_title = $top->topic;
-				}
-			}
-
 			$history_url = AIPS_Admin_Menu_Helper::get_page_url('history', array(
 				'post_id'    => $post_id,
-				'history_id' => (int) $history->id,
+				'history_id' => (int) $history['id'],
 			));
 
+			$created_ts = !empty($history['created_at']) ? strtotime($history['created_at']) : 0;
+
 			$history_info = array(
-				'id'              => (int) $history->id,
-				'author_id'       => (int) $history->author_id,
-				'author_name'     => $author_name,
-				'template_id'     => (int) $history->template_id,
-				'template_title'  => $template_title,
-				'topic_id'        => (int) $history->topic_id,
-				'topic_title'     => $topic_title,
-				'created_at'      => $history->created_at,
-				'created_str'     => human_time_diff(strtotime($history->created_at), time()) . ' ' . __('ago', 'ai-post-scheduler'),
-				'tokens_used'     => (int) $history->tokens_used,
-				'cost'            => (float) $history->cost,
-				'creation_method' => $history->creation_method,
+				'id'              => (int) $history['id'],
+				'author_id'       => (int) $history['author_id'],
+				'author_name'     => !empty($history['author_name']) ? $history['author_name'] : '',
+				'template_id'     => (int) $history['template_id'],
+				'template_title'  => !empty($history['template_title']) ? $history['template_title'] : '',
+				'topic_id'        => (int) $history['topic_id'],
+				'topic_title'     => !empty($history['topic_title']) ? $history['topic_title'] : '',
+				'created_at'      => $history['created_at'],
+				'created_str'     => $created_ts > 0 ? human_time_diff($created_ts, time()) . ' ' . __('ago', 'ai-post-scheduler') : '',
+				'tokens_used'     => (int) $history['tokens_used'],
+				'cost'            => (float) $history['cost'],
+				'creation_method' => $history['creation_method'],
 				'history_url'     => $history_url,
 			);
 		}
@@ -250,21 +208,8 @@ class AIPS_Post_Insights_Controller {
 			}
 		}
 
-		// 4. Top Semantic Duplicate Candidates
-		$rel_table = $wpdb->prefix . 'aips_relationships';
-		$raw_duplicates = $wpdb->get_results($wpdb->prepare(
-			"SELECT 
-				CASE WHEN post_id_1 = %d THEN post_id_2 ELSE post_id_1 END AS matched_id,
-				similarity_score
-			 FROM {$rel_table}
-			 WHERE (post_id_1 = %d OR post_id_2 = %d)
-			   AND relation_type = 'similar'
-			 ORDER BY similarity_score DESC
-			 LIMIT 5",
-			$post_id,
-			$post_id,
-			$post_id
-		));
+		// 4. Top Semantic Duplicate Candidates via repository
+		$raw_duplicates = $this->insights_repo->get_top_duplicates($post_id, 5);
 
 		$top_duplicates = array();
 		$max_similarity = 0.0;
@@ -276,7 +221,7 @@ class AIPS_Post_Insights_Controller {
 				continue;
 			}
 
-			$sim = (float) $d->similarity_score;
+			$sim = (float) $d->similarity;
 			if ($sim > $max_similarity) {
 				$max_similarity = $sim;
 			}
@@ -322,18 +267,18 @@ class AIPS_Post_Insights_Controller {
 		}
 
 		return array(
-			'post_id'         => $post_id,
-			'title'           => get_the_title($post_id),
-			'post_type'       => $post->post_type,
-			'post_date'       => get_the_date('', $post_id),
-			'embedding'       => $embedding_info,
-			'history'         => $history_info,
-			'cluster'         => $cluster_info,
-			'top_duplicates'  => $top_duplicates,
-			'max_similarity'  => $max_similarity,
+			'post_id'            => $post_id,
+			'title'              => get_the_title($post_id),
+			'post_type'          => $post->post_type,
+			'post_date'          => get_the_date('', $post_id),
+			'embedding'          => $embedding_info,
+			'history'            => $history_info,
+			'cluster'            => $cluster_info,
+			'top_duplicates'     => $top_duplicates,
+			'max_similarity'     => $max_similarity,
 			'max_similarity_pct' => round($max_similarity * 100),
-			'overall_risk'    => $overall_risk,
-			'overall_label'   => $overall_label,
+			'overall_risk'       => $overall_risk,
+			'overall_label'      => $overall_label,
 		);
 	}
 }

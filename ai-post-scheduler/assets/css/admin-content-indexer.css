@@ -1706,3 +1706,87 @@
 	color: var(--aips-warning, #f59e0b);
 }
 
+/* ==========================================================================
+   Author Topics Embeddings & Entity Badges Styling
+   ========================================================================== */
+
+:root {
+	--aips-topic: #8b5cf6;
+	--aips-topic-hover: #7c3aed;
+	--aips-topic-light: #f5f3ff;
+	--aips-topic-dark: #6d28d9;
+	--aips-topic-border: #ddd6fe;
+}
+
+.aips-scan-scope-wrap {
+	display: inline-flex;
+	align-items: center;
+	margin-right: 6px;
+}
+
+.aips-audit-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.aips-audit-filter-wrap {
+	display: inline-flex;
+	align-items: center;
+}
+
+.aips-stat-progress-bar-topic {
+	background: linear-gradient(90deg, var(--aips-topic, #8b5cf6) 0%, var(--aips-topic-hover, #7c3aed) 100%) !important;
+}
+
+.aips-entity-badge {
+	display: inline-flex;
+	align-items: center;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 12px;
+	margin-left: 6px;
+	line-height: 1.3;
+	vertical-align: middle;
+	text-transform: capitalize;
+}
+
+.aips-entity-badge-post {
+	background: var(--aips-info-light, rgba(34, 113, 177, 0.1));
+	color: var(--aips-info-dark, #135e96);
+	border: 1px solid var(--aips-gray-200, #c3c4c7);
+}
+
+.aips-entity-badge-topic {
+	background: var(--aips-topic-light, #f5f3ff);
+	color: var(--aips-topic-dark, #6d28d9);
+	border: 1px solid var(--aips-topic-border, #ddd6fe);
+}
+
+.aips-entity-badge-cannibalization {
+	background: var(--aips-warning-light, rgba(219, 166, 23, 0.1));
+	color: var(--aips-warning-dark, #bd8d0e);
+	border: 1px solid var(--aips-warning, #dba617);
+}
+
+/* Graph topic node styling */
+.graph-node.node-topic circle {
+	stroke: var(--aips-topic, #8b5cf6);
+	stroke-width: 2.5px;
+	stroke-dasharray: 4 3;
+	fill: var(--aips-topic-light, #faf5ff);
+}
+
+.graph-node.node-topic text {
+	fill: var(--aips-topic-dark, #6d28d9);
+	font-weight: var(--aips-font-medium, 500);
+}
+
+.graph-node.node-topic.is-highlighted circle {
+	stroke: var(--aips-topic-hover, #7c3aed);
+	stroke-width: 3.5px;
+	fill: var(--aips-topic-border, #f3e8ff);
+}
+
+

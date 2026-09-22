@@ -87,14 +87,26 @@ class AIPS_Author_Topics_Controller {
 	private $job_scheduler;
 
 	/**
+	 * @var AIPS_Embeddings_Repository Embeddings repository
+	 */
+	private $embeddings_repo;
+
+	/**
+	 * @var AIPS_Relationships_Repository Relationships repository
+	 */
+	private $relationships_repo;
+
+	/**
 	 * Initialize the controller.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
+	 * @param AIPS_Embeddings_Repository|null    $embeddings_repo        Embeddings repository.
+	 * @param AIPS_Relationships_Repository|null $relationships_repo     Relationships repository.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
+	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null, ?AIPS_Embeddings_Repository $embeddings_repo = null, ?AIPS_Relationships_Repository $relationships_repo = null) {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
@@ -106,6 +118,8 @@ class AIPS_Author_Topics_Controller {
 		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->embeddings_repo        = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo     = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -220,6 +234,10 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 
 		if ($result) {
+			// Purge topic vector embedding and relationships upon rejection
+			$this->embeddings_repo->delete('topic', $topic_id);
+			$this->relationships_repo->delete_for_object('topic', $topic_id);
+
 			// Get topic details for logging
 			$topic = $this->repository->get_by_id($topic_id);
 
@@ -322,6 +340,8 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->delete($topic_id);
 
 		if ($result) {
+			$this->embeddings_repo->delete('topic', $topic_id);
+			$this->relationships_repo->delete_for_object('topic', $topic_id);
 			AIPS_Ajax_Response::success(array(), __('Topic deleted successfully.', 'ai-post-scheduler'));
 		} else {
 			AIPS_Ajax_Response::error(__('Failed to delete topic.', 'ai-post-scheduler'));
@@ -490,6 +510,8 @@ class AIPS_Author_Topics_Controller {
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 			if ($result) {
+				$this->embeddings_repo->delete('topic', $topic_id);
+				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$this->logs_repository->log_rejection($topic_id, get_current_user_id());
 				$success_count++;
 			} else {
@@ -547,6 +569,8 @@ class AIPS_Author_Topics_Controller {
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->delete($topic_id);
 			if ($result) {
+				$this->embeddings_repo->delete('topic', $topic_id);
+				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$success_count++;
 			} else {
 				$failed_count++;

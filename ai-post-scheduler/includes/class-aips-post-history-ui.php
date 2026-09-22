@@ -42,17 +42,24 @@ class AIPS_Post_History_UI {
 	private $insights_cache = array();
 
 	/**
+	 * @var AIPS_Post_Insights_Repository
+	 */
+	private $insights_repo;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_History_Repository_Interface|null $history_repository Optional repository override.
 	 * @param AIPS_Config|null                       $config             Optional config override.
+	 * @param AIPS_Post_Insights_Repository|null     $insights_repo      Optional repository override.
 	 */
-	public function __construct($history_repository = null, $config = null) {
+	public function __construct($history_repository = null, $config = null, ?AIPS_Post_Insights_Repository $insights_repo = null) {
 		$container = AIPS_Container::get_instance();
 		$this->history_repository = $history_repository instanceof AIPS_History_Repository_Interface
 			? $history_repository
 			: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->config = $config ?: AIPS_Config::get_instance();
+		$this->insights_repo = $insights_repo ?: ($container->has(AIPS_Post_Insights_Repository::class) ? $container->make(AIPS_Post_Insights_Repository::class) : new AIPS_Post_Insights_Repository());
 
 		// Row actions & Classic Editor submit box
 		add_filter('post_row_actions', array($this, 'add_post_row_action'), 10, 2);
@@ -143,7 +150,7 @@ class AIPS_Post_History_UI {
 			return $posts;
 		}
 
-		global $pagenow, $wpdb;
+		global $pagenow;
 		if ($pagenow !== 'edit.php') {
 			return $posts;
 		}
@@ -160,77 +167,20 @@ class AIPS_Post_History_UI {
 		}
 
 		$post_ids = array_unique($post_ids);
-		$id_placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
 
-		// 1. Bulk pre-fetch History records
-		$history_table = $wpdb->prefix . 'aips_history';
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$history_rows = $wpdb->get_results($wpdb->prepare(
-			"SELECT id, post_id, author_id, template_id, topic_id, created_at, tokens_used, cost, creation_method 
-			 FROM {$history_table} 
-			 WHERE post_id IN ($id_placeholders)",
-			$post_ids
-		));
-
-		$history_map = array();
-		if (!empty($history_rows)) {
-			foreach ($history_rows as $hr) {
-				$pid = (int) $hr->post_id;
-				$history_map[$pid] = $hr;
-				$this->history_cache[$pid] = $hr;
+		// 1. Bulk pre-fetch History records via repository
+		$history_map = $this->insights_repo->get_bulk_generation_details($post_ids);
+		if (!empty($history_map)) {
+			foreach ($history_map as $pid => $hr) {
+				$this->history_cache[$pid] = (object) $hr;
 			}
 		}
 
-		// 2. Bulk pre-fetch Embeddings status
-		$emb_table = $wpdb->prefix . 'aips_embeddings';
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$emb_rows = $wpdb->get_results($wpdb->prepare(
-			"SELECT post_id, dimensions, created_at 
-			 FROM {$emb_table} 
-			 WHERE post_id IN ($id_placeholders)",
-			$post_ids
-		));
+		// 2. Bulk pre-fetch Embeddings status via repository
+		$emb_map = $this->insights_repo->get_bulk_embeddings_status($post_ids);
 
-		$emb_map = array();
-		if (!empty($emb_rows)) {
-			foreach ($emb_rows as $er) {
-				$emb_map[(int) $er->post_id] = $er;
-			}
-		}
-
-		// 3. Bulk pre-fetch Top Duplicate Relationships
-		$rel_table = $wpdb->prefix . 'aips_relationships';
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rel_rows = $wpdb->get_results($wpdb->prepare(
-			"SELECT post_id_1, post_id_2, similarity_score 
-			 FROM {$rel_table} 
-			 WHERE relation_type = 'similar' 
-			   AND (post_id_1 IN ($id_placeholders) OR post_id_2 IN ($id_placeholders))
-			 ORDER BY similarity_score DESC",
-			array_merge($post_ids, $post_ids)
-		));
-
-		$rel_map = array();
-		if (!empty($rel_rows)) {
-			foreach ($rel_rows as $rr) {
-				$p1 = (int) $rr->post_id_1;
-				$p2 = (int) $rr->post_id_2;
-				$sim = (float) $rr->similarity_score;
-
-				if (in_array($p1, $post_ids, true) && !isset($rel_map[$p1])) {
-					$rel_map[$p1] = array(
-						'matched_id'       => $p2,
-						'similarity_score' => $sim,
-					);
-				}
-				if (in_array($p2, $post_ids, true) && !isset($rel_map[$p2])) {
-					$rel_map[$p2] = array(
-						'matched_id'       => $p1,
-						'similarity_score' => $sim,
-					);
-				}
-			}
-		}
+		// 3. Bulk pre-fetch Top Duplicate Relationships via repository
+		$rel_map = $this->insights_repo->get_bulk_top_duplicates($post_ids);
 
 		// 4. Cluster membership map
 		$saved_clusters = (array) $this->config->get_option('aips_post_clusters', array());
@@ -258,7 +208,7 @@ class AIPS_Post_History_UI {
 			}
 
 			// Duplicate risk evaluation
-			$max_sim = $rel ? (float) $rel['similarity_score'] : 0.0;
+			$max_sim = $rel ? (float) (isset($rel['similarity']) ? $rel['similarity'] : (isset($rel['similarity_score']) ? $rel['similarity_score'] : 0.0)) : 0.0;
 			$max_sim_pct = round($max_sim * 100);
 			$overall_risk = 'clean';
 			$overall_label = __('Clean', 'ai-post-scheduler');
@@ -280,7 +230,7 @@ class AIPS_Post_History_UI {
 			$this->insights_cache[$pid] = array(
 				'is_indexed'         => $has_emb,
 				'dimensions'         => $has_emb ? (int) $emb_map[$pid]->dimensions : 0,
-				'indexed_at'         => $has_emb ? $emb_map[$pid]->created_at : null,
+				'indexed_at'         => $has_emb ? (!empty($emb_map[$pid]->indexed_at) ? $emb_map[$pid]->indexed_at : (isset($emb_map[$pid]->created_at) ? $emb_map[$pid]->created_at : null)) : null,
 				'history'            => $hist,
 				'cluster'            => $cluster_info,
 				'matched_id'         => $rel ? (int) $rel['matched_id'] : 0,

@@ -351,6 +351,20 @@ class AIPS_Content_Indexer_Service {
 	 * @return true|WP_Error
 	 */
 	public function index_topic($topic_id, $title = '') {
+		if (!$this->embeddings_service->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		if ($rate_limiter->is_in_cooldown()) {
+			return new WP_Error('embeddings_cooldown_active', __('Embeddings generation is currently paused due to rate limits.', 'ai-post-scheduler'));
+		}
+
+		$limit_check = $rate_limiter->check_limits(1);
+		if (is_wp_error($limit_check)) {
+			return $limit_check;
+		}
+
 		$topic_id = absint($topic_id);
 
 		if (empty($title)) {
@@ -365,11 +379,19 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$content_hash = md5($title);
-		$embedding    = $this->embeddings_service->generate_embedding($title);
+		$existing     = $this->embeddings_repo->get_by_source('topic', $topic_id);
+		if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
+			return true;
+		}
+
+		$embedding = $this->embeddings_service->generate_embedding($title);
 
 		if (is_wp_error($embedding)) {
+			$rate_limiter->record_failure($embedding);
 			return $embedding;
 		}
+
+		$rate_limiter->record_success();
 
 		$dimensions = count($embedding);
 		$ai_config  = $this->config->get_ai_config();
@@ -385,35 +407,53 @@ class AIPS_Content_Indexer_Service {
 			''
 		);
 
+		// Precompute cross-entity similarity against published posts to flag potential cannibalization
+		$post_vectors = $this->embeddings_repo->get_all_for_similarity_by_type('post', 'publish');
+		if (!empty($post_vectors)) {
+			$min_sim = (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65);
+			$matches = array();
+			foreach ($post_vectors as $pv) {
+				$p_vec = $this->embeddings_repo->decode_embedding($pv->embedding);
+				if (!empty($p_vec) && count($p_vec) === $dimensions) {
+					$sim = $this->embeddings_service->calculate_similarity($embedding, $p_vec);
+					if (!is_wp_error($sim) && (float) $sim >= $min_sim) {
+						$matches[] = array(
+							'target_type' => 'post',
+							'target_id'   => (int) $pv->post_id,
+							'similarity'  => (float) $sim,
+						);
+					}
+				}
+			}
+			if (!empty($matches)) {
+				$this->relationships_repo->sync_for_source('topic', $topic_id, $matches, 'similar');
+			}
+		}
+
 		return true;
 	}
 
 	/**
-	 * Process a batch of unindexed posts (progressive AJAX chunk runner & WP-Cron worker).
+	 * Process a batch of unindexed items (posts or topics).
 	 *
-	 * @param int             $batch_size   Number of posts to vectorize in this slice.
-	 * @param int             $last_post_id Cursor pagination: process IDs > this.
+	 * @param int             $batch_size   Number of items to vectorize in this slice.
+	 * @param int             $last_post_id Cursor pagination for posts: process IDs > this.
 	 * @param string[]|string $post_types   Post types to index.
 	 * @param string          $post_status  Post status to index.
-	 * @return array{success: int, failed: int, last_post_id: int, done: bool, total_indexed: int, total_posts: int, percent: int}
+	 * @param string          $entity_scope Entity scope ('all', 'posts', 'topics'). Default 'all'.
+	 * @return array
 	 */
 	public function process_indexing_batch(
 		$batch_size = 10,
 		$last_post_id = 0,
 		$post_types = array('post'),
-		$post_status = 'publish'
+		$post_status = 'publish',
+		$entity_scope = 'all'
 	) {
 		$post_types = (array) $post_types;
 		if (empty($post_types)) {
 			$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		}
-
-		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
-			$batch_size,
-			$last_post_id,
-			$post_types,
-			$post_status
-		);
 
 		$rate_limiter = $this->embeddings_service->get_rate_limiter();
 		$cooldown     = $rate_limiter->get_cooldown_status();
@@ -428,6 +468,7 @@ class AIPS_Content_Indexer_Service {
 				'total_indexed'       => $status['indexed'],
 				'total_posts'         => $status['total_posts'],
 				'percent'             => $status['percent'],
+				'status'              => $status,
 				'rate_limit_exceeded' => true,
 				'rate_limit_error'    => array(
 					'message' => $cooldown['reason'],
@@ -436,6 +477,52 @@ class AIPS_Content_Indexer_Service {
 				'rate_limits'         => $status['rate_limits'],
 			);
 		}
+
+		// Entity Scope: Topics only
+		if ($entity_scope === 'topics') {
+			$topic_ids = $this->embeddings_repo->get_unindexed_topic_ids($batch_size);
+			$success   = 0;
+			$failed    = 0;
+			$rate_err  = null;
+
+			foreach ($topic_ids as $tid) {
+				$res = $this->index_topic($tid);
+				if (is_wp_error($res)) {
+					$failed++;
+					$rate_limiter->record_failure($res);
+					if ($rate_limiter->is_rate_limit_or_exhaustion_error($res)) {
+						$rate_err = array('message' => $res->get_error_message());
+						break;
+					}
+				} else {
+					$success++;
+					$rate_limiter->record_success();
+				}
+			}
+
+			$status = $this->get_indexing_status($post_types, $post_status);
+			return array(
+				'success'             => $success,
+				'failed'              => $failed,
+				'last_post_id'        => 0,
+				'done'                => empty($topic_ids) || count($topic_ids) < $batch_size || !empty($rate_err),
+				'total_indexed'       => $status['indexed_topics'],
+				'total_posts'         => $status['total_topics'],
+				'percent'             => $status['topics_percent'],
+				'status'              => $status,
+				'rate_limit_exceeded' => !empty($rate_err),
+				'rate_limit_error'    => $rate_err,
+				'rate_limits'         => $status['rate_limits'],
+				'entity_scope'        => 'topics',
+			);
+		}
+
+		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
+			$batch_size,
+			$last_post_id,
+			$post_types,
+			$post_status
+		);
 
 		$success     = 0;
 		$failed      = 0;
@@ -479,7 +566,33 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$status = $this->get_indexing_status($post_types, $post_status);
-		$done   = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0 || !empty($rate_limit_error);
+
+		if ($entity_scope === 'all' && empty($rate_limit_error)) {
+			if (empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0) {
+				$topic_batch = $batch_size - $success;
+				if ($topic_batch > 0 && $status['unindexed_topics'] > 0) {
+					$topic_ids = $this->embeddings_repo->get_unindexed_topic_ids($topic_batch);
+					foreach ($topic_ids as $tid) {
+						$res = $this->index_topic($tid);
+						if (is_wp_error($res)) {
+							$failed++;
+							$rate_limiter->record_failure($res);
+							if ($rate_limiter->is_rate_limit_or_exhaustion_error($res)) {
+								$rate_limit_error = array('message' => $res->get_error_message());
+								break;
+							}
+						} else {
+							$success++;
+							$rate_limiter->record_success();
+						}
+					}
+					$status = $this->get_indexing_status($post_types, $post_status);
+				}
+			}
+			$done = ($status['unindexed'] === 0 && $status['unindexed_topics'] === 0) || !empty($rate_limit_error);
+		} else {
+			$done = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0 || !empty($rate_limit_error);
+		}
 
 		return array(
 			'success'             => $success,
@@ -489,9 +602,11 @@ class AIPS_Content_Indexer_Service {
 			'total_indexed'       => $status['indexed'],
 			'total_posts'         => $status['total_posts'],
 			'percent'             => $status['percent'],
+			'status'              => $status,
 			'rate_limit_exceeded' => !empty($rate_limit_error),
 			'rate_limit_error'    => $rate_limit_error,
 			'rate_limits'         => $status['rate_limits'],
+			'entity_scope'        => $entity_scope,
 		);
 	}
 
@@ -581,15 +696,21 @@ class AIPS_Content_Indexer_Service {
 			$date_after = (string) $this->config->get_option('aips_embeddings_date_after', '');
 			$date_days  = (int) $this->config->get_option('aips_embeddings_date_days', 30);
 
-			$post_time = strtotime($post->post_date_gmt && '0000-00-00 00:00:00' !== $post->post_date_gmt ? $post->post_date_gmt : $post->post_date);
+			$raw_date  = $post->post_date_gmt && '0000-00-00 00:00:00' !== $post->post_date_gmt ? $post->post_date_gmt : $post->post_date;
+			$dt        = AIPS_DateTime::fromMysqlOrNull($raw_date);
+			$post_time = $dt ? $dt->timestamp() : 0;
 
 			if (!empty($date_after)) {
-				$after_time = strtotime($date_after . ' 00:00:00');
-				return $post_time >= $after_time;
+				try {
+					$after_time = AIPS_DateTime::fromDate($date_after)->timestamp();
+					return $post_time >= $after_time;
+				} catch (\Exception $e) {
+					// Invalid date fallback
+				}
 			}
 
 			if ($date_days > 0) {
-				$cutoff = time() - ($date_days * DAY_IN_SECONDS);
+				$cutoff = AIPS_DateTime::now()->timestamp() - ($date_days * DAY_IN_SECONDS);
 				return $post_time >= $cutoff;
 			}
 		}
@@ -618,6 +739,11 @@ class AIPS_Content_Indexer_Service {
 		$unindexed   = max(0, $total_posts - $indexed);
 		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
 
+		$total_topics     = $this->embeddings_repo->get_total_topic_count();
+		$unindexed_topics = $this->embeddings_repo->get_unindexed_topic_count();
+		$indexed_topics   = max(0, $total_topics - $unindexed_topics);
+		$topics_percent   = $total_topics > 0 ? min(100, (int) round(($indexed_topics / $total_topics) * 100)) : 0;
+
 		$rate_limiter = $this->embeddings_service->get_rate_limiter();
 		$usage_stats  = $rate_limiter->get_usage_stats();
 
@@ -626,6 +752,28 @@ class AIPS_Content_Indexer_Service {
 			'indexed'            => $indexed,
 			'unindexed'          => $unindexed,
 			'percent'            => $percent,
+			'total_topics'       => $total_topics,
+			'indexed_topics'     => $indexed_topics,
+			'unindexed_topics'   => $unindexed_topics,
+			'topics_percent'     => $topics_percent,
+			'posts'              => array(
+				'total'     => $total_posts,
+				'indexed'   => $indexed,
+				'unindexed' => $unindexed,
+				'percent'   => $percent,
+			),
+			'topics'             => array(
+				'total'     => $total_topics,
+				'indexed'   => $indexed_topics,
+				'unindexed' => $unindexed_topics,
+				'percent'   => $topics_percent,
+			),
+			'combined'           => array(
+				'total'     => $total_posts + $total_topics,
+				'indexed'   => $indexed + $indexed_topics,
+				'unindexed' => $unindexed + $unindexed_topics,
+				'percent'   => ($total_posts + $total_topics) > 0 ? min(100, (int) round((($indexed + $indexed_topics) / ($total_posts + $total_topics)) * 100)) : 0,
+			),
 			'post_types'         => $post_types,
 			'scope'              => $scope,
 			'embeddings_enabled' => $this->embeddings_service->is_enabled(),

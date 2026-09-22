@@ -242,6 +242,9 @@ class AIPS_Config {
             'aips_indexer_consecutive_error_threshold' => 2,
             'aips_post_clusters'                       => array(),
             'aips_enable_post_insights_ui'             => true,
+            'aips_indexer_topics_continuous_sync'      => true,
+            'aips_indexer_topics_execution_timing'     => 'immediate',
+            'aips_indexer_scan_entity_scope'           => 'all',
             // Author Topics Semantic Auto-Approval
             'aips_author_topic_auto_approval_enabled'  => false,
             'aips_author_topic_approval_mode'          => 'embeddings',

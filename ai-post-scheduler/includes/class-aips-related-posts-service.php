@@ -287,12 +287,13 @@ class AIPS_Related_Posts_Service {
 	 * Retrieve interactive graph data payload for a post.
 	 *
 	 * @param int   $post_id        Post ID.
-	 * @param int   $limit          Max neighbors.
-	 * @param float $min_similarity Threshold.
+	 * @param int    $limit          Max neighbors.
+	 * @param float  $min_similarity Threshold.
+	 * @param string $source_type    Source entity type ('post' or 'topic'). Default 'post'.
 	 * @return array Graph structure {nodes: array, edges: array}.
 	 */
-	public function get_graph_data_for_post($post_id, $limit = 15, $min_similarity = 0.50) {
-		return $this->relationships_repo->get_graph_data('post', $post_id, $limit, $min_similarity);
+	public function get_graph_data_for_post($post_id, $limit = 15, $min_similarity = 0.50, $source_type = 'post') {
+		return $this->relationships_repo->get_graph_data($source_type, $post_id, $limit, $min_similarity);
 	}
 
 	/**

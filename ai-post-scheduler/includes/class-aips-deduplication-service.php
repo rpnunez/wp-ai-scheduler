@@ -252,33 +252,39 @@ class AIPS_Deduplication_Service {
 	/**
 	 * Run a site-wide Content Cannibalization / Duplicate Post audit.
 	 *
-	 * @param float $threshold Minimum similarity threshold (default: 0.80).
-	 * @param int   $limit     Max clusters to return.
+	 * @param float  $threshold   Minimum similarity threshold (default: 0.80).
+	 * @param int    $limit       Max clusters to return.
+	 * @param string $entity_type Entity filter ('all', 'posts', 'topics'). Default 'all'.
 	 * @return array List of cannibalizing post pairs with similarity scores and URLs.
 	 */
-	public function get_cannibalization_audit_results($threshold = 0.80, $limit = 50) {
-		$threshold = (float) $threshold;
-		$limit     = absint($limit);
+	public function get_cannibalization_audit_results($threshold = 0.80, $limit = 50, $entity_type = 'all') {
+		$threshold   = (float) $threshold;
+		$limit       = absint($limit);
+		$entity_type = sanitize_key($entity_type);
 
-		$pairs = $this->relationships_repo->get_top_duplicate_pairs($threshold, $limit);
+		$pairs = $this->relationships_repo->get_top_duplicate_pairs($threshold, $limit, $entity_type);
 		$results = array();
 
 		foreach ($pairs as $pair) {
+			$s_type = !empty($pair->source_post_type) ? $pair->source_post_type : 'post';
+			$t_type = !empty($pair->target_post_type) ? $pair->target_post_type : 'post';
+
 			$results[] = array(
 				'source_id'        => (int) $pair->source_id,
 				'source_title'     => $pair->source_title,
-				'source_post_type' => $pair->source_post_type,
-				'source_url'       => get_permalink((int) $pair->source_id),
-				'source_edit_url'  => get_edit_post_link((int) $pair->source_id, ''),
+				'source_post_type' => $s_type,
+				'source_url'       => $s_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_permalink((int) $pair->source_id),
+				'source_edit_url'  => $s_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_edit_post_link((int) $pair->source_id, ''),
 				'source_date'      => $pair->source_date,
 				'target_id'        => (int) $pair->target_id,
 				'target_title'     => $pair->target_title,
-				'target_post_type' => $pair->target_post_type,
-				'target_url'       => get_permalink((int) $pair->target_id),
-				'target_edit_url'  => get_edit_post_link((int) $pair->target_id, ''),
+				'target_post_type' => $t_type,
+				'target_url'       => $t_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_permalink((int) $pair->target_id),
+				'target_edit_url'  => $t_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_edit_post_link((int) $pair->target_id, ''),
 				'target_date'      => $pair->target_date,
 				'similarity'       => round((float) $pair->similarity, 4),
 				'similarity_pct'   => round(((float) $pair->similarity) * 100, 1),
+				'audit_type'       => !empty($pair->audit_type) ? $pair->audit_type : 'post_duplicate',
 			);
 		}
 
