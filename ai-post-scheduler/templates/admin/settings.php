@@ -42,8 +42,8 @@ if (!defined('ABSPATH')) {
 
 					<!-- General Tab -->
 					<div id="settings-general-tab" class="aips-tab-content">
-						<div class="aips-notice-banner" style="background:#f0f6fc; border-left:4px solid #72aee6; padding:15px; margin-bottom:20px;">
-							<h3 style="margin-top:0;"><?php esc_html_e('Welcome to AI Post Scheduler', 'ai-post-scheduler'); ?></h3>
+						<div class="aips-notice-banner">
+							<h3><?php esc_html_e('Welcome to AI Post Scheduler', 'ai-post-scheduler'); ?></h3>
 							<p><?php esc_html_e('Configure your site-wide content generation defaults, connect your AI Engine provider, manage notification preferences, and define your brand voice.', 'ai-post-scheduler'); ?></p>
 							<p>
 								<a href="#settings-content-generation" class="button button-primary" onclick="jQuery('#aips-settings-tab-nav [data-tab=\'settings-content-generation\']').click(); return false;"><?php esc_html_e('Configure Content Generation Defaults', 'ai-post-scheduler'); ?></a>

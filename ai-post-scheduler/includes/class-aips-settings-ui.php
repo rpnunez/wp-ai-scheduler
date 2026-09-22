@@ -158,7 +158,7 @@ class AIPS_Settings_UI {
         ?>
         <fieldset>
             <?php foreach ($all_post_types as $pt_slug => $pt_info) : ?>
-                <label style="display:block;margin-bottom:8px;">
+                <label class="aips-settings-checkbox-item">
                     <input type="checkbox" name="aips_generation_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected, true)); ?>>
                     <strong><?php echo esc_html($pt_info['label']); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
                 </label>
@@ -1446,9 +1446,9 @@ class AIPS_Settings_UI {
 		$enabled    = (bool) AIPS_Config::get_instance()->get_option('aips_integration_acf_enabled', 0);
 		$acf_active = function_exists('acf_get_field_groups') && function_exists('acf_get_fields') && function_exists('update_field');
 		?>
-		<div class="aips-integration-field-wrapper" style="display: flex; flex-direction: column; gap: 8px;">
-			<div style="display: flex; align-items: center; gap: 10px;">
-				<label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+		<div class="aips-integration-field-wrapper">
+			<div class="aips-integration-field-row">
+				<label class="aips-integration-field-label">
 					<input type="hidden" name="aips_integration_acf_enabled" value="0" <?php disabled(!$acf_active); ?>>
 					<input type="checkbox" id="aips_integration_acf_enabled" name="aips_integration_acf_enabled" value="1" <?php checked($enabled, true); ?> <?php disabled(!$acf_active); ?>>
 					<span><?php esc_html_e('Enable Advanced Custom Fields (ACF) Integration', 'ai-post-scheduler'); ?></span>

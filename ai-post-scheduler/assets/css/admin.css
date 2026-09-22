@@ -6032,3 +6032,40 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
 	margin-top: 2px;
 	line-height: 1.3;
 }
+
+/* Settings: Plugin Integrations */
+.aips-integration-field-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.aips-integration-field-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.aips-integration-field-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 500;
+}
+
+/* Settings: Notice Banner & Checkbox Lists */
+.aips-settings-checkbox-item {
+	display: block;
+	margin-bottom: 8px;
+}
+
+.aips-notice-banner {
+	background: #f0f6fc;
+	border-left: 4px solid #72aee6;
+	padding: 15px;
+	margin-bottom: 20px;
+}
+
+.aips-notice-banner h3 {
+	margin-top: 0;
+}
