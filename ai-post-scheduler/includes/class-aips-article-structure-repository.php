@@ -167,12 +167,14 @@ class AIPS_Article_Structure_Repository {
 		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ( $result ) {
 			$this->invalidate_cache_domain( 'article_structure', array(), 'article_structure_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -317,12 +319,10 @@ class AIPS_Article_Structure_Repository {
 		return array(
 			'article_structures.get_all'   => array(
 				'tier'        => 'long',
-				'tags'        => array( 'article_structures' ),
 				'description' => 'Cache article structure list reads including active-only filtering.',
 			),
 			'article_structures.get_by_id' => array(
 				'tier'        => 'long',
-				'tags'        => array( 'article_structures', 'article_structure:{structure_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single article structure reads by ID.',
 			),

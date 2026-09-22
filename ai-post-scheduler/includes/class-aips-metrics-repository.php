@@ -401,15 +401,12 @@ class AIPS_Metrics_Repository {
 		return array(
 			'metrics.get_generation_metrics'  => array(
 				'tier' => 'medium',
-				'tags' => array( 'metrics' ),
 			),
 			'metrics.get_queue_depth_metrics' => array(
 				'tier' => 'medium',
-				'tags' => array( 'metrics' ),
 			),
 			'metrics.get_queue_health_metrics' => array(
 				'tier' => 'medium',
-				'tags' => array( 'metrics' ),
 			),
 		);
 	}

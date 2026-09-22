@@ -64,14 +64,15 @@ abstract class AIPS_Data_Management_Import {
 	 * Imports write directly to plugin tables (truncate + insert), bypassing every
 	 * feature repository, so the repositories' cached reads would otherwise return
 	 * pre-import data until their TTL expires under a persistent cache driver.
-	 * AIPS_Cache::flush() clears the entire plugin cache store (e.g. the DB driver
-	 * truncates aips_cache), covering all repository cache groups at once.
+	 * AIPS_Cache_Factory::flush_all() flushes the shared instance and every named
+	 * repository cache instance, so in-request array stores and per-instance
+	 * wp_object_cache generations are cleared too — not just the persistent store.
 	 *
 	 * @return void
 	 */
 	protected function flush_plugin_cache() {
 		if (class_exists('AIPS_Cache_Factory')) {
-			AIPS_Cache_Factory::instance()->flush();
+			AIPS_Cache_Factory::flush_all();
 		}
 	}
 }

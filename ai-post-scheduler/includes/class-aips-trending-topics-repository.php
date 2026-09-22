@@ -564,14 +564,16 @@ class AIPS_Trending_Topics_Repository {
             ),
             array('%s', '%s', '%d', '%s', '%s', '%s', '%d')
         );
+        // Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+        $insert_id = (int) $this->wpdb->insert_id;
         
         if ($result === false) {
             return false;
         }
 
-        $this->invalidate_trending_cache($this->wpdb->insert_id, 'trending_topic_created');
+        $this->invalidate_trending_cache($insert_id, 'trending_topic_created');
 
-        return $this->wpdb->insert_id;
+        return $insert_id;
     }
     
     /**
@@ -887,44 +889,37 @@ class AIPS_Trending_Topics_Repository {
             'trending_topics.get_all' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics' ),
                 'description' => 'Cache filtered trending-topic list reads.',
             ),
             'trending_topics.get_by_id' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics', 'trending_topic:{id}' ),
                 'cache_null'  => false,
                 'description' => 'Cache single trending-topic reads by ID.',
             ),
             'trending_topics.get_by_niche' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics' ),
                 'description' => 'Cache per-niche trending-topic reads.',
             ),
             'trending_topics.get_top_topics' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics' ),
                 'description' => 'Cache top trending-topic reads.',
             ),
             'trending_topics.search' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics' ),
                 'description' => 'Cache trending-topic keyword search reads.',
             ),
             'trending_topics.get_stats' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics' ),
                 'description' => 'Cache trending-topic aggregate stats.',
             ),
             'trending_topics.get_niche_list' => array(
                 'tier'        => 'medium',
                 'ttl'         => 300,
-                'tags'        => array( 'trending_topics' ),
                 'description' => 'Cache niche list with counts.',
             ),
         );
@@ -941,13 +936,6 @@ class AIPS_Trending_Topics_Repository {
      * @return void
      */
     private function invalidate_trending_cache($id, $reason) {
-        $tags = array( 'trending_topics' );
-
-        $id = absint($id);
-        if ($id > 0) {
-            $tags[] = 'trending_topic:' . $id;
-        }
-
-        $this->invalidate_cache_tags($tags, (string) $reason);
+        $this->invalidate_cache_domain('trending_topic', array('id' => absint($id)), (string) $reason);
     }
 }

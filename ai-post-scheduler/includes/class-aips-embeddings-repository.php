@@ -32,7 +32,7 @@ if (!trait_exists('AIPS_Repository_Tables')) {
  *   `embeddings` tag, which every write (upsert / delete / clear_all) bumps.
  * - Reads that JOIN wp_posts on post_status / post_type additionally carry the
  *   `embeddings_posts` tag. Native WordPress flows (trash, publish, delete)
- *   never call this repository, so AIPS_Embeddings_Cache_Invalidator bumps
+ *   never call this repository, so AIPS_Post_Lifecycle_Cache_Invalidator bumps
  *   `embeddings_posts` from transition_post_status / deleted_post.
  * - get_all_for_similarity() / get_all_for_similarity_by_type() are left
  *   uncached: they return every stored vector as JSON, so the serialized
@@ -406,7 +406,7 @@ class AIPS_Embeddings_Repository {
 	 * Count total indexed objects matching post types and status.
 	 *
 	 * Joins wp_posts, so the cached value carries CACHE_TAG_POSTS in addition to
-	 * the broad tag; AIPS_Embeddings_Cache_Invalidator bumps it on post
+	 * the broad tag; AIPS_Post_Lifecycle_Cache_Invalidator bumps it on post
 	 * transitions and deletions.
 	 *
 	 * @param string[]|string $post_types  Post types.
@@ -624,7 +624,7 @@ class AIPS_Embeddings_Repository {
 	/**
 	 * Invalidate cached reads that depend on wp_posts state.
 	 *
-	 * Called by AIPS_Embeddings_Cache_Invalidator when a post changes status,
+	 * Called by AIPS_Post_Lifecycle_Cache_Invalidator when a post changes status,
 	 * type, or is deleted through native WordPress flows that never touch this
 	 * repository. Only reads tagged CACHE_TAG_POSTS are affected.
 	 *
@@ -632,7 +632,7 @@ class AIPS_Embeddings_Repository {
 	 * @return void
 	 */
 	public function invalidate_post_dependent_reads($reason = 'post_changed') {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG_POSTS), (string) $reason);
+		$this->invalidate_cache_domain('embeddings_posts', array(), (string) $reason);
 	}
 
 	/**
@@ -662,44 +662,37 @@ class AIPS_Embeddings_Repository {
 			'embeddings.get_by_object' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'cache_null'  => false,
 				'description' => 'Cache single embedding lookups by (object_type, object_id); hot on related-posts render and dedup gates.',
 			),
 			'embeddings.get_by_post_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache batched post embedding lookups.',
 			),
 			'embeddings.count' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache embeddings row counts by object type / post type.',
 			),
 			'embeddings.count_indexed_for_types' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG, self::CACHE_TAG_POSTS),
 				'description' => 'Cache indexed-post counts joined to wp_posts; invalidated by writes and by post transitions.',
 			),
 			'embeddings.get_stats' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the Content Indexer dashboard statistics breakdown.',
 			),
 			'embeddings.get_all_indexed_post_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the ordered list of indexed post IDs.',
 			),
 			'embeddings.get_stored_dimensions' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the distinct vector dimensions present in the index.',
 			),
 		);
@@ -716,6 +709,6 @@ class AIPS_Embeddings_Repository {
 	 * @return void
 	 */
 	private function invalidate_embeddings_cache($reason) {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
+		$this->invalidate_cache_domain('embeddings', array(), (string) $reason);
 	}
 }

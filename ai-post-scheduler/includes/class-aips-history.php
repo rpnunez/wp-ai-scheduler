@@ -1614,6 +1614,12 @@ class AIPS_History {
         $format      = $date_format . ' ' . $time_format;
 
         foreach ($items as $item) {
+            // Default the aggregated log counts first: rows with an unparseable
+            // date `continue` below, but the row partial still reads them.
+            $item->warning_count = isset($item->warning_count) ? (int) $item->warning_count : 0;
+            $item->error_count = isset($item->error_count) ? (int) $item->error_count : 0;
+            $item->ai_call_count = isset($item->ai_call_count) ? (int) $item->ai_call_count : 0;
+
             $created_at = isset( $item->created_at ) ? $item->created_at : 0;
             $date_time  = is_numeric( $created_at )
                 ? AIPS_DateTime::fromTimestampOrNull( absint( $created_at ) )
@@ -1629,9 +1635,6 @@ class AIPS_History {
             $item->duration_label = isset($item->duration_seconds) && $item->duration_seconds !== null
                 ? $this->format_history_duration_label((int) $item->duration_seconds)
                 : '';
-            $item->warning_count = isset($item->warning_count) ? (int) $item->warning_count : 0;
-            $item->error_count = isset($item->error_count) ? (int) $item->error_count : 0;
-            $item->ai_call_count = isset($item->ai_call_count) ? (int) $item->ai_call_count : 0;
             if (!empty($item->latest_message)) {
                 $latest_details = json_decode((string) $item->latest_message, true);
                 if (is_array($latest_details) && !empty($latest_details['message'])) {
@@ -1743,6 +1746,19 @@ class AIPS_History {
      * @return string HTML of rows.
      */
     public function render_table_rows_html( array $items ): string {
+        // Callers such as the legacy template branch may pass raw repository rows
+        // that never went through prepare_items_for_display(); the row partial
+        // reads the prepared display fields unconditionally.
+        $unprepared = array();
+        foreach ( $items as $item ) {
+            if ( is_object( $item ) && ! property_exists( $item, 'formatted_date' ) ) {
+                $unprepared[] = $item;
+            }
+        }
+        if ( ! empty( $unprepared ) ) {
+            $this->prepare_items_for_display( $unprepared );
+        }
+
         $grouped_entries = $this->group_contiguous_items( $items );
 
         ob_start();

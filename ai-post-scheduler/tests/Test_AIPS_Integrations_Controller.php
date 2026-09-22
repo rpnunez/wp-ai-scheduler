@@ -20,6 +20,7 @@ class Test_AIPS_Integrations_Controller extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 
 		$this->repo = new AIPS_Integration_Mappings_Repository();
 		$this->admin_user_id = $this->factory->user->create(array('role' => 'administrator'));

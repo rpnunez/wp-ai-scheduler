@@ -129,12 +129,14 @@ class AIPS_Voices_Repository {
         $format = array('%s', '%s', '%s', '%s', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        // Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+        $insert_id = (int) $this->wpdb->insert_id;
 
         if ( $result ) {
             $this->invalidate_cache_domain( 'voice', array(), 'voice_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $result ? $insert_id : false;
     }
 
     /**
@@ -251,12 +253,10 @@ class AIPS_Voices_Repository {
         return array(
             'voices.get_all'   => array(
                 'tier'        => 'long',
-                'tags'        => array( 'voices' ),
                 'description' => 'Cache voice list reads including active-only filtering.',
             ),
             'voices.get_by_id' => array(
                 'tier'        => 'long',
-                'tags'        => array( 'voices', 'voice:{voice_id}' ),
                 'cache_null'  => false,
                 'description' => 'Cache single voice reads by ID.',
             ),

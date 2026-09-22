@@ -620,16 +620,22 @@ final class AI_Post_Scheduler {
             if (!is_object($post) || !isset($post->post_status)) {
                 return;
             }
-            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
+            // Guard the lookup: a cleared container (e.g. in isolated test runs)
+            // must not turn every wp_insert_post() into a fatal error.
+            $container = AIPS_Container::get_instance();
+            if (!$container->has(AIPS_Content_Indexer_Service::class)) {
+                return;
+            }
+            $container->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
-        // Embeddings repository cache: reads that join wp_posts are invalidated
-        // when posts change status, type, or are deleted through native WP flows
-        // that never touch the repository. Registered in every request context
-        // because post transitions happen in admin, REST, cron, and frontend.
-        (new AIPS_Embeddings_Cache_Invalidator(
-            AIPS_Container::get_instance()->make(AIPS_Embeddings_Repository::class)
-        ))->register();
+        // Repository caches whose reads join wp_posts (embeddings, relationships)
+        // are invalidated when posts change status, type, or are deleted through
+        // native WP flows that never touch the repositories. Registered in every
+        // request context because post transitions happen in admin, REST, cron,
+        // and frontend; the target repositories are resolved lazily on the first
+        // relevant event so requests that never transition a post pay nothing.
+        (new AIPS_Post_Lifecycle_Cache_Invalidator())->register();
 
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(

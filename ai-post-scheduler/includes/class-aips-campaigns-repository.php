@@ -1059,7 +1059,6 @@ class AIPS_Campaigns_Repository {
 		return array(
 			'campaigns.get_campaign_by_id' => array(
 				'tier'        => 'long',
-				'tags'        => array( 'campaigns', 'campaign:{campaign_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single campaign reads by ID including metrics aggregates.',
 			),

@@ -986,13 +986,11 @@ class AIPS_Sources_Data_Repository {
 			'sources_data.get_count_by_source_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources_data', 'sources_data:source:{source_id}' ),
 				'description' => 'Cache the archived-content count for a single source.',
 			),
 			'sources_data.get_counts_by_source_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources_data' ),
 				'description' => 'Cache bulk archived-content counts.',
 			),
 		);
@@ -1012,13 +1010,6 @@ class AIPS_Sources_Data_Repository {
 	 * @return void
 	 */
 	private function invalidate_sources_data_cache( $source_id, $reason ) {
-		$tags = array( 'sources_data' );
-
-		$source_id = absint( $source_id );
-		if ( $source_id > 0 ) {
-			$tags[] = 'sources_data:source:' . $source_id;
-		}
-
-		$this->invalidate_cache_tags( $tags, (string) $reason );
+		$this->invalidate_cache_domain( 'sources_data', array( 'source_id' => absint( $source_id ) ), (string) $reason );
 	}
 }

@@ -172,10 +172,12 @@ class AIPS_Feedback_Repository {
 		);
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 		if ($result) {
 			$this->invalidate_feedback_cache($data['author_topic_id'], 'feedback_created');
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -502,38 +504,32 @@ class AIPS_Feedback_Repository {
 			'feedback.get_by_topic' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback', 'topic_feedback:topic:{author_topic_id}' ),
 				'description' => 'Cache per-topic feedback reads.',
 			),
 			'feedback.get_by_author' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback', 'topic_feedback:author:{author_id}' ),
 				'description' => 'Cache per-author feedback reads.',
 			),
 			'feedback.get_by_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback' ),
 				'cache_null'  => false,
 				'description' => 'Cache single-feedback reads by ID.',
 			),
 			'feedback.get_statistics' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback', 'topic_feedback:author:{author_id}' ),
 				'description' => 'Cache per-author approval/rejection stat rollups.',
 			),
 			'feedback.get_by_reason_category' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback' ),
 				'description' => 'Cache reason-category feedback reads.',
 			),
 			'feedback.get_reason_category_statistics' => array(
 				'tier'           => 'medium',
 				'ttl'            => 300,
-				'tags'           => array( 'topic_feedback' ),
 				'bypass_on_cron' => true,
 				'bypass_ajax'    => true,
 				'description'    => 'Cache reason-category rollups for admin reads; bypass during generation (cron/ajax) so topic generation always sees fresh feedback.',
@@ -541,13 +537,11 @@ class AIPS_Feedback_Repository {
 			'feedback.get_statistics_bulk' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback' ),
 				'description' => 'Cache multi-author feedback stat rollups.',
 			),
 			'feedback.get_latest_by_topics' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'topic_feedback' ),
 				'description' => 'Cache latest-feedback-per-topic reads.',
 			),
 		);
@@ -564,13 +558,6 @@ class AIPS_Feedback_Repository {
 	 * @return void
 	 */
 	private function invalidate_feedback_cache($author_topic_id, $reason) {
-		$tags = array( 'topic_feedback' );
-
-		$author_topic_id = absint($author_topic_id);
-		if ($author_topic_id > 0) {
-			$tags[] = 'topic_feedback:topic:' . $author_topic_id;
-		}
-
-		$this->invalidate_cache_tags($tags, (string) $reason);
+		$this->invalidate_cache_domain('topic_feedback', array('author_topic_id' => absint($author_topic_id)), (string) $reason);
 	}
 }

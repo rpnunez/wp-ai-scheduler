@@ -35,10 +35,10 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 		$policies = $this->policies();
 
 		$this->assertArrayHasKey($op, $policies, "$op should declare a policy.");
-		$this->assertArrayHasKey('tags', $policies[$op], "$op policy should declare tags.");
+		$this->assertTrue(AIPS_Repository_Cache_Dependencies::has_read_tags($op), "$op should declare read tags in the central dependency map.");
 		$this->assertContains(
 			AIPS_Embeddings_Repository::CACHE_TAG,
-			$policies[$op]['tags'],
+			AIPS_Repository_Cache_Dependencies::tags_for_read($op),
 			"$op policy must carry the broad 'embeddings' tag so writes invalidate it."
 		);
 		$this->assertNotSame(
@@ -62,7 +62,7 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 	/**
 	 * Reads that JOIN wp_posts must additionally carry the post-dependent tag so
-	 * AIPS_Embeddings_Cache_Invalidator can evict them without evicting the
+	 * AIPS_Post_Lifecycle_Cache_Invalidator can evict them without evicting the
 	 * table-only reads.
 	 */
 	public function test_wp_posts_joined_reads_carry_posts_tag() {
@@ -70,7 +70,7 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 		$this->assertContains(
 			AIPS_Embeddings_Repository::CACHE_TAG_POSTS,
-			$policies['embeddings.count_indexed_for_types']['tags']
+			AIPS_Repository_Cache_Dependencies::tags_for_read('embeddings.count_indexed_for_types')
 		);
 	}
 
@@ -84,7 +84,7 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 		foreach (array('embeddings.get_by_object', 'embeddings.get_by_post_ids', 'embeddings.count', 'embeddings.get_stats') as $op) {
 			$this->assertNotContains(
 				AIPS_Embeddings_Repository::CACHE_TAG_POSTS,
-				$policies[$op]['tags'],
+				AIPS_Repository_Cache_Dependencies::tags_for_read($op),
 				"$op does not join wp_posts and must not carry the posts tag."
 			);
 		}
@@ -105,7 +105,7 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 	public function test_invalidator_registers_post_lifecycle_hooks() {
 		$repo        = new AIPS_Embeddings_Repository();
-		$invalidator = new AIPS_Embeddings_Cache_Invalidator($repo);
+		$invalidator = new AIPS_Post_Lifecycle_Cache_Invalidator($repo);
 
 		$invalidator->register();
 
@@ -124,7 +124,7 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 			->getMock();
 		$repo->expects($this->never())->method('invalidate_post_dependent_reads');
 
-		$invalidator = new AIPS_Embeddings_Cache_Invalidator($repo);
+		$invalidator = new AIPS_Post_Lifecycle_Cache_Invalidator($repo);
 
 		$revision            = new WP_Post(new stdClass());
 		$revision->ID        = 1;
@@ -141,7 +141,7 @@ class Test_AIPS_Embeddings_Repository_Cache_Wiring extends WP_UnitTestCase {
 			->getMock();
 		$repo->expects($this->exactly(3))->method('invalidate_post_dependent_reads');
 
-		$invalidator = new AIPS_Embeddings_Cache_Invalidator($repo);
+		$invalidator = new AIPS_Post_Lifecycle_Cache_Invalidator($repo);
 
 		$post            = new WP_Post(new stdClass());
 		$post->ID        = 2;

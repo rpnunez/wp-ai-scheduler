@@ -120,6 +120,8 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			),
 			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d')
 		);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ($result === false) {
 			return false;
@@ -127,7 +129,7 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 
 		$this->invalidate_notifications_cache('notification_created');
 
-		return (int) $this->wpdb->insert_id;
+		return $insert_id;
 	}
 
 	/**
@@ -346,13 +348,11 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 			'notifications.get_unread' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'notifications' ),
 				'description' => 'Cache unread notification list reads for the admin bell.',
 			),
 			'notifications.count_unread' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'notifications' ),
 				'description' => 'Cache the unread notification count for the admin bell badge.',
 			),
 		);
@@ -367,6 +367,6 @@ class AIPS_Notifications_Repository implements AIPS_Notifications_Repository_Int
 	 * @return void
 	 */
 	private function invalidate_notifications_cache($reason) {
-		$this->invalidate_cache_tags(array( 'notifications' ), (string) $reason);
+		$this->invalidate_cache_domain('notifications', array(), (string) $reason);
 	}
 }

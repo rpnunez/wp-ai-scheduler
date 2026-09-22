@@ -42,7 +42,7 @@ class Test_AIPS_Phase6_7_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 		foreach (array('ai_assistance.get_by_session_and_field', 'ai_assistance.get_by_field') as $op) {
 			$this->assertArrayHasKey($op, $policies, "AI assistance should declare a policy for $op.");
-			$this->assertContains('ai_assistance', $policies[$op]['tags'], "$op must carry the broad 'ai_assistance' tag.");
+			$this->assertContains('ai_assistance', AIPS_Repository_Cache_Dependencies::tags_for_read($op), "$op must carry the broad 'ai_assistance' tag.");
 		}
 	}
 

@@ -36,10 +36,10 @@ class Test_AIPS_Phase2_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 		foreach ($expected_ops as $op) {
 			$this->assertArrayHasKey($op, $policies, "$class should declare a policy for $op.");
-			$this->assertArrayHasKey('tags', $policies[$op], "$op policy should declare tags.");
+			$this->assertTrue(AIPS_Repository_Cache_Dependencies::has_read_tags($op), "$op should declare read tags in the central dependency map.");
 			$this->assertContains(
 				$broad_tag,
-				$policies[$op]['tags'],
+				AIPS_Repository_Cache_Dependencies::tags_for_read($op),
 				"$op policy must carry the broad '$broad_tag' tag so writes invalidate it."
 			);
 		}

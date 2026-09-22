@@ -150,12 +150,14 @@ class AIPS_Sources_Repository {
 		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ($result) {
-			$this->invalidate_sources_cache($this->wpdb->insert_id, 'source_created');
+			$this->invalidate_sources_cache($insert_id, 'source_created');
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -644,44 +646,37 @@ class AIPS_Sources_Repository {
 			'sources.get_all' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources' ),
 				'description' => 'Cache source list reads (all / active-only).',
 			),
 			'sources.get_by_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources', 'source:{id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single-source reads by ID.',
 			),
 			'sources.get_active_urls' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources' ),
 				'description' => 'Cache the active source URL list used by prompt building.',
 			),
 			'sources.get_source_term_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources', 'source:{source_id}' ),
 				'description' => 'Cache the source-group term IDs for a single source.',
 			),
 			'sources.get_term_ids_for_sources' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources' ),
 				'description' => 'Cache bulk source-group term ID reads.',
 			),
 			'sources.get_urls_by_group_term_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources' ),
 				'description' => 'Cache group-filtered active URL reads used by prompt building.',
 			),
 			'sources.get_by_group_term_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'sources' ),
 				'description' => 'Cache group-filtered source row reads.',
 			),
 		);
@@ -699,13 +694,6 @@ class AIPS_Sources_Repository {
 	 * @return void
 	 */
 	private function invalidate_sources_cache($source_id, $reason) {
-		$tags = array( 'sources' );
-
-		$source_id = absint($source_id);
-		if ($source_id > 0) {
-			$tags[] = 'source:' . $source_id;
-		}
-
-		$this->invalidate_cache_tags($tags, (string) $reason);
+		$this->invalidate_cache_domain('source', array('source_id' => absint($source_id)), (string) $reason);
 	}
 }

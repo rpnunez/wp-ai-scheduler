@@ -121,17 +121,19 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author_topic',
 				array(
 					'author_id' => isset( $data['author_id'] ) ? absint( $data['author_id'] ) : 0,
-					'topic_id'  => (int) $this->wpdb->insert_id,
+					'topic_id'  => $insert_id,
 				),
 				'author_topic_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 	
 	/**
@@ -303,8 +305,10 @@ class AIPS_Author_Topics_Repository {
 			array('%d')
 		);
 		if ( false !== $result ) {
+			// author_topic_removed also evicts feedback / topic-log reads that
+			// INNER JOIN this table (see AIPS_Repository_Cache_Dependencies::DEPENDENTS).
 			$this->invalidate_cache_domain(
-				'author_topic',
+				'author_topic_removed',
 				$context,
 				'author_topic_deleted'
 			);
@@ -327,7 +331,7 @@ class AIPS_Author_Topics_Repository {
 		);
 		if ( false !== $result ) {
 			$this->invalidate_cache_domain(
-				'author_topic',
+				'author_topic_removed',
 				array(
 					'author_id' => absint( $author_id ),
 				),
@@ -734,6 +738,7 @@ class AIPS_Author_Topics_Repository {
 			),
 		);
 	}
+
 
 	/**
 	 * Invalidate author-topic caches using topic context when available.

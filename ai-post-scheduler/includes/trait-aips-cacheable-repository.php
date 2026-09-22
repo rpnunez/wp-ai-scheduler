@@ -40,6 +40,13 @@ trait AIPS_Cacheable_Repository {
 	private $repository_cache_invalidation_caches_memo = null;
 
 	/**
+	 * AIPS_Cache_Factory generation the invalidation-cache memo was built in.
+	 *
+	 * @var int|null
+	 */
+	private $repository_cache_invalidation_caches_generation = null;
+
+	/**
 	 * Read through the repository cache using an explicit operation ID.
 	 *
 	 * @param string   $operation_id Explicit repository operation identifier.
@@ -259,6 +266,20 @@ trait AIPS_Cacheable_Repository {
 		}
 
 		$this->invalidate_cache_tags( $tags, $reason );
+
+		// Fan out to repositories whose cached reads JOIN this domain's table.
+		// Tag versions are scoped per cache group, so those reads are only
+		// evicted by bumping the tags inside their own group.
+		if (class_exists( 'AIPS_Repository_Cache_Dependencies' ) && method_exists( 'AIPS_Repository_Cache_Dependencies', 'dependents_for_invalidation' )) {
+			foreach ( AIPS_Repository_Cache_Dependencies::dependents_for_invalidation( $domain, $context ) as $repository_class => $dependent_tags ) {
+				if ($this instanceof $repository_class) {
+					$this->invalidate_cache_tags( $dependent_tags, $reason );
+					continue;
+				}
+
+				$this->invalidate_repository_cache_tags( $repository_class, $dependent_tags, $reason );
+			}
+		}
 	}
 
 	/**
@@ -286,6 +307,54 @@ trait AIPS_Cacheable_Repository {
 				'invalidation_reason' => $reason ? $reason : 'cache_invalidation',
 			)
 		);
+	}
+
+	/**
+	 * Invalidate tags in this repository's cache group on behalf of another repository.
+	 *
+	 * Tag versions are scoped to the cache group that reads them, so a write in
+	 * repository A cannot evict repository B's cached reads through
+	 * invalidate_cache_tags() alone — even when both reads carry the same tag.
+	 * Repositories whose writes change the result of another repository's joined
+	 * reads call this (via invalidate_repository_cache_tags()) so the bump lands
+	 * in the group and cache tiers the dependent reads actually consult.
+	 *
+	 * @param array  $tags Tags to invalidate in this repository's cache group.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	public function invalidate_dependent_cache_tags( array $tags, string $reason = '' ) {
+		$this->invalidate_cache_tags( $tags, $reason ? $reason : 'dependent_invalidation' );
+	}
+
+	/**
+	 * Invalidate tags in another repository's cache group.
+	 *
+	 * Resolves the target repository from the container when it is bound
+	 * (falling back to a fresh instance — named cache instances are shared by
+	 * name, so any instance bumps the same tag versions) and delegates to its
+	 * invalidate_dependent_cache_tags().
+	 *
+	 * @param string $repository_class Target repository class name.
+	 * @param array  $tags Tags to invalidate in the target repository's group.
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	protected function invalidate_repository_cache_tags( string $repository_class, array $tags, string $reason = '' ) {
+		if (empty( $tags ) || !class_exists( $repository_class )) {
+			return;
+		}
+
+		$repository = null;
+		if (class_exists( 'AIPS_Container' )) {
+			$repository = AIPS_Container::get_instance()->makeIfExists( $repository_class, $repository_class );
+		} else {
+			$repository = new $repository_class();
+		}
+
+		if (is_object( $repository ) && method_exists( $repository, 'invalidate_dependent_cache_tags' )) {
+			$repository->invalidate_dependent_cache_tags( $tags, $reason );
+		}
 	}
 
 	/**
@@ -682,8 +751,12 @@ trait AIPS_Cacheable_Repository {
 	 * @return array<int, AIPS_Cache>
 	 */
 	private function get_memoized_invalidation_caches(): array {
-		if ($this->repository_cache_invalidation_caches_memo === null) {
-			$this->repository_cache_invalidation_caches_memo = $this->repository_cache_invalidation_caches();
+		// Re-resolve after AIPS_Cache_Factory::reset(): the memoized instances are
+		// no longer the ones reads resolve, so bumping them would be lost.
+		$generation = AIPS_Cache_Factory::generation();
+		if ($this->repository_cache_invalidation_caches_memo === null || $this->repository_cache_invalidation_caches_generation !== $generation) {
+			$this->repository_cache_invalidation_caches_memo       = $this->repository_cache_invalidation_caches();
+			$this->repository_cache_invalidation_caches_generation = $generation;
 		}
 		return $this->repository_cache_invalidation_caches_memo;
 	}
