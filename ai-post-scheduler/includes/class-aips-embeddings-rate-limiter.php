@@ -7,7 +7,7 @@
  * weekly, and monthly quotas to prevent unexpected API cost spikes.
  *
  * @package AI_Post_Scheduler
- * @since 3.6.6
+ * @since 3.6.7
  */
 
 if (!defined('ABSPATH')) {
@@ -280,7 +280,7 @@ class AIPS_Embeddings_Rate_Limiter {
 		/**
 		 * Fires when an embeddings rate limit quota is exceeded.
 		 *
-		 * @since 3.6.6
+		 * @since 3.6.7
 		 * @param array $payload Notification payload.
 		 */
 		do_action('aips_quota_alert', array(

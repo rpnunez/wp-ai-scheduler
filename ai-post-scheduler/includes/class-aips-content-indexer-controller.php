@@ -289,74 +289,74 @@ class AIPS_Content_Indexer_Controller {
 
 		if (isset($_POST['embeddings_enabled'])) {
 			$embeddings_enabled = filter_var($_POST['embeddings_enabled'], FILTER_VALIDATE_BOOLEAN);
-			update_option('aips_embeddings_enabled', $embeddings_enabled);
+			$this->config->set_option('aips_embeddings_enabled', $embeddings_enabled);
 		}
 
 		if (isset($_POST['embeddings_provider'])) {
-			update_option('aips_embeddings_provider', sanitize_key($_POST['embeddings_provider']));
+			$this->config->set_option('aips_embeddings_provider', sanitize_key($_POST['embeddings_provider']));
 		}
 
 		if (isset($_POST['embeddings_model'])) {
-			update_option('aips_embeddings_model', sanitize_text_field($_POST['embeddings_model']));
+			$this->config->set_option('aips_embeddings_model', sanitize_text_field($_POST['embeddings_model']));
 		}
 
 		if (isset($_POST['embeddings_env_id'])) {
-			update_option('aips_embeddings_env_id', sanitize_text_field($_POST['embeddings_env_id']));
+			$this->config->set_option('aips_embeddings_env_id', sanitize_text_field($_POST['embeddings_env_id']));
 		}
 
 		if (isset($_POST['embeddings_dimensions'])) {
-			update_option('aips_embeddings_dimensions', max(1, absint($_POST['embeddings_dimensions'])));
+			$this->config->set_option('aips_embeddings_dimensions', max(1, absint($_POST['embeddings_dimensions'])));
 		}
 
 		if (isset($_POST['post_types']) && is_array($_POST['post_types'])) {
 			$post_types = array_map('sanitize_key', $_POST['post_types']);
-			update_option('aips_indexer_post_types', $post_types);
+			$this->config->set_option('aips_indexer_post_types', $post_types);
 		}
 
 		if (isset($_POST['similarity_threshold'])) {
-			update_option('aips_indexer_similarity_threshold', (float) $_POST['similarity_threshold']);
+			$this->config->set_option('aips_indexer_similarity_threshold', (float) $_POST['similarity_threshold']);
 		}
 
 		if (isset($_POST['auto_index_on_publish'])) {
 			$auto_index = filter_var($_POST['auto_index_on_publish'], FILTER_VALIDATE_BOOLEAN);
-			update_option('aips_auto_index_on_publish', $auto_index);
+			$this->config->set_option('aips_auto_index_on_publish', $auto_index);
 		}
 
 		if (isset($_POST['verbose_history'])) {
 			$verbose_history = filter_var($_POST['verbose_history'], FILTER_VALIDATE_BOOLEAN);
-			update_option('aips_indexer_verbose_history', $verbose_history);
+			$this->config->set_option('aips_indexer_verbose_history', $verbose_history);
 		}
 
 		if (isset($_POST['related_posts_enabled'])) {
 			$rel_enabled = filter_var($_POST['related_posts_enabled'], FILTER_VALIDATE_BOOLEAN);
-			update_option('aips_related_posts_enabled', $rel_enabled);
+			$this->config->set_option('aips_related_posts_enabled', $rel_enabled);
 		}
 
 		if (isset($_POST['related_posts_auto_append'])) {
 			$auto_append = filter_var($_POST['related_posts_auto_append'], FILTER_VALIDATE_BOOLEAN);
-			update_option('aips_related_posts_auto_append', $auto_append);
+			$this->config->set_option('aips_related_posts_auto_append', $auto_append);
 		}
 
 		if (isset($_POST['related_posts_count'])) {
-			update_option('aips_related_posts_count', max(1, min(12, absint($_POST['related_posts_count']))));
+			$this->config->set_option('aips_related_posts_count', max(1, min(12, absint($_POST['related_posts_count']))));
 		}
 
 		if (isset($_POST['related_posts_heading'])) {
-			update_option('aips_related_posts_heading', sanitize_text_field($_POST['related_posts_heading']));
+			$this->config->set_option('aips_related_posts_heading', sanitize_text_field($_POST['related_posts_heading']));
 		}
 
 		if (isset($_POST['related_posts_layout'])) {
 			$layout = sanitize_key($_POST['related_posts_layout']);
-			update_option('aips_related_posts_layout', in_array($layout, array('grid', 'list'), true) ? $layout : 'grid');
+			$this->config->set_option('aips_related_posts_layout', in_array($layout, array('grid', 'list'), true) ? $layout : 'grid');
 		}
 
 		if (isset($_POST['deduplication_mode'])) {
 			$mode = sanitize_key($_POST['deduplication_mode']);
-			update_option('aips_deduplication_mode', in_array($mode, array('warn', 'block'), true) ? $mode : 'warn');
+			$this->config->set_option('aips_deduplication_mode', in_array($mode, array('warn', 'block'), true) ? $mode : 'warn');
 		}
 
 		if (isset($_POST['deduplication_threshold'])) {
-			update_option('aips_deduplication_threshold', (float) $_POST['deduplication_threshold']);
+			$this->config->set_option('aips_deduplication_threshold', (float) $_POST['deduplication_threshold']);
 		}
 
 		AIPS_Ajax_Response::success(array(

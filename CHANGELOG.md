@@ -1,3 +1,9 @@
+## [3.6.7] - 2026-09-22
+
+### Changed
+- **Vector Storage Optimization**: Migrated embeddings storage from JSON to IEEE 754 Float32 binary packing (`MEDIUMBLOB`), yielding an 82% storage reduction (down to 6.1 KB per vector) and faster decoding.
+- **Resilient DB Migration**: Added a highly resilient background migration script that chunk-converts legacy JSON vectors to binary, with pacing and timeout protections for high-volume production sites.
+
 ## [3.6.6] - 2026-09-04
 
 ### Added
@@ -7,11 +13,8 @@
 - **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
 
 ## [3.6.5] - 2026-08-28
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 ### Added
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 - **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
 - **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
 - **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
