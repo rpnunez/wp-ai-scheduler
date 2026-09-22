@@ -55,18 +55,22 @@ class AIPS_Integration_Manager {
 	private $logger;
 
 	/**
-	 * @param AIPS_Integration_Mappings_Repository|null  $mappings_repository Optional (injectable for tests).
-	 * @param AIPS_AI_Service_Interface|null              $ai_service          Optional (injectable for tests).
-	 * @param AIPS_Integration_Field_Prompt_Builder|null  $prompt_builder      Optional (injectable for tests).
-	 * @param AIPS_Logger|null                            $logger              Optional (injectable for tests).
+	 * @param AIPS_Integration_Mappings_Repository|null $mappings_repository Optional (injectable for tests).
+	 * @param AIPS_AI_Service_Interface|null             $ai_service          Optional (injectable for tests).
+	 * @param AIPS_Integration_Field_Prompt_Builder|null $prompt_builder      Optional (injectable for tests).
+	 * @param AIPS_Logger_Interface|null                 $logger              Optional (injectable for tests).
 	 */
-	public function __construct($mappings_repository = null, $ai_service = null, $prompt_builder = null, $logger = null) {
-		$container = AIPS_Container::get_instance();
-
-		$this->mappings_repository = $mappings_repository ?: new AIPS_Integration_Mappings_Repository();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->prompt_builder = $prompt_builder ?: new AIPS_Integration_Field_Prompt_Builder();
-		$this->logger = $logger ?: new AIPS_Logger();
+	public function __construct(
+		?AIPS_Integration_Mappings_Repository $mappings_repository = null,
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Integration_Field_Prompt_Builder $prompt_builder = null,
+		?AIPS_Logger_Interface $logger = null
+	) {
+		$container                 = AIPS_Container::get_instance();
+		$this->mappings_repository = $mappings_repository ?: $container->make(AIPS_Integration_Mappings_Repository::class);
+		$this->ai_service          = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
+		$this->prompt_builder      = $prompt_builder ?: $container->make(AIPS_Integration_Field_Prompt_Builder::class);
+		$this->logger              = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 
 	/**

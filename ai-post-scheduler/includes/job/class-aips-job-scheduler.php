@@ -32,29 +32,26 @@ class AIPS_Job_Scheduler {
 	private $dispatcher;
 
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Batch_Slicer|null   $slicer     Optional slicer service.
-	 * @param AIPS_Job_Dispatcher|null $dispatcher Optional dispatcher service.
-	 * @param AIPS_Logger|null         $logger     Optional logger.
+	 * @param AIPS_Batch_Slicer|null      $slicer     Optional slicer service.
+	 * @param AIPS_Job_Dispatcher|null    $dispatcher Optional dispatcher service.
+	 * @param AIPS_Logger_Interface|null  $logger     Optional logger.
 	 */
 	public function __construct(
 		?AIPS_Batch_Slicer $slicer = null,
 		?AIPS_Job_Dispatcher $dispatcher = null,
-		?AIPS_Logger $logger = null
+		?AIPS_Logger_Interface $logger = null
 	) {
-		$container = AIPS_Container::get_instance();
-
-		$this->slicer = $slicer ?: new AIPS_Batch_Slicer();
-		$this->dispatcher = $dispatcher ?: new AIPS_Job_Dispatcher();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class)
-			? $container->make(AIPS_Logger_Interface::class)
-			: new AIPS_Logger());
+		$container        = AIPS_Container::get_instance();
+		$this->slicer     = $slicer ?: $container->make(AIPS_Batch_Slicer::class);
+		$this->dispatcher = $dispatcher ?: $container->make(AIPS_Job_Dispatcher::class);
+		$this->logger     = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 
 	/**

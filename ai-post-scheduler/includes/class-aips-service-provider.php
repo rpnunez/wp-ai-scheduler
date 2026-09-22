@@ -137,8 +137,55 @@ class AIPS_Service_Provider {
 			return new AIPS_Internal_Links_Repository();
 		});
 
+		$container->singleton(AIPS_Integration_Mappings_Repository::class, function() {
+			return new AIPS_Integration_Mappings_Repository();
+		});
+
+		$container->singleton(AIPS_Taxonomy_Repository::class, function() {
+			return new AIPS_Taxonomy_Repository();
+		});
+
 		$container->singleton(AIPS_Content_Auditor_Repository::class, function() {
 			return new AIPS_Content_Auditor_Repository();
+		});
+
+		$container->singleton(AIPS_Batch_Slicer::class, function() {
+			return new AIPS_Batch_Slicer();
+		});
+
+		$container->singleton(AIPS_Job_Dispatcher::class, function($c) {
+			return new AIPS_Job_Dispatcher(
+				$c->make(AIPS_Resilience_Service::class),
+				$c->make(AIPS_Logger_Interface::class),
+				$c->make(AIPS_History_Service_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Job_Progress_Tracker::class, function($c) {
+			return new AIPS_Job_Progress_Tracker(
+				$c->make(AIPS_Schedule_Repository_Interface::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Schedule_Processor::class, function($c) {
+			return new AIPS_Schedule_Processor(
+				$c->make(AIPS_Schedule_Repository_Interface::class),
+				$c->make(AIPS_Template_Repository::class),
+				$c->make(AIPS_Generator::class),
+				$c->make(AIPS_History_Service_Interface::class),
+				$c->make(AIPS_Template_Type_Selector::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Integration_Manager::class, function($c) {
+			return new AIPS_Integration_Manager(
+				$c->make(AIPS_Integration_Mappings_Repository::class),
+				$c->make(AIPS_AI_Service_Interface::class),
+				$c->make(AIPS_Integration_Field_Prompt_Builder::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
 		});
 
 		$container->singleton(AIPS_Bulk_Batch_Job_Store::class, function() {

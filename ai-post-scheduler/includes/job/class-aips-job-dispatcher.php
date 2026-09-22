@@ -26,7 +26,7 @@ class AIPS_Job_Dispatcher {
 	private $resilience_service;
 
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 
@@ -39,23 +39,18 @@ class AIPS_Job_Dispatcher {
 	 * Constructor.
 	 *
 	 * @param AIPS_Resilience_Service|null        $resilience_service Optional resilience service.
-	 * @param AIPS_Logger|null                    $logger             Optional logger.
+	 * @param AIPS_Logger_Interface|null          $logger             Optional logger.
 	 * @param AIPS_History_Service_Interface|null $history_service    Optional history service.
 	 */
 	public function __construct(
 		?AIPS_Resilience_Service $resilience_service = null,
-		?AIPS_Logger $logger = null,
+		?AIPS_Logger_Interface $logger = null,
 		?AIPS_History_Service_Interface $history_service = null
 	) {
-		$container = AIPS_Container::get_instance();
-
-		$this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class)
-			? $container->make(AIPS_Logger_Interface::class)
-			: new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class)
-			? $container->make(AIPS_History_Service_Interface::class)
-			: new AIPS_History_Service());
+		$container                = AIPS_Container::get_instance();
+		$this->resilience_service = $resilience_service ?: $container->make(AIPS_Resilience_Service::class);
+		$this->logger             = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->history_service    = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
 	}
 
 	/**
