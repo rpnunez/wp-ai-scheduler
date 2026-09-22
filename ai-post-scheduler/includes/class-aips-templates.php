@@ -228,9 +228,15 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
-        $next_run = $this->interval_calculator->calculate_next_run(
+        // The occurrence strictly after $base_time. calculate_next_run() is
+        // not usable here: it takes a timestamp (a datetime string is read as
+        // "now") and returns a future base unchanged, so the stats loops never
+        // advanced and every schedule counted up to their iteration cap.
+        $base_time = (int) $base_time;
+        $next_run  = $this->interval_calculator->calculate_next_occurrence_after(
             $frequency,
-            AIPS_DateTime::fromTimestamp((int) $base_time)->toMysql()
+            $base_time,
+            $base_time + 1
         );
 
         return $this->normalize_schedule_timestamp($next_run);
