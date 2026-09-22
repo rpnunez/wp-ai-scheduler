@@ -14,14 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Variables injected by AIPS_Content_Indexer_Controller:
-// $status, $stats, $settings, $authors
-
-$cooldown           = isset($settings['cooldown']) ? $settings['cooldown'] : array();
-$is_cooldown_active = !empty($cooldown['active']);
-$cooldown_remaining = isset($cooldown['remaining_seconds']) ? (int) $cooldown['remaining_seconds'] : 0;
-$cooldown_until     = isset($cooldown['until']) ? (int) $cooldown['until'] : 0;
-$cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
-$cluster_threshold  = isset($settings['post_cluster_threshold']) ? (float) $settings['post_cluster_threshold'] : 0.65;
+// $cluster_config, $authors, $banners, $settings
 ?>
 
 <div class="wrap aips-wrap aips-indexer-page aips-clusters-page">
@@ -63,7 +56,7 @@ $cluster_threshold  = isset($settings['post_cluster_threshold']) ? (float) $sett
 		</div>
 
 		<!-- Embeddings Disabled Notice -->
-		<?php if (empty($settings['embeddings_enabled'])) : ?>
+		<?php if (!empty($banners['embeddings_disabled'])) : ?>
 		<div class="notice notice-info inline aips-embeddings-disabled-banner">
 			<div class="aips-banner-inner">
 				<div>
@@ -86,7 +79,11 @@ $cluster_threshold  = isset($settings['post_cluster_threshold']) ? (float) $sett
 		<?php endif; ?>
 
 		<!-- Cooldown Alert Banner -->
-		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo $is_cooldown_active ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
+		<?php
+		$cooldown_banner = isset($banners['cooldown']) ? $banners['cooldown'] : array();
+		$cooldown_until  = isset($cooldown_banner['until']) ? (int) $cooldown_banner['until'] : 0;
+		?>
+		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo !empty($cooldown_banner['active']) ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
 			<div class="aips-banner-inner">
 				<div class="aips-cooldown-content">
 					<span class="dashicons dashicons-clock aips-cooldown-icon"></span>
@@ -94,21 +91,11 @@ $cluster_threshold  = isset($settings['post_cluster_threshold']) ? (float) $sett
 						<h4 class="aips-cooldown-title">
 							<strong><?php esc_html_e('Embedding API Auto-Cooldown Active', 'ai-post-scheduler'); ?></strong>
 							<span id="aips-cooldown-timer-badge" class="aips-cooldown-badge">
-								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(gmdate('i:s', $cooldown_remaining)); ?></span>
+								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(isset($cooldown_banner['remaining_formatted']) ? $cooldown_banner['remaining_formatted'] : '00:00'); ?></span>
 							</span>
 						</h4>
 						<p class="aips-banner-desc aips-cooldown-reason-msg" id="aips-cooldown-reason-msg">
-							<?php
-							if (!empty($cooldown_reason)) {
-								printf(
-									/* translators: 1: reason */
-									esc_html__('Remote provider reported: "%s". Operations are temporarily halted.', 'ai-post-scheduler'),
-									esc_html($cooldown_reason)
-								);
-							} else {
-								esc_html_e('Remote rate limits encountered. Operations temporarily paused.', 'ai-post-scheduler');
-							}
-							?>
+							<?php echo esc_html(isset($cooldown_banner['message']) ? $cooldown_banner['message'] : ''); ?>
 						</p>
 					</div>
 				</div>
@@ -132,8 +119,8 @@ $cluster_threshold  = isset($settings['post_cluster_threshold']) ? (float) $sett
 				</div>
 				<div class="aips-clusters-toolbar">
 					<div class="aips-slider-control">
-						<span class="aips-control-label"><?php esc_html_e('Cluster Threshold:', 'ai-post-scheduler'); ?> <strong id="aips-cluster-sim-val"><?php echo esc_html((string) round($cluster_threshold * 100)); ?>%</strong></span>
-						<input type="range" id="aips-cluster-sim-threshold" min="0.40" max="0.90" step="0.05" value="<?php echo esc_attr((string) $cluster_threshold); ?>">
+						<span class="aips-control-label"><?php esc_html_e('Cluster Threshold:', 'ai-post-scheduler'); ?> <strong id="aips-cluster-sim-val"><?php echo esc_html((string) $cluster_config['threshold_percent']); ?>%</strong></span>
+						<input type="range" id="aips-cluster-sim-threshold" min="0.40" max="0.90" step="0.05" value="<?php echo esc_attr((string) $cluster_config['threshold']); ?>">
 					</div>
 					<div class="aips-clusters-toolbar-group">
 						<label for="aips-cluster-min-size" class="aips-control-label"><?php esc_html_e('Min Size:', 'ai-post-scheduler'); ?></label>

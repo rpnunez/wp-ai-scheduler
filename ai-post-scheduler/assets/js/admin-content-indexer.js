@@ -608,7 +608,7 @@
 			$('#aips-active-post-bar').removeClass('aips-hidden').show();
 
 			if (!isIndexed && AIPS.Utilities) {
-				AIPS.Utilities.showNotice('Selected post has not been indexed yet. Backfill indexing will create its embeddings.', 'warning');
+				AIPS.Utilities.showNotice('Selected post has not been indexed yet. Scanning will create its embeddings.', 'warning');
 			}
 
 			// Clear historical trail and focus new post
@@ -954,21 +954,20 @@
 			$backBtn.removeClass('aips-hidden').show();
 			$wrap.removeClass('aips-hidden').show();
 
-			var sepTemplate = AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-breadcrumb-sep');
-
 			this.explorationHistory.forEach(function (item, index) {
 				var itemTitle = item.label || item.title || ('#' + item.id);
 				var shortTitle = itemTitle.length > 20 ? itemTitle.substring(0, 18) + '…' : itemTitle;
 
-				var $crumb = $('<button type="button">')
-					.addClass('aips-breadcrumb-chip')
-					.attr('title', itemTitle)
-					.attr('data-index', index)
-					.attr('data-id', item.id)
-					.text(shortTitle);
+				var crumbHtml = AIPS.Templates.render('aips-tmpl-indexer-breadcrumb-chip', {
+					title: AIPS.Templates.escape(itemTitle),
+					shortTitle: AIPS.Templates.escape(shortTitle),
+					index: index,
+					id: item.id
+				});
+				var sepHtml = AIPS.Templates.render('aips-tmpl-indexer-breadcrumb-sep');
 
-				$wrap.append($crumb);
-				$wrap.append(sepTemplate ? sepTemplate : '<span class="aips-breadcrumb-sep">&rsaquo;</span>');
+				$wrap.append(crumbHtml);
+				$wrap.append(sepHtml);
 			});
 		},
 
@@ -1130,7 +1129,7 @@
 						self.isIndexing = false;
 						self.isPaused = false;
 						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Backfill Scan');
+						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Scan');
 						$('#aips-indexer-live-banner').slideUp(200);
 
 						self.showCooldownBanner(data.cooldown);
@@ -1142,7 +1141,7 @@
 						self.isIndexing = false;
 						self.isPaused = false;
 						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Backfill Scan');
+						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Scan');
 						$('#aips-indexer-live-banner').slideUp(200);
 
 						var errorMsg = (data.rate_limit_error && data.rate_limit_error.message) ? data.rate_limit_error.message : 'Embedding rate limit reached. Indexing paused.';
@@ -1155,7 +1154,7 @@
 					if (data.done) {
 						self.isIndexing = false;
 						$('#aips-pause-indexing-btn').hide();
-						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Backfill Scan');
+						$('#aips-start-indexing-btn').show().find('.btn-text').text(aipsContentIndexerL10n.startScan || 'Start Scan');
 						$('#aips-indexer-live-banner').slideUp(200);
 						AIPS.Utilities && AIPS.Utilities.showNotice(aipsContentIndexerL10n.indexingComplete || 'Content indexing complete!', 'success');
 					} else if (self.isIndexing && !self.isPaused) {
@@ -1235,36 +1234,576 @@
 							var rawTitle = it.title || '';
 							var pType = it.post_type || 'post';
 
-							if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-autocomplete-item')) {
-								var itemHtml = AIPS.Templates.render('aips-tmpl-indexer-autocomplete-item', {
-									id: it.id,
-									title: rawTitle,
-									type: pType,
-									indexed: isIndexed ? 1 : 0,
-									badgeClass: badgeClass,
-									badgeText: badgeText
+							var itemHtml = AIPS.Templates.render('aips-tmpl-indexer-autocomplete-item', {
+								id: it.id,
+								title: AIPS.Templates.escape(rawTitle),
+								type: AIPS.Templates.escape(pType),
+								indexed: isIndexed ? 1 : 0,
+								badgeClass: badgeClass,
+								badgeText: AIPS.Templates.escape(badgeText)
+							});
+							$dropdown.append(itemHtml);
+						});
+
+						$dropdown.removeClass('aips-hidden').show();
+					}
+				}
+			});
+		},
+
+		/**
+		 * Load initial graph for first indexed post.
+		 */
+		loadInitialGraph: function () {
+			this.loadGraphForPost(0);
+		},
+
+		/**
+		 * Reload currently active graph with updated thresholds.
+		 */
+		reloadGraph: function () {
+			this.loadGraphForPost(this.activePostId || 0, true);
+		},
+
+		/**
+		 * Load graph data for a specific post.
+		 */
+		loadGraphForPost: function (postId, preserveView) {
+			var self = this;
+			var simThreshold = parseFloat($('#aips-graph-sim-threshold').val()) || 0.60;
+			var maxNodes = parseInt($('#aips-graph-max-nodes').val(), 10) || 15;
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_indexer_get_graph',
+					nonce: aipsContentIndexerL10n.nonce,
+					post_id: postId,
+					min_similarity: simThreshold,
+					limit: maxNodes
+				},
+				success: function (res) {
+					if (res.success && res.data.graph) {
+						self.activePostId = res.data.post_id;
+						self.graphData = res.data.graph;
+						if (!preserveView) {
+							self.resetZoom();
+						}
+						self.renderSvgGraph(res.data.graph);
+					} else {
+						$('#aips-graph-svg').empty();
+						$('#aips-graph-empty').removeClass('aips-hidden').show();
+						$('#aips-active-post-bar').addClass('aips-hidden').hide();
+					}
+				}
+			});
+		},
+
+		/**
+		 * Render the Interactive SVG Node-Link Graph with Viewport Zoom/Pan, Edge Pills, Tooltips, and Highlighting.
+		 */
+		renderSvgGraph: function (graph) {
+			var self = this;
+			var svg = document.getElementById('aips-graph-svg');
+			if (!svg) {
+				return;
+			}
+
+			var width = svg.clientWidth || 900;
+			var height = 560;
+			svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+			$(svg).empty();
+
+			if (!graph.nodes || graph.nodes.length === 0) {
+				$('#aips-graph-empty').removeClass('aips-hidden').show();
+				return;
+			}
+			$('#aips-graph-empty').addClass('aips-hidden').hide();
+
+			var centerX = width / 2;
+			var centerY = height / 2;
+			var nodes = graph.nodes;
+			var edges = graph.edges;
+
+			// Position nodes in a radial constellation
+			var centerNode = nodes.find(function (n) { return n.is_center; }) || nodes[0];
+			centerNode.x = centerX;
+			centerNode.y = centerY;
+
+			// Update Active Post Bar and sync Search Input
+			if (centerNode) {
+				$('#aips-active-post-title').text(centerNode.label);
+				$('#aips-active-post-meta').text((centerNode.type || 'post').toUpperCase() + ' #' + (centerNode.raw_id || centerNode.id));
+				$('#aips-active-post-bar').removeClass('aips-hidden').show();
+
+				// Keep search input and selection in sync with the active center post
+				$('#aips-graph-selected-post-id').val(centerNode.raw_id || centerNode.id);
+				$('#aips-graph-post-search').val(centerNode.label);
+				$('#aips-graph-search-clear').removeClass('aips-hidden').show();
+			}
+
+			var neighbors = nodes.filter(function (n) { return !n.is_center; });
+			var angleStep = (2 * Math.PI) / Math.max(1, neighbors.length);
+			var radius = Math.min(centerX, centerY) * 0.68;
+
+			neighbors.forEach(function (node, i) {
+				var angle = i * angleStep;
+				// Distance inversely proportional to similarity (closer = more similar)
+				var dist = radius * (1.1 - (node.similarity || 0.6) * 0.35);
+				node.x = centerX + dist * Math.cos(angle);
+				node.y = centerY + dist * Math.sin(angle);
+			});
+
+			var nodeMap = {};
+			nodes.forEach(function (n) { nodeMap[n.id] = n; });
+
+			// Create Viewport container for pan & zoom transforms
+			var gViewport = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+			gViewport.setAttribute('id', 'aips-graph-viewport');
+
+			// Draw Convex Hull Bubbles for Post Clusters if toggled
+			if ($('#aips-toggle-clusters').is(':checked')) {
+				self.renderClusterHulls(gViewport, nodes, edges);
+			}
+
+			// 1. Draw Edges & Edge Pills
+			var gEdges = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+			gEdges.setAttribute('class', 'edges-group');
+			var showTopics = $('#aips-toggle-topics').is(':checked');
+
+			edges.forEach(function (edge) {
+				var src = nodeMap[edge.source];
+				var tgt = nodeMap[edge.target];
+				if (!src || !tgt) return;
+
+				if (!showTopics) {
+					if ((src.entity_type === 'topic' && !src.is_center) || (tgt.entity_type === 'topic' && !tgt.is_center)) {
+						return;
+					}
+				}
+
+				var isSpoke = (edge.source === centerNode.id || edge.target === centerNode.id);
+				var weight = edge.weight || 0.6;
+				var edgeClass = 'graph-edge ' + (isSpoke ? 'edge-spoke' : 'edge-cross');
+				if (weight >= 0.80) edgeClass += ' edge-high';
+				else if (weight >= 0.65) edgeClass += ' edge-med';
+				else edgeClass += ' edge-low';
+
+				var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+				line.setAttribute('x1', src.x);
+				line.setAttribute('y1', src.y);
+				line.setAttribute('x2', tgt.x);
+				line.setAttribute('y2', tgt.y);
+				line.setAttribute('data-source', edge.source);
+				line.setAttribute('data-target', edge.target);
+				line.setAttribute('vector-effect', 'non-scaling-stroke');
+				line.setAttribute('class', edgeClass);
+				line.setAttribute('stroke-width', Math.max(1.5, weight * 3.5));
+				gEdges.appendChild(line);
+
+				// Edge Label Pill (Contrast Background + Text)
+				var midX = (src.x + tgt.x) / 2;
+				var midY = (src.y + tgt.y) / 2;
+				var pillClass = 'edge-pill ' + (isSpoke ? 'edge-pill-spoke' : 'edge-pill-cross');
+				if (weight >= 0.80) pillClass += ' edge-pill-high';
+
+				var pillG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+				pillG.setAttribute('class', pillClass);
+				pillG.setAttribute('data-source', edge.source);
+				pillG.setAttribute('data-target', edge.target);
+				pillG.setAttribute('data-orig-x', midX);
+				pillG.setAttribute('data-orig-y', midY);
+				pillG.setAttribute('transform', 'translate(' + midX + ',' + midY + ') scale(' + (1 / self.zoomScale) + ')');
+
+				var pillBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+				pillBg.setAttribute('class', 'edge-pill-bg');
+				pillBg.setAttribute('x', -20);
+				pillBg.setAttribute('y', -10);
+				pillBg.setAttribute('width', 40);
+				pillBg.setAttribute('height', 20);
+				pillBg.setAttribute('rx', 4);
+				pillBg.setAttribute('ry', 4);
+				pillBg.setAttribute('vector-effect', 'non-scaling-stroke');
+				pillG.appendChild(pillBg);
+
+				var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+				text.setAttribute('x', 0);
+				text.setAttribute('y', 0);
+				text.setAttribute('class', 'edge-pill-text');
+				text.textContent = edge.label;
+				pillG.appendChild(text);
+
+				gEdges.appendChild(pillG);
+			});
+			gViewport.appendChild(gEdges);
+
+			// 2. Draw Nodes
+			var gNodes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+			gNodes.setAttribute('class', 'nodes-group');
+
+			nodes.forEach(function (node) {
+				if (!showTopics && node.entity_type === 'topic' && !node.is_center) {
+					return;
+				}
+
+				var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+				var nodeClass = 'graph-node';
+				if (node.is_center) nodeClass += ' node-center';
+				else {
+					nodeClass += ' node-neighbor';
+					if (node.similarity >= 0.80) nodeClass += ' node-high';
+					else if (node.similarity < 0.65) nodeClass += ' node-low';
+				}
+				if (node.entity_type === 'topic') {
+					nodeClass += ' node-topic';
+				}
+				g.setAttribute('class', nodeClass);
+				g.setAttribute('data-id', node.id);
+				g.setAttribute('data-orig-x', node.x);
+				g.setAttribute('data-orig-y', node.y);
+				g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ') scale(' + (1 / self.zoomScale) + ')');
+
+				var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+				circle.setAttribute('r', node.is_center ? 24 : 16);
+				circle.setAttribute('vector-effect', 'non-scaling-stroke');
+				g.appendChild(circle);
+
+				var label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+				label.setAttribute('y', node.is_center ? 38 : 28);
+				label.setAttribute('text-anchor', 'middle');
+				var truncated = node.label.length > 22 ? node.label.substring(0, 20) + '…' : node.label;
+				label.textContent = truncated;
+				g.appendChild(label);
+
+				// Attach named event listeners to node group
+				$(g).on('mouseenter', self.onNodeMouseEnter.bind(self));
+				$(g).on('mousemove', self.onNodeMouseMove.bind(self));
+				$(g).on('mouseleave', self.onNodeMouseLeave.bind(self));
+				$(g).on('click', self.onNodeClick.bind(self));
+
+				gNodes.appendChild(g);
+			});
+			gViewport.appendChild(gNodes);
+			svg.appendChild(gViewport);
+
+			// Re-apply active pan & zoom
+			self.applyTransform();
+		},
+
+		/**
+		 * Open node detail drawer flyout.
+		 */
+		openNodeDrawer: function (node) {
+			$('#aips-drawer-title').text(node.label);
+			var isTopic = (node.entity_type === 'topic' || node.type === 'topic');
+			var typeLabel = isTopic ? (aipsContentIndexerL10n.authorTopic || 'Author Topic') : (node.type || 'post');
+			$('#aips-drawer-type').text(typeLabel);
+			$('#aips-drawer-id').text(node.raw_id);
+
+			if (node.similarity !== undefined) {
+				$('#aips-drawer-sim-text').text(Math.round(node.similarity * 100) + '% Similarity');
+				$('#aips-drawer-sim-badge').show();
+			} else {
+				$('#aips-drawer-sim-badge').hide();
+			}
+
+			if (node.url) {
+				$('#aips-drawer-edit-link').attr('href', node.url).show();
+			} else {
+				$('#aips-drawer-edit-link').hide();
+			}
+
+			if (node.view_url) {
+				$('#aips-drawer-view-link').attr('href', node.view_url).show();
+			} else {
+				$('#aips-drawer-view-link').hide();
+			}
+
+			$('#aips-drawer-focus-btn').data('raw-id', node.raw_id);
+			$('#aips-node-drawer').removeClass('aips-hidden').show();
+		},
+
+		/**
+		 * Run Cannibalization & Duplicate Audit scan.
+		 */
+		runCannibalizationAudit: function () {
+			var $btn = $('#aips-run-audit-btn');
+			var $tbody = $('#aips-cannibalization-tbody');
+			var $loading = $('#aips-audit-loading');
+			var entityType = $('#aips-audit-entity-type').val() || 'all';
+
+			$btn.prop('disabled', true);
+			$tbody.empty();
+			$loading.show();
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_indexer_run_cannibalization_audit',
+					nonce: aipsContentIndexerL10n.nonce,
+					threshold: 0.75,
+					limit: 50,
+					entity_type: entityType
+				},
+				success: function (res) {
+					$btn.prop('disabled', false);
+					$loading.hide();
+
+					if (!res.success || !res.data.clusters || res.data.clusters.length === 0) {
+						var emptyMsg = (aipsContentIndexerL10n && aipsContentIndexerL10n.noAuditDuplicates) ? aipsContentIndexerL10n.noAuditDuplicates : 'No high-similarity duplicate or cannibalizing clusters found. Great job!';
+						$tbody.html(AIPS.Templates.render('aips-tmpl-indexer-audit-clean', { message: emptyMsg }));
+						return;
+					}
+
+					var clusters = res.data.clusters;
+					var sourceGroups = {};
+
+					clusters.forEach(function (c) {
+						if (!sourceGroups[c.source_id]) {
+							sourceGroups[c.source_id] = {
+								source_id: c.source_id,
+								source_type: c.source_type || 'post',
+								title: c.source_title,
+								post_type: c.source_post_type,
+								date: c.source_date,
+								url: c.source_url,
+								audit_type: c.audit_type || 'post_duplicate',
+								max_similarity: 0,
+								max_risk_class: 'aips-risk-low',
+								max_risk_label: 'Low Risk',
+								risk_groups: {
+									high: [],
+									medium: [],
+									low: []
+								}
+							};
+						}
+
+						var sg = sourceGroups[c.source_id];
+						var riskClass = 'aips-risk-low';
+						var riskLabel = 'Low Risk';
+						var riskKey = 'low';
+
+						if (c.similarity >= 0.88) {
+							riskClass = 'aips-risk-high';
+							riskLabel = 'High Cannibalization';
+							riskKey = 'high';
+						} else if (c.similarity >= 0.80) {
+							riskClass = 'aips-risk-medium';
+							riskLabel = 'Moderate';
+							riskKey = 'medium';
+						}
+
+						if (c.similarity > sg.max_similarity) {
+							sg.max_similarity = c.similarity;
+							sg.max_risk_class = riskClass;
+							sg.max_risk_label = riskLabel;
+						}
+
+						sg.risk_groups[riskKey].push(c);
+					});
+
+					var html = '';
+					var groupIndex = 0;
+
+					var sortedGroups = Object.values(sourceGroups).sort(function (a, b) {
+						return b.max_similarity - a.max_similarity;
+					});
+
+					// 4. Render HTML templates for each group, risk tier, and candidate row
+					sortedGroups.forEach(function (sg) {
+						groupIndex++;
+						var groupId = 'aips-sg-' + groupIndex;
+
+						var sgSourceType = sg.source_type || 'post';
+						var entityBadgeType = sgSourceType === 'topic' ? 'topic' : 'post';
+						var entityBadgeLabel = sgSourceType === 'topic' ? (aipsContentIndexerL10n.authorTopic || 'Author Topic') : (aipsContentIndexerL10n.post || 'Post');
+						var entityBadge = AIPS.Templates.render('aips-tmpl-indexer-entity-badge', {
+							type: entityBadgeType,
+							label: entityBadgeLabel
+						});
+
+						// Render Post A Parent Group Header
+						html += AIPS.Templates.render('aips-tmpl-indexer-audit-group-header', {
+							groupId: groupId,
+							title: sg.title || '',
+							postType: sg.post_type || 'post',
+							sourceId: sg.source_id,
+							riskClass: sg.max_risk_class,
+							riskLabel: sg.max_risk_label,
+							maxSimilarityPct: (sg.max_similarity * 100).toFixed(1),
+							entityBadgeHtml: entityBadge,
+							auditType: sg.audit_type || 'post_duplicate'
+						});
+
+						var riskOrder = [
+							{ key: 'high', label: 'High Cannibalization', class: 'aips-risk-high' },
+							{ key: 'medium', label: 'Moderate Risk', class: 'aips-risk-medium' },
+							{ key: 'low', label: 'Low Risk', class: 'aips-risk-low' }
+						];
+
+						var firstRiskGroup = true;
+
+						// Render each populated risk tier within the group
+						riskOrder.forEach(function (riskDef) {
+							if (sg.risk_groups[riskDef.key].length === 0) return;
+
+							var riskGroupId = groupId + '-risk-' + riskDef.key;
+							var isExpanded = firstRiskGroup;
+							firstRiskGroup = false;
+
+							var iconClass = isExpanded ? 'dashicons-arrow-down-alt2' : 'dashicons-arrow-right-alt2';
+							var count = sg.risk_groups[riskDef.key].length;
+
+							// Render Risk Tier Header
+							html += AIPS.Templates.render('aips-tmpl-indexer-audit-risk-header', {
+								groupId: groupId,
+								riskGroupId: riskGroupId,
+								iconClass: iconClass,
+								riskClass: riskDef.class,
+								riskLabel: riskDef.label,
+								count: count,
+								candidateLabel: count === 1 ? 'candidate' : 'candidates'
+							});
+
+							// Render each duplicate candidate (Entity B)
+							sg.risk_groups[riskDef.key].forEach(function (c) {
+								var actions = '';
+								var editSourceLabel = (aipsContentIndexerL10n && aipsContentIndexerL10n.editSource) ? aipsContentIndexerL10n.editSource : 'Edit Source';
+								var editTargetLabel = (aipsContentIndexerL10n && aipsContentIndexerL10n.editTarget) ? aipsContentIndexerL10n.editTarget : 'Edit Target';
+
+								if (c.source_edit_url) {
+									actions += AIPS.Templates.render('aips-tmpl-indexer-audit-action-btn', {
+										url: c.source_edit_url,
+										label: editSourceLabel
+									});
+								}
+								if (c.target_edit_url) {
+									actions += AIPS.Templates.render('aips-tmpl-indexer-audit-action-btn', {
+										url: c.target_edit_url,
+										label: editTargetLabel
+									});
+								}
+
+								var targetBadgeType = 'post';
+								var targetBadgeLabel = aipsContentIndexerL10n.post || 'Post';
+								if (c.audit_type === 'cannibalization') {
+									targetBadgeType = 'cannibalization';
+									targetBadgeLabel = aipsContentIndexerL10n.cannibalizationRisk || 'Cannibalization Risk';
+								} else if (c.target_type === 'topic') {
+									targetBadgeType = 'topic';
+									targetBadgeLabel = aipsContentIndexerL10n.authorTopic || 'Author Topic';
+								}
+
+								var targetBadge = AIPS.Templates.render('aips-tmpl-indexer-entity-badge', {
+									type: targetBadgeType,
+									label: targetBadgeLabel
 								});
-								$dropdown.append(itemHtml);
-							} else {
-								var $item = $('<div>')
-									.addClass('aips-autocomplete-item')
-									.data('id', it.id)
-									.data('title', rawTitle)
-									.data('type', pType)
-									.data('indexed', isIndexed ? 1 : 0);
 
-								var $titleSpan = $('<span>')
-									.addClass('aips-autocomplete-title')
-									.text(rawTitle)
-									.append($('<small>').css('color', '#64748b').text(' (' + pType + ' #' + it.id + ')'));
+								html += AIPS.Templates.renderRaw('aips-tmpl-indexer-audit-row', {
+									groupId: groupId,
+									riskGroupId: riskGroupId,
+									collapseClass: isExpanded ? '' : 'is-collapsed',
+									title: AIPS.Templates.escape(c.target_title || ''),
+									postType: AIPS.Templates.escape(c.target_post_type || 'post'),
+								targetId: c.target_id,
+									date: AIPS.Templates.escape(c.target_date || ''),
+									similarityPct: c.similarity_pct,
+									riskClass: riskDef.class,
+									riskLabel: AIPS.Templates.escape(riskDef.label),
+									actions: actions,
+									entityBadgeHtml: targetBadge,
+									auditType: c.audit_type || 'post_duplicate'
+								});
+							});
+						});
+					});
 
-								var $badgeSpan = $('<span>')
-									.addClass(badgeClass)
-									.text(badgeText);
+					$tbody.html(html);
+				},
+				error: function () {
+					self.handlePauseIndexing();
+					AIPS.Utilities && AIPS.Utilities.showNotice('Network error during indexing batch. Paused.', 'error');
+				}
+			});
+		},
 
-								$item.append($titleSpan).append($badgeSpan);
-								$dropdown.append($item);
-							}
+		/**
+		 * Clear entire index.
+		 */
+		handleClearIndex: function () {
+			if (!confirm(aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.')) {
+				return;
+			}
+
+			var self = this;
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_indexer_clear_index',
+					nonce: aipsContentIndexerL10n.nonce
+				},
+				success: function (res) {
+					if (res.success) {
+						self.lastPostId = 0;
+						$('#aips-stat-indexed').text('0');
+						$('#aips-stat-percent').text('0%');
+						$('#aips-index-progress-bar').css('width', '0%');
+						$('#aips-stat-topics').text('0');
+						AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Index cleared.', 'success');
+						self.reloadGraph();
+					}
+				}
+			});
+		},
+
+		/**
+		 * Search posts for autocomplete with indexed status badges.
+		 */
+		searchPosts: function (q) {
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_indexer_search_posts',
+					nonce: aipsContentIndexerL10n.nonce,
+					q: q
+				},
+				success: function (res) {
+					if (res.success && res.data.results) {
+						var items = res.data.results;
+						var $dropdown = $('#aips-graph-post-dropdown').empty();
+
+						if (!items.length) {
+							$dropdown.addClass('aips-hidden').hide();
+							return;
+						}
+
+						items.forEach(function (it) {
+							var isIndexed = !!it.is_indexed;
+							var badgeText = isIndexed
+								? (aipsContentIndexerL10n.indexed || 'Indexed')
+								: (aipsContentIndexerL10n.pendingIndex || 'Pending Index');
+							var badgeClass = isIndexed ? 'aips-badge-indexed' : 'aips-badge-unindexed';
+							var rawTitle = it.title || '';
+							var pType = it.post_type || 'post';
+
+							var itemHtml = AIPS.Templates.render('aips-tmpl-indexer-autocomplete-item', {
+								id: it.id,
+								title: AIPS.Templates.escape(rawTitle),
+								type: AIPS.Templates.escape(pType),
+								indexed: isIndexed ? 1 : 0,
+								badgeClass: badgeClass,
+								badgeText: AIPS.Templates.escape(badgeText)
+							});
+							$dropdown.append(itemHtml);
 						});
 
 						$dropdown.removeClass('aips-hidden').show();

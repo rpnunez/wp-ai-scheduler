@@ -14,21 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Variables injected by AIPS_Content_Indexer_Controller:
-// $status, $stats, $all_post_types, $settings, $dimension_mismatch, $stored_dims, $active_dims
-
-$total_posts    = isset($status['total_posts']) ? (int) $status['total_posts'] : 0;
-$indexed        = isset($status['indexed']) ? (int) $status['indexed'] : 0;
-$unindexed      = isset($status['unindexed']) ? (int) $status['unindexed'] : 0;
-$percent        = isset($status['percent']) ? (int) $status['percent'] : 0;
-
-$total_topics       = isset($status['total_topics']) ? (int) $status['total_topics'] : 0;
-$indexed_topics     = isset($status['indexed_topics']) ? (int) $status['indexed_topics'] : 0;
-$unindexed_topics   = isset($status['unindexed_topics']) ? (int) $status['unindexed_topics'] : 0;
-$topics_percent     = isset($status['topics_percent']) ? (int) $status['topics_percent'] : 0;
-$combined_unindexed = $unindexed + $unindexed_topics;
-
-$active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default (AI Engine)';
-$active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : 1536;
+// $metrics, $post_type_breakdown, $banners, $settings
 ?>
 
 <div class="wrap aips-wrap aips-indexer-page aips-intelligence-hub">
@@ -49,7 +35,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 				<div class="aips-page-actions">
 					<div class="aips-scan-scope-wrap">
 						<label for="aips-scan-entity-scope" class="screen-reader-text"><?php esc_html_e('Scan Entity Scope', 'ai-post-scheduler'); ?></label>
-						<select id="aips-scan-entity-scope" class="aips-select aips-select-sm" title="<?php esc_attr_e('Select entity scope to backfill', 'ai-post-scheduler'); ?>">
+						<select id="aips-scan-entity-scope" class="aips-select aips-select-sm" title="<?php esc_attr_e('Select entity scope to scan', 'ai-post-scheduler'); ?>">
 							<option value="all" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'all'); ?>><?php esc_html_e('All Content (Posts & Topics)', 'ai-post-scheduler'); ?></option>
 							<option value="posts" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'posts'); ?>><?php esc_html_e('Posts & Pages Only', 'ai-post-scheduler'); ?></option>
 							<option value="topics" <?php selected(!empty($settings['scan_entity_scope']) ? $settings['scan_entity_scope'] : 'all', 'topics'); ?>><?php esc_html_e('Author Topics Only', 'ai-post-scheduler'); ?></option>
@@ -57,7 +43,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</div>
 					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
 						<span class="dashicons dashicons-database-import"></span>
-						<span class="btn-text"><?php esc_html_e('Start Backfill Scan', 'ai-post-scheduler'); ?></span>
+						<span class="btn-text"><?php esc_html_e('Start Scan', 'ai-post-scheduler'); ?></span>
 					</button>
 					<button type="button" id="aips-pause-indexing-btn" class="aips-btn aips-btn-secondary aips-hidden">
 						<span class="dashicons dashicons-controls-pause"></span>
@@ -92,7 +78,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		</div>
 
 		<!-- Embeddings Disabled Notice -->
-		<?php if (empty($settings['embeddings_enabled'])) : ?>
+		<?php if (!empty($banners['embeddings_disabled'])) : ?>
 		<div class="notice notice-info inline aips-embeddings-disabled-banner">
 			<div class="aips-banner-inner">
 				<div>
@@ -115,7 +101,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<?php endif; ?>
 
 		<!-- Dimension Mismatch Notice -->
-		<?php if (!empty($dimension_mismatch)) : ?>
+		<?php if (!empty($banners['dimension_mismatch']['active'])) : ?>
 		<div class="notice notice-warning inline aips-dimension-mismatch-banner">
 			<div class="aips-banner-inner">
 				<div>
@@ -124,14 +110,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<?php esc_html_e('Vector Dimension Mismatch Detected', 'ai-post-scheduler'); ?>
 					</h4>
 					<p class="aips-banner-desc">
-						<?php
-						printf(
-							/* translators: 1: stored dimensions, 2: active dimensions */
-							esc_html__('Stored vector embeddings use %1$s dimensions, but your active environment is configured for %2$s dimensions. Cosine similarity comparisons cannot cross mismatched dimensions.', 'ai-post-scheduler'),
-							'<strong>' . esc_html(implode(', ', (array) $stored_dims)) . '</strong>',
-							'<strong>' . esc_html($active_dims) . '</strong>'
-						);
-						?>
+						<?php echo wp_kses_post($banners['dimension_mismatch']['message']); ?>
 					</p>
 				</div>
 				<div>
@@ -145,11 +124,8 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<?php endif; ?>
 
 		<!-- Rate Limit Notice -->
-		<?php
-		$rate_limits_info = isset($status['rate_limits']) ? $status['rate_limits'] : array();
-		$is_rate_limited  = !empty($rate_limits_info['is_rate_limited']);
-		?>
-		<div id="aips-rate-limit-warning-banner" class="notice notice-error inline aips-quota-alert-banner <?php echo $is_rate_limited ? '' : 'aips-hidden'; ?>">
+		<?php $rate_limit_banner = isset($banners['rate_limit']) ? $banners['rate_limit'] : array(); ?>
+		<div id="aips-rate-limit-warning-banner" class="notice notice-error inline aips-quota-alert-banner <?php echo !empty($rate_limit_banner['active']) ? '' : 'aips-hidden'; ?>">
 			<div class="aips-banner-inner">
 				<div>
 					<h4 class="aips-banner-title">
@@ -157,17 +133,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<?php esc_html_e('Embedding Generation Rate Limit Reached', 'ai-post-scheduler'); ?>
 					</h4>
 					<p class="aips-banner-desc" id="aips-rate-limit-warning-msg">
-						<?php
-						if (!empty($rate_limits_info['exceeded_limit'])) {
-							printf(
-								/* translators: 1: period */
-								esc_html__('The %1$s vector embedding rate limit quota has been reached to protect your API budget. Background scanning is paused.', 'ai-post-scheduler'),
-								esc_html($rate_limits_info['exceeded_limit'])
-							);
-						} else {
-							esc_html_e('Vector embedding rate limit quota reached. Scanning paused.', 'ai-post-scheduler');
-						}
-						?>
+						<?php echo esc_html(isset($rate_limit_banner['message']) ? $rate_limit_banner['message'] : ''); ?>
 					</p>
 				</div>
 				<div>
@@ -181,13 +147,10 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 
 		<!-- Cooldown Alert Banner -->
 		<?php
-		$cooldown           = isset($settings['cooldown']) ? $settings['cooldown'] : array();
-		$is_cooldown_active = !empty($cooldown['active']);
-		$cooldown_remaining = isset($cooldown['remaining_seconds']) ? (int) $cooldown['remaining_seconds'] : 0;
-		$cooldown_until     = isset($cooldown['until']) ? (int) $cooldown['until'] : 0;
-		$cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
+		$cooldown_banner = isset($banners['cooldown']) ? $banners['cooldown'] : array();
+		$cooldown_until  = isset($cooldown_banner['until']) ? (int) $cooldown_banner['until'] : 0;
 		?>
-		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo $is_cooldown_active ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
+		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo !empty($cooldown_banner['active']) ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
 			<div class="aips-banner-inner">
 				<div class="aips-cooldown-content">
 					<span class="dashicons dashicons-clock aips-cooldown-icon"></span>
@@ -195,21 +158,11 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<h4 class="aips-cooldown-title">
 							<strong><?php esc_html_e('Embedding API Auto-Cooldown Active', 'ai-post-scheduler'); ?></strong>
 							<span id="aips-cooldown-timer-badge" class="aips-cooldown-badge">
-								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(gmdate('i:s', $cooldown_remaining)); ?></span>
+								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(isset($cooldown_banner['remaining_formatted']) ? $cooldown_banner['remaining_formatted'] : '00:00'); ?></span>
 							</span>
 						</h4>
 						<p class="aips-banner-desc aips-cooldown-reason-msg" id="aips-cooldown-reason-msg">
-							<?php
-							if (!empty($cooldown_reason)) {
-								printf(
-									/* translators: 1: reason */
-									esc_html__('Remote provider reported: "%s". Indexing operations are temporarily halted to respect remote rate limits.', 'ai-post-scheduler'),
-									esc_html($cooldown_reason)
-								);
-							} else {
-								esc_html_e('Remote rate limits encountered. Indexing operations are temporarily paused.', 'ai-post-scheduler');
-							}
-							?>
+							<?php echo esc_html(isset($cooldown_banner['message']) ? $cooldown_banner['message'] : ''); ?>
 						</p>
 					</div>
 				</div>
@@ -232,13 +185,13 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</p>
 					<div class="aips-stat-value-wrap">
 						<p class="aips-stat-value" id="aips-stat-indexed">
-							<?php echo esc_html($indexed); ?>
+							<?php echo esc_html((string) $metrics['indexed']); ?>
 						</p>
-						<span class="aips-stat-total">/ <span id="aips-stat-total"><?php echo esc_html($total_posts); ?></span></span>
-						<span id="aips-stat-percent" class="aips-stat-percent"><?php echo esc_html($percent); ?>%</span>
+						<span class="aips-stat-total">/ <span id="aips-stat-total"><?php echo esc_html((string) $metrics['total_posts']); ?></span></span>
+						<span id="aips-stat-percent" class="aips-stat-percent"><?php echo esc_html((string) $metrics['percent']); ?>%</span>
 					</div>
 					<div class="aips-stat-progress-track">
-						<div id="aips-index-progress-bar" class="aips-stat-progress-bar" style="width:<?php echo esc_attr($percent); ?>%;"></div>
+						<div id="aips-index-progress-bar" class="aips-stat-progress-bar" style="width:<?php echo esc_attr((string) $metrics['percent']); ?>%;"></div>
 					</div>
 				</div>
 			</div>
@@ -249,17 +202,10 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<?php esc_html_e('Unindexed Items', 'ai-post-scheduler'); ?>
 					</p>
 					<p class="aips-stat-value aips-stat-value-warning" id="aips-stat-unindexed">
-						<?php echo esc_html($combined_unindexed); ?>
+						<?php echo esc_html((string) $metrics['combined_unindexed']); ?>
 					</p>
 					<p class="aips-stat-subtext" id="aips-stat-unindexed-breakdown">
-						<?php
-						printf(
-							/* translators: 1: unindexed posts, 2: unindexed topics */
-							esc_html__('%1$d posts, %2$d topics pending', 'ai-post-scheduler'),
-							$unindexed,
-							$unindexed_topics
-						);
-						?>
+						<?php echo esc_html($metrics['unindexed_breakdown_label']); ?>
 					</p>
 				</div>
 			</div>
@@ -271,13 +217,13 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 					</p>
 					<div class="aips-stat-value-wrap">
 						<p class="aips-stat-value aips-stat-value-success" id="aips-stat-topics-indexed">
-							<?php echo esc_html($indexed_topics); ?>
+							<?php echo esc_html((string) $metrics['indexed_topics']); ?>
 						</p>
-						<span class="aips-stat-total">/ <span id="aips-stat-topics-total"><?php echo esc_html($total_topics); ?></span></span>
-						<span id="aips-stat-topics-percent" class="aips-stat-percent"><?php echo esc_html($topics_percent); ?>%</span>
+						<span class="aips-stat-total">/ <span id="aips-stat-topics-total"><?php echo esc_html((string) $metrics['total_topics']); ?></span></span>
+						<span id="aips-stat-topics-percent" class="aips-stat-percent"><?php echo esc_html((string) $metrics['topics_percent']); ?>%</span>
 					</div>
 					<div class="aips-stat-progress-track">
-						<div id="aips-topics-progress-bar" class="aips-stat-progress-bar aips-stat-progress-bar-topic" style="width:<?php echo esc_attr($topics_percent); ?>%;"></div>
+						<div id="aips-topics-progress-bar" class="aips-stat-progress-bar aips-stat-progress-bar-topic" style="width:<?php echo esc_attr((string) $metrics['topics_percent']); ?>%;"></div>
 					</div>
 				</div>
 			</div>
@@ -288,10 +234,10 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<?php esc_html_e('Vector Model & Dims', 'ai-post-scheduler'); ?>
 					</p>
 					<p class="aips-stat-value aips-stat-value-dims">
-						<?php echo esc_html($active_model); ?>
+						<?php echo esc_html($metrics['active_model']); ?>
 					</p>
 					<p class="aips-stat-subtext-dims">
-						<strong><?php echo esc_html($active_dims); ?></strong> <?php esc_html_e('dimensions', 'ai-post-scheduler'); ?>
+						<strong><?php echo esc_html((string) $metrics['active_dims']); ?></strong> <?php esc_html_e('dimensions', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
 			</div>
@@ -453,7 +399,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 
 		</div><!-- /.aips-visualizer-panel -->
 
-		<!-- Backfill Scanner & Post Types Coverage Panel -->
+		<!-- Vector Scanner & Post Types Coverage Panel -->
 		<div class="aips-content-panel aips-scope-breakdown-panel">
 			<div class="aips-panel-header aips-panel-header-flex">
 				<div>
@@ -481,30 +427,24 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ($all_post_types as $pt_slug => $pt_obj) : 
-							$in_scope = in_array($pt_slug, $settings['post_types'], true);
-							$pt_counts = wp_count_posts($pt_slug);
-							$pt_published = isset($pt_counts->publish) ? (int) $pt_counts->publish : 0;
-							$pt_indexed = isset($stats['by_post_type'][$pt_slug]) ? (int) $stats['by_post_type'][$pt_slug] : 0;
-							$pt_pct = $pt_published > 0 ? min(100, round(($pt_indexed / $pt_published) * 100)) : 0;
-						?>
+						<?php foreach ($post_type_breakdown as $item) : ?>
 							<tr>
-								<td><strong><?php echo esc_html($pt_obj->labels->singular_name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code></td>
+								<td><strong><?php echo esc_html($item['label']); ?></strong> <code>(<?php echo esc_html($item['slug']); ?>)</code></td>
 								<td>
-									<?php if ($in_scope) : ?>
+									<?php if (!empty($item['in_scope'])) : ?>
 										<span class="aips-badge aips-badge-success"><?php esc_html_e('Included in Index', 'ai-post-scheduler'); ?></span>
 									<?php else : ?>
 										<span class="aips-badge aips-badge-secondary"><?php esc_html_e('Excluded', 'ai-post-scheduler'); ?></span>
 									<?php endif; ?>
 								</td>
-								<td><?php echo esc_html($pt_published); ?></td>
-								<td><?php echo esc_html($pt_indexed); ?></td>
+								<td><?php echo esc_html((string) $item['published_count']); ?></td>
+								<td><?php echo esc_html((string) $item['indexed_count']); ?></td>
 								<td>
 									<div class="aips-coverage-cell">
 										<div class="aips-coverage-track">
-											<div class="aips-coverage-bar" style="width:<?php echo esc_attr($pt_pct); ?>%;"></div>
+											<div class="aips-coverage-bar" style="width:<?php echo esc_attr((string) $item['coverage_percent']); ?>%;"></div>
 										</div>
-										<span class="aips-coverage-pct"><?php echo esc_html($pt_pct); ?>%</span>
+										<span class="aips-coverage-pct"><?php echo esc_html((string) $item['coverage_percent']); ?>%</span>
 									</div>
 								</td>
 							</tr>
@@ -527,6 +467,11 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		<span class="aips-autocomplete-title">{{title}}<small class="aips-autocomplete-meta"> ({{type}} #{{id}})</small></span>
 		<span class="{{badgeClass}}">{{badgeText}}</span>
 	</div>
+</script>
+
+<!-- Template: Breadcrumb chip -->
+<script type="text/html" id="aips-tmpl-indexer-breadcrumb-chip">
+	<button type="button" class="aips-breadcrumb-chip" title="{{title}}" data-index="{{index}}" data-id="{{id}}">{{shortTitle}}</button>
 </script>
 
 <!-- Template: Breadcrumb separator -->

@@ -107,11 +107,11 @@ class AIPS_Content_Indexer_Controller {
 	}
 
 	/**
-	 * Prepare shared view data for Content Intelligence templates.
+	 * Prepare shared base view data and banner alerts for Content Intelligence pages.
 	 *
 	 * @return array
 	 */
-	private function get_view_data(): array {
+	private function get_shared_view_data(): array {
 		$post_types      = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		$status          = $this->indexer_service->get_indexing_status($post_types);
 		$stats           = $this->embeddings_repo->get_stats();
@@ -119,13 +119,8 @@ class AIPS_Content_Indexer_Controller {
 		$active_dims     = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
 		$cooldown_status = $this->rate_limiter->get_cooldown_status();
 		$queue_status    = $this->indexer_service->get_queue_status();
-		$authors         = $this->authors_repo->get_all(true);
 
 		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
-
-		// Available public post types
-		$all_post_types = get_post_types(array('public' => true), 'objects');
-		unset($all_post_types['attachment']);
 
 		$settings = array(
 			'embeddings_enabled'             => (bool) $this->config->get_option('aips_embeddings_enabled', true),
@@ -166,6 +161,73 @@ class AIPS_Content_Indexer_Controller {
 			'queue_status'                   => $queue_status,
 		);
 
+		// Format Dimension Mismatch Message
+		$dim_mismatch_message = '';
+		if ($dimension_mismatch) {
+			$dim_mismatch_message = sprintf(
+				/* translators: 1: stored dimensions, 2: active dimensions */
+				esc_html__('Stored vector embeddings use %1$s dimensions, but your active environment is configured for %2$s dimensions. Cosine similarity comparisons cannot cross mismatched dimensions.', 'ai-post-scheduler'),
+				'<strong>' . esc_html(implode(', ', (array) $stored_dims)) . '</strong>',
+				'<strong>' . esc_html((string) $active_dims) . '</strong>'
+			);
+		}
+
+		// Format Rate Limit Message
+		$rate_limits_info   = isset($status['rate_limits']) ? $status['rate_limits'] : array();
+		$is_rate_limited    = !empty($rate_limits_info['is_rate_limited']);
+		$exceeded_limit     = !empty($rate_limits_info['exceeded_limit']) ? (string) $rate_limits_info['exceeded_limit'] : '';
+		$rate_limit_message = '';
+		if ($is_rate_limited) {
+			if (!empty($exceeded_limit)) {
+				$rate_limit_message = sprintf(
+					/* translators: 1: period */
+					esc_html__('The %1$s vector embedding rate limit quota has been reached to protect your API budget. Scanning is paused.', 'ai-post-scheduler'),
+					esc_html($exceeded_limit)
+				);
+			} else {
+				$rate_limit_message = esc_html__('Vector embedding rate limit quota reached. Scanning paused.', 'ai-post-scheduler');
+			}
+		}
+
+		// Format Cooldown Message
+		$is_cooldown_active = !empty($cooldown_status['active']);
+		$cooldown_remaining = isset($cooldown_status['remaining_seconds']) ? (int) $cooldown_status['remaining_seconds'] : 0;
+		$cooldown_until     = isset($cooldown_status['until']) ? (int) $cooldown_status['until'] : 0;
+		$cooldown_reason    = isset($cooldown_status['reason']) ? (string) $cooldown_status['reason'] : '';
+		$cooldown_message   = '';
+		if (!empty($cooldown_reason)) {
+			$cooldown_message = sprintf(
+				/* translators: 1: reason */
+				esc_html__('Remote provider reported: "%s". Operations are temporarily halted to respect remote rate limits.', 'ai-post-scheduler'),
+				esc_html($cooldown_reason)
+			);
+		} else {
+			$cooldown_message = esc_html__('Remote rate limits encountered. Operations are temporarily paused.', 'ai-post-scheduler');
+		}
+
+		$banners = array(
+			'embeddings_disabled' => empty($settings['embeddings_enabled']),
+			'dimension_mismatch'  => array(
+				'active'      => $dimension_mismatch,
+				'stored_dims' => $stored_dims,
+				'active_dims' => $active_dims,
+				'message'     => $dim_mismatch_message,
+			),
+			'rate_limit'          => array(
+				'active'         => $is_rate_limited,
+				'exceeded_limit' => $exceeded_limit,
+				'message'        => $rate_limit_message,
+			),
+			'cooldown'            => array(
+				'active'              => $is_cooldown_active,
+				'remaining_seconds'   => $cooldown_remaining,
+				'remaining_formatted' => gmdate('i:s', $cooldown_remaining),
+				'until'               => $cooldown_until,
+				'reason'              => $cooldown_reason,
+				'message'             => $cooldown_message,
+			),
+		);
+
 		return compact(
 			'status',
 			'stats',
@@ -173,11 +235,107 @@ class AIPS_Content_Indexer_Controller {
 			'active_dims',
 			'cooldown_status',
 			'queue_status',
-			'authors',
 			'dimension_mismatch',
-			'all_post_types',
-			'settings'
+			'settings',
+			'banners'
 		);
+	}
+
+	/**
+	 * Prepare view data for the primary Content Intelligence Hub page.
+	 *
+	 * @return array
+	 */
+	public function get_intelligence_hub_view_data(): array {
+		$shared = $this->get_shared_view_data();
+		extract($shared);
+
+		$total_posts    = isset($status['total_posts']) ? (int) $status['total_posts'] : 0;
+		$indexed        = isset($status['indexed']) ? (int) $status['indexed'] : 0;
+		$unindexed      = isset($status['unindexed']) ? (int) $status['unindexed'] : 0;
+		$percent        = isset($status['percent']) ? (int) $status['percent'] : 0;
+
+		$total_topics       = isset($status['total_topics']) ? (int) $status['total_topics'] : 0;
+		$indexed_topics     = isset($status['indexed_topics']) ? (int) $status['indexed_topics'] : 0;
+		$unindexed_topics   = isset($status['unindexed_topics']) ? (int) $status['unindexed_topics'] : 0;
+		$topics_percent     = isset($status['topics_percent']) ? (int) $status['topics_percent'] : 0;
+		$combined_unindexed = $unindexed + $unindexed_topics;
+
+		$active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default (AI Engine)';
+		$active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : $active_dims;
+
+		$metrics = array(
+			'total_posts'               => $total_posts,
+			'indexed'                   => $indexed,
+			'unindexed'                 => $unindexed,
+			'percent'                   => $percent,
+			'total_topics'              => $total_topics,
+			'indexed_topics'            => $indexed_topics,
+			'unindexed_topics'          => $unindexed_topics,
+			'topics_percent'            => $topics_percent,
+			'combined_unindexed'        => $combined_unindexed,
+			'unindexed_breakdown_label' => sprintf(
+				/* translators: 1: unindexed posts, 2: unindexed topics */
+				esc_html__('%1$d posts, %2$d topics pending', 'ai-post-scheduler'),
+				$unindexed,
+				$unindexed_topics
+			),
+			'active_model'              => $active_model,
+			'active_dims'               => $active_dims,
+		);
+
+		// Post Types Breakdown
+		$all_post_types = get_post_types(array('public' => true), 'objects');
+		unset($all_post_types['attachment']);
+
+		$post_type_breakdown = array();
+		foreach ($all_post_types as $pt_slug => $pt_obj) {
+			$in_scope     = in_array($pt_slug, $settings['post_types'], true);
+			$pt_counts    = wp_count_posts($pt_slug);
+			$pt_published = isset($pt_counts->publish) ? (int) $pt_counts->publish : 0;
+			$pt_indexed   = isset($stats['by_post_type'][$pt_slug]) ? (int) $stats['by_post_type'][$pt_slug] : 0;
+			$pt_pct       = $pt_published > 0 ? (int) min(100, round(($pt_indexed / $pt_published) * 100)) : 0;
+
+			$post_type_breakdown[] = array(
+				'slug'             => $pt_slug,
+				'label'            => $pt_obj->labels->singular_name,
+				'in_scope'         => $in_scope,
+				'published_count'  => $pt_published,
+				'indexed_count'    => $pt_indexed,
+				'coverage_percent' => $pt_pct,
+			);
+		}
+
+		return array_merge($shared, compact('metrics', 'post_type_breakdown', 'all_post_types'));
+	}
+
+	/**
+	 * Prepare view data for the Topic Clusters & Content Gaps page.
+	 *
+	 * @return array
+	 */
+	public function get_clusters_view_data(): array {
+		$shared = $this->get_shared_view_data();
+		extract($shared);
+
+		$cluster_threshold = isset($settings['post_cluster_threshold']) ? (float) $settings['post_cluster_threshold'] : 0.65;
+		$cluster_config    = array(
+			'threshold'         => $cluster_threshold,
+			'threshold_percent' => (int) round($cluster_threshold * 100),
+		);
+
+		$authors = $this->authors_repo->get_all(true);
+
+		return array_merge($shared, compact('cluster_config', 'authors'));
+	}
+
+	/**
+	 * Prepare view data for the Cannibalization Audit page.
+	 *
+	 * @return array
+	 */
+	public function get_cannibalization_view_data(): array {
+		return $this->get_shared_view_data();
 	}
 
 	/**
@@ -188,7 +346,7 @@ class AIPS_Content_Indexer_Controller {
 			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
 		}
 
-		extract($this->get_view_data());
+		extract($this->get_intelligence_hub_view_data());
 		include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence.php';
 	}
 
@@ -200,7 +358,7 @@ class AIPS_Content_Indexer_Controller {
 			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
 		}
 
-		extract($this->get_view_data());
+		extract($this->get_clusters_view_data());
 		include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-clusters.php';
 	}
 
@@ -212,7 +370,7 @@ class AIPS_Content_Indexer_Controller {
 			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
 		}
 
-		extract($this->get_view_data());
+		extract($this->get_cannibalization_view_data());
 		include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
 	}
 

@@ -855,7 +855,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-slices',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-slices.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1936,7 +1936,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-content-indexer-script',
             AIPS_PLUGIN_URL . 'assets/js/admin-content-indexer.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -1946,7 +1946,7 @@ class AIPS_Admin_Assets {
             'aipsContentIndexerL10n',
             array(
                 'nonce'            => wp_create_nonce('aips_ajax_nonce'),
-                'startScan'        => __('Start Backfill Scan', 'ai-post-scheduler'),
+                'startScan'        => __('Start Scan', 'ai-post-scheduler'),
                 'resumeScan'       => __('Resume Scan', 'ai-post-scheduler'),
                 'indexingPaused'   => __('Indexing Paused', 'ai-post-scheduler'),
                 'indexingComplete' => __('Content indexing complete!', 'ai-post-scheduler'),

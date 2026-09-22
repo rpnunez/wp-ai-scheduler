@@ -14,13 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Variables injected by AIPS_Content_Indexer_Controller:
-// $status, $stats, $settings
-
-$cooldown           = isset($settings['cooldown']) ? $settings['cooldown'] : array();
-$is_cooldown_active = !empty($cooldown['active']);
-$cooldown_remaining = isset($cooldown['remaining_seconds']) ? (int) $cooldown['remaining_seconds'] : 0;
-$cooldown_until     = isset($cooldown['until']) ? (int) $cooldown['until'] : 0;
-$cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
+// $banners, $settings
 ?>
 
 <div class="wrap aips-wrap aips-indexer-page aips-cannibalization-page">
@@ -62,7 +56,7 @@ $cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
 		</div>
 
 		<!-- Embeddings Disabled Notice -->
-		<?php if (empty($settings['embeddings_enabled'])) : ?>
+		<?php if (!empty($banners['embeddings_disabled'])) : ?>
 		<div class="notice notice-info inline aips-embeddings-disabled-banner">
 			<div class="aips-banner-inner">
 				<div>
@@ -85,7 +79,11 @@ $cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
 		<?php endif; ?>
 
 		<!-- Cooldown Alert Banner -->
-		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo $is_cooldown_active ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
+		<?php
+		$cooldown_banner = isset($banners['cooldown']) ? $banners['cooldown'] : array();
+		$cooldown_until  = isset($cooldown_banner['until']) ? (int) $cooldown_banner['until'] : 0;
+		?>
+		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo !empty($cooldown_banner['active']) ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
 			<div class="aips-banner-inner">
 				<div class="aips-cooldown-content">
 					<span class="dashicons dashicons-clock aips-cooldown-icon"></span>
@@ -93,21 +91,11 @@ $cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
 						<h4 class="aips-cooldown-title">
 							<strong><?php esc_html_e('Embedding API Auto-Cooldown Active', 'ai-post-scheduler'); ?></strong>
 							<span id="aips-cooldown-timer-badge" class="aips-cooldown-badge">
-								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(gmdate('i:s', $cooldown_remaining)); ?></span>
+								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(isset($cooldown_banner['remaining_formatted']) ? $cooldown_banner['remaining_formatted'] : '00:00'); ?></span>
 							</span>
 						</h4>
 						<p class="aips-banner-desc aips-cooldown-reason-msg" id="aips-cooldown-reason-msg">
-							<?php
-							if (!empty($cooldown_reason)) {
-								printf(
-									/* translators: 1: reason */
-									esc_html__('Remote provider reported: "%s". Operations are temporarily halted.', 'ai-post-scheduler'),
-									esc_html($cooldown_reason)
-								);
-							} else {
-								esc_html_e('Remote rate limits encountered. Operations temporarily paused.', 'ai-post-scheduler');
-							}
-							?>
+							<?php echo esc_html(isset($cooldown_banner['message']) ? $cooldown_banner['message'] : ''); ?>
 						</p>
 					</div>
 				</div>
