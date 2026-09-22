@@ -196,6 +196,21 @@ class Mock_WPDB_Stateful_Prompt_Profiles {
 			return true;
 		}
 
+		// UPDATE ... SET prompt_profile_id = NULL WHERE prompt_profile_id = %d
+		if (strpos($query, 'SET prompt_profile_id = NULL') !== false) {
+			if (preg_match('/WHERE prompt_profile_id = (\d+)/', $query, $m)) {
+				$pid = (int) $m[1];
+				foreach ($this->data as $tbl => &$rows) {
+					foreach ($rows as &$row) {
+						if (isset($row->prompt_profile_id) && (int) $row->prompt_profile_id === $pid) {
+							$row->prompt_profile_id = null;
+						}
+					}
+				}
+			}
+			return true;
+		}
+
 		return true;
 	}
 }
@@ -338,5 +353,39 @@ class Test_AIPS_Prompt_Profiles_Repository extends WP_UnitTestCase {
 
 		$this->assertEquals(0, $p1->is_default);
 		$this->assertEquals(1, $p2->is_default);
+	}
+
+	public function test_delete_nullifies_template_and_author_references() {
+		$profile_id = $this->repository->create(array(
+			'name'       => 'Profile To Delete',
+			'slug'       => 'profile-to-delete',
+			'is_default' => 0,
+			'is_active'  => 1,
+		));
+
+		// Seed a template and author in mock data referencing this profile
+		$template = (object) array(
+			'id'                => 101,
+			'name'              => 'Sample Template',
+			'prompt_profile_id' => $profile_id,
+		);
+		$author = (object) array(
+			'id'                => 202,
+			'name'              => 'Sample Author',
+			'prompt_profile_id' => $profile_id,
+		);
+
+		$this->wpdb_mock->data['wp_aips_templates'][101] = $template;
+		$this->wpdb_mock->data['wp_aips_authors'][202]   = $author;
+
+		$this->assertEquals($profile_id, $this->wpdb_mock->data['wp_aips_templates'][101]->prompt_profile_id);
+		$this->assertEquals($profile_id, $this->wpdb_mock->data['wp_aips_authors'][202]->prompt_profile_id);
+
+		$result = $this->repository->delete($profile_id);
+		$this->assertTrue($result);
+
+		// Verify references were nullified
+		$this->assertNull($this->wpdb_mock->data['wp_aips_templates'][101]->prompt_profile_id);
+		$this->assertNull($this->wpdb_mock->data['wp_aips_authors'][202]->prompt_profile_id);
 	}
 }

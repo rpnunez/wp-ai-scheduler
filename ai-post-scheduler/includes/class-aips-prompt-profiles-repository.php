@@ -282,6 +282,17 @@ class AIPS_Prompt_Profiles_Repository {
 			return new WP_Error('db_delete_failed', $this->wpdb->last_error ?: __('Failed to delete prompt profile.', 'ai-post-scheduler'));
 		}
 
+		// Nullify prompt_profile_id on templates and authors referencing this profile
+		$templates_table = $this->wpdb->prefix . 'aips_templates';
+		$authors_table   = $this->wpdb->prefix . 'aips_authors';
+		$this->wpdb->query($this->wpdb->prepare("UPDATE {$templates_table} SET prompt_profile_id = NULL WHERE prompt_profile_id = %d", $id));
+		$this->wpdb->query($this->wpdb->prepare("UPDATE {$authors_table} SET prompt_profile_id = NULL WHERE prompt_profile_id = %d", $id));
+
+		if (method_exists($this, 'invalidate_cache_domain')) {
+			$this->invalidate_cache_domain('template', array(), 'profile_deleted');
+			$this->invalidate_cache_domain('author', array(), 'profile_deleted');
+		}
+
 		// If this was the default, make the first remaining active profile default
 		if (!empty($profile->is_default)) {
 			$first = $this->wpdb->get_row("SELECT id FROM {$this->table_name} WHERE is_active = 1 ORDER BY id ASC LIMIT 1");

@@ -959,6 +959,7 @@ class AIPS_Admin_Assets {
         );
 
         wp_localize_script('aips-prompt-profiles-script', 'aipsPromptProfilesL10n', array(
+            'ajaxUrl'           => admin_url('admin-ajax.php'),
             'nonce'             => wp_create_nonce('aips_ajax_nonce'),
             'createProfile'     => __('Create Prompt Profile', 'ai-post-scheduler'),
             'editProfile'       => __('Edit Prompt Profile', 'ai-post-scheduler'),

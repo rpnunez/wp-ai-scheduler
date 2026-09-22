@@ -322,6 +322,18 @@
 		},
 
 		/**
+		 * Retrieve the admin AJAX URL with multi-source fallback.
+		 *
+		 * @return {string}
+		 */
+		getAjaxUrl: function () {
+			return (window.aipsPromptProfilesL10n && window.aipsPromptProfilesL10n.ajaxUrl) ||
+				(window.aipsAjax && window.aipsAjax.ajaxUrl) ||
+				window.ajaxurl ||
+				'';
+		},
+
+		/**
 		 * Fetch core codebase fallback prompts via AJAX for client-side resets.
 		 *
 		 * @return {void}
@@ -329,7 +341,7 @@
 		loadCoreFallbacks: function () {
 			var self = this;
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_get_prompt_profiles',
@@ -360,7 +372,7 @@
 			this.setDirty(false);
 			this.updateCustomizedIndicators();
 			$('#aips-preview-output-box').text('Click refresh or type above to assemble preview...');
-			$('#aips-prompt-profile-modal').fadeIn(200, function () {
+			$('#aips-prompt-profile-modal').attr('aria-hidden', 'false').fadeIn(200, function () {
 				$('#aips_profile_name').trigger('focus');
 			});
 		},
@@ -376,7 +388,7 @@
 			self.currentProfileId = profileId;
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_get_prompt_profile',
@@ -385,7 +397,7 @@
 				},
 				beforeSend: function () {
 					$('#aips-prompt-profile-modal-title').text(aipsPromptProfilesL10n.editProfile + ' (Loading...)');
-					$('#aips-prompt-profile-modal').fadeIn(200);
+					$('#aips-prompt-profile-modal').attr('aria-hidden', 'false').fadeIn(200);
 				},
 				success: function (response) {
 					if (response.success && response.data.profile) {
@@ -436,7 +448,7 @@
 		 * @return {void}
 		 */
 		closeModal: function () {
-			$('#aips-prompt-profile-modal').fadeOut(200);
+			$('#aips-prompt-profile-modal').attr('aria-hidden', 'true').fadeOut(200);
 			this.setDirty(false);
 		},
 
@@ -554,7 +566,7 @@
 			$btn.prop('disabled', true).text(aipsPromptProfilesL10n.saving);
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: formData,
 				success: function (response) {
@@ -585,7 +597,7 @@
 		cloneProfile: function (profileId) {
 			var self = this;
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_clone_prompt_profile',
@@ -617,7 +629,7 @@
 		setDefaultProfile: function (profileId) {
 			var self = this;
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_set_default_prompt_profile',
@@ -653,7 +665,7 @@
 			}
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_delete_prompt_profile',
@@ -714,7 +726,7 @@
 			$('#aips-preview-output-box').text(aipsPromptProfilesL10n.previewGenerating);
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_preview_prompt_profile',
@@ -727,7 +739,8 @@
 					if (response.success && (response.data.preview_prompt || response.data.assembled_prompt)) {
 						$('#aips-preview-output-box').text(response.data.preview_prompt || response.data.assembled_prompt);
 					} else {
-						$('#aips-preview-output-box').text(aipsPromptProfilesL10n.errorPreview);
+						var errMsg = (response.data && response.data.message) || aipsPromptProfilesL10n.errorPreview;
+						$('#aips-preview-output-box').text(errMsg);
 					}
 				},
 				error: function () {
@@ -770,6 +783,13 @@
 
 			$('#aips-profile-search-no-results').toggle(visibleCount === 0);
 			$('#aips-prompt-profiles-table').toggle(visibleCount > 0);
+
+			var totalCount = $('#aips-prompt-profiles-table tbody tr').length;
+			if (activeFilter !== 'all' || query.length > 0) {
+				$('.aips-table-footer-count').text(visibleCount + ' / ' + totalCount + ' ' + (totalCount === 1 ? 'profile' : 'profiles'));
+			} else {
+				$('.aips-table-footer-count').text(totalCount + ' ' + (totalCount === 1 ? 'profile' : 'profiles'));
+			}
 		},
 
 		/**

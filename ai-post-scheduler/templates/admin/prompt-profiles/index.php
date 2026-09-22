@@ -173,7 +173,7 @@ if (!defined('ABSPATH')) {
 	</div>
 
 	<!-- Modal: Add / Edit Prompt Profile -->
-	<div id="aips-prompt-profile-modal" class="aips-modal" style="display: none;" aria-hidden="true">
+	<div id="aips-prompt-profile-modal" class="aips-modal" style="display: none;" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="aips-prompt-profile-modal-title">
 		<div class="aips-modal-content aips-modal-xl">
 			<div class="aips-modal-header">
 				<div class="aips-modal-header-info">
