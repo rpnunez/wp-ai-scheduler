@@ -398,4 +398,93 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 		$registered = $this->container->get_registered_bindings();
 		$this->assertEmpty($registered);
 	}
+
+	/**
+	 * Test autowiring a concrete class without explicit bindings.
+	 */
+	public function test_autowire_concrete_class() {
+		$instance = $this->container->make(AIPS_Test_Autowire_Simple::class);
+		$this->assertInstanceOf(AIPS_Test_Autowire_Simple::class, $instance);
+	}
+
+	/**
+	 * Test autowiring class with typed dependencies.
+	 */
+	public function test_autowire_class_with_dependencies() {
+		$instance = $this->container->make(AIPS_Test_Autowire_Dependent::class);
+		$this->assertInstanceOf(AIPS_Test_Autowire_Dependent::class, $instance);
+		$this->assertInstanceOf(AIPS_Test_Autowire_Simple::class, $instance->dependency);
+	}
+
+	/**
+	 * Test make() with parameter overrides.
+	 */
+	public function test_make_with_parameter_overrides() {
+		$override = new AIPS_Test_Autowire_Simple();
+		$override->custom_val = 'overridden';
+
+		$instance = $this->container->make(AIPS_Test_Autowire_Dependent::class, array(
+			'dependency' => $override,
+		));
+
+		$this->assertSame($override, $instance->dependency);
+		$this->assertEquals('overridden', $instance->dependency->custom_val);
+	}
+
+	/**
+	 * Test instance() directly binds an instantiated object.
+	 */
+	public function test_instance_binding() {
+		$obj = new stdClass();
+		$obj->key = 'value';
+
+		$this->container->instance('my_instance', $obj);
+		$this->assertTrue($this->container->has('my_instance'));
+		$this->assertSame($obj, $this->container->make('my_instance'));
+		$this->assertSame($obj, $this->container->get('my_instance'));
+	}
+
+	/**
+	 * Test string-based class/interface aliasing.
+	 */
+	public function test_interface_alias_binding() {
+		$this->container->singleton('Test_Alias_Interface', AIPS_Test_Autowire_Simple::class);
+
+		$instance_a = $this->container->make('Test_Alias_Interface');
+		$instance_b = $this->container->make('Test_Alias_Interface');
+
+		$this->assertInstanceOf(AIPS_Test_Autowire_Simple::class, $instance_a);
+		$this->assertSame($instance_a, $instance_b);
+	}
+
+	/**
+	 * Test circular dependency throws RuntimeException.
+	 */
+	public function test_circular_dependency_detection() {
+		$this->expectException(RuntimeException::class);
+		$this->expectExceptionMessage('Circular dependency detected');
+
+		$this->container->make(AIPS_Test_Circular_A::class);
+	}
 }
+
+class AIPS_Test_Autowire_Simple {
+	public $custom_val = 'default';
+}
+
+class AIPS_Test_Autowire_Dependent {
+	public $dependency;
+
+	public function __construct(AIPS_Test_Autowire_Simple $dependency) {
+		$this->dependency = $dependency;
+	}
+}
+
+class AIPS_Test_Circular_A {
+	public function __construct(AIPS_Test_Circular_B $b) {}
+}
+
+class AIPS_Test_Circular_B {
+	public function __construct(AIPS_Test_Circular_A $a) {}
+}
+

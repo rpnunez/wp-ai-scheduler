@@ -48,11 +48,13 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 *
 	 * @return self
 	 */
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
 	public static function instance(): self {
-		if ( self::$instance === null ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**
@@ -77,15 +79,35 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 
 	/**
 	 * Initialize the scheduler.
+	 *
+	 * @param AIPS_Authors_Repository|null        $authors_repository
+	 * @param AIPS_Author_Topics_Generator|null   $topics_generator
+	 * @param AIPS_Logger_Interface|null          $logger
+	 * @param AIPS_Interval_Calculator|null       $interval_calculator
+	 * @param AIPS_History_Service_Interface|null $history_service
+	 * @param AIPS_Notifications|null             $notifications
+	 * @param AIPS_Job_Scheduler|null             $job_scheduler
+	 * @param AIPS_Batch_Queue_Service|null       $batch_queue_service
 	 */
-	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_generator = new AIPS_Author_Topics_Generator();
-		$this->logger = new AIPS_Logger();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_service = new AIPS_History_Service();
-		$this->notifications = new AIPS_Notifications();
-		$this->job_scheduler = new AIPS_Job_Scheduler();
+	public function __construct(
+		?AIPS_Authors_Repository $authors_repository = null,
+		?AIPS_Author_Topics_Generator $topics_generator = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Interval_Calculator $interval_calculator = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Notifications $notifications = null,
+		?AIPS_Job_Scheduler $job_scheduler = null,
+		?AIPS_Batch_Queue_Service $batch_queue_service = null
+	) {
+		$container = AIPS_Container::get_instance();
+		$this->authors_repository  = $authors_repository ?? $container->make(AIPS_Authors_Repository::class);
+		$this->topics_generator    = $topics_generator ?? $container->make(AIPS_Author_Topics_Generator::class);
+		$this->logger              = $logger ?? $container->make(AIPS_Logger_Interface::class);
+		$this->interval_calculator = $interval_calculator ?? $container->make(AIPS_Interval_Calculator::class);
+		$this->history_service     = $history_service ?? $container->make(AIPS_History_Service_Interface::class);
+		$this->notifications       = $notifications ?? $container->make(AIPS_Notifications::class);
+		$this->job_scheduler       = $job_scheduler ?? $container->make(AIPS_Job_Scheduler::class);
+		$this->batch_queue_service = $batch_queue_service;
 	}
 
 	/**
