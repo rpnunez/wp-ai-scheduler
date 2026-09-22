@@ -151,8 +151,8 @@ class AIPS_Related_Posts_Service {
 		if (count($related_posts) < $parsed_args['count']) {
 			$source_emb = $this->embeddings_repo->get_by_post_id($post_id);
 			if ($source_emb && !empty($source_emb->embedding)) {
-				$source_vec = json_decode($source_emb->embedding, true);
-				if (is_array($source_vec)) {
+				$source_vec = $this->embeddings_repo->decode_embedding($source_emb->embedding);
+				if (!empty($source_vec)) {
 					$all_candidates = $this->embeddings_repo->get_all_for_similarity('post', $parsed_args['post_types'], 'publish');
 					$candidate_vecs = array();
 
@@ -161,8 +161,8 @@ class AIPS_Related_Posts_Service {
 						if ($cid === $post_id || in_array($cid, $found_ids, true)) {
 							continue;
 						}
-						$cvec = json_decode($cand->embedding, true);
-						if (is_array($cvec) && count($cvec) === count($source_vec)) {
+						$cvec = $this->embeddings_repo->decode_embedding($cand->embedding);
+						if (!empty($cvec) && count($cvec) === count($source_vec)) {
 							$candidate_vecs[] = array(
 								'id'        => $cid,
 								'embedding' => $cvec,
@@ -236,8 +236,8 @@ class AIPS_Related_Posts_Service {
 
 		$candidate_vecs = array();
 		foreach ($all_candidates as $cand) {
-			$cvec = json_decode($cand->embedding, true);
-			if (is_array($cvec) && count($cvec) === count($embedding)) {
+			$cvec = $this->embeddings_repo->decode_embedding($cand->embedding);
+			if (!empty($cvec) && count($cvec) === count($embedding)) {
 				$candidate_vecs[] = array(
 					'id'        => (int) $cand->object_id,
 					'embedding' => $cvec,

@@ -486,8 +486,8 @@ class AIPS_Content_Indexer_Service {
 			return 0;
 		}
 
-		$source_vector = json_decode($source->embedding, true);
-		if (!is_array($source_vector)) {
+		$source_vector = $this->embeddings_repo->decode_embedding($source->embedding);
+		if (empty($source_vector)) {
 			return 0;
 		}
 
@@ -500,8 +500,8 @@ class AIPS_Content_Indexer_Service {
 			if ($cid === $post_id) {
 				continue;
 			}
-			$vec = json_decode($row->embedding, true);
-			if (is_array($vec) && count($vec) === count($source_vector)) {
+			$vec = $this->embeddings_repo->decode_embedding($row->embedding);
+			if (!empty($vec) && count($vec) === count($source_vector)) {
 				$candidate_vectors[] = array(
 					'id'        => $cid,
 					'embedding' => $vec,

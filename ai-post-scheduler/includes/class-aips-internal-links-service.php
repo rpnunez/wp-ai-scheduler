@@ -218,7 +218,7 @@ class AIPS_Internal_Links_Service {
 			return new WP_Error('index_failed', __('Could not index the source post.', 'ai-post-scheduler'));
 		}
 
-		$source_embedding = json_decode($source_row->embedding, true);
+		$source_embedding = $this->embeddings_repo->decode_embedding($source_row->embedding);
 
 		if (empty($source_embedding)) {
 			return new WP_Error('invalid_embedding', __('Source post has an invalid embedding.', 'ai-post-scheduler'));
@@ -241,7 +241,7 @@ class AIPS_Internal_Links_Service {
 				continue;
 			}
 
-			$embedding = json_decode($row->embedding, true);
+			$embedding = $this->embeddings_repo->decode_embedding($row->embedding);
 			if (!empty($embedding)) {
 				$candidates[] = array(
 					'id'        => (int) $row->post_id,

@@ -85,8 +85,8 @@ class AIPS_Deduplication_Service {
 
 		$candidate_posts = array();
 		foreach ($post_embeddings as $p_row) {
-			$vec = json_decode($p_row->embedding, true);
-			if (is_array($vec)) {
+			$vec = $this->embeddings_repo->decode_embedding($p_row->embedding);
+			if (!empty($vec)) {
 				$candidate_posts[] = array(
 					'id'        => (int) $p_row->object_id,
 					'type'      => 'post',
@@ -100,8 +100,8 @@ class AIPS_Deduplication_Service {
 		$topic_embeddings = $this->embeddings_repo->get_all_for_similarity('topic');
 		$candidate_topics = array();
 		foreach ($topic_embeddings as $t_row) {
-			$vec = json_decode($t_row->embedding, true);
-			if (is_array($vec)) {
+			$vec = $this->embeddings_repo->decode_embedding($t_row->embedding);
+			if (!empty($vec)) {
 				$candidate_topics[] = array(
 					'id'        => (int) $t_row->object_id,
 					'type'      => 'topic',
@@ -209,8 +209,8 @@ class AIPS_Deduplication_Service {
 		$best_title = '';
 
 		foreach ($candidates as $cand) {
-			$vec = json_decode($cand->embedding, true);
-			if (is_array($vec) && count($vec) === count($embedding)) {
+			$vec = $this->embeddings_repo->decode_embedding($cand->embedding);
+			if (!empty($vec) && count($vec) === count($embedding)) {
 				$sim = $this->embeddings_service->calculate_similarity($embedding, $vec);
 				if (!is_wp_error($sim) && $sim > $best_sim) {
 					$best_sim = (float) $sim;

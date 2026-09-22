@@ -155,6 +155,84 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Pack a PHP float array into a compact IEEE 754 float32 binary string.
+	 *
+	 * @param float[] $vector Array of float numbers.
+	 * @return string Binary packed string (4 bytes per dimension).
+	 */
+	public function encode_embedding(array $vector) {
+		if (empty($vector)) {
+			return '';
+		}
+
+		return pack('f*', ...array_map('floatval', array_values($vector)));
+	}
+
+	/**
+	 * Decode an embedding from either packed binary float32, JSON string, or pass-through array.
+	 *
+	 * Fully backward-compatible polymorphic decoder supporting:
+	 * 1. Packed IEEE 754 binary string (`pack('f*')`)
+	 * 2. Legacy JSON string (e.g. `[0.12, 0.34, ...]`)
+	 * 3. Already-decoded PHP array
+	 *
+	 * @param mixed $raw Raw embedding value from database or cache.
+	 * @return float[] Array of float values.
+	 */
+	public function decode_embedding($raw) {
+		if (empty($raw)) {
+			return array();
+		}
+
+		if (is_array($raw)) {
+			return array_map('floatval', array_values($raw));
+		}
+
+		if (!is_string($raw)) {
+			return array();
+		}
+
+		$trimmed = ltrim($raw);
+		if ($trimmed !== '' && ($trimmed[0] === '[' || $trimmed[0] === '{')) {
+			$decoded = json_decode($trimmed, true);
+			if (is_array($decoded)) {
+				return array_map('floatval', array_values($decoded));
+			}
+			return array();
+		}
+
+		// Packed binary float32 (single precision IEEE 754)
+		$unpacked = @unpack('f*', $raw);
+		if (is_array($unpacked) && !empty($unpacked)) {
+			return array_values($unpacked);
+		}
+
+		return array();
+	}
+
+	/**
+	 * Format a summary description of an embedding vector for logging and UI previews.
+	 *
+	 * @param mixed $raw           Raw embedding or decoded array.
+	 * @param int   $preview_count Number of elements to preview.
+	 * @return array{dimensions: int, preview: float[], byte_size: int, is_binary: bool}
+	 */
+	public function format_vector_summary($raw, $preview_count = 5) {
+		$is_binary = is_string($raw) && (ltrim($raw) === '' || (ltrim($raw)[0] !== '[' && ltrim($raw)[0] !== '{'));
+		$byte_size = is_string($raw) ? strlen($raw) : 0;
+		$vector    = $this->decode_embedding($raw);
+		$dims      = count($vector);
+		$preview   = array_slice($vector, 0, max(1, (int) $preview_count));
+
+		return array(
+			'dimensions' => $dims,
+			'preview'    => $preview,
+			'byte_size'  => $byte_size,
+			'is_binary'  => $is_binary,
+		);
+	}
+
+	/**
 	 * Upsert an embedding record.
 	 *
 	 * @param string $object_type      Entity type ('post', 'topic', etc.).
@@ -183,7 +261,7 @@ class AIPS_Embeddings_Repository {
 		$existing = $this->get_by_object($object_type, $object_id);
 
 		$data = array(
-			'embedding'        => wp_json_encode($embedding),
+			'embedding'        => $this->encode_embedding($embedding),
 			'model'            => sanitize_text_field($model),
 			'dimensions'       => $dimensions,
 			'content_hash'     => sanitize_text_field($content_hash),
