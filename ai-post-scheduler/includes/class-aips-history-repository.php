@@ -556,8 +556,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($results) && $args['fields'] === 'list') {
             $history_ids = array_map('intval', wp_list_pluck($results, 'id'));
             if (!empty($history_ids)) {
-                $history_ids_in = implode(',', $history_ids);
-                $log_stats = $this->wpdb->get_results("
+                $history_ids_in = implode(',', array_fill(0, count($history_ids), '%d'));
+                $log_stats = $this->wpdb->get_results($this->wpdb->prepare("
                     SELECT history_id,
                         SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count,
                         SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count,
@@ -566,7 +566,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     FROM {$this->table_name_log}
                     WHERE history_id IN ({$history_ids_in})
                     GROUP BY history_id
-                ", OBJECT_K);
+                ", $history_ids), OBJECT_K);
 
                 foreach ($results as $item) {
                     $hid = (int) $item->id;

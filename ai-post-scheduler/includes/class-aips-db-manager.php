@@ -150,9 +150,7 @@ class AIPS_DB_Manager {
             timestamp bigint(20) unsigned NOT NULL DEFAULT 0,
             details longtext,
             PRIMARY KEY  (id),
-            KEY history_id (history_id),
             KEY history_type_id (history_type_id),
-            KEY history_id_type (history_id, history_type_id),
             KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
             KEY event_type_timestamp (event_type, timestamp)
