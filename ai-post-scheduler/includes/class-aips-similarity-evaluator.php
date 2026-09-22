@@ -780,33 +780,6 @@ class AIPS_Similarity_Evaluator {
 		);
 	}
 
-	/**
-	 * Compute cosine similarity between two numeric vectors.
-	 *
-	 * @param array $a Vector A.
-	 * @param array $b Vector B.
-	 * @return float Cosine similarity score (0.0 to 1.0).
-	 */
-	private function cosine_similarity(array $a, array $b): float {
-		$dot_product = 0.0;
-		$norm_a      = 0.0;
-		$norm_b      = 0.0;
-		$count       = count($a);
-
-		for ($i = 0; $i < $count; $i++) {
-			$va           = (float) $a[$i];
-			$vb           = (float) $b[$i];
-			$dot_product += $va * $vb;
-			$norm_a      += $va * $va;
-			$norm_b      += $vb * $vb;
-		}
-
-		if ($norm_a <= 0.0 || $norm_b <= 0.0) {
-			return 0.0;
-		}
-
-		return max(0.0, min(1.0, $dot_product / (sqrt($norm_a) * sqrt($norm_b))));
-	}
 
 	/**
 	 * Find similar topics to a given topic.
