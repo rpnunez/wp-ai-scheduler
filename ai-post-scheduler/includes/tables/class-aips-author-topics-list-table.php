@@ -295,12 +295,17 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 			return ('desc' === $order) ? -$res : $res;
 		});
 
-		$this->items = $topics;
+		// Dynamic Pagination via Screen Options
+		$per_page     = $this->get_per_page(20);
+		$current_page = $this->get_pagenum();
+		$total_items  = count($topics);
+
+		$this->items = array_slice($topics, ($current_page - 1) * $per_page, $per_page);
 
 		$this->set_pagination_args(array(
-			'total_items' => count($topics),
-			'per_page'    => count($topics),
-			'total_pages' => 1,
+			'total_items' => $total_items,
+			'per_page'    => $per_page,
+			'total_pages' => ceil($total_items / $per_page),
 		));
 	}
 
@@ -330,11 +335,9 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 		$prompt   = !empty($item->prompt) ? esc_html($item->prompt) : '';
 
 		$html  = '<div class="topic-title-cell" data-topic-id="' . $topic_id . '">';
-		$html .= '<div class="cell-primary">';
+		$html .= '<div class="cell-primary" style="display:flex;align-items:center;gap:6px;">';
+		$html .= '<button type="button" class="aips-btn-icon aips-row-expand-toggle" aria-expanded="false" aria-controls="aips-details-' . $topic_id . '" aria-label="' . esc_attr__('Toggle topic details', 'ai-post-scheduler') . '" title="' . esc_attr__('Expand details', 'ai-post-scheduler') . '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 		$html .= '<strong class="aips-topic-text">' . $title . '</strong>';
-		if (!empty($prompt)) {
-			$html .= ' <button type="button" class="aips-topic-expand-btn aips-btn aips-btn-ghost aips-btn-xs" data-topic-id="' . $topic_id . '" title="' . esc_attr__('Toggle Prompt Details', 'ai-post-scheduler') . '"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button>';
-		}
 		$html .= '</div>';
 
 		// Editable container (hidden by default, revealed when editing)
@@ -343,14 +346,6 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-save-topic" data-topic-id="' . $topic_id . '">' . esc_html__('Save', 'ai-post-scheduler') . '</button> ';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-cancel-edit-topic" data-topic-id="' . $topic_id . '">' . esc_html__('Cancel', 'ai-post-scheduler') . '</button>';
 		$html .= '</div>';
-
-		// Expandable prompt container
-		if (!empty($prompt)) {
-			$html .= '<div class="aips-topic-detail" id="topic-detail-' . $topic_id . '">';
-			$html .= '<strong>' . esc_html__('Generation Prompt:', 'ai-post-scheduler') . '</strong> ';
-			$html .= $prompt;
-			$html .= '</div>';
-		}
 
 		// WordPress native row actions
 		$actions = array(
@@ -445,6 +440,44 @@ class AIPS_Author_Topics_List_Table extends AIPS_List_Table {
 
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-topic-id="' . $topic_id . '" title="' . esc_attr__('Edit Topic Title', 'ai-post-scheduler') . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span></button>';
 		$html .= '<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-topic" data-topic-id="' . $topic_id . '" title="' . esc_attr__('Delete Topic', 'ai-post-scheduler') . '"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>';
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * Render progressive disclosure drawer details for a Topic row.
+	 *
+	 * @param object $item Topic row object.
+	 * @return string HTML drawer content.
+	 */
+	public function single_row_details($item) {
+		$structure_id = (int) ($item->article_structure_id ?? 0);
+		$prompt       = !empty($item->prompt) ? $item->prompt : '';
+
+		$html  = '<div class="aips-drawer-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;padding:12px 16px;">';
+
+		// Prompt Details
+		$html .= '<div class="aips-drawer-col" style="grid-column:1 / -1;">';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Generation Prompt & Directive', 'ai-post-scheduler') . '</div>';
+		if (!empty($prompt)) {
+			$html .= '<div style="background:var(--aips-gray-50);border:1px solid var(--aips-gray-200);border-radius:4px;padding:10px 12px;font-size:12px;color:var(--aips-gray-800);line-height:1.5;white-space:pre-wrap;">' . esc_html($prompt) . '</div>';
+		} else {
+			$html .= '<span class="aips-muted" style="font-size:12px;">' . esc_html__('No custom generation prompt specified.', 'ai-post-scheduler') . '</span>';
+		}
+		$html .= '</div>';
+
+		// Metadata Breakdown
+		$html .= '<div class="aips-drawer-col">';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Topic Details', 'ai-post-scheduler') . '</div>';
+		if ($structure_id > 0 && isset($this->structure_names[$structure_id])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);margin-bottom:4px;"><strong style="color:var(--aips-gray-700);">' . esc_html__('Structure:', 'ai-post-scheduler') . '</strong> ' . esc_html($this->structure_names[$structure_id]) . '</div>';
+		}
+		if (!empty($item->created_at)) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);"><strong style="color:var(--aips-gray-700);">' . esc_html__('Created:', 'ai-post-scheduler') . '</strong> ' . esc_html($item->created_at) . '</div>';
+		}
+		$html .= '</div>';
+
 		$html .= '</div>';
 
 		return $html;

@@ -114,6 +114,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_developer_mode'],
 			),
+			'aips_persist_table_filters' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_persist_table_filters'],
+			),
 			'aips_enable_telemetry' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_telemetry'],
@@ -525,6 +529,14 @@ class AIPS_Settings {
             'aips_developer_mode',
             __('Developer Mode', 'ai-post-scheduler'),
             array($this->ui, 'developer_mode_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_persist_table_filters',
+            __('Persist Table Filters', 'ai-post-scheduler'),
+            array($this->ui, 'persist_table_filters_field_callback'),
             'aips-settings',
             'aips_developers_section'
         );

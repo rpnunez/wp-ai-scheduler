@@ -458,6 +458,27 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the table filter persistence setting field.
+     *
+     * Displays a checkbox to enable or disable table filter persistence in localStorage.
+     *
+     * @return void
+     */
+    public function persist_table_filters_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_persist_table_filters');
+        ?>
+        <input type="hidden" name="aips_persist_table_filters" value="0">
+        <label>
+            <input type="checkbox" name="aips_persist_table_filters" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Persist table filter and search selections across sessions', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e('When enabled, your active search terms, status views, and filter dropdowns are automatically remembered in your browser for each table.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php
+    }
+
+    /**
      * Render the conversational generation setting field.
      *
      * When enabled, the title, excerpt, and image-prompt steps continue the same

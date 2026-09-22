@@ -55,7 +55,7 @@ class AIPS_Admin_Menu {
         );
 
         // 2. Automations
-        add_submenu_page(
+        $automations_hook = add_submenu_page(
             'ai-post-scheduler',
             __('Automations', 'ai-post-scheduler'),
             __('Automations', 'ai-post-scheduler'),
@@ -63,6 +63,9 @@ class AIPS_Admin_Menu {
             'aips-automations',
             array($this, 'render_automations_page')
         );
+        if ($automations_hook) {
+            add_action("load-{$automations_hook}", array($this, 'setup_automations_screen_options'));
+        }
 
         // 3. Studio
         add_submenu_page(
@@ -291,6 +294,42 @@ class AIPS_Admin_Menu {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Setup screen options and column headers for Automations hub tabs.
+     *
+     * @return void
+     */
+    public function setup_automations_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'schedules';
+        if ('authors' === $tab) {
+            $table = new AIPS_Authors_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+                'label'   => __('Authors per page', 'ai-post-scheduler'),
+                'option'  => 'aips_authors_per_page',
+                'default' => 20,
+            ));
+        } elseif ('author-topics' === $tab) {
+            $table = new AIPS_Author_Topics_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+                'label'   => __('Topics per page', 'ai-post-scheduler'),
+                'option'  => 'aips_author_topics_per_page',
+                'default' => 20,
+            ));
+        } else {
+            $table = new AIPS_Schedules_List_Table();
+            AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
+                'label'   => __('Schedules per page', 'ai-post-scheduler'),
+                'option'  => 'aips_schedules_per_page',
+                'default' => 20,
+            ));
+        }
     }
 
     /**

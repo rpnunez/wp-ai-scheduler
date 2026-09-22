@@ -7556,3 +7556,105 @@ ol.aips-breadcrumb-trail,
 	color: var(--aips-gray-600, #50575e);
 	border-radius: 2px;
 }
+
+/* ==========================================================================
+   List Table Expandable Row Drawers & Screen Options
+   ========================================================================== */
+
+.aips-row-expand-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	margin-right: 4px;
+	border: none;
+	background: transparent;
+	color: var(--aips-gray-500, #646970);
+	border-radius: 4px;
+	cursor: pointer;
+	vertical-align: middle;
+	transition: color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.aips-row-expand-toggle:hover,
+.aips-row-expand-toggle:focus {
+	color: var(--aips-primary, #2271b1);
+	background-color: var(--aips-gray-100, #f0f0f1);
+	outline: none;
+}
+
+.aips-row-expand-toggle .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+	transition: transform 0.15s ease;
+}
+
+.aips-row-expand-toggle[aria-expanded="true"] .dashicons {
+	color: var(--aips-primary, #2271b1);
+}
+
+tr.aips-row-details {
+	background-color: var(--aips-gray-50, #f8fafc);
+}
+
+tr.aips-row-details[hidden] {
+	display: none !important;
+}
+
+tr.aips-row-details > td {
+	padding: 0 !important;
+	border-top: none !important;
+	border-bottom: 1px solid var(--aips-gray-200, #dcdcde) !important;
+}
+
+.aips-row-details-content {
+	padding: 14px 18px;
+	border-left: 3px solid var(--aips-primary, #2271b1);
+	background: #ffffff;
+	margin: 6px 12px 12px;
+	border-radius: 6px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.aips-drawer-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 16px;
+}
+
+.aips-drawer-col {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.aips-drawer-label {
+	font-weight: 600;
+	font-size: 11px;
+	color: var(--aips-gray-500, #646970);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 4px;
+}
+
+@media screen and (max-width: 782px) {
+	.aips-list-table-wrap .wp-list-table tr:not(.inline-edit-row):not(.no-items) td:not(.check-column) {
+		display: block;
+		padding: 6px 10px;
+	}
+
+	.aips-row-details-content {
+		margin: 6px 4px 10px;
+		padding: 10px 12px;
+	}
+
+	.aips-drawer-grid {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+}
+

@@ -249,17 +249,22 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 			return ('desc' === $order) ? -$res : $res;
 		});
 
-		$this->items = $filtered;
+		// Dynamic Pagination via Screen Options
+		$per_page     = $this->get_per_page(20);
+		$current_page = $this->get_pagenum();
+		$total_items  = count($filtered);
+
+		$this->items = array_slice($filtered, ($current_page - 1) * $per_page, $per_page);
 
 		$this->set_pagination_args(array(
-			'total_items' => count($filtered),
-			'per_page'    => count($filtered),
-			'total_pages' => 1,
+			'total_items' => $total_items,
+			'per_page'    => $per_page,
+			'total_pages' => ceil($total_items / $per_page),
 		));
 	}
 
 	/**
-	 * Render single row with unified schedule metadata attributes.
+	 * Render single row with unified schedule metadata attributes and progressive disclosure drawer.
 	 *
 	 * @param array<string, mixed> $item Schedule item data.
 	 * @return void
@@ -269,6 +274,7 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		$circuit_state        = isset($item['circuit_state']) ? $item['circuit_state'] : 'closed';
 		$has_incomplete_batch = !empty($item['has_incomplete_batch']);
 		$row_key              = esc_attr($item['type'] . ':' . $item['id']);
+		$details_id           = 'aips-details-' . sanitize_key($item['type'] . '-' . $item['id']);
 
 		$tab_category = 'all';
 		if ($item['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
@@ -296,6 +302,18 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		echo 'data-next-run="' . esc_attr($item['next_run'] ?? '') . '">';
 		$this->single_row_columns($item);
 		echo '</tr>';
+
+		$details = $this->single_row_details($item);
+		if (!empty($details)) {
+			$total_cols = count($this->get_columns());
+			echo '<tr class="aips-row-details" id="' . esc_attr($details_id) . '" hidden>';
+			echo '<td colspan="' . esc_attr($total_cols) . '">';
+			echo '<div class="aips-row-details-content">';
+			echo $details; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo '</div>';
+			echo '</td>';
+			echo '</tr>';
+		}
 	}
 
 	/**
@@ -321,9 +339,13 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 	 */
 	protected function column_title($item) {
 		$is_template = ($item['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE);
+		$details_id  = 'aips-details-' . sanitize_key($item['type'] . '-' . $item['id']);
 
 		$html  = '<div class="cell-primary aips-schedule-title-cell">';
+		$html .= '<div class="aips-schedule-header" style="display:flex;align-items:center;gap:6px;">';
+		$html .= '<button type="button" class="aips-btn-icon aips-row-expand-toggle" aria-expanded="false" aria-controls="' . esc_attr($details_id) . '" aria-label="' . esc_attr__('Toggle schedule details', 'ai-post-scheduler') . '" title="' . esc_attr__('Expand details', 'ai-post-scheduler') . '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 		$html .= '<strong class="aips-schedule-name">' . esc_html($item['title']) . '</strong>';
+		$html .= '</div>';
 
 		if (!empty($item['subtitle'])) {
 			$html .= '<div class="cell-meta aips-muted">' . esc_html($item['subtitle']) . '</div>';
@@ -752,6 +774,69 @@ class AIPS_Schedules_List_Table extends AIPS_List_Table {
 		}
 
 		return AIPS_DateTime::fromMysqlOrNull((string) $value);
+	}
+
+	/**
+	 * Render progressive disclosure drawer details for a Schedule row.
+	 *
+	 * @param array<string, mixed> $item Schedule item data.
+	 * @return string HTML drawer content.
+	 */
+	public function single_row_details($item) {
+		$html  = '<div class="aips-drawer-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;padding:12px 16px;">';
+
+		// Pipeline Configuration
+		$html .= '<div class="aips-drawer-col">';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Configuration & Cron', 'ai-post-scheduler') . '</div>';
+		if (!empty($item['cron_hook'])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);margin-bottom:4px;"><strong style="color:var(--aips-gray-700);">' . esc_html__('Hook:', 'ai-post-scheduler') . '</strong> <code>' . esc_html($item['cron_hook']) . '</code></div>';
+		}
+		if (!empty($item['frequency'])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);margin-bottom:4px;"><strong style="color:var(--aips-gray-700);">' . esc_html__('Recurrence:', 'ai-post-scheduler') . '</strong> ' . esc_html($this->get_frequency_label($item['frequency'])) . '</div>';
+		}
+		if (!empty($item['topic'])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);margin-bottom:4px;"><strong style="color:var(--aips-gray-700);">' . esc_html__('Topic:', 'ai-post-scheduler') . '</strong> ' . esc_html($item['topic']) . '</div>';
+		}
+		if (!empty($item['rotation_pattern'])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);margin-bottom:4px;"><strong style="color:var(--aips-gray-700);">' . esc_html__('Rotation:', 'ai-post-scheduler') . '</strong> ' . esc_html(ucwords(str_replace('_', ' ', $item['rotation_pattern']))) . '</div>';
+		}
+		$html .= '</div>';
+
+		// Pipeline Stages breakdown (if blueprint/workflow)
+		$stages = isset($item['stages']) && is_array($item['stages']) ? $item['stages'] : array();
+		if (!empty($stages)) {
+			$html .= '<div class="aips-drawer-col">';
+			$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Pipeline Stages', 'ai-post-scheduler') . '</div>';
+			$html .= '<ul class="aips-stage-list" style="margin:0;padding-left:16px;">';
+			foreach ($stages as $stage) {
+				$stage_name = isset($stage['name']) ? $stage['name'] : (isset($stage['stage']) ? $stage['stage'] : __('Stage', 'ai-post-scheduler'));
+				$stage_freq = isset($stage['frequency']) ? $this->get_frequency_label($stage['frequency']) : '';
+				$html .= '<li style="font-size:12px;color:var(--aips-gray-700);margin-bottom:2px;">' . esc_html($stage_name) . ($stage_freq ? ' <span class="aips-muted">(' . esc_html($stage_freq) . ')</span>' : '') . '</li>';
+			}
+			$html .= '</ul>';
+			$html .= '</div>';
+		}
+
+		// Health & Telemetry
+		$circuit_state = isset($item['circuit_state']) ? $item['circuit_state'] : 'closed';
+		$consec_fails  = isset($item['consecutive_failures']) ? (int) $item['consecutive_failures'] : 0;
+		$html .= '<div class="aips-drawer-col">';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Health & Telemetry', 'ai-post-scheduler') . '</div>';
+		$html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">';
+		if ('open' === $circuit_state) {
+			$html .= '<span class="aips-badge aips-badge-danger">' . esc_html__('Circuit Breaker Tripped', 'ai-post-scheduler') . '</span>';
+		} else {
+			$html .= '<span class="aips-badge aips-badge-success">' . esc_html__('Circuit Healthy', 'ai-post-scheduler') . '</span>';
+		}
+		if ($consec_fails > 0) {
+			$html .= '<span class="aips-badge aips-badge-warning">' . sprintf(esc_html__('%d Failures', 'ai-post-scheduler'), $consec_fails) . '</span>';
+		}
+		$html .= '</div>';
+		$html .= '</div>';
+
+		$html .= '</div>';
+
+		return $html;
 	}
 
 	/**

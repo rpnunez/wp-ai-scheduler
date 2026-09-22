@@ -74,6 +74,7 @@
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
             this.initScheduleStatusStrip();
+            this.initListTables();
         },
 
         initScheduleStatusStrip: function() {
@@ -294,6 +295,9 @@
                     AIPS.closeAllRowActionMenus();
                 }
             });
+
+            // List Table Progressive Disclosure & Expandable Rows
+            $(document).on('click', '.aips-row-expand-toggle', this.onRowExpandToggle);
         },
 
         /**
@@ -5093,6 +5097,125 @@
                 showSuccess();
             }, function(err) {
                 console.error('Could not copy text: ', err);
+            });
+        },
+
+        /**
+         * Toggle expandable row details drawer in list tables.
+         *
+         * @param {Event} e - Click event from `.aips-row-expand-toggle`.
+         */
+        onRowExpandToggle: function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $btn = $(this);
+            var isExpanded = $btn.attr('aria-expanded') === 'true';
+            var targetId = $btn.attr('aria-controls');
+            var $detailsRow = targetId ? $('#' + targetId) : $btn.closest('tr').next('.aips-row-details');
+            var $icon = $btn.find('.dashicons');
+
+            if (isExpanded) {
+                $btn.attr('aria-expanded', 'false');
+                $btn.attr('title', (window.aipsAdminL10n && aipsAdminL10n.expandDetails) || 'Expand details');
+                $icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+                $detailsRow.prop('hidden', true).removeClass('is-expanded');
+            } else {
+                $btn.attr('aria-expanded', 'true');
+                $btn.attr('title', (window.aipsAdminL10n && aipsAdminL10n.collapseDetails) || 'Collapse details');
+                $icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+                $detailsRow.prop('hidden', false).addClass('is-expanded');
+            }
+        },
+
+        /**
+         * Initialize List Table filter persistence and responsive enhancements.
+         */
+        initListTables: function() {
+            var persistEnabled = typeof aipsAdminL10n !== 'undefined' && aipsAdminL10n.persistTableFilters;
+
+            $('.aips-list-table-wrap').each(function() {
+                var $wrap = $(this);
+                var tableId = $wrap.data('table-id') || 'default';
+                var storageKey = 'aips_table_filters_' + tableId;
+                var $form = $wrap.find('form');
+
+                if (!persistEnabled || !$wrap.data('persist-filters')) {
+                    return;
+                }
+
+                // Check if current URL already has search or filter query params
+                var urlParams = new URLSearchParams(window.location.search);
+                var hasExplicitFilters = false;
+                var filterParamKeys = ['s', 'author_status', 'schedule_type', 'topic_status', 'campaign_id', 'post_status'];
+
+                for (var i = 0; i < filterParamKeys.length; i++) {
+                    if (urlParams.has(filterParamKeys[i])) {
+                        hasExplicitFilters = true;
+                        break;
+                    }
+                }
+
+                if (hasExplicitFilters) {
+                    var currentFilters = {};
+                    for (var j = 0; j < filterParamKeys.length; j++) {
+                        var k = filterParamKeys[j];
+                        if (urlParams.has(k)) {
+                            currentFilters[k] = urlParams.get(k);
+                        }
+                    }
+                    try {
+                        localStorage.setItem(storageKey, JSON.stringify(currentFilters));
+                    } catch (err) {}
+                } else {
+                    // Try to restore saved filters if landing without query params
+                    try {
+                        var saved = localStorage.getItem(storageKey);
+                        if (saved) {
+                            var parsed = JSON.parse(saved);
+                            if (parsed && typeof parsed === 'object') {
+                                var needsRedirect = false;
+                                var newParams = new URLSearchParams(window.location.search);
+                                for (var param in parsed) {
+                                    if (parsed.hasOwnProperty(param) && parsed[param] && !newParams.has(param)) {
+                                        newParams.set(param, parsed[param]);
+                                        needsRedirect = true;
+                                    }
+                                }
+                                if (needsRedirect && !urlParams.has('aips_cleared')) {
+                                    window.location.search = newParams.toString();
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (err) {}
+                }
+
+                // Save on search/filter submit
+                $form.on('submit', function() {
+                    var submittedFilters = {};
+                    var sVal = $form.find('input[type="search"]').val();
+                    if (sVal) {
+                        submittedFilters['s'] = sVal;
+                    }
+                    $form.find('select').each(function() {
+                        var $select = $(this);
+                        var name = $select.attr('name');
+                        var val = $select.val();
+                        if (name && val && val !== '-1' && val !== 'all') {
+                            submittedFilters[name] = val;
+                        }
+                    });
+                    try {
+                        localStorage.setItem(storageKey, JSON.stringify(submittedFilters));
+                    } catch (err) {}
+                });
+
+                // Clear filters
+                $wrap.on('click', '.aips-clear-filters, a.aips-filter-reset', function() {
+                    try {
+                        localStorage.removeItem(storageKey);
+                    } catch (err) {}
+                });
             });
         }
     });

@@ -239,12 +239,17 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 			return ('desc' === $order) ? -$res : $res;
 		});
 
-		$this->items = $filtered_authors;
+		// Dynamic Pagination via Screen Options
+		$per_page     = $this->get_per_page(20);
+		$current_page = $this->get_pagenum();
+		$total_items  = count($filtered_authors);
+
+		$this->items = array_slice($filtered_authors, ($current_page - 1) * $per_page, $per_page);
 
 		$this->set_pagination_args(array(
-			'total_items' => count($filtered_authors),
-			'per_page'    => count($filtered_authors),
-			'total_pages' => 1,
+			'total_items' => $total_items,
+			'per_page'    => $per_page,
+			'total_pages' => ceil($total_items / $per_page),
 		));
 	}
 
@@ -302,6 +307,7 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 
 		$html  = '<div class="cell-primary aips-author-title-cell">';
 		$html .= '<div class="aips-author-header">';
+		$html .= '<button type="button" class="aips-btn-icon aips-row-expand-toggle" aria-expanded="false" aria-controls="aips-details-' . $author_id . '" aria-label="' . esc_attr__('Toggle author details', 'ai-post-scheduler') . '" title="' . esc_attr__('Expand details', 'ai-post-scheduler') . '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 		$html .= '<span class="aips-health-dot aips-health-' . esc_attr($quality_state) . ' aips-quality-indicator aips-quality-' . esc_attr($quality_state) . '" title="' . esc_attr($quality_label) . '" aria-label="' . esc_attr($quality_label) . '"></span>';
 		$html .= '<strong class="aips-author-name"><a href="' . esc_url($topics_url) . '">' . esc_html($item->name) . '</a></strong>';
 		$html .= '</div>';
@@ -405,6 +411,51 @@ class AIPS_Authors_List_Table extends AIPS_List_Table {
 		$html .= '<button type="button" class="aips-row-action-item aips-delete-author aips-text-danger" data-id="' . $author_id . '" data-author-id="' . $author_id . '" data-author-name="' . $author_name . '"><span class="dashicons dashicons-trash"></span> ' . esc_html__('Delete Author', 'ai-post-scheduler') . '</button>';
 		$html .= '</div>';
 		$html .= '</div>';
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * Render progressive disclosure drawer details for an Author row.
+	 *
+	 * @param object $item Author row object.
+	 * @return string HTML drawer content.
+	 */
+	public function single_row_details($item) {
+		$author_id       = (int) $item->id;
+		$author_details  = !empty($item->details) ? json_decode($item->details, true) : array();
+		$feedback_stats  = isset($this->all_feedback_stats[$item->id]) ? $this->all_feedback_stats[$item->id] : array('total' => 0, 'approved' => 0, 'rejected' => 0);
+		$policy_flags    = (is_array($author_details) && isset($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? $author_details['policy_flags'] : array();
+
+		$html  = '<div class="aips-drawer-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;padding:12px 16px;">';
+
+		// Persona Overview
+		$html .= '<div class="aips-drawer-col">';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Persona Strategy', 'ai-post-scheduler') . '</div>';
+		if (!empty($item->description)) {
+			$html .= '<p style="margin:0 0 6px;font-size:13px;color:var(--aips-gray-700);">' . esc_html($item->description) . '</p>';
+		}
+		if (is_array($author_details) && !empty($author_details['expertise'])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);"><strong style="color:var(--aips-gray-700);">' . esc_html__('Expertise:', 'ai-post-scheduler') . '</strong> ' . esc_html(is_array($author_details['expertise']) ? implode(', ', $author_details['expertise']) : $author_details['expertise']) . '</div>';
+		}
+		if (is_array($author_details) && !empty($author_details['tone'])) {
+			$html .= '<div style="font-size:12px;color:var(--aips-gray-600);"><strong style="color:var(--aips-gray-700);">' . esc_html__('Tone:', 'ai-post-scheduler') . '</strong> ' . esc_html($author_details['tone']) . '</div>';
+		}
+		$html .= '</div>';
+
+		// Performance & Quality Stats
+		$html .= '<div class="aips-drawer-col">';
+		$html .= '<div class="aips-drawer-label" style="font-weight:600;font-size:11px;color:var(--aips-gray-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' . esc_html__('Quality & Feedback', 'ai-post-scheduler') . '</div>';
+		$html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">';
+		$html .= '<span class="aips-badge aips-badge-neutral">' . sprintf(esc_html__('%d Approved', 'ai-post-scheduler'), $feedback_stats['approved']) . '</span>';
+		$html .= '<span class="aips-badge aips-badge-neutral">' . sprintf(esc_html__('%d Rejected', 'ai-post-scheduler'), $feedback_stats['rejected']) . '</span>';
+		if (!empty($policy_flags)) {
+			$html .= '<span class="aips-badge aips-badge-warning">' . sprintf(esc_html__('%d Policy Warnings', 'ai-post-scheduler'), count($policy_flags)) . '</span>';
+		}
+		$html .= '</div>';
+		$html .= '</div>';
+
 		$html .= '</div>';
 
 		return $html;

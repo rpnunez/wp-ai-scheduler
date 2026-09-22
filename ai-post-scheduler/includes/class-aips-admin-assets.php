@@ -488,6 +488,8 @@ class AIPS_Admin_Assets {
             // "None" placeholder for the *template* wizard summary (schedule wizard uses
             // aipsScheduleL10n.noneOption to keep schedule-page strings self-contained)
             'noneOption'          => __('None', 'ai-post-scheduler'),
+            // Table filter persistence
+            'persistTableFilters' => (bool) AIPS_Config::get_instance()->get_option('aips_persist_table_filters'),
         ));
     }
 
