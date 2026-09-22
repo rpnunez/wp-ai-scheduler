@@ -1007,36 +1007,151 @@
 					}
 
 					var clusters = res.data.clusters;
-					var html = '';
+					var sourceGroups = {};
 
 					clusters.forEach(function (c) {
+						if (!sourceGroups[c.source_id]) {
+							sourceGroups[c.source_id] = {
+								source_id: c.source_id,
+								title: c.source_title,
+								post_type: c.source_post_type,
+								date: c.source_date,
+								url: c.source_url,
+								max_similarity: 0,
+								max_risk_class: 'aips-risk-low',
+								max_risk_label: 'Low Risk',
+								risk_groups: {
+									high: [],
+									medium: [],
+									low: []
+								}
+							};
+						}
+
+						var sg = sourceGroups[c.source_id];
 						var riskClass = 'aips-risk-low';
 						var riskLabel = 'Low Risk';
+						var riskKey = 'low';
+
 						if (c.similarity >= 0.88) {
 							riskClass = 'aips-risk-high';
 							riskLabel = 'High Cannibalization';
+							riskKey = 'high';
 						} else if (c.similarity >= 0.80) {
 							riskClass = 'aips-risk-medium';
 							riskLabel = 'Moderate';
+							riskKey = 'medium';
 						}
 
-						html += '<tr>';
-						html += '<td><strong>' + $('<div>').text(c.source_title).html() + '</strong><br><small style="color:#888;">' + c.source_post_type + ' #' + c.source_id + ' (' + c.source_date + ')</small></td>';
-						html += '<td><strong>' + $('<div>').text(c.target_title).html() + '</strong><br><small style="color:#888;">' + c.target_post_type + ' #' + c.target_id + ' (' + c.target_date + ')</small></td>';
-						html += '<td><strong style="color:#2271b1;font-size:15px;">' + c.similarity_pct + '%</strong></td>';
-						html += '<td><span class="aips-risk-badge ' + riskClass + '">' + riskLabel + '</span></td>';
-						html += '<td>';
-						if (c.source_edit_url) {
-							html += '<a href="' + c.source_edit_url + '" class="button button-small" target="_blank" style="margin-right:4px;">Edit Post A</a>';
+						if (c.similarity > sg.max_similarity) {
+							sg.max_similarity = c.similarity;
+							sg.max_risk_class = riskClass;
+							sg.max_risk_label = riskLabel;
 						}
-						if (c.target_edit_url) {
-							html += '<a href="' + c.target_edit_url + '" class="button button-small" target="_blank">Edit Post B</a>';
-						}
+
+						sg.risk_groups[riskKey].push(c);
+					});
+
+					var html = '';
+					var groupIndex = 0;
+					
+					var sortedGroups = Object.values(sourceGroups).sort(function(a, b) {
+						return b.max_similarity - a.max_similarity;
+					});
+
+					sortedGroups.forEach(function (sg) {
+						groupIndex++;
+						var groupId = 'aips-sg-' + groupIndex;
+						
+						// Post A Group Header
+						html += '<tr class="aips-audit-group-header" data-toggle-target=".' + groupId + '" style="cursor:pointer; background-color:#f8fafc; border-top: 2px solid #e2e8f0;">';
+						html += '<td colspan="5">';
+						html += '<span class="dashicons dashicons-arrow-down-alt2 aips-group-toggle-icon" style="margin-right:8px; color:#64748b; transition: transform 0.2s;"></span>';
+						html += '<strong style="font-size:14px;">' + $('<div>').text(sg.title).html() + '</strong>';
+						html += '<span style="color:#888; margin-left:8px; font-size:12px;">' + sg.post_type + ' #' + sg.source_id + '</span>';
+						html += '<span class="aips-risk-badge ' + sg.max_risk_class + '" style="float:right;">Max: ' + sg.max_risk_label + ' (' + (sg.max_similarity * 100).toFixed(1) + '%)</span>';
 						html += '</td>';
 						html += '</tr>';
+
+						var riskOrder = [
+							{ key: 'high', label: 'High Cannibalization', class: 'aips-risk-high' },
+							{ key: 'medium', label: 'Moderate Risk', class: 'aips-risk-medium' },
+							{ key: 'low', label: 'Low Risk', class: 'aips-risk-low' }
+						];
+
+						var firstRiskGroup = true;
+
+						riskOrder.forEach(function(riskDef) {
+							if (sg.risk_groups[riskDef.key].length === 0) return;
+							
+							var riskGroupId = groupId + '-risk-' + riskDef.key;
+							var isExpanded = firstRiskGroup;
+							firstRiskGroup = false;
+
+							var displayStyle = isExpanded ? '' : 'display:none;';
+							var iconClass = isExpanded ? 'dashicons-arrow-down-alt2' : 'dashicons-arrow-right-alt2';
+
+							// Risk Level Header
+							html += '<tr class="aips-audit-risk-header ' + groupId + '" data-toggle-target=".' + riskGroupId + '" style="cursor:pointer; background-color:#fdfdfd;">';
+							html += '<td colspan="5" style="padding-left:32px; border-top:1px dashed #e2e8f0;">';
+							html += '<span class="dashicons ' + iconClass + ' aips-group-toggle-icon" style="margin-right:8px; color:#94a3b8; font-size:16px; width:16px; height:16px;"></span>';
+							html += '<span class="aips-risk-badge ' + riskDef.class + '" style="margin-right:8px;">' + riskDef.label + '</span>';
+							html += '<span style="color:#64748b; font-size:12px;">' + sg.risk_groups[riskDef.key].length + ' candidate(s)</span>';
+							html += '</td>';
+							html += '</tr>';
+
+							sg.risk_groups[riskDef.key].forEach(function(c) {
+								html += '<tr class="aips-audit-row ' + groupId + ' ' + riskGroupId + '" style="' + displayStyle + '">';
+								html += '<td style="padding-left:48px; color:#cbd5e1; font-size: 20px;">&rdsh;</td>';
+								html += '<td><strong>' + $('<div>').text(c.target_title).html() + '</strong><br><small style="color:#888;">' + c.target_post_type + ' #' + c.target_id + ' (' + c.target_date + ')</small></td>';
+								html += '<td><strong style="color:#2271b1;font-size:15px;">' + c.similarity_pct + '%</strong></td>';
+								html += '<td><span class="aips-risk-badge ' + riskDef.class + '">' + riskDef.label + '</span></td>';
+								html += '<td>';
+								if (c.source_edit_url) {
+									html += '<a href="' + c.source_edit_url + '" class="button button-small" target="_blank" style="margin-right:4px;">Edit Source</a>';
+								}
+								if (c.target_edit_url) {
+									html += '<a href="' + c.target_edit_url + '" class="button button-small" target="_blank">Edit Target</a>';
+								}
+								html += '</td>';
+								html += '</tr>';
+							});
+						});
 					});
 
 					$tbody.html(html);
+
+					// Attach toggle handler
+					$tbody.find('.aips-audit-group-header, .aips-audit-risk-header').on('click', function() {
+						var $this = $(this);
+						var targetClass = $this.attr('data-toggle-target');
+						var $icon = $this.find('.aips-group-toggle-icon');
+						
+						var $targets = $tbody.find(targetClass);
+						
+						if ($targets.is(':visible')) {
+							// If we're closing a top-level group, close all its descendants
+							if ($this.hasClass('aips-audit-group-header')) {
+								$targets.hide();
+								$targets.filter('.aips-audit-risk-header').find('.aips-group-toggle-icon').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+							} else {
+								$targets.hide();
+							}
+							$icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+						} else {
+							// If we're opening a top-level group, open it and its first risk level
+							if ($this.hasClass('aips-audit-group-header')) {
+								$targets.filter('.aips-audit-risk-header').show();
+								// Only open the risk level that is currently marked as expanded or just open the first one
+								var $firstRiskHeader = $targets.filter('.aips-audit-risk-header').first();
+								$firstRiskHeader.find('.aips-group-toggle-icon').removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+								$tbody.find($firstRiskHeader.attr('data-toggle-target')).show();
+							} else {
+								$targets.show();
+							}
+							$icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+						}
+					});
 				},
 				error: function () {
 					$btn.prop('disabled', false);
