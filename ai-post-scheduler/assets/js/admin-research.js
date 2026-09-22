@@ -68,10 +68,10 @@
             var keywordsStr = $('#research-keywords').val();
             var keywords = keywordsStr ? keywordsStr.split(',').map(function(k) { return k.trim(); }) : [];
 
-            $submit.addClass('is-loading');
+            $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: ajaxurl,
                 type: 'POST',
                 data: {
@@ -93,14 +93,9 @@
                     AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
                 },
                 complete: function() {
-                    $submit.removeClass('is-loading');
+                    $submit.prop('disabled', false).removeClass('is-loading');
                     $spinner.removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($submit, req, {
-                loadingText: aipsResearchL10n.researching || 'Researching...',
-                timeout: 120000
             });
         },
 
@@ -125,10 +120,10 @@
                 return $(this).val();
             }).get();
 
-            $submit.addClass('is-loading');
+            $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: ajaxurl,
                 type: 'POST',
                 data: {
@@ -150,14 +145,9 @@
                     AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
                 },
                 complete: function() {
-                    $submit.removeClass('is-loading');
+                    $submit.prop('disabled', false).removeClass('is-loading');
                     $spinner.removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($submit, req, {
-                loadingText: aipsResearchL10n.researching || 'Researching...',
-                timeout: 120000
             });
         },
 
@@ -491,10 +481,10 @@
             var $submit = $form.find('button[type="submit"]');
             var $spinner = $form.find('.spinner');
 
-            $submit.addClass('is-loading');
+            $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: ajaxurl,
                 type: 'POST',
                 data: {
@@ -522,14 +512,9 @@
                     AIPS.Utilities.showToast(aipsResearchL10n.schedulingError, 'error');
                 },
                 complete: function() {
-                    $submit.removeClass('is-loading');
+                    $submit.prop('disabled', false).removeClass('is-loading');
                     $spinner.removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($submit, req, {
-                loadingText: 'Scheduling...',
-                timeout: 30000
             });
         },
 
@@ -587,9 +572,10 @@
                 return;
             }
 
+            $btn.prop('disabled', true);
             $spinner.addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: ajaxurl,
                 type: 'POST',
                 data: {
@@ -608,13 +594,9 @@
                     AIPS.Utilities.showToast('An error occurred during gap analysis.', 'error');
                 },
                 complete: function() {
+                    $btn.prop('disabled', false);
                     $spinner.removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($btn, req, {
-                loadingText: 'Analyzing...',
-                timeout: 60000
             });
         },
 
@@ -679,7 +661,9 @@
             var topic = $btn.data('topic');
             var niche = $('#gap-niche').val();
 
-            var req = $.ajax({
+            AIPS.Utilities.setButtonLoading($btn, aipsResearchL10n.generatingIdeas || 'Generating...');
+
+            $.ajax({
                 url: ajaxurl,
                 type: 'POST',
                 data: {
@@ -701,12 +685,10 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast('An error occurred while generating topics.', 'error');
+                },
+                complete: function() {
+                    AIPS.Utilities.resetButton($btn);
                 }
-            });
-
-            AIPS.Utilities.withLock($btn, req, {
-                loadingText: aipsResearchL10n.generatingIdeas || 'Generating...',
-                timeout: 120000
             });
         },
 

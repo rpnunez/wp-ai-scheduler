@@ -1,21 +1,30 @@
 <?php
-/**
- * Voices Admin Partial Template
- *
- * @package AI_Post_Scheduler
- */
-
 if (!defined('ABSPATH')) {
     exit;
 }
-
-if (!isset($voices) || !is_array($voices)) {
-    $voices = array();
-}
 ?>
+<div class="wrap aips-wrap">
+    <div class="aips-page-container">
+        <!-- Page Header -->
+        <div class="aips-page-header">
+            <div class="aips-page-header-top">
+                <div>
+                    <h1 class="aips-page-title"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description">
+                        <?php esc_html_e('Define consistent tone and style templates for AI-generated content.', 'ai-post-scheduler'); ?>
+                    </p>
+                </div>
+                <div class="aips-page-actions">
+                    <button class="aips-btn aips-btn-primary aips-add-voice-btn">
+                        <span class="dashicons dashicons-plus-alt2"></span>
+                        <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-<!-- Content Panel -->
-<div class="aips-content-panel">
+        <!-- Content Panel -->
+        <div class="aips-content-panel">
             <div class="aips-voices-container">
                 <?php if (!empty($voices)): ?>
                 <!-- Filter Bar -->
@@ -118,6 +127,7 @@ if (!isset($voices) || !is_array($voices)) {
                 <?php endif; ?>
             </div>
         </div>
+    </div>
     
     <div id="aips-voice-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
@@ -126,7 +136,7 @@ if (!isset($voices) || !is_array($voices)) {
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
-                <form id="aips-voice-form" data-aips-async="true">
+                <form id="aips-voice-form">
                     <input type="hidden" name="voice_id" id="voice_id" value="">
                     
                     <div class="aips-form-row">
@@ -166,3 +176,4 @@ if (!isset($voices) || !is_array($voices)) {
             </div>
         </div>
     </div>
+</div>

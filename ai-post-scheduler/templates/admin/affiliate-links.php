@@ -1,6 +1,6 @@
 <?php
 /**
- * Affiliate Links Admin Partial Template
+ * Affiliate Links Admin Page
  *
  * @package AI_Post_Scheduler
  * @since 3.1.0
@@ -10,18 +10,38 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 ?>
+<div class="wrap aips-wrap">
+	<div class="aips-page-container">
 
-		<!-- Mappings Panel -->
-		<div class="aips-content-panel">
-			<!-- Filter Bar -->
-			<div class="aips-filter-bar">
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title"><?php esc_html_e( 'Affiliate Links', 'ai-post-scheduler' ); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e( 'Map post tags to affiliate URLs and configure CTA block injection into generated posts.', 'ai-post-scheduler' ); ?></p>
+				</div>
+				<div class="aips-page-actions">
+					<button type="button" id="aips-afl-add-btn" class="aips-btn aips-btn-primary">
+						<span class="dashicons dashicons-plus-alt2"></span>
+						<?php esc_html_e( 'Add Mapping', 'ai-post-scheduler' ); ?>
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Filter Bar -->
+		<div class="aips-content-panel" style="margin-bottom:20px;">
+			<div class="aips-filter-bar" style="padding:12px 16px;">
 				<div class="aips-filter-left">
 					<label class="screen-reader-text" for="aips-afl-search"><?php esc_html_e( 'Search mappings:', 'ai-post-scheduler' ); ?></label>
 					<input type="search" id="aips-afl-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search by tag or label…', 'ai-post-scheduler' ); ?>" style="min-width:240px;">
 					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
+		</div>
 
+		<!-- Mappings Table -->
+		<div class="aips-content-panel">
 			<div class="aips-panel-body no-padding">
 				<table class="aips-table" id="aips-afl-table">
 					<thead>
@@ -55,6 +75,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 			</div>
 		</div>
+
+	</div><!-- /.aips-page-container -->
+</div><!-- /.wrap -->
 
 <!-- Create / Edit Modal -->
 <div id="aips-afl-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-afl-modal-title">

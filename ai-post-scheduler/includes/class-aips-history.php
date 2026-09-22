@@ -30,7 +30,6 @@ class AIPS_History {
         $this->repository = new AIPS_History_Repository();
         
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
-        add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
         add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
@@ -64,8 +63,8 @@ class AIPS_History {
     }
 
     /**
-     * Return a display title for a history row, falling back to the template name,
-     * prompt excerpt, creation method label, or a generic placeholder.
+     * Return a display title for a history row, falling back to the creation
+     * method label or a generic placeholder when no generated title exists.
      *
      * @param object $item History row object from wp_aips_history.
      * @return string
@@ -73,15 +72,6 @@ class AIPS_History {
     public static function get_display_title( object $item ): string {
         if ( ! empty( $item->generated_title ) ) {
             return $item->generated_title;
-        }
-        if ( ! empty( $item->template_name ) ) {
-            return sprintf( __( 'Template: %s', 'ai-post-scheduler' ), $item->template_name );
-        }
-        if ( ! empty( $item->prompt ) ) {
-            $trimmed_prompt = wp_trim_words( (string) $item->prompt, 7, '...' );
-            if ( ! empty( $trimmed_prompt ) ) {
-                return $trimmed_prompt;
-            }
         }
         $labels = self::creation_method_labels();
         if ( ! empty( $item->creation_method ) && isset( $labels[ $item->creation_method ] ) ) {
@@ -132,43 +122,6 @@ class AIPS_History {
         do_action('aips_history_deleted', $ids);
 
         AIPS_Ajax_Response::success(array(), __('Selected items deleted successfully.', 'ai-post-scheduler'));
-    }
-
-    /**
-     * AJAX handler to clear/purge history records by status or filter (e.g. stalled processing runs).
-     *
-     * @return void
-     */
-    public function ajax_clear_history() {
-        if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-            AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-        }
-
-        if (!current_user_can('manage_options')) {
-            AIPS_Ajax_Response::permission_denied();
-        }
-
-        $status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : 'processing';
-        $older_than_days = isset($_POST['older_than_days']) ? absint($_POST['older_than_days']) : 0;
-
-        $clear_args = array(
-            'status'          => $status,
-            'older_than_days' => $older_than_days,
-        );
-
-        $result = $this->repository->clear_history($clear_args);
-
-        if (empty($result['success'])) {
-            AIPS_Ajax_Response::error(!empty($result['message']) ? $result['message'] : __('Failed to clear history.', 'ai-post-scheduler'));
-        }
-
-        $deleted_count = (int) ($result['deleted'] ?? 0);
-        $message = sprintf(_n('Cleared %d history entry.', 'Cleared %d history entries.', $deleted_count, 'ai-post-scheduler'), $deleted_count);
-
-        AIPS_Ajax_Response::success(array(
-            'deleted' => $deleted_count,
-            'stats'   => $this->get_stats(),
-        ), $message);
     }
 
     /**
@@ -1416,7 +1369,7 @@ class AIPS_History {
 
         $this->prepare_items_for_display($history['items']);
 
-        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items'], $status_filter) : '';
+        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items']) : '';
 
         ob_start();
         $this->render_pagination_html($history, $status_filter, $search_query);
@@ -1785,18 +1738,12 @@ class AIPS_History {
 
     /**
      * Render the table rows HTML (with contiguous grouping) for a list of items.
-     * When filtered by a specific status (e.g. processing or failed), grouping is bypassed
-     * to provide a clear, flat, un-nested list of individual generation events.
      *
-     * @param array  $items Prepared history item objects.
-     * @param string $status_filter Optional active status filter.
+     * @param array $items Prepared history item objects.
      * @return string HTML of rows.
      */
-    public function render_table_rows_html( array $items, string $status_filter = '' ): string {
-        $should_group = empty( $status_filter ) || ( $status_filter !== 'processing' && $status_filter !== 'failed' );
-        $grouped_entries = $should_group ? $this->group_contiguous_items( $items ) : array_map( function( $item ) {
-            return array( 'is_group' => false, 'item' => $item );
-        }, $items );
+    public function render_table_rows_html( array $items ): string {
+        $grouped_entries = $this->group_contiguous_items( $items );
 
         ob_start();
         foreach ( $grouped_entries as $entry ) {

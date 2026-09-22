@@ -426,11 +426,7 @@
 			$(e.target).closest('tr').remove();
 		},
 
-		onSaveClick: function (e) {
-			if (e) {
-				e.preventDefault();
-			}
-			var $btn = $('#aips-save-integration-mappings');
+		onSaveClick: function () {
 			var templateId = $('#template_id').val();
 			var integrationId = $('#aips-integration-select').val();
 			var groupId = $('#aips-integration-group-select').val();
@@ -450,7 +446,7 @@
 
 			var self = this;
 
-			var req = $.post(aipsAjax.ajaxUrl, {
+			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_save_field_mappings',
 				nonce: aipsAjax.nonce,
 				template_id: templateId,
@@ -467,11 +463,6 @@
 				self.loadSavedMappings(templateId);
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-			});
-
-			AIPS.Utilities.withLock($btn, req, {
-				loadingText: aipsAdminL10n.saving,
-				timeout: 30000
 			});
 		},
 
