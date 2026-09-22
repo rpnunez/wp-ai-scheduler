@@ -2,8 +2,9 @@
 /**
  * Dependency Injection Container
  *
- * Minimal service container for managing dependencies and their lifecycles.
- * Supports transient (new instance per resolution) and singleton (shared instance) scopes.
+ * Service container for managing dependencies and their lifecycles.
+ * Supports transient and singleton scopes, reflection-based autowiring,
+ * parameter overrides, and circular dependency detection.
  *
  * @package AI_Post_Scheduler
  * @since 2.4.0
@@ -16,8 +17,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Container
  *
- * Simple dependency injection container with singleton and transient support.
- * Provides explicit registration and resolution of class dependencies.
+ * Dependency injection container with singleton, transient, and autowiring support.
  */
 class AIPS_Container {
 
@@ -27,12 +27,12 @@ class AIPS_Container {
 	private static $instance = null;
 
 	/**
-	 * @var array<string, Closure> Transient bindings (factory closures).
+	 * @var array<string, Closure|string> Transient bindings.
 	 */
 	private $bindings = array();
 
 	/**
-	 * @var array<string, Closure> Singleton bindings (factory closures).
+	 * @var array<string, Closure|string> Singleton bindings.
 	 */
 	private $singleton_bindings = array();
 
@@ -40,6 +40,16 @@ class AIPS_Container {
 	 * @var array<string, mixed> Resolved singleton instances.
 	 */
 	private $singletons = array();
+
+	/**
+	 * @var array<string, ReflectionClass> Cached reflection instances.
+	 */
+	private $reflection_cache = array();
+
+	/**
+	 * @var array<string> Stack of classes currently being resolved (circular dependency detection).
+	 */
+	private $resolving = array();
 
 	/**
 	 * Get the global container instance.
@@ -57,7 +67,6 @@ class AIPS_Container {
 	 * Private constructor to enforce singleton pattern.
 	 */
 	private function __construct() {
-		// Container is empty until bindings are registered
 		if (AIPS_Telemetry::is_enabled()) {
 			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'  => 'class_initialized',
@@ -69,13 +78,15 @@ class AIPS_Container {
 	/**
 	 * Register a transient binding.
 	 *
-	 * Transient bindings create a new instance each time make() is called.
-	 *
-	 * @param string  $id      Class name or abstract identifier.
-	 * @param Closure $factory Factory closure that returns an instance.
+	 * @param string              $id       Class name or abstract identifier.
+	 * @param Closure|string|null $concrete Factory closure, concrete class name, or null to bind to self.
 	 * @return void
 	 */
-	public function bind($id, Closure $factory) {
+	public function bind($id, $concrete = null) {
+		if ($concrete === null) {
+			$concrete = $id;
+		}
+
 		if (AIPS_Telemetry::is_enabled()) {
 			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'   => 'class_referenced',
@@ -83,19 +94,21 @@ class AIPS_Container {
 				'class'  => $id,
 			) );
 		}
-		$this->bindings[$id] = $factory;
+		$this->bindings[$id] = $concrete;
 	}
 
 	/**
 	 * Register a singleton binding.
 	 *
-	 * Singleton bindings create an instance once and return the same instance on subsequent calls.
-	 *
-	 * @param string  $id      Class name or abstract identifier.
-	 * @param Closure $factory Factory closure that returns an instance.
+	 * @param string              $id       Class name or abstract identifier.
+	 * @param Closure|string|null $concrete Factory closure, concrete class name, or null to bind to self.
 	 * @return void
 	 */
-	public function singleton($id, Closure $factory) {
+	public function singleton($id, $concrete = null) {
+		if ($concrete === null) {
+			$concrete = $id;
+		}
+
 		if (AIPS_Telemetry::is_enabled()) {
 			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'   => 'class_referenced',
@@ -103,20 +116,46 @@ class AIPS_Container {
 				'class'  => $id,
 			) );
 		}
-		$this->singleton_bindings[$id] = $factory;
+		$this->singleton_bindings[$id] = $concrete;
 	}
 
 	/**
-	 * Resolve a binding and return an instance.
+	 * Bind an existing instance into the container as a singleton.
 	 *
-	 * For singletons, the factory is called once and the result is cached.
-	 * For transients, the factory is called on every resolution.
-	 *
-	 * @param string $id Class name or abstract identifier.
-	 * @return mixed The resolved instance.
-	 * @throws RuntimeException If the binding is not registered.
+	 * @param string $id       Class name or abstract identifier.
+	 * @param mixed  $instance The pre-instantiated object.
+	 * @return void
 	 */
-	public function make($id) {
+	public function instance($id, $instance) {
+		if (AIPS_Telemetry::is_enabled()) {
+			AIPS_Telemetry::instance()->add_event( 'classes', array(
+				'type'   => 'class_referenced',
+				'method' => 'instance',
+				'class'  => $id,
+			) );
+		}
+		$this->singletons[$id] = $instance;
+		$this->singleton_bindings[$id] = true;
+	}
+
+	/**
+	 * Resolve an entry from the container (PSR-11 compatibility alias).
+	 *
+	 * @param string $id Identifier of the entry to look for.
+	 * @return mixed
+	 */
+	public function get($id) {
+		return $this->make($id);
+	}
+
+	/**
+	 * Resolve a binding or autowire a class, returning an instance.
+	 *
+	 * @param string $id         Class name or abstract identifier.
+	 * @param array  $parameters Optional runtime parameter overrides.
+	 * @return mixed|WP_Error The resolved instance or WP_Error on failure.
+	 */
+	public function make($id, array $parameters = array()) {
 		if (AIPS_Telemetry::is_enabled()) {
 			AIPS_Telemetry::instance()->add_event( 'classes', array(
 				'type'   => 'class_referenced',
@@ -125,58 +164,226 @@ class AIPS_Container {
 			) );
 		}
 
+		// Return cached singleton if available and no parameter overrides
+		if (empty($parameters) && isset($this->singletons[$id])) {
+			return $this->singletons[$id];
+		}
+
 		// Check if it's a singleton binding
 		if (isset($this->singleton_bindings[$id])) {
-			// Return cached instance if already resolved
-			if (isset($this->singletons[$id])) {
-				return $this->singletons[$id];
+			$concrete = $this->singleton_bindings[$id];
+
+			if ($concrete instanceof Closure) {
+				$instance = $concrete($this, $parameters);
+			} elseif (is_string($concrete) && $concrete !== $id) {
+				$instance = $this->make($concrete, $parameters);
+			} else {
+				$instance = $this->build($id, $parameters);
 			}
 
-			// Resolve and cache the instance
-			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( 'classes', array(
-					'type'  => 'class_initialized',
-					'class' => $id,
-				) );
+			if (empty($parameters) && !is_wp_error($instance)) {
+				$this->singletons[$id] = $instance;
 			}
-			$instance = $this->singleton_bindings[$id]($this);
-			$this->singletons[$id] = $instance;
+
 			return $instance;
 		}
 
 		// Check if it's a transient binding
 		if (isset($this->bindings[$id])) {
-			// Always create a new instance for transient bindings
-			if (AIPS_Telemetry::is_enabled()) {
-				AIPS_Telemetry::instance()->add_event( 'classes', array(
-					'type'  => 'class_initialized',
-					'class' => $id,
-				) );
+			$concrete = $this->bindings[$id];
+
+			if ($concrete instanceof Closure) {
+				return $concrete($this, $parameters);
 			}
-			return $this->bindings[$id]($this);
+
+			if (is_string($concrete) && $concrete !== $id) {
+				return $this->make($concrete, $parameters);
+			}
+
+			return $this->build($id, $parameters);
+		}
+
+		// Autowire class if it exists
+		if (class_exists($id)) {
+			return $this->build($id, $parameters);
 		}
 
 		// Binding not found
-		throw new RuntimeException("Binding not found for: {$id}");
+		$this->log_error("Binding not found for [{$id}].", array('id' => $id));
+		return new WP_Error('aips_binding_not_found', "Binding not found for: {$id}");
+	}
+
+	/**
+	 * Build a concrete class instance via Reflection and autowire dependencies.
+	 *
+	 * @param string $class_name Concrete class name to build.
+	 * @param array  $parameters Optional runtime parameter overrides.
+	 * @return object|WP_Error
+	 */
+	public function build($class_name, array $parameters = array()) {
+		if (in_array($class_name, $this->resolving, true)) {
+			$this->log_error("Circular dependency detected while resolving [{$class_name}].", array(
+				'class' => $class_name,
+				'stack' => $this->resolving,
+			));
+			return new WP_Error('aips_circular_dependency', "Circular dependency detected while resolving: {$class_name}");
+		}
+
+		$this->resolving[] = $class_name;
+
+		try {
+			if (!isset($this->reflection_cache[$class_name])) {
+				$this->reflection_cache[$class_name] = new ReflectionClass($class_name);
+			}
+
+			$reflector = $this->reflection_cache[$class_name];
+
+			if (!$reflector->isInstantiable()) {
+				$this->log_error("Target [{$class_name}] is not instantiable.", array('class' => $class_name));
+				return new WP_Error('aips_not_instantiable', "Target [{$class_name}] is not instantiable.");
+			}
+
+			$constructor = $reflector->getConstructor();
+
+			if ($constructor === null) {
+				if (AIPS_Telemetry::is_enabled()) {
+					AIPS_Telemetry::instance()->add_event( 'classes', array(
+						'type'  => 'class_initialized',
+						'class' => $class_name,
+					) );
+				}
+				return new $class_name();
+			}
+
+			$dependencies = $this->resolve_dependencies($constructor->getParameters(), $parameters, $class_name);
+
+			if (is_wp_error($dependencies)) {
+				return $dependencies;
+			}
+
+			if (AIPS_Telemetry::is_enabled()) {
+				AIPS_Telemetry::instance()->add_event( 'classes', array(
+					'type'  => 'class_initialized',
+					'class' => $class_name,
+				) );
+			}
+
+			return $reflector->newInstanceArgs($dependencies);
+		} finally {
+			array_pop($this->resolving);
+		}
+	}
+
+	/**
+	 * Resolve constructor parameter dependencies.
+	 *
+	 * @param ReflectionParameter[] $params      Constructor parameters.
+	 * @param array                 $parameters  Explicit parameter overrides.
+	 * @param string                $class_name  Class name for error messages.
+	 * @return array|WP_Error
+	 */
+	private function resolve_dependencies(array $params, array $parameters, $class_name) {
+		$results = array();
+
+		foreach ($params as $index => $param) {
+			$name = $param->getName();
+
+			// 1. Check for named or positional override
+			if (array_key_exists($name, $parameters)) {
+				$results[] = $parameters[$name];
+				continue;
+			}
+			if (array_key_exists($index, $parameters)) {
+				$results[] = $parameters[$index];
+				continue;
+			}
+
+			// 2. Check parameter type
+			$type = $param->getType();
+
+			if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+				$dependency_class = $type->getName();
+				$resolved = $this->make($dependency_class);
+
+				if (!is_wp_error($resolved)) {
+					$results[] = $resolved;
+					continue;
+				}
+
+				if ($param->isDefaultValueAvailable()) {
+					$results[] = $param->getDefaultValue();
+					continue;
+				}
+				if ($param->allowsNull()) {
+					$results[] = null;
+					continue;
+				}
+
+				return $resolved;
+			}
+
+			// 3. Check for default value
+			if ($param->isDefaultValueAvailable()) {
+				$results[] = $param->getDefaultValue();
+				continue;
+			}
+
+			// 4. Check if nullable
+			if ($param->allowsNull()) {
+				$results[] = null;
+				continue;
+			}
+
+			$this->log_error("Unresolvable dependency [{$name}] in class [{$class_name}].", array(
+				'parameter' => $name,
+				'class'     => $class_name,
+			));
+			return new WP_Error('aips_unresolvable_dependency', "Unresolvable dependency [{$name}] in class [{$class_name}].");
+		}
+
+		return $results;
+	}
+
+	/**
+	 * Log a container error via AIPS_Logger if available, falling back to error_log.
+	 *
+	 * @param string $message The log message.
+	 * @param array  $context Optional context data.
+	 * @return void
+	 */
+	private function log_error($message, array $context = array()) {
+		if (class_exists('AIPS_Logger')) {
+			try {
+				if (!in_array(AIPS_Logger::class, $this->resolving, true)) {
+					$logger = isset($this->singletons[AIPS_Logger::class])
+						? $this->singletons[AIPS_Logger::class]
+						: new AIPS_Logger();
+					$logger->error($message, $context);
+					return;
+				}
+			} catch (\Throwable $e) {
+				// Fall through to error_log
+			}
+		}
+
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			error_log('[AI Post Scheduler] AIPS_Container: ' . $message);
+		}
 	}
 
 	/**
 	 * Resolve a binding when it exists, otherwise return a fallback value.
 	 *
-	 * This is useful for gradual container adoption in classes that still need
-	 * backward-compatible defaults.
-	 *
 	 * @param string $id       Class name or abstract identifier.
 	 * @param mixed  $fallback Optional fallback when binding is not registered.
-	 *                         Supported forms:
-	 *                         - Closure: called with container and return value used.
-	 *                         - class-string: instantiated when class exists.
-	 *                         - any other value: returned as-is.
 	 * @return mixed
 	 */
 	public function makeIfExists($id, $fallback = null) {
 		if ($this->has($id)) {
-			return $this->make($id);
+			$result = $this->make($id);
+			if (!is_wp_error($result)) {
+				return $result;
+			}
 		}
 
 		if ($fallback instanceof Closure) {
@@ -184,20 +391,23 @@ class AIPS_Container {
 		}
 
 		if (is_string($fallback) && class_exists($fallback)) {
-			return new $fallback();
+			return $this->make($fallback);
 		}
 
 		return $fallback;
 	}
 
 	/**
-	 * Check if a binding exists for the given identifier.
+	 * Check if a binding or class exists for the given identifier.
 	 *
 	 * @param string $id Class name or abstract identifier.
-	 * @return bool True if a binding exists.
+	 * @return bool True if a binding or class exists.
 	 */
 	public function has($id) {
-		return isset($this->bindings[$id]) || isset($this->singleton_bindings[$id]);
+		return isset($this->bindings[$id])
+			|| isset($this->singleton_bindings[$id])
+			|| isset($this->singletons[$id])
+			|| class_exists($id);
 	}
 
 	/**
@@ -211,6 +421,8 @@ class AIPS_Container {
 		$this->bindings = array();
 		$this->singleton_bindings = array();
 		$this->singletons = array();
+		$this->reflection_cache = array();
+		$this->resolving = array();
 	}
 
 	/**
@@ -225,7 +437,7 @@ class AIPS_Container {
 		return array(
 			'transient' => $transient_count,
 			'singleton' => $singleton_count,
-			'total' => $transient_count + $singleton_count,
+			'total'     => $transient_count + $singleton_count,
 		);
 	}
 
@@ -248,3 +460,4 @@ class AIPS_Container {
 		return $registered;
 	}
 }
+

@@ -48,11 +48,11 @@ class AIPS_Content_Auditor_Controller {
 		?AIPS_Content_Auditor_Repository $repository = null,
 		?AIPS_Logger_Interface $logger = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->scanner    = $scanner ?: new AIPS_Content_Auditor_Scanner();
-		$this->engine     = $engine ?: new AIPS_Content_Auditor_Engine();
-		$this->repository = $repository ?: new AIPS_Content_Auditor_Repository();
-		$this->logger     = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$container        = AIPS_Container::get_instance();
+		$this->scanner    = $scanner ?: $container->make(AIPS_Content_Auditor_Scanner::class);
+		$this->engine     = $engine ?: $container->make(AIPS_Content_Auditor_Engine::class);
+		$this->repository = $repository ?: $container->make(AIPS_Content_Auditor_Repository::class);
+		$this->logger     = $logger ?: $container->make(AIPS_Logger_Interface::class);
 
 		$this->init_hooks();
 	}

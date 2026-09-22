@@ -70,27 +70,27 @@ class AIPS_Campaigns_Repository {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if (self::$instance === null) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**
 	 * Constructor.
+	 *
+	 * @param AIPS_Template_Repository|null            $template_repository Template repository.
+	 * @param AIPS_Schedule_Repository_Interface|null $schedule_repository Schedule repository.
 	 */
-	public function __construct($template_repository = null, $schedule_repository = null) {
+	public function __construct(?AIPS_Template_Repository $template_repository = null, ?AIPS_Schedule_Repository_Interface $schedule_repository = null) {
 		global $wpdb;
 
-		$this->wpdb = $wpdb;
-		$this->campaigns_table = $wpdb->prefix . 'aips_campaigns';
-		$this->templates_table = $wpdb->prefix . 'aips_templates';
-		$this->schedule_table = $wpdb->prefix . 'aips_schedule';
-		$this->history_table = $wpdb->prefix . 'aips_history';
-		$this->history_log_table = $wpdb->prefix . 'aips_history_log';
-		$this->template_repository = $template_repository ?: AIPS_Template_Repository::instance();
-		$this->schedule_repository = $schedule_repository ?: AIPS_Schedule_Repository::instance();
+		$container                 = AIPS_Container::get_instance();
+		$this->wpdb                = $wpdb;
+		$this->campaigns_table     = $wpdb->prefix . 'aips_campaigns';
+		$this->templates_table     = $wpdb->prefix . 'aips_templates';
+		$this->schedule_table      = $wpdb->prefix . 'aips_schedule';
+		$this->history_table       = $wpdb->prefix . 'aips_history';
+		$this->history_log_table   = $wpdb->prefix . 'aips_history_log';
+		$this->template_repository = $template_repository ?: $container->make(AIPS_Template_Repository::class);
+		$this->schedule_repository = $schedule_repository ?: $container->make(AIPS_Schedule_Repository_Interface::class);
 	}
 
 	/**

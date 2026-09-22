@@ -32,10 +32,7 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if ( self::$instance === null ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**
@@ -49,18 +46,7 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 	 * @param AIPS_History_Repository_Interface|null $repository Optional repository instance
 	 */
 	public function __construct(?AIPS_History_Repository_Interface $repository = null) {
-		if ($repository) {
-			$this->repository = $repository;
-			return;
-		}
-
-		$container = AIPS_Container::get_instance();
-		if ($container->has(AIPS_History_Repository_Interface::class)) {
-			$this->repository = $container->make(AIPS_History_Repository_Interface::class);
-			return;
-		}
-
-		$this->repository = AIPS_History_Repository::instance();
+		$this->repository = $repository ?? AIPS_Container::get_instance()->make(AIPS_History_Repository_Interface::class);
 	}
 	
 	/**

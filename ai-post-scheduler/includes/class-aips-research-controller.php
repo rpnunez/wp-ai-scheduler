@@ -25,61 +25,73 @@ class AIPS_Research_Controller {
      */
     private static $instance = null;
 
-    /**
-     * Get the shared singleton instance.
-     *
-     * @return self
-     */
-    public static function instance(): self {
-        if ( self::$instance === null ) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		return AIPS_Container::get_instance()->make(self::class);
+	}
 
-    /**
-     * @var AIPS_Research_Service Research service instance
-     */
-    private $research_service;
-    
-    /**
-     * @var AIPS_Trending_Topics_Repository Repository instance
-     */
-    private $repository;
-    
-    /**
-     * @var AIPS_Logger Logger instance
-     */
-    private $logger;
+	/**
+	 * @var AIPS_Research_Service Research service instance
+	 */
+	private $research_service;
+	
+	/**
+	 * @var AIPS_Trending_Topics_Repository Repository instance
+	 */
+	private $repository;
+	
+	/**
+	 * @var AIPS_Logger_Interface Logger instance
+	 */
+	private $logger;
 
-    /**
-     * @var AIPS_History_Service History service instance
-     */
-    private $history_service;
+	/**
+	 * @var AIPS_History_Service_Interface History service instance
+	 */
+	private $history_service;
 
-    /**
-     * @var AIPS_Content_Auditor Content Auditor instance
-     */
-    private $content_auditor;
+	/**
+	 * @var AIPS_Content_Auditor Content Auditor instance
+	 */
+	private $content_auditor;
 
-    /**
-     * @var AIPS_Bulk_Generator_Service Shared bulk generation harness
-     */
-    private $bulk_generator_service;
-    
-    /**
-     * Initialize the controller.
-     */
-    public function __construct() {
-        $this->research_service       = new AIPS_Research_Service();
-        $this->repository             = new AIPS_Trending_Topics_Repository();
-        $this->logger                 = new AIPS_Logger();
-        $this->history_service        = new AIPS_History_Service();
-        $this->content_auditor        = new AIPS_Content_Auditor();
-        $this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
-        
-        $this->init_hooks();
-    }
+	/**
+	 * @var AIPS_Bulk_Generator_Service Shared bulk generation harness
+	 */
+	private $bulk_generator_service;
+	
+	/**
+	 * Initialize the controller.
+	 *
+	 * @param AIPS_Research_Service|null          $research_service       Research service.
+	 * @param AIPS_Trending_Topics_Repository|null $repository             Trending topics repository.
+	 * @param AIPS_Logger_Interface|null          $logger                 Logger instance.
+	 * @param AIPS_History_Service_Interface|null $history_service        History service.
+	 * @param AIPS_Content_Auditor|null           $content_auditor        Content auditor.
+	 * @param AIPS_Bulk_Generator_Service|null    $bulk_generator_service Bulk generator service.
+	 */
+	public function __construct(
+		?AIPS_Research_Service $research_service = null,
+		?AIPS_Trending_Topics_Repository $repository = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Content_Auditor $content_auditor = null,
+		?AIPS_Bulk_Generator_Service $bulk_generator_service = null
+	) {
+		$container                    = AIPS_Container::get_instance();
+		$this->research_service       = $research_service ?: $container->make(AIPS_Research_Service::class);
+		$this->repository             = $repository ?: $container->make(AIPS_Trending_Topics_Repository::class);
+		$this->logger                 = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->history_service        = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->content_auditor        = $content_auditor ?: $container->make(AIPS_Content_Auditor::class);
+		$this->bulk_generator_service = $bulk_generator_service ?: $container->make(AIPS_Bulk_Generator_Service::class);
+		
+		$this->init_hooks();
+	}
     
     /**
      * Initialize WordPress hooks.

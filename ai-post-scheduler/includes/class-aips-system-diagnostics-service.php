@@ -49,26 +49,19 @@ class AIPS_System_Diagnostics_Service {
 	private $date_time_db_repair;
 
 	public function __construct(
-		$history_repository = null,
-		$bulk_batch_job_store = null,
-		$resilience_service = null,
-		$cache_monitor_service = null,
-		$notifications_repository = null,
-		$date_time_db_repair = null
+		?AIPS_History_Repository_Interface $history_repository = null,
+		?AIPS_Bulk_Batch_Job_Store $bulk_batch_job_store = null,
+		?AIPS_Resilience_Service $resilience_service = null,
+		?AIPS_Cache_Monitor_Service $cache_monitor_service = null,
+		?AIPS_Notifications_Repository_Interface $notifications_repository = null,
+		?AIPS_Date_Time_DB_Repair $date_time_db_repair = null
 	) {
-		$container = AIPS_Container::get_instance();
-
-		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository::class)
-			? $container->make(AIPS_History_Repository::class)
-			: new AIPS_History_Repository());
-
-		$this->bulk_batch_job_store = $bulk_batch_job_store ?: ($container->has(AIPS_Bulk_Batch_Job_Store::class)
-			? $container->make(AIPS_Bulk_Batch_Job_Store::class)
-			: (class_exists('AIPS_Bulk_Batch_Job_Store') ? new AIPS_Bulk_Batch_Job_Store() : null));
-
-		$this->resilience_service = $resilience_service ?: ($container->has(AIPS_Resilience_Service::class)
-			? $container->make(AIPS_Resilience_Service::class)
-			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null));
+		$container                      = AIPS_Container::get_instance();
+		$this->history_repository       = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
+		$this->bulk_batch_job_store     = $bulk_batch_job_store ?: $container->make(AIPS_Bulk_Batch_Job_Store::class);
+		$this->resilience_service       = $resilience_service ?: $container->make(AIPS_Resilience_Service::class);
+		$this->notifications_repository = $notifications_repository ?: $container->make(AIPS_Notifications_Repository_Interface::class);
+		$this->date_time_db_repair      = $date_time_db_repair ?: $container->make(AIPS_Date_Time_DB_Repair::class);
 
 		if ($cache_monitor_service) {
 			$this->cache_monitor_service = $cache_monitor_service;
@@ -77,12 +70,6 @@ class AIPS_System_Diagnostics_Service {
 		} else {
 			$this->cache_monitor_service = null;
 		}
-
-		$this->notifications_repository = $notifications_repository ?: ($container->has(AIPS_Notifications_Repository::class)
-			? $container->make(AIPS_Notifications_Repository::class)
-			: AIPS_Notifications_Repository::instance());
-
-		$this->date_time_db_repair = $date_time_db_repair ?: new AIPS_Date_Time_DB_Repair();
 	}
 
 	/**

@@ -34,12 +34,13 @@ class AIPS_Image_Service {
     /**
      * Initialize the Image Service.
      *
-     * @param AIPS_AI_Service_Interface|null $ai_service Optional AI Service instance. Creates new if not provided.
+     * @param AIPS_AI_Service_Interface|null $ai_service Optional AI Service instance.
+     * @param AIPS_Logger_Interface|null     $logger     Optional Logger instance.
      */
-    public function __construct(?AIPS_AI_Service_Interface $ai_service = null) {
-        $container = AIPS_Container::get_instance();
-        $this->ai_service = $ai_service ? $ai_service : ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-        $this->logger = $container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger();
+    public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null) {
+        $container        = AIPS_Container::get_instance();
+        $this->ai_service = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
+        $this->logger     = $logger ?: $container->make(AIPS_Logger_Interface::class);
     }
     
     /**

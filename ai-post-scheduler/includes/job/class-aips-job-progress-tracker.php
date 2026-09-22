@@ -26,7 +26,7 @@ class AIPS_Job_Progress_Tracker {
 	private $repository;
 
 	/**
-	 * @var AIPS_Logger Logger instance
+	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
 
@@ -34,21 +34,15 @@ class AIPS_Job_Progress_Tracker {
 	 * Constructor.
 	 *
 	 * @param AIPS_Schedule_Repository_Interface|null $repository Optional repository.
-	 * @param AIPS_Logger|null                        $logger     Optional logger.
+	 * @param AIPS_Logger_Interface|null              $logger     Optional logger.
 	 */
 	public function __construct(
 		?AIPS_Schedule_Repository_Interface $repository = null,
-		?AIPS_Logger $logger = null
+		?AIPS_Logger_Interface $logger = null
 	) {
-		$container = AIPS_Container::get_instance();
-
-		$this->repository = $repository ?: ($container->has(AIPS_Schedule_Repository_Interface::class)
-			? $container->make(AIPS_Schedule_Repository_Interface::class)
-			: new AIPS_Schedule_Repository());
-
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class)
-			? $container->make(AIPS_Logger_Interface::class)
-			: new AIPS_Logger());
+		$container        = AIPS_Container::get_instance();
+		$this->repository = $repository ?: $container->make(AIPS_Schedule_Repository_Interface::class);
+		$this->logger     = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 
 	/**

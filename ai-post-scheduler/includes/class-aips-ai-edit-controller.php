@@ -41,12 +41,17 @@ class AIPS_AI_Edit_Controller {
 	 *
 	 * @param AIPS_Component_Regeneration_Service|null $service            Regeneration service.
 	 * @param AIPS_History_Repository_Interface|null   $history_repository History repository.
+	 * @param AIPS_Post_Manager|null                   $post_manager       Post manager.
 	 */
-	public function __construct($service = null, ?AIPS_History_Repository_Interface $history_repository = null) {
+	public function __construct(
+		?AIPS_Component_Regeneration_Service $service = null,
+		?AIPS_History_Repository_Interface $history_repository = null,
+		?AIPS_Post_Manager $post_manager = null
+	) {
 		$container = AIPS_Container::get_instance();
-		$this->service            = $service ?: new AIPS_Component_Regeneration_Service();
-		$this->history_repository = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
-		$this->post_manager       = new AIPS_Post_Manager();
+		$this->service            = $service ?: $container->make(AIPS_Component_Regeneration_Service::class);
+		$this->history_repository = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
+		$this->post_manager       = $post_manager ?: $container->make(AIPS_Post_Manager::class);
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));

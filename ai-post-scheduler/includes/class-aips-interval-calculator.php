@@ -32,10 +32,7 @@ class AIPS_Interval_Calculator {
      * @return self
      */
     public static function instance(): self {
-        if ( self::$instance === null ) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+        return AIPS_Container::get_instance()->make(self::class);
     }
 
     /**

@@ -5,10 +5,37 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Templates_Controller {
 
+    /**
+     * @var AIPS_Templates
+     */
     private $templates;
 
-    public function __construct($templates = null) {
-        $this->templates = $templates ?: new AIPS_Templates();
+    /**
+     * @var AIPS_Batch_Queue_Service
+     */
+    private $batch_service;
+
+    /**
+     * @var AIPS_History_Service_Interface
+     */
+    private $history_service;
+
+    /**
+     * Constructor.
+     *
+     * @param AIPS_Templates|null                 $templates       Templates manager.
+     * @param AIPS_Batch_Queue_Service|null       $batch_service   Batch queue service.
+     * @param AIPS_History_Service_Interface|null $history_service History service.
+     */
+    public function __construct(
+        ?AIPS_Templates $templates = null,
+        ?AIPS_Batch_Queue_Service $batch_service = null,
+        ?AIPS_History_Service_Interface $history_service = null
+    ) {
+        $container             = AIPS_Container::get_instance();
+        $this->templates       = $templates ?: $container->make(AIPS_Templates::class);
+        $this->batch_service   = $batch_service ?: $container->make(AIPS_Batch_Queue_Service::class);
+        $this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -28,14 +55,13 @@ class AIPS_Templates_Controller {
      */
     private function maybe_log_template_slicing_notice($template_id, $template_name, $post_quantity) {
         $post_quantity = max(1, absint($post_quantity));
-        $batch_service = new AIPS_Batch_Queue_Service();
-        $threshold     = $batch_service->get_large_batch_threshold();
+        $threshold     = $this->batch_service->get_large_batch_threshold();
 
         if ($post_quantity <= $threshold) {
             return null;
         }
 
-        $config      = $batch_service->calculate_config($post_quantity);
+        $config      = $this->batch_service->calculate_config($post_quantity);
         $slice_count = isset($config['num_batches']) ? max(1, absint($config['num_batches'])) : 1;
         $notice_message = sprintf(
             /* translators: 1: configured quantity, 2: threshold, 3: slice count */
@@ -45,8 +71,7 @@ class AIPS_Templates_Controller {
             $slice_count
         );
 
-        $history_service = new AIPS_History_Service();
-        $history = $history_service->create('template_lifecycle', array(
+        $history = $this->history_service->create('template_lifecycle', array(
             'template_id'     => absint($template_id),
             'creation_method' => 'template_lifecycle',
             'user_id'         => get_current_user_id(),

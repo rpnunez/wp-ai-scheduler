@@ -78,17 +78,33 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $deduplication_service Deduplication service (optional for testing).
    * @param object|null $authors_repository Authors repository (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null) {
+	public function __construct(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Author_Topics_Repository $topics_repository = null,
+		?AIPS_Author_Topic_Logs_Repository $logs_repository = null,
+		?AIPS_Embeddings_Service $embeddings_service = null,
+		?AIPS_Feedback_Repository $feedback_repository = null,
+		?AIPS_Prompt_Builder_Topic $prompt_builder = null,
+		?AIPS_Deduplication_Service $deduplication_service = null,
+		?AIPS_Authors_Repository $authors_repository = null
+	) {
 		$container = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
-		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
-		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
-		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
-		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
+		$this->ai_service            = $ai_service ?? $container->make(AIPS_AI_Service_Interface::class);
+		$this->logger                = $logger ?? $container->make(AIPS_Logger_Interface::class);
+		$this->topics_repository     = $topics_repository ?? $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository       = $logs_repository ?? $container->make(AIPS_Author_Topic_Logs_Repository::class);
+		$this->authors_repository    = $authors_repository ?? $container->make(AIPS_Authors_Repository::class);
+		$this->embeddings_service    = $embeddings_service ?? $container->make(AIPS_Embeddings_Service::class, array(
+			'ai_service' => $this->ai_service,
+			'logger'     => $this->logger,
+		));
+		$this->deduplication_service = $deduplication_service ?? $container->make(AIPS_Deduplication_Service::class, array(
+			'embeddings_service' => $this->embeddings_service,
+			'logger'             => $this->logger,
+		));
+		$this->feedback_repository   = $feedback_repository ?? $container->make(AIPS_Feedback_Repository::class);
+		$this->prompt_builder        = $prompt_builder ?? new AIPS_Prompt_Builder_Topic(
 			null,
 			new AIPS_Prompt_Builder_Diversity_Injector(null, $this->topics_repository)
 		);

@@ -231,7 +231,7 @@ class AIPS_Bulk_Generator_Service {
 		?AIPS_Batch_Queue_Service       $batch_queue_service = null
 	) {
 		$container = AIPS_Container::get_instance();
-		$this->history_service     = $history_service     ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->history_service     = $history_service ?? $container->make(AIPS_History_Service_Interface::class);
 		$this->job_store           = $job_store;
 		$this->batch_queue_service = $batch_queue_service;
 	}

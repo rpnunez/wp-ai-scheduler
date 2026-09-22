@@ -54,11 +54,11 @@ class AIPS_Content_Auditor_Engine {
 		?AIPS_Sources_Repository $sources_repo = null,
 		?AIPS_Sources_Data_Repository $sources_data_repo = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
-		$this->sources_data_repo = $sources_data_repo ?: AIPS_Sources_Data_Repository::instance();
+		$container               = AIPS_Container::get_instance();
+		$this->ai_service        = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
+		$this->logger            = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->sources_repo      = $sources_repo ?: $container->make(AIPS_Sources_Repository::class);
+		$this->sources_data_repo = $sources_data_repo ?: $container->make(AIPS_Sources_Data_Repository::class);
 	}
 
 	/**

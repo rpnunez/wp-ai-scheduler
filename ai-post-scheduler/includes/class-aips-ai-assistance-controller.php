@@ -37,17 +37,9 @@ class AIPS_AI_Assistance_Controller {
 	 * @param AIPS_AI_Assistance_Repository|null $repository Optional repository override (for testing).
 	 */
 	public function __construct( ?AIPS_AI_Assistance_Service $service = null, ?AIPS_AI_Assistance_Repository $repository = null ) {
-		$this->repository = $repository ?: new AIPS_AI_Assistance_Repository();
-
-		if ( $service ) {
-			$this->service = $service;
-		} else {
-			$container  = AIPS_Container::get_instance();
-			$ai_service = $container->has( AIPS_AI_Service_Interface::class )
-				? $container->make( AIPS_AI_Service_Interface::class )
-				: new AIPS_AI_Service();
-			$this->service = new AIPS_AI_Assistance_Service( $ai_service, $this->repository );
-		}
+		$container        = AIPS_Container::get_instance();
+		$this->repository = $repository ?: $container->make( AIPS_AI_Assistance_Repository::class );
+		$this->service    = $service ?: $container->make( AIPS_AI_Assistance_Service::class );
 
 		add_action( 'wp_ajax_aips_ai_field_assist',          array( $this, 'ajax_field_assist' ) );
 		add_action( 'wp_ajax_aips_get_field_assist_history', array( $this, 'ajax_get_field_assist_history' ) );

@@ -32,12 +32,13 @@ class AIPS_AI_Assistance_Service {
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_AI_Service               $ai_service AI service.
-	 * @param AIPS_AI_Assistance_Repository $repository Repository.
+	 * @param AIPS_AI_Service_Interface|null    $ai_service AI service.
+	 * @param AIPS_AI_Assistance_Repository|null $repository Repository.
 	 */
-	public function __construct( $ai_service, AIPS_AI_Assistance_Repository $repository ) {
-		$this->ai_service = $ai_service;
-		$this->repository = $repository;
+	public function __construct( ?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_AI_Assistance_Repository $repository = null ) {
+		$container        = AIPS_Container::get_instance();
+		$this->ai_service = $ai_service ?: $container->make( AIPS_AI_Service_Interface::class );
+		$this->repository = $repository ?: $container->make( AIPS_AI_Assistance_Repository::class );
 	}
 
 	/**

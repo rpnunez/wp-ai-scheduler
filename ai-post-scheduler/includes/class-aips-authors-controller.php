@@ -30,10 +30,7 @@ class AIPS_Authors_Controller {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if ( self::$instance === null ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**
@@ -68,14 +65,29 @@ class AIPS_Authors_Controller {
 
 	/**
 	 * Initialize the controller.
+	 *
+	 * @param AIPS_Authors_Repository|null           $repository          Authors repository.
+	 * @param AIPS_Author_Topics_Repository|null     $topics_repository   Author topics repository.
+	 * @param AIPS_Author_Topic_Logs_Repository|null $logs_repository     Author topic logs repository.
+	 * @param AIPS_Feedback_Repository|null          $feedback_repository Feedback repository.
+	 * @param AIPS_Author_Topics_Scheduler|null      $topics_scheduler    Topics scheduler.
+	 * @param AIPS_Notifications|null                $notifications       Notifications service.
 	 */
-	public function __construct() {
-		$this->repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
-		$this->notifications = new AIPS_Notifications();
+	public function __construct(
+		?AIPS_Authors_Repository $repository = null,
+		?AIPS_Author_Topics_Repository $topics_repository = null,
+		?AIPS_Author_Topic_Logs_Repository $logs_repository = null,
+		?AIPS_Feedback_Repository $feedback_repository = null,
+		?AIPS_Author_Topics_Scheduler $topics_scheduler = null,
+		?AIPS_Notifications $notifications = null
+	) {
+		$container                 = AIPS_Container::get_instance();
+		$this->repository          = $repository ?: $container->make(AIPS_Authors_Repository::class);
+		$this->topics_repository   = $topics_repository ?: $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository     = $logs_repository ?: $container->make(AIPS_Author_Topic_Logs_Repository::class);
+		$this->feedback_repository = $feedback_repository ?: $container->make(AIPS_Feedback_Repository::class);
+		$this->topics_scheduler    = $topics_scheduler ?: $container->make(AIPS_Author_Topics_Scheduler::class);
+		$this->notifications       = $notifications ?: $container->make(AIPS_Notifications::class);
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));

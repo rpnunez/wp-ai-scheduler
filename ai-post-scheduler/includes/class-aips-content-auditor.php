@@ -53,11 +53,11 @@ class AIPS_Content_Auditor {
 		?AIPS_Content_Auditor_Scanner $scanner = null,
 		?AIPS_Content_Auditor_Engine $engine = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->scanner = $scanner ?: new AIPS_Content_Auditor_Scanner();
-		$this->engine = $engine ?: new AIPS_Content_Auditor_Engine($this->ai_service, $this->logger);
+		$container        = AIPS_Container::get_instance();
+		$this->ai_service = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
+		$this->logger     = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->scanner    = $scanner ?: $container->make(AIPS_Content_Auditor_Scanner::class);
+		$this->engine     = $engine ?: $container->make(AIPS_Content_Auditor_Engine::class);
 	}
 
 	/**
@@ -67,8 +67,7 @@ class AIPS_Content_Auditor {
 	 */
 	public function get_scanner() {
 		if (null === $this->scanner) {
-			$container = AIPS_Container::get_instance();
-			$this->scanner = $container->has(AIPS_Content_Auditor_Scanner::class) ? $container->make(AIPS_Content_Auditor_Scanner::class) : new AIPS_Content_Auditor_Scanner();
+			$this->scanner = AIPS_Container::get_instance()->make(AIPS_Content_Auditor_Scanner::class);
 		}
 		return $this->scanner;
 	}
@@ -80,8 +79,7 @@ class AIPS_Content_Auditor {
 	 */
 	public function get_engine() {
 		if (null === $this->engine) {
-			$container = AIPS_Container::get_instance();
-			$this->engine = $container->has(AIPS_Content_Auditor_Engine::class) ? $container->make(AIPS_Content_Auditor_Engine::class) : new AIPS_Content_Auditor_Engine($this->ai_service, $this->logger);
+			$this->engine = AIPS_Container::get_instance()->make(AIPS_Content_Auditor_Engine::class);
 		}
 		return $this->engine;
 	}

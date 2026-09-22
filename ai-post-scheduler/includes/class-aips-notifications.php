@@ -51,10 +51,7 @@ class AIPS_Notifications {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if ( self::$instance === null ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	// -----------------------------------------------------------------------
@@ -119,22 +116,24 @@ class AIPS_Notifications {
 	 * making the class easy to unit-test by passing mocks.
 	 *
 	 * @param AIPS_Notifications_Repository_Interface|null $repository      DB notifications repository.
-	 * @param AIPS_Notification_Templates|null   $templates       Email template registry.
-	 * @param AIPS_History_Service_Interface|null $history_service History/audit service.
+	 * @param AIPS_Notification_Templates|null             $templates       Email template registry.
+	 * @param AIPS_History_Service_Interface|null          $history_service History/audit service.
+	 * @param AIPS_Notifications_Event_Handler|null        $event_handler   Event handler.
+	 * @param AIPS_Notification_Senders|null              $senders         Notification senders.
 	 */
 	public function __construct(
 		?AIPS_Notifications_Repository_Interface $repository = null,
-		$templates = null,
-		?AIPS_History_Service_Interface $history_service = null
+		?AIPS_Notification_Templates $templates = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Notifications_Event_Handler $event_handler = null,
+		?AIPS_Notification_Senders $senders = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->repository      = $repository      ?: ($container->has(AIPS_Notifications_Repository_Interface::class) ? $container->make(AIPS_Notifications_Repository_Interface::class) : new AIPS_Notifications_Repository());
-		$this->templates       = $templates       instanceof AIPS_Notification_Templates   ? $templates       : new AIPS_Notification_Templates();
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-
-		$this->event_handler = new AIPS_Notifications_Event_Handler($this, $this->repository);
-
-		$this->senders = new AIPS_Notification_Senders(
+		$container             = AIPS_Container::get_instance();
+		$this->repository      = $repository ?: $container->make(AIPS_Notifications_Repository_Interface::class);
+		$this->templates       = $templates ?: $container->make(AIPS_Notification_Templates::class);
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->event_handler   = $event_handler ?: new AIPS_Notifications_Event_Handler($this, $this->repository);
+		$this->senders         = $senders ?: new AIPS_Notification_Senders(
 			array( $this, 'dispatch_notification' ),
 			array( $this, 'build_standard_notification_vars' )
 		);

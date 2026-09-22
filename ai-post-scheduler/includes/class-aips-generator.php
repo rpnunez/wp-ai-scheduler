@@ -87,36 +87,38 @@ class AIPS_Generator {
     public function __construct(
         ?AIPS_Logger_Interface $logger = null,
         ?AIPS_AI_Service_Interface $ai_service = null,
-        $template_processor = null,
-        $image_service = null,
-        $structure_manager = null,
-        $post_manager = null,
+        ?AIPS_Template_Processor $template_processor = null,
+        ?AIPS_Image_Service $image_service = null,
+        ?AIPS_Article_Structure_Manager $structure_manager = null,
+        ?AIPS_Post_Manager $post_manager = null,
         ?AIPS_History_Service_Interface $history_service = null,
-        $prompt_builder = null,
-        $markdown_parser = null
+        ?AIPS_Prompt_Builder $prompt_builder = null,
+        ?AIPS_Markdown_Parser $markdown_parser = null
     ) {
         $container = AIPS_Container::get_instance();
-        $this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-        $this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-        $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
-        $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
-        $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
-        $this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-        $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
-        $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
-        $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
-        $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
+        $this->logger             = $logger ?? $container->make(AIPS_Logger_Interface::class);
+        $this->ai_service         = $ai_service ?? $container->make(AIPS_AI_Service_Interface::class);
+        $this->template_processor = $template_processor ?? $container->make(AIPS_Template_Processor::class);
+        $this->image_service      = $image_service ?? $container->make(AIPS_Image_Service::class, array('ai_service' => $this->ai_service));
+        $this->structure_manager  = $structure_manager ?? $container->make(AIPS_Article_Structure_Manager::class);
+        $this->post_manager       = $post_manager ?? $container->make(AIPS_Post_Manager::class);
+        $this->history_service    = $history_service ?? $container->make(AIPS_History_Service_Interface::class);
+        $this->prompt_builder     = $prompt_builder ?? $container->make(AIPS_Prompt_Builder::class, array(
+            'template_processor' => $this->template_processor,
+            'structure_manager'  => $this->structure_manager,
+        ));
+        $this->post_content_prompt_builder        = $this->prompt_builder->get_post_content_builder();
+        $this->post_title_prompt_builder          = $this->prompt_builder->get_post_title_builder();
+        $this->post_excerpt_prompt_builder        = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
         } elseif ( class_exists( 'AIPS_Markdown_Parser' ) ) {
-            $this->markdown_parser = new AIPS_Markdown_Parser();
+            $this->markdown_parser = $container->make(AIPS_Markdown_Parser::class);
         } else {
             $this->markdown_parser = null;
         }
-
     }
 
     /**
