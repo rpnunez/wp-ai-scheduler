@@ -530,7 +530,7 @@ add_action('plugins_loaded', 'aips_init', 5);
  * @return void
  */
 function aips_activate_callback() {
-    AIPS_Lifecycle::activate();
+    AI_Post_Scheduler::get_instance()->activate();
 }
 
 register_activation_hook(__FILE__, 'aips_activate_callback');
@@ -541,7 +541,7 @@ register_activation_hook(__FILE__, 'aips_activate_callback');
  * @return void
  */
 function aips_deactivate_callback() {
-    AIPS_Lifecycle::deactivate();
+    AI_Post_Scheduler::get_instance()->deactivate();
 }
 
 register_deactivation_hook(__FILE__, 'aips_deactivate_callback');

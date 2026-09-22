@@ -61,6 +61,21 @@ class AIPS_Lifecycle {
 	}
 
 	/**
+	 * Ensure autoloaders are registered before executing lifecycle routines.
+	 *
+	 * @return void
+	 */
+	private static function ensure_autoload() {
+		if ( ! class_exists( 'AIPS_Autoloader' ) ) {
+			$autoloader = AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
+			if ( file_exists( $autoloader ) ) {
+				require_once $autoloader;
+				AIPS_Autoloader::register();
+			}
+		}
+	}
+
+	/**
 	 * Handle plugin activation tasks.
 	 *
 	 * Seeds default options, runs upgrades/table checks, schedules cron events,
@@ -69,6 +84,8 @@ class AIPS_Lifecycle {
 	 * @return void
 	 */
 	public static function activate() {
+		self::ensure_autoload();
+
 		// Ensure logger is available
 		if (!class_exists('AIPS_Logger')) {
 			require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
@@ -165,6 +182,7 @@ class AIPS_Lifecycle {
 	 * @return void
 	 */
 	public static function check_upgrades() {
+		self::ensure_autoload();
 		AIPS_DB_Migrations::check_and_run();
 	}
 
@@ -174,6 +192,7 @@ class AIPS_Lifecycle {
 	 * @return void
 	 */
 	public static function deactivate() {
+		self::ensure_autoload();
 		foreach (array_keys(self::get_cron_events()) as $hook) {
 			wp_clear_scheduled_hook($hook);
 		}
@@ -189,6 +208,7 @@ class AIPS_Lifecycle {
 	 * @return void
 	 */
 	public static function set_default_options() {
+		self::ensure_autoload();
 		$defaults = AIPS_Config::get_instance()->get_default_options();
 
 		// Activation-specific fallback: if unset in defaults, use admin email.
