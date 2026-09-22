@@ -114,19 +114,22 @@ class AIPS_Author_Topic_Logs_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 		if ($result) {
-			$this->invalidate_logs_cache(
-				isset($data['author_topic_id']) ? $data['author_topic_id'] : 0,
+			// A post_generated log also changes author-topic reads that LEFT JOIN
+			// this table; that domain's DEPENDENTS entry fans the bump out.
+			$domain = (isset($data['action']) && 'post_generated' === $data['action'])
+				? 'author_topic_generation_log'
+				: 'author_topic_log';
+
+			$this->invalidate_cache_domain(
+				$domain,
+				array('author_topic_id' => isset($data['author_topic_id']) ? absint($data['author_topic_id']) : 0),
 				'author_topic_log_created'
 			);
-
-			// Author-topic reads that LEFT JOIN this table on action = 'post_generated'
-			// (e.g. get_status_counts' posts_generated bucket) live in another cache group.
-			if (isset($data['action']) && 'post_generated' === $data['action']) {
-				$this->invalidate_author_topic_dependent_reads('author_topic_post_logged');
-			}
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -225,8 +228,9 @@ class AIPS_Author_Topic_Logs_Repository {
 		);
 
 		if ($result) {
-			$this->invalidate_logs_cache_for_topics($topic_ids, 'author_topic_logs_deleted');
-			$this->invalidate_author_topic_dependent_reads('author_topic_logs_deleted');
+			// Every log read carries the broad tag, so a single domain bump covers
+			// all deleted topics; deleted post_generated rows affect author-topic reads.
+			$this->invalidate_cache_domain('author_topic_generation_log', array(), 'author_topic_logs_deleted');
 		}
 
 		return $result;
@@ -323,82 +327,29 @@ class AIPS_Author_Topic_Logs_Repository {
 			'author_topic_logs.get_by_topic' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'author_topic_logs', 'author_topic_logs:topic:{author_topic_id}' ),
 				'description' => 'Cache per-topic log history reads.',
 			),
 			'author_topic_logs.get_by_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'author_topic_logs' ),
 				'cache_null'  => false,
 				'description' => 'Cache single-log reads by ID.',
 			),
 			'author_topic_logs.count_generated_posts_by_author' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'author_topic_logs', 'author_topic_logs:author:{author_id}' ),
 				'description' => 'Cache per-author generated-post counts.',
 			),
 			'author_topic_logs.get_post_generation_counts_grouped_by_author' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'author_topic_logs' ),
 				'description' => 'Cache grouped-by-author generated-post counts.',
 			),
 		);
 	}
 
-	/**
-	 * Invalidate log read caches after a single-topic write.
-	 *
-	 * @param int    $author_topic_id Topic ID, or 0 when unknown.
-	 * @param string $reason Invalidation reason.
-	 * @return void
-	 */
-	private function invalidate_logs_cache($author_topic_id, $reason) {
-		$tags = array( 'author_topic_logs' );
 
-		$author_topic_id = absint($author_topic_id);
-		if ($author_topic_id > 0) {
-			$tags[] = 'author_topic_logs:topic:' . $author_topic_id;
-		}
 
-		$this->invalidate_cache_tags($tags, (string) $reason);
-	}
-
-	/**
-	 * Invalidate author-topic reads that join this table.
-	 *
-	 * AIPS_Author_Topics_Repository caches reads (get_status_counts) that LEFT JOIN
-	 * aips_author_topic_logs, under its own cache group. Tag versions are
-	 * group-scoped, so the bump must be delegated to that repository.
-	 *
-	 * @param string $reason Invalidation reason.
-	 * @return void
-	 */
-	private function invalidate_author_topic_dependent_reads($reason) {
-		$this->invalidate_repository_cache_tags('AIPS_Author_Topics_Repository', array('author_topics'), (string) $reason);
-	}
-
-	/**
-	 * Invalidate log read caches after a multi-topic delete.
-	 *
-	 * @param int[]  $topic_ids Topic IDs affected.
-	 * @param string $reason Invalidation reason.
-	 * @return void
-	 */
-	private function invalidate_logs_cache_for_topics(array $topic_ids, $reason) {
-		$tags = array( 'author_topic_logs' );
-
-		foreach ($topic_ids as $topic_id) {
-			$topic_id = absint($topic_id);
-			if ($topic_id > 0) {
-				$tags[] = 'author_topic_logs:topic:' . $topic_id;
-			}
-		}
-
-		$this->invalidate_cache_tags($tags, (string) $reason);
-	}
 
 	/**
 	 * Returns an associative array of author_id => MAX(created_at) for all authors

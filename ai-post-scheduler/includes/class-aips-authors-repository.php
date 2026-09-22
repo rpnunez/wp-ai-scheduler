@@ -141,6 +141,8 @@ class AIPS_Authors_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author',
@@ -148,7 +150,7 @@ class AIPS_Authors_Repository {
 				'author_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 	
 	/**
@@ -421,12 +423,10 @@ class AIPS_Authors_Repository {
 			'authors.get_all'   => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'authors' ),
 				'description' => 'Cache author list reads, including active-only filtering.',
 			),
 			'authors.get_by_id' => array(
 				'tier'        => 'medium',
-				'tags'        => array( 'authors', 'author:{author_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single-author reads by ID.',
 			),

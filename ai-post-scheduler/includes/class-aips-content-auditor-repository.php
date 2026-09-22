@@ -124,12 +124,14 @@ class AIPS_Content_Auditor_Repository {
 		);
 
 		$result = $this->wpdb->insert($this->table_name, $data, $format);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ($result !== false) {
 			$this->invalidate_audits_cache('content_audit_saved');
 		}
 
-		return $result !== false ? (int) $this->wpdb->insert_id : false;
+		return $result !== false ? $insert_id : false;
 	}
 
 	/**
@@ -300,13 +302,11 @@ class AIPS_Content_Auditor_Repository {
 			'content_audits.get_history' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the lightweight audit history list (no report JSON).',
 			),
 			'content_audits.count' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache audit record counts by niche.',
 			),
 		);
@@ -319,7 +319,7 @@ class AIPS_Content_Auditor_Repository {
 	 * @return void
 	 */
 	private function invalidate_audits_cache($reason) {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
+		$this->invalidate_cache_domain('content_audits', array(), (string) $reason);
 	}
 
 	/**

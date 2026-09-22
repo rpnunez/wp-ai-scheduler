@@ -154,12 +154,14 @@ class AIPS_Taxonomy_Repository {
 			$row,
 			$format
 		);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ($result) {
-			$this->invalidate_taxonomy_cache($this->wpdb->insert_id, 'taxonomy_inserted');
+			$this->invalidate_taxonomy_cache($insert_id, 'taxonomy_inserted');
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -327,32 +329,27 @@ class AIPS_Taxonomy_Repository {
 			'taxonomy.get_by_type' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'taxonomy' ),
 				'description' => 'Cache taxonomy reads by type.',
 			),
 			'taxonomy.get_by_status_and_type' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'taxonomy' ),
 				'description' => 'Cache taxonomy reads by status + type.',
 			),
 			'taxonomy.get_by_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'taxonomy', 'taxonomy:{id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single taxonomy item reads by ID.',
 			),
 			'taxonomy.get_status_counts' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'taxonomy' ),
 				'description' => 'Cache taxonomy status-count rollups.',
 			),
 			'taxonomy.search' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'taxonomy' ),
 				'description' => 'Cache taxonomy name search reads.',
 			),
 		);
@@ -369,13 +366,6 @@ class AIPS_Taxonomy_Repository {
 	 * @return void
 	 */
 	private function invalidate_taxonomy_cache($id, $reason) {
-		$tags = array( 'taxonomy' );
-
-		$id = absint($id);
-		if ($id > 0) {
-			$tags[] = 'taxonomy:' . $id;
-		}
-
-		$this->invalidate_cache_tags($tags, (string) $reason);
+		$this->invalidate_cache_domain('taxonomy', array('id' => absint($id)), (string) $reason);
 	}
 }

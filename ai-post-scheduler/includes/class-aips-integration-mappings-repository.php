@@ -369,13 +369,11 @@ class AIPS_Integration_Mappings_Repository {
 			'integration_mappings.get_by_template' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache per-template field mappings; read on every generation for templates with integrations.',
 			),
 			'integration_mappings.get_by_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'cache_null'  => false,
 				'description' => 'Cache single mapping reads by ID.',
 			),
@@ -389,7 +387,7 @@ class AIPS_Integration_Mappings_Repository {
 	 * @return void
 	 */
 	private function invalidate_mappings_cache($reason) {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
+		$this->invalidate_cache_domain('integration_mappings', array(), (string) $reason);
 	}
 }
 

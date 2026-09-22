@@ -52,7 +52,7 @@ class Test_AIPS_Repository_Trait_Followups extends WP_UnitTestCase {
 		$policies = $this->invoke_protected(new $class(), 'repository_cache_policies');
 
 		$this->assertArrayHasKey($op, $policies, "$op should declare a policy.");
-		$this->assertContains($tag, $policies[$op]['tags'], "$op must carry the broad '$tag' tag so writes invalidate it.");
+		$this->assertContains($tag, AIPS_Repository_Cache_Dependencies::tags_for_read($op), "$op must carry the broad '$tag' tag so writes invalidate it.");
 		$this->assertNotSame('none', $policies[$op]['tier'] ?? 'none');
 	}
 
@@ -72,9 +72,9 @@ class Test_AIPS_Repository_Trait_Followups extends WP_UnitTestCase {
 	public function test_relationship_reads_joining_wp_posts_carry_posts_tag() {
 		$policies = $this->invoke_protected(new AIPS_Relationships_Repository(), 'repository_cache_policies');
 
-		$this->assertContains(AIPS_Relationships_Repository::CACHE_TAG_POSTS, $policies['relationships.get_related']['tags']);
-		$this->assertContains(AIPS_Relationships_Repository::CACHE_TAG_POSTS, $policies['relationships.get_top_duplicate_pairs']['tags']);
-		$this->assertNotContains(AIPS_Relationships_Repository::CACHE_TAG_POSTS, $policies['relationships.count']['tags']);
+		$this->assertContains(AIPS_Relationships_Repository::CACHE_TAG_POSTS, AIPS_Repository_Cache_Dependencies::tags_for_read('relationships.get_related'));
+		$this->assertContains(AIPS_Relationships_Repository::CACHE_TAG_POSTS, AIPS_Repository_Cache_Dependencies::tags_for_read('relationships.get_top_duplicate_pairs'));
+		$this->assertNotContains(AIPS_Relationships_Repository::CACHE_TAG_POSTS, AIPS_Repository_Cache_Dependencies::tags_for_read('relationships.count'));
 	}
 
 	public function test_content_audit_full_report_reads_stay_uncached() {
@@ -235,6 +235,124 @@ class Test_AIPS_Repository_Trait_Followups extends WP_UnitTestCase {
 
 		$after = $repo->get_stats();
 		$this->assertSame(0, $after['failed']);
+	}
+
+	/**
+	 * Every repository cache tag lives in AIPS_Repository_Cache_Dependencies:
+	 * no production policy may declare inline `tags`, and every cached policy
+	 * must have a READ_TAGS entry (otherwise its reads could never be evicted).
+	 */
+	public function test_all_cached_policies_are_declared_in_central_map() {
+		foreach ($this->cacheable_repository_classes() as $class) {
+			$policies = $this->invoke_protected(new $class(), 'repository_cache_policies');
+
+			foreach ($policies as $op => $policy) {
+				$this->assertArrayNotHasKey('tags', $policy, "$class::$op must declare its tags in AIPS_Repository_Cache_Dependencies::READ_TAGS, not inline.");
+
+				if ('none' === ($policy['tier'] ?? 'none')) {
+					continue;
+				}
+
+				$this->assertTrue(
+					AIPS_Repository_Cache_Dependencies::has_read_tags($op),
+					"$class::$op is cached but has no READ_TAGS entry."
+				);
+			}
+		}
+	}
+
+	/**
+	 * DEPENDENTS may only target repositories that exist and use the caching trait.
+	 */
+	public function test_dependents_target_cacheable_repositories() {
+		foreach (AIPS_Repository_Cache_Dependencies::DEPENDENTS as $domain => $targets) {
+			foreach (array_keys($targets) as $class) {
+				$this->assertTrue(class_exists($class), "DEPENDENTS[$domain] targets unknown class $class.");
+				$this->assertContains('AIPS_Cacheable_Repository', class_uses($class), "DEPENDENTS[$domain] target $class must use AIPS_Cacheable_Repository.");
+			}
+		}
+	}
+
+	public function test_history_write_refreshes_dashboard_and_metrics_groups() {
+		$dashboard = new AIPS_Dashboard_Repository();
+		$history   = new AIPS_History_Repository();
+		$from      = time() - HOUR_IN_SECONDS;
+		$to        = time() + HOUR_IN_SECONDS;
+
+		$before = $dashboard->get_summary_stats($from, $to);
+
+		$history->create(array(
+			'status'          => 'completed',
+			'template_id'     => 77,
+			'creation_method' => 'manual',
+		));
+
+		$after = $dashboard->get_summary_stats($from, $to);
+		$this->assertSame($before['total'] + 1, $after['total'], 'History writes must evict the dashboard cache group.');
+
+		$this->assertSame(
+			array('AIPS_Dashboard_Repository' => array('history'), 'AIPS_Metrics_Repository' => array('history')),
+			AIPS_Repository_Cache_Dependencies::dependents_for_invalidation('history')
+		);
+	}
+
+	public function test_author_topic_write_refreshes_dashboard_topic_stats() {
+		$dashboard = new AIPS_Dashboard_Repository();
+		$topics    = new AIPS_Author_Topics_Repository();
+		$from      = time() - HOUR_IN_SECONDS;
+		$to        = time() + HOUR_IN_SECONDS;
+
+		$before = $dashboard->get_topics_stats($from, $to);
+
+		$topics->create(array(
+			'author_id'   => 9003,
+			'topic_title' => 'Dashboard topic',
+			'status'      => 'pending',
+		));
+
+		$after = $dashboard->get_topics_stats($from, $to);
+		$this->assertSame($before['pending'] + 1, $after['pending'], 'Author-topic writes must evict the dashboard cache group.');
+	}
+
+	public function test_schedule_dependents_include_dashboard_metrics_and_history() {
+		$dependents = AIPS_Repository_Cache_Dependencies::dependents_for_invalidation('schedule', array('schedule_id' => 5));
+
+		$this->assertSame(array('schedules'), $dependents['AIPS_Dashboard_Repository']);
+		$this->assertSame(array('schedules'), $dependents['AIPS_Metrics_Repository']);
+		$this->assertSame(array('history_schedule:5'), $dependents['AIPS_History_Repository']);
+	}
+
+	public function test_create_returns_real_insert_id_despite_invalidation_writes() {
+		$feedback = new AIPS_Feedback_Repository();
+		$id       = $feedback->create(array(
+			'author_topic_id' => 123456,
+			'action'          => 'approved',
+			'reason'          => 'insert id check',
+		));
+
+		$row = $feedback->get_by_id($id);
+		$this->assertNotNull($row, 'create() must return the inserted row ID, not an ID clobbered by cache bookkeeping writes.');
+		$this->assertSame('insert id check', $row->reason);
+	}
+
+	/**
+	 * Cacheable repository classes shipped by the plugin.
+	 *
+	 * @return string[]
+	 */
+	private function cacheable_repository_classes() {
+		$classes = array();
+		foreach (glob(dirname(__DIR__) . '/includes/class-aips-*-repository.php') as $file) {
+			$class = str_replace(' ', '_', ucwords(str_replace(array('class-', '-'), array('', ' '), basename($file, '.php'))));
+			$class = preg_replace('/^Aips_/', 'AIPS_', $class);
+			$class = str_replace('_Ai_', '_AI_', $class);
+			if (class_exists($class) && in_array('AIPS_Cacheable_Repository', class_uses($class), true)) {
+				$classes[] = $class;
+			}
+		}
+
+		$this->assertGreaterThanOrEqual(25, count($classes), 'Expected to discover the cacheable repositories.');
+		return $classes;
 	}
 
 	/**

@@ -230,12 +230,14 @@ class AIPS_Affiliate_Links_Repository {
 			),
 			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
 		);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ( $result ) {
-			$this->invalidate_affiliate_links_cache( $this->wpdb->insert_id, 'affiliate_link_inserted' );
+			$this->invalidate_affiliate_links_cache( $insert_id, 'affiliate_link_inserted' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -394,32 +396,27 @@ class AIPS_Affiliate_Links_Repository {
 			'affiliate_links.get_by_id' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'affiliate_links', 'affiliate_link:{id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single affiliate-link mapping reads by ID.',
 			),
 			'affiliate_links.get_all' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'affiliate_links' ),
 				'description' => 'Cache affiliate-link mapping list reads.',
 			),
 			'affiliate_links.get_enabled_by_tags' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'affiliate_links' ),
 				'description' => 'Cache tag-matched enabled mapping reads used during CTA injection.',
 			),
 			'affiliate_links.get_paginated' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'affiliate_links' ),
 				'description' => 'Cache paginated admin list reads.',
 			),
 			'affiliate_links.get_paginated_count' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'affiliate_links' ),
 				'description' => 'Cache paginated admin list counts.',
 			),
 		);
@@ -436,13 +433,6 @@ class AIPS_Affiliate_Links_Repository {
 	 * @return void
 	 */
 	private function invalidate_affiliate_links_cache( $id, $reason ) {
-		$tags = array( 'affiliate_links' );
-
-		$id = absint( $id );
-		if ( $id > 0 ) {
-			$tags[] = 'affiliate_link:' . $id;
-		}
-
-		$this->invalidate_cache_tags( $tags, (string) $reason );
+		$this->invalidate_cache_domain( 'affiliate_link', array( 'id' => absint( $id ) ), (string) $reason );
 	}
 }

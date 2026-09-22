@@ -567,7 +567,7 @@ class AIPS_Relationships_Repository {
 	 * @return void
 	 */
 	public function invalidate_post_dependent_reads($reason = 'post_changed') {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG_POSTS), (string) $reason);
+		$this->invalidate_cache_domain('relationships_posts', array(), (string) $reason);
 	}
 
 	/**
@@ -593,25 +593,21 @@ class AIPS_Relationships_Repository {
 			'relationships.get_related' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG, self::CACHE_TAG_POSTS),
 				'description' => 'Cache top related items per source; hot on the related-posts frontend render.',
 			),
 			'relationships.get_interconnections' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache secondary graph edges between a set of posts.',
 			),
 			'relationships.get_top_duplicate_pairs' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG, self::CACHE_TAG_POSTS),
 				'description' => 'Cache site-wide duplicate/cannibalization pairs joined to wp_posts.',
 			),
 			'relationships.count' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache relationship row counts by relation type.',
 			),
 		);
@@ -639,6 +635,6 @@ class AIPS_Relationships_Repository {
 	 * @return void
 	 */
 	private function invalidate_relationships_cache($reason) {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
+		$this->invalidate_cache_domain('relationships', array(), (string) $reason);
 	}
 }

@@ -32,6 +32,14 @@ class AIPS_Cache_Factory {
 	 */
 	private static $named = array();
 
+	/**
+	 * Incremented by reset() so holders of memoized instances can detect that
+	 * the registry was rebuilt and re-resolve.
+	 *
+	 * @var int
+	 */
+	private static $generation = 0;
+
 	// -----------------------------------------------------------------------
 	// Public factory methods
 	// -----------------------------------------------------------------------
@@ -131,6 +139,16 @@ class AIPS_Cache_Factory {
 	public static function reset() {
 		self::$instance = null;
 		self::$named    = array();
+		self::$generation++;
+	}
+
+	/**
+	 * Return the registry generation (bumped on every reset()).
+	 *
+	 * @return int
+	 */
+	public static function generation() {
+		return self::$generation;
 	}
 
 	/**

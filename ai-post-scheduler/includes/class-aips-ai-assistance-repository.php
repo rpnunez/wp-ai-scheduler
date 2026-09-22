@@ -79,12 +79,14 @@ class AIPS_AI_Assistance_Repository {
 			),
 			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d' )
 		);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ( $result ) {
-			$this->invalidate_cache_tags( array( 'ai_assistance' ), 'ai_assistance_created' );
+			$this->invalidate_cache_domain( 'ai_assistance', array(), 'ai_assistance_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -179,13 +181,11 @@ class AIPS_AI_Assistance_Repository {
 			'ai_assistance.get_by_session_and_field' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'ai_assistance' ),
 				'description' => 'Cache per-session, per-field suggestion history reads.',
 			),
 			'ai_assistance.get_by_field' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'ai_assistance' ),
 				'description' => 'Cache all-time per-field suggestion history reads.',
 			),
 		);

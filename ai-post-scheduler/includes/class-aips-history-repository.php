@@ -1350,6 +1350,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        // Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
         $insert_id = $result ? (int) $this->wpdb->insert_id : false;
         
         if ($result) {
@@ -1729,12 +1730,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         return array(
             'history.get_stats'                    => array(
                 'tier'        => 'medium',
-                'tags'        => array( 'history' ),
                 'description' => 'Cache history aggregate stats (total, completed, failed, etc.).',
             ),
             'history.get_schedule_completed_count' => array(
                 'tier'        => 'long',
-                'tags'        => array( 'history', 'history_schedule:{schedule_id}' ),
                 'cache_null'  => false,
                 'description' => 'Cache per-schedule completed generation counts.',
             ),

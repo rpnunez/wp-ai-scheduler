@@ -620,7 +620,13 @@ final class AI_Post_Scheduler {
             if (!is_object($post) || !isset($post->post_status)) {
                 return;
             }
-            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
+            // Guard the lookup: a cleared container (e.g. in isolated test runs)
+            // must not turn every wp_insert_post() into a fatal error.
+            $container = AIPS_Container::get_instance();
+            if (!$container->has(AIPS_Content_Indexer_Service::class)) {
+                return;
+            }
+            $container->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
         // Repository caches whose reads join wp_posts (embeddings, relationships)

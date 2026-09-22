@@ -632,7 +632,7 @@ class AIPS_Embeddings_Repository {
 	 * @return void
 	 */
 	public function invalidate_post_dependent_reads($reason = 'post_changed') {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG_POSTS), (string) $reason);
+		$this->invalidate_cache_domain('embeddings_posts', array(), (string) $reason);
 	}
 
 	/**
@@ -662,44 +662,37 @@ class AIPS_Embeddings_Repository {
 			'embeddings.get_by_object' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'cache_null'  => false,
 				'description' => 'Cache single embedding lookups by (object_type, object_id); hot on related-posts render and dedup gates.',
 			),
 			'embeddings.get_by_post_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache batched post embedding lookups.',
 			),
 			'embeddings.count' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache embeddings row counts by object type / post type.',
 			),
 			'embeddings.count_indexed_for_types' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG, self::CACHE_TAG_POSTS),
 				'description' => 'Cache indexed-post counts joined to wp_posts; invalidated by writes and by post transitions.',
 			),
 			'embeddings.get_stats' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the Content Indexer dashboard statistics breakdown.',
 			),
 			'embeddings.get_all_indexed_post_ids' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the ordered list of indexed post IDs.',
 			),
 			'embeddings.get_stored_dimensions' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array(self::CACHE_TAG),
 				'description' => 'Cache the distinct vector dimensions present in the index.',
 			),
 		);
@@ -716,6 +709,6 @@ class AIPS_Embeddings_Repository {
 	 * @return void
 	 */
 	private function invalidate_embeddings_cache($reason) {
-		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
+		$this->invalidate_cache_domain('embeddings', array(), (string) $reason);
 	}
 }

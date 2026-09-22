@@ -202,12 +202,14 @@ class AIPS_Template_Repository {
         $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        // Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+        $insert_id = (int) $this->wpdb->insert_id;
 
         if ( $result ) {
             $this->invalidate_cache_domain( 'template', array(), 'template_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $result ? $insert_id : false;
     }
 
     /**
@@ -442,12 +444,10 @@ class AIPS_Template_Repository {
         return array(
             'templates.get_all'   => array(
                 'tier'        => 'long',
-                'tags'        => array( 'templates' ),
                 'description' => 'Cache template list reads including active-only filtering.',
             ),
             'templates.get_by_id' => array(
                 'tier'        => 'long',
-                'tags'        => array( 'templates', 'template:{template_id}' ),
                 'cache_null'  => false,
                 'description' => 'Cache single-template reads by ID.',
             ),

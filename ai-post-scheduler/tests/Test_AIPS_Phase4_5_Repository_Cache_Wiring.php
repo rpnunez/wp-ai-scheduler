@@ -41,7 +41,7 @@ class Test_AIPS_Phase4_5_Repository_Cache_Wiring extends WP_UnitTestCase {
 
 		foreach (array('notifications.get_unread', 'notifications.count_unread') as $op) {
 			$this->assertArrayHasKey($op, $policies, "Notifications should declare a policy for $op.");
-			$this->assertContains('notifications', $policies[$op]['tags'], "$op must carry the broad 'notifications' tag.");
+			$this->assertContains('notifications', AIPS_Repository_Cache_Dependencies::tags_for_read($op), "$op must carry the broad 'notifications' tag.");
 		}
 	}
 

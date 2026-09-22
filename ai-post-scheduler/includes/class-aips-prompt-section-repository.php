@@ -188,12 +188,14 @@ class AIPS_Prompt_Section_Repository {
 		$format = array('%s', '%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ( $result ) {
 			$this->invalidate_cache_domain( 'prompt_section', array(), 'prompt_section_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -343,18 +345,15 @@ class AIPS_Prompt_Section_Repository {
 		return array(
 			'prompt_sections.get_all'    => array(
 				'tier'        => 'long',
-				'tags'        => array( 'prompt_sections' ),
 				'description' => 'Cache prompt section list reads including active-only filtering.',
 			),
 			'prompt_sections.get_by_id'  => array(
 				'tier'        => 'long',
-				'tags'        => array( 'prompt_sections', 'prompt_section:{section_id}' ),
 				'cache_null'  => false,
 				'description' => 'Cache single prompt section reads by ID.',
 			),
 			'prompt_sections.get_by_key' => array(
 				'tier'        => 'long',
-				'tags'        => array( 'prompt_sections' ),
 				'cache_null'  => false,
 				'description' => 'Cache single prompt section reads by section_key.',
 			),

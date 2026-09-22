@@ -315,13 +315,15 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         }
         
         $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
+        // Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+        $insert_id = (int) $this->wpdb->insert_id;
         
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
             $this->invalidate_cache_domain( 'schedule', array(), 'schedule_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $result ? $insert_id : false;
     }
     
     /**
@@ -976,23 +978,19 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         return array(
             'schedules.get_all'           => array(
                 'tier'        => 'medium',
-                'tags'        => array( 'schedules' ),
                 'description' => 'Cache schedule list reads including active-only filtering.',
             ),
             'schedules.get_by_id'         => array(
                 'tier'        => 'long',
-                'tags'        => array( 'schedules', 'schedule:{schedule_id}' ),
                 'cache_null'  => false,
                 'description' => 'Cache single schedule reads by ID.',
             ),
             'schedules.get_due_schedules' => array(
                 'tier'        => 'request',
-                'tags'        => array( 'schedules' ),
                 'description' => 'Request-scoped cache for due schedules; avoids persistent pollution from timestamp-keyed entries.',
             ),
             'schedules.get_active'        => array(
                 'tier'        => 'medium',
-                'tags'        => array( 'schedules' ),
                 'description' => 'Cache active schedule list for scheduling-calculation callers.',
             ),
         );

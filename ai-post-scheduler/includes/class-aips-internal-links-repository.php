@@ -250,12 +250,14 @@ class AIPS_Internal_Links_Repository {
 			),
 			array('%d', '%d', '%f', '%s', '%s', '%d', '%d')
 		);
+		// Capture before cache invalidation: its bookkeeping writes reset $wpdb->insert_id.
+		$insert_id = (int) $this->wpdb->insert_id;
 
 		if ($result) {
 			$this->invalidate_internal_links_cache($source_post_id, 'internal_link_inserted');
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**
@@ -482,13 +484,11 @@ class AIPS_Internal_Links_Repository {
 			'internal_links.get_by_source_post' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'internal_links', 'internal_links:source:{source_post_id}' ),
 				'description' => 'Cache per-source internal-link suggestion reads.',
 			),
 			'internal_links.get_status_counts' => array(
 				'tier'        => 'medium',
 				'ttl'         => 300,
-				'tags'        => array( 'internal_links' ),
 				'description' => 'Cache per-status internal-link summary counts.',
 			),
 		);
@@ -505,13 +505,6 @@ class AIPS_Internal_Links_Repository {
 	 * @return void
 	 */
 	private function invalidate_internal_links_cache($source_post_id, $reason) {
-		$tags = array( 'internal_links' );
-
-		$source_post_id = absint($source_post_id);
-		if ($source_post_id > 0) {
-			$tags[] = 'internal_links:source:' . $source_post_id;
-		}
-
-		$this->invalidate_cache_tags($tags, (string) $reason);
+		$this->invalidate_cache_domain('internal_link', array('source_post_id' => absint($source_post_id)), (string) $reason);
 	}
 }
