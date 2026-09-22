@@ -153,8 +153,7 @@ class AIPS_Container {
 	 *
 	 * @param string $id         Class name or abstract identifier.
 	 * @param array  $parameters Optional runtime parameter overrides.
-	 * @return mixed The resolved instance.
-	 * @throws RuntimeException If the binding cannot be resolved or is not instantiable.
+	 * @return mixed|WP_Error The resolved instance or WP_Error on failure.
 	 */
 	public function make($id, array $parameters = array()) {
 		if (AIPS_Telemetry::is_enabled()) {
@@ -182,7 +181,7 @@ class AIPS_Container {
 				$instance = $this->build($id, $parameters);
 			}
 
-			if (empty($parameters)) {
+			if (empty($parameters) && !is_wp_error($instance)) {
 				$this->singletons[$id] = $instance;
 			}
 
@@ -210,7 +209,10 @@ class AIPS_Container {
 		}
 
 		// Binding not found
-		throw new RuntimeException("Binding not found for: {$id}");
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			error_log("AIPS_Container: Binding not found for [{$id}].");
+		}
+		return new WP_Error('aips_binding_not_found', "Binding not found for: {$id}");
 	}
 
 	/**
@@ -218,12 +220,14 @@ class AIPS_Container {
 	 *
 	 * @param string $class_name Concrete class name to build.
 	 * @param array  $parameters Optional runtime parameter overrides.
-	 * @return object
-	 * @throws RuntimeException
+	 * @return object|WP_Error
 	 */
 	public function build($class_name, array $parameters = array()) {
 		if (in_array($class_name, $this->resolving, true)) {
-			throw new RuntimeException("Circular dependency detected while resolving: {$class_name}");
+			if (defined('WP_DEBUG') && WP_DEBUG) {
+				error_log("AIPS_Container: Circular dependency detected while resolving [{$class_name}].");
+			}
+			return new WP_Error('aips_circular_dependency', "Circular dependency detected while resolving: {$class_name}");
 		}
 
 		$this->resolving[] = $class_name;
@@ -236,7 +240,10 @@ class AIPS_Container {
 			$reflector = $this->reflection_cache[$class_name];
 
 			if (!$reflector->isInstantiable()) {
-				throw new RuntimeException("Target [{$class_name}] is not instantiable.");
+				if (defined('WP_DEBUG') && WP_DEBUG) {
+					error_log("AIPS_Container: Target [{$class_name}] is not instantiable.");
+				}
+				return new WP_Error('aips_not_instantiable', "Target [{$class_name}] is not instantiable.");
 			}
 
 			$constructor = $reflector->getConstructor();
@@ -252,6 +259,10 @@ class AIPS_Container {
 			}
 
 			$dependencies = $this->resolve_dependencies($constructor->getParameters(), $parameters, $class_name);
+
+			if (is_wp_error($dependencies)) {
+				return $dependencies;
+			}
 
 			if (AIPS_Telemetry::is_enabled()) {
 				AIPS_Telemetry::instance()->add_event( 'classes', array(
@@ -272,8 +283,7 @@ class AIPS_Container {
 	 * @param ReflectionParameter[] $params      Constructor parameters.
 	 * @param array                 $parameters  Explicit parameter overrides.
 	 * @param string                $class_name  Class name for error messages.
-	 * @return array
-	 * @throws RuntimeException
+	 * @return array|WP_Error
 	 */
 	private function resolve_dependencies(array $params, array $parameters, $class_name) {
 		$results = array();
@@ -296,20 +306,23 @@ class AIPS_Container {
 
 			if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
 				$dependency_class = $type->getName();
-				try {
-					$results[] = $this->make($dependency_class);
+				$resolved = $this->make($dependency_class);
+
+				if (!is_wp_error($resolved)) {
+					$results[] = $resolved;
 					continue;
-				} catch (RuntimeException $e) {
-					if ($param->isDefaultValueAvailable()) {
-						$results[] = $param->getDefaultValue();
-						continue;
-					}
-					if ($param->allowsNull()) {
-						$results[] = null;
-						continue;
-					}
-					throw $e;
 				}
+
+				if ($param->isDefaultValueAvailable()) {
+					$results[] = $param->getDefaultValue();
+					continue;
+				}
+				if ($param->allowsNull()) {
+					$results[] = null;
+					continue;
+				}
+
+				return $resolved;
 			}
 
 			// 3. Check for default value
@@ -324,7 +337,10 @@ class AIPS_Container {
 				continue;
 			}
 
-			throw new RuntimeException("Unresolvable dependency [{$name}] in class [{$class_name}].");
+			if (defined('WP_DEBUG') && WP_DEBUG) {
+				error_log("AIPS_Container: Unresolvable dependency [{$name}] in class [{$class_name}].");
+			}
+			return new WP_Error('aips_unresolvable_dependency', "Unresolvable dependency [{$name}] in class [{$class_name}].");
 		}
 
 		return $results;
@@ -339,10 +355,9 @@ class AIPS_Container {
 	 */
 	public function makeIfExists($id, $fallback = null) {
 		if ($this->has($id)) {
-			try {
-				return $this->make($id);
-			} catch (RuntimeException $e) {
-				// Fall through to fallback
+			$result = $this->make($id);
+			if (!is_wp_error($result)) {
+				return $result;
 			}
 		}
 

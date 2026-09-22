@@ -97,13 +97,12 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that make() throws exception for unregistered binding.
+	 * Test that make() returns WP_Error for unregistered binding.
 	 */
-	public function test_make_throws_exception_for_unregistered_binding() {
-		$this->expectException(RuntimeException::class);
-		$this->expectExceptionMessage('Binding not found for: unregistered_class');
-
-		$this->container->make('unregistered_class');
+	public function test_make_returns_wp_error_for_unregistered_binding() {
+		$result = $this->container->make('unregistered_class');
+		$this->assertTrue(is_wp_error($result));
+		$this->assertEquals('aips_binding_not_found', $result->get_error_code());
 	}
 
 	/**
@@ -458,13 +457,12 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test circular dependency throws RuntimeException.
+	 * Test circular dependency returns WP_Error.
 	 */
 	public function test_circular_dependency_detection() {
-		$this->expectException(RuntimeException::class);
-		$this->expectExceptionMessage('Circular dependency detected');
-
-		$this->container->make(AIPS_Test_Circular_A::class);
+		$result = $this->container->make(AIPS_Test_Circular_A::class);
+		$this->assertTrue(is_wp_error($result));
+		$this->assertEquals('aips_circular_dependency', $result->get_error_code());
 	}
 }
 
