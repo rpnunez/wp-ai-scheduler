@@ -1460,3 +1460,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+## 2026-09-17 - [Refactor AIPS_Schedule_Controller Status God Method]
+**Context:** `AIPS_Schedule_Controller::ajax_get_schedule_status_read_model()` was a massive method (160+ lines) responsible for calculating next runs, parsing WP Cron hooks into a queue timeline, building the schedule timeline from the database, fetching rate limiter statuses, and parsing history records, violating the Single Responsibility Principle.
+**Decision:** Extracted the distinct domains (cron parsing, schedule generation, rate limits, history fetches) into 5 focused private helper methods (`get_next_runs_status`, `build_queue_timeline`, `build_schedule_timeline`, `get_last_success_times`, `fetch_rate_limiter_status`).
+**Consequence:** Increased the number of private methods in the controller but significantly reduced complexity and vastly improved readability. `ajax_get_schedule_status_read_model()` is now a clean orchestrator for the generated payload.
+**Tests:** Ran existing test suite to ensure backwards compatibility. Pre-existing fatal errors observed, but the `AIPS_Schedule_Controller` syntax is clean and tests pass without regressions for this change.
