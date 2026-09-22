@@ -713,7 +713,7 @@ class AIPS_Generator {
         // In a conversation the article and title are already turns in the
         // transcript, so neither is pasted back into the prompt.
         if ($this->conversation !== null) {
-            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice, $topic);
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice, $topic, $subject);
         } else {
             $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic, $subject);
         }
@@ -754,7 +754,7 @@ class AIPS_Generator {
         // In a conversation the article and title are the two preceding turns, so
         // neither is pasted back into the prompt.
         if ($this->conversation !== null) {
-            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice_obj, $topic_str);
+            $excerpt_prompt = $this->post_excerpt_prompt_builder->build_followup($voice_obj, $topic_str, $context);
         } else {
             $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str, $context);
         }

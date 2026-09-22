@@ -24,7 +24,7 @@
 - **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
 - **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
 
-## [Unreleased]
+## [3.7.0] - 2026-09-22
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 

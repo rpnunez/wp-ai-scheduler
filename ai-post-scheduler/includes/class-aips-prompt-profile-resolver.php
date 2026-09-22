@@ -179,10 +179,11 @@ class AIPS_Prompt_Profile_Resolver {
 		$used_tags = array();
 
 		foreach ($placeholders as $tag => $value) {
-			$search = '{{' . trim($tag, '{}') . '}}';
+			$clean_tag = trim($tag, '{}');
+			$search = '{{' . $clean_tag . '}}';
 			if (strpos($result, $search) !== false) {
 				$result = str_replace($search, (string) $value, $result);
-				$used_tags[$tag] = true;
+				$used_tags[$clean_tag] = true;
 			}
 		}
 

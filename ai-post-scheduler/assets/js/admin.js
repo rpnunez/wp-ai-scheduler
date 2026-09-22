@@ -1509,7 +1509,6 @@
                     action: 'aips_save_voice',
                     nonce: aipsAjax.nonce,
                     voice_id: $('#voice_id').val(),
-                    prompt_profile_id: $('#prompt_profile_id').val() || 0,
                     name: $('#voice_name').val(),
                     title_prompt: $('#voice_title_prompt').val(),
                     content_instructions: $('#voice_content_instructions').val(),

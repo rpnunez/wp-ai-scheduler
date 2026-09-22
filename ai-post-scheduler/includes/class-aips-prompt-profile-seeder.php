@@ -20,6 +20,20 @@ if (!defined('ABSPATH')) {
 class AIPS_Prompt_Profile_Seeder {
 
 	/**
+	 * Get list of builtin system archetype slugs.
+	 *
+	 * @return string[]
+	 */
+	public static function get_builtin_slugs() {
+		return array(
+			'standard-default',
+			'seo-maximizer',
+			'conversational-storyteller',
+			'technical-authority',
+		);
+	}
+
+	/**
 	 * Get definitions of all default prompt profile archetypes.
 	 *
 	 * @return array<int, array<string, mixed>>

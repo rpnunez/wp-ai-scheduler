@@ -152,4 +152,48 @@ class Test_AIPS_Templates_Controller_Clone extends WP_UnitTestCase {
 		$this->assertSame('cooking_time', $cloned_mappings[0]->field_key);
 		$this->assertSame('recipe', $cloned_mappings[0]->source_key);
 	}
+
+	public function test_clone_preserves_prompt_profile_id() {
+		$source = new stdClass();
+		$source->name = 'Profile Cloned Template';
+		$source->description = '';
+		$source->prompt_template = 'Write an article';
+		$source->title_prompt = '';
+		$source->voice_id = null;
+		$source->prompt_profile_id = 42;
+		$source->post_quantity = 1;
+		$source->image_prompt = '';
+		$source->generate_featured_image = 0;
+		$source->featured_image_source = 'ai_prompt';
+		$source->featured_image_unsplash_keywords = '';
+		$source->featured_image_media_ids = '';
+		$source->post_status = 'draft';
+		$source->post_type = 'post';
+		$source->post_category = array();
+		$source->post_tags = '';
+		$source->post_author = 1;
+		$source->include_sources = 0;
+		$source->source_group_ids = '[]';
+		$source->is_active = 1;
+
+		$this->templates_stub->source_template = $source;
+
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['template_id'] = '9';
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_clone_template();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected.
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertTrue($response['success']);
+		$this->assertNotNull($this->templates_stub->saved_data);
+		$this->assertSame(42, $this->templates_stub->saved_data['prompt_profile_id']);
+	}
 }

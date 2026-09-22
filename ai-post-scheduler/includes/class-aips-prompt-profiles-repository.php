@@ -68,7 +68,7 @@ class AIPS_Prompt_Profiles_Repository {
 	 */
 	public function get_all($active_only = false) {
 		$active_only = (bool) $active_only;
-		return $this->cache_read(
+		$profiles = $this->cache_read(
 			'prompt_profiles.get_all',
 			array('active_only' => $active_only),
 			function() use ($active_only) {
@@ -76,6 +76,14 @@ class AIPS_Prompt_Profiles_Repository {
 				return $this->wpdb->get_results("SELECT * FROM {$this->table_name} {$where} ORDER BY is_default DESC, name ASC");
 			}
 		);
+
+		if (is_array($profiles)) {
+			foreach ($profiles as $profile) {
+				$this->decorate_profile($profile);
+			}
+		}
+
+		return $profiles;
 	}
 
 	/**
@@ -90,7 +98,7 @@ class AIPS_Prompt_Profiles_Repository {
 			return null;
 		}
 
-		return $this->cache_read(
+		$profile = $this->cache_read(
 			'prompt_profiles.get_by_id',
 			array('profile_id' => $id),
 			function() use ($id) {
@@ -100,6 +108,8 @@ class AIPS_Prompt_Profiles_Repository {
 				));
 			}
 		);
+
+		return $this->decorate_profile($profile);
 	}
 
 	/**
@@ -114,7 +124,7 @@ class AIPS_Prompt_Profiles_Repository {
 			return null;
 		}
 
-		return $this->cache_read(
+		$profile = $this->cache_read(
 			'prompt_profiles.get_by_slug',
 			array('slug' => $slug),
 			function() use ($slug) {
@@ -124,6 +134,8 @@ class AIPS_Prompt_Profiles_Repository {
 				));
 			}
 		);
+
+		return $this->decorate_profile($profile);
 	}
 
 	/**
@@ -132,7 +144,7 @@ class AIPS_Prompt_Profiles_Repository {
 	 * @return object|null Default profile object or null.
 	 */
 	public function get_default() {
-		return $this->cache_read(
+		$profile = $this->cache_read(
 			'prompt_profiles.get_default',
 			array(),
 			function() {
@@ -149,6 +161,8 @@ class AIPS_Prompt_Profiles_Repository {
 				return $profile;
 			}
 		);
+
+		return $this->decorate_profile($profile);
 	}
 
 	/**
@@ -247,6 +261,20 @@ class AIPS_Prompt_Profiles_Repository {
 		$profile = $this->get_by_id($id);
 		if (!$profile) {
 			return new WP_Error('not_found', __('Prompt profile not found.', 'ai-post-scheduler'));
+		}
+
+		if (!empty($profile->is_builtin)) {
+			return new WP_Error('cannot_delete_builtin', __('System Preset prompt profiles cannot be deleted.', 'ai-post-scheduler'));
+		}
+
+		if (!empty($profile->is_default)) {
+			$remaining_count = (int) $this->wpdb->get_var($this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table_name} WHERE id != %d AND is_active = 1",
+				$id
+			));
+			if ($remaining_count < 1) {
+				return new WP_Error('cannot_delete_sole_default', __('Cannot delete the only active prompt profile.', 'ai-post-scheduler'));
+			}
 		}
 
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
@@ -392,5 +420,24 @@ class AIPS_Prompt_Profiles_Repository {
 		}
 
 		return $clean;
+	}
+
+	/**
+	 * Decorate a profile object with computed metadata such as is_builtin.
+	 *
+	 * @param object|null $profile Profile row object.
+	 * @return object|null Decorated profile.
+	 */
+	private function decorate_profile($profile) {
+		if (!$profile || !is_object($profile)) {
+			return $profile;
+		}
+
+		$builtin_slugs = class_exists('AIPS_Prompt_Profile_Seeder')
+			? AIPS_Prompt_Profile_Seeder::get_builtin_slugs()
+			: array('standard-default', 'seo-maximizer', 'conversational-storyteller', 'technical-authority');
+
+		$profile->is_builtin = (!empty($profile->slug) && in_array($profile->slug, $builtin_slugs, true)) ? 1 : 0;
+		return $profile;
 	}
 }

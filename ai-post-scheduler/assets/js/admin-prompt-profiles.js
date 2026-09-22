@@ -14,6 +14,7 @@
 	'use strict';
 
 	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
 
 	/**
 	 * Prompt Profiles management module.
@@ -90,124 +91,234 @@
 		 * @return {void}
 		 */
 		bindEvents: function () {
+			$(document).on('click', '.aips-add-profile-btn, #aips-add-profile-btn', this.handleAddProfile.bind(this));
+			$(document).on('click', '.aips-edit-profile-btn', this.handleEditProfile.bind(this));
+			$(document).on('click', '.aips-clone-profile-btn', this.handleCloneProfile.bind(this));
+			$(document).on('click', '.aips-set-default-btn', this.handleSetDefaultProfile.bind(this));
+			$(document).on('click', '.aips-delete-profile-btn', this.handleDeleteProfile.bind(this));
+			$(document).on('click', '#aips-prompt-profile-modal .aips-modal-close', this.handleModalClose.bind(this));
+			$(document).on('keydown', this.handleKeydown.bind(this));
+			$(document).on('click', '.aips-stage-tabs-list li', this.handleStageTabClick.bind(this));
+			$(document).on('click', '.aips-placeholder-chip', this.handlePlaceholderChipClick.bind(this));
+			$(document).on('click', '.aips-reset-stage-btn', this.handleResetStageClick.bind(this));
+			$(document).on('submit', '#aips-prompt-profile-form', this.handleFormSubmit.bind(this));
+			$(document).on('input change', '#aips-prompt-profile-form input, #aips-prompt-profile-form textarea', this.handleFormInputChange.bind(this));
+			$(document).on('click', '#aips-toggle-sandbox', this.handleToggleSandbox.bind(this));
+			$(document).on('click', '#aips-refresh-preview-btn', this.handleRefreshPreviewClick.bind(this));
+			$(document).on('click', '.aips-filter-btn', this.handleFilterClick.bind(this));
+			$(document).on('input', '#aips-profile-search', this.handleSearchInput.bind(this));
+			$(document).on('click', '#aips-profile-search-clear, #aips-clear-search-btn', this.handleSearchClearClick.bind(this));
+		},
+
+		/**
+		 * Handle click on Add Profile button.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleAddProfile: function (e) {
+			e.preventDefault();
+			this.openCreateModal();
+		},
+
+		/**
+		 * Handle click on Edit Profile button.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleEditProfile: function (e) {
+			e.preventDefault();
+			var profileId = $(e.currentTarget).data('id');
+			this.openEditModal(profileId);
+		},
+
+		/**
+		 * Handle click on Clone Profile button.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleCloneProfile: function (e) {
+			e.preventDefault();
+			var profileId = $(e.currentTarget).data('id');
+			this.cloneProfile(profileId);
+		},
+
+		/**
+		 * Handle click on Set Default button.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleSetDefaultProfile: function (e) {
+			e.preventDefault();
+			var profileId = $(e.currentTarget).data('id');
+			this.setDefaultProfile(profileId);
+		},
+
+		/**
+		 * Handle click on Delete Profile button.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleDeleteProfile: function (e) {
+			e.preventDefault();
+			var profileId = $(e.currentTarget).data('id');
+			this.deleteProfile(profileId);
+		},
+
+		/**
+		 * Handle click on modal close button.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleModalClose: function (e) {
+			e.preventDefault();
+			this.closeModal();
+		},
+
+		/**
+		 * Handle keydown events on document (e.g. Escape key to close modal).
+		 *
+		 * @param {Event} e Keyboard event.
+		 * @return {void}
+		 */
+		handleKeydown: function (e) {
+			if ((e.key === 'Escape' || e.keyCode === 27) && $('#aips-prompt-profile-modal').is(':visible')) {
+				this.closeModal();
+			}
+		},
+
+		/**
+		 * Handle stage tab navigation click.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleStageTabClick: function (e) {
+			var stage = $(e.currentTarget).data('stage');
+			this.switchStage(stage);
+		},
+
+		/**
+		 * Handle click on placeholder chip to insert tag.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handlePlaceholderChipClick: function (e) {
+			e.preventDefault();
+			var tag = $(e.currentTarget).data('tag');
+			this.insertTagAtCursor(tag);
+		},
+
+		/**
+		 * Handle reset stage to core default prompt.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleResetStageClick: function (e) {
+			e.preventDefault();
+			var stage = $(e.currentTarget).data('stage');
+			this.resetStagePrompt(stage);
+		},
+
+		/**
+		 * Handle profile form submission.
+		 *
+		 * @param {Event} e Submit event.
+		 * @return {void}
+		 */
+		handleFormSubmit: function (e) {
+			e.preventDefault();
+			this.saveProfile();
+		},
+
+		/**
+		 * Handle input or change on profile form fields.
+		 *
+		 * @param {Event} e Input or change event.
+		 * @return {void}
+		 */
+		handleFormInputChange: function (e) {
+			this.setDirty(true);
+			this.updateCustomizedIndicators();
+			if ($('#aips-sandbox-body').is(':visible')) {
+				this.debouncePreview();
+			}
+		},
+
+		/**
+		 * Handle sandbox accordion toggle.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleToggleSandbox: function (e) {
 			var self = this;
+			var $body = $('#aips-sandbox-body');
+			var $container = $('.aips-prompt-preview-sandbox');
+			if ($body.is(':visible')) {
+				$body.slideUp(200);
+				$container.removeClass('is-expanded');
+			} else {
+				$body.slideDown(200, function () {
+					$container.addClass('is-expanded');
+					self.fetchLivePreview();
+				});
+			}
+		},
 
-			// Add Profile Button
-			$(document).on('click', '.aips-add-profile-btn, #aips-add-profile-btn', function (e) {
-				e.preventDefault();
-				self.openCreateModal();
-			});
+		/**
+		 * Handle refresh preview button click.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleRefreshPreviewClick: function (e) {
+			e.preventDefault();
+			this.fetchLivePreview();
+		},
 
-			// Edit Profile Button
-			$(document).on('click', '.aips-edit-profile-btn', function (e) {
-				e.preventDefault();
-				var profileId = $(this).data('id');
-				self.openEditModal(profileId);
-			});
+		/**
+		 * Handle filter button click in the list view.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleFilterClick: function (e) {
+			$('.aips-filter-btn').removeClass('is-active');
+			$(e.currentTarget).addClass('is-active');
+			this.applyFilters();
+		},
 
-			// Clone Profile Button
-			$(document).on('click', '.aips-clone-profile-btn', function (e) {
-				e.preventDefault();
-				var profileId = $(this).data('id');
-				self.cloneProfile(profileId);
-			});
+		/**
+		 * Handle profile search input changes.
+		 *
+		 * @param {Event} e Input event.
+		 * @return {void}
+		 */
+		handleSearchInput: function (e) {
+			var query = $(e.currentTarget).val().trim();
+			$('#aips-profile-search-clear').toggle(query.length > 0);
+			this.applyFilters();
+		},
 
-			// Set Default Button
-			$(document).on('click', '.aips-set-default-btn', function (e) {
-				e.preventDefault();
-				var profileId = $(this).data('id');
-				self.setDefaultProfile(profileId);
-			});
-
-			// Delete Profile Button
-			$(document).on('click', '.aips-delete-profile-btn', function (e) {
-				e.preventDefault();
-				var profileId = $(this).data('id');
-				self.deleteProfile(profileId);
-			});
-
-			// Modal Close Buttons
-			$(document).on('click', '#aips-prompt-profile-modal .aips-modal-close', function (e) {
-				e.preventDefault();
-				self.closeModal();
-			});
-
-			// Stage Tab Navigation
-			$(document).on('click', '.aips-stage-tabs-list li', function () {
-				var stage = $(this).data('stage');
-				self.switchStage(stage);
-			});
-
-			// Placeholder Chip Click -> Insert tag into active textarea
-			$(document).on('click', '.aips-placeholder-chip', function (e) {
-				e.preventDefault();
-				var tag = $(this).data('tag');
-				self.insertTagAtCursor(tag);
-			});
-
-			// Reset Stage to Core Default
-			$(document).on('click', '.aips-reset-stage-btn', function (e) {
-				e.preventDefault();
-				var stage = $(this).data('stage');
-				self.resetStagePrompt(stage);
-			});
-
-			// Form Submit / Save Profile
-			$('#aips-prompt-profile-form').on('submit', function (e) {
-				e.preventDefault();
-				self.saveProfile();
-			});
-
-			// Track changes on textareas & inputs
-			$('#aips-prompt-profile-form').on('input change', 'input, textarea', function () {
-				self.setDirty(true);
-				self.updateCustomizedIndicators();
-				if ($('#aips-sandbox-body').is(':visible')) {
-					self.debouncePreview();
-				}
-			});
-
-			// Sandbox Accordion Toggle
-			$('#aips-toggle-sandbox').on('click', function () {
-				var $body = $('#aips-sandbox-body');
-				var $container = $('.aips-prompt-preview-sandbox');
-				if ($body.is(':visible')) {
-					$body.slideUp(200);
-					$container.removeClass('is-expanded');
-				} else {
-					$body.slideDown(200, function () {
-						$container.addClass('is-expanded');
-						self.fetchLivePreview();
-					});
-				}
-			});
-
-			// Refresh Preview button
-			$('#aips-refresh-preview-btn').on('click', function (e) {
-				e.preventDefault();
-				self.fetchLivePreview();
-			});
-
-			// Filter Bar Buttons
-			$('.aips-filter-btn').on('click', function () {
-				$('.aips-filter-btn').removeClass('is-active');
-				$(this).addClass('is-active');
-				self.applyFilters();
-			});
-
-			// Search Bar Input
-			$('#aips-profile-search').on('input', function () {
-				var query = $(this).val().trim();
-				$('#aips-profile-search-clear').toggle(query.length > 0);
-				self.applyFilters();
-			});
-
-			// Search Clear Button
-			$('#aips-profile-search-clear, #aips-clear-search-btn').on('click', function () {
-				$('#aips-profile-search').val('');
-				$('#aips-profile-search-clear').hide();
-				self.applyFilters();
-			});
+		/**
+		 * Handle search clear button click.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		handleSearchClearClick: function (e) {
+			e.preventDefault();
+			$('#aips-profile-search').val('');
+			$('#aips-profile-search-clear').hide();
+			this.applyFilters();
 		},
 
 		/**
@@ -249,7 +360,9 @@
 			this.setDirty(false);
 			this.updateCustomizedIndicators();
 			$('#aips-preview-output-box').text('Click refresh or type above to assemble preview...');
-			$('#aips-prompt-profile-modal').fadeIn(200);
+			$('#aips-prompt-profile-modal').fadeIn(200, function () {
+				$('#aips_profile_name').trigger('focus');
+			});
 		},
 
 		/**
@@ -290,11 +403,13 @@
 
 						$('#aips-prompt-profile-modal-title').text(aipsPromptProfilesL10n.editProfile + ': ' + p.name);
 
+						var isBuiltin = p.is_builtin === 1 || p.is_builtin === '1' || p.is_builtin === true;
+						var isDefault = p.is_default === 1 || p.is_default === '1' || p.is_default === true;
 						var $badge = $('#aips-modal-profile-badge');
-						if (p.is_builtin) {
-							$badge.text(aipsPromptProfilesL10n.builtinBadge).removeClass('aips-badge-neutral').addClass('aips-badge-info').show();
-						} else if (p.is_default) {
-							$badge.text(aipsPromptProfilesL10n.defaultBadge).removeClass('aips-badge-neutral').addClass('aips-badge-success').show();
+						if (isBuiltin) {
+							$badge.text(aipsPromptProfilesL10n.builtinBadge).removeClass('aips-badge-neutral aips-badge-success').addClass('aips-badge-info').show();
+						} else if (isDefault) {
+							$badge.text(aipsPromptProfilesL10n.defaultBadge).removeClass('aips-badge-neutral aips-badge-info').addClass('aips-badge-success').show();
 						} else {
 							$badge.text(aipsPromptProfilesL10n.customBadge).removeClass('aips-badge-info aips-badge-success').addClass('aips-badge-neutral').show();
 						}
@@ -302,6 +417,7 @@
 						self.switchStage(self.activeStage || 'title_prompt');
 						self.setDirty(false);
 						self.updateCustomizedIndicators();
+						$('#aips_profile_name').trigger('focus');
 					} else {
 						self.notify('error', (response.data && response.data.message) || aipsPromptProfilesL10n.errorLoading);
 						self.closeModal();

@@ -283,10 +283,10 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}">{{voice_instructions}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{diversity_blocks}}">{{diversity_blocks}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{voice_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{diversity_blocks}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{diversity_blocks}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -309,9 +309,9 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}">{{voice_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{voice_instructions}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -334,16 +334,16 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}">{{voice_instructions}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{user_instructions}}">{{user_instructions}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{sections}}">{{sections}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{word_count_min}}">{{word_count_min}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{word_count_max}}">{{word_count_max}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{internal_links}}">{{internal_links}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{reference_source}}">{{reference_source}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{diversity_blocks}}">{{diversity_blocks}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{custom_fields}}">{{custom_fields}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{voice_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{user_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{user_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{sections}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{sections}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{word_count_min}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{word_count_min}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{word_count_max}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{word_count_max}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{internal_links}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{internal_links}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{reference_source}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{reference_source}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{diversity_blocks}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{diversity_blocks}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{custom_fields}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{custom_fields}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -366,9 +366,9 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}">{{voice_instructions}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{voice_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -391,9 +391,9 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}">{{voice_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{voice_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{voice_instructions}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -416,9 +416,9 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{style_instructions}}">{{style_instructions}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{style_instructions}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{style_instructions}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -441,10 +441,10 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{niche}}">{{niche}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{author_name}}">{{author_name}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{existing_topics}}">{{existing_topics}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{feedback_history}}">{{feedback_history}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{niche}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{niche}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{author_name}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{author_name}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{existing_topics}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{existing_topics}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{feedback_history}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{feedback_history}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -467,9 +467,9 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{target_keywords}}">{{target_keywords}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{target_keywords}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{target_keywords}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
@@ -492,10 +492,10 @@ if (!defined('ABSPATH')) {
 									<div class="aips-stage-chips-bar">
 										<span class="aips-chips-label"><?php esc_html_e('Insert tag:', 'ai-post-scheduler'); ?></span>
 										<div class="aips-chips-group">
-											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}">{{article_data}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}">{{topic}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{available_categories}}">{{available_categories}}</button>
-											<button type="button" class="aips-placeholder-chip" data-tag="{{available_tags}}">{{available_tags}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{article_data}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{article_data}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{topic}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{topic}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{available_categories}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{available_categories}}</button>
+											<button type="button" class="aips-placeholder-chip" data-tag="{{available_tags}}" title="<?php esc_attr_e('Click to insert tag at cursor', 'ai-post-scheduler'); ?>">{{available_tags}}</button>
 										</div>
 									</div>
 									<div class="aips-form-group">
