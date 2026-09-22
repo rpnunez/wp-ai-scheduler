@@ -236,8 +236,33 @@ class AIPS_Schedule_Processor {
         $total_completed    = $start_index + $completed_in_slice;
         $all_done           = empty($errors) && ($total_completed >= $total_quantity);
 
-        $this->finalize_batch_slice($start_index, $completed_in_slice, $schedule_id, $schedule, $schedule_obj, $current_run_state, $total_completed, $total_quantity, $errors, $all_done, $successful_post_ids);
-        $this->record_batch_slice_history($history, $schedule_id, $start_index, $batch_size, $total_quantity, $completed_in_slice, $total_completed, $errors, $successful_post_ids);
+        $finalized = $this->finalize_batch_slice(
+            $start_index,
+            $schedule_id,
+            $schedule,
+            $schedule_obj,
+            $current_run_state,
+            $total_completed,
+            $total_quantity,
+            $errors,
+            $all_done,
+            $successful_post_ids
+        );
+        if (!$finalized) {
+            return;
+        }
+
+        $this->record_batch_slice_history(
+            $history,
+            $schedule_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $completed_in_slice,
+            $total_completed,
+            $errors,
+            $successful_post_ids
+        );
     }
 
     /**
@@ -246,7 +271,7 @@ class AIPS_Schedule_Processor {
      * @param int $schedule_id
      * @param int $start_index
      * @param int $total_quantity
-     * @return array|null Returns array containing schedule, state, context, history, and schedule_obj on success, null if skipped.
+     * @return array{0: object, 1: array, 2: AIPS_Template_Context, 3: ?AIPS_History_Container, 4: object}|null Returns array containing schedule, state, context, history, and schedule_obj on success, null if skipped.
      */
     private function prepare_batch_slice_context(int $schedule_id, int $start_index, int $total_quantity): ?array {
         $schedule = $this->repository->get_by_id($schedule_id);
@@ -301,15 +326,15 @@ class AIPS_Schedule_Processor {
     /**
      * Handles early termination due to AI generation prevention settings.
      *
-     * @param object $schedule_obj
-     * @param mixed  $history
-     * @param int    $start_index
-     * @param int    $total_quantity
-     * @param array  $current_run_state
+     * @param object                      $schedule_obj
+     * @param AIPS_History_Container|null $history
+     * @param int                         $start_index
+     * @param int                         $total_quantity
+     * @param array                       $current_run_state
      */
     private function handle_batch_slice_prevention(
         object $schedule_obj,
-        $history,
+        ?AIPS_History_Container $history,
         int $start_index,
         int $total_quantity,
         array $current_run_state
@@ -401,7 +426,6 @@ class AIPS_Schedule_Processor {
      * Finalizes the batch slice, updating schedule state.
      *
      * @param int    $start_index
-     * @param int    $completed_in_slice
      * @param int    $schedule_id
      * @param object $schedule
      * @param object $schedule_obj
@@ -411,10 +435,10 @@ class AIPS_Schedule_Processor {
      * @param array  $errors
      * @param bool   $all_done
      * @param array  $successful_post_ids
+     * @return bool False if finalization was skipped/aborted due to terminal state, true otherwise.
      */
     private function finalize_batch_slice(
         int $start_index,
-        int $completed_in_slice,
         int $schedule_id,
         object $schedule,
         object $schedule_obj,
@@ -424,7 +448,7 @@ class AIPS_Schedule_Processor {
         array $errors,
         bool $all_done,
         array $successful_post_ids
-    ): void {
+    ): bool {
         if (!empty($errors)) {
             $this->repository->update_run_state($schedule_id, array(
                 'status'        => $total_completed > 0 ? 'partial' : 'failed',
@@ -461,7 +485,7 @@ class AIPS_Schedule_Processor {
                     ),
                     'warning'
                 );
-                return;
+                return false;
             }
 
             $this->repository->clear_batch_progress($schedule_id);
@@ -493,23 +517,25 @@ class AIPS_Schedule_Processor {
 
             do_action('aips_schedule_execution_completed', $schedule_id, $successful_post_ids, $schedule_obj);
         }
+
+        return true;
     }
 
     /**
      * Records history for the batch slice execution.
      *
-     * @param mixed $history
-     * @param int   $schedule_id
-     * @param int   $start_index
-     * @param int   $batch_size
-     * @param int   $total_quantity
-     * @param int   $completed_in_slice
-     * @param int   $total_completed
-     * @param array $errors
-     * @param array $successful_post_ids
+     * @param AIPS_History_Container|null $history
+     * @param int                         $schedule_id
+     * @param int                         $start_index
+     * @param int                         $batch_size
+     * @param int                         $total_quantity
+     * @param int                         $completed_in_slice
+     * @param int                         $total_completed
+     * @param array                       $errors
+     * @param array                       $successful_post_ids
      */
     private function record_batch_slice_history(
-        $history,
+        ?AIPS_History_Container $history,
         int $schedule_id,
         int $start_index,
         int $batch_size,
@@ -572,6 +598,7 @@ class AIPS_Schedule_Processor {
             );
         }
     }
+
     /**
      * Determine whether a new batch queue dispatch should be skipped.
      *

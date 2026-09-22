@@ -1461,7 +1461,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
 
-## 2026-09-02 - [Refactor AIPS_Schedule_Processor do_process_batch_slice God Method]
+## 2026-09-20 - [Refactor AIPS_Schedule_Processor do_process_batch_slice God Method]
 **Context:** `AIPS_Schedule_Processor::do_process_batch_slice()` was a large method (~270 lines) handling context preparation, prevention handling, batch execution looping, finalization, and history logging all at once, violating the Single Responsibility Principle.
 **Decision:** Applied "Separation of Concerns" by extracting `prepare_batch_slice_context`, `handle_batch_slice_prevention`, `execute_batch_slice_generation`, `finalize_batch_slice`, and `record_batch_slice_history` into focused private helper methods.
 **Consequence:** The main `do_process_batch_slice` method is now a clean orchestrator under 40 lines. Increased number of private methods but greatly improved readability and maintainability. Backwards compatibility is 100% intact.
