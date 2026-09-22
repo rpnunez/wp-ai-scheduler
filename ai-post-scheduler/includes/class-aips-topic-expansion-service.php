@@ -419,75 +419,7 @@ class AIPS_Topic_Expansion_Service {
 
 		// Process each topic in the batch
 		foreach ($topics as $topic) {
-			$stats['last_processed_id'] = $topic->id;
-			$stats['processed_count']++;
-
-			// Check if embedding already exists in metadata
-			$existing_embedding = $this->get_topic_embedding($topic->id);
-
-			if ($existing_embedding) {
-				$stats['skipped']++;
-				$history->record(
-					'activity',
-					sprintf(
-						__('Skipped topic ID %d (embedding already exists)', 'ai-post-scheduler'),
-						$topic->id
-					),
-					array(
-						'event_type' => 'embedding_skipped',
-						'event_status' => 'skipped',
-					),
-					null,
-					array(
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-					)
-				);
-				continue;
-			}
-
-			// Compute embedding for this topic
-			$result = $this->compute_topic_embedding($topic->id);
-
-			if (is_wp_error($result)) {
-				$stats['failed']++;
-				$history->record(
-					'warning',
-					sprintf(
-						__('Failed to compute embedding for topic ID %d: %s', 'ai-post-scheduler'),
-						$topic->id,
-						$result->get_error_message()
-					),
-					array(
-						'event_type' => 'embedding_failed',
-						'event_status' => 'failed',
-					),
-					null,
-					array(
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-						'error' => $result->get_error_message(),
-					)
-				);
-			} else {
-				$stats['success']++;
-				$history->record(
-					'activity',
-					sprintf(
-						__('Computed embedding for topic ID %d', 'ai-post-scheduler'),
-						$topic->id
-					),
-					array(
-						'event_type' => 'embedding_computed',
-						'event_status' => 'success',
-					),
-					null,
-					array(
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-					)
-				);
-			}
+			$this->process_single_topic_embedding($topic, $history, $stats);
 		}
 
 		// Check if there are more topics to process
@@ -495,6 +427,88 @@ class AIPS_Topic_Expansion_Service {
 		$stats['done'] = (count($topics) < $batch_size);
 
 		return $stats;
+	}
+
+	/**
+	 * Process embedding generation for a single topic.
+	 *
+	 * Checks if an embedding already exists, computes a new one if not,
+	 * records the activity to history, and updates the batch statistics.
+	 *
+	 * @param object                 $topic   The topic object to process.
+	 * @param AIPS_History_Container $history The history container for logging.
+	 * @param array                  $stats   Reference to the batch statistics array.
+	 */
+	private function process_single_topic_embedding($topic, $history, &$stats) {
+		$stats['last_processed_id'] = $topic->id;
+		$stats['processed_count']++;
+
+		// Check if embedding already exists in metadata
+		$existing_embedding = $this->get_topic_embedding($topic->id);
+
+		if ($existing_embedding) {
+			$stats['skipped']++;
+			$history->record(
+				'activity',
+				sprintf(
+					__('Skipped topic ID %d (embedding already exists)', 'ai-post-scheduler'),
+					$topic->id
+				),
+				array(
+					'event_type' => 'embedding_skipped',
+					'event_status' => 'skipped',
+				),
+				null,
+				array(
+					'topic_id' => $topic->id,
+					'topic_title' => $topic->topic_title,
+				)
+			);
+			return;
+		}
+
+		// Compute embedding for this topic
+		$result = $this->compute_topic_embedding($topic->id);
+
+		if (is_wp_error($result)) {
+			$stats['failed']++;
+			$history->record(
+				'warning',
+				sprintf(
+					__('Failed to compute embedding for topic ID %d: %s', 'ai-post-scheduler'),
+					$topic->id,
+					$result->get_error_message()
+				),
+				array(
+					'event_type' => 'embedding_failed',
+					'event_status' => 'failed',
+				),
+				null,
+				array(
+					'topic_id' => $topic->id,
+					'topic_title' => $topic->topic_title,
+					'error' => $result->get_error_message(),
+				)
+			);
+		} else {
+			$stats['success']++;
+			$history->record(
+				'activity',
+				sprintf(
+					__('Computed embedding for topic ID %d', 'ai-post-scheduler'),
+					$topic->id
+				),
+				array(
+					'event_type' => 'embedding_computed',
+					'event_status' => 'success',
+				),
+				null,
+				array(
+					'topic_id' => $topic->id,
+					'topic_title' => $topic->topic_title,
+				)
+			);
+		}
 	}
 
 	/**

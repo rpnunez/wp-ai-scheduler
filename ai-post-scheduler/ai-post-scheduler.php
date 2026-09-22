@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.6.5
+ * Version: 3.6.6
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -497,6 +497,14 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Ensure Seeder admin hooks are registered when developer mode is enabled
+        // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
+        if ( AIPS_Config::get_instance()->get_option('aips_developer_mode') ) {
+            // Lazy instantiate the Seeder admin class so its admin_enqueue_scripts
+            // hook is available on Diagnostics/Dev Tools pages.
+            new AIPS_Seeder_Admin();
+        }
 
     }
 

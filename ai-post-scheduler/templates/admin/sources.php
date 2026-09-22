@@ -74,7 +74,7 @@ $is_embedded_sources_view = !empty($embedded);
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-source-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-source-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 
@@ -238,9 +238,7 @@ $is_embedded_sources_view = !empty($embedded);
 				<h3 class="aips-empty-state-title"><?php esc_html_e('No Sources Found', 'ai-post-scheduler'); ?></h3>
 				<p class="aips-empty-state-description"><?php esc_html_e('No sources match your search criteria.', 'ai-post-scheduler'); ?></p>
 				<div class="aips-empty-state-actions">
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-source-search-clear-2">
-						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-					</button>
+					<button type="button" class="aips-btn aips-btn-ghost" id="aips-source-search-clear-2" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 

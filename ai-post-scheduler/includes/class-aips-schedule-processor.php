@@ -253,6 +253,46 @@ class AIPS_Schedule_Processor {
         // Load (or create) the schedule's persistent lifecycle history container.
         $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
 
+        $config = AIPS_Config::get_instance();
+
+        if ($config->is_scheduled_ai_generation_prevented()) {
+            $setting_label = $config->get_scheduled_ai_generation_prevention_label();
+
+            $this->result_handler->handle_execution_terminated_by_setting(
+                $schedule_obj,
+                $history,
+                false,
+                $setting_label,
+                array(
+                    'message_override' => sprintf(
+                        /* translators: 1: 1-based slice start position, 2: total posts, 3: setting label */
+                        __('Batch slice starting at post %1$d of %2$d was terminated early due to %3$s being enabled.', 'ai-post-scheduler'),
+                        $start_index + 1,
+                        $total_quantity,
+                        $setting_label
+                    ),
+                    'event_type'       => AIPS_History_Event_Type::BATCH_SLICE_TERMINATED,
+                    'total'            => $total_quantity,
+                    'completed'        => max(0, $start_index),
+                    'run_state'        => array(
+                        'completed'      => max(0, $start_index),
+                        'total'          => $total_quantity,
+                        'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
+                        'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                        // Resume cursor. A large batch stopped part-way through is
+                        // resumable: the remaining slices are re-dispatched from
+                        // resume_index once the blocking setting is turned off. A run
+                        // blocked before it ever dispatched is not marked resumable —
+                        // that is a skipped occurrence, not an interrupted batch.
+                        'resumable'      => true,
+                        'resume_index'   => max(0, $start_index),
+                    ),
+                )
+            );
+
+            return;
+        }
+
         $this->repository->update_run_state($schedule_id, array(
             'status'         => 'batch_processing',
             'total'          => $total_quantity,
@@ -496,7 +536,7 @@ class AIPS_Schedule_Processor {
             return false;
         }
 
-        if (in_array($run_state['status'], array('partial', 'failed', 'success'), true)) {
+        if (in_array($run_state['status'], array('partial', 'failed', 'success', AIPS_History_Event_Status::TERMINATED), true)) {
             $this->logger->log(
                 sprintf(
                     'Batch slice: skipping schedule %d because run_state is already terminal (%s).',
@@ -562,6 +602,7 @@ class AIPS_Schedule_Processor {
         // Ensure schedule_id is set correctly (s.id alias)
         $schedule_with_template->schedule_id = $schedule->id;
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
+        $original_next_run = isset($schedule->next_run) ? (int) $schedule->next_run : null;
 
         if ($advance_schedule && $schedule->frequency !== 'once') {
             $base_run = !empty($schedule->next_run) ? (int) $schedule->next_run : AIPS_DateTime::now()->timestamp();
@@ -576,7 +617,7 @@ class AIPS_Schedule_Processor {
         AIPS_Correlation_ID::generate();
 
         try {
-            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override, $advance_schedule);
+            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override, $advance_schedule, $original_next_run);
         } finally {
             AIPS_Correlation_ID::reset();
         }
@@ -649,7 +690,13 @@ class AIPS_Schedule_Processor {
                     )
                 );
 
-                $this->execute_schedule_logic($schedule, false);
+                // next_run is deliberately left at the claimed value. Rolling a
+                // one-time schedule back to its original (past) next_run would
+                // make it due again immediately, so a termination would repeat —
+                // writing a history entry and run_state update — on every cron
+                // tick for as long as the setting stays enabled. The claim's
+                // one-hour push forward is the retry backoff.
+                $this->execute_schedule_logic($schedule, false, null, true, null);
             },
             'schedule_execution',
             array('schedule_id' => $schedule->schedule_id),
@@ -680,9 +727,27 @@ class AIPS_Schedule_Processor {
      * @param bool     $is_manual        Whether this is a manual execution.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
      * @param bool     $advance_schedule Whether a manual run updates schedule state.
+     * @param int|null $restore_next_run Original next_run value restored when the
+     *                                   schedule is terminated before generation starts.
      * @return int|WP_Error Post ID or WP_Error.
      */
-    private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null, $advance_schedule = true) {
+    private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null, $advance_schedule = true, $restore_next_run = null) {
+        // Terminate before anything else is recorded. Running this check later
+        // would fire aips_schedule_execution_started with no matching completion
+        // event and write a "started execution" history entry with a success
+        // status for a run that never began.
+        $config = AIPS_Config::get_instance();
+
+        if ($config->is_scheduled_ai_generation_prevented()) {
+            return $this->terminate_run_by_setting(
+                $schedule,
+                $is_manual,
+                $this->resolve_post_quantity($schedule, $quantity_override),
+                $restore_next_run,
+                $config
+            );
+        }
+
         if (!$is_manual) {
             // Dispatch schedule execution started event
             do_action('aips_schedule_execution_started', $schedule->schedule_id);
@@ -695,12 +760,7 @@ class AIPS_Schedule_Processor {
         }
 
         // Explicitly fetch the template to ensure we have the most up-to-date post_quantity
-        $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
-        $template_post_quantity = ($actual_template_model && isset($actual_template_model->post_quantity)) ? $actual_template_model->post_quantity : 1;
-
-        // Use caller-supplied override, or fall back to the template's post_quantity, defaulting to 1.
-        $raw_quantity = $quantity_override ?? ($template_post_quantity ?? 1);
-        $post_quantity = max(1, absint($raw_quantity));
+        $post_quantity = $this->resolve_post_quantity($schedule, $quantity_override);
 
         // Select article structure for this execution
         $article_structure_id = $this->template_type_selector->select_structure($schedule);
@@ -812,6 +872,65 @@ class AIPS_Schedule_Processor {
         }
 
         return $overall_result;
+    }
+
+    /**
+     * Resolve how many posts a run should generate.
+     *
+     * Uses the caller-supplied override when present, otherwise the template's
+     * current post_quantity, defaulting to 1.
+     *
+     * post_quantity is read off the passed object rather than re-fetched. Both
+     * callers hand in a schedule already merged with its template — the cron
+     * path via the `t.*, s.*` join in get_due_schedules(), the manual path via
+     * process_single_schedule()'s array_merge — and post_quantity exists only
+     * on the templates table, so no schedule column can shadow it. Re-reading
+     * the template here would just repeat a query the caller already made.
+     *
+     * @param object   $schedule          Schedule object (merged with template).
+     * @param int|null $quantity_override Optional caller-supplied quantity.
+     * @return int
+     */
+    private function resolve_post_quantity($schedule, $quantity_override = null) {
+        $template_post_quantity = isset($schedule->post_quantity) ? $schedule->post_quantity : 1;
+        $raw_quantity           = $quantity_override ?? ($template_post_quantity ?? 1);
+
+        return max(1, absint($raw_quantity));
+    }
+
+    /**
+     * Terminate a run because an operator setting blocks AI generation.
+     *
+     * @param object      $schedule         Schedule object (merged with template).
+     * @param bool        $is_manual        Whether this is a manual execution.
+     * @param int         $post_quantity    Quantity the run would have generated.
+     * @param int|null    $restore_next_run next_run value to roll back to, if any.
+     * @param AIPS_Config $config           Config instance supplying the setting label.
+     * @return WP_Error
+     */
+    private function terminate_run_by_setting($schedule, $is_manual, $post_quantity, $restore_next_run, $config) {
+        $termination_options = array(
+            'total'     => $post_quantity,
+            'completed' => 0,
+        );
+
+        if ($restore_next_run !== null) {
+            $termination_options['restore_next_run'] = (int) $restore_next_run;
+        }
+
+        // Recurring cron runs record last_run so the Schedules page reflects that
+        // the occurrence was consumed rather than staying stuck on "Past due".
+        if (!$is_manual && isset($schedule->frequency) && $schedule->frequency !== 'once') {
+            $termination_options['update_last_run'] = true;
+        }
+
+        return $this->result_handler->handle_execution_terminated_by_setting(
+            $schedule,
+            $this->result_handler->get_or_create_schedule_history($schedule->schedule_id),
+            $is_manual,
+            $config->get_scheduled_ai_generation_prevention_label(),
+            $termination_options
+        );
     }
 
     /**

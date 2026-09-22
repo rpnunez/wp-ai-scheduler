@@ -17,6 +17,7 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 		foreach ( array_keys( AIPS_Settings::get_content_strategy_options() ) as $option ) {
 			delete_option( $option );
 		}
+		AIPS_Site_Context::reset_key_map();
 		parent::tearDown();
 	}
 
@@ -63,6 +64,31 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 	/** @test */
 	public function test_get_setting_returns_default_when_not_set() {
 		$this->assertSame( 'my_default', AIPS_Site_Context::get_setting( 'niche', 'my_default' ) );
+	}
+
+	/** @test */
+	public function test_get_setting_returns_default_for_unknown_key() {
+		$this->assertSame( 'custom_fallback', AIPS_Site_Context::get_setting( 'non_existent_key', 'custom_fallback' ) );
+		$this->assertSame( '', AIPS_Site_Context::get_setting( 'non_existent_key' ) );
+	}
+
+	/** @test */
+	public function test_get_setting_handles_non_string_keys_gracefully() {
+		$this->assertSame( 'fallback', AIPS_Site_Context::get_setting( array( 'invalid' ), 'fallback' ) );
+		$this->assertSame( '', AIPS_Site_Context::get_setting( null ) );
+		$this->assertSame( '', AIPS_Site_Context::get_setting( 12345 ) );
+	}
+
+	/** @test */
+	public function test_get_key_map_and_reset() {
+		$key_map = AIPS_Site_Context::get_key_map();
+		$this->assertIsArray( $key_map );
+		$this->assertArrayHasKey( 'niche', $key_map );
+		$this->assertSame( 'aips_site_niche', $key_map['niche'] );
+
+		AIPS_Site_Context::reset_key_map();
+		$reloaded_map = AIPS_Site_Context::get_key_map();
+		$this->assertSame( $key_map, $reloaded_map );
 	}
 
 	// ------------------------------------------------------------------

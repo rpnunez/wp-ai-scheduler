@@ -268,19 +268,9 @@ class AIPS_Content_Auditor {
 	 * @return array|null Parsed array or null on failure.
 	 */
 	private function parse_json_response($response) {
-		if (preg_match('/```json\s*([\s\S]*?)\s*```/', $response, $matches)) {
-			$response = $matches[1];
-		} elseif (preg_match('/```\s*([\s\S]*?)\s*```/', $response, $matches)) {
-			$response = $matches[1];
-		}
+		$decoded = AIPS_JSON_Extractor::decode_json_response( $response );
 
-		$decoded = json_decode($response, true);
-
-		if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-			return $decoded;
-		}
-
-		return null;
+		return is_wp_error( $decoded ) ? null : $decoded;
 	}
 
 	/**

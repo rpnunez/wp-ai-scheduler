@@ -2,3 +2,6 @@
 # Keep this list short and temporary; include rationale in PRs for new entries.
 includes/class-aips-telemetry.php
 includes/class-aips-db-migrations.php
+# Pre-existing wpdb usage predating boundary enforcement; tracked for follow-up extraction:
+includes/class-aips-schedule-controller.php
+includes/class-aips-stress-test-service.php
