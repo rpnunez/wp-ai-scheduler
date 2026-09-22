@@ -47,18 +47,8 @@ class AIPS_History_Event_Recorder {
 	 * @param AIPS_History_Service_Interface|null $history_service Optional service.
 	 */
 	public function __construct(?AIPS_History_Service_Interface $history_service = null) {
-		if ($history_service) {
-			$this->history_service = $history_service;
-			return;
-		}
-
-		$container = AIPS_Container::get_instance();
-		if ($container->has(AIPS_History_Service_Interface::class)) {
-			$this->history_service = $container->make(AIPS_History_Service_Interface::class);
-			return;
-		}
-
-		$this->history_service = AIPS_History_Service::instance();
+		$container             = AIPS_Container::get_instance();
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
 	}
 
 	/**
@@ -67,10 +57,7 @@ class AIPS_History_Event_Recorder {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if (self::$instance === null) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**

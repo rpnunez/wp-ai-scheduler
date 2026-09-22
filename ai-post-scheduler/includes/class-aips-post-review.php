@@ -31,10 +31,7 @@ class AIPS_Post_Review {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if ( self::$instance === null ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**
@@ -43,7 +40,7 @@ class AIPS_Post_Review {
 	private $repository;
 	
 	/**
-	 * @var AIPS_History_Service Service for history logging
+	 * @var AIPS_History_Service_Interface Service for history logging
 	 */
 	private $history_service;
 
@@ -54,11 +51,20 @@ class AIPS_Post_Review {
 	
 	/**
 	 * Initialize the post review handler.
+	 *
+	 * @param AIPS_Post_Review_Repository|null    $repository             Post review repository.
+	 * @param AIPS_History_Service_Interface|null $history_service        History service.
+	 * @param AIPS_Bulk_Generator_Service|null    $bulk_generator_service Bulk generator service.
 	 */
-	public function __construct() {
-		$this->repository             = new AIPS_Post_Review_Repository();
-		$this->history_service        = new AIPS_History_Service();
-		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
+	public function __construct(
+		?AIPS_Post_Review_Repository $repository = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Bulk_Generator_Service $bulk_generator_service = null
+	) {
+		$container                    = AIPS_Container::get_instance();
+		$this->repository             = $repository ?: $container->make(AIPS_Post_Review_Repository::class);
+		$this->history_service        = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->bulk_generator_service = $bulk_generator_service ?: $container->make(AIPS_Bulk_Generator_Service::class);
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));

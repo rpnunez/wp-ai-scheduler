@@ -102,8 +102,31 @@ class AIPS_Service_Provider {
 			return new AIPS_Sources_Repository();
 		});
 
-		$container->singleton(AIPS_Campaigns_Repository::class, function() {
-			return AIPS_Campaigns_Repository::instance();
+		$container->singleton(AIPS_Voices_Repository::class, function() {
+			return new AIPS_Voices_Repository();
+		});
+
+		$container->singleton(AIPS_Article_Structure_Repository::class, function() {
+			return new AIPS_Article_Structure_Repository();
+		});
+
+		$container->singleton(AIPS_Prompt_Section_Repository::class, function() {
+			return new AIPS_Prompt_Section_Repository();
+		});
+
+		$container->singleton(AIPS_Post_Review_Repository::class, function() {
+			return new AIPS_Post_Review_Repository();
+		});
+
+		$container->singleton(AIPS_Trending_Topics_Repository::class, function() {
+			return new AIPS_Trending_Topics_Repository();
+		});
+
+		$container->singleton(AIPS_Campaigns_Repository::class, function($c) {
+			return new AIPS_Campaigns_Repository(
+				$c->make(AIPS_Template_Repository::class),
+				$c->make(AIPS_Schedule_Repository_Interface::class)
+			);
 		});
 
 		$container->singleton(AIPS_AI_Assistance_Repository::class, function() {
@@ -116,6 +139,32 @@ class AIPS_Service_Provider {
 
 		$container->singleton(AIPS_Content_Auditor_Repository::class, function() {
 			return new AIPS_Content_Auditor_Repository();
+		});
+
+		$container->singleton(AIPS_Bulk_Batch_Job_Store::class, function() {
+			return new AIPS_Bulk_Batch_Job_Store();
+		});
+
+		$container->singleton(AIPS_Bulk_Batch_Processor::class, function($c) {
+			return new AIPS_Bulk_Batch_Processor(
+				$c->make(AIPS_Bulk_Batch_Job_Store::class),
+				$c->make(AIPS_History_Service_Interface::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_History_Event_Recorder::class, function($c) {
+			return new AIPS_History_Event_Recorder(
+				$c->make(AIPS_History_Service_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Post_Review::class, function($c) {
+			return new AIPS_Post_Review(
+				$c->make(AIPS_Post_Review_Repository::class),
+				$c->make(AIPS_History_Service_Interface::class),
+				$c->make(AIPS_Bulk_Generator_Service::class)
+			);
 		});
 
 		// Services
