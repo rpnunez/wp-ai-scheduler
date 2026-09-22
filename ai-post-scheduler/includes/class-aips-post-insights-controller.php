@@ -26,18 +26,26 @@ class AIPS_Post_Insights_Controller {
 	private $insights_repo;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Config|null                   $config
 	 * @param AIPS_Post_Insights_Repository|null $insights_repo
+	 * @param AIPS_Similarity_Evaluator|null     $similarity_evaluator
 	 */
 	public function __construct(
 		?AIPS_Config $config = null,
-		?AIPS_Post_Insights_Repository $insights_repo = null
+		?AIPS_Post_Insights_Repository $insights_repo = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
-		$container           = AIPS_Container::get_instance();
-		$this->config        = $config ?: AIPS_Config::get_instance();
-		$this->insights_repo = $insights_repo ?: ($container->has(AIPS_Post_Insights_Repository::class) ? $container->make(AIPS_Post_Insights_Repository::class) : new AIPS_Post_Insights_Repository());
+		$container                  = AIPS_Container::get_instance();
+		$this->config               = $config ?: AIPS_Config::get_instance();
+		$this->insights_repo        = $insights_repo ?: ($container->has(AIPS_Post_Insights_Repository::class) ? $container->make(AIPS_Post_Insights_Repository::class) : new AIPS_Post_Insights_Repository());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
 
 		add_action('wp_ajax_aips_get_post_ai_insights', array($this, 'ajax_get_post_ai_insights'));
 		add_action('wp_ajax_aips_reindex_single_post', array($this, 'ajax_reindex_single_post'));
@@ -226,19 +234,7 @@ class AIPS_Post_Insights_Controller {
 				$max_similarity = $sim;
 			}
 
-			$sim_pct = round($sim * 100);
-			$risk_level = 'low';
-			$risk_label = __('Low Risk', 'ai-post-scheduler');
-			if ($sim >= 0.90) {
-				$risk_level = 'critical';
-				$risk_label = __('Critical Risk', 'ai-post-scheduler');
-			} elseif ($sim >= 0.80) {
-				$risk_level = 'high';
-				$risk_label = __('High Risk', 'ai-post-scheduler');
-			} elseif ($sim >= 0.65) {
-				$risk_level = 'medium';
-				$risk_label = __('Moderate Risk', 'ai-post-scheduler');
-			}
+			$eval = $this->similarity_evaluator->evaluate_similarity($sim, 'post');
 
 			$top_duplicates[] = array(
 				'post_id'        => $m_id,
@@ -247,24 +243,14 @@ class AIPS_Post_Insights_Controller {
 				'edit_url'       => get_edit_post_link($m_id, ''),
 				'post_date'      => get_the_date('', $m_id),
 				'similarity'     => $sim,
-				'similarity_pct' => $sim_pct,
-				'risk_level'     => $risk_level,
-				'risk_label'     => $risk_label,
+				'similarity_pct' => $eval['percentage'],
+				'risk_level'     => $eval['risk_tier'],
+				'risk_label'     => $eval['risk_label'],
+				'badge_class'    => $eval['badge_class'],
 			);
 		}
 
-		$overall_risk = 'clean';
-		$overall_label = __('Clean', 'ai-post-scheduler');
-		if ($max_similarity >= 0.90) {
-			$overall_risk = 'critical';
-			$overall_label = __('Critical Risk', 'ai-post-scheduler');
-		} elseif ($max_similarity >= 0.80) {
-			$overall_risk = 'high';
-			$overall_label = __('High Risk', 'ai-post-scheduler');
-		} elseif ($max_similarity >= 0.65) {
-			$overall_risk = 'medium';
-			$overall_label = __('Moderate Risk', 'ai-post-scheduler');
-		}
+		$overall_eval = $this->similarity_evaluator->evaluate_similarity($max_similarity, 'post');
 
 		return array(
 			'post_id'            => $post_id,
@@ -276,9 +262,10 @@ class AIPS_Post_Insights_Controller {
 			'cluster'            => $cluster_info,
 			'top_duplicates'     => $top_duplicates,
 			'max_similarity'     => $max_similarity,
-			'max_similarity_pct' => round($max_similarity * 100),
-			'overall_risk'       => $overall_risk,
-			'overall_label'      => $overall_label,
+			'max_similarity_pct' => $overall_eval['percentage'],
+			'overall_risk'       => $overall_eval['risk_tier'],
+			'overall_label'      => $overall_eval['risk_label'],
+			'badge_class'        => $overall_eval['badge_class'],
 		);
 	}
 }

@@ -944,14 +944,17 @@
 
 					response.data.suggestions.forEach((item) => {
 						const topicId = parseInt(item.topic_id, 10);
-						const rawScore = typeof item.similarity_score === 'number' ? item.similarity_score : parseFloat(item.similarity_score);
-						const score = Number.isFinite(rawScore) ? Math.round(rawScore * 100) : 0;
+						const score = typeof item.percentage === 'number'
+							? item.percentage
+							: (typeof item.similarity_pct === 'number'
+								? item.similarity_pct
+								: (Number.isFinite(parseFloat(item.similarity_score)) ? Math.round(parseFloat(item.similarity_score) * 100) : 0));
 
 						if (!topicId || score <= 0) {
 							return;
 						}
 
-						const badgeClass = this.getSimilarityBadgeClass(score);
+						const badgeClass = item.badge_class || this.getSimilarityBadgeClass(score);
 						const label = AIPS.Utilities.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
 						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
 

@@ -189,6 +189,13 @@ class AIPS_System_Diagnostics_Service {
 				'aips_rebuild_caches',
 				array($this, 'rebuild_caches')
 			),
+			'clear_embeddings_cache' => $this->build_refresh_task_definition(
+				__('Embeddings vector cache cleanup', 'ai-post-scheduler'),
+				__('Clear Embeddings Cache', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_clear_embeddings_cache',
+				array($this, 'clear_embeddings_cache')
+			),
 		);
 	}
 
@@ -214,6 +221,7 @@ class AIPS_System_Diagnostics_Service {
 				'label' => __('Cleanup & repair', 'ai-post-scheduler'),
 				'steps' => array(
 					'cache_maintenance',
+					'clear_embeddings_cache',
 					'cleanup_notifications',
 					'notifications_hygiene',
 					'reset_resilience',
@@ -447,6 +455,24 @@ class AIPS_System_Diagnostics_Service {
 			),
 			'pruned'  => $result,
 		);
+	}
+
+	/**
+	 * Clear the embeddings vector cache.
+	 *
+	 * @return array
+	 */
+	public function clear_embeddings_cache() {
+		$container = AIPS_Container::get_instance();
+		$repo      = $container->has(AIPS_Embeddings_Repository::class)
+			? $container->make(AIPS_Embeddings_Repository::class)
+			: new AIPS_Embeddings_Repository();
+
+		$result = $repo->flush_embeddings_cache();
+
+		AIPS_Logger::instance()->log('Embeddings vector cache cleared via diagnostics.', 'info', $result);
+
+		return $result;
 	}
 
 	/**

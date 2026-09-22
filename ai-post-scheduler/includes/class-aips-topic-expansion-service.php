@@ -56,6 +56,11 @@ class AIPS_Topic_Expansion_Service {
 	private $embeddings_repo;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator Similarity evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Initialize the topic expansion service.
 	 *
 	 * @param AIPS_Embeddings_Service|null        $embeddings_service Embeddings service.
@@ -65,6 +70,7 @@ class AIPS_Topic_Expansion_Service {
 	 * @param AIPS_History_Service_Interface|null $history_service History service.
 	 * @param AIPS_Embeddings_Rate_Limiter|null   $rate_limiter Rate limiter.
 	 * @param AIPS_Embeddings_Repository|null     $embeddings_repo Embeddings repository.
+	 * @param AIPS_Similarity_Evaluator|null      $similarity_evaluator Similarity evaluator.
 	 */
 	public function __construct(
 		$embeddings_service = null,
@@ -73,16 +79,18 @@ class AIPS_Topic_Expansion_Service {
 		$authors_repository = null,
 		?AIPS_History_Service_Interface $history_service = null,
 		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
-		?AIPS_Embeddings_Repository $embeddings_repo = null
+		?AIPS_Embeddings_Repository $embeddings_repo = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
 		$container = AIPS_Container::get_instance();
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->topics_repository  = $topics_repository ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
-		$this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->authors_repository = $authors_repository ?: ($container->has(AIPS_Authors_Repository::class) ? $container->make(AIPS_Authors_Repository::class) : new AIPS_Authors_Repository());
-		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->rate_limiter       = $rate_limiter ?: $this->embeddings_service->get_rate_limiter();
-		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->embeddings_service   = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->topics_repository    = $topics_repository ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->logger               = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->authors_repository   = $authors_repository ?: ($container->has(AIPS_Authors_Repository::class) ? $container->make(AIPS_Authors_Repository::class) : new AIPS_Authors_Repository());
+		$this->history_service      = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->rate_limiter         = $rate_limiter ?: $this->embeddings_service->get_rate_limiter();
+		$this->embeddings_repo      = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator(null, $this->embeddings_repo, $this->embeddings_service));
 	}
 	
 	/**
@@ -168,7 +176,7 @@ class AIPS_Topic_Expansion_Service {
 	public function get_topic_embedding($topic_id) {
 		$repo_record = $this->embeddings_repo->get_by_source('topic', (int) $topic_id);
 		if ($repo_record && !empty($repo_record->embedding)) {
-			$vec = $this->embeddings_repo->decode_embedding($repo_record->embedding);
+			$vec = $this->embeddings_repo->decode_embedding($repo_record->embedding, 'topic', (int) $topic_id, !empty($repo_record->content_hash) ? $repo_record->content_hash : '');
 			if (is_array($vec) && !empty($vec)) {
 				return $vec;
 			}
@@ -255,12 +263,17 @@ class AIPS_Topic_Expansion_Service {
 		
 		// Find nearest neighbors and filter by configured similarity threshold
 		$raw_threshold = AIPS_Config::get_instance()->get_option('aips_topic_similarity_threshold');
-		$threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
-		$neighbors = $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
+		$threshold     = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
+		$matches       = $this->similarity_evaluator->find_top_matches($target_embedding, $candidates, $threshold, $limit, 'topic');
 
-		return array_values(array_filter($neighbors, function($neighbor) use ($threshold) {
-			return isset($neighbor['similarity']) && $neighbor['similarity'] >= $threshold;
-		}));
+		return array_map(function($m) {
+			return array(
+				'id'         => $m['id'],
+				'similarity' => $m['similarity'],
+				'data'       => isset($m['candidate']['data']) ? $m['candidate']['data'] : array(),
+				'evaluation' => $m['evaluation'],
+			);
+		}, $matches);
 	}
 	
 	/**
@@ -321,10 +334,17 @@ class AIPS_Topic_Expansion_Service {
 			}
 			
 			if ($max_similarity > 0) {
+				$eval = $this->similarity_evaluator->evaluate_similarity($max_similarity, 'topic');
 				$suggestions[] = array(
-					'topic_id' => $pending_topic->id,
-					'topic_title' => $pending_topic->topic_title,
-					'similarity_score' => $max_similarity
+					'topic_id'         => $pending_topic->id,
+					'topic_title'      => $pending_topic->topic_title,
+					'similarity_score' => $max_similarity,
+					'similarity_pct'   => $eval['percentage'],
+					'percentage'       => $eval['percentage'],
+					'risk_tier'        => $eval['risk_tier'],
+					'risk_label'       => $eval['risk_label'],
+					'badge_class'      => $eval['topic_badge_class'],
+					'is_duplicate'     => $eval['is_duplicate'],
 				);
 			}
 		}

@@ -1684,6 +1684,7 @@ class AIPS_Admin_Assets {
                 'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),
                 'nonceRefreshSystem'                    => wp_create_nonce('aips_status_refresh_system'),
                 'nonceCacheMaintenance'                 => wp_create_nonce('aips_status_cache_maintenance'),
+                'nonceClearEmbeddingsCache'             => wp_create_nonce('aips_status_clear_embeddings_cache'),
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),

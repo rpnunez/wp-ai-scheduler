@@ -36,6 +36,11 @@ class AIPS_Embeddings_Repository {
 	private $config;
 
 	/**
+	 * @var array<string, float[]> In-memory instance cache for decoded vectors.
+	 */
+	private $decoded_memory_cache = array();
+
+	/**
 	 * Initialize the repository.
 	 *
 	 * @param AIPS_Config|null $config Config instance.
@@ -171,15 +176,23 @@ class AIPS_Embeddings_Repository {
 	/**
 	 * Decode an embedding from either packed binary float32, JSON string, or pass-through array.
 	 *
-	 * Fully backward-compatible polymorphic decoder supporting:
+	 * Fully backward-compatible polymorphic decoder with multi-tiered caching:
+	 * 1. In-memory runtime instance cache
+	 * 2. AIPS_Cache ('aips_embeddings' group) when enabled
+	 * 3. Individual WordPress transients (aips_ev_{type}_{id}_{hash}) with 7-day TTL
+	 *
+	 * Supports:
 	 * 1. Packed IEEE 754 binary string (`pack('f*')`)
 	 * 2. Legacy JSON string (e.g. `[0.12, 0.34, ...]`)
 	 * 3. Already-decoded PHP array
 	 *
-	 * @param mixed $raw Raw embedding value from database or cache.
+	 * @param mixed  $raw          Raw embedding value from database or cache.
+	 * @param string $object_type  Optional entity type ('post', 'topic', etc.).
+	 * @param int    $object_id    Optional object ID.
+	 * @param string $content_hash Optional content hash.
 	 * @return float[] Array of float values.
 	 */
-	public function decode_embedding($raw) {
+	public function decode_embedding($raw, $object_type = '', $object_id = 0, $content_hash = '') {
 		if (empty($raw)) {
 			return array();
 		}
@@ -192,22 +205,80 @@ class AIPS_Embeddings_Repository {
 			return array();
 		}
 
+		// 1. Build cache keys for in-memory and persistent caching
+		$object_type = sanitize_key($object_type);
+		$object_id   = absint($object_id);
+		$hash_suffix = !empty($content_hash) ? substr($content_hash, 0, 16) : substr(md5($raw), 0, 16);
+
+		$mem_key = (!empty($object_type) && $object_id > 0)
+			? "{$object_type}_{$object_id}_{$hash_suffix}"
+			: 'raw_' . $hash_suffix;
+
+		if (isset($this->decoded_memory_cache[$mem_key])) {
+			return $this->decoded_memory_cache[$mem_key];
+		}
+
+		// 2. Check persistent caches if object context is provided
+		$cache_key     = '';
+		$transient_key = '';
+		$cache_driver  = null;
+
+		if (!empty($object_type) && $object_id > 0) {
+			$cache_key     = "vec_{$object_type}_{$object_id}_{$hash_suffix}";
+			$transient_key = 'aips_ev_' . substr(md5("{$object_type}_{$object_id}_{$hash_suffix}"), 0, 32);
+
+			if (class_exists('AIPS_Cache_Factory')) {
+				$cache_driver = AIPS_Cache_Factory::instance();
+				if ($cache_driver && $cache_driver->is_available()) {
+					$cached = $cache_driver->get($cache_key, 'aips_embeddings');
+					if (is_array($cached) && !empty($cached)) {
+						$this->decoded_memory_cache[$mem_key] = $cached;
+						return $cached;
+					}
+				}
+			}
+
+			// Fallback: WordPress transient
+			$cached_transient = get_transient($transient_key);
+			if (is_array($cached_transient) && !empty($cached_transient)) {
+				$this->decoded_memory_cache[$mem_key] = $cached_transient;
+				return $cached_transient;
+			}
+		}
+
+		// 3. Decode raw embedding
+		$vector  = array();
 		$trimmed = ltrim($raw);
 		if ($trimmed !== '' && ($trimmed[0] === '[' || $trimmed[0] === '{')) {
 			$decoded = json_decode($trimmed, true);
 			if (is_array($decoded)) {
-				return array_map('floatval', array_values($decoded));
+				$vector = array_map('floatval', array_values($decoded));
 			}
+		} else {
+			// Packed binary float32 (single precision IEEE 754)
+			$unpacked = @unpack('f*', $raw);
+			if (is_array($unpacked) && !empty($unpacked)) {
+				$vector = array_values($unpacked);
+			}
+		}
+
+		if (empty($vector)) {
 			return array();
 		}
 
-		// Packed binary float32 (single precision IEEE 754)
-		$unpacked = @unpack('f*', $raw);
-		if (is_array($unpacked) && !empty($unpacked)) {
-			return array_values($unpacked);
+		// 4. Save to in-memory and persistent caches
+		$this->decoded_memory_cache[$mem_key] = $vector;
+
+		if (!empty($object_type) && $object_id > 0) {
+			$ttl = 7 * DAY_IN_SECONDS; // 7 days expiration window
+			if ($cache_driver && $cache_driver->is_available()) {
+				$cache_driver->set($cache_key, $vector, $ttl, 'aips_embeddings');
+			} else {
+				set_transient($transient_key, $vector, $ttl);
+			}
 		}
 
-		return array();
+		return $vector;
 	}
 
 	/**
@@ -270,7 +341,7 @@ class AIPS_Embeddings_Repository {
 		);
 
 		if ($existing) {
-			return $this->wpdb->update(
+			$res = $this->wpdb->update(
 				$this->table,
 				$data,
 				array(
@@ -280,16 +351,24 @@ class AIPS_Embeddings_Repository {
 				array('%s', '%s', '%d', '%s', '%s', '%d'),
 				array('%s', '%d')
 			);
+			if (false !== $res) {
+				$this->invalidate_cached_vector($object_type, $object_id);
+			}
+			return $res;
 		}
 
 		$data['object_type'] = $object_type;
 		$data['object_id']   = $object_id;
 
-		return $this->wpdb->insert(
+		$res = $this->wpdb->insert(
 			$this->table,
 			$data,
 			array('%s', '%s', '%d', '%s', '%s', '%d', '%s', '%d')
 		);
+		if (false !== $res) {
+			$this->invalidate_cached_vector($object_type, $object_id);
+		}
+		return $res;
 	}
 
 	/**
@@ -300,7 +379,7 @@ class AIPS_Embeddings_Repository {
 	 * @return int|false
 	 */
 	public function delete($object_type, $object_id) {
-		return $this->wpdb->delete(
+		$res = $this->wpdb->delete(
 			$this->table,
 			array(
 				'object_type' => sanitize_key($object_type),
@@ -308,6 +387,10 @@ class AIPS_Embeddings_Repository {
 			),
 			array('%s', '%d')
 		);
+		if (false !== $res) {
+			$this->invalidate_cached_vector($object_type, $object_id);
+		}
+		return $res;
 	}
 
 	/**
@@ -327,6 +410,8 @@ class AIPS_Embeddings_Repository {
 	 * @return int|false
 	 */
 	public function clear_all($object_type = '') {
+		$this->flush_embeddings_cache();
+
 		if (!empty($object_type)) {
 			return $this->wpdb->delete(
 				$this->table,
@@ -336,6 +421,117 @@ class AIPS_Embeddings_Repository {
 		}
 
 		return $this->wpdb->query("TRUNCATE TABLE {$this->table}");
+	}
+
+	/**
+	 * Invalidate cached vector for a specific object across memory, AIPS_Cache, and transients.
+	 *
+	 * @param string $object_type Object type.
+	 * @param int    $object_id   Object ID.
+	 * @return void
+	 */
+	public function invalidate_cached_vector($object_type, $object_id) {
+		$object_type = sanitize_key($object_type);
+		$object_id   = absint($object_id);
+
+		// 1. Purge in-memory instance cache entries
+		$prefix = "{$object_type}_{$object_id}_";
+		foreach (array_keys($this->decoded_memory_cache) as $key) {
+			if (strpos($key, $prefix) === 0) {
+				unset($this->decoded_memory_cache[$key]);
+			}
+		}
+
+		// 2. Invalidate AIPS_Cache if group exists
+		if (class_exists('AIPS_Cache_Factory')) {
+			$cache = AIPS_Cache_Factory::instance();
+			if ($cache && $cache->is_available()) {
+				// Delete common cache keys
+				$cache->delete("vec_{$object_type}_{$object_id}", 'aips_embeddings');
+			}
+		}
+
+		// 3. Purge related transients
+		$search_pattern = '%' . $this->wpdb->esc_like("_{$object_type}_{$object_id}_") . '%';
+		$this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$this->wpdb->options}
+				 WHERE (option_name LIKE '_transient_aips_ev_%' OR option_name LIKE '_transient_timeout_aips_ev_%')
+				   AND option_name LIKE %s",
+				$search_pattern
+			)
+		);
+	}
+
+	/**
+	 * Flush the entire embeddings vector cache (AIPS_Cache group, transients, and runtime memory).
+	 *
+	 * @return array{success: bool, message: string, deleted_transients: int}
+	 */
+	public function flush_embeddings_cache(): array {
+		$this->decoded_memory_cache = array();
+
+		// Flush AIPS_Cache group
+		if (class_exists('AIPS_Cache_Monitor_Service')) {
+			$container = AIPS_Container::get_instance();
+			$monitor_service = $container->has(AIPS_Cache_Monitor_Service::class)
+				? $container->make(AIPS_Cache_Monitor_Service::class)
+				: null;
+			if ($monitor_service) {
+				$monitor_service->flush_group('aips_embeddings');
+			}
+		}
+
+		// Flush WordPress transients
+		$deleted = $this->wpdb->query(
+			"DELETE FROM {$this->wpdb->options} 
+			 WHERE option_name LIKE '_transient_aips_ev_%' 
+			    OR option_name LIKE '_transient_timeout_aips_ev_%'
+			    OR option_name LIKE '_transient_aips_emb_vec_%'
+			    OR option_name LIKE '_transient_timeout_aips_emb_vec_%'"
+		);
+
+		return array(
+			'success'            => true,
+			'message'            => sprintf(
+				/* translators: %d: count of deleted transients */
+				__('Embeddings vector cache flushed successfully (%d transient records purged).', 'ai-post-scheduler'),
+				(int) $deleted
+			),
+			'deleted_transients' => (int) $deleted,
+		);
+	}
+
+	/**
+	 * Retrieve metrics and statistics for the embeddings vector cache.
+	 *
+	 * @return array<string, mixed> Embeddings cache health and stats.
+	 */
+	public function get_embeddings_cache_stats(): array {
+		$driver_label = 'WordPress Transients';
+		$cache_active = false;
+
+		if (class_exists('AIPS_Cache_Factory')) {
+			$cache = AIPS_Cache_Factory::instance();
+			if ($cache && $cache->is_available()) {
+				$driver_label = get_class($cache->get_driver());
+				$cache_active = true;
+			}
+		}
+
+		$transient_count = (int) $this->wpdb->get_var(
+			"SELECT COUNT(*) FROM {$this->wpdb->options} 
+			 WHERE option_name LIKE '_transient_aips_ev_%' 
+			    OR option_name LIKE '_transient_aips_emb_vec_%'"
+		);
+
+		return array(
+			'driver'          => $driver_label,
+			'is_cache_active' => $cache_active,
+			'cached_vectors'  => $transient_count,
+			'memory_cached'   => count($this->decoded_memory_cache),
+			'ttl_days'        => 7,
+		);
 	}
 
 	/**

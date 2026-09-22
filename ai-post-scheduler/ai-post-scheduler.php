@@ -492,6 +492,15 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger_Interface::class)
             );
         });
+
+        // Register AIPS_Similarity_Evaluator
+        $container->singleton(AIPS_Similarity_Evaluator::class, function( $container ) {
+            return new AIPS_Similarity_Evaluator(
+                $container->make(AIPS_Config::class),
+                $container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : null,
+                $container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : null
+            );
+        });
     }
 
     /**

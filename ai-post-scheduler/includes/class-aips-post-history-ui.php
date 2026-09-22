@@ -47,19 +47,31 @@ class AIPS_Post_History_UI {
 	private $insights_repo;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_History_Repository_Interface|null $history_repository Optional repository override.
 	 * @param AIPS_Config|null                       $config             Optional config override.
 	 * @param AIPS_Post_Insights_Repository|null     $insights_repo      Optional repository override.
+	 * @param AIPS_Similarity_Evaluator|null         $similarity_evaluator Optional evaluator override.
 	 */
-	public function __construct($history_repository = null, $config = null, ?AIPS_Post_Insights_Repository $insights_repo = null) {
+	public function __construct(
+		$history_repository = null,
+		$config = null,
+		?AIPS_Post_Insights_Repository $insights_repo = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
+	) {
 		$container = AIPS_Container::get_instance();
 		$this->history_repository = $history_repository instanceof AIPS_History_Repository_Interface
 			? $history_repository
 			: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->config = $config ?: AIPS_Config::get_instance();
 		$this->insights_repo = $insights_repo ?: ($container->has(AIPS_Post_Insights_Repository::class) ? $container->make(AIPS_Post_Insights_Repository::class) : new AIPS_Post_Insights_Repository());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
 
 		// Row actions & Classic Editor submit box
 		add_filter('post_row_actions', array($this, 'add_post_row_action'), 10, 2);
@@ -209,22 +221,16 @@ class AIPS_Post_History_UI {
 
 			// Duplicate risk evaluation
 			$max_sim = $rel ? (float) (isset($rel['similarity']) ? $rel['similarity'] : (isset($rel['similarity_score']) ? $rel['similarity_score'] : 0.0)) : 0.0;
-			$max_sim_pct = round($max_sim * 100);
-			$overall_risk = 'clean';
-			$overall_label = __('Clean', 'ai-post-scheduler');
 
 			if (!$has_emb) {
 				$overall_risk  = 'unindexed';
 				$overall_label = __('Unindexed', 'ai-post-scheduler');
-			} elseif ($max_sim >= 0.90) {
-				$overall_risk  = 'critical';
-				$overall_label = __('Critical Risk', 'ai-post-scheduler');
-			} elseif ($max_sim >= 0.80) {
-				$overall_risk  = 'high';
-				$overall_label = __('High Risk', 'ai-post-scheduler');
-			} elseif ($max_sim >= 0.65) {
-				$overall_risk  = 'medium';
-				$overall_label = __('Moderate Risk', 'ai-post-scheduler');
+				$max_sim_pct   = 0;
+			} else {
+				$eval          = $this->similarity_evaluator->evaluate_similarity($max_sim, 'post');
+				$overall_risk  = $eval['risk_tier'];
+				$overall_label = $eval['risk_label'];
+				$max_sim_pct   = $eval['percentage'];
 			}
 
 			$this->insights_cache[$pid] = array(

@@ -79,6 +79,7 @@ if (!defined('ABSPATH')) {
                         <?php endforeach; ?>
                     </select>
                     <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-rebuild-cache-btn"><?php esc_html_e('Rebuild Caches', 'ai-post-scheduler'); ?></button>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-status-op" data-op="aips_status_clear_embeddings_cache"><?php esc_html_e('Clear Embeddings Cache', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
 

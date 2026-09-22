@@ -76,6 +76,11 @@ class AIPS_Author_Topics_Generator {
 	private $rate_limiter;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator Similarity evaluator.
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param AIPS_AI_Service_Interface|null $ai_service AI service instance (optional for testing).
@@ -89,8 +94,22 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $authors_repository Authors repository (optional for testing).
 	 * @param object|null $embeddings_repo Embeddings repository (optional for testing).
 	 * @param AIPS_Embeddings_Rate_Limiter|null $rate_limiter Rate limiter (optional for testing).
+	 * @param AIPS_Similarity_Evaluator|null $similarity_evaluator Similarity evaluator (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null, $embeddings_repo = null, ?AIPS_Embeddings_Rate_Limiter $rate_limiter = null) {
+	public function __construct(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Logger_Interface $logger = null,
+		$topics_repository = null,
+		$logs_repository = null,
+		$embeddings_service = null,
+		$feedback_repository = null,
+		$prompt_builder = null,
+		$deduplication_service = null,
+		$authors_repository = null,
+		$embeddings_repo = null,
+		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
+	) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -101,6 +120,7 @@ class AIPS_Author_Topics_Generator {
 		$this->rate_limiter = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter());
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger, null, null, $this->embeddings_repo, $this->rate_limiter);
 		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service($this->embeddings_repo, null, $this->embeddings_service, null, $this->logger));
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator(null, $this->embeddings_repo, $this->embeddings_service));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
 			null,
@@ -217,15 +237,25 @@ class AIPS_Author_Topics_Generator {
 			$sync_topics = (bool) $config->get_option('aips_indexer_topics_continuous_sync', true);
 			if ($sync_topics && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
 				foreach ($saved_topics as $saved_topic) {
+					if ($this->rate_limiter->is_in_cooldown()) {
+						break;
+					}
+					$limit_check = $this->rate_limiter->check_limits();
+					if (is_wp_error($limit_check)) {
+						break;
+					}
+
 					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
 					if ($t_status !== 'rejected' && !empty($saved_topic['topic_title'])) {
 						$t_id  = (int) $saved_topic['id'];
 						$t_vec = $this->embeddings_service->generate_embedding($saved_topic['topic_title']);
 						if (is_wp_error($t_vec)) {
+							$this->rate_limiter->record_failure($t_vec);
 							if ($this->rate_limiter->is_rate_limit_or_exhaustion_error($t_vec)) {
 								break;
 							}
 						} elseif (is_array($t_vec) && !empty($t_vec)) {
+							$this->rate_limiter->record_success();
 							$model = $this->embeddings_service->get_active_model();
 							$dims  = count($t_vec);
 							$this->embeddings_repo->upsert('topic', $t_id, $t_vec, $model, $dims, md5($saved_topic['topic_title']));
@@ -512,10 +542,19 @@ class AIPS_Author_Topics_Generator {
 			return null;
 		}
 
-		$profile_vec = $this->embeddings_service->generate_embedding($profile_text);
-		if (is_wp_error($profile_vec) || !is_array($profile_vec)) {
+		$limit_check = $this->rate_limiter->check_limits();
+		if (is_wp_error($limit_check)) {
 			return null;
 		}
+
+		$profile_vec = $this->embeddings_service->generate_embedding($profile_text);
+		if (is_wp_error($profile_vec) || !is_array($profile_vec)) {
+			if (is_wp_error($profile_vec)) {
+				$this->rate_limiter->record_failure($profile_vec);
+			}
+			return null;
+		}
+		$this->rate_limiter->record_success();
 
 		$vectors = array($profile_vec);
 
@@ -533,7 +572,7 @@ class AIPS_Author_Topics_Generator {
 				foreach ($post_ids as $pid) {
 					$row = $this->embeddings_repo->get_by_post_id((int) $pid);
 					if ($row && !empty($row->embedding)) {
-						$pvec = $this->embeddings_repo->decode_embedding($row->embedding);
+						$pvec = $this->embeddings_repo->decode_embedding($row->embedding, 'post', (int) $pid, !empty($row->content_hash) ? $row->content_hash : '');
 						if (!empty($pvec) && count($pvec) === count($profile_vec)) {
 							$vectors[] = $pvec;
 						}
@@ -632,131 +671,18 @@ class AIPS_Author_Topics_Generator {
 		}
 
 		foreach ($topics as &$topic) {
-			$meta = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
-			if (!is_array($meta)) {
-				$meta = array();
-			}
+			$eval_result = $this->similarity_evaluator->evaluate_author_topic_auto_approval($topic, $author, $author_baseline_vec);
 
-			$qualifies        = false;
-			$is_dup_rejection = false;
-			$reason           = '';
-			$note             = '';
+			$topic['status']   = $eval_result['decision'];
+			$topic['metadata'] = wp_json_encode($eval_result['meta']);
 
-			switch ($mode) {
-				case 'all':
-					$qualifies = true;
-					$reason    = 'auto_approve_all';
-					$note      = __('Auto-approved: Policy is set to auto-approve all topics.', 'ai-post-scheduler');
-					break;
-
-				case 'score':
-					$score = isset($topic['score']) ? (int) $topic['score'] : 50;
-					if ($score >= $min_score) {
-						$qualifies = true;
-						$reason    = 'quality_score_threshold_met';
-						$note      = sprintf(__('Auto-approved: Quality score %d met or exceeded minimum threshold of %d.', 'ai-post-scheduler'), $score, $min_score);
-					} else {
-						$qualifies = false;
-						$reason    = 'quality_score_below_threshold';
-						$note      = sprintf(__('Did not qualify: Quality score %d is below minimum threshold of %d.', 'ai-post-scheduler'), $score, $min_score);
-					}
-					$meta['auto_approval_score']     = $score;
-					$meta['auto_approval_min_score'] = $min_score;
-					break;
-
-				case 'similarity':
-				case 'embeddings':
-					$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
-					$dup_sim     = isset($meta['duplicate_similarity']) ? (float) $meta['duplicate_similarity'] : (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
-
-					// Compute topic relevance to author composite baseline vector
-					$rel_sim = 0.70;
-					if (!empty($author_baseline_vec) && !empty($topic_title) && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
-						$tvec = $this->embeddings_service->generate_embedding($topic_title);
-						if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
-							$sim_calc = $this->embeddings_service->calculate_similarity($tvec, $author_baseline_vec);
-							if (!is_wp_error($sim_calc)) {
-								$rel_sim = (float) $sim_calc;
-							}
-						}
-					}
-
-					$meta['auto_approval_relevance']      = round($rel_sim, 4);
-					$meta['auto_approval_duplicate_sim']  = round($dup_sim, 4);
-					$meta['auto_approval_min_relevance']  = round($min_relevance, 4);
-					$meta['auto_approval_max_similarity'] = round($max_similarity, 4);
-
-					// Dual-Boundary Semantic Evaluation:
-					if ($dup_sim >= $max_similarity) {
-						// Upper bound breach: Duplicate / cannibalization hazard
-						$qualifies        = false;
-						$is_dup_rejection = true;
-						$reason           = 'rejected_duplicate_cannibalization';
-						$note             = sprintf(
-							__('Auto-rejected: Duplicate similarity %.1f%% met or exceeded maximum threshold of %.1f%%.', 'ai-post-scheduler'),
-							$dup_sim * 100,
-							$max_similarity * 100
-						);
-					} elseif ($rel_sim < $min_relevance) {
-						// Lower bound breach: Off-topic / low niche relevance
-						$qualifies        = false;
-						$is_dup_rejection = false;
-						$reason           = 'low_niche_relevance';
-						$note             = sprintf(
-							__('Did not qualify: Niche relevance %.1f%% is below minimum required %.1f%%.', 'ai-post-scheduler'),
-							$rel_sim * 100,
-							$min_relevance * 100
-						);
-					} else {
-						// Passed both gates!
-						$qualifies = true;
-						$reason    = 'semantic_dual_gate_passed';
-						$note      = sprintf(
-							__('Auto-approved: Passed semantic gate (Relevance: %.1f%%, Duplicate: %.1f%%).', 'ai-post-scheduler'),
-							$rel_sim * 100,
-							$dup_sim * 100
-						);
-					}
-					break;
-
-				default:
-					$qualifies = false;
-					break;
-			}
-
-			if ($qualifies) {
-				$topic['status']              = 'approved';
-				$topic['reviewed_at']         = $now;
-				$topic['reviewed_by']         = 0;
-				$meta['auto_approved']        = true;
-				$meta['auto_approval_rule']   = $mode;
-				$meta['auto_approval_reason'] = $reason;
-				$meta['auto_approval_note']   = $note;
+			if ('approved' === $eval_result['decision'] || 'rejected' === $eval_result['decision']) {
+				$topic['reviewed_at'] = $now;
+				$topic['reviewed_by'] = 0;
 			} else {
-				// Rejection & Fallback resolution:
-				// Smart Split rejects duplicates immediately and holds low-relevance in pending for review
-				$should_reject = ($fallback === 'rejected') || ($fallback === 'smart_split' && $is_dup_rejection);
-
-				if ($should_reject) {
-					$topic['status']              = 'rejected';
-					$topic['reviewed_at']         = $now;
-					$topic['reviewed_by']         = 0;
-					$meta['auto_rejected']        = true;
-					$meta['auto_rejection_rule']   = $mode;
-					$meta['auto_rejection_reason'] = $reason;
-					$meta['auto_rejection_note']   = $note;
-				} else {
-					$topic['status']                 = 'pending';
-					$topic['reviewed_at']            = 0;
-					$topic['reviewed_by']            = null;
-					$meta['auto_approval_evaluated'] = true;
-					$meta['auto_approval_rule']      = $mode;
-					$meta['auto_approval_reason']    = $reason;
-					$meta['auto_approval_note']      = $note;
-				}
+				$topic['reviewed_at'] = 0;
+				$topic['reviewed_by'] = null;
 			}
-
-			$topic['metadata'] = wp_json_encode($meta);
 		}
 		unset($topic);
 

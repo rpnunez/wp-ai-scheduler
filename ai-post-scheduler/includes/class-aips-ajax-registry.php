@@ -264,6 +264,7 @@ class AIPS_Ajax_Registry {
 		'aips_rebuild_caches'            => 'AIPS_System_Status_Controller',
 		'aips_status_refresh_system'     => 'AIPS_System_Status_Controller',
 		'aips_status_cache_maintenance'  => 'AIPS_System_Status_Controller',
+		'aips_status_clear_embeddings_cache' => 'AIPS_System_Status_Controller',
 		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
 		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
 		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
