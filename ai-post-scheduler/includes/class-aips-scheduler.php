@@ -493,4 +493,161 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             $correlation_id
         );
     }
+
+    /**
+     * Register all cron-related action hooks and schedules.
+     *
+     * @return void
+     */
+    public static function register_cron_hooks(): void {
+        // Lazy-resolve the main template scheduler only when its hook fires.
+        add_action('aips_generate_scheduled_posts', function() {
+            self::instance()->process();
+        });
+        add_filter('cron_schedules', function($schedules) {
+            return self::instance()->add_cron_intervals($schedules);
+        });
+
+        // Batch-queue single events: each call processes one slice of a large schedule.
+        // Args: schedule_id, start_index, batch_size, total_quantity, correlation_id.
+        add_action('aips_process_schedule_batch', function(
+            $schedule_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $correlation_id = ''
+        ) {
+            self::instance()->process_batch(
+                (int) $schedule_id,
+                (int) $start_index,
+                (int) $batch_size,
+                (int) $total_quantity,
+                (string) $correlation_id
+            );
+        }, 10, 5);
+
+        // Lazy-resolve the author-topics scheduler only when its hook fires.
+        add_action('aips_generate_author_topics', function() {
+            AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
+        });
+
+        // Per-author topic-generation slice: process one author's topics in a dedicated cron event.
+        // Args: author_id, correlation_id.
+        add_action('aips_process_author_topics_slice', function( $author_id, $correlation_id = '' ) {
+            AIPS_Author_Topics_Scheduler::instance()->process_author_slice(
+                (int) $author_id,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Retry failed topic-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_topics', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Topics_Scheduler::instance()->retry_failed_topic_slices(
+                (string) $author_ids_json,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Lazy-resolve the author-post generator only when its hook fires.
+        add_action('aips_generate_author_posts', function() {
+            AIPS_Author_Post_Generator::instance()->process();
+        });
+
+        // Per-author post-generation slice: process one author's post in a dedicated cron event.
+        // Args: author_id, correlation_id.
+        add_action('aips_process_author_post_slice', function( $author_id, $correlation_id = '' ) {
+            AIPS_Author_Post_Generator::instance()->process_author_slice(
+                (int) $author_id,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Retry failed post-generation slices: re-dispatch authors that failed to schedule.
+        // Args: author_ids_json, correlation_id.
+        add_action('aips_retry_failed_author_slices_posts', function( $author_ids_json, $correlation_id = '' ) {
+            AIPS_Author_Post_Generator::instance()->retry_failed_post_slices(
+                (string) $author_ids_json,
+                (string) $correlation_id
+            );
+        }, 10, 2);
+
+        // Async bulk-batch processing: each single event processes one slice of a stored job.
+        // Args: job_id, start_index, batch_size, total_quantity, correlation_id.
+        add_action('aips_process_bulk_batch', function(
+            $job_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $correlation_id = ''
+        ) {
+            AIPS_Bulk_Batch_Processor::instance()->process(
+                (string) $job_id,
+                (int)    $start_index,
+                (int)    $batch_size,
+                (int)    $total_quantity,
+                (string) $correlation_id
+            );
+        }, 10, 5);
+
+        // Register default bulk-batch strategies.
+        AIPS_Bulk_Batch_Processor::instance()->register_default_strategies();
+
+        // Daily cleanup of completed/failed bulk-batch job rows.
+        add_action('aips_cleanup_bulk_batch_jobs', function() {
+            $store   = new AIPS_Bulk_Batch_Job_Store();
+            $deleted = $store->cleanup_old_jobs();
+            if ( $deleted > 0 ) {
+                ( new AIPS_Logger() )->log(
+                    sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
+                    'info'
+                );
+            }
+        });
+
+        // Daily Cache Monitor maintenance (prune expired/orphan index rows + prune old events).
+        add_action('aips_cache_monitor_maintenance', function() {
+            $repository  = new AIPS_Cache_Monitor_Repository();
+            $cache_index = new AIPS_Cache_Index();
+            $service     = new AIPS_Cache_Monitor_Service( $repository, $cache_index );
+            $result      = $service->run_maintenance();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
+        });
+
+        // Lazy-resolve the embeddings worker only when its hook fires.
+        add_action('aips_process_author_embeddings', function($args) {
+            AIPS_Embeddings_Cron::instance()->process_author_embeddings($args);
+        }, 10, 1);
+
+        // Research controller registers the aips_scheduled_research cron hook.
+        new AIPS_Research_Controller();
+
+        // Sources cron: fetch content for sources that have a fetch_interval configured.
+        // AIPS_Sources_Cron::schedule() handles registering the cron event at the
+        // correct recurrence (every_6_hours) during construction.
+        AIPS_Sources_Cron::instance();
+
+        // Notification event handler receives generation-failure/quota alerts from cron.
+        new AIPS_Notifications();
+
+        // Reconciler's save_post hook fires when cron creates or updates posts.
+        new AIPS_Partial_Generation_State_Reconciler();
+
+        // Internal Links indexing cron — construct the controller lazily only
+        // when the cron hook fires to avoid eager instantiation on every cron boot.
+        add_action('aips_index_posts_batch', function($args) {
+            (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
+        }, 10, 1);
+
+        // Export-file cleanup cron handler.
+        add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // Post-save affiliate link injection — fires after every generated post.
+        add_action('aips_post_generated', function($post_id) {
+            (new AIPS_Affiliate_Links_Service())->inject_for_post(absint($post_id));
+        }, 10, 1);
+    }
 }
