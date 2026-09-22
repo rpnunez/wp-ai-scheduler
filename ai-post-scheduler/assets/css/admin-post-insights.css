@@ -1,0 +1,319 @@
+/**
+ * AI Post Scheduler - Post Insights & Duplication Styles
+ * Used across the native Posts list table (edit.php),
+ * Classic Editor Meta Box, and Gutenberg Block Editor Panel.
+ */
+
+/* ==========================================================================
+   Table Column & Badges (edit.php)
+   ========================================================================== */
+.manage-column.column-aips_insights {
+	width: 140px;
+}
+
+.aips-insights-col-cell {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2, 8px);
+	position: relative;
+}
+
+.aips-risk-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border-radius: 9999px;
+	font-size: var(--aips-text-xs, 12px);
+	font-weight: var(--aips-font-semibold, 600);
+	text-decoration: none;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.aips-risk-pill .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 14px;
+}
+
+.aips-risk-pill.aips-risk-critical {
+	background: #fee2e2;
+	color: #991b1b;
+	border: 1px solid #f87171;
+}
+
+.aips-risk-pill.aips-risk-high {
+	background: #ffedd5;
+	color: #9a3412;
+	border: 1px solid #fb923c;
+}
+
+.aips-risk-pill.aips-risk-medium {
+	background: #fef3c7;
+	color: #92400e;
+	border: 1px solid #fcd34d;
+}
+
+.aips-risk-pill.aips-risk-low,
+.aips-risk-pill.aips-risk-clean {
+	background: #ecfdf5;
+	color: #065f46;
+	border: 1px solid #6ee7b7;
+}
+
+.aips-risk-pill.aips-risk-unindexed {
+	background: var(--aips-gray-100, #dcdcde);
+	color: var(--aips-gray-600, #50575e);
+	border: 1px solid var(--aips-gray-300, #a7aaad);
+}
+
+.aips-pillar-star {
+	color: var(--aips-warning, #f59e0b);
+	font-size: 16px;
+	line-height: 1;
+	cursor: default;
+}
+
+.aips-popover-trigger {
+	background: none;
+	border: none;
+	padding: 2px;
+	cursor: pointer;
+	color: var(--aips-gray-400, #787c82);
+	border-radius: 4px;
+	display: inline-flex;
+	align-items: center;
+	transition: color 0.15s ease, background 0.15s ease;
+}
+
+.aips-popover-trigger:hover,
+.aips-popover-trigger:focus {
+	color: var(--aips-primary, #2271b1);
+	background: var(--aips-gray-100, #f0f0f1);
+	outline: none;
+}
+
+/* ==========================================================================
+   Table Popover Card (Flyout Preview)
+   ========================================================================== */
+.aips-insights-popover {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 1000;
+	width: 290px;
+	background: var(--aips-white, #fff);
+	border: 1px solid var(--aips-gray-300, #c3c4c7);
+	border-radius: 8px;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+	padding: 12px 14px;
+	display: none;
+	text-align: left;
+	color: var(--aips-gray-900, #1d2327);
+}
+
+.aips-insights-popover.is-visible {
+	display: block;
+}
+
+.aips-popover-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	border-bottom: 1px solid var(--aips-gray-100, #dcdcde);
+	padding-bottom: 8px;
+	margin-bottom: 8px;
+}
+
+.aips-popover-title {
+	font-weight: var(--aips-font-semibold, 600);
+	font-size: var(--aips-text-sm, 13px);
+	margin: 0;
+}
+
+.aips-popover-close {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--aips-gray-400, #787c82);
+	font-size: 16px;
+	line-height: 1;
+	padding: 0;
+}
+
+.aips-popover-row {
+	font-size: var(--aips-text-xs, 12px);
+	line-height: 1.5;
+	margin-bottom: 6px;
+}
+
+.aips-popover-label {
+	color: var(--aips-gray-500, #646970);
+	font-weight: var(--aips-font-medium, 500);
+}
+
+.aips-popover-actions {
+	display: flex;
+	gap: 6px;
+	margin-top: 10px;
+	padding-top: 8px;
+	border-top: 1px solid var(--aips-gray-100, #dcdcde);
+}
+
+/* ==========================================================================
+   Classic Editor Meta Box Styles
+   ========================================================================== */
+.aips-metabox-wrap {
+	padding: 4px 0;
+}
+
+.aips-insight-risk-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 14px;
+	flex-wrap: wrap;
+}
+
+.aips-insight-section {
+	border-top: 1px solid var(--aips-gray-100, #dcdcde);
+	padding: 10px 0;
+}
+
+.aips-insight-section-title {
+	margin: 0 0 6px 0;
+	font-size: var(--aips-text-xs, 12px);
+	font-weight: var(--aips-font-semibold, 600);
+	color: var(--aips-gray-700, #3c434a);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.aips-insight-section-title .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: var(--aips-gray-500, #646970);
+}
+
+.aips-insight-detail {
+	font-size: var(--aips-text-sm, 13px);
+}
+
+.aips-insight-text {
+	margin: 0 0 6px 0;
+	line-height: 1.4;
+}
+
+.aips-insight-meta {
+	font-size: var(--aips-text-xs, 12px);
+	color: var(--aips-gray-500, #646970);
+}
+
+.aips-duplicate-candidates-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.aips-duplicate-candidate-item {
+	padding: 4px 0;
+	border-bottom: 1px dashed var(--aips-gray-100, #f0f0f1);
+}
+
+.aips-duplicate-candidate-item:last-child {
+	border-bottom: none;
+}
+
+.aips-dup-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.aips-dup-title {
+	font-size: var(--aips-text-xs, 12px);
+	font-weight: var(--aips-font-medium, 500);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	text-decoration: none;
+}
+
+.aips-context-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.aips-context-item {
+	font-size: var(--aips-text-xs, 12px);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.aips-context-label {
+	color: var(--aips-gray-500, #646970);
+}
+
+.aips-context-value {
+	text-align: right;
+	max-width: 60%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aips-insight-footer-action {
+	margin-top: 10px;
+}
+
+.aips-text-success {
+	color: var(--aips-success, #00a32a);
+}
+
+.aips-text-muted {
+	color: var(--aips-gray-500, #646970);
+}
+
+/* ==========================================================================
+   Gutenberg Block Editor Document Panel Styles
+   ========================================================================== */
+.aips-gutenberg-panel {
+	padding: 8px 0;
+}
+
+.aips-gutenberg-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+
+.aips-gutenberg-section {
+	border-top: 1px solid #e0e0e0;
+	padding-top: 12px;
+	margin-top: 12px;
+}
+
+.aips-gutenberg-section-title {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: #646970;
+	margin: 0 0 8px 0;
+}
+
+.aips-gutenberg-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 12px;
+}

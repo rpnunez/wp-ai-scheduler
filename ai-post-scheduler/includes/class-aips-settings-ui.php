@@ -1576,6 +1576,22 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render Enable Post Insights UI setting (Card 4).
+	 *
+	 * @return void
+	 */
+	public function enable_post_insights_ui_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_enable_post_insights_ui', true);
+		?>
+		<label for="aips_enable_post_insights_ui">
+			<input type="checkbox" name="aips_enable_post_insights_ui" id="aips_enable_post_insights_ui" value="1" <?php checked($value, true); ?>>
+			<?php esc_html_e('Inject AI Insights column, duplication risk badges, and editor panels on native WordPress Posts and Editor screens.', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('When enabled, adds the AI Insights column and filters to the Posts table, a Document Setting Panel to the Block Editor, and a Meta Box to the Classic Editor.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
 	 * Render Global Author Topic Auto-Approval Mode.
 	 *
 	 * @return void

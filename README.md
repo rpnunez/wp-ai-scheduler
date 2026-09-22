@@ -134,6 +134,7 @@ The tables below document all canonical options registered and maintained by AI 
 | `aips_indexer_consecutive_error_threshold`| `integer` | `2` | Indexer / Scope | Number of consecutive remote rate limit errors before triggering cooldown. |
 | `aips_indexer_similarity_threshold` | `float` | `0.65` | Indexer / Scope | Minimum cosine similarity (0.40–0.95) for two posts to be considered related. |
 | `aips_indexer_post_cluster_threshold` | `float` | `0.65` | Indexer / Clusters | Minimum similarity threshold for grouping connected posts into thematic clusters. |
+| `aips_enable_post_insights_ui` | `boolean` | `true` | Settings > AI Scope | Toggles AI Insights column, duplication badges, and editor panels on WP screens. |
 | `aips_embeddings_rate_limits_enabled` | `boolean` | `true` | Indexer / Limits | Enforces sliding-window API quotas to protect API budgets. |
 | `aips_embeddings_daily_limit` | `integer` | `50` | Indexer / Limits | Maximum embedding API calls permitted within a rolling 24-hour window. |
 | `aips_embeddings_weekly_limit` | `integer` | `200` | Indexer / Limits | Maximum embedding API calls permitted within a rolling 7-day window. |

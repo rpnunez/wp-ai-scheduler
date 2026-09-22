@@ -241,6 +241,7 @@ class AIPS_Config {
             'aips_indexer_error_pause_unit'            => 'minutes',
             'aips_indexer_consecutive_error_threshold' => 2,
             'aips_post_clusters'                       => array(),
+            'aips_enable_post_insights_ui'             => true,
             // Author Topics Semantic Auto-Approval
             'aips_author_topic_auto_approval_enabled'  => false,
             'aips_author_topic_approval_mode'          => 'embeddings',

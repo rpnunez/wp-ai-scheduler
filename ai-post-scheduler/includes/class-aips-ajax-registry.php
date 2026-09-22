@@ -339,6 +339,11 @@ class AIPS_Ajax_Registry {
 		'aips_indexer_generate_gap_ideas'      => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_commit_gap_topics'       => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_resume_cooldown'         => 'AIPS_Content_Indexer_Controller',
+
+		// Post Insights Controller
+		'aips_get_post_ai_insights'            => 'AIPS_Post_Insights_Controller',
+		'aips_reindex_single_post'             => 'AIPS_Post_Insights_Controller',
+		'aips_toggle_single_pillar'            => 'AIPS_Post_Insights_Controller',
 	);
 
 	/**
