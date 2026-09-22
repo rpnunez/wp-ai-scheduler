@@ -81,6 +81,11 @@ class AIPS_Author_Topics_Generator {
 	private $similarity_evaluator;
 
 	/**
+	 * @var AIPS_Content_Indexer_Service|null Content indexer service.
+	 */
+	private $indexer_service;
+
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param AIPS_AI_Service_Interface|null $ai_service AI service instance (optional for testing).
@@ -95,6 +100,7 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $embeddings_repo Embeddings repository (optional for testing).
 	 * @param AIPS_Embeddings_Rate_Limiter|null $rate_limiter Rate limiter (optional for testing).
 	 * @param AIPS_Similarity_Evaluator|null $similarity_evaluator Similarity evaluator (optional for testing).
+	 * @param AIPS_Content_Indexer_Service|null $indexer_service Indexer service (optional for testing).
 	 */
 	public function __construct(
 		?AIPS_AI_Service_Interface $ai_service = null,
@@ -108,7 +114,8 @@ class AIPS_Author_Topics_Generator {
 		$authors_repository = null,
 		$embeddings_repo = null,
 		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
-		?AIPS_Similarity_Evaluator $similarity_evaluator = null
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null,
+		?AIPS_Content_Indexer_Service $indexer_service = null
 	) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
@@ -121,6 +128,7 @@ class AIPS_Author_Topics_Generator {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger, null, null, $this->embeddings_repo, $this->rate_limiter);
 		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service($this->embeddings_repo, null, $this->embeddings_service, null, $this->logger));
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator(null, $this->embeddings_repo, $this->embeddings_service));
+		$this->indexer_service = $indexer_service ?: ($container->has(AIPS_Content_Indexer_Service::class) ? $container->make(AIPS_Content_Indexer_Service::class) : null);
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
 			null,
@@ -231,15 +239,11 @@ class AIPS_Author_Topics_Generator {
 			$config = AIPS_Config::get_instance();
 			$sync_topics = (bool) $config->get_option('aips_indexer_topics_continuous_sync', true);
 			if ($sync_topics && $this->embeddings_service->is_enabled()) {
-				$indexer_service = AIPS_Container::get_instance()->has(AIPS_Content_Indexer_Service::class)
-					? AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)
-					: null;
-
 				foreach ($saved_topics as $saved_topic) {
 					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
 					if ($t_status !== 'rejected' && !empty($saved_topic['id'])) {
-						if ($indexer_service && method_exists($indexer_service, 'enqueue_topic_for_indexing')) {
-							$indexer_service->enqueue_topic_for_indexing((int) $saved_topic['id']);
+						if ($this->indexer_service && method_exists($this->indexer_service, 'enqueue_topic_for_indexing')) {
+							$this->indexer_service->enqueue_topic_for_indexing((int) $saved_topic['id']);
 						}
 					}
 				}
