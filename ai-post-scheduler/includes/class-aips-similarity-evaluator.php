@@ -888,21 +888,7 @@ class AIPS_Similarity_Evaluator {
 				continue;
 			}
 
-			$max_similarity = 0.0;
-			foreach ($approved_topics as $approved_topic) {
-				$approved_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $approved_topic->id) : null;
-				if (!$approved_embedding && $emb_svc && $emb_svc->is_enabled()) {
-					$emb_svc->compute_topic_embedding((int) $approved_topic->id);
-					$approved_embedding = $emb_svc->get_topic_embedding((int) $approved_topic->id);
-				}
-
-				if ($approved_embedding) {
-					$sim = $this->cosine_similarity($pending_embedding, $approved_embedding);
-					if ($sim > $max_similarity) {
-						$max_similarity = $sim;
-					}
-				}
-			}
+			$max_similarity = $this->calculate_max_similarity_for_topic($pending_embedding, $approved_topics, $emb_svc);
 
 			if ($max_similarity > 0) {
 				$eval          = $this->evaluate_similarity($max_similarity, 'topic');
@@ -925,6 +911,39 @@ class AIPS_Similarity_Evaluator {
 		});
 
 		return array_slice($suggestions, 0, $limit);
+	}
+
+	/**
+	 * Calculate the maximum similarity score for a pending topic embedding against approved topics.
+	 *
+	 * Iterates over approved candidate topics, lazily computes/retrieves their vector embeddings,
+	 * and returns the highest pairwise cosine similarity score found.
+	 *
+	 * @param array                        $pending_embedding Vector array for the pending topic.
+	 * @param array<int, object>           $approved_topics   Array of approved topic database objects.
+	 * @param AIPS_Embeddings_Service|null $emb_svc           Optional embeddings service instance.
+	 * @return float The highest cosine similarity score found (0.0 to 1.0).
+	 */
+	public function calculate_max_similarity_for_topic(array $pending_embedding, array $approved_topics, ?AIPS_Embeddings_Service $emb_svc = null): float {
+		$emb_svc        = $emb_svc ?: $this->get_embeddings_service();
+		$max_similarity = 0.0;
+
+		foreach ($approved_topics as $approved_topic) {
+			$approved_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $approved_topic->id) : null;
+			if (!$approved_embedding && $emb_svc && $emb_svc->is_enabled()) {
+				$emb_svc->compute_topic_embedding((int) $approved_topic->id);
+				$approved_embedding = $emb_svc->get_topic_embedding((int) $approved_topic->id);
+			}
+
+			if ($approved_embedding) {
+				$sim = $this->cosine_similarity($pending_embedding, $approved_embedding);
+				if ($sim > $max_similarity) {
+					$max_similarity = $sim;
+				}
+			}
+		}
+
+		return (float) $max_similarity;
 	}
 
 	/**
