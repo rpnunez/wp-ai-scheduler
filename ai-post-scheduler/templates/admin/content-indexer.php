@@ -149,17 +149,17 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 		$cooldown_reason    = isset($cooldown['reason']) ? $cooldown['reason'] : '';
 		?>
 		<div id="aips-cooldown-banner" class="notice notice-warning inline aips-cooldown-banner <?php echo $is_cooldown_active ? '' : 'aips-hidden'; ?>" data-until="<?php echo esc_attr((string) $cooldown_until); ?>">
-			<div class="aips-banner-inner" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
-				<div style="display:flex;align-items:center;gap:12px;">
-					<span class="dashicons dashicons-clock" style="font-size:30px;width:30px;height:30px;color:#d63638;"></span>
+			<div class="aips-banner-inner">
+				<div class="aips-cooldown-content">
+					<span class="dashicons dashicons-clock aips-cooldown-icon"></span>
 					<div>
-						<h4 style="margin:0 0 4px 0;font-size:14px;color:#d63638;">
+						<h4 class="aips-cooldown-title">
 							<strong><?php esc_html_e('Embedding API Auto-Cooldown Active', 'ai-post-scheduler'); ?></strong>
-							<span id="aips-cooldown-timer-badge" class="aips-cooldown-badge" style="background:#fcf0f0;border:1px solid #d63638;color:#d63638;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:8px;font-weight:600;">
+							<span id="aips-cooldown-timer-badge" class="aips-cooldown-badge">
 								<?php esc_html_e('Resuming in:', 'ai-post-scheduler'); ?> <span id="aips-cooldown-countdown"><?php echo esc_html(gmdate('i:s', $cooldown_remaining)); ?></span>
 							</span>
 						</h4>
-						<p class="aips-banner-desc" id="aips-cooldown-reason-msg" style="margin:0;color:#50575e;font-size:13px;">
+						<p class="aips-banner-desc aips-cooldown-reason-msg" id="aips-cooldown-reason-msg">
 							<?php
 							if (!empty($cooldown_reason)) {
 								printf(
@@ -310,9 +310,9 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 							<input type="range" id="aips-graph-max-nodes" min="5" max="30" step="1" value="15">
 						</div>
 
-						<label class="aips-checkbox-control" style="display:flex;align-items:center;gap:6px;margin:0 4px;cursor:pointer;">
+						<label class="aips-checkbox-control">
 							<input type="checkbox" id="aips-toggle-clusters" value="1">
-							<span class="aips-control-label" style="font-size:12px;font-weight:600;"><?php esc_html_e('Show Post Clusters', 'ai-post-scheduler'); ?></span>
+							<span class="aips-control-label"><?php esc_html_e('Show Post Clusters', 'ai-post-scheduler'); ?></span>
 						</label>
 
 						<button type="button" id="aips-refresh-graph-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
@@ -533,14 +533,14 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						<h3 class="aips-panel-title"><?php esc_html_e('Thematic Post Clusters & Content Gap Discovery', 'ai-post-scheduler'); ?></h3>
 						<p class="description aips-panel-header-desc"><?php esc_html_e('Automatically organizes your indexed posts into semantic community clusters, calculates cohesion scores, designates Pillar Posts, and discovers content gaps with AI ideas.', 'ai-post-scheduler'); ?></p>
 					</div>
-					<div class="aips-clusters-toolbar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+					<div class="aips-clusters-toolbar">
 						<div class="aips-slider-control">
 							<span class="aips-control-label"><?php esc_html_e('Cluster Threshold:', 'ai-post-scheduler'); ?> <strong id="aips-cluster-sim-val"><?php echo esc_html((string) ($settings['post_cluster_threshold'] * 100)); ?>%</strong></span>
 							<input type="range" id="aips-cluster-sim-threshold" min="0.40" max="0.90" step="0.05" value="<?php echo esc_attr((string) $settings['post_cluster_threshold']); ?>">
 						</div>
-						<div style="display:flex;align-items:center;gap:6px;">
+						<div class="aips-clusters-toolbar-group">
 							<label for="aips-cluster-min-size" class="aips-control-label"><?php esc_html_e('Min Size:', 'ai-post-scheduler'); ?></label>
-							<select id="aips-cluster-min-size" class="aips-form-select" style="min-width:70px;">
+							<select id="aips-cluster-min-size" class="aips-form-select aips-cluster-select-size">
 								<option value="2">2</option>
 								<option value="3">3</option>
 								<option value="5">5</option>
@@ -556,22 +556,22 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 
 				<div class="aips-panel-body">
 					<!-- Clusters Summary Metrics Row -->
-					<div class="aips-cluster-metrics-row" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:24px;">
-						<div class="aips-metric-box" style="background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:8px;">
-							<span style="display:block;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;"><?php esc_html_e('Thematic Clusters', 'ai-post-scheduler'); ?></span>
-							<strong id="aips-metric-clusters-count" style="font-size:24px;color:#0f172a;line-height:1.2;">0</strong>
+					<div class="aips-cluster-metrics-row">
+						<div class="aips-metric-box">
+							<span class="aips-metric-box-label"><?php esc_html_e('Thematic Clusters', 'ai-post-scheduler'); ?></span>
+							<strong id="aips-metric-clusters-count" class="aips-metric-box-val aips-metric-val-clusters">0</strong>
 						</div>
-						<div class="aips-metric-box" style="background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:8px;">
-							<span style="display:block;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;"><?php esc_html_e('Clustered Posts', 'ai-post-scheduler'); ?></span>
-							<strong id="aips-metric-posts-in-clusters" style="font-size:24px;color:#2271b1;line-height:1.2;">0</strong>
+						<div class="aips-metric-box">
+							<span class="aips-metric-box-label"><?php esc_html_e('Clustered Posts', 'ai-post-scheduler'); ?></span>
+							<strong id="aips-metric-posts-in-clusters" class="aips-metric-box-val aips-metric-val-posts">0</strong>
 						</div>
-						<div class="aips-metric-box" style="background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:8px;">
-							<span style="display:block;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;"><?php esc_html_e('Avg Cohesion', 'ai-post-scheduler'); ?></span>
-							<strong id="aips-metric-avg-cohesion" style="font-size:24px;color:#10b981;line-height:1.2;">--</strong>
+						<div class="aips-metric-box">
+							<span class="aips-metric-box-label"><?php esc_html_e('Avg Cohesion', 'ai-post-scheduler'); ?></span>
+							<strong id="aips-metric-avg-cohesion" class="aips-metric-box-val aips-metric-val-cohesion">--</strong>
 						</div>
-						<div class="aips-metric-box" style="background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:8px;">
-							<span style="display:block;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;"><?php esc_html_e('Hybrid Orphans', 'ai-post-scheduler'); ?></span>
-							<strong id="aips-metric-orphans-count" style="font-size:24px;color:#f59e0b;line-height:1.2;">0</strong>
+						<div class="aips-metric-box">
+							<span class="aips-metric-box-label"><?php esc_html_e('Hybrid Orphans', 'ai-post-scheduler'); ?></span>
+							<strong id="aips-metric-orphans-count" class="aips-metric-box-val aips-metric-val-orphans">0</strong>
 						</div>
 					</div>
 
@@ -582,19 +582,19 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 
 					<!-- Clusters Accordion Container -->
 					<div id="aips-clusters-accordion" class="aips-clusters-accordion">
-						<div class="aips-table-empty-cell" style="text-align:center;padding:40px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;">
-							<span class="dashicons dashicons-category" style="font-size:36px;width:36px;height:36px;color:#94a3b8;margin-bottom:8px;"></span>
-							<h4 style="margin:0 0 4px 0;"><?php esc_html_e('No Post Clusters Generated Yet', 'ai-post-scheduler'); ?></h4>
-							<p style="margin:0;color:#64748b;"><?php esc_html_e('Click "Scan & Build Clusters" above to group your published articles into thematic topic pillars.', 'ai-post-scheduler'); ?></p>
+						<div class="aips-cluster-empty-cell">
+							<span class="dashicons dashicons-category aips-cluster-empty-icon"></span>
+							<h4 class="aips-cluster-empty-title"><?php esc_html_e('No Post Clusters Generated Yet', 'ai-post-scheduler'); ?></h4>
+							<p class="aips-cluster-empty-desc"><?php esc_html_e('Click "Scan & Build Clusters" above to group your published articles into thematic topic pillars.', 'ai-post-scheduler'); ?></p>
 						</div>
 					</div>
 
 					<!-- Hybrid Orphans Section -->
-					<div id="aips-orphans-card" class="aips-content-panel aips-hidden" style="margin-top:28px;border:1px solid #fed7aa;">
-						<div class="aips-panel-header" style="background:#fffbeb;border-bottom:1px solid #fed7aa;display:flex;justify-content:space-between;align-items:center;">
+					<div id="aips-orphans-card" class="aips-content-panel aips-orphans-card aips-hidden">
+						<div class="aips-panel-header aips-orphans-header">
 							<div>
-								<h4 style="margin:0;color:#9a3412;"><?php esc_html_e('Hybrid Orphan Posts (Isolated Content)', 'ai-post-scheduler'); ?></h4>
-								<p class="description" style="margin:4px 0 0 0;color:#b45309;"><?php esc_html_e('Posts with weak or no thematic ties to existing clusters. Consider expanding coverage or writing bridge articles.', 'ai-post-scheduler'); ?></p>
+								<h4 class="aips-orphans-title"><?php esc_html_e('Hybrid Orphan Posts (Isolated Content)', 'ai-post-scheduler'); ?></h4>
+								<p class="description aips-orphans-desc"><?php esc_html_e('Posts with weak or no thematic ties to existing clusters. Consider expanding coverage or writing bridge articles.', 'ai-post-scheduler'); ?></p>
 							</div>
 							<span class="aips-risk-badge aips-risk-medium" id="aips-orphans-badge">0 Posts</span>
 						</div>
@@ -621,29 +621,29 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 
 		<!-- Modal: Content Gap Suggestions -->
 		<div id="aips-gap-modal" class="aips-modal-overlay aips-hidden">
-			<div class="aips-modal-card" style="max-width:680px;width:90%;background:#fff;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 8px 10px -6px rgba(0,0,0,0.1);overflow:hidden;margin:60px auto;position:relative;z-index:100001;">
-				<div class="aips-modal-header" style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+			<div class="aips-modal-card aips-gap-modal-card">
+				<div class="aips-modal-header aips-gap-modal-header">
 					<div>
-						<h3 style="margin:0;font-size:18px;color:#0f172a;display:flex;align-items:center;gap:8px;">
-							<span class="dashicons dashicons-lightbulb" style="color:#f59e0b;"></span>
+						<h3 class="aips-gap-modal-title">
+							<span class="dashicons dashicons-lightbulb aips-gap-modal-icon"></span>
 							<?php esc_html_e('AI Content Gap Ideas for Cluster', 'ai-post-scheduler'); ?>
 						</h3>
-						<span id="aips-gap-modal-cluster-name" style="font-size:13px;color:#64748b;"></span>
+						<span id="aips-gap-modal-cluster-name" class="aips-gap-modal-cluster-name"></span>
 					</div>
-					<button type="button" id="aips-gap-modal-close" class="aips-btn aips-btn-ghost aips-btn-xs" style="font-size:18px;line-height:1;">&times;</button>
+					<button type="button" id="aips-gap-modal-close" class="aips-btn aips-btn-ghost aips-btn-xs aips-gap-modal-close-btn">&times;</button>
 				</div>
-				<div class="aips-modal-body" style="padding:24px;max-height:480px;overflow-y:auto;">
+				<div class="aips-modal-body aips-gap-modal-body">
 					<div id="aips-gap-modal-loading" class="aips-audit-loading aips-hidden">
 						<span class="spinner is-active"></span>
 						<?php esc_html_e('Consulting AI model to detect topic opportunities in this cluster…', 'ai-post-scheduler'); ?>
 					</div>
 					<div id="aips-gap-suggestions-list" class="aips-gap-suggestions-list">
 					</div>
-					<div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:12px;">
-						<label for="aips-gap-author-select" style="font-weight:600;font-size:13px;white-space:nowrap;">
+					<div class="aips-gap-modal-author-row">
+						<label for="aips-gap-author-select" class="aips-gap-modal-author-label">
 							<?php esc_html_e('Assign to Author:', 'ai-post-scheduler'); ?>
 						</label>
-						<select id="aips-gap-author-select" class="aips-form-select" style="flex-grow:1;">
+						<select id="aips-gap-author-select" class="aips-form-select aips-gap-modal-author-select">
 							<option value="0"><?php esc_html_e('— Select an Author —', 'ai-post-scheduler'); ?></option>
 							<?php if (!empty($authors)) : ?>
 								<?php foreach ($authors as $auth) : ?>
@@ -653,7 +653,7 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 						</select>
 					</div>
 				</div>
-				<div class="aips-modal-footer" style="padding:16px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;">
+				<div class="aips-modal-footer aips-gap-modal-footer">
 					<button type="button" id="aips-gap-modal-cancel" class="aips-btn aips-btn-secondary"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
 					<button type="button" id="aips-commit-gap-topics-btn" class="aips-btn aips-btn-primary" disabled>
 						<span class="dashicons dashicons-plus-alt2"></span>
@@ -826,5 +826,35 @@ $active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions
 <!-- Template: Breadcrumb separator -->
 <script type="text/html" id="aips-tmpl-indexer-breadcrumb-sep">
 	<span class="aips-breadcrumb-sep">&rsaquo;</span>
+</script>
+
+<!-- Template: Cluster empty state -->
+<script type="text/html" id="aips-tmpl-indexer-cluster-empty">
+	<div class="aips-cluster-empty-cell">
+		<h4 class="aips-cluster-empty-title">{{title}}</h4>
+		<p class="aips-cluster-empty-desc">{{description}}</p>
+	</div>
+</script>
+
+<!-- Template: Pillar badge tag -->
+<script type="text/html" id="aips-tmpl-indexer-pillar-tag">
+	<span class="aips-pillar-tag">
+		<span class="dashicons dashicons-star-filled aips-pillar-icon"></span>
+		<?php esc_html_e('Pillar:', 'ai-post-scheduler'); ?> {{title}}
+	</span>
+</script>
+
+<!-- Template: Gap suggestion status message -->
+<script type="text/html" id="aips-tmpl-indexer-gap-msg">
+	<p class="{{msgClass}}">{{message}}</p>
+</script>
+
+<!-- Template: Clean audit scan result row -->
+<script type="text/html" id="aips-tmpl-indexer-audit-clean">
+	<tr>
+		<td colspan="5" class="aips-audit-clean-cell">
+			<strong>{{message}}</strong>
+		</td>
+	</tr>
 </script>
 

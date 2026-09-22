@@ -1483,10 +1483,12 @@
 
 					if (!res.success || !res.data.clusters || res.data.clusters.length === 0) {
 						var emptyMsg = (aipsContentIndexerL10n && aipsContentIndexerL10n.noAuditDuplicates) ? aipsContentIndexerL10n.noAuditDuplicates : 'No high-similarity duplicate or cannibalizing clusters found. Great job!';
-						if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-audit-empty')) {
+						if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-audit-clean')) {
+							$tbody.html(AIPS.Templates.render('aips-tmpl-indexer-audit-clean', { message: emptyMsg }));
+						} else if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-audit-empty')) {
 							$tbody.html(AIPS.Templates.render('aips-tmpl-indexer-audit-empty', { message: emptyMsg }));
 						} else {
-							$tbody.html('<tr><td colspan="5" style="text-align:center;padding:32px;color:#00a32a;"><strong>' + emptyMsg + '</strong></td></tr>');
+							$tbody.html($('<tr>').append($('<td>').attr('colspan', 5).addClass('aips-audit-clean-cell').append($('<strong>').text(emptyMsg))));
 						}
 						return;
 					}
@@ -2022,12 +2024,10 @@
 
 					// Render Cluster Accordion Cards
 					if (!data.clusters || data.clusters.length === 0) {
-						$container.html(
-							'<div class="aips-table-empty-cell" style="text-align:center;padding:40px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;">' +
-							'<h4 style="margin:0 0 4px 0;">No clusters formed at this threshold</h4>' +
-							'<p style="margin:0;color:#64748b;">Try lowering the Cluster Threshold or Min Size to group more posts together.</p>' +
-							'</div>'
-						);
+						$container.html(AIPS.Templates.render('aips-tmpl-indexer-cluster-empty', {
+							title: 'No clusters formed at this threshold',
+							description: 'Try lowering the Cluster Threshold or Min Size to group more posts together.'
+						}));
 					} else {
 						var cardsHtml = '';
 						data.clusters.forEach(function (cluster) {
@@ -2059,7 +2059,9 @@
 
 							var cohesionPct = Math.round((cluster.cohesion_score || 0) * 100);
 							var cohesionTier = cohesionPct >= 75 ? 'low' : (cohesionPct >= 60 ? 'medium' : 'high');
-							var pillarBadgeHtml = pillarTitle ? '<span class="aips-pillar-tag"><span class="dashicons dashicons-star-filled" style="font-size:12px;width:12px;height:12px;vertical-align:middle;color:#f59e0b;"></span> Pillar: ' + $('<div>').text(pillarTitle).html() + '</span>' : '';
+							var pillarBadgeHtml = pillarTitle ? AIPS.Templates.render('aips-tmpl-indexer-pillar-tag', {
+								title: AIPS.Templates.escape(pillarTitle)
+							}) : '';
 
 							cardsHtml += AIPS.Templates.renderRaw('aips-tmpl-indexer-cluster-card', {
 								id: cluster.id,
@@ -2210,7 +2212,9 @@
 						// Update pillar tag in card header
 						var postTitle = $btn.closest('tr').find('strong').first().text();
 						var $existingTag = $card.find('.aips-pillar-tag');
-						var tagHtml = '<span class="aips-pillar-tag"><span class="dashicons dashicons-star-filled" style="font-size:12px;width:12px;height:12px;vertical-align:middle;color:#f59e0b;"></span> Pillar: ' + $('<div>').text(postTitle).html() + '</span>';
+						var tagHtml = AIPS.Templates.render('aips-tmpl-indexer-pillar-tag', {
+							title: AIPS.Templates.escape(postTitle)
+						});
 						if ($existingTag.length) {
 							$existingTag.replaceWith(tagHtml);
 						} else {
@@ -2257,13 +2261,19 @@
 				success: function (res) {
 					$('#aips-gap-modal-loading').hide();
 					if (!res.success) {
-						$('#aips-gap-suggestions-list').html('<p style="color:#d63638;">' + (res.data.message || 'Failed to generate gap ideas.') + '</p>');
+						$('#aips-gap-suggestions-list').html(AIPS.Templates.render('aips-tmpl-indexer-gap-msg', {
+							msgClass: 'aips-gap-msg-error',
+							message: AIPS.Templates.escape(res.data.message || 'Failed to generate gap ideas.')
+						}));
 						return;
 					}
 
 					var suggestions = res.data.suggestions || [];
 					if (suggestions.length === 0) {
-						$('#aips-gap-suggestions-list').html('<p style="color:#64748b;">No topic gaps identified for this cluster at this time.</p>');
+						$('#aips-gap-suggestions-list').html(AIPS.Templates.render('aips-tmpl-indexer-gap-msg', {
+							msgClass: 'aips-gap-msg-empty',
+							message: 'No topic gaps identified for this cluster at this time.'
+						}));
 						return;
 					}
 
@@ -2279,7 +2289,10 @@
 				},
 				error: function () {
 					$('#aips-gap-modal-loading').hide();
-					$('#aips-gap-suggestions-list').html('<p style="color:#d63638;">Error requesting AI topic ideas.</p>');
+					$('#aips-gap-suggestions-list').html(AIPS.Templates.render('aips-tmpl-indexer-gap-msg', {
+						msgClass: 'aips-gap-msg-error',
+						message: 'Error requesting AI topic ideas.'
+					}));
 				}
 			});
 		},

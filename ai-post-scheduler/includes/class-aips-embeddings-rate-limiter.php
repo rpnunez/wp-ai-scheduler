@@ -37,6 +37,20 @@ class AIPS_Embeddings_Rate_Limiter {
 	private $logger;
 
 	/**
+	 * In-memory cache for usage stats within a single request lifecycle.
+	 *
+	 * @var array|null
+	 */
+	private $cached_stats = null;
+
+	/**
+	 * In-memory cache for raw timestamp history array.
+	 *
+	 * @var array|null
+	 */
+	private $cached_history = null;
+
+	/**
 	 * Initialize the rate limiter.
 	 *
 	 * @param AIPS_Config|null           $config Config instance.
@@ -60,14 +74,24 @@ class AIPS_Embeddings_Rate_Limiter {
 	/**
 	 * Get the raw timestamp history array.
 	 *
+	 * Uses an in-memory cache to avoid redundant get_option DB lookups
+	 * during repetitive batch processing loops within the same request.
+	 *
 	 * @return int[]
 	 */
 	public function get_usage_history(): array {
+		if ($this->cached_history !== null) {
+			return $this->cached_history;
+		}
+
 		$history = get_option(self::OPTION_NAME, array());
 		if (!is_array($history)) {
-			return array();
+			$this->cached_history = array();
+			return $this->cached_history;
 		}
-		return array_values(array_filter(array_map('intval', $history)));
+
+		$this->cached_history = array_values(array_filter(array_map('intval', $history)));
+		return $this->cached_history;
 	}
 
 	/**
@@ -94,6 +118,10 @@ class AIPS_Embeddings_Rate_Limiter {
 			return $ts >= $cutoff_30d;
 		}));
 
+		// Invalidate in-memory caches upon new usage recording
+		$this->cached_history = $history;
+		$this->cached_stats   = null;
+
 		// Persist with autoload = false to prevent bloating the autoloaded options
 		update_option(self::OPTION_NAME, $history, false);
 	}
@@ -104,19 +132,31 @@ class AIPS_Embeddings_Rate_Limiter {
 	 * @return void
 	 */
 	public function reset_history(): void {
+		$this->cached_history = array();
+		$this->cached_stats   = null;
 		update_option(self::OPTION_NAME, array(), false);
 	}
 
 	/**
 	 * Retrieve detailed usage statistics and quota status.
 	 *
-	 * @return array
+	 * Computes sliding-window usage metrics for 24-hour (daily), 7-day (weekly),
+	 * and 30-day (monthly) rolling windows. Uses an in-memory cache to avoid
+	 * recalculating repeatedly during high-frequency checks within a single request.
+	 *
+	 * @param bool $bypass_cache Whether to bypass the in-memory cache and re-read from storage.
+	 * @return array Multi-dimensional array containing usage counts, limits, reset times, and cooldown state.
 	 */
-	public function get_usage_stats(): array {
+	public function get_usage_stats(bool $bypass_cache = false): array {
+		if (!$bypass_cache && $this->cached_stats !== null) {
+			return $this->cached_stats;
+		}
+
 		$enabled = $this->is_enabled();
 		$history = $this->get_usage_history();
 		$now = time();
 
+		// Calculate sliding window cutoffs relative to current timestamp
 		$cutoff_24h = $now - DAY_IN_SECONDS;
 		$cutoff_7d  = $now - (7 * DAY_IN_SECONDS);
 		$cutoff_30d = $now - (30 * DAY_IN_SECONDS);
@@ -126,30 +166,37 @@ class AIPS_Embeddings_Rate_Limiter {
 		$monthly_count = 0;
 		$oldest_in_24h = null;
 
+		// Iterate through historical call timestamps and bucket into sliding windows
 		foreach ($history as $ts) {
+			// Daily 24h rolling window
 			if ($ts >= $cutoff_24h) {
 				$daily_count++;
 				if ($oldest_in_24h === null || $ts < $oldest_in_24h) {
 					$oldest_in_24h = $ts;
 				}
 			}
+			// Weekly 7d rolling window
 			if ($ts >= $cutoff_7d) {
 				$weekly_count++;
 			}
+			// Monthly 30d rolling window
 			if ($ts >= $cutoff_30d) {
 				$monthly_count++;
 			}
 		}
 
+		// Retrieve configured administrative threshold limits (0 indicates unlimited)
 		$daily_limit   = (int) $this->config->get_option('aips_embeddings_daily_limit', 50);
 		$weekly_limit  = (int) $this->config->get_option('aips_embeddings_weekly_limit', 200);
 		$monthly_limit = (int) $this->config->get_option('aips_embeddings_monthly_limit', 500);
 
+		// Calculate approximate time in seconds until the oldest call in 24h expires out of the window
 		$daily_reset_in = 0;
 		if ($oldest_in_24h !== null) {
 			$daily_reset_in = max(0, ($oldest_in_24h + DAY_IN_SECONDS) - $now);
 		}
 
+		// Determine if any quota limit is currently reached or breached
 		$is_rate_limited = false;
 		$exceeded_limit  = null;
 
@@ -166,7 +213,10 @@ class AIPS_Embeddings_Rate_Limiter {
 			}
 		}
 
-		return array(
+		// Fetch current auto-cooldown state (if active from consecutive provider errors)
+		$cooldown = $this->get_cooldown_status();
+
+		$this->cached_stats = array(
 			'enabled'         => $enabled,
 			'daily_count'     => $daily_count,
 			'daily_limit'     => $daily_limit,
@@ -177,8 +227,10 @@ class AIPS_Embeddings_Rate_Limiter {
 			'daily_reset_in'  => $daily_reset_in,
 			'is_rate_limited' => $is_rate_limited,
 			'exceeded_limit'  => $exceeded_limit,
-			'cooldown'        => $this->get_cooldown_status(),
+			'cooldown'        => $cooldown,
 		);
+
+		return $this->cached_stats;
 	}
 
 	/**
