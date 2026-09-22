@@ -171,6 +171,8 @@ class AIPS_Config {
             'aips_author_post_scheduled_quantity' => 1,
             'aips_author_post_manual_quantity' => 1,
             'aips_author_max_posts_per_topic' => 1,
+            // Integrations
+            'aips_integration_acf_enabled' => 0,
             // General
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
@@ -847,5 +849,14 @@ class AIPS_Config {
         $default = (string) $this->get_option('aips_default_post_type', 'post');
         $allowed = $this->get_generation_post_types();
         return in_array($default, $allowed, true) ? $default : $allowed[0];
+    }
+
+    /**
+     * Check if the Advanced Custom Fields (ACF) integration is enabled in Settings.
+     *
+     * @return bool True if enabled.
+     */
+    public function is_acf_integration_enabled(): bool {
+        return (bool) $this->get_option('aips_integration_acf_enabled', 0);
     }
 }

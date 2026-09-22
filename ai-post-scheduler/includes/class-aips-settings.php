@@ -178,6 +178,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_author_max_posts_per_topic'],
 			),
+			'aips_integration_acf_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_integration_acf_enabled'],
+			),
 			'aips_enable_logging' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_logging'],
@@ -1000,11 +1004,23 @@ class AIPS_Settings {
             'aips_cache_section'
         );
 
+        // -----------------------------------------------------------------------
+        // Integrations section: Third-party plugin integrations (ACF, etc.)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_integrations_section',
+            __('Plugin Integrations', 'ai-post-scheduler'),
+            array($this->ui, 'integrations_section_callback'),
+            'aips-settings'
+        );
 
-
-
-
-
+        add_settings_field(
+            'aips_integration_acf_enabled',
+            __('Advanced Custom Fields (ACF)', 'ai-post-scheduler'),
+            array($this->ui, 'integration_acf_enabled_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
     }
 
     /**

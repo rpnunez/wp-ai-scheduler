@@ -1425,4 +1425,48 @@ class AIPS_Settings_UI {
 		return array_values(array_unique($connector_ids));
 	}
 
+	/**
+	 * Integrations section description callback.
+	 *
+	 * @return void
+	 */
+	public function integrations_section_callback() {
+		echo '<p>' . esc_html__('Enable and manage third-party plugin integrations for content generation. When an integration is active and enabled, templates and generators can detect and write directly into its custom fields.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render the ACF integration toggle field.
+	 *
+	 * @return void
+	 */
+	public function integration_acf_enabled_field_callback() {
+		$enabled    = (bool) AIPS_Config::get_instance()->get_option('aips_integration_acf_enabled', 0);
+		$acf_active = function_exists('acf_get_field_groups') && function_exists('acf_get_fields') && function_exists('update_field');
+		?>
+		<label>
+			<input type="hidden" name="aips_integration_acf_enabled" value="0">
+			<input type="checkbox" name="aips_integration_acf_enabled" value="1" <?php checked($enabled, true); ?> <?php disabled(!$acf_active); ?>>
+			<?php esc_html_e('Enable Advanced Custom Fields (ACF) integration', 'ai-post-scheduler'); ?>
+		</label>
+		<?php if ($acf_active) : ?>
+			<span class="aips-badge aips-badge-success" style="margin-left: 8px; color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 3px; padding: 2px 6px; font-size: 11px;">
+				<?php esc_html_e('ACF Detected', 'ai-post-scheduler'); ?>
+			</span>
+		<?php else : ?>
+			<span class="aips-badge aips-badge-warning" style="margin-left: 8px; color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 3px; padding: 2px 6px; font-size: 11px;">
+				<?php esc_html_e('ACF Not Active', 'ai-post-scheduler'); ?>
+			</span>
+		<?php endif; ?>
+		<p class="description">
+			<?php
+			if ($acf_active) {
+				esc_html_e('When enabled, the Template editor will detect ACF field groups assigned to the template\'s post type, allowing AI content generation directly into ACF custom fields.', 'ai-post-scheduler');
+			} else {
+				esc_html_e('Advanced Custom Fields (or Secure Custom Fields) is currently not active on this site. Activate the ACF plugin to enable this integration.', 'ai-post-scheduler');
+			}
+			?>
+		</p>
+		<?php
+	}
+
 }
