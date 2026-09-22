@@ -1227,6 +1227,24 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render persistent vector caching toggle (Card 3).
+	 *
+	 * @return void
+	 */
+	public function embeddings_persistent_cache_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_embeddings_persistent_cache_enabled', true);
+		?>
+		<label for="aips_embeddings_persistent_cache_enabled">
+			<input type="checkbox" name="aips_embeddings_persistent_cache_enabled" id="aips_embeddings_persistent_cache_enabled" value="1" <?php checked($value); ?>>
+			<?php esc_html_e('Cache raw text vectors persistently in WordPress transients / object cache (7-day TTL)', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e('Prevents duplicate AI API calls when the same text prompt or post content is vectorized multiple times across background scans, topic checks, and internal link generation.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
 	 * Render live quota meters and active scope badge (Card 4).
 	 *
 	 * @return void

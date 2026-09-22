@@ -216,6 +216,7 @@ class AIPS_Config {
             'aips_cache_monitor_live_refresh_interval' => 30,
             // Content Indexer & Embeddings
             'aips_embeddings_enabled'                  => true,
+            'aips_embeddings_persistent_cache_enabled' => true,
             'aips_embeddings_provider'                 => '', // '' = auto-detect (Meow preferred)
             'aips_embeddings_model'                    => 'text-embedding-3-small',
             'aips_embeddings_env_id'                   => '',

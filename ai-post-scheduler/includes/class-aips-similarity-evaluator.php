@@ -49,6 +49,34 @@ class AIPS_Similarity_Evaluator {
 	private $logger;
 
 	/**
+	 * Default minimum similarity score for internal links suggestions.
+	 *
+	 * @var float
+	 */
+	const DEFAULT_INTERNAL_LINKS_THRESHOLD = 0.70;
+
+	/**
+	 * Default maximum number of suggestions per source entity.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_MAX_SUGGESTIONS = 5;
+
+	/**
+	 * Default post duplicate risk threshold.
+	 *
+	 * @var float
+	 */
+	const DEFAULT_POST_THRESHOLD = 0.85;
+
+	/**
+	 * Default topic similarity threshold.
+	 *
+	 * @var float
+	 */
+	const DEFAULT_TOPIC_THRESHOLD = 0.80;
+
+	/**
 	 * Palette of distinct cluster colors for graph visualization.
 	 *
 	 * @var string[]
@@ -189,6 +217,36 @@ class AIPS_Similarity_Evaluator {
 	}
 
 	/**
+	 * Get the configured or default threshold for a given context.
+	 *
+	 * @param string $context Context ('post', 'topic', 'internal_links', etc.).
+	 * @return float Similarity threshold (0.0 to 1.0).
+	 */
+	public function get_default_threshold(string $context = 'post'): float {
+		if ($context === 'topic') {
+			$raw = $this->config->get_option('aips_topic_similarity_threshold', self::DEFAULT_TOPIC_THRESHOLD);
+			return is_numeric($raw) ? (float) $raw : self::DEFAULT_TOPIC_THRESHOLD;
+		}
+
+		if ($context === 'internal_link' || $context === 'internal_links') {
+			$raw = $this->config->get_option('aips_indexer_similarity_threshold', self::DEFAULT_INTERNAL_LINKS_THRESHOLD);
+			return is_numeric($raw) ? (float) $raw : self::DEFAULT_INTERNAL_LINKS_THRESHOLD;
+		}
+
+		$raw = $this->config->get_option('aips_deduplication_threshold', self::DEFAULT_POST_THRESHOLD);
+		return is_numeric($raw) ? (float) $raw : self::DEFAULT_POST_THRESHOLD;
+	}
+
+	/**
+	 * Get the default maximum suggestions limit.
+	 *
+	 * @return int
+	 */
+	public function get_default_max_suggestions(): int {
+		return self::DEFAULT_MAX_SUGGESTIONS;
+	}
+
+	/**
 	 * Normalize a raw similarity score and return a standardized evaluation payload.
 	 *
 	 * Risk tiers:
@@ -199,7 +257,7 @@ class AIPS_Similarity_Evaluator {
 	 * - clean:    score < 0.50
 	 *
 	 * @param float  $score   Cosine similarity score (0.0 to 1.0).
-	 * @param string $context Evaluation context ('post', 'topic', 'author').
+	 * @param string $context Evaluation context ('post', 'topic', 'author', 'internal_links').
 	 * @return array{
 	 *     score: float,
 	 *     percentage: int,
@@ -213,16 +271,9 @@ class AIPS_Similarity_Evaluator {
 	 * } Standardized evaluation DTO.
 	 */
 	public function evaluate_similarity(float $score, string $context = 'post'): array {
-		$score = max(0.0, min(1.0, (float) $score));
-		$pct   = (int) round($score * 100);
-
-		if ($context === 'topic') {
-			$raw_thresh = $this->config->get_option('aips_topic_similarity_threshold', 0.80);
-			$threshold  = is_numeric($raw_thresh) ? (float) $raw_thresh : 0.80;
-		} else {
-			$raw_thresh = $this->config->get_option('aips_deduplication_threshold', 0.85);
-			$threshold  = is_numeric($raw_thresh) ? (float) $raw_thresh : 0.85;
-		}
+		$score     = max(0.0, min(1.0, (float) $score));
+		$pct       = (int) round($score * 100);
+		$threshold = $this->get_default_threshold($context);
 
 		if ($score >= 0.90) {
 			$tier        = 'critical';

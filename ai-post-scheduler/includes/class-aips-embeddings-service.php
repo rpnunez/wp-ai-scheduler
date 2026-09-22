@@ -185,10 +185,10 @@ class AIPS_Embeddings_Service {
 			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
 
-		// Check cache (cached embeddings do not count towards quota)
-		$cache_key = md5($text);
-		if (isset($this->embedding_cache[$cache_key])) {
-			return $this->embedding_cache[$cache_key];
+		// Check in-memory cache (cached embeddings do not count towards quota)
+		$mem_key = md5($text);
+		if (isset($this->embedding_cache[$mem_key])) {
+			return $this->embedding_cache[$mem_key];
 		}
 
 		$default_env_id = (string) $this->config->get_option('aips_embeddings_env_id');
@@ -202,13 +202,30 @@ class AIPS_Embeddings_Service {
 			$options['model'] = $default_model;
 		}
 
+		$model = !empty($options['model']) ? (string) $options['model'] : $this->get_active_model();
+
+		// Check persistent vector cache (transients / object cache)
+		$persistent_cache_enabled = (bool) $this->config->get_option('aips_embeddings_persistent_cache_enabled', true);
+		$transient_key            = 'aips_raw_emb_' . md5($text . '_' . $model);
+
+		if ($persistent_cache_enabled) {
+			$cached_transient = get_transient($transient_key);
+			if (is_array($cached_transient) && !empty($cached_transient)) {
+				$this->embedding_cache[$mem_key] = $cached_transient;
+				return $cached_transient;
+			}
+		}
+
 		// Execute through the rate limiter's resilience harness
 		$embedding = $this->rate_limiter->execute(
 			function () use ($text, $options) {
 				return $this->ai_service->generate_embedding($text, $options);
 			},
-			function ($result) use ($cache_key, $text) {
-				$this->embedding_cache[$cache_key] = $result;
+			function ($result) use ($mem_key, $transient_key, $persistent_cache_enabled, $text) {
+				$this->embedding_cache[$mem_key] = $result;
+				if ($persistent_cache_enabled && is_array($result) && !empty($result)) {
+					set_transient($transient_key, $result, 7 * DAY_IN_SECONDS);
+				}
 				$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
 			},
 			function ($error) {
@@ -340,48 +357,6 @@ class AIPS_Embeddings_Service {
 		}
 
 		return null;
-	}
-	
-	/**
-	 * Calculate cosine similarity between two embedding vectors.
-	 *
-	 * @deprecated 3.7.0 Use AIPS_Similarity_Evaluator::cosine_similarity() directly.
-	 *
-	 * @param array $embedding1 First embedding vector.
-	 * @param array $embedding2 Second embedding vector.
-	 * @return float|WP_Error Similarity score (0-1) or WP_Error on failure.
-	 */
-	public function calculate_similarity($embedding1, $embedding2) {
-		if (!is_array($embedding1) || !is_array($embedding2)) {
-			return new WP_Error('invalid_embeddings', __('Invalid embedding vectors provided.', 'ai-post-scheduler'));
-		}
-		
-		if (count($embedding1) !== count($embedding2)) {
-			return new WP_Error('dimension_mismatch', __('Embedding vectors must have the same dimensions.', 'ai-post-scheduler'));
-		}
-
-		return $this->get_similarity_evaluator()->cosine_similarity($embedding1, $embedding2);
-	}
-	
-	/**
-	 * Find the most similar items to a target embedding.
-	 *
-	 * @deprecated 3.7.0 Use AIPS_Similarity_Evaluator::find_top_matches() directly.
-	 *
-	 * @param array $target_embedding The target embedding vector.
-	 * @param array $candidate_embeddings Array of candidate embeddings with their IDs.
-	 * @param int   $top_k Number of top results to return.
-	 * @return array Array of results with IDs and similarity scores, sorted by similarity.
-	 */
-	public function find_nearest_neighbors($target_embedding, $candidate_embeddings, $top_k = 5) {
-		$matches = $this->get_similarity_evaluator()->find_top_matches($target_embedding, $candidate_embeddings, 0.0, $top_k, 'post');
-		return array_map(function ($m) {
-			return array(
-				'id'         => $m['id'],
-				'similarity' => $m['similarity'],
-				'data'       => isset($m['candidate']['data']) ? $m['candidate']['data'] : array(),
-			);
-		}, $matches);
 	}
 	
 	/**

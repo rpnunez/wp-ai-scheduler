@@ -246,6 +246,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_embeddings_enabled'],
 			),
+			'aips_embeddings_persistent_cache_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_embeddings_persistent_cache_enabled'],
+			),
 			'aips_embeddings_scope' => array(
 				'sanitize_callback' => array($ui, 'sanitize_embeddings_scope'),
 				'default'           => $defaults['aips_embeddings_scope'],
@@ -305,6 +309,10 @@ class AIPS_Settings {
 			'aips_auto_index_on_publish' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_auto_index_on_publish'],
+			),
+			'aips_indexer_publish_execution_timing' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_indexer_publish_execution_timing'],
 			),
 			'aips_related_posts_enabled' => array(
 				'sanitize_callback' => 'absint',
@@ -619,6 +627,14 @@ class AIPS_Settings {
             'aips_embeddings_dimensions',
             __('Vector Dimensions', 'ai-post-scheduler'),
             array($this->ui, 'embeddings_dimensions_field_callback'),
+            'aips-settings',
+            'aips_ai_embeddings_section'
+        );
+
+        add_settings_field(
+            'aips_embeddings_persistent_cache_enabled',
+            __('Persistent Vector Caching', 'ai-post-scheduler'),
+            array($this->ui, 'embeddings_persistent_cache_field_callback'),
             'aips-settings',
             'aips_ai_embeddings_section'
         );
