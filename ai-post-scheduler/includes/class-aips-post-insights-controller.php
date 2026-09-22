@@ -125,13 +125,7 @@ class AIPS_Post_Insights_Controller {
 			AIPS_Ajax_Response::forbidden();
 		}
 
-		$container = AIPS_Container::get_instance();
-		/** @var AIPS_Post_Clusters_Service $clusters_service */
-		$clusters_service = $container->has(AIPS_Post_Clusters_Service::class)
-			? $container->make(AIPS_Post_Clusters_Service::class)
-			: new AIPS_Post_Clusters_Service();
-
-		$success = $clusters_service->set_pillar_post($cluster_id, $post_id);
+		$success = $this->similarity_evaluator->set_pillar_post($cluster_id, $post_id);
 
 		if (!$success) {
 			AIPS_Ajax_Response::error(__('Failed to designate post as cluster pillar.', 'ai-post-scheduler'), 400);

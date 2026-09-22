@@ -171,13 +171,8 @@ class AIPS_Author_Topics_Generator {
 			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
 		}
 		
-		// Flag semantically similar candidates before they reach editorial review.
-		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
-
-		// Apply author auto-approval rules if enabled
-		if ($apply_auto_approval) {
-			$topics = $this->apply_auto_approval_rules($author, $topics);
-		}
+		// Flag semantically similar candidates and apply auto-approval rules via Similarity Evaluator
+		$topics = $this->similarity_evaluator->evaluate_generated_author_topics($topics, $author, $apply_auto_approval);
 		
 		// Save topics to database
 		$saved_topics = array();
@@ -232,21 +227,19 @@ class AIPS_Author_Topics_Generator {
 			// Always record author's topic generation last run timestamp.
 			$this->authors_repository->update_topic_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
 
-			// Continuous Topic Vector Indexing: persist embeddings if enabled
+			// Queue new topic IDs for background continuous vector indexing
 			$config = AIPS_Config::get_instance();
 			$sync_topics = (bool) $config->get_option('aips_indexer_topics_continuous_sync', true);
-			if ($sync_topics && $this->embeddings_service->is_enabled() && !$this->rate_limiter->is_in_cooldown()) {
-				foreach ($saved_topics as $saved_topic) {
-					if ($this->rate_limiter->is_in_cooldown()) {
-						break;
-					}
+			if ($sync_topics && $this->embeddings_service->is_enabled()) {
+				$indexer_service = AIPS_Container::get_instance()->has(AIPS_Content_Indexer_Service::class)
+					? AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)
+					: null;
 
+				foreach ($saved_topics as $saved_topic) {
 					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
 					if ($t_status !== 'rejected' && !empty($saved_topic['id'])) {
-						$t_id   = (int) $saved_topic['id'];
-						$result = $this->embeddings_service->compute_topic_embedding($t_id);
-						if (is_wp_error($result) && $this->rate_limiter->is_rate_limit_or_exhaustion_error($result)) {
-							break;
+						if ($indexer_service && method_exists($indexer_service, 'enqueue_topic_for_indexing')) {
+							$indexer_service->enqueue_topic_for_indexing((int) $saved_topic['id']);
 						}
 					}
 				}

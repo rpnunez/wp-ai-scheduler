@@ -29,26 +29,88 @@ class AIPS_Similarity_Evaluator {
 	private $embeddings_repo;
 
 	/**
-	 * @var AIPS_Embeddings_Service|null
+	 * @var AIPS_Relationships_Repository|null
 	 */
-	private $embeddings_service;
+	private $relationships_repo;
+
+	/**
+	 * @var AIPS_AI_Service_Interface|null
+	 */
+	private $ai_service;
+
+	/**
+	 * @var AIPS_Deduplication_Service|null
+	 */
+	private $deduplication_service;
+
+	/**
+	 * @var AIPS_Logger_Interface|null
+	 */
+	private $logger;
+
+	/**
+	 * Palette of distinct cluster colors for graph visualization.
+	 *
+	 * @var string[]
+	 */
+	private static $cluster_palette = array(
+		'#2563eb', // Blue
+		'#7c3aed', // Violet
+		'#059669', // Emerald
+		'#d97706', // Amber
+		'#dc2626', // Red
+		'#0891b2', // Cyan
+		'#4f46e5', // Indigo
+		'#db2777', // Pink
+		'#65a30d', // Lime
+		'#ea580c', // Orange
+		'#9333ea', // Purple
+		'#0d9488', // Teal
+	);
 
 	/**
 	 * Constructor.
 	 *
-	 * @param AIPS_Config|null                $config             Config instance.
-	 * @param AIPS_Embeddings_Repository|null $embeddings_repo    Embeddings repository.
-	 * @param AIPS_Embeddings_Service|null    $embeddings_service Embeddings service.
+	 * @param AIPS_Config|null                $config                Config instance.
+	 * @param AIPS_Embeddings_Repository|null $embeddings_repo       Embeddings repository.
+	 * @param AIPS_Embeddings_Service|null    $embeddings_service    Embeddings service.
+	 * @param AIPS_Relationships_Repository|null $relationships_repo Relationships repository.
+	 * @param AIPS_AI_Service_Interface|null $ai_service             AI service.
+	 * @param AIPS_Deduplication_Service|null $deduplication_service Deduplication service.
+	 * @param AIPS_Logger_Interface|null      $logger                Logger instance.
 	 */
 	public function __construct(
 		?AIPS_Config $config = null,
 		?AIPS_Embeddings_Repository $embeddings_repo = null,
-		?AIPS_Embeddings_Service $embeddings_service = null
+		?AIPS_Embeddings_Service $embeddings_service = null,
+		?AIPS_Relationships_Repository $relationships_repo = null,
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Deduplication_Service $deduplication_service = null,
+		?AIPS_Logger_Interface $logger = null
 	) {
 		$container = AIPS_Container::get_instance();
-		$this->config = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
-		$this->embeddings_repo = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : null);
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : null);
+		$this->config                = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
+		$this->embeddings_repo       = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->embeddings_service    = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->relationships_repo    = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$this->ai_service            = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service());
+		$this->logger                = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+	}
+
+	/**
+	 * Lazy getter for embeddings repository.
+	 *
+	 * @return AIPS_Embeddings_Repository
+	 */
+	public function get_embeddings_repository(): AIPS_Embeddings_Repository {
+		if ($this->embeddings_repo === null) {
+			$container = AIPS_Container::get_instance();
+			$this->embeddings_repo = $container->has(AIPS_Embeddings_Repository::class)
+				? $container->make(AIPS_Embeddings_Repository::class)
+				: new AIPS_Embeddings_Repository();
+		}
+		return $this->embeddings_repo;
 	}
 
 	/**
@@ -64,6 +126,66 @@ class AIPS_Similarity_Evaluator {
 				: null;
 		}
 		return $this->embeddings_service;
+	}
+
+	/**
+	 * Lazy getter for relationships repository.
+	 *
+	 * @return AIPS_Relationships_Repository
+	 */
+	public function get_relationships_repository(): AIPS_Relationships_Repository {
+		if ($this->relationships_repo === null) {
+			$container = AIPS_Container::get_instance();
+			$this->relationships_repo = $container->has(AIPS_Relationships_Repository::class)
+				? $container->make(AIPS_Relationships_Repository::class)
+				: new AIPS_Relationships_Repository();
+		}
+		return $this->relationships_repo;
+	}
+
+	/**
+	 * Lazy getter for AI service.
+	 *
+	 * @return AIPS_AI_Service_Interface
+	 */
+	public function get_ai_service(): AIPS_AI_Service_Interface {
+		if ($this->ai_service === null) {
+			$container = AIPS_Container::get_instance();
+			$this->ai_service = $container->has(AIPS_AI_Service_Interface::class)
+				? $container->make(AIPS_AI_Service_Interface::class)
+				: new AIPS_AI_Service();
+		}
+		return $this->ai_service;
+	}
+
+	/**
+	 * Lazy getter for deduplication service.
+	 *
+	 * @return AIPS_Deduplication_Service
+	 */
+	public function get_deduplication_service(): AIPS_Deduplication_Service {
+		if ($this->deduplication_service === null) {
+			$container = AIPS_Container::get_instance();
+			$this->deduplication_service = $container->has(AIPS_Deduplication_Service::class)
+				? $container->make(AIPS_Deduplication_Service::class)
+				: new AIPS_Deduplication_Service($this->config, $this->get_embeddings_repository(), $this->get_embeddings_service(), $this->get_relationships_repository(), $this);
+		}
+		return $this->deduplication_service;
+	}
+
+	/**
+	 * Lazy getter for logger.
+	 *
+	 * @return AIPS_Logger_Interface
+	 */
+	public function get_logger(): AIPS_Logger_Interface {
+		if ($this->logger === null) {
+			$container = AIPS_Container::get_instance();
+			$this->logger = $container->has(AIPS_Logger_Interface::class)
+				? $container->make(AIPS_Logger_Interface::class)
+				: new AIPS_Logger();
+		}
+		return $this->logger;
 	}
 
 	/**
@@ -556,13 +678,8 @@ class AIPS_Similarity_Evaluator {
 				);
 			}
 
-			// Check relationships table if available
-			$rel_repo = AIPS_Container::get_instance()->has(AIPS_Relationships_Repository::class)
-				? AIPS_Container::get_instance()->make(AIPS_Relationships_Repository::class)
-				: null;
-
-			if ($rel_repo) {
-				$raw_duplicates = $rel_repo->get_top_duplicates($post_id, 5);
+			if ($this->relationships_repo) {
+				$raw_duplicates = $this->relationships_repo->get_top_duplicates($post_id, 5);
 			}
 		}
 
@@ -610,5 +727,33 @@ class AIPS_Similarity_Evaluator {
 			'badge_class'        => $overall_eval['badge_class'],
 			'top_duplicates'     => $top_duplicates,
 		);
+	}
+
+	/**
+	 * Compute cosine similarity between two numeric vectors.
+	 *
+	 * @param array $a Vector A.
+	 * @param array $b Vector B.
+	 * @return float Cosine similarity score (0.0 to 1.0).
+	 */
+	private function cosine_similarity(array $a, array $b): float {
+		$dot_product = 0.0;
+		$norm_a      = 0.0;
+		$norm_b      = 0.0;
+		$count       = count($a);
+
+		for ($i = 0; $i < $count; $i++) {
+			$va           = (float) $a[$i];
+			$vb           = (float) $b[$i];
+			$dot_product += $va * $vb;
+			$norm_a      += $va * $va;
+			$norm_b      += $vb * $vb;
+		}
+
+		if ($norm_a <= 0.0 || $norm_b <= 0.0) {
+			return 0.0;
+		}
+
+		return max(0.0, min(1.0, $dot_product / (sqrt($norm_a) * sqrt($norm_b))));
 	}
 }

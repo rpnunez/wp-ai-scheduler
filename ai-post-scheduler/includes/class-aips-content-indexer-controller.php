@@ -44,9 +44,9 @@ class AIPS_Content_Indexer_Controller {
 	private $config;
 
 	/**
-	 * @var AIPS_Post_Clusters_Service
+	 * @var AIPS_Similarity_Evaluator
 	 */
-	private $post_clusters_service;
+	private $similarity_evaluator;
 
 	/**
 	 * @var AIPS_Embeddings_Rate_Limiter
@@ -72,7 +72,7 @@ class AIPS_Content_Indexer_Controller {
 		?AIPS_Deduplication_Service $deduplication_service = null,
 		?AIPS_Embeddings_Repository $embeddings_repo = null,
 		?AIPS_Config $config = null,
-		?AIPS_Post_Clusters_Service $post_clusters_service = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null,
 		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
 		?AIPS_Author_Topics_Repository $topics_repo = null,
 		?AIPS_Authors_Repository $authors_repo = null
@@ -84,7 +84,7 @@ class AIPS_Content_Indexer_Controller {
 		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service());
 		$this->embeddings_repo       = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->config                = $config ?: AIPS_Config::get_instance();
-		$this->post_clusters_service = $post_clusters_service ?: ($container->has(AIPS_Post_Clusters_Service::class) ? $container->make(AIPS_Post_Clusters_Service::class) : new AIPS_Post_Clusters_Service());
+		$this->similarity_evaluator  = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
 		$this->rate_limiter          = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter());
 		$this->topics_repo           = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
 		$this->authors_repo          = $authors_repo ?: ($container->has(AIPS_Authors_Repository::class) ? $container->make(AIPS_Authors_Repository::class) : new AIPS_Authors_Repository());
@@ -508,11 +508,14 @@ class AIPS_Content_Indexer_Controller {
 		$this->verify_request();
 
 		$threshold = isset($_POST['threshold']) ? (float) $_POST['threshold'] : (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65);
-		$min_size  = isset($_POST['min_size']) ? absint($_POST['min_size']) : 2;
+		$clusters = $this->similarity_evaluator->detect_post_clusters($threshold);
+		$orphans  = $this->similarity_evaluator->get_orphan_posts($threshold);
 
-		$results = $this->post_clusters_service->get_post_clusters($threshold, $min_size);
-
-		AIPS_Ajax_Response::success($results);
+		AIPS_Ajax_Response::success(array(
+			'clusters' => array_values($clusters),
+			'orphans'  => $orphans,
+			'count'    => count($clusters),
+		));
 	}
 
 	/**
@@ -528,7 +531,7 @@ class AIPS_Content_Indexer_Controller {
 			AIPS_Ajax_Response::error(__('Missing cluster ID or valid pillar post ID.', 'ai-post-scheduler'));
 		}
 
-		$success = $this->post_clusters_service->set_pillar_post($cluster_id, $pillar_post_id);
+		$success = $this->similarity_evaluator->set_pillar_post($cluster_id, $pillar_post_id);
 
 		if ($success) {
 			AIPS_Ajax_Response::success(array('message' => __('Pillar post designated successfully.', 'ai-post-scheduler')));
@@ -550,7 +553,7 @@ class AIPS_Content_Indexer_Controller {
 			AIPS_Ajax_Response::error(__('Cluster ID and custom name are required.', 'ai-post-scheduler'));
 		}
 
-		$this->post_clusters_service->rename_cluster($cluster_id, $custom_name);
+		$this->similarity_evaluator->rename_post_cluster($cluster_id, $custom_name);
 
 		AIPS_Ajax_Response::success(array('message' => __('Cluster renamed successfully.', 'ai-post-scheduler')));
 	}
@@ -561,14 +564,21 @@ class AIPS_Content_Indexer_Controller {
 	public function ajax_generate_gap_ideas() {
 		$this->verify_request();
 
-		$cluster_id      = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
-		$num_suggestions = isset($_POST['num_suggestions']) ? max(1, min(10, absint($_POST['num_suggestions']))) : 5;
+		$cluster_id = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
+		$post_id    = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 
-		if (empty($cluster_id)) {
-			AIPS_Ajax_Response::error(__('Missing cluster ID.', 'ai-post-scheduler'));
+		if ($post_id <= 0 && !empty($cluster_id)) {
+			$clusters = (array) $this->config->get_option('aips_post_clusters', array());
+			if (isset($clusters[$cluster_id]['pillar_id'])) {
+				$post_id = (int) $clusters[$cluster_id]['pillar_id'];
+			}
 		}
 
-		$suggestions = $this->post_clusters_service->generate_gap_suggestions($cluster_id, $num_suggestions);
+		if ($post_id <= 0) {
+			AIPS_Ajax_Response::error(__('Missing target post ID or valid cluster pillar post ID.', 'ai-post-scheduler'));
+		}
+
+		$suggestions = $this->similarity_evaluator->generate_gap_suggestions($post_id, $cluster_id);
 
 		if (is_wp_error($suggestions)) {
 			AIPS_Ajax_Response::error($suggestions->get_error_message());
