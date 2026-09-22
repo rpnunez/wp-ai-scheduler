@@ -396,7 +396,7 @@ final class AI_Post_Scheduler {
                     // registers its own wp_ajax_{$action} handler at priority 10 as
                     // a constructor side-effect.  WordPress will invoke that handler
                     // as the next hook priority in this same wp_ajax_{$action} cycle.
-                    new $controller_class();
+                    AIPS_Container::get_instance()->make($controller_class);
                 }
             };
             add_action('wp_ajax_' . $action, $resolver, 5);

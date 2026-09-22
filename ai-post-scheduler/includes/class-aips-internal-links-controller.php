@@ -57,28 +57,28 @@ class AIPS_Internal_Links_Controller {
 	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
-	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
-	 * @param AIPS_Internal_Links_Repository|null       $links_repo       Links repository.
-	 * @param AIPS_Embeddings_Repository|null           $embeddings_repo  Embeddings repository.
-	 * @param AIPS_Logger|null                          $logger           Logger instance.
-	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
-	 * @param AIPS_Job_Scheduler|null                   $job_scheduler    Job scheduler service.
+	 * @param AIPS_Internal_Links_Service|null         $service          Internal links service.
+	 * @param AIPS_Internal_Links_Repository|null      $links_repo       Links repository.
+	 * @param AIPS_Embeddings_Repository|null          $embeddings_repo  Embeddings repository.
+	 * @param AIPS_Logger_Interface|null               $logger           Logger instance.
+	 * @param AIPS_Internal_Link_Inserter_Service|null $inserter_service Link inserter service.
+	 * @param AIPS_Job_Scheduler|null                  $job_scheduler    Job scheduler service.
 	 */
 	public function __construct(
-		$service = null,
-		$links_repo = null,
-		$embeddings_repo = null,
-		$logger = null,
-		$inserter_service = null,
-		$job_scheduler = null
+		?AIPS_Internal_Links_Service $service = null,
+		?AIPS_Internal_Links_Repository $links_repo = null,
+		?AIPS_Embeddings_Repository $embeddings_repo = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Internal_Link_Inserter_Service $inserter_service = null,
+		?AIPS_Job_Scheduler $job_scheduler = null
 	) {
 		$container              = AIPS_Container::get_instance();
-		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
-		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_repo  = $embeddings_repo  ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->logger           = $logger           ?: new AIPS_Logger();
-		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
-		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();
+		$this->service          = $service ?: $container->make(AIPS_Internal_Links_Service::class);
+		$this->links_repo       = $links_repo ?: $container->make(AIPS_Internal_Links_Repository::class);
+		$this->embeddings_repo  = $embeddings_repo ?: $container->make(AIPS_Embeddings_Repository::class);
+		$this->logger           = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->inserter_service = $inserter_service ?: $container->make(AIPS_Internal_Link_Inserter_Service::class);
+		$this->job_scheduler    = $job_scheduler ?: $container->make(AIPS_Job_Scheduler::class);
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));

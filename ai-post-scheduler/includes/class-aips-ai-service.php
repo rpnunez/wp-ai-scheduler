@@ -81,21 +81,20 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
      *                                                             Defaults to the
      *                                                             provider chosen by
      *                                                             AIPS_AI_Provider_Factory.
-     */
-    public function __construct(?AIPS_Logger_Interface $logger = null, $config = null, $resilience_service = null, ?AIPS_AI_Provider_Interface $provider = null) {
-        if ($logger) {
-            $this->logger = $logger;
-        } else {
-            $container = AIPS_Container::get_instance();
-            if ($container->has(AIPS_Logger_Interface::class)) {
-                $this->logger = $container->make(AIPS_Logger_Interface::class);
-            } else {
-                $this->logger = AIPS_Logger::instance();
-            }
-        }
-        $this->config = $config ?: AIPS_Config::get_instance();
-        $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
-        $this->provider = $provider ?: AIPS_AI_Provider_Factory::create();
+    public function __construct(
+        ?AIPS_Logger_Interface $logger = null,
+        ?AIPS_Config $config = null,
+        ?AIPS_Resilience_Service $resilience_service = null,
+        ?AIPS_AI_Provider_Interface $provider = null
+    ) {
+        $container = AIPS_Container::get_instance();
+        $this->logger             = $logger ?? $container->make(AIPS_Logger_Interface::class);
+        $this->config             = $config ?? $container->make(AIPS_Config::class);
+        $this->resilience_service = $resilience_service ?? $container->make(AIPS_Resilience_Service::class, array(
+            'logger' => $this->logger,
+            'config' => $this->config,
+        ));
+        $this->provider           = $provider ?? $container->make(AIPS_AI_Provider_Interface::class);
 
         $this->call_log = array();
     }

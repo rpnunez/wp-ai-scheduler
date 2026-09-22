@@ -64,22 +64,22 @@ class AIPS_Internal_Links_Service {
 	/**
 	 * Initialize the service.
 	 *
-	 * @param AIPS_Embeddings_Repository|null      $embeddings_repo    Embeddings repository.
-	 * @param AIPS_Internal_Links_Repository|null  $links_repo         Internal links repository.
-	 * @param AIPS_Embeddings_Service|null         $embeddings_service Embeddings service.
-	 * @param AIPS_Logger|null                     $logger             Logger instance.
+	 * @param AIPS_Embeddings_Repository|null     $embeddings_repo    Embeddings repository.
+	 * @param AIPS_Internal_Links_Repository|null $links_repo         Internal links repository.
+	 * @param AIPS_Embeddings_Service|null        $embeddings_service Embeddings service.
+	 * @param AIPS_Logger_Interface|null          $logger             Logger instance.
 	 */
 	public function __construct(
-		$embeddings_repo = null,
-		$links_repo = null,
-		$embeddings_service = null,
-		$logger = null
+		?AIPS_Embeddings_Repository $embeddings_repo = null,
+		?AIPS_Internal_Links_Repository $links_repo = null,
+		?AIPS_Embeddings_Service $embeddings_service = null,
+		?AIPS_Logger_Interface $logger = null
 	) {
 		$container                = AIPS_Container::get_instance();
-		$this->embeddings_repo    = $embeddings_repo    ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->links_repo         = $links_repo         ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
-		$this->logger             = $logger             ?: new AIPS_Logger();
+		$this->embeddings_repo    = $embeddings_repo ?: $container->make(AIPS_Embeddings_Repository::class);
+		$this->links_repo         = $links_repo ?: $container->make(AIPS_Internal_Links_Repository::class);
+		$this->embeddings_service = $embeddings_service ?: $container->make(AIPS_Embeddings_Service::class);
+		$this->logger             = $logger ?: $container->make(AIPS_Logger_Interface::class);
 	}
 
 	// -------------------------------------------------------------------------

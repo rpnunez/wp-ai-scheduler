@@ -62,19 +62,11 @@ class AIPS_Campaigns_Controller {
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->campaigns_repository = $campaigns_repository ?: $container->makeIfExists(AIPS_Campaigns_Repository::class, function() {
-			return AIPS_Campaigns_Repository::instance();
-		});
-		$this->template_repository = $template_repository ?: $container->makeIfExists(AIPS_Template_Repository::class, function() {
-			return AIPS_Template_Repository::instance();
-		});
-		$this->unified_schedule_service = $unified_schedule_service ?: $container->makeIfExists(AIPS_Unified_Schedule_Service::class, function() {
-			return new AIPS_Unified_Schedule_Service();
-		});
-		$this->config = $config ?: $container->makeIfExists(AIPS_Config::class, function() {
-			return AIPS_Config::get_instance();
-		});
-		$this->ai_service = $this->resolve_ai_service($ai_service);
+		$this->campaigns_repository     = $campaigns_repository ?: $container->make(AIPS_Campaigns_Repository::class);
+		$this->template_repository      = $template_repository ?: $container->make(AIPS_Template_Repository::class);
+		$this->unified_schedule_service = $unified_schedule_service ?: $container->make(AIPS_Unified_Schedule_Service::class);
+		$this->config                   = $config ?: $container->make(AIPS_Config::class);
+		$this->ai_service               = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
 
 		add_action('wp_ajax_aips_get_campaigns', array($this, 'ajax_get_campaigns'));
 		add_action('wp_ajax_aips_get_campaign_metrics', array($this, 'ajax_get_campaign_metrics'));

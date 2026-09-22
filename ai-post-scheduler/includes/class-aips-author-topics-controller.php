@@ -30,10 +30,7 @@ class AIPS_Author_Topics_Controller {
 	 * @return self
 	 */
 	public static function instance(): self {
-		if ( self::$instance === null ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+		return AIPS_Container::get_instance()->make(self::class);
 	}
 
 	/**
@@ -89,23 +86,40 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * Initialize the controller.
 	 *
-	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
-	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
-	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
-	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
+	 * @param AIPS_Author_Topics_Repository|null     $repository             Author topics repository.
+	 * @param AIPS_Author_Topic_Logs_Repository|null $logs_repository        Author topic logs repository.
+	 * @param AIPS_Feedback_Repository|null          $feedback_repository    Feedback repository.
+	 * @param AIPS_Author_Post_Generator|null        $post_generator         Author post generator.
+	 * @param AIPS_Topic_Penalty_Service|null        $penalty_service        Topic penalty service.
+	 * @param AIPS_History_Service_Interface|null    $history_service        History service.
+	 * @param AIPS_Topic_Expansion_Service|null      $expansion_service      Topic expansion service.
+	 * @param AIPS_History_Repository_Interface|null $history_repository     History repository.
+	 * @param AIPS_Bulk_Generator_Service|null       $bulk_generator_service Bulk generator service.
+	 * @param AIPS_Job_Scheduler|null                $job_scheduler          Job scheduler service.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
-		$container = AIPS_Container::get_instance();
-		$this->repository             = new AIPS_Author_Topics_Repository();
-		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository    = new AIPS_Feedback_Repository();
-		$this->post_generator         = new AIPS_Author_Post_Generator();
-		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
-		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
-		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
-		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
-		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
+	public function __construct(
+		?AIPS_Author_Topics_Repository $repository = null,
+		?AIPS_Author_Topic_Logs_Repository $logs_repository = null,
+		?AIPS_Feedback_Repository $feedback_repository = null,
+		?AIPS_Author_Post_Generator $post_generator = null,
+		?AIPS_Topic_Penalty_Service $penalty_service = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Topic_Expansion_Service $expansion_service = null,
+		?AIPS_History_Repository_Interface $history_repository = null,
+		?AIPS_Bulk_Generator_Service $bulk_generator_service = null,
+		?AIPS_Job_Scheduler $job_scheduler = null
+	) {
+		$container                    = AIPS_Container::get_instance();
+		$this->repository             = $repository ?: $container->make(AIPS_Author_Topics_Repository::class);
+		$this->logs_repository        = $logs_repository ?: $container->make(AIPS_Author_Topic_Logs_Repository::class);
+		$this->feedback_repository    = $feedback_repository ?: $container->make(AIPS_Feedback_Repository::class);
+		$this->post_generator         = $post_generator ?: $container->make(AIPS_Author_Post_Generator::class);
+		$this->penalty_service        = $penalty_service ?: $container->make(AIPS_Topic_Penalty_Service::class);
+		$this->history_service        = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->expansion_service      = $expansion_service ?: $container->make(AIPS_Topic_Expansion_Service::class);
+		$this->history_repository     = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
+		$this->bulk_generator_service = $bulk_generator_service ?: $container->make(AIPS_Bulk_Generator_Service::class);
+		$this->job_scheduler          = $job_scheduler ?: $container->make(AIPS_Job_Scheduler::class);
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));

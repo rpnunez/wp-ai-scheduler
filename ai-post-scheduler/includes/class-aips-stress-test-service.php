@@ -147,26 +147,29 @@ class AIPS_Stress_Test_Service {
     private $generator = null;
 
     /**
-     * @param AIPS_AI_Service|null       $ai_service Optional service override (tests).
-     * @param AIPS_Logger_Interface|null $logger     Optional logger override.
-     */
-    /**
      * @var AIPS_History_Repository_Interface
      */
     private $history_repository;
 
-    public function __construct($ai_service = null, $logger = null) {
+    /**
+     * @param AIPS_AI_Service_Interface|null         $ai_service         Optional service override (tests).
+     * @param AIPS_Logger_Interface|null             $logger             Optional logger override.
+     * @param AIPS_History_Repository_Interface|null $history_repository Optional history repository override.
+     */
+    public function __construct(
+        ?AIPS_AI_Service_Interface $ai_service = null,
+        ?AIPS_Logger_Interface $logger = null,
+        ?AIPS_History_Repository_Interface $history_repository = null
+    ) {
         $container = AIPS_Container::get_instance();
 
-        $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-        $this->history_repository = $container->makeIfExists(AIPS_History_Repository_Interface::class, function() {
-            return new AIPS_History_Repository();
-        });
+        $this->logger             = $logger ?: $container->make(AIPS_Logger_Interface::class);
+        $this->history_repository = $history_repository ?: $container->make(AIPS_History_Repository_Interface::class);
 
         if ($ai_service) {
             $this->ai_service = $ai_service;
         } else {
-            $config             = AIPS_Config::get_instance();
+            $config             = $container->make(AIPS_Config::class);
             $resilience_config  = new AIPS_Stress_Test_Resilience_Config($config);
             $resilience_service = new AIPS_Resilience_Service($this->logger, $resilience_config);
             $this->ai_service   = new AIPS_AI_Service($this->logger, $config, $resilience_service);

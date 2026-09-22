@@ -98,6 +98,26 @@ class AIPS_Service_Provider {
 			return new AIPS_Sources_Data_Repository();
 		});
 
+		$container->singleton(AIPS_Sources_Repository::class, function() {
+			return new AIPS_Sources_Repository();
+		});
+
+		$container->singleton(AIPS_Campaigns_Repository::class, function() {
+			return AIPS_Campaigns_Repository::instance();
+		});
+
+		$container->singleton(AIPS_AI_Assistance_Repository::class, function() {
+			return new AIPS_AI_Assistance_Repository();
+		});
+
+		$container->singleton(AIPS_Internal_Links_Repository::class, function() {
+			return new AIPS_Internal_Links_Repository();
+		});
+
+		$container->singleton(AIPS_Content_Auditor_Repository::class, function() {
+			return new AIPS_Content_Auditor_Repository();
+		});
+
 		// Services
 		$container->singleton(AIPS_History_Service::class, function($c) {
 			return new AIPS_History_Service(
@@ -121,6 +141,89 @@ class AIPS_Service_Provider {
 
 		$container->singleton(AIPS_Job_Scheduler::class, function() {
 			return new AIPS_Job_Scheduler();
+		});
+
+		$container->singleton(AIPS_Resilience_Service::class, function($c) {
+			return new AIPS_Resilience_Service(
+				$c->make(AIPS_Logger_Interface::class),
+				$c->make(AIPS_Config::class)
+			);
+		});
+
+		$container->singleton(AIPS_Internal_Links_Service::class, function($c) {
+			return new AIPS_Internal_Links_Service(
+				$c->make(AIPS_Embeddings_Repository::class),
+				$c->make(AIPS_Internal_Links_Repository::class),
+				$c->make(AIPS_Embeddings_Service::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Internal_Link_Inserter_Service::class, function() {
+			return new AIPS_Internal_Link_Inserter_Service();
+		});
+
+		$container->singleton(AIPS_Author_Suggestions_Service::class, function($c) {
+			return new AIPS_Author_Suggestions_Service(
+				$c->make(AIPS_AI_Service_Interface::class),
+				$c->make(AIPS_Logger_Interface::class),
+				$c->make(AIPS_History_Service_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Topic_Expansion_Service::class, function() {
+			return new AIPS_Topic_Expansion_Service();
+		});
+
+		$container->singleton(AIPS_Topic_Penalty_Service::class, function() {
+			return new AIPS_Topic_Penalty_Service();
+		});
+
+		$container->singleton(AIPS_Component_Regeneration_Service::class, function() {
+			return new AIPS_Component_Regeneration_Service();
+		});
+
+		$container->singleton(AIPS_AI_Assistance_Service::class, function($c) {
+			return new AIPS_AI_Assistance_Service(
+				$c->make(AIPS_AI_Service_Interface::class),
+				$c->make(AIPS_AI_Assistance_Repository::class)
+			);
+		});
+
+		$container->singleton(AIPS_Content_Auditor_Scanner::class, function() {
+			return new AIPS_Content_Auditor_Scanner();
+		});
+
+		$container->singleton(AIPS_Content_Auditor_Engine::class, function($c) {
+			return new AIPS_Content_Auditor_Engine(
+				$c->make(AIPS_AI_Service_Interface::class),
+				$c->make(AIPS_Logger_Interface::class),
+				$c->make(AIPS_Sources_Repository::class),
+				$c->make(AIPS_Sources_Data_Repository::class)
+			);
+		});
+
+		$container->singleton(AIPS_Content_Auditor::class, function($c) {
+			return new AIPS_Content_Auditor(
+				$c->make(AIPS_AI_Service_Interface::class),
+				$c->make(AIPS_Logger_Interface::class),
+				$c->make(AIPS_Content_Auditor_Scanner::class),
+				$c->make(AIPS_Content_Auditor_Engine::class)
+			);
+		});
+
+		$container->singleton(AIPS_Research_Service::class, function($c) {
+			return new AIPS_Research_Service(
+				$c->make(AIPS_AI_Service_Interface::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
+		});
+
+		$container->singleton(AIPS_Stress_Test_Service::class, function($c) {
+			return new AIPS_Stress_Test_Service(
+				$c->make(AIPS_AI_Service::class),
+				$c->make(AIPS_Logger_Interface::class)
+			);
 		});
 
 		// Embeddings & Content Indexing Bindings (for container resolution without modifying embedding files)

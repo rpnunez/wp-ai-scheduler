@@ -51,14 +51,19 @@ class AIPS_Author_Suggestions_Service {
 	 * @param AIPS_AI_Service_Interface|null      $ai_service      AI service instance (optional for testing).
 	 * @param AIPS_Logger_Interface|null          $logger          Logger instance (optional for testing).
 	 * @param AIPS_History_Service_Interface|null $history_service History service (optional for testing).
-	 * @param AIPS_Prompt_Builder_Authors|null $prompt_builder  Prompt builder (optional for testing).
+	 * @param AIPS_Prompt_Builder_Authors|null    $prompt_builder  Prompt builder (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, $prompt_builder = null) {
-		$container = AIPS_Container::get_instance();
-		$this->ai_service      = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger          = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Authors();
+	public function __construct(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_History_Service_Interface $history_service = null,
+		?AIPS_Prompt_Builder_Authors $prompt_builder = null
+	) {
+		$container             = AIPS_Container::get_instance();
+		$this->ai_service      = $ai_service ?: $container->make(AIPS_AI_Service_Interface::class);
+		$this->logger          = $logger ?: $container->make(AIPS_Logger_Interface::class);
+		$this->history_service = $history_service ?: $container->make(AIPS_History_Service_Interface::class);
+		$this->prompt_builder  = $prompt_builder ?: $container->make(AIPS_Prompt_Builder_Authors::class);
 	}
 
 	/**

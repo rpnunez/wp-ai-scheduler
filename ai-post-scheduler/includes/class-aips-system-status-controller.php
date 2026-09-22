@@ -32,20 +32,18 @@ class AIPS_System_Status_Controller {
 	private $diagnostics_service;
 
 	/**
-	 * @var AIPS_Container
+	 * Constructor.
+	 *
+	 * @param AIPS_Resilience_Service|null         $resilience_service  Resilience service.
+	 * @param AIPS_System_Diagnostics_Service|null $diagnostics_service Diagnostics service.
 	 */
-	private $container;
-
-	public function __construct() {
-		$this->container = AIPS_Container::get_instance();
-
-		$this->resilience_service = $this->container->has(AIPS_Resilience_Service::class)
-			? $this->container->make(AIPS_Resilience_Service::class)
-			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null);
-
-		$this->diagnostics_service = $this->container->has(AIPS_System_Diagnostics_Service::class)
-			? $this->container->make(AIPS_System_Diagnostics_Service::class)
-			: new AIPS_System_Diagnostics_Service();
+	public function __construct(
+		?AIPS_Resilience_Service $resilience_service = null,
+		?AIPS_System_Diagnostics_Service $diagnostics_service = null
+	) {
+		$container                 = AIPS_Container::get_instance();
+		$this->resilience_service  = $resilience_service ?: $container->make(AIPS_Resilience_Service::class);
+		$this->diagnostics_service = $diagnostics_service ?: $container->make(AIPS_System_Diagnostics_Service::class);
 
 		add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
 		add_action('wp_ajax_aips_status_reschedule_missed_cron', array($this, 'ajax_reschedule_missed_cron'));
