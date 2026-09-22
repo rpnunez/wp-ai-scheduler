@@ -107,13 +107,11 @@ class AIPS_Content_Indexer_Controller {
 	}
 
 	/**
-	 * Render the Content Indexer Admin Page.
+	 * Prepare shared view data for Content Intelligence templates.
+	 *
+	 * @return array
 	 */
-	public function render_page() {
-		if (!current_user_can('manage_options')) {
-			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
-		}
-
+	private function get_view_data(): array {
 		$post_types      = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		$status          = $this->indexer_service->get_indexing_status($post_types);
 		$stats           = $this->embeddings_repo->get_stats();
@@ -168,7 +166,61 @@ class AIPS_Content_Indexer_Controller {
 			'queue_status'                   => $queue_status,
 		);
 
-		include AIPS_PLUGIN_DIR . 'templates/admin/content-indexer.php';
+		return compact(
+			'status',
+			'stats',
+			'stored_dims',
+			'active_dims',
+			'cooldown_status',
+			'queue_status',
+			'authors',
+			'dimension_mismatch',
+			'all_post_types',
+			'settings'
+		);
+	}
+
+	/**
+	 * Render the primary Content Intelligence Hub Admin Page (Graph Visualizer & Health).
+	 */
+	public function render_intelligence_hub() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
+		}
+
+		extract($this->get_view_data());
+		include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence.php';
+	}
+
+	/**
+	 * Render the dedicated Topic Clusters & Content Gaps Admin Page.
+	 */
+	public function render_clusters_page() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
+		}
+
+		extract($this->get_view_data());
+		include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-clusters.php';
+	}
+
+	/**
+	 * Render the dedicated Cannibalization & Semantic Duplicate Audit Admin Page.
+	 */
+	public function render_cannibalization_page() {
+		if (!current_user_can('manage_options')) {
+			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
+		}
+
+		extract($this->get_view_data());
+		include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
+	}
+
+	/**
+	 * Render the Content Indexer Admin Page (legacy backward compatibility).
+	 */
+	public function render_page() {
+		$this->render_intelligence_hub();
 	}
 
 	/**
@@ -670,3 +722,8 @@ class AIPS_Content_Indexer_Controller {
 		}
 	}
 }
+
+if (!class_exists('AIPS_Content_Intelligence_Controller')) {
+	class_alias(AIPS_Content_Indexer_Controller::class, 'AIPS_Content_Intelligence_Controller');
+}
+

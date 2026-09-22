@@ -54,6 +54,9 @@ class AIPS_Admin_Assets {
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const PAGE_CONTENT_INTELLIGENCE = 'aips-content-intelligence';
+	private const PAGE_POST_CLUSTERS = 'aips-post-clusters';
+	private const PAGE_CANNIBALIZATION = 'aips-cannibalization';
 	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 	private const PAGE_STRESS_TEST    = 'aips-stress-test';
@@ -175,7 +178,17 @@ class AIPS_Admin_Assets {
 			$this->enqueue_internal_links_assets();
 		}
 
-		if (self::PAGE_CONTENT_INDEXER === $page || $this->hook_contains($hook, self::PAGE_CONTENT_INDEXER) || $this->is_automations_tab($page, 'content-indexer')) {
+		if (
+			self::PAGE_CONTENT_INTELLIGENCE === $page
+			|| self::PAGE_POST_CLUSTERS === $page
+			|| self::PAGE_CANNIBALIZATION === $page
+			|| self::PAGE_CONTENT_INDEXER === $page
+			|| $this->hook_contains($hook, self::PAGE_CONTENT_INTELLIGENCE)
+			|| $this->hook_contains($hook, self::PAGE_POST_CLUSTERS)
+			|| $this->hook_contains($hook, self::PAGE_CANNIBALIZATION)
+			|| $this->hook_contains($hook, self::PAGE_CONTENT_INDEXER)
+			|| $this->is_automations_tab($page, 'content-indexer')
+		) {
 			$this->enqueue_content_indexer_assets();
 		}
 

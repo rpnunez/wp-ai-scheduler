@@ -228,6 +228,33 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Content Intelligence', 'ai-post-scheduler'),
+            __('Content Intelligence', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-intelligence',
+            array($this, 'render_content_intelligence_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
+            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-post-clusters',
+            array($this, 'render_post_clusters_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Cannibalization Audit', 'ai-post-scheduler'),
+            __('Cannibalization Audit', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-cannibalization',
+            array($this, 'render_cannibalization_page')
+        );
+
+        add_submenu_page(
+            null,
             __('Content Indexer', 'ai-post-scheduler'),
             __('Content Indexer', 'ai-post-scheduler'),
             'manage_options',
@@ -819,14 +846,44 @@ class AIPS_Admin_Menu {
         '</p></div>';
     }
 
-    public function render_content_indexer_page() {
+    public function render_content_intelligence_page() {
         try {
             $controller = new AIPS_Content_Indexer_Controller();
-            $controller->render_page();
+            $controller->render_intelligence_hub();
         } catch (Throwable $throwable) {
             echo '<div class="notice notice-error"><p>' .
-                esc_html__('The Content Indexer page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+                esc_html__('The Content Intelligence page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
             '</p></div>';
         }
+    }
+
+    public function render_post_clusters_page() {
+        try {
+            $controller = new AIPS_Content_Indexer_Controller();
+            $controller->render_clusters_page();
+        } catch (Throwable $throwable) {
+            echo '<div class="notice notice-error"><p>' .
+                esc_html__('The Topic Clusters page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+            '</p></div>';
+        }
+    }
+
+    public function render_cannibalization_page() {
+        try {
+            $controller = new AIPS_Content_Indexer_Controller();
+            $controller->render_cannibalization_page();
+        } catch (Throwable $throwable) {
+            echo '<div class="notice notice-error"><p>' .
+                esc_html__('The Cannibalization Audit page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
+            '</p></div>';
+        }
+    }
+
+    public function render_content_indexer_page() {
+        if (!headers_sent()) {
+            wp_safe_redirect(admin_url('admin.php?page=aips-content-intelligence'));
+            exit;
+        }
+        $this->render_content_intelligence_page();
     }
 }

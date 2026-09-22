@@ -32,7 +32,11 @@
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
-### Added
+- **Content Intelligence Suite & Dedicated Pages**: Restructured the tab-heavy Content Indexer into the modern **Content Intelligence** suite using a Hybrid 2-Level architecture:
+  - **Primary Hub (`aips-content-intelligence`)**: Interactive Semantic Graph Visualizer, multi-dimensional vector health metrics, and backfill scan coverage controls.
+  - **Dedicated Topic Clusters & Gaps Page (`aips-post-clusters`)**: Standalone workflow page for thematic topic clusters, core Pillar Post designation, community cohesion meters, and AI gap topic generation with 1-click author assignment.
+  - **Dedicated Cannibalization & Duplicate Audit Page (`aips-cannibalization`)**: Standalone risk audit page with grouped risk tiers, pairwise similarity comparisons, and direct editorial action links.
+  - **Seamless Navigation & Backward Compatibility**: Persistent suite navigation tabs across all sub-pages and automatic redirection from legacy `?page=aips-content-indexer` URLs.
 - **Vector Embeddings Scope Filtering**: Added configurable indexing scope filters (`aips_only`, `date_range`, `all`) defaulting conservatively to AIPS-generated posts (`_aips_generated_post = '1'`) to prevent runaway token usage on sites with large legacy archives.
 - **Embeddings Rate Limiting & Quota Protection**: Added persistent sliding-window usage tracking across rolling 24h, 7d, and 30d windows with automated backfill scan halting and quota alert notifications upon breach. Persisted in `wp_options` (`autoload = false`) to guarantee resilience across AIPS Cache flushes and object cache invalidations.
 - **Settings > AI Vector Configuration Consolidation**: Consolidated all Vector Embeddings controls (master toggle, scope filter, rate limits, model, environment ID, dimensions) under the dedicated **Settings > AI** section, with live usage gauges and deep links in the Content Indexer hub.

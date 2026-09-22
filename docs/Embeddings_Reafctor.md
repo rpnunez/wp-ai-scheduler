@@ -1,4 +1,4 @@
-﻿# Embeddings & Semantic Subsystem Technical Documentation
+# Embeddings & Semantic Subsystem Technical Documentation
 
 This document details the architectural refactoring, vector storage optimizations, semantic similarity evaluation consolidation, rate-limiting subsystem, and UI enhancements introduced on the `toggle_embeddings_system_config` branch of AI Post Scheduler.
 
@@ -25,6 +25,9 @@ The Embeddings & Semantic subsystem underwent a complete architectural overhaul 
 - `ai-post-scheduler/includes/class-aips-post-insights-controller.php` — AJAX endpoints for single-post AI insights, duplicate matches, on-demand reindexing, and pillar toggles.
 - `ai-post-scheduler/includes/class-aips-post-insights-repository.php` — Specialized repository querying post embedding status, precomputed relationships, and generation history.
 - `ai-post-scheduler/templates/admin/post-insights-metabox.php` — Admin template rendering post insights in editor sidebars.
+- `ai-post-scheduler/templates/admin/content-intelligence.php` — Content Intelligence Hub admin template featuring the Semantic Graph Visualizer, live vector metrics, and scope breakdown.
+- `ai-post-scheduler/templates/admin/content-intelligence-clusters.php` — Standalone Topic Clusters & Content Gaps workflow admin template.
+- `ai-post-scheduler/templates/admin/content-intelligence-cannibalization.php` — Standalone Cannibalization & Duplicate Audit admin template.
 - `ai-post-scheduler/tests/Test_AIPS_Embeddings_Rate_Limiter.php` — Unit tests for sliding-window limits, cooldown resets, fault filtering, and execution wrapper safety.
 - `ai-post-scheduler/tests/Test_AIPS_Embeddings_Toggle.php` — Unit tests for the global embeddings on/off toggle.
 
@@ -124,6 +127,17 @@ To ensure high performance and prevent UI blocking during post publishing or top
 - **WordPress Posts List Table Column**: Added an AI Post Insights column to the `edit.php` screen showing post indexing status, top duplicate risks with colored badges, cluster membership, and one-click reindexing.
 - **Classic & Gutenberg Editor Sidebars**: Rendered comprehensive AI insights (generation context, token usage, duplicate cannibalization audit, pillar status toggle).
 - **Semantic Graph Visualizer**: Added pan/zoom navigation (up to 500%), level-of-detail (LOD) node rendering, connection edge similarity pills, and cluster drill-down breadcrumbs.
+
+---
+
+### 3.6. Content Intelligence Suite & Dedicated Pages Restructuring
+
+The technical, tab-heavy "Content Indexer" page was rebranded and restructured into a high-value **Content Intelligence** suite using a Hybrid 2-Level architecture:
+
+1. **Primary Hub (`aips-content-intelligence`)**: Dedicated full-screen Semantic Graph Visualizer, system vector health metrics, and backfill scan coverage controls.
+2. **Dedicated Page 1 (`Topic Clusters & Gaps` — `aips-post-clusters`)**: Standalone workflow page for thematic post cluster exploration, pillar post modeling, cohesion metrics, and AI bridge/gap idea generation with 1-click author assignment.
+3. **Dedicated Page 2 (`Cannibalization Audit` — `aips-cannibalization`)**: Standalone risk audit page with grouped risk tiers, pairwise similarity comparisons, and direct editorial action links.
+4. **Persistent Suite Navigation & Backward Compatibility**: Clean tab bar linking all sub-pages across the suite, with automated redirection from legacy `?page=aips-content-indexer` URLs.
 
 ---
 

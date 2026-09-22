@@ -167,8 +167,10 @@
 		 */
 		init: function () {
 			// Ensure only the active tab panel is displayed on load
-			$('.aips-tab-content:not(.active)').hide();
-			$('.aips-tab-content.active').show();
+			if ($('.aips-tab-content').length) {
+				$('.aips-tab-content:not(.active)').hide();
+				$('.aips-tab-content.active').show();
+			}
 
 			// Bind all delegated and static DOM events
 			this.bindEvents();
@@ -177,7 +179,14 @@
 			this.initCooldownTimer();
 
 			// Load the default graph for the first indexed post
-			this.loadInitialGraph();
+			if ($('#aips-graph-svg').length) {
+				this.loadInitialGraph();
+			}
+
+			// Automatically scan and build clusters when on dedicated clusters page
+			if ($('#aips-clusters-accordion').length && !this.clustersData) {
+				this.onRefreshClustersClick();
+			}
 		},
 
 		/**
@@ -280,8 +289,12 @@
 		 * @return {void}
 		 */
 		onTabClick: function (e) {
-			e.preventDefault();
 			var tab = $(e.currentTarget).data('tab');
+			if (!tab) {
+				return;
+			}
+
+			e.preventDefault();
 
 			// Deactivate all tab links and panels
 			$('.aips-tab-link').removeClass('active');

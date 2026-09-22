@@ -11,6 +11,15 @@
 	margin-bottom: 20px;
 }
 
+/* Suite Navigation & Tabs */
+.aips-suite-nav {
+	margin-bottom: 24px;
+}
+
+.aips-scope-breakdown-panel {
+	margin-top: 24px;
+}
+
 /* Tab Navigation & Panel Visibility */
 .aips-tab-content {
 	display: none !important;
