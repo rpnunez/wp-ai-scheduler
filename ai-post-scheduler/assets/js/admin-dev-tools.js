@@ -22,12 +22,13 @@
                 return;
             }
 
+            $btn.prop('disabled', true);
+            $spinner.addClass('is-active');
+
             var formData = $form.serialize();
             formData += '&action=aips_generate_scaffold&nonce=' + aipsAjax.nonce;
 
-            $spinner.addClass('is-active');
-
-            var req = $.post(aipsAjax.ajaxUrl, formData, function(response) {
+            $.post(aipsAjax.ajaxUrl, formData, function(response) {
                 if (response.success) {
                     $('#aips-dev-output-message').text(response.data.message);
 
@@ -47,12 +48,8 @@
                 $('#aips-dev-error-message').text('An error occurred. Please try again.');
                 $error.fadeIn();
             }).always(function() {
+                $btn.prop('disabled', false);
                 $spinner.removeClass('is-active');
-            });
-
-            AIPS.Utilities.withLock($btn, req, {
-                loadingText: 'Generating…',
-                timeout: 120000
             });
         });
     });

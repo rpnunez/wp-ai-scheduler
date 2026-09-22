@@ -54,10 +54,6 @@
 			this.loadRunHistory();
 		},
 
-		getAjaxUrl: function () {
-			return (window.aipsAjax && window.aipsAjax.ajaxUrl) ? window.aipsAjax.ajaxUrl : (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
-		},
-
 		bindEvents: function () {
 			$(document)
 				.on('click', '#aips-stress-run-all', this.handleRunAll.bind(this))
@@ -66,8 +62,6 @@
 				.on('click', '#aips-stress-cleanup', this.handleCleanup.bind(this))
 				.on('click', '.aips-stress-run-one', this.handleRunOne.bind(this))
 				.on('click', '.aips-stress-row', this.handleRowToggle.bind(this))
-				.on('change', '#aips-stress-toggle-all', this.handleToggleAllCases.bind(this))
-				.on('change', '.aips-stress-case-checkbox', this.handleCaseCheckboxChange.bind(this))
 				// Keyboard parity for the row: the toggle button carries the
 				// aria state, so Enter/Space on it drives the same toggle.
 				.on('keydown', '.aips-stress-toggle', this.handleToggleKeydown.bind(this))
@@ -78,25 +72,6 @@
 				.on('click', '#aips-stress-history-diff-btn', this.handleCompareDualHistory.bind(this))
 				.on('click', '.aips-stress-view-run-btn', this.handleViewRunDetails.bind(this))
 				.on('click', '#aips-stress-diff-modal .aips-modal-close, #aips-stress-diff-modal .aips-modal-close-btn, #aips-stress-diff-modal .aips-modal-backdrop', this.closeDiffModal.bind(this));
-		},
-
-		/**
-		 * Toggle all test case checkboxes.
-		 *
-		 * @param {Event} e
-		 */
-		handleToggleAllCases: function (e) {
-			var isChecked = $(e.currentTarget).is(':checked');
-			$('.aips-stress-case-checkbox').prop('checked', isChecked);
-		},
-
-		/**
-		 * Update master checkbox state when individual checkboxes change.
-		 */
-		handleCaseCheckboxChange: function () {
-			var total = $('.aips-stress-case-checkbox').length;
-			var checked = $('.aips-stress-case-checkbox:checked').length;
-			$('#aips-stress-toggle-all').prop('checked', total > 0 && total === checked);
 		},
 
 		// -------------------------------------------------------------------
@@ -129,7 +104,7 @@
 		},
 
 		/**
-		 * Run selected cases in order, then show the summary banner.
+		 * Run every case in order, then show the summary banner.
 		 *
 		 * @param {Event} e
 		 */
@@ -141,17 +116,14 @@
 			}
 
 			var self = this;
-			var $checked = $('.aips-stress-case-checkbox:checked');
-			if (!$checked.length) {
-				if (AIPS.Utilities && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast(t('selectAtLeastOne', 'Please select at least one test case to run.'), 'warning');
-				}
+			var $rows = $('.aips-stress-row');
+			var caseIds = $rows.map(function () {
+				return $(this).data('case');
+			}).get();
+
+			if (!caseIds.length) {
 				return;
 			}
-
-			var caseIds = $checked.map(function () {
-				return $(this).val();
-			}).get();
 
 			this.running = true;
 			this.aborted = false;
@@ -204,7 +176,7 @@
 			this.setRowState($row, 'running', t('running', 'Running…'), '—');
 
 			return $.ajax({
-				url: this.getAjaxUrl(),
+				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				// A full pipeline case can legitimately take minutes; the default
 				// timeout would abort a run that is still healthy.
@@ -606,7 +578,7 @@
 		 * @param {Event} e
 		 */
 		handleRowToggle: function (e) {
-			if ($(e.target).closest('.aips-stress-run-one, .aips-stress-case-checkbox, #aips-stress-toggle-all, input[type="checkbox"]').length) {
+			if ($(e.target).closest('.aips-stress-run-one').length) {
 				return;
 			}
 
@@ -926,10 +898,11 @@
 
 		runCleanup: function () {
 			var self = this;
-			var $btn = $('#aips-stress-cleanup');
 
-			var req = $.ajax({
-				url: self.getAjaxUrl(),
+			$('#aips-stress-cleanup').prop('disabled', true);
+
+			$.ajax({
+				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_cleanup',
@@ -945,11 +918,8 @@
 				AIPS.Utilities.showToast(t('requestFailed', 'Request failed.'), 'error');
 			}).fail(function () {
 				AIPS.Utilities.showToast(t('requestFailed', 'Request failed.'), 'error');
-			});
-
-			AIPS.Utilities.withLock($btn, req, {
-				loadingText: t('cleaningUp', 'Cleaning up…'),
-				timeout: 60000
+			}).always(function () {
+				$('#aips-stress-cleanup').prop('disabled', false);
 			});
 		},
 
@@ -1023,7 +993,7 @@
 			}
 
 			$.ajax({
-				url: this.getAjaxUrl(),
+				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_get_history',
@@ -1076,7 +1046,7 @@
 			};
 
 			$.ajax({
-				url: self.getAjaxUrl(),
+				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_save_run',
@@ -1164,7 +1134,7 @@
 			$('#aips-stress-diff-body').html(spinnerHtml);
 
 			$.ajax({
-				url: self.getAjaxUrl(),
+				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_get_run',
@@ -1202,7 +1172,7 @@
 			$('#aips-stress-diff-body').html(spinnerHtml);
 
 			$.ajax({
-				url: self.getAjaxUrl(),
+				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_diff_runs',

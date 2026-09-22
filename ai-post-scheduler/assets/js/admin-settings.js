@@ -35,7 +35,7 @@
 				return;
 			}
 
-			var $link = $('#aips-settings-tab-nav .aips-tab-link, #aips-settings-tab-nav .aips-rail-item').filter(function() {
+			var $link = $('#aips-settings-tab-nav .aips-tab-link').filter(function() {
 				return $(this).attr('data-tab') === hash;
 			});
 			if ($link.length) {
@@ -70,6 +70,7 @@
 				$submit = $form.find('input[type="submit"], button[type="submit"]');
 			}
 			$submit = $submit.first();
+			var defaultLabel = $submit.is('input') ? $submit.val() : $submit.text();
 			var savingLabel = (window.aipsSettingsL10n && aipsSettingsL10n.saving) ? aipsSettingsL10n.saving : 'Saving...';
 			var settings = AIPS.collectSettingsPayload($activeTab);
 
@@ -81,7 +82,14 @@
 				return;
 			}
 
-			var req = $.ajax({
+			$submit.prop('disabled', true);
+			if ($submit.is('input')) {
+				$submit.val(savingLabel);
+			} else {
+				$submit.text(savingLabel);
+			}
+
+			$.ajax({
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				dataType: 'json',
@@ -109,9 +117,14 @@
 					message = xhr.responseJSON.data.message;
 				}
 				AIPS.Utilities.showToast(message, 'error');
+			}).always(function() {
+				$submit.prop('disabled', false);
+				if ($submit.is('input')) {
+					$submit.val(defaultLabel);
+				} else {
+					$submit.text(defaultLabel);
+				}
 			});
-
-			AIPS.Utilities.withLock($submit, req, { loadingText: savingLabel });
 		},
 
 		/**

@@ -26,7 +26,36 @@ $count_pending  = isset($link_counts['pending'])  ? (int) $link_counts['pending'
 $count_accepted = isset($link_counts['accepted']) ? (int) $link_counts['accepted'] : 0;
 $count_rejected = isset($link_counts['rejected']) ? (int) $link_counts['rejected'] : 0;
 $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted'] : 0;
+$is_embedded_internal_links_view = !empty($embedded);
 ?>
+<?php if (!$is_embedded_internal_links_view) : ?>
+<div class="wrap aips-wrap">
+	<div class="aips-page-container">
+
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title"><?php esc_html_e('Internal Links', 'ai-post-scheduler'); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e('Automatically discover related content and generate internal link suggestions using semantic similarity.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="aips-page-actions">
+					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-content-indexer')); ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-networking"></span>
+						<?php esc_html_e('Content Indexer & Graph', 'ai-post-scheduler'); ?>
+					</a>
+					<button type="button" id="aips-start-indexing-btn" class="aips-btn aips-btn-primary">
+						<span class="dashicons dashicons-database-import"></span>
+						<?php esc_html_e('Index Posts', 'ai-post-scheduler'); ?>
+					</button>
+					<button type="button" id="aips-clear-index-btn" class="aips-btn aips-btn-ghost aips-btn-danger">
+						<span class="dashicons dashicons-trash"></span>
+						<?php esc_html_e('Clear Index', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+			</div>
+<?php endif; ?>
+		</div>
 
 		<!-- Status Cards -->
 		<div class="aips-stats-row" style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
@@ -64,15 +93,16 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 
 		</div><!-- /.aips-stats-row -->
 
-		<!-- Tabs & Content Panel -->
-		<div class="aips-content-panel aips-panel-with-tabs">
-			<div class="aips-tab-nav aips-panel-tab-nav">
-				<a href="#suggestions" class="aips-tab-link active" data-tab="suggestions"><?php esc_html_e('Suggestions', 'ai-post-scheduler'); ?></a>
-				<a href="#generate" class="aips-tab-link" data-tab="generate"><?php esc_html_e('Generate for Post', 'ai-post-scheduler'); ?></a>
-			</div>
+		<!-- Tabs -->
+		<div class="aips-tab-nav">
+			<a href="#suggestions" class="aips-tab-link active" data-tab="suggestions"><?php esc_html_e('Suggestions', 'ai-post-scheduler'); ?></a>
+			<a href="#generate" class="aips-tab-link" data-tab="generate"><?php esc_html_e('Generate for Post', 'ai-post-scheduler'); ?></a>
+		</div>
 
-			<!-- Suggestions Tab -->
-			<div id="suggestions-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+		<!-- Suggestions Tab -->
+		<div id="suggestions-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
+			<div class="aips-content-panel">
+
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
 					<div class="aips-filter-left">
@@ -119,10 +149,12 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 						<div class="aips-pagination" id="aips-il-page-controls"></div>
 					</div>
 				</div><!-- /.aips-panel-body -->
-			</div><!-- /#suggestions-tab -->
+			</div><!-- /.aips-content-panel -->
+		</div><!-- /#suggestions-tab -->
 
-			<!-- Generate for Post Tab -->
-			<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
+		<!-- Generate for Post Tab -->
+		<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
+			<div class="aips-content-panel">
 				<div class="aips-panel-body" style="padding:24px;">
 					<h2 style="margin-top:0;"><?php esc_html_e('Generate Suggestions for a Post', 'ai-post-scheduler'); ?></h2>
 					<p><?php esc_html_e('Enter a post ID to generate internal link suggestions for it. The post will be indexed if it has not been indexed yet.', 'ai-post-scheduler'); ?></p>
@@ -169,8 +201,13 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 						<?php esc_html_e('Re-index Post', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
-			</div><!-- /#generate-tab -->
-		</div><!-- /.aips-panel-with-tabs -->
+			</div>
+		</div><!-- /#generate-tab -->
+
+<?php if (!$is_embedded_internal_links_view) : ?>
+	</div><!-- /.aips-page-container -->
+</div><!-- /.wrap -->
+<?php endif; ?>
 
 <!-- Insert Link Modal -->
 <div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">

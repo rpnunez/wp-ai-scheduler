@@ -127,6 +127,9 @@ class AIPS_Ajax_Registry {
 		'aips_get_session_json'           => 'AIPS_Generated_Posts_Controller',
 		'aips_download_session_json'      => 'AIPS_Generated_Posts_Controller',
 
+		// Calendar Controller
+		'aips_get_calendar_events'        => 'AIPS_Calendar_Controller',
+
 		// Structures Controller
 		'aips_get_structures'             => 'AIPS_Structures_Controller',
 		'aips_get_structure'              => 'AIPS_Structures_Controller',
@@ -164,7 +167,6 @@ class AIPS_Ajax_Registry {
 
 		// History
 		'aips_bulk_delete_history'        => 'AIPS_History',
-		'aips_clear_history'              => 'AIPS_History',
 		'aips_export_history'             => 'AIPS_History',
 		'aips_get_history_details'        => 'AIPS_History',
 		'aips_get_history_logs'           => 'AIPS_History',

@@ -584,22 +584,30 @@
 			var self = this;
 			var $btn = $('#aips-start-indexing-btn');
 
-			var req = $.post(aipsAjax.ajaxUrl, {
+			$btn.prop('disabled', true).text(aipsInternalLinksL10n.loading);
+
+			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_start_indexing',
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
+					label: self.originalIndexText,
+				}));
+
 				if (response.success) {
 					AIPS.Utilities.showToast(response.data.message, 'success');
 					setTimeout(function () { self.refreshStatus(); }, 2000);
 				} else {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
-						'error'
+					(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
+					'error'
 					);
 				}
+			}).fail(function () {
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
+					label: self.originalIndexText,
+				}));
 			});
-
-			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.loading, timeout: 180000 });
 		},
 
 		/**
@@ -607,9 +615,8 @@
 		 */
 		clearIndex: function () {
 			var self = this;
-			var $btn = $('#aips-clear-index-btn');
 
-			var req = $.post(aipsAjax.ajaxUrl, {
+			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_clear_index',
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
@@ -619,15 +626,11 @@
 					self.refreshStatus();
 				} else {
 					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || 'Error.',
-						'error'
+					(response.data && response.data.message) || 'Error.',
+					'error'
 					);
 				}
 			});
-
-			if ($btn.length) {
-				AIPS.Utilities.withLock($btn, req);
-			}
 		},
 
 		/**
@@ -646,29 +649,35 @@
 				return;
 			}
 
+			$btn.prop('disabled', true).text(aipsInternalLinksL10n.generating);
 			$feedback.hide();
 
-			var req = $.post(aipsAjax.ajaxUrl, {
+			$.post(aipsAjax.ajaxUrl, {
 				action:          'aips_internal_links_generate_suggestions',
 				nonce:           aipsInternalLinksL10n.nonce,
 				post_id:         postId,
 				max_suggestions: maxSugg || 5,
 				threshold:       threshold || 0.70,
 			}, function (response) {
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
+					label: self.originalGenerateText,
+				}));
+
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
 					self.loadSuggestions();
 				} else {
 					self.showGenerateFeedback(
-						(response.data && response.data.message) || 'Error.',
-						'error'
+					(response.data && response.data.message) || 'Error.',
+					'error'
 					);
 				}
 			}).fail(function () {
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
+					label: self.originalGenerateText,
+				}));
 				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
 			});
-
-			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.generating, timeout: 120000 });
 		},
 
 		/**
@@ -685,26 +694,33 @@
 				return;
 			}
 
+			$btn.prop('disabled', true).text(aipsInternalLinksL10n.reindexing);
 			$feedback.hide();
 
-			var req = $.post(aipsAjax.ajaxUrl, {
+			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_internal_links_reindex_post',
 				nonce:   aipsInternalLinksL10n.nonce,
 				post_id: postId,
 			}, function (response) {
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
+					label: self.originalReindexText,
+				}));
+
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
 					self.loadSuggestions();
 					self.refreshStatus();
 				} else {
 					self.showGenerateFeedback(
-						(response.data && response.data.message) || 'Error.',
-						'error'
+					(response.data && response.data.message) || 'Error.',
+					'error'
 					);
 				}
+			}).fail(function () {
+				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
+					label: self.originalReindexText,
+				}));
 			});
-
-			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.reindexing, timeout: 120000 });
 		},
 
 		/**

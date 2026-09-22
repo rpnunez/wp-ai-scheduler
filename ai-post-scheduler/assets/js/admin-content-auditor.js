@@ -102,8 +102,9 @@
 			if (!topic || !authorId) return;
 
 			var $btn = $('#aips-confirm-add-topic-btn');
+			$btn.prop('disabled', true);
 
-			var req = $.ajax({
+			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -114,21 +115,18 @@
 					status: 'approved'
 				},
 				success: function (res) {
+					$btn.prop('disabled', false);
 					if (res && res.success) {
-						AIPS.Utilities.showToast(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!', 'success');
+						alert(aipsAuditorL10n.topicAddedSuccess || 'Topic successfully added to Author Persona!');
 						$('#aips-add-to-author-modal').hide();
 					} else {
-						AIPS.Utilities.showToast(res && res.data && res.data.message ? res.data.message : 'Error saving topic.', 'error');
+						alert(res && res.data && res.data.message ? res.data.message : 'Error saving topic.');
 					}
 				},
 				error: function () {
-					AIPS.Utilities.showToast('Network error while saving topic.', 'error');
+					$btn.prop('disabled', false);
+					alert('Network error while saving topic.');
 				}
-			});
-
-			AIPS.Utilities.withLock($btn, req, {
-				loadingText: 'Saving...',
-				timeout: 30000
 			});
 		});
 
@@ -139,7 +137,7 @@
 			if (!topic) return;
 
 			if (confirm(aipsAuditorL10n.confirmGeneratePost || 'Generate post immediately for topic: "' + topic + '"?')) {
-				window.location.href = 'admin.php?page=aips-studio&tab=templates&generate_topic=' + encodeURIComponent(topic);
+				window.location.href = 'admin.php?page=aips-templates&generate_topic=' + encodeURIComponent(topic);
 			}
 		});
 	}
@@ -681,9 +679,6 @@
 	}
 
 	function escapeHtml(str) {
-		if (window.AIPS && window.AIPS.Utilities && typeof window.AIPS.Utilities.escapeHtml === 'function') {
-			return window.AIPS.Utilities.escapeHtml(str);
-		}
 		if (!str) return '';
 		return String(str)
 			.replace(/&/g, '&amp;')

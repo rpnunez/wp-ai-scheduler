@@ -28,9 +28,10 @@
             }
 
             var $btn = $(this);
+            $btn.prop('disabled', true);
             $btn.next('.spinner').addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -51,13 +52,9 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
+                    $btn.prop('disabled', false);
                     $btn.next('.spinner').removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($btn, req, {
-                loadingText: 'Generating Topics...',
-                timeout: 120000
             });
         },
 
@@ -369,9 +366,10 @@
             }
 
             var $btn = $(this);
+            $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -416,13 +414,9 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
+                    $btn.prop('disabled', false);
                     $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($btn, req, {
-                loadingText: 'Generating Posts...',
-                timeout: 300000
             });
         },
 
@@ -466,9 +460,10 @@
             }
 
             var $btn = $(this);
+            $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
 
-            var req = $.ajax({
+            $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -502,13 +497,9 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
+                    $btn.prop('disabled', false);
                     $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
-            });
-
-            AIPS.Utilities.withLock($btn, req, {
-                loadingText: 'Scheduling...',
-                timeout: 30000
             });
         }
     });

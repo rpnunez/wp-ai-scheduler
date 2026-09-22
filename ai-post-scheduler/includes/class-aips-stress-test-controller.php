@@ -61,9 +61,11 @@ class AIPS_Stress_Test_Controller {
     /**
      * Render the Stress Test admin page.
      *
+     * @param bool $embedded Whether the page is rendered inside a Diagnostics tab,
+     *                       in which case the outer page chrome is suppressed.
      * @return void
      */
-    public function render_page() {
+    public function render_page($embedded = false) {
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
         }

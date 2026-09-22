@@ -39,26 +39,18 @@ if (is_object($history)) {
 } else {
     $history = array();
 }
-
-$summary_items = array();
-if ($total_items > 0) {
-	$summary_items[] = array('label' => __('Logged Sessions', 'ai-post-scheduler'), 'value' => $total_items, 'type' => 'neutral', 'icon' => 'dashicons-backup');
-}
-if (!empty($stats['failed'])) {
-	$summary_items[] = array('label' => __('Failed Runs', 'ai-post-scheduler'), 'value' => (int) $stats['failed'], 'type' => 'danger', 'icon' => 'dashicons-warning');
-}
-
-$page_context = AIPS_Admin_Page_Context::resolve(
-	'aips-history',
-	null,
-	null,
-	array('summary_items' => $summary_items)
-);
 ?>
 <div class="wrap aips-wrap aips-history-page">
     <div class="aips-page-container">
         <!-- Page Header -->
-        <?php AIPS_Admin_UI_Primitives::render_page_header($page_context); ?>
+        <div class="aips-page-header">
+            <div class="aips-page-header-top">
+                <div>
+                    <h1 class="aips-page-title"><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description"><?php esc_html_e('View generation history containers and inspect every logged step, AI call, and error for each run.', 'ai-post-scheduler'); ?></p>
+                </div>
+            </div>
+        </div>
 
         <?php
         $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($domain_filter) || !empty($actor_filter) || !empty($post_type_filter) || !empty($correlation_filter) || !empty($date_from) || !empty($date_to);
@@ -155,10 +147,6 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <span class="dashicons dashicons-download" aria-hidden="true"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-warning-outline" id="aips-clear-processing-btn" style="<?php echo empty($stats['processing']) ? 'display: none;' : ''; ?>" title="<?php esc_attr_e('Purge all stalled in-progress runs', 'ai-post-scheduler'); ?>">
-                        <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
-                        <?php esc_html_e('Clear In-Progress', 'ai-post-scheduler'); ?>
-                    </button>
                 </div>
                 <div class="aips-toolbar-right aips-history-pagination-cell">
                     <div id="aips-history-pagination-wrap">
@@ -190,7 +178,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                             </thead>
                             <tbody id="aips-history-tbody">
                                 <?php if (!empty($items)): ?>
-                                    <?php echo isset($history_handler) ? $history_handler->render_table_rows_html($items, $status_filter) : ''; ?>
+                                    <?php echo isset($history_handler) ? $history_handler->render_table_rows_html($items) : ''; ?>
                                 <?php else: ?>
                                     <tr>
                                         <td colspan="6" style="text-align:center;padding:40px;">

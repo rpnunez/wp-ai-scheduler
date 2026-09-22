@@ -382,9 +382,8 @@
 		 */
 		sendAjax: function(action, step, done) {
 			$('#aips-campaign-spinner').addClass('is-active');
-			var $activeBtn = $('#aips-wizard-next:visible, #aips-wizard-finalize:visible').first();
 
-			var req = $.ajax({
+			$.ajax({
 				url: aipsAjax.ajaxUrl,
 				method: 'POST',
 				dataType: 'json',
@@ -404,10 +403,6 @@
 				.always(function() {
 					$('#aips-campaign-spinner').removeClass('is-active');
 				});
-
-			if ($activeBtn.length && AIPS.Utilities && AIPS.Utilities.withLock) {
-				AIPS.Utilities.withLock($activeBtn, req);
-			}
 		},
 
 		/**
@@ -419,9 +414,8 @@
 		 */
 		sendAiAssistAjax: function(intake, done) {
 			$('#aips-campaign-spinner').addClass('is-active');
-			var $activeBtn = $('#aips-campaign-ai-generate:visible, #aips-ai-preview-regenerate:visible').first();
 
-			var req = $.ajax({
+			$.ajax({
 				url: aipsAjax.ajaxUrl,
 				method: 'POST',
 				dataType: 'json',
@@ -440,10 +434,6 @@
 				.always(function() {
 					$('#aips-campaign-spinner').removeClass('is-active');
 				});
-
-			if ($activeBtn.length && AIPS.Utilities && AIPS.Utilities.withLock) {
-				AIPS.Utilities.withLock($activeBtn, req, { timeout: 120000 });
-			}
 		},
 
 		/**
