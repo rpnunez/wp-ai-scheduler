@@ -756,4 +756,240 @@ class AIPS_Similarity_Evaluator {
 
 		return max(0.0, min(1.0, $dot_product / (sqrt($norm_a) * sqrt($norm_b))));
 	}
+
+	/**
+	 * Find similar topics to a given topic.
+	 *
+	 * @param int    $topic_id  The topic ID to find similar topics for.
+	 * @param int    $author_id Author ID to limit search to.
+	 * @param int    $limit     Maximum number of similar topics to return.
+	 * @param string $status    Optional. Filter by status (pending, approved, rejected).
+	 * @return array Array of similar topics with similarity scores.
+	 */
+	public function find_similar_topics(int $topic_id, int $author_id, int $limit = 5, ?string $status = null): array {
+		$emb_svc = $this->get_embeddings_service();
+		if (!$emb_svc) {
+			return array();
+		}
+
+		$target_embedding = $emb_svc->get_topic_embedding($topic_id);
+
+		if (!$target_embedding) {
+			if (!$emb_svc->is_enabled()) {
+				return array();
+			}
+			$res = $emb_svc->compute_topic_embedding($topic_id);
+			if (is_wp_error($res)) {
+				return array();
+			}
+			$target_embedding = $emb_svc->get_topic_embedding($topic_id);
+		}
+
+		if (!$target_embedding) {
+			return array();
+		}
+
+		$topics_repo = new AIPS_Author_Topics_Repository();
+		$all_topics  = $topics_repo->get_by_author($author_id, $status);
+
+		$candidates = array();
+		foreach ($all_topics as $candidate_topic) {
+			if ((int) $candidate_topic->id === $topic_id) {
+				continue;
+			}
+
+			$embedding = $emb_svc->get_topic_embedding((int) $candidate_topic->id);
+			if (!$embedding && $emb_svc->is_enabled()) {
+				$emb_svc->compute_topic_embedding((int) $candidate_topic->id);
+				$embedding = $emb_svc->get_topic_embedding((int) $candidate_topic->id);
+			}
+
+			if ($embedding) {
+				$candidates[] = array(
+					'id'        => (int) $candidate_topic->id,
+					'embedding' => $embedding,
+					'data'      => array(
+						'topic_title' => $candidate_topic->topic_title,
+						'status'      => $candidate_topic->status,
+					),
+				);
+			}
+		}
+
+		$raw_threshold = $this->config->get_option('aips_topic_similarity_threshold', 0.80);
+		$threshold     = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.80;
+		$matches       = $this->find_top_matches($target_embedding, $candidates, $threshold, $limit, 'topic');
+
+		return array_map(function($m) {
+			return array(
+				'id'         => $m['id'],
+				'similarity' => $m['similarity'],
+				'data'       => isset($m['candidate']['data']) ? $m['candidate']['data'] : array(),
+				'evaluation' => $m['evaluation'],
+			);
+		}, $matches);
+	}
+
+	/**
+	 * Suggest related topics for an author based on approved topics.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit     Number of suggestions to return.
+	 * @return array Array of suggested topics with scores.
+	 */
+	public function suggest_related_topics(int $author_id, int $limit = 10): array {
+		$topics_repo     = new AIPS_Author_Topics_Repository();
+		$approved_topics = $topics_repo->get_by_author($author_id, 'approved');
+		$pending_topics  = $topics_repo->get_by_author($author_id, 'pending');
+
+		if (empty($approved_topics) || empty($pending_topics)) {
+			return array();
+		}
+
+		$emb_svc     = $this->get_embeddings_service();
+		$suggestions = array();
+
+		foreach ($pending_topics as $pending_topic) {
+			$pending_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $pending_topic->id) : null;
+			if (!$pending_embedding && $emb_svc && $emb_svc->is_enabled()) {
+				$emb_svc->compute_topic_embedding((int) $pending_topic->id);
+				$pending_embedding = $emb_svc->get_topic_embedding((int) $pending_topic->id);
+			}
+
+			if (!$pending_embedding) {
+				continue;
+			}
+
+			$max_similarity = 0.0;
+			foreach ($approved_topics as $approved_topic) {
+				$approved_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $approved_topic->id) : null;
+				if (!$approved_embedding && $emb_svc && $emb_svc->is_enabled()) {
+					$emb_svc->compute_topic_embedding((int) $approved_topic->id);
+					$approved_embedding = $emb_svc->get_topic_embedding((int) $approved_topic->id);
+				}
+
+				if ($approved_embedding) {
+					$sim = $this->cosine_similarity($pending_embedding, $approved_embedding);
+					if ($sim > $max_similarity) {
+						$max_similarity = $sim;
+					}
+				}
+			}
+
+			if ($max_similarity > 0) {
+				$eval          = $this->evaluate_similarity($max_similarity, 'topic');
+				$suggestions[] = array(
+					'topic_id'         => (int) $pending_topic->id,
+					'topic_title'      => $pending_topic->topic_title,
+					'similarity_score' => $max_similarity,
+					'similarity_pct'   => $eval['percentage'],
+					'percentage'       => $eval['percentage'],
+					'risk_tier'        => $eval['risk_tier'],
+					'risk_label'       => $eval['risk_label'],
+					'badge_class'      => $eval['topic_badge_class'],
+					'is_duplicate'     => $eval['is_duplicate'],
+				);
+			}
+		}
+
+		usort($suggestions, function($a, $b) {
+			return $b['similarity_score'] <=> $a['similarity_score'];
+		});
+
+		return array_slice($suggestions, 0, $limit);
+	}
+
+	/**
+	 * Get expanded context from approved topics for prompt enhancement.
+	 *
+	 * @param int $author_id     Author ID.
+	 * @param int $topic_id      Current topic ID.
+	 * @param int $context_limit Number of similar approved topics to include.
+	 * @return string Enhanced context string for prompts.
+	 */
+	public function get_expanded_context(int $author_id, int $topic_id, int $context_limit = 5): string {
+		$similar_topics = $this->find_similar_topics($topic_id, $author_id, $context_limit, 'approved');
+
+		if (empty($similar_topics)) {
+			return '';
+		}
+
+		$context_parts = array();
+		foreach ($similar_topics as $similar) {
+			if (!empty($similar['data']['topic_title'])) {
+				$context_parts[] = $similar['data']['topic_title'];
+			}
+		}
+
+		if (empty($context_parts)) {
+			return '';
+		}
+
+		return "Related approved topics:\n- " . implode("\n- ", $context_parts);
+	}
+
+	/**
+	 * Process a batch of approved topics for embeddings generation.
+	 *
+	 * Uses ID-based pagination to avoid slow OFFSET queries.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Number of topics to process in this batch. Default 20.
+	 * @param int $last_processed_id Last processed topic ID for pagination. Default 0.
+	 * @return array Array with keys: success, failed, skipped, last_processed_id, done, processed_count.
+	 */
+	public function process_approved_embeddings_batch(int $author_id, int $batch_size = 20, int $last_processed_id = 0): array {
+		$batch_size  = max(1, min(100, $batch_size));
+		$topics_repo = new AIPS_Author_Topics_Repository();
+		$emb_svc     = $this->get_embeddings_service();
+
+		$history_service = AIPS_Container::get_instance()->has(AIPS_History_Service_Interface::class)
+			? AIPS_Container::get_instance()->make(AIPS_History_Service_Interface::class)
+			: new AIPS_History_Service();
+
+		$history = $history_service->find_incomplete('author_embeddings', array('author_id' => $author_id))
+			?: $history_service->create('author_embeddings', array('author_id' => $author_id, 'creation_method' => 'author_embeddings'));
+
+		$topics = $topics_repo->get_approved_for_generation($author_id, $batch_size, $last_processed_id);
+
+		$stats = array(
+			'success'           => 0,
+			'failed'            => 0,
+			'skipped'           => 0,
+			'last_processed_id' => $last_processed_id,
+			'done'              => empty($topics),
+			'processed_count'   => 0,
+		);
+
+		if (empty($topics)) {
+			return $stats;
+		}
+
+		$rate_limiter = $emb_svc ? $emb_svc->get_rate_limiter() : null;
+
+		foreach ($topics as $topic) {
+			$stats['last_processed_id'] = (int) $topic->id;
+			$stats['processed_count']++;
+
+			$existing_embedding = $emb_svc ? $emb_svc->get_topic_embedding((int) $topic->id) : null;
+			if ($existing_embedding) {
+				$stats['skipped']++;
+				continue;
+			}
+
+			$res = $emb_svc ? $emb_svc->compute_topic_embedding((int) $topic->id) : new WP_Error('no_emb_svc', 'Embeddings service unavailable');
+			if (is_wp_error($res)) {
+				$stats['failed']++;
+				if ($rate_limiter && $rate_limiter->is_rate_limit_or_exhaustion_error($res)) {
+					break;
+				}
+			} else {
+				$stats['success']++;
+			}
+		}
+
+		$stats['done'] = (count($topics) < $batch_size) || ($rate_limiter && $rate_limiter->is_in_cooldown());
+
+		return $stats;
+	}
 }
