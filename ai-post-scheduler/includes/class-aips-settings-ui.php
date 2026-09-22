@@ -406,6 +406,28 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Render the generation pacing delay setting field.
+     */
+    public function generation_delay_seconds_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_generation_delay_seconds');
+        ?>
+        <input type="number" name="aips_generation_delay_seconds" value="<?php echo esc_attr($value); ?>" min="0" max="30" class="small-text">
+        <p class="description"><?php esc_html_e('Pause between posts in scheduled batch runs to smooth server load and stay under provider rate limits. Manual runs are not delayed. 0 disables the pause.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the batch resume cooldown setting field.
+     */
+    public function batch_resume_cooldown_minutes_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_batch_resume_cooldown_minutes');
+        ?>
+        <input type="number" name="aips_batch_resume_cooldown_minutes" value="<?php echo esc_attr($value); ?>" min="1" max="1440" class="small-text">
+        <p class="description"><?php esc_html_e('When a scheduled batch stops early to avoid a PHP timeout, wait this many minutes before generating its remaining posts.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
      * Render the enable circuit breaker setting field.
      */
     public function enable_circuit_breaker_field_callback() {
