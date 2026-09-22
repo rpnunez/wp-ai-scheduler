@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
  * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.6.5
+ * Version: 3.6.6
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +44,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.6.5');
+    define('AIPS_VERSION', '3.6.6');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -671,6 +671,12 @@ final class AI_Post_Scheduler {
             );
         }, 10, 5);
 
+        // Resume large batches that the "Prevent AI Generation" setting stopped
+        // part-way through. Queued once when that setting is switched back off.
+        add_action('aips_resume_terminated_batches', function() {
+            AIPS_Scheduler::instance()->resume_terminated_batches();
+        });
+
         // Lazy-resolve the author-topics scheduler only when its hook fires.
         add_action('aips_generate_author_topics', function() {
             AIPS_Author_Topics_Scheduler::instance()->process_topic_generation();
@@ -956,6 +962,14 @@ final class AI_Post_Scheduler {
         // the object (which would double-register all AJAX hooks).
         global $aips_internal_links_controller;
         $aips_internal_links_controller = new AIPS_Internal_Links_Controller();
+
+        // Ensure Seeder admin hooks are registered when developer mode is enabled
+        // so the Seeder JS will be enqueued on the Dev Tools diagnostics tab.
+        if ( AIPS_Config::get_instance()->get_option('aips_developer_mode') ) {
+            // Lazy instantiate the Seeder admin class so its admin_enqueue_scripts
+            // hook is available on Diagnostics/Dev Tools pages.
+            new AIPS_Seeder_Admin();
+        }
 
     }
 

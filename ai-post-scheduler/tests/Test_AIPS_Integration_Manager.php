@@ -263,15 +263,13 @@ class Test_AIPS_Integration_Manager extends WP_UnitTestCase {
 	}
 }
 
-if (!class_exists('AIPS_Test_Stub_AI_Service')) {
+if (!class_exists('AIPS_Test_Stub_AI_Service', false)) {
 	class AIPS_Test_Stub_AI_Service implements AIPS_AI_Service_Interface {
 		public $next_response = 'stub response';
 		public $next_json_response = array();
-		public $next_embedding = array();
 		public $last_json_prompt = null;
 		public $json_call_count = 0;
 		public $text_call_count = 0;
-		public $embedding_call_count = 0;
 
 		public function is_available() {
 			return true;
@@ -289,8 +287,7 @@ if (!class_exists('AIPS_Test_Stub_AI_Service')) {
 			return '';
 		}
 		public function generate_embedding($text, $options = array()) {
-			$this->embedding_call_count++;
-			return $this->next_embedding;
+			return new WP_Error('embedding_not_expected', 'Embedding generation should not be called.');
 		}
 		public function supports_embeddings() {
 			return false;
@@ -304,7 +301,7 @@ if (!class_exists('AIPS_Test_Stub_AI_Service')) {
 	}
 }
 
-if (!class_exists('AIPS_Test_Stub_Manager_Integration')) {
+if (!class_exists('AIPS_Test_Stub_Manager_Integration', false)) {
 	class AIPS_Test_Stub_Manager_Integration implements AIPS_Integration_Interface {
 		public static $write_calls = 0;
 		public static $last_write = null;

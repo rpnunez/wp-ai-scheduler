@@ -150,14 +150,26 @@
         },
 
         /**
-         * Update the "N selected" label next to the topic list.
+         * Update the "N selected" label next to the topic list and sync Select All state.
          *
-         * Counts the number of checked `.topic-checkbox` elements (regardless of
-         * visibility) and updates every `.selection-count` element.
+         * Counts the total number of checked `.topic-checkbox` elements across all topics,
+         * updates every `.selection-count` element, and synchronizes the `#check-all-topics`
+         * checkbox state with visible checkboxes.
          */
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
             $('.selection-count').text(count + ' selected');
+
+            // Keep "Select All" checkbox in sync
+            var $selectAll = $('#check-all-topics');
+            var visibleCheckboxes = $('.topic-checkbox:visible');
+            var checkedVisibleCheckboxes = visibleCheckboxes.filter(':checked');
+
+            if (visibleCheckboxes.length > 0) {
+                $selectAll.prop('checked', visibleCheckboxes.length === checkedVisibleCheckboxes.length);
+            } else {
+                $selectAll.prop('checked', false);
+            }
         },
 
         /**
@@ -260,7 +272,7 @@
          */
         copySelectedTopics: function() {
             var topics = [];
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -334,7 +346,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -381,7 +393,7 @@
                             var successMsg = data.message || 'Posts generated successfully.';
                             AIPS.Utilities.showToast(successMsg, 'success');
 
-                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                            $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                                 $(this).remove();
                                 window.AIPS.updateSelectionCount();
 
@@ -423,7 +435,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -466,7 +478,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
 
-                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                        $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                             $(this).remove();
                             window.AIPS.updateSelectionCount();
 

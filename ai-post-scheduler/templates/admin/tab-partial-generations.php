@@ -68,7 +68,7 @@ if (!defined('ABSPATH')) {
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($author_id) || !empty($template_id) || !empty($post_type_filter)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'post_type'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'post_type', 'partial_paged'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
@@ -79,7 +79,7 @@ if (!defined('ABSPATH')) {
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
+							<a href="<?php echo esc_url(remove_query_arg(array('s', 'partial_paged'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 					</form>
@@ -193,7 +193,7 @@ if (!defined('ABSPATH')) {
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Posts Found', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No partial generations match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 							<div class="aips-empty-state-actions">
-								<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-primary">
+								<a href="<?php echo esc_url(remove_query_arg(array('s', 'partial_paged'))); ?>" class="aips-btn aips-btn-primary">
 									<span class="dashicons dashicons-dismiss"></span>
 									<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 								</a>

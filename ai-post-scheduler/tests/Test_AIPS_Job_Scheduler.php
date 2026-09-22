@@ -191,6 +191,82 @@ class Test_AIPS_Job_Scheduler extends WP_UnitTestCase {
 		remove_all_filters('aips_batch_max_slices_custom');
 	}
 
+	public function test_schedule_batched_preserves_job_options_and_failure_summary() {
+		$logger = $this->getMockBuilder('AIPS_Logger')
+			->disableOriginalConstructor()
+			->getMock();
+		$scheduler = new AIPS_Job_Scheduler($this->slicer, $this->dispatcher, $logger);
+		$jobs = array();
+		$retry_options = array('max_attempts' => 4);
+
+		$this->dispatcher->expects($this->exactly(2))
+			->method('dispatch')
+			->with(
+				$this->callback(function($job) use (&$jobs) {
+					$jobs[] = $job;
+					return true;
+				}),
+				$retry_options
+			)
+			->willReturnOnConsecutiveCalls(true, false);
+
+		$logger->expects($this->once())
+			->method('log')
+			->with(
+				$this->stringContains('scheduled=1/2 batches'),
+				'warning',
+				array('hook' => 'test_hook', 'item_count' => 5)
+			);
+
+		$summary = $scheduler->schedule_batched(
+			'test_hook',
+			5,
+			array(
+				'prefix_args'    => array('schedule_id' => 42),
+				'base_timestamp' => 1000,
+				'slice_options'  => array(
+					'max_slices'     => 2,
+					'window_seconds' => 10,
+				),
+				'job_type'       => 'custom_batch',
+				'metadata'       => array('source' => 'test'),
+				'correlation_id' => 'correlation-123',
+				'retry_options'  => $retry_options,
+			)
+		);
+
+		$this->assertCount(2, $jobs);
+		$this->assertSame('custom_batch', $jobs[0]->get_job_type());
+		$this->assertSame('test_hook', $jobs[0]->get_hook());
+		$this->assertSame(array('schedule_id' => 42, 0, 3, 5, 'correlation-123'), $jobs[0]->get_args());
+		$this->assertSame(1000, $jobs[0]->get_fire_at());
+		$this->assertSame(
+			array('source' => 'test', 'slice_index' => 0, 'start_index' => 0, 'slice_size' => 3),
+			$jobs[0]->get_metadata()
+		);
+		$this->assertSame('correlation-123', $jobs[0]->get_correlation_id());
+		$this->assertSame(array('schedule_id' => 42, 3, 2, 5, 'correlation-123'), $jobs[1]->get_args());
+		$this->assertSame(1010, $jobs[1]->get_fire_at());
+		$this->assertSame(
+			array('source' => 'test', 'slice_index' => 1, 'start_index' => 3, 'slice_size' => 2),
+			$jobs[1]->get_metadata()
+		);
+		$this->assertSame(1, $summary->get_scheduled_count());
+		$this->assertSame(1, $summary->get_failed_count());
+		$this->assertSame(2, $summary->get_total_count());
+		$this->assertSame('correlation-123', $summary->get_metadata()['correlation_id']);
+	}
+
+	public function test_schedule_batched_rejects_non_positive_item_count() {
+		$this->dispatcher->expects($this->never())
+			->method('dispatch');
+
+		$result = $this->scheduler->schedule_batched('test_hook', 0);
+
+		$this->assertWPError($result);
+		$this->assertSame('invalid_item_count', $result->get_error_code());
+	}
+
 	public function test_get_slicer_returns_instance() {
 		$slicer = $this->scheduler->get_slicer();
 		$this->assertInstanceOf('AIPS_Batch_Slicer', $slicer);
