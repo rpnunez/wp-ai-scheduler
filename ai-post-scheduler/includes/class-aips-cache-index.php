@@ -67,13 +67,21 @@ class AIPS_Cache_Index {
 	private $shutdown_registered = false;
 
 	/**
+	 * Buffered entry count (writes + accesses) that triggers an early flush.
+	 *
+	 * Long-running requests (cron batches) would otherwise accumulate an
+	 * unbounded buffer until shutdown.
+	 */
+	const BUFFER_FLUSH_THRESHOLD = 200;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
 		// Use get_option() directly to avoid routing through AIPS_Config's internal
 		// AIPS_Cache instance. AIPS_Config::get_option() with a non-null default
 		// always calls config_cache->set() after reading from the DB, which would
-		// trigger the index on the config cache (record_set() -> upsert_index_row()),
+		// trigger the index on the config cache (record_set() -> prepare_index_row_data()),
 		// which previously called back into AIPS_Config::get_option() and recursed.
 		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
 		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
@@ -119,6 +127,7 @@ class AIPS_Cache_Index {
 			$composite = $group . ':' . $key;
 			$this->pending_writes[ $composite ] = $this->prepare_index_row_data( $key, $value, $ttl, $group, $context );
 			$this->register_shutdown_hook();
+			$this->maybe_flush_early();
 		} catch ( Throwable $e ) {
 			// Index errors must never break cache writes.
 		}
@@ -192,6 +201,7 @@ class AIPS_Cache_Index {
 			$key_hash = hash( 'sha256', $group . ':' . $key );
 			$this->pending_access[ $key_hash ] = AIPS_DateTime::now()->timestamp();
 			$this->register_shutdown_hook();
+			$this->maybe_flush_early();
 		} catch ( Throwable $e ) {
 			// Swallow.
 		}
@@ -213,10 +223,29 @@ class AIPS_Cache_Index {
 
 		if (!empty($this->pending_writes)) {
 			$this->flush_pending_writes();
+
+			// Trim once per flush rather than once per write: the COUNT(*)
+			// that enforce_max_entries() runs is what the buffer exists to avoid.
+			try {
+				$this->enforce_max_entries();
+			} catch ( Throwable $e ) {
+				// Swallow.
+			}
 		}
 
 		if (!empty($this->pending_access)) {
 			$this->flush_pending_access();
+		}
+	}
+
+	/**
+	 * Flush the buffers before shutdown once they exceed the threshold.
+	 *
+	 * @return void
+	 */
+	private function maybe_flush_early(): void {
+		if (count( $this->pending_writes ) + count( $this->pending_access ) >= self::BUFFER_FLUSH_THRESHOLD) {
+			$this->flush_buffer();
 		}
 	}
 
@@ -534,6 +563,8 @@ class AIPS_Cache_Index {
 
 		$value_size  = $this->estimate_value_size( $value );
 		$value_type  = $this->resolve_value_type( $value );
+		// Use get_option() directly to avoid routing through AIPS_Config's internal
+		// AIPS_Cache instance, which would trigger record_set() recursively.
 		$driver_name = get_option( 'aips_cache_driver', 'array' );
 
 		$tags_raw   = isset( $context['tags'] ) && is_array( $context['tags'] ) ? implode( ',', $context['tags'] ) : '';
@@ -559,30 +590,6 @@ class AIPS_Cache_Index {
 			'value_size'       => $value_size,
 			'value_type'       => $value_type,
 			'last_accessed_at' => 0,
-		);
-	}
-
-	/**
-	 * Insert or update a single index row.
-	 *
-	 * @param string $key     Cache key.
-	 * @param mixed  $value   Cached value.
-	 * @param int    $ttl     TTL in seconds.
-	 * @param string $group   Cache group.
-	 * @param array  $context Additional context metadata.
-	 * @return void
-	 */
-	private function upsert_index_row( string $key, $value, int $ttl, string $group, array $context ): void {
-		global $wpdb;
-
-		$table = $wpdb->prefix . 'aips_cache_index';
-		$row   = $this->prepare_index_row_data( $key, $value, $ttl, $group, $context );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$wpdb->replace(
-			$table,
-			$row,
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%d' )
 		);
 	}
 

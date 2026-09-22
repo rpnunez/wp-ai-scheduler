@@ -401,6 +401,8 @@ class AIPS_Cache_Monitor_Service {
 
 		if ($driver instanceof AIPS_Cache_Monitorable_Driver && !empty( $capabilities['delete_group'] )) {
 			$driver->delete_group( $group );
+			// delete_group() bypasses AIPS_Cache, so drop every L1 copy.
+			AIPS_Cache::reset_request_cache();
 			$affected = $this->repository->delete_index_group( $group );
 		} else {
 			// Fallback: iterate index entries for the group.

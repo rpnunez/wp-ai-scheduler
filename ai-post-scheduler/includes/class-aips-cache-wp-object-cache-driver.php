@@ -104,9 +104,17 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache
 			if ( is_array( $raw_results ) ) {
 				foreach ( $keys as $key ) {
 					$key_str = (string) $key;
-					$results[ $key_str ] = ( isset( $raw_results[ $key ] ) && false !== $raw_results[ $key ] )
-						? $raw_results[ $key ]
-						: null;
+					if ( ! array_key_exists( $key, $raw_results ) || false === $raw_results[ $key ] ) {
+						// wp_cache_get_multiple() reports misses as false and has
+						// no $found flag, so a stored false is indistinguishable
+						// from a miss. Resolve it through get(), which does use
+						// $found, to keep get() and get_multiple() consistent.
+						$results[ $key_str ] = false === ( $raw_results[ $key ] ?? null )
+							? $this->get( $key, $group )
+							: null;
+						continue;
+					}
+					$results[ $key_str ] = $raw_results[ $key ];
 				}
 				return $results;
 			}

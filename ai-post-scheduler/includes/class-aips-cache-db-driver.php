@@ -114,8 +114,19 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_
 			}
 		}
 
-		foreach ( $expired_keys as $exp_key ) {
-			$this->delete( $exp_key, $group );
+		if ( ! empty( $expired_keys ) ) {
+			$expired_db_keys = array();
+			foreach ( $expired_keys as $exp_key ) {
+				$expired_db_keys[] = $this->namespace_key( $exp_key );
+			}
+			$expired_in = implode( ',', array_fill( 0, count( $expired_db_keys ), '%s' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM `{$table}` WHERE cache_group = %s AND cache_key IN ($expired_in)",
+					array_merge( array( (string) $group ), $expired_db_keys )
+				)
+			);
 		}
 
 		return $results;

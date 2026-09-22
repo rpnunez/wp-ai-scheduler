@@ -59,9 +59,49 @@ class AIPS_Cache {
 	/**
 	 * In-memory L1 request-scoped cache storage.
 	 *
-	 * @var array<string, mixed>
+	 * Maps "group:key" to array( 'value' => mixed, 'expires' => int ), where
+	 * expires is a Unix timestamp or 0 for no expiry. Only hits are stored:
+	 * misses always fall through to the driver so a value written by another
+	 * process during a long-running request becomes visible.
+	 *
+	 * @var array<string, array{value: mixed, expires: int, version: int}>
 	 */
 	private $l1_store = array();
+
+	/**
+	 * Request-cache epoch this instance's L1 store belongs to.
+	 *
+	 * Compared against self::$l1_epoch; a mismatch means
+	 * reset_request_cache() was called and the store must be discarded.
+	 *
+	 * @var int
+	 */
+	private $l1_epoch_seen = 0;
+
+	/**
+	 * Global request-cache epoch shared by every AIPS_Cache instance.
+	 *
+	 * @var int
+	 */
+	private static $l1_epoch = 0;
+
+	/**
+	 * Per-key write versions shared by every AIPS_Cache instance.
+	 *
+	 * Several instances can front the same backend (factory singleton, named
+	 * caches). A set()/delete() through one bumps the key's version here, so
+	 * L1 copies held by the others are treated as stale.
+	 *
+	 * @var array<string, int>
+	 */
+	private static $l1_key_versions = array();
+
+	/**
+	 * Maximum number of entries held in a single instance's L1 store.
+	 *
+	 * Oldest entries are evicted first once the cap is reached.
+	 */
+	const L1_MAX_ENTRIES = 500;
 
 	/**
 	 * Per-request memoised result of the system-enabled check.
@@ -170,6 +210,121 @@ class AIPS_Cache {
 	}
 
 	/**
+	 * Discard the L1 request cache on every AIPS_Cache instance.
+	 *
+	 * Long-running workers (cron batch loops) call this between units of work
+	 * so tag versions and repository entries changed by other processes are
+	 * re-read from the shared driver instead of served from memory.
+	 *
+	 * @return void
+	 */
+	public static function reset_request_cache() {
+		self::$l1_epoch++;
+		self::$l1_key_versions = array();
+	}
+
+	/**
+	 * Mark a key's L1 copies stale on every instance.
+	 *
+	 * @param string $composite Composite "group:key".
+	 * @return void
+	 */
+	private function l1_invalidate( $composite ) {
+		unset( $this->l1_store[ $composite ] );
+		self::$l1_key_versions[ $composite ] = isset( self::$l1_key_versions[ $composite ] )
+			? self::$l1_key_versions[ $composite ] + 1
+			: 1;
+	}
+
+	/**
+	 * Current shared write version for a key.
+	 *
+	 * @param string $composite Composite "group:key".
+	 * @return int
+	 */
+	private static function l1_key_version( $composite ) {
+		return isset( self::$l1_key_versions[ $composite ] ) ? self::$l1_key_versions[ $composite ] : 0;
+	}
+
+	/**
+	 * Whether the L1 layer is used for this instance's driver.
+	 *
+	 * The Array driver already stores values in process memory, so an L1
+	 * copy in front of it would only duplicate memory and bookkeeping.
+	 *
+	 * @return bool
+	 */
+	private function l1_enabled() {
+		return !( $this->driver instanceof AIPS_Cache_Array_Driver );
+	}
+
+	/**
+	 * Read a live (non-expired) L1 entry.
+	 *
+	 * @param string $composite Composite "group:key".
+	 * @param mixed  $value     Receives the stored value on a hit.
+	 * @return bool True on an L1 hit.
+	 */
+	private function l1_get( $composite, &$value ) {
+		if (!$this->l1_enabled()) {
+			return false;
+		}
+
+		if ($this->l1_epoch_seen !== self::$l1_epoch) {
+			$this->l1_store      = array();
+			$this->l1_epoch_seen = self::$l1_epoch;
+			return false;
+		}
+
+		if (!isset( $this->l1_store[ $composite ] )) {
+			return false;
+		}
+
+		$entry = $this->l1_store[ $composite ];
+		if (
+			$entry['version'] !== self::l1_key_version( $composite )
+			|| ( $entry['expires'] > 0 && $entry['expires'] <= AIPS_DateTime::now()->timestamp() )
+		) {
+			unset( $this->l1_store[ $composite ] );
+			return false;
+		}
+
+		$value = $entry['value'];
+		return true;
+	}
+
+	/**
+	 * Store a hit in L1, evicting the oldest entry once the cap is reached.
+	 *
+	 * @param string $composite Composite "group:key".
+	 * @param mixed  $value     Non-null value.
+	 * @param int    $ttl       TTL in seconds; 0 = no expiry.
+	 * @return void
+	 */
+	private function l1_put( $composite, $value, $ttl = 0 ) {
+		if (!$this->l1_enabled() || null === $value) {
+			return;
+		}
+
+		if ($this->l1_epoch_seen !== self::$l1_epoch) {
+			$this->l1_store      = array();
+			$this->l1_epoch_seen = self::$l1_epoch;
+		}
+
+		unset( $this->l1_store[ $composite ] );
+		if (count( $this->l1_store ) >= self::L1_MAX_ENTRIES) {
+			reset( $this->l1_store );
+			unset( $this->l1_store[ key( $this->l1_store ) ] );
+		}
+
+		$this->l1_store[ $composite ] = array(
+			'value'   => $value,
+			'expires' => $ttl > 0 ? AIPS_DateTime::now()->timestamp() + (int) $ttl : 0,
+			'version' => self::l1_key_version( $composite ),
+		);
+	}
+
+	/**
 	 * Retrieve a value from the cache.
 	 *
 	 * Returns $default immediately when the cache system is disabled.
@@ -185,21 +340,12 @@ class AIPS_Cache {
 		}
 
 		$composite = $group . ':' . $key;
-		if (array_key_exists( $composite, $this->l1_store )) {
-			$value = $this->l1_store[ $composite ];
-			$this->record_cache_event(
-				'get',
-				array(
-					'key'   => (string) $key,
-					'group' => (string) $group,
-					'hit'   => null !== $value,
-				)
-			);
-			return null !== $value ? $value : $default;
+		if (!$this->l1_get( $composite, $value )) {
+			$value = $this->driver->get( $key, $group );
+			// The driver does not expose remaining TTL, so an L1 copy of a
+			// driver read lives for the request (or until reset_request_cache()).
+			$this->l1_put( $composite, $value );
 		}
-
-		$value = $this->driver->get( $key, $group );
-		$this->l1_store[ $composite ] = $value;
 
 		if ($value !== null) {
 			$index = $this->get_cache_index();
@@ -245,28 +391,45 @@ class AIPS_Cache {
 		foreach ( $keys as $key ) {
 			$key_str   = (string) $key;
 			$composite = $group . ':' . $key_str;
-			if ( array_key_exists( $composite, $this->l1_store ) ) {
-				$results[ $key_str ] = $this->l1_store[ $composite ];
+			if ( $this->l1_get( $composite, $l1_value ) ) {
+				$results[ $key_str ] = $l1_value;
 			} else {
-				$missed_keys[] = $key_str;
+				$results[ $key_str ] = null;
+				$missed_keys[]       = $key_str;
 			}
 		}
 
 		if ( ! empty( $missed_keys ) ) {
 			$driver_results = $this->driver->get_multiple( $missed_keys, $group );
-			$index          = $this->get_cache_index();
 
 			foreach ( $missed_keys as $key_str ) {
 				$val = isset( $driver_results[ $key_str ] ) ? $driver_results[ $key_str ] : null;
-				$composite = $group . ':' . $key_str;
-				$this->l1_store[ $composite ] = $val;
-				$results[ $key_str ]          = $val;
-
-				if ( null !== $val && $index ) {
-					$index->record_access( $key_str, (string) $group );
-				}
+				$this->l1_put( $group . ':' . $key_str, $val );
+				$results[ $key_str ] = $val;
 			}
 		}
+
+		$index = $this->get_cache_index();
+		$hits  = 0;
+		foreach ( $results as $key_str => $val ) {
+			if ( null === $val ) {
+				continue;
+			}
+			$hits++;
+			if ( $index ) {
+				$index->record_access( (string) $key_str, (string) $group );
+			}
+		}
+
+		$this->record_cache_event(
+			'get_multiple',
+			array(
+				'group'  => (string) $group,
+				'keys'   => count( $results ),
+				'hits'   => $hits,
+				'misses' => count( $results ) - $hits,
+			)
+		);
 
 		return $results;
 	}
@@ -288,10 +451,14 @@ class AIPS_Cache {
 		}
 
 		$composite = $group . ':' . $key;
-		$this->l1_store[ $composite ] = $value;
+		$this->l1_invalidate( $composite );
 
 		$result = $this->driver->set( $key, $value, (int) $ttl, $group );
 		if ($result) {
+			// Only mirror into L1 once the driver accepted the write, so a
+			// failed write never leaves a value visible to this request only.
+			$this->l1_put( $composite, $value, (int) $ttl );
+
 			$context               = $this->pending_context;
 			$this->pending_context = array();
 			$index = $this->get_cache_index();
@@ -325,8 +492,7 @@ class AIPS_Cache {
 			return true;
 		}
 
-		$composite = $group . ':' . $key;
-		unset( $this->l1_store[ $composite ] );
+		$this->l1_invalidate( $group . ':' . $key );
 
 		$result = $this->driver->delete( $key, $group );
 		if ($result) {
@@ -361,11 +527,7 @@ class AIPS_Cache {
 		}
 
 		$composite = $group . ':' . $key;
-		if (array_key_exists( $composite, $this->l1_store ) && $this->l1_store[ $composite ] !== null) {
-			return true;
-		}
-
-		$result = $this->driver->has( $key, $group );
+		$result    = $this->l1_get( $composite, $unused ) || $this->driver->has( $key, $group );
 		if ($result) {
 			$index = $this->get_cache_index();
 			if ($index) {
@@ -395,7 +557,7 @@ class AIPS_Cache {
 			return true;
 		}
 
-		$this->l1_store = array();
+		self::reset_request_cache();
 
 		$result = $this->driver->flush();
 		if ($result) {
@@ -480,6 +642,9 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return (int) $step;
 		}
+		// Counters bypass L1 on read: a request-lifetime copy would widen
+		// the cross-process read-modify-write window to the whole request.
+		unset( $this->l1_store[ $group . ':' . $key ] );
 		$value = (int) $this->get( $key, $group, 0 );
 		$value += (int) $step;
 		$this->set( $key, $value, 0, $group );
@@ -513,6 +678,9 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return -(int) $step;
 		}
+		// Counters bypass L1 on read: a request-lifetime copy would widen
+		// the cross-process read-modify-write window to the whole request.
+		unset( $this->l1_store[ $group . ':' . $key ] );
 		$value = (int) $this->get( $key, $group, 0 );
 		$value -= (int) $step;
 		$this->set( $key, $value, 0, $group );
