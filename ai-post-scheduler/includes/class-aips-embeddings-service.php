@@ -42,20 +42,99 @@ class AIPS_Embeddings_Service {
 	private $rate_limiter;
 
 	/**
+	 * @var AIPS_Embeddings_Repository|null Embeddings repository
+	 */
+	private $embeddings_repo;
+
+	/**
+	 * @var AIPS_Author_Topics_Repository|null Author topics repository
+	 */
+	private $topics_repo;
+
+	/**
+	 * @var AIPS_Similarity_Evaluator|null Similarity evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * @var array Cache for embeddings to avoid redundant API calls
 	 */
 	private $embedding_cache;
 	
 	/**
 	 * Initialize the embeddings service.
+	 *
+	 * @param AIPS_AI_Service_Interface|null     $ai_service AI Service instance.
+	 * @param AIPS_Logger_Interface|null         $logger Logger instance.
+	 * @param AIPS_Config|null                   $config Config instance.
+	 * @param AIPS_Embeddings_Rate_Limiter|null  $rate_limiter Rate limiter instance.
+	 * @param AIPS_Embeddings_Repository|null    $embeddings_repo Embeddings repository.
+	 * @param AIPS_Author_Topics_Repository|null $topics_repo Topics repository.
+	 * @param AIPS_Similarity_Evaluator|null     $similarity_evaluator Similarity evaluator.
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_Config $config = null, ?AIPS_Embeddings_Rate_Limiter $rate_limiter = null) {
+	public function __construct(
+		?AIPS_AI_Service_Interface $ai_service = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Config $config = null,
+		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
+		?AIPS_Embeddings_Repository $embeddings_repo = null,
+		?AIPS_Author_Topics_Repository $topics_repo = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
+	) {
 		$container = AIPS_Container::get_instance();
-		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->config = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
-		$this->rate_limiter = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter($this->config, $this->logger));
-		$this->embedding_cache = array();
+		$this->ai_service           = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->logger               = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->config               = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
+		$this->rate_limiter         = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter($this->config, $this->logger));
+		$this->embeddings_repo      = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : null);
+		$this->topics_repo          = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : null);
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : null);
+		$this->embedding_cache      = array();
+	}
+
+	/**
+	 * Lazy getter for embeddings repository.
+	 *
+	 * @return AIPS_Embeddings_Repository
+	 */
+	public function get_embeddings_repository(): AIPS_Embeddings_Repository {
+		if ($this->embeddings_repo === null) {
+			$container = AIPS_Container::get_instance();
+			$this->embeddings_repo = $container->has(AIPS_Embeddings_Repository::class)
+				? $container->make(AIPS_Embeddings_Repository::class)
+				: new AIPS_Embeddings_Repository();
+		}
+		return $this->embeddings_repo;
+	}
+
+	/**
+	 * Lazy getter for topics repository.
+	 *
+	 * @return AIPS_Author_Topics_Repository
+	 */
+	public function get_topics_repository(): AIPS_Author_Topics_Repository {
+		if ($this->topics_repo === null) {
+			$container = AIPS_Container::get_instance();
+			$this->topics_repo = $container->has(AIPS_Author_Topics_Repository::class)
+				? $container->make(AIPS_Author_Topics_Repository::class)
+				: new AIPS_Author_Topics_Repository();
+		}
+		return $this->topics_repo;
+	}
+
+	/**
+	 * Lazy getter for similarity evaluator.
+	 *
+	 * @return AIPS_Similarity_Evaluator
+	 */
+	public function get_similarity_evaluator(): AIPS_Similarity_Evaluator {
+		if ($this->similarity_evaluator === null) {
+			$container = AIPS_Container::get_instance();
+			$this->similarity_evaluator = $container->has(AIPS_Similarity_Evaluator::class)
+				? $container->make(AIPS_Similarity_Evaluator::class)
+				: new AIPS_Similarity_Evaluator($this->config, $this->get_embeddings_repository(), $this);
+		}
+		return $this->similarity_evaluator;
 	}
 	
 	/**
@@ -75,16 +154,27 @@ class AIPS_Embeddings_Service {
 	public function is_enabled(): bool {
 		return (bool) $this->config->get_option('aips_embeddings_enabled', true);
 	}
+
+	/**
+	 * Get the active embedding model slug.
+	 *
+	 * @return string Model name.
+	 */
+	public function get_active_model(): string {
+		$ai_config = $this->config->get_ai_config();
+		$model     = !empty($ai_config['embeddings_model']) ? $ai_config['embeddings_model'] : $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small');
+		return !empty($model) ? (string) $model : 'text-embedding-3-small';
+	}
 	
 	/**
 	 * Generate an embedding for a text string via the active AI provider.
 	 *
-	 * Embeddings currently require the Meow AI Engine provider; other providers
-	 * report embeddings_not_supported.
+	 * Automatically guarded by the rate limiter execution harness, enforcing
+	 * auto-cooldown detection, rolling quotas, and error recording.
 	 *
 	 * @param string $text The text to generate an embedding for.
 	 * @param array  $options Optional. Additional options for embedding generation.
-	 * @return array|WP_Error The embedding vector or WP_Error on failure.
+	 * @return array|WP_Error The embedding vector (float[]) or WP_Error on failure.
 	 */
 	public function generate_embedding($text, $options = array()) {
 		if (!$this->is_enabled()) {
@@ -101,12 +191,6 @@ class AIPS_Embeddings_Service {
 			return $this->embedding_cache[$cache_key];
 		}
 
-		// Enforce rate limits before dispatching AI provider request
-		$limit_check = $this->rate_limiter->check_limits(1);
-		if (is_wp_error($limit_check)) {
-			return $limit_check;
-		}
-
 		$default_env_id = (string) $this->config->get_option('aips_embeddings_env_id');
 		$default_model  = (string) $this->config->get_option('aips_embeddings_model');
 
@@ -118,32 +202,150 @@ class AIPS_Embeddings_Service {
 			$options['model'] = $default_model;
 		}
 
-		// Delegate the raw call to the active provider via the AI service, which
-		// applies resilience and logging. The provider abstracts away whether the
-		// backend is Meow AI Engine, the WordPress AI Client, or another adapter.
-		$embedding = $this->ai_service->generate_embedding($text, $options);
+		// Execute through the rate limiter's resilience harness
+		$embedding = $this->rate_limiter->execute(
+			function () use ($text, $options) {
+				return $this->ai_service->generate_embedding($text, $options);
+			},
+			function ($result) use ($cache_key, $text) {
+				$this->embedding_cache[$cache_key] = $result;
+				$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
+			},
+			function ($error) {
+				$this->logger->log('Embedding generation failed: ' . $error->get_error_message(), 'error');
+			},
+			1
+		);
 
-		// Record quota consumption immediately upon making the outgoing AI provider request
-		$this->rate_limiter->record_usage(1);
+		return $embedding;
+	}
 
-		if (is_wp_error($embedding)) {
-			$this->rate_limiter->record_failure($embedding);
-			$this->logger->log('Embedding generation failed: ' . $embedding->get_error_message(), 'error');
+	/**
+	 * Compute and persist vector embedding for an Author Topic.
+	 *
+	 * Centralized method handling topic retrieval, text extraction (title + prompt),
+	 * vector generation via rate-limited AI provider, persistence to central aips_embeddings
+	 * table, and metadata synchronization for backwards compatibility.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return array|WP_Error Embedding vector on success, WP_Error on failure.
+	 */
+	public function compute_topic_embedding(int $topic_id) {
+		if (!$this->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
+		$topics_repo = $this->get_topics_repository();
+		$topic = $topics_repo ? $topics_repo->get_by_id($topic_id) : null;
+		if (!$topic) {
+			return new WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
+		}
+
+		$text = trim($topic->topic_title);
+		if (!empty($topic->topic_prompt)) {
+			$text .= ' ' . trim($topic->topic_prompt);
+		}
+
+		if (empty($text)) {
+			return new WP_Error('empty_topic', __('Topic has no text to embed.', 'ai-post-scheduler'));
+		}
+
+		$content_hash    = md5($text);
+		$embeddings_repo = $this->get_embeddings_repository();
+
+		// Check if embedding with identical content hash already exists
+		if ($embeddings_repo) {
+			$existing = $embeddings_repo->get_by_source('topic', $topic_id);
+			if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
+				$decoded = $embeddings_repo->decode_embedding($existing->embedding, 'topic', $topic_id, $content_hash);
+				if (!empty($decoded)) {
+					return $decoded;
+				}
+			}
+		}
+
+		// Generate embedding via rate-limited service
+		$embedding = $this->generate_embedding($text);
+		if (is_wp_error($embedding) || !is_array($embedding)) {
 			return $embedding;
 		}
 
-		$this->rate_limiter->record_success();
+		$model      = $this->get_active_model();
+		$dimensions = count($embedding);
 
-		// Cache the result
-		$this->embedding_cache[$cache_key] = $embedding;
+		// Upsert into central aips_embeddings repository
+		if ($embeddings_repo) {
+			$embeddings_repo->upsert(
+				'topic',
+				$topic_id,
+				$embedding,
+				$model,
+				$dimensions,
+				$content_hash
+			);
+		}
 
-		$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
+		// Sync topic metadata for backwards compatibility
+		if ($topics_repo) {
+			$metadata = !empty($topic->metadata) ? (is_array($topic->metadata) ? $topic->metadata : json_decode($topic->metadata, true)) : array();
+			if (!is_array($metadata)) {
+				$metadata = array();
+			}
+			$metadata['embedding'] = $embedding;
+			$topics_repo->update($topic_id, array(
+				'metadata' => wp_json_encode($metadata),
+			));
+		}
 
 		return $embedding;
+	}
+
+	/**
+	 * Retrieve vector embedding for an Author Topic.
+	 *
+	 * Checks the primary aips_embeddings repository first (utilizing multi-tier
+	 * memory/object/transient caching), and gracefully falls back to legacy
+	 * topic metadata if not yet indexed into the central table.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return array|null Vector array (float[]) or null if not found.
+	 */
+	public function get_topic_embedding(int $topic_id): ?array {
+		$embeddings_repo = $this->get_embeddings_repository();
+		if ($embeddings_repo) {
+			$record = $embeddings_repo->get_by_source('topic', (int) $topic_id);
+			if ($record && !empty($record->embedding)) {
+				$vec = $embeddings_repo->decode_embedding(
+					$record->embedding,
+					'topic',
+					(int) $topic_id,
+					!empty($record->content_hash) ? $record->content_hash : ''
+				);
+				if (is_array($vec) && !empty($vec)) {
+					return $vec;
+				}
+			}
+		}
+
+		// Fallback to legacy metadata
+		$topics_repo = $this->get_topics_repository();
+		if ($topics_repo) {
+			$topic = $topics_repo->get_by_id((int) $topic_id);
+			if ($topic && !empty($topic->metadata)) {
+				$meta = is_array($topic->metadata) ? $topic->metadata : json_decode($topic->metadata, true);
+				if (is_array($meta) && !empty($meta['embedding']) && is_array($meta['embedding'])) {
+					return $meta['embedding'];
+				}
+			}
+		}
+
+		return null;
 	}
 	
 	/**
 	 * Calculate cosine similarity between two embedding vectors.
+	 *
+	 * @deprecated 3.7.0 Use AIPS_Similarity_Evaluator::cosine_similarity() directly.
 	 *
 	 * @param array $embedding1 First embedding vector.
 	 * @param array $embedding2 Second embedding vector.
@@ -157,33 +359,14 @@ class AIPS_Embeddings_Service {
 		if (count($embedding1) !== count($embedding2)) {
 			return new WP_Error('dimension_mismatch', __('Embedding vectors must have the same dimensions.', 'ai-post-scheduler'));
 		}
-		
-		// Calculate cosine similarity
-		$dot_product = 0;
-		$magnitude1 = 0;
-		$magnitude2 = 0;
-		
-		for ($i = 0; $i < count($embedding1); $i++) {
-			$dot_product += $embedding1[$i] * $embedding2[$i];
-			$magnitude1 += $embedding1[$i] * $embedding1[$i];
-			$magnitude2 += $embedding2[$i] * $embedding2[$i];
-		}
-		
-		$magnitude1 = sqrt($magnitude1);
-		$magnitude2 = sqrt($magnitude2);
-		
-		if ($magnitude1 == 0 || $magnitude2 == 0) {
-			return new WP_Error('zero_magnitude', __('Cannot calculate similarity with zero magnitude vectors.', 'ai-post-scheduler'));
-		}
-		
-		$similarity = $dot_product / ($magnitude1 * $magnitude2);
-		
-		// Ensure result is in [0, 1] range (sometimes floating point errors can cause slight exceedance)
-		return max(0, min(1, $similarity));
+
+		return $this->get_similarity_evaluator()->cosine_similarity($embedding1, $embedding2);
 	}
 	
 	/**
 	 * Find the most similar items to a target embedding.
+	 *
+	 * @deprecated 3.7.0 Use AIPS_Similarity_Evaluator::find_top_matches() directly.
 	 *
 	 * @param array $target_embedding The target embedding vector.
 	 * @param array $candidate_embeddings Array of candidate embeddings with their IDs.
@@ -191,31 +374,14 @@ class AIPS_Embeddings_Service {
 	 * @return array Array of results with IDs and similarity scores, sorted by similarity.
 	 */
 	public function find_nearest_neighbors($target_embedding, $candidate_embeddings, $top_k = 5) {
-		$similarities = array();
-		
-		foreach ($candidate_embeddings as $candidate) {
-			if (!isset($candidate['id']) || !isset($candidate['embedding'])) {
-				continue;
-			}
-			
-			$similarity = $this->calculate_similarity($target_embedding, $candidate['embedding']);
-			
-			if (!is_wp_error($similarity)) {
-				$similarities[] = array(
-					'id' => $candidate['id'],
-					'similarity' => $similarity,
-					'data' => isset($candidate['data']) ? $candidate['data'] : array()
-				);
-			}
-		}
-		
-		// Sort by similarity (descending)
-		usort($similarities, function($a, $b) {
-			return $b['similarity'] <=> $a['similarity'];
-		});
-		
-		// Return top K results
-		return array_slice($similarities, 0, $top_k);
+		$matches = $this->get_similarity_evaluator()->find_top_matches($target_embedding, $candidate_embeddings, 0.0, $top_k, 'post');
+		return array_map(function ($m) {
+			return array(
+				'id'         => $m['id'],
+				'similarity' => $m['similarity'],
+				'data'       => isset($m['candidate']['data']) ? $m['candidate']['data'] : array(),
+			);
+		}, $matches);
 	}
 	
 	/**

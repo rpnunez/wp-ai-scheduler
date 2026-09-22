@@ -57,6 +57,11 @@ class AIPS_Content_Indexer_Service {
 	private $config;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Initialize the content indexer service.
 	 */
 	public function __construct(
@@ -66,17 +71,19 @@ class AIPS_Content_Indexer_Service {
 		?AIPS_History_Service_Interface $history_service = null,
 		?AIPS_Logger_Interface $logger = null,
 		?AIPS_Config $config = null,
-		?AIPS_Author_Topics_Repository $topics_repo = null
+		?AIPS_Author_Topics_Repository $topics_repo = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->config             = $config ?: AIPS_Config::get_instance();
-		$this->topics_repo        = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->embeddings_repo      = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo   = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$this->embeddings_service   = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->history_service      = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->logger               = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->config               = $config ?: AIPS_Config::get_instance();
+		$this->topics_repo          = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
 	}
 
 	/**
@@ -346,66 +353,30 @@ class AIPS_Content_Indexer_Service {
 	/**
 	 * Index a single Author Topic.
 	 *
+	 * Computes the embedding vector via AIPS_Embeddings_Service, persists it,
+	 * and precomputes cross-entity similarity against published posts to flag
+	 * potential keyword cannibalization.
+	 *
 	 * @param int    $topic_id Topic ID.
-	 * @param string $title    Topic title.
-	 * @return true|WP_Error
+	 * @param string $title    Optional topic title (kept for signature compatibility).
+	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
 	public function index_topic($topic_id, $title = '') {
-		if (!$this->embeddings_service->is_enabled()) {
-			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
-		}
-
-		$rate_limiter = $this->embeddings_service->get_rate_limiter();
-		if ($rate_limiter->is_in_cooldown()) {
-			return new WP_Error('embeddings_cooldown_active', __('Embeddings generation is currently paused due to rate limits.', 'ai-post-scheduler'));
-		}
-
-		$limit_check = $rate_limiter->check_limits(1);
-		if (is_wp_error($limit_check)) {
-			return $limit_check;
-		}
-
 		$topic_id = absint($topic_id);
-
-		if (empty($title)) {
-			$topic_obj = $this->topics_repo->get_by_id($topic_id);
-			if ($topic_obj && !empty($topic_obj->topic_title)) {
-				$title = $topic_obj->topic_title;
-			}
+		if ($topic_id <= 0) {
+			return new WP_Error('invalid_topic_id', __('Invalid topic ID.', 'ai-post-scheduler'));
 		}
 
-		if (empty($title)) {
-			return new WP_Error('empty_topic', __('Topic not found or empty.', 'ai-post-scheduler'));
-		}
-
-		$content_hash = md5($title);
-		$existing     = $this->embeddings_repo->get_by_source('topic', $topic_id);
-		if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
-			return true;
-		}
-
-		$embedding = $this->embeddings_service->generate_embedding($title);
-
+		$embedding = $this->embeddings_service->compute_topic_embedding($topic_id);
 		if (is_wp_error($embedding)) {
-			$rate_limiter->record_failure($embedding);
 			return $embedding;
 		}
 
-		$rate_limiter->record_success();
+		if (!is_array($embedding) || empty($embedding)) {
+			return new WP_Error('empty_embedding', __('Failed to compute topic embedding.', 'ai-post-scheduler'));
+		}
 
 		$dimensions = count($embedding);
-		$ai_config  = $this->config->get_ai_config();
-		$model      = !empty($ai_config['model']) ? $ai_config['model'] : 'default';
-
-		$this->embeddings_repo->upsert(
-			'topic',
-			$topic_id,
-			$embedding,
-			$model,
-			$dimensions,
-			$content_hash,
-			''
-		);
 
 		// Precompute cross-entity similarity against published posts to flag potential cannibalization
 		$post_vectors = $this->embeddings_repo->get_all_for_similarity_by_type('post', 'publish');
@@ -415,8 +386,8 @@ class AIPS_Content_Indexer_Service {
 			foreach ($post_vectors as $pv) {
 				$p_vec = $this->embeddings_repo->decode_embedding($pv->embedding);
 				if (!empty($p_vec) && count($p_vec) === $dimensions) {
-					$sim = $this->embeddings_service->calculate_similarity($embedding, $p_vec);
-					if (!is_wp_error($sim) && (float) $sim >= $min_sim) {
+					$sim = $this->similarity_evaluator->cosine_similarity($embedding, $p_vec);
+					if ($sim >= $min_sim) {
 						$matches[] = array(
 							'target_type' => 'post',
 							'target_id'   => (int) $pv->post_id,
@@ -653,20 +624,14 @@ class AIPS_Content_Indexer_Service {
 			return 0;
 		}
 
-		$neighbors = $this->embeddings_service->find_nearest_neighbors($source_vector, $candidate_vectors, $top_k);
-		if (!is_array($neighbors)) {
-			$neighbors = array();
-		}
-
+		$matches = $this->similarity_evaluator->find_top_matches($source_vector, $candidate_vectors, $min_sim, $top_k, 'post');
 		$targets = array();
-		foreach ($neighbors as $n) {
-			if (isset($n['similarity']) && $n['similarity'] >= $min_sim) {
-				$targets[] = array(
-					'target_type' => 'post',
-					'target_id'   => (int) $n['id'],
-					'similarity'  => (float) $n['similarity'],
-				);
-			}
+		foreach ($matches as $m) {
+			$targets[] = array(
+				'target_type' => 'post',
+				'target_id'   => (int) $m['id'],
+				'similarity'  => (float) $m['similarity'],
+			);
 		}
 
 		$this->relationships_repo->sync_for_source('post', $post_id, $targets, 'related_post');

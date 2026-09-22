@@ -94,107 +94,31 @@ class AIPS_Topic_Expansion_Service {
 	}
 	
 	/**
-	 * Compute and store embedding for a topic.
+	 * Compute and store embedding for an Author Topic.
+	 *
+	 * Delegates to AIPS_Embeddings_Service to follow the DRY principle.
 	 *
 	 * @param int $topic_id Topic ID.
-	 * @return bool|WP_Error True on success, WP_Error on failure.
+	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
 	public function compute_topic_embedding($topic_id) {
-		if (!$this->embeddings_service->is_enabled()) {
-			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		$result = $this->embeddings_service->compute_topic_embedding((int) $topic_id);
+		if (is_wp_error($result)) {
+			return $result;
 		}
-
-		if ($this->rate_limiter->is_in_cooldown()) {
-			return new WP_Error('embeddings_cooldown_active', __('Embeddings generation is currently paused due to rate limits.', 'ai-post-scheduler'));
-		}
-
-		$limit_check = $this->rate_limiter->check_limits(1);
-		if (is_wp_error($limit_check)) {
-			return $limit_check;
-		}
-
-		$topic = $this->topics_repository->get_by_id($topic_id);
-		
-		if (!$topic) {
-			return new WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
-		}
-		
-		// Generate embedding for topic title (could also include topic_prompt if available)
-		$text = $topic->topic_title;
-		if (!empty($topic->topic_prompt)) {
-			$text .= ' ' . $topic->topic_prompt;
-		}
-		
-		$embedding = $this->embeddings_service->generate_embedding($text);
-		
-		if (is_wp_error($embedding)) {
-			$this->rate_limiter->record_failure($embedding);
-			$this->logger->log('Failed to generate embedding for topic ' . $topic_id . ': ' . $embedding->get_error_message(), 'error');
-			return $embedding;
-		}
-
-		$this->rate_limiter->record_success();
-
-		// Upsert into central aips_embeddings table
-		$model = $this->embeddings_service->get_active_model();
-		$dimensions = count($embedding);
-		$this->embeddings_repo->upsert(
-			'topic',
-			$topic_id,
-			$embedding,
-			$model,
-			$dimensions,
-			md5($text)
-		);
-		
-		// Store embedding in metadata for backwards compatibility
-		$metadata = !empty($topic->metadata) ? json_decode($topic->metadata, true) : array();
-		if (!is_array($metadata)) {
-			$metadata = array();
-		}
-		
-		$metadata['embedding'] = $embedding;
-		
-		$result = $this->topics_repository->update($topic_id, array(
-			'metadata' => wp_json_encode($metadata)
-		));
-		
-		if ($result !== false) {
-			$this->logger->log('Computed embedding for topic ' . $topic_id, 'debug');
-			return true;
-		}
-		
-		return new WP_Error('update_failed', __('Failed to store embedding.', 'ai-post-scheduler'));
+		return true;
 	}
 	
 	/**
-	 * Get embedding for a topic.
+	 * Get embedding vector for an Author Topic.
+	 *
+	 * Delegates to AIPS_Embeddings_Service to follow the DRY principle.
 	 *
 	 * @param int $topic_id Topic ID.
 	 * @return array|null Embedding vector or null if not found.
 	 */
 	public function get_topic_embedding($topic_id) {
-		$repo_record = $this->embeddings_repo->get_by_source('topic', (int) $topic_id);
-		if ($repo_record && !empty($repo_record->embedding)) {
-			$vec = $this->embeddings_repo->decode_embedding($repo_record->embedding, 'topic', (int) $topic_id, !empty($repo_record->content_hash) ? $repo_record->content_hash : '');
-			if (is_array($vec) && !empty($vec)) {
-				return $vec;
-			}
-		}
-
-		$topic = $this->topics_repository->get_by_id($topic_id);
-		
-		if (!$topic || empty($topic->metadata)) {
-			return null;
-		}
-		
-		$metadata = json_decode($topic->metadata, true);
-		
-		if (!is_array($metadata) || !isset($metadata['embedding'])) {
-			return null;
-		}
-		
-		return $metadata['embedding'];
+		return $this->embeddings_service->get_topic_embedding((int) $topic_id);
 	}
 	
 	/**
@@ -325,9 +249,9 @@ class AIPS_Topic_Expansion_Service {
 				}
 				
 				if ($approved_embedding) {
-					$similarity = $this->embeddings_service->calculate_similarity($pending_embedding, $approved_embedding);
+					$similarity = $this->similarity_evaluator->cosine_similarity($pending_embedding, $approved_embedding);
 					
-					if (!is_wp_error($similarity) && $similarity > $max_similarity) {
+					if ($similarity > $max_similarity) {
 						$max_similarity = $similarity;
 					}
 				}

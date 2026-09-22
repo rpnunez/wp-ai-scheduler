@@ -240,25 +240,13 @@ class AIPS_Author_Topics_Generator {
 					if ($this->rate_limiter->is_in_cooldown()) {
 						break;
 					}
-					$limit_check = $this->rate_limiter->check_limits();
-					if (is_wp_error($limit_check)) {
-						break;
-					}
 
 					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
-					if ($t_status !== 'rejected' && !empty($saved_topic['topic_title'])) {
-						$t_id  = (int) $saved_topic['id'];
-						$t_vec = $this->embeddings_service->generate_embedding($saved_topic['topic_title']);
-						if (is_wp_error($t_vec)) {
-							$this->rate_limiter->record_failure($t_vec);
-							if ($this->rate_limiter->is_rate_limit_or_exhaustion_error($t_vec)) {
-								break;
-							}
-						} elseif (is_array($t_vec) && !empty($t_vec)) {
-							$this->rate_limiter->record_success();
-							$model = $this->embeddings_service->get_active_model();
-							$dims  = count($t_vec);
-							$this->embeddings_repo->upsert('topic', $t_id, $t_vec, $model, $dims, md5($saved_topic['topic_title']));
+					if ($t_status !== 'rejected' && !empty($saved_topic['id'])) {
+						$t_id   = (int) $saved_topic['id'];
+						$result = $this->embeddings_service->compute_topic_embedding($t_id);
+						if (is_wp_error($result) && $this->rate_limiter->is_rate_limit_or_exhaustion_error($result)) {
+							break;
 						}
 					}
 				}
@@ -542,19 +530,10 @@ class AIPS_Author_Topics_Generator {
 			return null;
 		}
 
-		$limit_check = $this->rate_limiter->check_limits();
-		if (is_wp_error($limit_check)) {
-			return null;
-		}
-
 		$profile_vec = $this->embeddings_service->generate_embedding($profile_text);
 		if (is_wp_error($profile_vec) || !is_array($profile_vec)) {
-			if (is_wp_error($profile_vec)) {
-				$this->rate_limiter->record_failure($profile_vec);
-			}
 			return null;
 		}
-		$this->rate_limiter->record_success();
 
 		$vectors = array($profile_vec);
 

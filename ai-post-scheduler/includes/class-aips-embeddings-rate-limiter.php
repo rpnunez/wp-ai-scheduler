@@ -497,6 +497,103 @@ class AIPS_Embeddings_Rate_Limiter {
 	}
 
 	/**
+	 * Check whether embedding generation is currently in an auto-cooldown period.
+	 *
+	 * Cooldown engages automatically when consecutive provider failures exceed
+	 * the configured threshold or when an HTTP 429/quota exhaustion error occurs.
+	 *
+	 * @return bool True if cooldown is active (paused), false if clear.
+	 */
+	public function is_in_cooldown(): bool {
+		$cooldown = $this->get_cooldown_status();
+		return !empty($cooldown['is_paused']);
+	}
+
+	/**
+	 * Execute a vector generation or API operation guarded by the rate limiter and cooldown policy.
+	 *
+	 * Implements the resilience callback pattern for embeddings:
+	 * 1. Checks if rate limiting / cooldown is active; returns WP_Error immediately without executing.
+	 * 2. Checks sliding-window daily/weekly/monthly quota allowances; returns WP_Error if exhausted.
+	 * 3. Safely invokes the $operation callable.
+	 * 4. On failure (WP_Error returned or Exception thrown):
+	 *    - Automatically records the failure and engages auto-cooldown if threshold met.
+	 *    - Fires the optional $on_failure callback.
+	 * 5. On success:
+	 *    - Records usage count against sliding-window persistent quotas.
+	 *    - Resets consecutive error counters via record_success().
+	 *    - Fires the optional $on_success callback.
+	 *
+	 * @param callable      $operation  The core operation to execute. Should return the result or WP_Error.
+	 * @param callable|null $on_success Optional callback executed upon success: fn($result).
+	 * @param callable|null $on_failure Optional callback executed upon failure: fn(WP_Error $error).
+	 * @param int           $count      Number of quota units to consume (default 1).
+	 * @return mixed The operation's return value on success, or WP_Error on rejection/failure.
+	 */
+	public function execute(callable $operation, ?callable $on_success = null, ?callable $on_failure = null, int $count = 1) {
+		if ($count <= 0) {
+			$count = 1;
+		}
+
+		// Step 1: Pre-execution cooldown guard
+		if ($this->is_in_cooldown()) {
+			$status = $this->get_cooldown_status();
+			$error  = new WP_Error(
+				'embeddings_cooldown_active',
+				sprintf(
+					/* translators: 1: reason, 2: remaining seconds */
+					__('Embeddings generation is temporarily paused. %1$s (Resumes in %2$d seconds).', 'ai-post-scheduler'),
+					$status['reason'],
+					$status['remaining_seconds']
+				),
+				$status
+			);
+			if ($on_failure) {
+				call_user_func($on_failure, $error);
+			}
+			return $error;
+		}
+
+		// Step 2: Pre-execution sliding-window quota check
+		$limit_check = $this->check_limits($count);
+		if (is_wp_error($limit_check)) {
+			if ($on_failure) {
+				call_user_func($on_failure, $limit_check);
+			}
+			return $limit_check;
+		}
+
+		// Step 3: Execute operation with exception safety
+		try {
+			$result = call_user_func($operation);
+		} catch (\Throwable $e) {
+			$result = new WP_Error(
+				'embedding_execution_exception',
+				$e->getMessage(),
+				array('exception' => get_class($e))
+			);
+		}
+
+		// Step 4: Handle failure
+		if (is_wp_error($result)) {
+			$this->record_failure($result);
+			if ($on_failure) {
+				call_user_func($on_failure, $result);
+			}
+			return $result;
+		}
+
+		// Step 5: Handle success
+		$this->record_usage($count);
+		$this->record_success();
+		if ($on_success) {
+			call_user_func($on_success, $result);
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Clear active cooldown lock and resume indexing immediately.
 	 *
 	 * @return void
