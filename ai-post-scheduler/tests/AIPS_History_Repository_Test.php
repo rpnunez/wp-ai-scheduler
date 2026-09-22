@@ -47,10 +47,10 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'template_id' => $this->test_template_id,
 				'title' => 'Test Schedule',
 				'frequency' => 'daily',
-				'next_run' => time(),
+				'next_run' => AIPS_DateTime::now()->timestamp(),
 				'is_active' => 1,
 				'status' => 'active',
-				'created_at' => time() - HOUR_IN_SECONDS,
+				'created_at' => AIPS_DateTime::now()->advance('-1 hour')->timestamp(),
 			),
 			array('%d', '%s', '%s', '%d', '%d', '%s', '%d')
 		);
@@ -74,7 +74,7 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'generated_content' => 'Test content ' . $i . ' with more details',
 					'prompt' => 'Test prompt ' . $i . ' with full context',
 					'error_message' => null,
-					'created_at' => time(),
+					'created_at' => AIPS_DateTime::now()->timestamp(),
 				),
 				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
 			);
@@ -344,8 +344,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$extra_ids = array();
 
 		// Two days: today and yesterday.
-		$today     = gmdate('Y-m-d');
-		$yesterday = gmdate('Y-m-d', time() - DAY_IN_SECONDS);
+		$now       = AIPS_DateTime::now();
+		$today     = $now->format('Y-m-d');
+		$yesterday = $now->advance('-1 day')->format('Y-m-d');
 
 		// created_at is a bigint unix timestamp, so anchor each bucket to a
 		// concrete time inside its own UTC day rather than a datetime string.
@@ -353,8 +354,8 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		// the delta this test contributes rather than on absolute bucket totals.
 		$baseline = $this->repository->get_daily_generation_counts(14);
 
-		$today_ts     = strtotime($today . ' 10:00:00 UTC');
-		$yesterday_ts = strtotime($yesterday . ' 08:00:00 UTC');
+		$today_ts     = AIPS_DateTime::fromDate($today)->addSeconds(10 * HOUR_IN_SECONDS)->timestamp();
+		$yesterday_ts = AIPS_DateTime::fromDate($yesterday)->addSeconds(8 * HOUR_IN_SECONDS)->timestamp();
 
 		// Today: 2 completed + 1 failed.
 		foreach ( array( 'completed', 'completed', 'failed' ) as $status ) {
