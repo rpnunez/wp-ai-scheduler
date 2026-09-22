@@ -12,6 +12,7 @@ class Test_AIPS_Relationships_Repository extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		AIPS_DB_Manager::install_tables();
 		$this->repo = new AIPS_Relationships_Repository();
 	}
@@ -19,6 +20,7 @@ class Test_AIPS_Relationships_Repository extends WP_UnitTestCase {
 	public function tearDown(): void {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 
@@ -114,5 +116,55 @@ class Test_AIPS_Relationships_Repository extends WP_UnitTestCase {
 		$this->assertEquals( $min_id, (int) $clusters[0]->source_id );
 		$this->assertEquals( $max_id, (int) $clusters[0]->target_id );
 		$this->assertEquals( 0.95, (float) $clusters[0]->similarity );
+	}
+
+	/**
+	 * get_related() joins wp_posts on post_status. Trashing a target post
+	 * through the native WP flow must evict the cached read via
+	 * AIPS_Post_Lifecycle_Cache_Invalidator.
+	 */
+	public function test_get_related_refreshes_when_target_is_trashed() {
+		$invalidator = new AIPS_Post_Lifecycle_Cache_Invalidator( $this->repo );
+		$invalidator->register();
+
+		try {
+			$p1 = wp_insert_post( array( 'post_title' => 'Source', 'post_status' => 'publish', 'post_type' => 'post' ) );
+			$p2 = wp_insert_post( array( 'post_title' => 'Target', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+			$this->repo->upsert( 'post', $p1, 'post', $p2, 0.90, 'related_post' );
+			$this->assertCount( 1, $this->repo->get_related( 'post', $p1, 5, 0.50 ) );
+
+			wp_trash_post( $p2 );
+
+			$this->assertCount( 0, $this->repo->get_related( 'post', $p1, 5, 0.50 ) );
+		} finally {
+			remove_action( 'transition_post_status', array( $invalidator, 'on_transition_post_status' ), 10 );
+			remove_action( 'deleted_post', array( $invalidator, 'on_deleted_post' ), 10 );
+		}
+	}
+
+	/**
+	 * sync_for_source() replaces a source's rows; a previously cached read must
+	 * not keep serving the pre-sync neighbors.
+	 */
+	public function test_sync_for_source_invalidates_cached_reads() {
+		$p1 = wp_insert_post( array( 'post_title' => 'S', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$p2 = wp_insert_post( array( 'post_title' => 'T1', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$p3 = wp_insert_post( array( 'post_title' => 'T2', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->repo->sync_for_source( 'post', $p1, array( array( 'target_type' => 'post', 'target_id' => $p2, 'similarity' => 0.9 ) ) );
+		$this->assertSame( 1, $this->repo->count() );
+		$this->assertEquals( $p2, (int) $this->repo->get_related( 'post', $p1, 5, 0.5 )[0]->target_id );
+
+		$this->repo->sync_for_source( 'post', $p1, array(
+			array( 'target_type' => 'post', 'target_id' => $p2, 'similarity' => 0.9 ),
+			array( 'target_type' => 'post', 'target_id' => $p3, 'similarity' => 0.8 ),
+		) );
+
+		$this->assertSame( 2, $this->repo->count() );
+		$this->assertCount( 2, $this->repo->get_related( 'post', $p1, 5, 0.5 ) );
+
+		$this->repo->clear_all();
+		$this->assertSame( 0, $this->repo->count() );
 	}
 }

@@ -243,10 +243,10 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 
 	/**
 	 * count_indexed_for_types() joins wp_posts. Trashing a post through the
-	 * native WP flow must refresh it via AIPS_Embeddings_Cache_Invalidator.
+	 * native WP flow must refresh it via AIPS_Post_Lifecycle_Cache_Invalidator.
 	 */
 	public function test_count_indexed_for_types_refreshes_when_post_is_trashed() {
-		$invalidator = new AIPS_Embeddings_Cache_Invalidator( $this->repo );
+		$invalidator = new AIPS_Post_Lifecycle_Cache_Invalidator( $this->repo );
 		$invalidator->register();
 
 		try {
@@ -273,7 +273,7 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 	 * row; the deleted_post hook must still refresh the joined count.
 	 */
 	public function test_count_indexed_for_types_refreshes_when_post_is_deleted() {
-		$invalidator = new AIPS_Embeddings_Cache_Invalidator( $this->repo );
+		$invalidator = new AIPS_Post_Lifecycle_Cache_Invalidator( $this->repo );
 		$invalidator->register();
 
 		try {

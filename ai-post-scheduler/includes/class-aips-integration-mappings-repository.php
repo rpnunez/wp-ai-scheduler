@@ -14,7 +14,34 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
+/**
+ * Class AIPS_Integration_Mappings_Repository
+ *
+ * Caching model: get_by_template() is read on every generation for templates
+ * with integrations, so it is cached; every read carries the broad
+ * `integration_mappings` tag, which every write bumps exactly once (bulk
+ * writes such as sync_group_mappings() / clone_template_mappings() persist
+ * their rows first and invalidate a single time at the end). The
+ * insert-vs-update existence check in save_mapping() always reads the live
+ * table.
+ */
 class AIPS_Integration_Mappings_Repository {
+
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
+
+	/**
+	 * Broad cache tag carried by every cached read and bumped by every write.
+	 */
+	const CACHE_TAG = 'integration_mappings';
 
 	/**
 	 * @var wpdb
@@ -29,7 +56,7 @@ class AIPS_Integration_Mappings_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_integration_field_mappings';
+		$this->table_name = $this->table('aips_integration_field_mappings');
 	}
 
 	/**
@@ -41,12 +68,23 @@ class AIPS_Integration_Mappings_Repository {
 	 */
 	public function get_by_template($template_id, $active_only = true) {
 		$template_id = absint($template_id);
-		$where = $active_only ? 'AND is_active = 1' : '';
+		$active_only = (bool) $active_only;
 
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE template_id = %d $where ORDER BY id ASC",
-			$template_id
-		));
+		return $this->cache_read(
+			'integration_mappings.get_by_template',
+			array(
+				'template_id' => $template_id,
+				'active_only' => $active_only,
+			),
+			function() use ($template_id, $active_only) {
+				$where = $active_only ? 'AND is_active = 1' : '';
+
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE template_id = %d $where ORDER BY id ASC",
+					$template_id
+				));
+			}
+		);
 	}
 
 	/**
@@ -56,10 +94,20 @@ class AIPS_Integration_Mappings_Repository {
 	 * @return object|null
 	 */
 	public function get_by_id($id) {
-		return $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE id = %d",
-			absint($id)
-		));
+		$id = absint($id);
+
+		return $this->cache_read(
+			'integration_mappings.get_by_id',
+			array(
+				'id' => $id,
+			),
+			function() use ($id) {
+				return $this->wpdb->get_row($this->wpdb->prepare(
+					"SELECT * FROM {$this->table_name} WHERE id = %d",
+					$id
+				));
+			}
+		);
 	}
 
 	/**
@@ -82,6 +130,24 @@ class AIPS_Integration_Mappings_Repository {
 	 * @return int|false Mapping ID on success, false on failure.
 	 */
 	public function save_mapping($data) {
+		$result = $this->persist_mapping($data);
+
+		if (false !== $result) {
+			$this->invalidate_mappings_cache('integration_mapping_saved');
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Insert or update a mapping row without touching the cache.
+	 *
+	 * Callers are responsible for invalidating once their write completes.
+	 *
+	 * @param array $data Mapping data (see save_mapping()).
+	 * @return int|false Mapping ID on success, false on failure.
+	 */
+	private function persist_mapping($data) {
 		$template_id = !empty($data['template_id']) ? absint($data['template_id']) : null;
 		$integration_id = sanitize_key($data['integration_id']);
 		$field_key = sanitize_text_field($data['field_key']);
@@ -136,7 +202,13 @@ class AIPS_Integration_Mappings_Repository {
 	 * @return bool
 	 */
 	public function delete_mapping($id) {
-		return $this->wpdb->delete($this->table_name, array('id' => absint($id)), array('%d')) !== false;
+		$result = $this->wpdb->delete($this->table_name, array('id' => absint($id)), array('%d'));
+
+		if ($result) {
+			$this->invalidate_mappings_cache('integration_mapping_deleted');
+		}
+
+		return $result !== false;
 	}
 
 	/**
@@ -146,7 +218,13 @@ class AIPS_Integration_Mappings_Repository {
 	 * @return bool
 	 */
 	public function delete_by_template($template_id) {
-		return $this->wpdb->delete($this->table_name, array('template_id' => absint($template_id)), array('%d')) !== false;
+		$result = $this->wpdb->delete($this->table_name, array('template_id' => absint($template_id)), array('%d'));
+
+		if ($result) {
+			$this->invalidate_mappings_cache('integration_mappings_deleted_by_template');
+		}
+
+		return $result !== false;
 	}
 
 	/**
@@ -170,12 +248,18 @@ class AIPS_Integration_Mappings_Repository {
 			return false;
 		}
 
-		return $this->wpdb->query($this->wpdb->prepare(
+		$result = $this->wpdb->query($this->wpdb->prepare(
 			"DELETE FROM {$this->table_name} WHERE template_id = %d AND integration_id = %s AND source_key != %s",
 			$template_id,
 			sanitize_key($integration_id),
 			sanitize_text_field($source_key)
-		)) !== false;
+		));
+
+		if ($result) {
+			$this->invalidate_mappings_cache('integration_mappings_stale_group_deleted');
+		}
+
+		return $result !== false;
 	}
 
 	/**
@@ -217,8 +301,12 @@ class AIPS_Integration_Mappings_Repository {
 			$mapping['template_id']    = $template_id;
 			$mapping['integration_id'] = $integration_id;
 			$mapping['source_key']     = $source_key;
-			$this->save_mapping($mapping);
+			$this->persist_mapping($mapping);
 		}
+
+		// The delete above always changes (or confirms) the group's rows, so
+		// invalidate once for the whole sync.
+		$this->invalidate_mappings_cache('integration_mappings_synced');
 
 		return true;
 	}
@@ -245,7 +333,7 @@ class AIPS_Integration_Mappings_Repository {
 		}
 
 		foreach ($existing as $mapping) {
-			$this->save_mapping(array(
+			$this->persist_mapping(array(
 				'template_id'    => $destination_template_id,
 				'integration_id' => $mapping->integration_id,
 				'source_key'     => $mapping->source_key,
@@ -257,7 +345,51 @@ class AIPS_Integration_Mappings_Repository {
 			));
 		}
 
+		$this->invalidate_mappings_cache('integration_mappings_cloned');
+
 		return true;
+	}
+
+	/**
+	 * Return the repository cache group for integration-mapping reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_integration_mappings';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for integration-mapping reads.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'integration_mappings.get_by_template' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array(self::CACHE_TAG),
+				'description' => 'Cache per-template field mappings; read on every generation for templates with integrations.',
+			),
+			'integration_mappings.get_by_id' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array(self::CACHE_TAG),
+				'cache_null'  => false,
+				'description' => 'Cache single mapping reads by ID.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate every cached mapping read after a write.
+	 *
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_mappings_cache($reason) {
+		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
 	}
 }
 

@@ -1458,10 +1458,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         if ($status === 'all') {
-            return $this->wpdb->query("DELETE FROM {$this->table_name}");
+            $result = $this->wpdb->query("DELETE FROM {$this->table_name}");
+        } else {
+            $result = $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
         }
-        
-        return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
+
+        // Cached history reads (get_stats, per-schedule completed counts) must not
+        // outlive a bulk clear.
+        if ($result) {
+            $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
+        }
+
+        return $result;
     }
     
     /**

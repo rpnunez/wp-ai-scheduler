@@ -133,6 +133,47 @@ class AIPS_Cache_Factory {
 		self::$named    = array();
 	}
 
+	/**
+	 * Flush the shared singleton and every named instance created this request.
+	 *
+	 * AIPS_Cache::flush() only clears the driver of the instance it is called
+	 * on. Repository caches live in named instances (one per group/tier), and
+	 * array-driver stores or wp_object_cache flush generations are held per
+	 * instance, so flushing only instance() leaves those serving stale data for
+	 * the rest of the request. Instances that share a backing store (e.g. the
+	 * DB driver's single table) are flushed once per distinct driver type to
+	 * avoid redundant TRUNCATEs.
+	 *
+	 * @return bool True when every flush succeeded.
+	 */
+	public static function flush_all() {
+		$instances   = array_merge( array( self::instance() ), array_values( self::$named ) );
+		$seen        = array();
+		$shared_seen = array();
+		$ok          = true;
+
+		foreach ( $instances as $cache ) {
+			$id = spl_object_hash( $cache );
+			if (isset( $seen[ $id ] )) {
+				continue;
+			}
+			$seen[ $id ] = true;
+
+			// The DB driver truncates one shared table regardless of namespace.
+			$driver_class = get_class( $cache->get_driver() );
+			if ('AIPS_Cache_Db_Driver' === $driver_class) {
+				if (isset( $shared_seen[ $driver_class ] )) {
+					continue;
+				}
+				$shared_seen[ $driver_class ] = true;
+			}
+
+			$ok = (bool) $cache->flush() && $ok;
+		}
+
+		return $ok;
+	}
+
 	// -----------------------------------------------------------------------
 	// Named instance API
 	// -----------------------------------------------------------------------

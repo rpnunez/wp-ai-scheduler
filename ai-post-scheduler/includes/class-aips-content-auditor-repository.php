@@ -12,7 +12,35 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if (!trait_exists('AIPS_Cacheable_Repository')) {
+	require_once __DIR__ . '/trait-aips-cacheable-repository.php';
+}
+
+if (!trait_exists('AIPS_Repository_Tables')) {
+	require_once __DIR__ . '/trait-aips-repository-tables.php';
+}
+
+/**
+ * Class AIPS_Content_Auditor_Repository
+ *
+ * Caching model:
+ *
+ * - The lightweight history list and counts are cached under the broad
+ *   `content_audits` tag, which every write (save / delete) bumps.
+ * - get_by_id() / get_latest() are left uncached: they return the full
+ *   hydrated audit report (the decoded audit_report JSON), whose serialized
+ *   payload is large, while the underlying query is a primary-key or
+ *   single-row indexed lookup that costs less than a cache round trip.
+ */
 class AIPS_Content_Auditor_Repository {
+
+	use AIPS_Cacheable_Repository;
+	use AIPS_Repository_Tables;
+
+	/**
+	 * Broad cache tag carried by every cached read and bumped by every write.
+	 */
+	const CACHE_TAG = 'content_audits';
 
 	/**
 	 * @var wpdb WordPress database abstraction object.
@@ -30,9 +58,10 @@ class AIPS_Content_Auditor_Repository {
 	 * @param wpdb|null $wpdb Optional wpdb instance for testing.
 	 */
 	public function __construct($wpdb = null) {
-		global $wpdb;
-		$this->wpdb       = $wpdb ?: $GLOBALS['wpdb'];
-		$this->table_name = $this->wpdb->prefix . 'aips_content_audits';
+		// Do not declare `global $wpdb` here: it would rebind the parameter to the
+		// global and silently discard an injected instance.
+		$this->wpdb       = $wpdb ?: $this->db();
+		$this->table_name = $this->table('aips_content_audits');
 	}
 
 	/**
@@ -58,7 +87,7 @@ class AIPS_Content_Auditor_Repository {
 		$gap_count      = isset($report['modules']['gaps']['gap_count']) ? (int) $report['modules']['gaps']['gap_count'] : 0;
 
 		$report_json = wp_json_encode($report);
-		$now_ts      = AIPS_DateTime::now_ts();
+		$now_ts      = AIPS_DateTime::now()->timestamp();
 
 		$data = array(
 			'niche'                 => $niche,
@@ -95,6 +124,10 @@ class AIPS_Content_Auditor_Repository {
 		);
 
 		$result = $this->wpdb->insert($this->table_name, $data, $format);
+
+		if ($result !== false) {
+			$this->invalidate_audits_cache('content_audit_saved');
+		}
 
 		return $result !== false ? (int) $this->wpdb->insert_id : false;
 	}
@@ -148,15 +181,38 @@ class AIPS_Content_Auditor_Repository {
 	public function get_history($limit = 20, $offset = 0, $niche = null) {
 		$limit  = max(1, min(100, (int) $limit));
 		$offset = max(0, (int) $offset);
+		$niche  = !empty($niche) ? sanitize_text_field($niche) : '';
 
-		if (!empty($niche)) {
+		return $this->cache_read(
+			'content_audits.get_history',
+			array(
+				'limit'  => $limit,
+				'offset' => $offset,
+				'niche'  => $niche,
+			),
+			function() use ($limit, $offset, $niche) {
+				return $this->query_history($limit, $offset, $niche);
+			}
+		);
+	}
+
+	/**
+	 * Run the uncached audit history query.
+	 *
+	 * @param int    $limit  Number of records to fetch.
+	 * @param int    $offset Offset.
+	 * @param string $niche  Sanitized niche filter, or '' for all niches.
+	 * @return array
+	 */
+	private function query_history($limit, $offset, $niche) {
+		if ('' !== $niche) {
 			$query = $this->wpdb->prepare(
 				"SELECT id, niche, overall_score, freshness_score, link_score, cannibalization_score, gap_score, total_posts, orphan_count, decay_count, conflict_count, gap_count, created_at, updated_at
 				 FROM {$this->table_name}
 				 WHERE niche = %s
 				 ORDER BY created_at DESC, id DESC
 				 LIMIT %d OFFSET %d",
-				sanitize_text_field($niche),
+				$niche,
 				$limit,
 				$offset
 			);
@@ -188,6 +244,11 @@ class AIPS_Content_Auditor_Repository {
 		}
 
 		$result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+
+		if ($result) {
+			$this->invalidate_audits_cache('content_audit_deleted');
+		}
+
 		return $result !== false && $result > 0;
 	}
 
@@ -198,13 +259,67 @@ class AIPS_Content_Auditor_Repository {
 	 * @return int
 	 */
 	public function count($niche = null) {
-		if (!empty($niche)) {
-			$query = $this->wpdb->prepare("SELECT COUNT(*) FROM {$this->table_name} WHERE niche = %s", sanitize_text_field($niche));
-		} else {
-			$query = "SELECT COUNT(*) FROM {$this->table_name}";
-		}
+		$niche = !empty($niche) ? sanitize_text_field($niche) : '';
 
-		return (int) $this->wpdb->get_var($query);
+		return (int) $this->cache_read(
+			'content_audits.count',
+			array(
+				'niche' => $niche,
+			),
+			function() use ($niche) {
+				if ('' !== $niche) {
+					$query = $this->wpdb->prepare("SELECT COUNT(*) FROM {$this->table_name} WHERE niche = %s", $niche);
+				} else {
+					$query = "SELECT COUNT(*) FROM {$this->table_name}";
+				}
+
+				return (int) $this->wpdb->get_var($query);
+			}
+		);
+	}
+
+	/**
+	 * Return the repository cache group for content-audit reads.
+	 *
+	 * @return string
+	 */
+	protected function repository_cache_group(): string {
+		return 'aips_content_audits';
+	}
+
+	/**
+	 * Return the explicit repository cache policies for content-audit reads.
+	 *
+	 * get_by_id() / get_latest() intentionally have no policy; see the class
+	 * docblock.
+	 *
+	 * @return array
+	 */
+	protected function repository_cache_policies(): array {
+		return array(
+			'content_audits.get_history' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array(self::CACHE_TAG),
+				'description' => 'Cache the lightweight audit history list (no report JSON).',
+			),
+			'content_audits.count' => array(
+				'tier'        => 'medium',
+				'ttl'         => 300,
+				'tags'        => array(self::CACHE_TAG),
+				'description' => 'Cache audit record counts by niche.',
+			),
+		);
+	}
+
+	/**
+	 * Invalidate every cached audit read after a write.
+	 *
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_audits_cache($reason) {
+		$this->invalidate_cache_tags(array(self::CACHE_TAG), (string) $reason);
 	}
 
 	/**

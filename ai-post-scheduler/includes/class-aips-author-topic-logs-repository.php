@@ -119,6 +119,12 @@ class AIPS_Author_Topic_Logs_Repository {
 				isset($data['author_topic_id']) ? $data['author_topic_id'] : 0,
 				'author_topic_log_created'
 			);
+
+			// Author-topic reads that LEFT JOIN this table on action = 'post_generated'
+			// (e.g. get_status_counts' posts_generated bucket) live in another cache group.
+			if (isset($data['action']) && 'post_generated' === $data['action']) {
+				$this->invalidate_author_topic_dependent_reads('author_topic_post_logged');
+			}
 		}
 		return $result ? $this->wpdb->insert_id : false;
 	}
@@ -220,6 +226,7 @@ class AIPS_Author_Topic_Logs_Repository {
 
 		if ($result) {
 			$this->invalidate_logs_cache_for_topics($topic_ids, 'author_topic_logs_deleted');
+			$this->invalidate_author_topic_dependent_reads('author_topic_logs_deleted');
 		}
 
 		return $result;
@@ -357,6 +364,20 @@ class AIPS_Author_Topic_Logs_Repository {
 		}
 
 		$this->invalidate_cache_tags($tags, (string) $reason);
+	}
+
+	/**
+	 * Invalidate author-topic reads that join this table.
+	 *
+	 * AIPS_Author_Topics_Repository caches reads (get_status_counts) that LEFT JOIN
+	 * aips_author_topic_logs, under its own cache group. Tag versions are
+	 * group-scoped, so the bump must be delegated to that repository.
+	 *
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_author_topic_dependent_reads($reason) {
+		$this->invalidate_repository_cache_tags('AIPS_Author_Topics_Repository', array('author_topics'), (string) $reason);
 	}
 
 	/**

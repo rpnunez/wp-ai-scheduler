@@ -32,7 +32,7 @@ if (!trait_exists('AIPS_Repository_Tables')) {
  *   `embeddings` tag, which every write (upsert / delete / clear_all) bumps.
  * - Reads that JOIN wp_posts on post_status / post_type additionally carry the
  *   `embeddings_posts` tag. Native WordPress flows (trash, publish, delete)
- *   never call this repository, so AIPS_Embeddings_Cache_Invalidator bumps
+ *   never call this repository, so AIPS_Post_Lifecycle_Cache_Invalidator bumps
  *   `embeddings_posts` from transition_post_status / deleted_post.
  * - get_all_for_similarity() / get_all_for_similarity_by_type() are left
  *   uncached: they return every stored vector as JSON, so the serialized
@@ -406,7 +406,7 @@ class AIPS_Embeddings_Repository {
 	 * Count total indexed objects matching post types and status.
 	 *
 	 * Joins wp_posts, so the cached value carries CACHE_TAG_POSTS in addition to
-	 * the broad tag; AIPS_Embeddings_Cache_Invalidator bumps it on post
+	 * the broad tag; AIPS_Post_Lifecycle_Cache_Invalidator bumps it on post
 	 * transitions and deletions.
 	 *
 	 * @param string[]|string $post_types  Post types.
@@ -624,7 +624,7 @@ class AIPS_Embeddings_Repository {
 	/**
 	 * Invalidate cached reads that depend on wp_posts state.
 	 *
-	 * Called by AIPS_Embeddings_Cache_Invalidator when a post changes status,
+	 * Called by AIPS_Post_Lifecycle_Cache_Invalidator when a post changes status,
 	 * type, or is deleted through native WordPress flows that never touch this
 	 * repository. Only reads tagged CACHE_TAG_POSTS are affected.
 	 *

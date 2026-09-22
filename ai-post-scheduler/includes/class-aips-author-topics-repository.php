@@ -308,6 +308,7 @@ class AIPS_Author_Topics_Repository {
 				$context,
 				'author_topic_deleted'
 			);
+			$this->invalidate_topic_joined_reads( 'author_topic_deleted' );
 		}
 
 		return $result;
@@ -333,6 +334,7 @@ class AIPS_Author_Topics_Repository {
 				),
 				'author_topic_deleted_by_author'
 			);
+			$this->invalidate_topic_joined_reads( 'author_topic_deleted_by_author' );
 		}
 
 		return $result;
@@ -733,6 +735,21 @@ class AIPS_Author_Topics_Repository {
 				'description' => 'Leave queue-sensitive approved-topic reads uncached.',
 			),
 		);
+	}
+
+	/**
+	 * Invalidate other repositories' cached reads that INNER JOIN this table.
+	 *
+	 * Feedback and topic-log reads join aips_author_topics (to resolve author_id),
+	 * so deleting topics changes their results. Those reads live in their own
+	 * cache groups, where tag versions are scoped, so the bump is delegated.
+	 *
+	 * @param string $reason Invalidation reason.
+	 * @return void
+	 */
+	private function invalidate_topic_joined_reads( $reason ) {
+		$this->invalidate_repository_cache_tags( 'AIPS_Feedback_Repository', array( 'topic_feedback' ), (string) $reason );
+		$this->invalidate_repository_cache_tags( 'AIPS_Author_Topic_Logs_Repository', array( 'author_topic_logs' ), (string) $reason );
 	}
 
 	/**
