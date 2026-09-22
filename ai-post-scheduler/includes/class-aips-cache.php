@@ -57,6 +57,13 @@ class AIPS_Cache {
 	private $pending_context = array();
 
 	/**
+	 * In-memory L1 request-scoped cache storage.
+	 *
+	 * @var array<string, mixed>
+	 */
+	private $l1_store = array();
+
+	/**
 	 * Per-request memoised result of the system-enabled check.
 	 *
 	 * Null means "not yet read". Populated on the first call to
@@ -176,7 +183,24 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return $default;
 		}
+
+		$composite = $group . ':' . $key;
+		if (array_key_exists( $composite, $this->l1_store )) {
+			$value = $this->l1_store[ $composite ];
+			$this->record_cache_event(
+				'get',
+				array(
+					'key'   => (string) $key,
+					'group' => (string) $group,
+					'hit'   => null !== $value,
+				)
+			);
+			return null !== $value ? $value : $default;
+		}
+
 		$value = $this->driver->get( $key, $group );
+		$this->l1_store[ $composite ] = $value;
+
 		if ($value !== null) {
 			$index = $this->get_cache_index();
 			if ($index) {
@@ -195,6 +219,59 @@ class AIPS_Cache {
 	}
 
 	/**
+	 * Retrieve multiple values from cache in a batch operation.
+	 *
+	 * Checks the in-memory L1 cache first, then delegates any remaining
+	 * misses to the driver in a single batch query.
+	 *
+	 * @param array  $keys  Array of cache keys.
+	 * @param string $group Cache group. Default 'default'.
+	 * @return array<string, mixed> Associative array of key => value (or null).
+	 */
+	public function get_multiple( array $keys, $group = 'default' ): array {
+		$results = array();
+		if ( empty( $keys ) ) {
+			return $results;
+		}
+
+		if ( ! self::is_system_enabled() ) {
+			foreach ( $keys as $key ) {
+				$results[ (string) $key ] = null;
+			}
+			return $results;
+		}
+
+		$missed_keys = array();
+		foreach ( $keys as $key ) {
+			$key_str   = (string) $key;
+			$composite = $group . ':' . $key_str;
+			if ( array_key_exists( $composite, $this->l1_store ) ) {
+				$results[ $key_str ] = $this->l1_store[ $composite ];
+			} else {
+				$missed_keys[] = $key_str;
+			}
+		}
+
+		if ( ! empty( $missed_keys ) ) {
+			$driver_results = $this->driver->get_multiple( $missed_keys, $group );
+			$index          = $this->get_cache_index();
+
+			foreach ( $missed_keys as $key_str ) {
+				$val = isset( $driver_results[ $key_str ] ) ? $driver_results[ $key_str ] : null;
+				$composite = $group . ':' . $key_str;
+				$this->l1_store[ $composite ] = $val;
+				$results[ $key_str ]          = $val;
+
+				if ( null !== $val && $index ) {
+					$index->record_access( $key_str, (string) $group );
+				}
+			}
+		}
+
+		return $results;
+	}
+
+	/**
 	 * Store a value in the cache.
 	 *
 	 * Returns true immediately (no-op) when the cache system is disabled.
@@ -209,6 +286,10 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return true;
 		}
+
+		$composite = $group . ':' . $key;
+		$this->l1_store[ $composite ] = $value;
+
 		$result = $this->driver->set( $key, $value, (int) $ttl, $group );
 		if ($result) {
 			$context               = $this->pending_context;
@@ -243,6 +324,10 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return true;
 		}
+
+		$composite = $group . ':' . $key;
+		unset( $this->l1_store[ $composite ] );
+
 		$result = $this->driver->delete( $key, $group );
 		if ($result) {
 			$index = $this->get_cache_index();
@@ -274,6 +359,12 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return false;
 		}
+
+		$composite = $group . ':' . $key;
+		if (array_key_exists( $composite, $this->l1_store ) && $this->l1_store[ $composite ] !== null) {
+			return true;
+		}
+
 		$result = $this->driver->has( $key, $group );
 		if ($result) {
 			$index = $this->get_cache_index();
@@ -303,6 +394,9 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return true;
 		}
+
+		$this->l1_store = array();
+
 		$result = $this->driver->flush();
 		if ($result) {
 			$index = $this->get_cache_index();
@@ -491,10 +585,32 @@ class AIPS_Cache {
 	 * @return array<string, int>
 	 */
 	public function get_tag_versions( array $tags, $group = 'default' ) {
-		$versions = array();
+		$sanitized_tags = $this->sanitize_tags( $tags );
+		if ( empty( $sanitized_tags ) ) {
+			return array();
+		}
 
-		foreach ( $this->sanitize_tags( $tags ) as $tag ) {
-			$versions[ $tag ] = $this->get_tag_version( $tag, $group );
+		if ( ! self::is_system_enabled() ) {
+			$versions = array();
+			foreach ( $sanitized_tags as $tag ) {
+				$versions[ $tag ] = 1;
+			}
+			return $versions;
+		}
+
+		$tag_keys_map = array();
+		foreach ( $sanitized_tags as $tag ) {
+			$tag_keys_map[ $this->build_tag_version_key( $tag ) ] = $tag;
+		}
+
+		$cached_vals = $this->get_multiple( array_keys( $tag_keys_map ), $group );
+		$versions    = array();
+
+		foreach ( $tag_keys_map as $key => $tag ) {
+			$version = isset( $cached_vals[ $key ] ) && null !== $cached_vals[ $key ]
+				? (int) $cached_vals[ $key ]
+				: 1;
+			$versions[ $tag ] = max( 1, $version );
 		}
 
 		return $versions;
@@ -513,6 +629,10 @@ class AIPS_Cache {
 		$versions       = array();
 		$sanitized_tags = $this->sanitize_tags( $tags );
 
+		if ( empty( $sanitized_tags ) ) {
+			return $versions;
+		}
+
 		if (!self::is_system_enabled()) {
 			foreach ( $sanitized_tags as $tag ) {
 				$versions[ $tag ] = 2;
@@ -522,9 +642,15 @@ class AIPS_Cache {
 			return $versions;
 		}
 
+		$tag_keys_map = array();
 		foreach ( $sanitized_tags as $tag ) {
-			$key     = $this->build_tag_version_key( $tag );
-			$current = $this->get( $key, $group, null );
+			$tag_keys_map[ $this->build_tag_version_key( $tag ) ] = $tag;
+		}
+
+		$current_vals = $this->get_multiple( array_keys( $tag_keys_map ), $group );
+
+		foreach ( $tag_keys_map as $key => $tag ) {
+			$current = isset( $current_vals[ $key ] ) ? $current_vals[ $key ] : null;
 			$version = null === $current ? 2 : max( 2, (int) $current + 1 );
 			$this->set( $key, $version, 0, $group );
 			$versions[ $tag ] = $version;

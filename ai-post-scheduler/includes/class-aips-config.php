@@ -235,6 +235,8 @@ class AIPS_Config {
             'aips_deduplication_mode'                  => 'warn',
             'aips_deduplication_threshold'             => 0.85,
             'aips_generation_inject_related_context'   => true,
+            // Server load & generation pacing
+            'aips_generation_delay_seconds'            => 2,
         );
     }
     
@@ -649,6 +651,15 @@ class AIPS_Config {
             'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
             'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
+    }
+
+    /**
+     * Get generation delay in seconds between batch post generations.
+     *
+     * @return int Delay in seconds.
+     */
+    public function get_generation_delay_seconds(): int {
+        return max(0, (int) $this->get_option('aips_generation_delay_seconds', 2));
     }
     
     // ========================================

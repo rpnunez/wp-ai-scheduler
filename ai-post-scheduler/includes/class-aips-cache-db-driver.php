@@ -71,6 +71,59 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_
 	/**
 	 * {@inheritdoc}
 	 */
+	public function get_multiple( array $keys, $group = 'default' ) {
+		$results = array();
+		if ( empty( $keys ) ) {
+			return $results;
+		}
+
+		foreach ( $keys as $key ) {
+			$results[ (string) $key ] = null;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache';
+		$now   = AIPS_DateTime::now()->timestamp();
+
+		$namespaced_map = array();
+		foreach ( $keys as $key ) {
+			$namespaced_map[ $this->namespace_key( $key ) ] = (string) $key;
+		}
+
+		$db_keys      = array_keys( $namespaced_map );
+		$placeholders = implode( ',', array_fill( 0, count( $db_keys ), '%s' ) );
+		$query_args   = array_merge( array( (string) $group ), $db_keys );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT cache_key, value, expires_at FROM `{$table}` WHERE cache_group = %s AND cache_key IN ($placeholders)",
+				$query_args
+			)
+		);
+
+		$expired_keys = array();
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$raw_key = isset( $namespaced_map[ $row->cache_key ] ) ? $namespaced_map[ $row->cache_key ] : $row->cache_key;
+				if ( (int) $row->expires_at > 0 && (int) $row->expires_at < $now ) {
+					$expired_keys[] = $raw_key;
+					continue;
+				}
+				$results[ $raw_key ] = maybe_unserialize( $row->value );
+			}
+		}
+
+		foreach ( $expired_keys as $exp_key ) {
+			$this->delete( $exp_key, $group );
+		}
+
+		return $results;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
 		global $wpdb;
 

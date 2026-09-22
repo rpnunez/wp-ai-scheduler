@@ -649,6 +649,10 @@ final class AI_Post_Scheduler {
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
         });
+        // Decoupled single-schedule event: allows multiple due schedules to run in isolated cron ticks.
+        add_action('aips_process_single_due_schedule', function($schedule_id) {
+            AIPS_Scheduler::instance()->run_schedule_now((int) $schedule_id, null, true);
+        });
         add_filter('cron_schedules', function($schedules) {
             return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
         });

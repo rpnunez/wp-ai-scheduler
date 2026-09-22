@@ -420,8 +420,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 {$event_label_case_sql} AS event_label,
                 {$actor_type_case_sql} AS actor_type,
                 t.name as template_name,
-                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds,
-                ls.warning_count, ls.error_count, ls.ai_call_count, ls.latest_message";
+                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
             $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
@@ -547,19 +546,44 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             SELECT $fields_sql
             FROM {$this->table_name} h
             LEFT JOIN {$templates_table} t ON h.template_id = t.id
-            LEFT JOIN (
-                SELECT history_id,
-                    SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count,
-                    SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count,
-                    SUM(CASE WHEN history_type_id = 5 THEN 1 ELSE 0 END) AS ai_call_count,
-                    LEFT(SUBSTRING_INDEX(GROUP_CONCAT(details ORDER BY timestamp DESC SEPARATOR '||'), '||', 1), 180) AS latest_message
-                FROM {$this->table_name_log}
-                GROUP BY history_id
-            ) ls ON h.id = ls.history_id
             WHERE $where_sql
             ORDER BY h.$orderby $order
             LIMIT %d OFFSET %d
         ", $query_args));
+
+        // If 'list' fields were requested, attach aggregated log statistics for the paginated slice only.
+        // This replaces the full-table log aggregation subquery that previously caused severe performance degradation.
+        if (!empty($results) && $args['fields'] === 'list') {
+            $history_ids = array_map('intval', wp_list_pluck($results, 'id'));
+            if (!empty($history_ids)) {
+                $history_ids_in = implode(',', $history_ids);
+                $log_stats = $this->wpdb->get_results("
+                    SELECT history_id,
+                        SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count,
+                        SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count,
+                        SUM(CASE WHEN history_type_id = 5 THEN 1 ELSE 0 END) AS ai_call_count,
+                        LEFT(SUBSTRING_INDEX(GROUP_CONCAT(details ORDER BY timestamp DESC SEPARATOR '||'), '||', 1), 180) AS latest_message
+                    FROM {$this->table_name_log}
+                    WHERE history_id IN ({$history_ids_in})
+                    GROUP BY history_id
+                ", OBJECT_K);
+
+                foreach ($results as $item) {
+                    $hid = (int) $item->id;
+                    if (isset($log_stats[$hid])) {
+                        $item->warning_count  = (int) $log_stats[$hid]->warning_count;
+                        $item->error_count    = (int) $log_stats[$hid]->error_count;
+                        $item->ai_call_count  = (int) $log_stats[$hid]->ai_call_count;
+                        $item->latest_message = $log_stats[$hid]->latest_message;
+                    } else {
+                        $item->warning_count  = 0;
+                        $item->error_count    = 0;
+                        $item->ai_call_count  = 0;
+                        $item->latest_message = null;
+                    }
+                }
+            }
+        }
 
         // Query for total count
         if (!empty($where_args)) {

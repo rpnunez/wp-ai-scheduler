@@ -304,8 +304,13 @@ class AIPS_Schedule_Processor {
 
         $successful_post_ids = array();
         $errors              = array();
+        $delay               = AIPS_Config::get_instance()->get_generation_delay_seconds();
 
         for ($i = 0; $i < $batch_size; $i++) {
+            if ($i > 0 && $delay > 0) {
+                sleep($delay);
+            }
+
             $result = $this->generator->generate_post($context);
 
             if (is_wp_error($result)) {
@@ -569,9 +574,66 @@ class AIPS_Schedule_Processor {
             return;
         }
 
+        // Isolate due schedules into individual cron execution events to avoid server load spikes.
+        // The first schedule is processed immediately in this cron tick.
+        // Any subsequent schedules are staggered into dedicated single-event cron runs.
+        $first           = true;
+        $stagger_seconds = 30;
+        $offset          = 0;
+
         foreach ($due_schedules as $schedule) {
-            $this->execute_schedule_with_lock($schedule);
+            $schedule_id = (int) (isset($schedule->schedule_id) ? $schedule->schedule_id : $schedule->id);
+            if ($first) {
+                $first = false;
+                $this->execute_schedule_with_lock($schedule);
+            } else {
+                $offset += $stagger_seconds;
+                $run_at  = AIPS_DateTime::now()->addSeconds($offset)->timestamp();
+
+                if (!wp_next_scheduled('aips_process_single_due_schedule', array($schedule_id))) {
+                    // Push next_run forward to $run_at so concurrent cron ticks do not re-claim it before its event fires
+                    $this->repository->update($schedule_id, array('next_run' => $run_at));
+
+                    $this->logger->log(
+                        sprintf(
+                            'Decoupling due schedule %d: scheduling single cron event in %d seconds',
+                            $schedule_id,
+                            $offset
+                        ),
+                        'info'
+                    );
+
+                    wp_schedule_single_event(
+                        $run_at,
+                        'aips_process_single_due_schedule',
+                        array($schedule_id)
+                    );
+                }
+            }
         }
+    }
+
+    /**
+     * Check if the PHP execution time is close to exhaustion.
+     *
+     * @param int $safety_margin_seconds Minimum seconds remaining required to continue.
+     * @return bool True if execution time is nearly exhausted.
+     */
+    private function is_time_exhausted(int $safety_margin_seconds = 15): bool {
+        $max_execution_time = (int) ini_get('max_execution_time');
+        if ($max_execution_time <= 0) {
+            return false;
+        }
+
+        $start_time = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : 0;
+        if ($start_time <= 0) {
+            return false;
+        }
+
+        $elapsed   = microtime(true) - $start_time;
+        $remaining = $max_execution_time - $elapsed;
+
+        return $remaining < $safety_margin_seconds;
     }
 
     /**
@@ -1137,7 +1199,29 @@ class AIPS_Schedule_Processor {
             }
         }
 
+        $delay                  = AIPS_Config::get_instance()->get_generation_delay_seconds();
+        $interrupted_by_timeout = false;
+
         for ($i = $start_index; $i < $post_quantity; $i++) {
+            if ($i > $start_index) {
+                if ($this->is_time_exhausted(15)) {
+                    $this->logger->log(
+                        sprintf(
+                            'Batch time budget near limit: yielding schedule %d at post %d of %d to prevent execution timeout.',
+                            (int) $schedule->schedule_id,
+                            $i,
+                            $post_quantity
+                        ),
+                        'info'
+                    );
+                    $interrupted_by_timeout = true;
+                    break;
+                }
+                if ($delay > 0) {
+                    sleep($delay);
+                }
+            }
+
             $result = $this->generator->generate_post($context);
             if (is_wp_error($result)) {
                 $errors[] = $result;
@@ -1179,7 +1263,7 @@ class AIPS_Schedule_Processor {
 
         // Determine whether the full batch finished without any errors.
         $total_completed = $prior_completed + count($successful_post_ids);
-        $batch_finished  = empty($errors) && $total_completed >= $post_quantity;
+        $batch_finished  = empty($errors) && !$interrupted_by_timeout && $total_completed >= $post_quantity;
 
         if (!$is_manual) {
             if ($batch_finished) {
@@ -1188,6 +1272,13 @@ class AIPS_Schedule_Processor {
                 $this->repository->clear_batch_progress($schedule->schedule_id);
                 $this->repository->update_run_state($schedule->schedule_id, array(
                     'status'    => 'success',
+                    'completed' => $total_completed,
+                    'total'     => $post_quantity,
+                    'timestamp' => AIPS_DateTime::now()->toIso8601(),
+                ));
+            } elseif ($interrupted_by_timeout && !empty($successful_post_ids) && empty($errors)) {
+                $this->repository->update_run_state($schedule->schedule_id, array(
+                    'status'    => 'partial',
                     'completed' => $total_completed,
                     'total'     => $post_quantity,
                     'timestamp' => AIPS_DateTime::now()->toIso8601(),
@@ -1228,6 +1319,16 @@ class AIPS_Schedule_Processor {
                 // Nothing generated — return the original error verbatim.
                 $overall_result = $errors[0];
             }
+        } elseif ($interrupted_by_timeout && !empty($successful_post_ids)) {
+            $overall_result = new WP_Error(
+                'batch_interrupted_timeout',
+                sprintf(
+                    /* translators: 1: completed count, 2: total requested */
+                    __('%1$d of %2$d posts generated; yielded to prevent script timeout. Remaining posts will resume on next run.', 'ai-post-scheduler'),
+                    $total_completed,
+                    $post_quantity
+                )
+            );
         } else {
             $overall_result = new WP_Error('no_posts_generated', __('No posts were generated.', 'ai-post-scheduler'));
         }
