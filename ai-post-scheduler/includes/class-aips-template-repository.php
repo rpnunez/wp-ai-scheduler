@@ -197,12 +197,13 @@ class AIPS_Template_Repository {
         $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        $insert_id = $result ? (int) $this->wpdb->insert_id : false;
 
         if ( $result ) {
             $this->invalidate_cache_domain( 'template', array(), 'template_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $insert_id;
     }
 
     /**

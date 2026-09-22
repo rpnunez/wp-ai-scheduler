@@ -116,6 +116,7 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		$insert_id = $result ? (int) $this->wpdb->insert_id : false;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author_topic',
@@ -126,7 +127,7 @@ class AIPS_Author_Topics_Repository {
 				'author_topic_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $insert_id;
 	}
 	
 	/**

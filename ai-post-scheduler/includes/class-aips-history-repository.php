@@ -507,21 +507,26 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if (!empty($args['date_from'])) {
             $date_from = sanitize_text_field($args['date_from']);
-            $date_from_ts = strtotime($date_from . ' 00:00:00');
 
-            if ($date_from_ts !== false) {
+            try {
+                $date_from_ts = AIPS_DateTime::fromDate($date_from)->timestamp();
                 $where_clauses[] = "h.created_at >= %d";
                 $where_args[] = $date_from_ts;
+            } catch (\Exception $e) {
+                // Invalid date_from value; skip the filter silently.
             }
         }
 
         if (!empty($args['date_to'])) {
             $date_to = sanitize_text_field($args['date_to']);
-            $date_to_ts = strtotime($date_to . ' 23:59:59');
 
-            if ($date_to_ts !== false) {
+            try {
+                // End of day: midnight of the next day, minus one second.
+                $date_to_ts = AIPS_DateTime::fromDate($date_to)->advance('+1 day')->timestamp() - 1;
                 $where_clauses[] = "h.created_at <= %d";
                 $where_args[] = $date_to_ts;
+            } catch (\Exception $e) {
+                // Invalid date_to value; skip the filter silently.
             }
         }
 

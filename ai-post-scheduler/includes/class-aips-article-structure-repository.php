@@ -162,12 +162,13 @@ class AIPS_Article_Structure_Repository {
 		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+		$insert_id = $result ? (int) $this->wpdb->insert_id : false;
 
 		if ( $result ) {
 			$this->invalidate_cache_domain( 'article_structure', array(), 'article_structure_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $insert_id;
 	}
 
 	/**
