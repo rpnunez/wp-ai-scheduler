@@ -189,12 +189,13 @@ class AIPS_Template_Repository {
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
             'campaign_id' => !empty($data['campaign_id']) ? absint($data['campaign_id']) : null,
+            'prompt_profile_id' => !empty($data['prompt_profile_id']) ? absint($data['prompt_profile_id']) : null,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
         );
 
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 
@@ -216,6 +217,11 @@ class AIPS_Template_Repository {
         $update_data = array();
         $format = array();
         $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
+
+        if (isset($data['prompt_profile_id'])) {
+            $update_data['prompt_profile_id'] = $data['prompt_profile_id'] ? absint($data['prompt_profile_id']) : null;
+            $format[] = '%d';
+        }
 
         if (isset($data['name'])) {
             $update_data['name'] = sanitize_text_field($data['name']);
