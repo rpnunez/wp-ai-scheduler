@@ -560,7 +560,7 @@ class AIPS_Embeddings_Repository {
 				$where    = "AND p.post_date >= %s";
 				$params[] = $date_after . ' 00:00:00';
 			} elseif ($date_days > 0) {
-				$cutoff   = gmdate('Y-m-d H:i:s', time() - ($date_days * DAY_IN_SECONDS));
+				$cutoff   = AIPS_DateTime::now()->advance('-' . $date_days . ' days')->toMysql();
 				$where    = "AND p.post_date >= %s";
 				$params[] = $cutoff;
 			}
@@ -856,12 +856,31 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Check if author topics table exists in the database.
+	 *
+	 * @return bool
+	 */
+	public function topics_table_exists(): bool {
+		static $exists = null;
+		if ($exists === null) {
+			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $topics_table));
+			$exists = ($found === $topics_table);
+		}
+		return $exists;
+	}
+
+	/**
 	 * Get unindexed topic IDs up to a given limit.
 	 *
 	 * @param int $limit Maximum topic IDs to retrieve. Default 50.
 	 * @return int[] Array of unindexed topic IDs.
 	 */
 	public function get_unindexed_topic_ids(int $limit = 50): array {
+		if (!$this->topics_table_exists()) {
+			return array();
+		}
+
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 		$limit = max(1, min(500, absint($limit)));
 
@@ -888,6 +907,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_unindexed_topic_count(): int {
+		if (!$this->topics_table_exists()) {
+			return 0;
+		}
+
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -908,6 +931,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_total_topic_count(): int {
+		if (!$this->topics_table_exists()) {
+			return 0;
+		}
+
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -939,6 +966,10 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of topic objects with topic_id, topic_title, author_id, status, and embedding.
 	 */
 	public function get_all_topics_for_similarity(): array {
+		if (!$this->topics_table_exists()) {
+			return array();
+		}
+
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

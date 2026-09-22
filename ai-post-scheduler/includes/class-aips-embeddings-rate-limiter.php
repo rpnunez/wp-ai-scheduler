@@ -27,6 +27,21 @@ class AIPS_Embeddings_Rate_Limiter {
 	const OPTION_NAME = 'aips_embeddings_usage_history';
 
 	/**
+	 * Non-fault error codes that should not count toward provider consecutive failures.
+	 *
+	 * These errors represent local policy guards (e.g. cooldown active, rate limit quota
+	 * reached, or embeddings globally disabled) rather than remote provider API errors.
+	 *
+	 * @var string[]
+	 */
+	const NON_FAULT_CODES = array(
+		'embeddings_cooldown_active',
+		'rate_limit_exceeded',
+		'embeddings_disabled',
+		'empty_embedding_text',
+	);
+
+	/**
 	 * @var AIPS_Config Config instance
 	 */
 	private $config;
@@ -105,7 +120,7 @@ class AIPS_Embeddings_Rate_Limiter {
 			return;
 		}
 
-		$now = time();
+		$now     = AIPS_DateTime::now()->timestamp();
 		$history = $this->get_usage_history();
 
 		for ($i = 0; $i < $count; $i++) {
@@ -113,7 +128,7 @@ class AIPS_Embeddings_Rate_Limiter {
 		}
 
 		// Prune entries older than 30 days
-		$cutoff_30d = $now - (30 * DAY_IN_SECONDS);
+		$cutoff_30d = AIPS_DateTime::now()->advance('-30 days')->timestamp();
 		$history = array_values(array_filter($history, function ($ts) use ($cutoff_30d) {
 			return $ts >= $cutoff_30d;
 		}));
@@ -154,12 +169,12 @@ class AIPS_Embeddings_Rate_Limiter {
 
 		$enabled = $this->is_enabled();
 		$history = $this->get_usage_history();
-		$now = time();
+		$now     = AIPS_DateTime::now()->timestamp();
 
 		// Calculate sliding window cutoffs relative to current timestamp
-		$cutoff_24h = $now - DAY_IN_SECONDS;
-		$cutoff_7d  = $now - (7 * DAY_IN_SECONDS);
-		$cutoff_30d = $now - (30 * DAY_IN_SECONDS);
+		$cutoff_24h = AIPS_DateTime::now()->advance('-24 hours')->timestamp();
+		$cutoff_7d  = AIPS_DateTime::now()->advance('-7 days')->timestamp();
+		$cutoff_30d = AIPS_DateTime::now()->advance('-30 days')->timestamp();
 
 		$daily_count   = 0;
 		$weekly_count  = 0;
@@ -262,11 +277,12 @@ class AIPS_Embeddings_Rate_Limiter {
 			);
 		}
 
+		$now   = AIPS_DateTime::now()->timestamp();
 		$stats = $this->get_usage_stats();
 
 		// Check daily quota
 		if ($stats['daily_limit'] > 0 && ($stats['daily_count'] + $count) > $stats['daily_limit']) {
-			$reset_str = $stats['daily_reset_in'] > 0 ? human_time_diff(time(), time() + $stats['daily_reset_in']) : __('soon', 'ai-post-scheduler');
+			$reset_str = $stats['daily_reset_in'] > 0 ? human_time_diff($now, $now + $stats['daily_reset_in']) : __('soon', 'ai-post-scheduler');
 			$error_message = sprintf(
 				/* translators: 1: Daily limit count, 2: Reset timeframe */
 				__('Vector Embeddings daily rate limit reached (%1$d/%1$d). Resets in approximately %2$s.', 'ai-post-scheduler'),
@@ -428,7 +444,7 @@ class AIPS_Embeddings_Rate_Limiter {
 	 */
 	public function get_cooldown_status(): array {
 		$paused_until = (int) get_option('aips_indexer_paused_until', 0);
-		$now          = time();
+		$now          = AIPS_DateTime::now()->timestamp();
 		$is_paused    = ($paused_until > $now);
 
 		return array(
@@ -465,7 +481,7 @@ class AIPS_Embeddings_Rate_Limiter {
 			}
 
 			$pause_seconds = $duration * $multiplier;
-			$paused_until  = time() + $pause_seconds;
+			$paused_until  = AIPS_DateTime::now()->addSeconds($pause_seconds)->timestamp();
 
 			$error_msg = is_wp_error($error) ? $error->get_error_message() : (string) $error;
 			$reason    = sprintf(
@@ -480,7 +496,7 @@ class AIPS_Embeddings_Rate_Limiter {
 			update_option('aips_indexer_pause_reason', $reason, false);
 
 			$this->logger->warning(
-				sprintf('Embeddings auto-cooldown engaged until %s: %s', gmdate('Y-m-d H:i:s', $paused_until), $reason)
+				sprintf('Embeddings auto-cooldown engaged until %s: %s', AIPS_DateTime::fromTimestamp($paused_until)->toMysql(), $reason)
 			);
 		}
 
@@ -576,7 +592,10 @@ class AIPS_Embeddings_Rate_Limiter {
 
 		// Step 4: Handle failure
 		if (is_wp_error($result)) {
-			$this->record_failure($result);
+			// Do not record internal/non-fault errors (cooldown, local rate limits, disabled) as provider failures
+			if (!in_array($result->get_error_code(), self::NON_FAULT_CODES, true)) {
+				$this->record_failure($result);
+			}
 			if ($on_failure) {
 				call_user_func($on_failure, $result);
 			}

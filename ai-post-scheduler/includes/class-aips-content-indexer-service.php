@@ -902,7 +902,7 @@ class AIPS_Content_Indexer_Service {
 		// If more items remain and not in cooldown, schedule next batch
 		$cooldown = $rate_limiter->get_cooldown_status();
 		if (!empty($remaining)) {
-			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (time() + 5);
+			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + 5);
 			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
 				wp_schedule_single_event($next_time, 'aips_process_pending_indexer_queue');
 			}

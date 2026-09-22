@@ -164,7 +164,7 @@ class AIPS_Post_Insights_Controller {
 			'is_indexed'  => $is_indexed,
 			'dimensions'  => $is_indexed ? (int) $emb_row->dimensions : 0,
 			'indexed_at'  => $is_indexed ? $indexed_ts : null,
-			'indexed_str' => ($is_indexed && $indexed_ts > 0) ? human_time_diff($indexed_ts, time()) . ' ' . __('ago', 'ai-post-scheduler') : __('Not indexed', 'ai-post-scheduler'),
+			'indexed_str' => ($is_indexed && $indexed_ts > 0) ? AIPS_DateTime::fromTimestamp($indexed_ts)->toHumanDiff() : __('Not indexed', 'ai-post-scheduler'),
 		);
 
 		// 2. Generation Context & History via repository
@@ -177,8 +177,6 @@ class AIPS_Post_Insights_Controller {
 				'history_id' => (int) $history['id'],
 			));
 
-			$created_ts = !empty($history['created_at']) ? strtotime($history['created_at']) : 0;
-
 			$history_info = array(
 				'id'              => (int) $history['id'],
 				'author_id'       => (int) $history['author_id'],
@@ -188,7 +186,7 @@ class AIPS_Post_Insights_Controller {
 				'topic_id'        => (int) $history['topic_id'],
 				'topic_title'     => !empty($history['topic_title']) ? $history['topic_title'] : '',
 				'created_at'      => $history['created_at'],
-				'created_str'     => $created_ts > 0 ? human_time_diff($created_ts, time()) . ' ' . __('ago', 'ai-post-scheduler') : '',
+				'created_str'     => !empty($history['created_at']) ? AIPS_DateTime::formatRelativeOrAbsolute($history['created_at']) : '',
 				'tokens_used'     => (int) $history['tokens_used'],
 				'cost'            => (float) $history['cost'],
 				'creation_method' => $history['creation_method'],

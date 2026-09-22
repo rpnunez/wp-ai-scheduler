@@ -153,4 +153,111 @@ class Test_AIPS_Embeddings_Rate_Limiter extends WP_UnitTestCase {
 		$stats = $this->limiter->get_usage_stats();
 		$this->assertSame(0, $stats['daily_count']);
 	}
+
+	public function test_execute_success_calls_callbacks_and_records_usage() {
+		$success_called = false;
+		$failure_called = false;
+
+		$result = $this->limiter->execute(
+			function () {
+				return array('vector' => array(0.1, 0.2, 0.3));
+			},
+			function ($res) use (&$success_called) {
+				$success_called = true;
+				$this->assertIsArray($res);
+			},
+			function ($err) use (&$failure_called) {
+				$failure_called = true;
+			},
+			2
+		);
+
+		$this->assertIsArray($result);
+		$this->assertTrue($success_called);
+		$this->assertFalse($failure_called);
+
+		$stats = $this->limiter->get_usage_stats(true);
+		$this->assertSame(2, $stats['daily_count']);
+	}
+
+	public function test_execute_blocks_when_rate_limited() {
+		$this->limiter->record_usage(5); // Reach daily limit of 5
+		$failure_called = false;
+
+		$result = $this->limiter->execute(
+			function () {
+				return 'should_not_run';
+			},
+			null,
+			function ($err) use (&$failure_called) {
+				$failure_called = true;
+				$this->assertWPError($err);
+				$this->assertSame('rate_limit_exceeded', $err->get_error_code());
+			}
+		);
+
+		$this->assertWPError($result);
+		$this->assertSame('rate_limit_exceeded', $result->get_error_code());
+		$this->assertTrue($failure_called);
+	}
+
+	public function test_execute_blocks_when_in_cooldown() {
+		update_option('aips_indexer_paused_until', AIPS_DateTime::now()->advance('+30 minutes')->timestamp(), false);
+		update_option('aips_indexer_pause_reason', 'Testing cooldown guard', false);
+
+		$failure_called = false;
+		$result = $this->limiter->execute(
+			function () {
+				return 'should_not_run';
+			},
+			null,
+			function ($err) use (&$failure_called) {
+				$failure_called = true;
+				$this->assertWPError($err);
+				$this->assertSame('embeddings_cooldown_active', $err->get_error_code());
+			}
+		);
+
+		$this->assertWPError($result);
+		$this->assertSame('embeddings_cooldown_active', $result->get_error_code());
+		$this->assertTrue($failure_called);
+
+		$this->limiter->clear_cooldown();
+		$this->assertFalse($this->limiter->is_in_cooldown());
+	}
+
+	public function test_execute_catches_exception() {
+		$failure_called = false;
+
+		$result = $this->limiter->execute(
+			function () {
+				throw new \RuntimeException('Remote API connection dropped');
+			},
+			null,
+			function ($err) use (&$failure_called) {
+				$failure_called = true;
+				$this->assertWPError($err);
+				$this->assertSame('embedding_execution_exception', $err->get_error_code());
+			}
+		);
+
+		$this->assertWPError($result);
+		$this->assertSame('embedding_execution_exception', $result->get_error_code());
+		$this->assertTrue($failure_called);
+	}
+
+	public function test_execute_non_fault_error_does_not_increment_consecutive_errors() {
+		delete_transient('aips_indexer_consecutive_errors');
+
+		// Simulating an operation returning a non-fault code like 'embeddings_disabled'
+		$result = $this->limiter->execute(
+			function () {
+				return new WP_Error('embeddings_disabled', 'System disabled');
+			}
+		);
+
+		$this->assertWPError($result);
+		$this->assertSame('embeddings_disabled', $result->get_error_code());
+		$this->assertSame(0, (int) get_transient('aips_indexer_consecutive_errors'));
+	}
 }

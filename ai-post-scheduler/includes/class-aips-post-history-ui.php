@@ -353,7 +353,7 @@ class AIPS_Post_History_UI {
 				<?php if ($history) : ?>
 					<div class="aips-popover-row">
 						<span class="aips-popover-label"><?php esc_html_e('Generated:', 'ai-post-scheduler'); ?></span>
-						<span><?php echo esc_html(human_time_diff(strtotime($history->created_at), time())); ?> <?php esc_html_e('ago', 'ai-post-scheduler'); ?></span>
+						<span><?php echo esc_html(AIPS_DateTime::formatRelativeOrAbsolute($history->created_at)); ?></span>
 					</div>
 				<?php endif; ?>
 
@@ -437,15 +437,15 @@ class AIPS_Post_History_UI {
 		$filter = isset($_GET['aips_status_filter']) ? sanitize_text_field(wp_unslash($_GET['aips_status_filter'])) : '';
 
 		if (!empty($filter)) {
-			$rel_table = $wpdb->prefix . 'aips_relationships';
-			$emb_table = $wpdb->prefix . 'aips_embeddings';
+			$rel_table  = $wpdb->prefix . 'aips_relationships';
+			$emb_table  = $wpdb->prefix . 'aips_embeddings';
 			$hist_table = $wpdb->prefix . 'aips_history';
 
 			if ($filter === 'high_risk') {
-				$ids = $wpdb->get_col("SELECT DISTINCT post_id_1 FROM {$rel_table} WHERE relation_type = 'similar' AND similarity_score >= 0.80 UNION SELECT DISTINCT post_id_2 FROM {$rel_table} WHERE relation_type = 'similar' AND similarity_score >= 0.80");
+				$ids = $wpdb->get_col("SELECT DISTINCT source_id FROM {$rel_table} WHERE source_type = 'post' AND relation_type = 'similar' AND similarity >= 0.80 UNION SELECT DISTINCT target_id FROM {$rel_table} WHERE target_type = 'post' AND relation_type = 'similar' AND similarity >= 0.80");
 				$query->set('post__in', !empty($ids) ? array_map('intval', $ids) : array(0));
 			} elseif ($filter === 'med_risk') {
-				$ids = $wpdb->get_col("SELECT DISTINCT post_id_1 FROM {$rel_table} WHERE relation_type = 'similar' AND similarity_score >= 0.65 AND similarity_score < 0.80 UNION SELECT DISTINCT post_id_2 FROM {$rel_table} WHERE relation_type = 'similar' AND similarity_score >= 0.65 AND similarity_score < 0.80");
+				$ids = $wpdb->get_col("SELECT DISTINCT source_id FROM {$rel_table} WHERE source_type = 'post' AND relation_type = 'similar' AND similarity >= 0.65 AND similarity < 0.80 UNION SELECT DISTINCT target_id FROM {$rel_table} WHERE target_type = 'post' AND relation_type = 'similar' AND similarity >= 0.65 AND similarity < 0.80");
 				$query->set('post__in', !empty($ids) ? array_map('intval', $ids) : array(0));
 			} elseif ($filter === 'pillar') {
 				$saved_clusters = (array) $this->config->get_option('aips_post_clusters', array());
@@ -460,7 +460,7 @@ class AIPS_Post_History_UI {
 				$ids = $wpdb->get_col("SELECT DISTINCT post_id FROM {$hist_table} WHERE post_id IS NOT NULL AND post_id > 0");
 				$query->set('post__in', !empty($ids) ? array_map('intval', $ids) : array(0));
 			} elseif ($filter === 'unindexed') {
-				$indexed_ids = $wpdb->get_col("SELECT DISTINCT post_id FROM {$emb_table} WHERE post_id > 0");
+				$indexed_ids = $wpdb->get_col("SELECT DISTINCT object_id FROM {$emb_table} WHERE object_type = 'post' AND object_id > 0");
 				$query->set('post__not_in', !empty($indexed_ids) ? array_map('intval', $indexed_ids) : array(0));
 			}
 		}
@@ -471,10 +471,10 @@ class AIPS_Post_History_UI {
 			add_filter('posts_clauses', function ($clauses) use ($order, $wpdb) {
 				$rel_table = $wpdb->prefix . 'aips_relationships';
 				$clauses['join'] .= " LEFT JOIN (
-					SELECT post_id_1 AS rel_post_id, MAX(similarity_score) AS max_sim 
+					SELECT source_id AS rel_post_id, MAX(similarity) AS max_sim 
 					FROM {$rel_table} 
-					WHERE relation_type = 'similar' 
-					GROUP BY post_id_1
+					WHERE source_type = 'post' AND relation_type = 'similar' 
+					GROUP BY source_id
 				) AS aips_sim ON aips_sim.rel_post_id = {$wpdb->posts}.ID";
 				$clauses['orderby'] = "COALESCE(aips_sim.max_sim, 0) {$order}, {$wpdb->posts}.post_date DESC";
 				return $clauses;

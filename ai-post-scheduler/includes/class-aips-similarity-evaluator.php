@@ -52,6 +52,21 @@ class AIPS_Similarity_Evaluator {
 	}
 
 	/**
+	 * Lazy getter for embeddings service.
+	 *
+	 * @return AIPS_Embeddings_Service|null
+	 */
+	public function get_embeddings_service(): ?AIPS_Embeddings_Service {
+		if ($this->embeddings_service === null) {
+			$container = AIPS_Container::get_instance();
+			$this->embeddings_service = $container->has(AIPS_Embeddings_Service::class)
+				? $container->make(AIPS_Embeddings_Service::class)
+				: null;
+		}
+		return $this->embeddings_service;
+	}
+
+	/**
 	 * Normalize a raw similarity score and return a standardized evaluation payload.
 	 *
 	 * Risk tiers:
@@ -411,8 +426,9 @@ class AIPS_Similarity_Evaluator {
 				$rel_sim = 0.70;
 				$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
 
-				if (!empty($author_baseline_vec) && !empty($topic_title) && $this->embeddings_service && $this->embeddings_service->is_enabled()) {
-					$tvec = $this->embeddings_service->generate_embedding($topic_title);
+				$embeddings_svc = $this->get_embeddings_service();
+				if (!empty($author_baseline_vec) && !empty($topic_title) && $embeddings_svc && $embeddings_svc->is_enabled()) {
+					$tvec = $embeddings_svc->generate_embedding($topic_title);
 					if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
 						$rel_sim = $this->cosine_similarity($tvec, $author_baseline_vec);
 					}

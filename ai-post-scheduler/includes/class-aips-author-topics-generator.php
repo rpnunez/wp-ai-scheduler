@@ -625,9 +625,11 @@ class AIPS_Author_Topics_Generator {
 			// Check rate limits and auto-cooldown before attempting remote embedding calls
 			if ($this->rate_limiter->is_in_cooldown()) {
 				$cooldown_info = $this->rate_limiter->get_cooldown_status();
+				$paused_until  = !empty($cooldown_info['paused_until']) ? (int) $cooldown_info['paused_until'] : 0;
+				$paused_str    = $paused_until > 0 ? AIPS_DateTime::fromTimestamp($paused_until)->toMysql() : 'unknown';
 				$this->logger->log(
 					sprintf('Author topic auto-approval skipped: Embeddings API in cooldown until %s. Reason: %s',
-						gmdate('Y-m-d H:i:s', (int) $cooldown_info['until']),
+						$paused_str,
 						$cooldown_info['reason']
 					),
 					'warning'
@@ -635,11 +637,11 @@ class AIPS_Author_Topics_Generator {
 				return $topics; // Graceful fallback: topics remain pending
 			}
 
-			$limits = $this->rate_limiter->check_limits();
-			if (!$limits['allowed']) {
+			$limit_check = $this->rate_limiter->check_limits();
+			if (is_wp_error($limit_check)) {
 				$this->logger->log(
-					sprintf('Author topic auto-approval skipped: Embeddings rate limit quota (%s) reached.',
-						$limits['exceeded_limit']
+					sprintf('Author topic auto-approval skipped: Embeddings rate limit quota reached (%s).',
+						$limit_check->get_error_message()
 					),
 					'warning'
 				);

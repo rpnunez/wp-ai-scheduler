@@ -50,6 +50,11 @@ class AIPS_Post_Clusters_Service {
 	private $logger;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Palette of distinct cluster colors for graph visualization.
 	 *
 	 * @var string[]
@@ -78,6 +83,7 @@ class AIPS_Post_Clusters_Service {
 	 * @param AIPS_AI_Service_Interface|null     $ai_service
 	 * @param AIPS_Config|null                   $config
 	 * @param AIPS_Logger_Interface|null         $logger
+	 * @param AIPS_Similarity_Evaluator|null     $similarity_evaluator
 	 */
 	public function __construct(
 		?AIPS_Embeddings_Repository $embeddings_repo = null,
@@ -85,15 +91,17 @@ class AIPS_Post_Clusters_Service {
 		?AIPS_Embeddings_Service $embeddings_service = null,
 		?AIPS_AI_Service_Interface $ai_service = null,
 		?AIPS_Config $config = null,
-		?AIPS_Logger_Interface $logger = null
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
 		$container = AIPS_Container::get_instance();
-		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->ai_service         = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->config             = $config ?: AIPS_Config::get_instance();
-		$this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->embeddings_repo      = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo   = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$this->embeddings_service   = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->ai_service           = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->config               = $config ?: AIPS_Config::get_instance();
+		$this->logger               = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
 	}
 
 	/**
@@ -152,8 +160,8 @@ class AIPS_Post_Clusters_Service {
 				$vec_b = $posts[$id_b]['embedding'];
 
 				if (count($vec_a) === count($vec_b)) {
-					$sim = $this->embeddings_service->calculate_similarity($vec_a, $vec_b);
-					if (!is_wp_error($sim) && (float) $sim >= $threshold) {
+					$sim = $this->similarity_evaluator->cosine_similarity($vec_a, $vec_b);
+					if ((float) $sim >= $threshold) {
 						$adjacency[$id_a][$id_b] = (float) $sim;
 						$adjacency[$id_b][$id_a] = (float) $sim;
 					}
@@ -341,8 +349,8 @@ class AIPS_Post_Clusters_Service {
 				$vec_b = $posts[$id_b]['embedding'];
 
 				if (count($vec_a) === count($vec_b)) {
-					$sim = $this->embeddings_service->calculate_similarity($vec_a, $vec_b);
-					if (!is_wp_error($sim) && (float) $sim >= $threshold) {
+					$sim = $this->similarity_evaluator->cosine_similarity($vec_a, $vec_b);
+					if ((float) $sim >= $threshold) {
 						$posts[$id_a]['neighbors']++;
 						$posts[$id_b]['neighbors']++;
 					}
