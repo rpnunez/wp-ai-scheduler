@@ -454,7 +454,10 @@ class AIPS_Schedule_Controller {
             $voice = $voices->get($template->voice_id);
         }
 
-        $quantity = max(1, absint($template->post_quantity ?: 1));
+        $override_quantity       = isset($_POST['quantity']) ? absint($_POST['quantity']) : 0;
+        $default_manual_quantity = (int) AIPS_Config::get_instance()->get_option('aips_template_manual_post_quantity', 1);
+        $raw_quantity            = $override_quantity ?: (!empty($template->post_quantity) ? absint($template->post_quantity) : $default_manual_quantity);
+        $quantity                = max(1, $raw_quantity);
 
         $post_ids = array();
         $errors = array();

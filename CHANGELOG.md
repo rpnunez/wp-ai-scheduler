@@ -30,6 +30,7 @@
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
 ### Added
+- **Content Generation Global Settings**: Added dedicated "Content Generation" tab in Settings to configure global defaults for enabled post types, default post type, post status, category, author, featured image generation, template post quantities (manual/scheduled), author topic quantities & frequencies, and author post quantities & frequencies. Added Post Type support to Authors, along with dynamic inheritance across Templates, Schedules, and Authors.
 - **Author Topic Auto-Approval Policies**: Added configurable auto-approval policies per author with support for "Auto-Approve All", AI Quality Score thresholds, and Semantic Similarity Deduplication Guards, along with configurable fallback actions (`pending` vs `rejected`), full audit logging to topic logs, and dynamic UI controls in the Author management modal.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.

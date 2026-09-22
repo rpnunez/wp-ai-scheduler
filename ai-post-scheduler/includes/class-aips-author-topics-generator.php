@@ -105,6 +105,10 @@ class AIPS_Author_Topics_Generator {
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
+
+		if (empty($author->topic_generation_quantity) || (int) $author->topic_generation_quantity < 1) {
+			$author->topic_generation_quantity = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_scheduled_quantity', 5);
+		}
 		
 		$this->logger->log("Starting topic generation for author: {$author->name} (ID: {$author->id})", 'info', array(
 			'author_id' => $author->id,
@@ -451,14 +455,21 @@ class AIPS_Author_Topics_Generator {
 	 * @return array Processed topic arrays.
 	 */
 	public function apply_auto_approval_rules($author, array $topics): array {
-		$mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'manual';
+		$mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'default';
+		if (empty($mode) || 'default' === $mode) {
+			$mode = AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_mode', 'manual');
+		}
 		if ($mode === 'manual') {
 			return $topics;
 		}
 
-		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
-		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
-		$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'pending';
+		$default_min_score      = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_score', 70);
+		$default_max_similarity = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_max_similarity', 0.80);
+		$default_fallback       = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_fallback', 'pending');
+
+		$min_score      = isset($author->topic_auto_approval_min_score) && '' !== (string) $author->topic_auto_approval_min_score ? (int) $author->topic_auto_approval_min_score : $default_min_score;
+		$max_similarity = isset($author->topic_auto_approval_max_similarity) && '' !== (string) $author->topic_auto_approval_max_similarity ? (float) $author->topic_auto_approval_max_similarity : $default_max_similarity;
+		$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : $default_fallback;
 		$now            = AIPS_DateTime::now()->timestamp();
 
 		foreach ($topics as &$topic) {

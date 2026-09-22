@@ -742,7 +742,7 @@ class AIPS_Schedule_Processor {
             return $this->terminate_run_by_setting(
                 $schedule,
                 $is_manual,
-                $this->resolve_post_quantity($schedule, $quantity_override),
+                $this->resolve_post_quantity($schedule, $quantity_override, $is_manual),
                 $restore_next_run,
                 $config
             );
@@ -760,7 +760,7 @@ class AIPS_Schedule_Processor {
         }
 
         // Explicitly fetch the template to ensure we have the most up-to-date post_quantity
-        $post_quantity = $this->resolve_post_quantity($schedule, $quantity_override);
+        $post_quantity = $this->resolve_post_quantity($schedule, $quantity_override, $is_manual);
 
         // Select article structure for this execution
         $article_structure_id = $this->template_type_selector->select_structure($schedule);
@@ -886,14 +886,24 @@ class AIPS_Schedule_Processor {
      * process_single_schedule()'s array_merge — and post_quantity exists only
      * on the templates table, so no schedule column can shadow it. Re-reading
      * the template here would just repeat a query the caller already made.
-     *
      * @param object   $schedule          Schedule object (merged with template).
      * @param int|null $quantity_override Optional caller-supplied quantity.
+     * @param bool     $is_manual         Whether this is a manual execution.
      * @return int
      */
-    private function resolve_post_quantity($schedule, $quantity_override = null) {
-        $template_post_quantity = isset($schedule->post_quantity) ? $schedule->post_quantity : 1;
-        $raw_quantity           = $quantity_override ?? ($template_post_quantity ?? 1);
+    private function resolve_post_quantity($schedule, $quantity_override = null, $is_manual = false) {
+        $default_setting_key = $is_manual ? 'aips_template_manual_post_quantity' : 'aips_template_scheduled_post_quantity';
+        $global_default      = (int) AIPS_Config::get_instance()->get_option($default_setting_key, 1);
+        if ($global_default < 1) {
+            $global_default = 1;
+        }
+
+        $template_post_quantity = isset($schedule->post_quantity) ? absint($schedule->post_quantity) : 0;
+        if ($template_post_quantity < 1) {
+            $template_post_quantity = $global_default;
+        }
+
+        $raw_quantity = !empty($quantity_override) ? $quantity_override : $template_post_quantity;
 
         return max(1, absint($raw_quantity));
     }

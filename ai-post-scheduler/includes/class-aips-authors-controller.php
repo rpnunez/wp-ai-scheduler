@@ -123,6 +123,7 @@ class AIPS_Authors_Controller {
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? absint($_POST['topic_generation_quantity']) : 5,
 			'post_generation_frequency' => isset($_POST['post_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['post_generation_frequency'])) : 'daily',
 			'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
+			'post_type' => (!empty($_POST['post_type']) && $_POST['post_type'] !== 'default') ? sanitize_key(wp_unslash($_POST['post_type'])) : null,
 			'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : null,
 			'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
 			'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),

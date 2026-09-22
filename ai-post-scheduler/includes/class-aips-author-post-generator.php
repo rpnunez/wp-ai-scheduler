@@ -372,9 +372,11 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		if (null !== $count) {
 			$resolved_count = $count;
 		} elseif ('manual' === $creation_method) {
-			$resolved_count = isset($author->manual_post_generation_quantity) ? (int) $author->manual_post_generation_quantity : self::DEFAULT_POSTS_PER_RUN;
+			$default_manual = (int) AIPS_Config::get_instance()->get_option('aips_author_post_manual_quantity', self::DEFAULT_POSTS_PER_RUN);
+			$resolved_count = !empty($author->manual_post_generation_quantity) ? (int) $author->manual_post_generation_quantity : $default_manual;
 		} else {
-			$resolved_count = isset($author->scheduled_post_generation_quantity) ? (int) $author->scheduled_post_generation_quantity : self::DEFAULT_POSTS_PER_RUN;
+			$default_scheduled = (int) AIPS_Config::get_instance()->get_option('aips_author_post_scheduled_quantity', self::DEFAULT_POSTS_PER_RUN);
+			$resolved_count = !empty($author->scheduled_post_generation_quantity) ? (int) $author->scheduled_post_generation_quantity : $default_scheduled;
 		}
 
 		$resolved_count = max(1, $resolved_count);
@@ -589,10 +591,11 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		$base_run = !empty($author->post_generation_next_run) ? (int) $author->post_generation_next_run : AIPS_DateTime::now()->timestamp();
+		$base_run  = !empty($author->post_generation_next_run) ? (int) $author->post_generation_next_run : AIPS_DateTime::now()->timestamp();
+		$frequency = !empty($author->post_generation_frequency) ? $author->post_generation_frequency : (string) AIPS_Config::get_instance()->get_option('aips_author_post_generation_frequency', 'daily');
 
 		// Advance from the scheduled slot to preserve phase and time-of-day.
-		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $base_run);
+		$next_run = $this->interval_calculator->calculate_next_run($frequency, $base_run);
 		
 		$this->authors_repository->update_post_generation_schedule($author->id, $next_run);
 		

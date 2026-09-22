@@ -19,7 +19,43 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function general_section_callback() {
-        echo '<p>' . esc_html__('Configure default settings for AI-generated posts.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Welcome to AI Post Scheduler. Use the tabs above to configure plugin options, manage AI Engine connections, and fine-tune content generation defaults.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the Content Generation post defaults section.
+     *
+     * @return void
+     */
+    public function generation_post_defaults_section_callback() {
+        echo '<p>' . esc_html__('Define site-wide default post attributes, allowed post types, and featured image behaviors for all generated content.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the Template Generation section.
+     *
+     * @return void
+     */
+    public function generation_templates_section_callback() {
+        echo '<p>' . esc_html__('Configure default generation quantities for template-based post generation runs.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the Author Topic Generation section.
+     *
+     * @return void
+     */
+    public function generation_author_topics_section_callback() {
+        echo '<p>' . esc_html__('Configure global defaults for Author Topic Generation schedules, batch sizes, and auto-approval policies.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the Author Post Generation section.
+     *
+     * @return void
+     */
+    public function generation_author_posts_section_callback() {
+        echo '<p>' . esc_html__('Configure global defaults for Author Post Generation schedules, quantities, and topic reutilization.', 'ai-post-scheduler') . '</p>';
     }
 
     /**
@@ -94,6 +130,315 @@ class AIPS_Settings_UI {
             'hide_empty' => false,
         ));
         echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Sanitize post types array from form submissions.
+     *
+     * @param mixed $input Raw input.
+     * @return string[] Sanitized post type slugs.
+     */
+    public function sanitize_post_types($input) {
+        if (!is_array($input)) {
+            return array('post');
+        }
+        $clean = array_values(array_filter(array_map('sanitize_key', $input)));
+        return !empty($clean) ? $clean : array('post');
+    }
+
+    /**
+     * Render the Enabled Post Types setting field.
+     *
+     * @return void
+     */
+    public function generation_post_types_field_callback() {
+        $config         = AIPS_Config::get_instance();
+        $selected       = $config->get_generation_post_types();
+        $all_post_types = AIPS_Utilities::get_selectable_post_types();
+        ?>
+        <fieldset>
+            <?php foreach ($all_post_types as $pt_slug => $pt_info) : ?>
+                <label style="display:block;margin-bottom:8px;">
+                    <input type="checkbox" name="aips_generation_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected, true)); ?>>
+                    <strong><?php echo esc_html($pt_info['label']); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
+                </label>
+            <?php endforeach; ?>
+            <p class="description"><?php esc_html_e('Select which WordPress post types can be used for content generation across the plugin (Templates, Authors, Schedules).', 'ai-post-scheduler'); ?></p>
+        </fieldset>
+        <?php
+    }
+
+    /**
+     * Render the Default Post Type setting field.
+     *
+     * @return void
+     */
+    public function default_post_type_field_callback() {
+        $config         = AIPS_Config::get_instance();
+        $value          = $config->get_default_generation_post_type();
+        $all_post_types = AIPS_Utilities::get_selectable_post_types();
+        $allowed        = $config->get_generation_post_types();
+        ?>
+        <select name="aips_default_post_type">
+            <?php foreach ($all_post_types as $pt_slug => $pt_info) : ?>
+                <?php if (in_array($pt_slug, $allowed, true)) : ?>
+                    <option value="<?php echo esc_attr($pt_slug); ?>" <?php selected($value, $pt_slug); ?>>
+                        <?php echo esc_html($pt_info['label'] . ' (' . $pt_slug . ')'); ?>
+                    </option>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Default post type assigned to new templates, authors, and generated content.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Default Post Author setting field.
+     *
+     * @return void
+     */
+    public function default_post_author_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_default_post_author', 1);
+        wp_dropdown_users(array(
+            'name'     => 'aips_default_post_author',
+            'selected' => $value,
+        ));
+        echo '<p class="description">' . esc_html__('Default WordPress author assigned to generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the Default Generate Featured Image setting field.
+     *
+     * @return void
+     */
+    public function default_generate_featured_image_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_default_generate_featured_image', 0);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_default_generate_featured_image" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Generate and attach a featured image by default.', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Global default for whether newly generated posts include a featured image.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Default Featured Image Source setting field.
+     *
+     * @return void
+     */
+    public function default_featured_image_source_field_callback() {
+        $value = (string) AIPS_Config::get_instance()->get_option('aips_default_featured_image_source', 'ai_prompt');
+        ?>
+        <select name="aips_default_featured_image_source">
+            <option value="ai_prompt" <?php selected($value, 'ai_prompt'); ?>><?php esc_html_e('AI Generated (DALL-E / Stable Diffusion)', 'ai-post-scheduler'); ?></option>
+            <option value="unsplash" <?php selected($value, 'unsplash'); ?>><?php esc_html_e('Unsplash Stock Photos', 'ai-post-scheduler'); ?></option>
+            <option value="media_library" <?php selected($value, 'media_library'); ?>><?php esc_html_e('WordPress Media Library', 'ai-post-scheduler'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Default source for generated featured images.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Template Manual Post Quantity field.
+     *
+     * @return void
+     */
+    public function template_manual_post_quantity_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_template_manual_post_quantity', 1));
+        ?>
+        <input type="number" min="1" max="100" class="small-text" name="aips_template_manual_post_quantity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default number of posts to generate when manually triggering a template run.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Template Scheduled Post Quantity field.
+     *
+     * @return void
+     */
+    public function template_scheduled_post_quantity_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_template_scheduled_post_quantity', 1));
+        ?>
+        <input type="number" min="1" max="100" class="small-text" name="aips_template_scheduled_post_quantity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default number of posts to generate per scheduled template execution.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Generation Frequency field.
+     *
+     * @return void
+     */
+    public function author_topic_frequency_field_callback() {
+        $value       = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_generation_frequency', 'weekly');
+        $frequencies = array(
+            'daily'    => __('Daily', 'ai-post-scheduler'),
+            'weekly'   => __('Weekly', 'ai-post-scheduler'),
+            'biweekly' => __('Bi-weekly (Every 2 weeks)', 'ai-post-scheduler'),
+            'monthly'  => __('Monthly', 'ai-post-scheduler'),
+        );
+        ?>
+        <select name="aips_author_topic_generation_frequency">
+            <?php foreach ($frequencies as $freq_key => $freq_label) : ?>
+                <option value="<?php echo esc_attr($freq_key); ?>" <?php selected($value, $freq_key); ?>><?php echo esc_html($freq_label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Default frequency for scheduled author topic suggestion runs.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Scheduled Quantity field.
+     *
+     * @return void
+     */
+    public function author_topic_scheduled_quantity_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_author_topic_scheduled_quantity', 5));
+        ?>
+        <input type="number" min="1" max="50" class="small-text" name="aips_author_topic_scheduled_quantity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default number of topic ideas to generate per scheduled author run.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Manual Quantity field.
+     *
+     * @return void
+     */
+    public function author_topic_manual_quantity_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_author_topic_manual_quantity', 5));
+        ?>
+        <input type="number" min="1" max="50" class="small-text" name="aips_author_topic_manual_quantity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default number of topic ideas to generate when manually triggering topic generation for an author.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Auto-Approval Mode field.
+     *
+     * @return void
+     */
+    public function author_topic_auto_approval_mode_field_callback() {
+        $value = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_mode', 'manual');
+        $modes = array(
+            'manual'     => __('Manual Review (All topics require review)', 'ai-post-scheduler'),
+            'all'        => __('Auto-Approve All (Approve every generated topic)', 'ai-post-scheduler'),
+            'score'      => __('Score-Based (Auto-approve if topic score meets threshold)', 'ai-post-scheduler'),
+            'similarity' => __('Similarity Shield (Auto-approve unless semantically similar to existing)', 'ai-post-scheduler'),
+        );
+        ?>
+        <select name="aips_author_topic_auto_approval_mode">
+            <?php foreach ($modes as $mode_key => $mode_label) : ?>
+                <option value="<?php echo esc_attr($mode_key); ?>" <?php selected($value, $mode_key); ?>><?php echo esc_html($mode_label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Default auto-approval policy for newly generated author topics.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Auto-Approval Min Score field.
+     *
+     * @return void
+     */
+    public function author_topic_auto_approval_min_score_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_score', 70);
+        ?>
+        <input type="number" min="0" max="100" class="small-text" name="aips_author_topic_auto_approval_min_score" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Minimum quality score (0-100) required to auto-approve when using Score-Based auto-approval.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Auto-Approval Max Similarity field.
+     *
+     * @return void
+     */
+    public function author_topic_auto_approval_max_similarity_field_callback() {
+        $value = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_max_similarity', 0.80);
+        ?>
+        <input type="number" min="0.01" max="1.00" step="0.01" class="small-text" name="aips_author_topic_auto_approval_max_similarity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Maximum allowed semantic similarity (0.00-1.00). Topics with higher similarity to existing content require review or rejection.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Topic Auto-Approval Fallback field.
+     *
+     * @return void
+     */
+    public function author_topic_auto_approval_fallback_field_callback() {
+        $value = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_fallback', 'pending');
+        ?>
+        <select name="aips_author_topic_auto_approval_fallback">
+            <option value="pending" <?php selected($value, 'pending'); ?>><?php esc_html_e('Leave Pending Review', 'ai-post-scheduler'); ?></option>
+            <option value="rejected" <?php selected($value, 'rejected'); ?>><?php esc_html_e('Auto-Reject', 'ai-post-scheduler'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Fallback status for topics that do not meet auto-approval criteria.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Post Generation Frequency field.
+     *
+     * @return void
+     */
+    public function author_post_frequency_field_callback() {
+        $value       = (string) AIPS_Config::get_instance()->get_option('aips_author_post_generation_frequency', 'daily');
+        $frequencies = array(
+            'hourly'     => __('Hourly', 'ai-post-scheduler'),
+            'twicedaily' => __('Twice Daily', 'ai-post-scheduler'),
+            'daily'      => __('Daily', 'ai-post-scheduler'),
+            'weekly'     => __('Weekly', 'ai-post-scheduler'),
+        );
+        ?>
+        <select name="aips_author_post_generation_frequency">
+            <?php foreach ($frequencies as $freq_key => $freq_label) : ?>
+                <option value="<?php echo esc_attr($freq_key); ?>" <?php selected($value, $freq_key); ?>><?php echo esc_html($freq_label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('Default schedule frequency for turning approved author topics into published/draft posts.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Post Scheduled Quantity field.
+     *
+     * @return void
+     */
+    public function author_post_scheduled_quantity_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_author_post_scheduled_quantity', 1));
+        ?>
+        <input type="number" min="1" max="50" class="small-text" name="aips_author_post_scheduled_quantity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default number of posts to generate per scheduled author run.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Post Manual Quantity field.
+     *
+     * @return void
+     */
+    public function author_post_manual_quantity_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_author_post_manual_quantity', 1));
+        ?>
+        <input type="number" min="1" max="50" class="small-text" name="aips_author_post_manual_quantity" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default number of posts to generate when manually triggering post generation for an author.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Author Max Posts Per Topic field.
+     *
+     * @return void
+     */
+    public function author_max_posts_per_topic_field_callback() {
+        $value = max(1, (int) AIPS_Config::get_instance()->get_option('aips_author_max_posts_per_topic', 1));
+        ?>
+        <input type="number" min="1" max="10" class="small-text" name="aips_author_max_posts_per_topic" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('Default maximum number of posts that can be created from a single approved topic idea.', 'ai-post-scheduler'); ?></p>
+        <?php
     }
 
     /**

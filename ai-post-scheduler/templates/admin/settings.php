@@ -25,6 +25,7 @@ if (!defined('ABSPATH')) {
 				<!-- Tab Navigation -->
 				<div class="aips-tab-nav" id="aips-settings-tab-nav">
 					<button type="button" class="aips-tab-link active" data-tab="settings-general"><?php esc_html_e('General', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-content-generation"><?php esc_html_e('Content Generation', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-notifications"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></button>
@@ -40,10 +41,50 @@ if (!defined('ABSPATH')) {
 
 					<!-- General Tab -->
 					<div id="settings-general-tab" class="aips-tab-content">
-						<p class="description"><?php esc_html_e('Configure default settings for AI-generated posts.', 'ai-post-scheduler'); ?></p>
+						<div class="aips-notice-banner" style="background:#f0f6fc; border-left:4px solid #72aee6; padding:15px; margin-bottom:20px;">
+							<h3 style="margin-top:0;"><?php esc_html_e('Welcome to AI Post Scheduler', 'ai-post-scheduler'); ?></h3>
+							<p><?php esc_html_e('Configure your site-wide content generation defaults, connect your AI Engine provider, manage notification preferences, and define your brand voice.', 'ai-post-scheduler'); ?></p>
+							<p>
+								<a href="#settings-content-generation" class="button button-primary" onclick="jQuery('#aips-settings-tab-nav [data-tab=\'settings-content-generation\']').click(); return false;"><?php esc_html_e('Configure Content Generation Defaults', 'ai-post-scheduler'); ?></a>
+								<a href="#settings-ai" class="button button-secondary" onclick="jQuery('#aips-settings-tab-nav [data-tab=\'settings-ai\']').click(); return false;"><?php esc_html_e('Manage AI Engine', 'ai-post-scheduler'); ?></a>
+								<a href="#settings-content-strategy" class="button button-secondary" onclick="jQuery('#aips-settings-tab-nav [data-tab=\'settings-content-strategy\']').click(); return false;"><?php esc_html_e('Content Strategy & Brand Voice', 'ai-post-scheduler'); ?></a>
+							</p>
+						</div>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
 						</table>
+					</div>
+
+					<!-- Content Generation Tab -->
+					<div id="settings-content-generation-tab" class="aips-tab-content" style="display:none;">
+						<p class="description"><?php esc_html_e('Configure global defaults for post generation, template batch sizes, and author-based topic and post schedules. Templates, schedules, and authors can override these defaults if desired.', 'ai-post-scheduler'); ?></p>
+
+						<h3><?php esc_html_e('Post Defaults', 'ai-post-scheduler'); ?></h3>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_generation_post_defaults_section'); ?>
+						</table>
+
+						<hr style="margin:25px 0;">
+
+						<h3><?php esc_html_e('Template Post Generation', 'ai-post-scheduler'); ?></h3>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_generation_templates_section'); ?>
+						</table>
+
+						<hr style="margin:25px 0;">
+
+						<h3><?php esc_html_e('Author Topic Generation', 'ai-post-scheduler'); ?></h3>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_generation_author_topics_section'); ?>
+						</table>
+
+						<hr style="margin:25px 0;">
+
+						<h3><?php esc_html_e('Author Post Generation', 'ai-post-scheduler'); ?></h3>
+						<table class="form-table" role="presentation">
+							<?php do_settings_fields('aips-settings', 'aips_generation_author_posts_section'); ?>
+						</table>
+
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 						</p>

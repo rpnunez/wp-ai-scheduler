@@ -68,6 +68,8 @@ class AIPS_Settings_AJAX {
 			$array_settings = array(
 				'aips_notification_preferences',
 				'aips_wp_ai_connector_ids',
+				'aips_generation_post_types',
+				'aips_indexer_post_types',
 			);
 
 			if (is_array($raw_value) && !in_array($option_name, $array_settings, true)) {

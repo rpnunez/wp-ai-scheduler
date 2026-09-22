@@ -748,7 +748,8 @@
             $('#aips-modal-title').text('Add New Template');
             $('#featured_image_source').val('ai_prompt');
             $('#featured_image_unsplash_keywords').val('');
-            $('#template_post_type').val('post').prop('disabled', false);
+            $('#template_post_type').val('default').prop('disabled', false);
+            $('#post_status').val('default');
             $('#template_post_type_locked_notice').hide();
             AIPS.toggleTemplatePostTypeFields();
             AIPS.setMediaSelection([]);
@@ -821,7 +822,10 @@
                         $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
                         $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
                         AIPS.setMediaSelection(t.featured_image_media_ids || '');
-                        $('#template_post_type').val(t.post_type || 'post').prop('disabled', true);
+                        if (t.post_type && !$('#template_post_type option[value="' + t.post_type + '"]').length) {
+                            $('#template_post_type').append($('<option>', { value: t.post_type, text: t.post_type }));
+                        }
+                        $('#template_post_type').val(t.post_type || 'default').prop('disabled', true);
                         $('#template_post_type_locked_notice').show();
                         AIPS.toggleTemplatePostTypeFields();
                         $('#post_status').val(t.post_status);
@@ -3499,6 +3503,9 @@
          */
         toggleTemplatePostTypeFields: function() {
             var postType = $('#template_post_type').val();
+            if (!postType || postType === 'default') {
+                postType = 'post';
+            }
             var support = (aipsTemplatesL10n.postTypeTaxonomySupport || {})[postType] || {};
 
             $('#post_category_row').toggle(!!support.supports_category);
