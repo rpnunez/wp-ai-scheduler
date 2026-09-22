@@ -177,6 +177,7 @@ class AIPS_Embeddings_Rate_Limiter {
 			'daily_reset_in'  => $daily_reset_in,
 			'is_rate_limited' => $is_rate_limited,
 			'exceeded_limit'  => $exceeded_limit,
+			'cooldown'        => $this->get_cooldown_status(),
 		);
 	}
 
@@ -189,6 +190,24 @@ class AIPS_Embeddings_Rate_Limiter {
 	public function check_limits(int $count = 1) {
 		if (!$this->is_enabled() || $count <= 0) {
 			return true;
+		}
+
+		$cooldown = $this->get_cooldown_status();
+		if ($cooldown['is_paused']) {
+			return new WP_Error(
+				'embeddings_cooldown_active',
+				sprintf(
+					/* translators: 1: reason, 2: remaining seconds */
+					__('Embeddings generation is temporarily paused. %1$s (Resumes in %2$d seconds).', 'ai-post-scheduler'),
+					$cooldown['reason'],
+					$cooldown['remaining_seconds']
+				),
+				array(
+					'paused_until'      => $cooldown['paused_until'],
+					'remaining_seconds' => $cooldown['remaining_seconds'],
+					'reason'            => $cooldown['reason'],
+				)
+			);
 		}
 
 		$stats = $this->get_usage_stats();
@@ -292,5 +311,171 @@ class AIPS_Embeddings_Rate_Limiter {
 			'url'           => admin_url('admin.php?page=aips-settings#settings-ai'),
 			'ai_model'      => (string) $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small'),
 		));
+	}
+
+	/**
+	 * Check if an error is a rate limit, quota exhaustion, or throttling error.
+	 *
+	 * Scans error codes and messages for provider-agnostic rate limit keywords
+	 * such as Google Vertex AI 429 ("Resource exhausted") and OpenAI rate limits.
+	 *
+	 * @param mixed $error WP_Error instance or string message.
+	 * @return bool True if error indicates rate limiting or quota exhaustion.
+	 */
+	public function is_rate_limit_or_exhaustion_error($error): bool {
+		if (empty($error)) {
+			return false;
+		}
+
+		$haystacks = array();
+
+		if (is_wp_error($error)) {
+			$haystacks[] = (string) $error->get_error_code();
+			$haystacks[] = (string) $error->get_error_message();
+			$data = $error->get_error_data();
+			if (is_string($data)) {
+				$haystacks[] = $data;
+			} elseif (is_array($data)) {
+				$haystacks[] = wp_json_encode($data);
+			}
+		} elseif (is_string($error)) {
+			$haystacks[] = $error;
+		}
+
+		$patterns = array(
+			'resource exhausted',
+			'429',
+			'rate limit',
+			'rate_limit',
+			'quota exceeded',
+			'quota_exceeded',
+			'too many requests',
+			'insufficient_quota',
+			'exceeded your current quota',
+			'billing',
+			'overloaded',
+			'service unavailable',
+		);
+
+		foreach ($haystacks as $text) {
+			$lower = strtolower($text);
+			foreach ($patterns as $pattern) {
+				if (strpos($lower, $pattern) !== false) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Get current indexing cooldown status.
+	 *
+	 * @return array{is_paused: bool, paused_until: int, remaining_seconds: int, reason: string, consecutive_fails: int}
+	 */
+	public function get_cooldown_status(): array {
+		$paused_until = (int) get_option('aips_indexer_paused_until', 0);
+		$now          = time();
+		$is_paused    = ($paused_until > $now);
+
+		return array(
+			'is_paused'         => $is_paused,
+			'paused_until'      => $paused_until,
+			'remaining_seconds' => $is_paused ? max(0, $paused_until - $now) : 0,
+			'reason'            => (string) get_option('aips_indexer_pause_reason', ''),
+			'consecutive_fails' => (int) get_transient('aips_indexer_consecutive_errors'),
+		);
+	}
+
+	/**
+	 * Record an indexing failure and engage auto-cooldown if threshold is reached.
+	 *
+	 * @param mixed $error Error object or string.
+	 * @return array Cooldown status.
+	 */
+	public function record_failure($error): array {
+		$is_exhaustion = $this->is_rate_limit_or_exhaustion_error($error);
+		$fails = (int) get_transient('aips_indexer_consecutive_errors') + 1;
+		set_transient('aips_indexer_consecutive_errors', $fails, 2 * HOUR_IN_SECONDS);
+
+		$threshold = (int) $this->config->get_option('aips_indexer_consecutive_error_threshold', 2);
+
+		if ($is_exhaustion || $fails >= $threshold) {
+			$duration = max(1, (int) $this->config->get_option('aips_indexer_error_pause_duration', 30));
+			$unit     = (string) $this->config->get_option('aips_indexer_error_pause_unit', 'minutes');
+
+			$multiplier = MINUTE_IN_SECONDS;
+			if ($unit === 'hours') {
+				$multiplier = HOUR_IN_SECONDS;
+			} elseif ($unit === 'days') {
+				$multiplier = DAY_IN_SECONDS;
+			}
+
+			$pause_seconds = $duration * $multiplier;
+			$paused_until  = time() + $pause_seconds;
+
+			$error_msg = is_wp_error($error) ? $error->get_error_message() : (string) $error;
+			$reason    = sprintf(
+				/* translators: 1: error message, 2: duration number, 3: duration unit */
+				__('Provider rate limit or quota exhaustion (%1$s). Paused for %2$d %3$s.', 'ai-post-scheduler'),
+				wp_strip_all_tags($error_msg),
+				$duration,
+				$unit
+			);
+
+			update_option('aips_indexer_paused_until', $paused_until, false);
+			update_option('aips_indexer_pause_reason', $reason, false);
+
+			$this->logger->warning(
+				sprintf('Embeddings auto-cooldown engaged until %s: %s', gmdate('Y-m-d H:i:s', $paused_until), $reason)
+			);
+		}
+
+		return $this->get_cooldown_status();
+	}
+
+	/**
+	 * Reset consecutive failure counter upon successful embedding generation.
+	 *
+	 * @return void
+	 */
+	public function record_success(): void {
+		delete_transient('aips_indexer_consecutive_errors');
+	}
+
+	/**
+	 * Clear active cooldown lock and resume indexing immediately.
+	 *
+	 * @return void
+	 */
+	public function clear_cooldown(): void {
+		delete_option('aips_indexer_paused_until');
+		delete_option('aips_indexer_pause_reason');
+		delete_transient('aips_indexer_consecutive_errors');
+	}
+
+	/**
+	 * Check if current embeddings usage is approaching hard quota limits (>= 90%).
+	 *
+	 * @param float $threshold Ratio threshold (default: 0.90 for 90%).
+	 * @return bool True if approaching daily or weekly limit.
+	 */
+	public function is_approaching_quota(float $threshold = 0.90): bool {
+		if (!$this->is_enabled()) {
+			return false;
+		}
+
+		$stats = $this->get_usage_stats();
+
+		if ($stats['daily_limit'] > 0 && ($stats['daily_count'] / $stats['daily_limit']) >= $threshold) {
+			return true;
+		}
+
+		if ($stats['weekly_limit'] > 0 && ($stats['weekly_count'] / $stats['weekly_limit']) >= $threshold) {
+			return true;
+		}
+
+		return false;
 	}
 }

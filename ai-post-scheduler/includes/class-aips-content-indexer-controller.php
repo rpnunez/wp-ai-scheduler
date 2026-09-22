@@ -44,6 +44,26 @@ class AIPS_Content_Indexer_Controller {
 	private $config;
 
 	/**
+	 * @var AIPS_Post_Clusters_Service
+	 */
+	private $post_clusters_service;
+
+	/**
+	 * @var AIPS_Embeddings_Rate_Limiter
+	 */
+	private $rate_limiter;
+
+	/**
+	 * @var AIPS_Author_Topics_Repository
+	 */
+	private $topics_repo;
+
+	/**
+	 * @var AIPS_Authors_Repository
+	 */
+	private $authors_repo;
+
+	/**
 	 * Initialize controller and register AJAX actions.
 	 */
 	public function __construct(
@@ -51,7 +71,11 @@ class AIPS_Content_Indexer_Controller {
 		?AIPS_Related_Posts_Service $related_service = null,
 		?AIPS_Deduplication_Service $deduplication_service = null,
 		?AIPS_Embeddings_Repository $embeddings_repo = null,
-		?AIPS_Config $config = null
+		?AIPS_Config $config = null,
+		?AIPS_Post_Clusters_Service $post_clusters_service = null,
+		?AIPS_Embeddings_Rate_Limiter $rate_limiter = null,
+		?AIPS_Author_Topics_Repository $topics_repo = null,
+		?AIPS_Authors_Repository $authors_repo = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -60,6 +84,10 @@ class AIPS_Content_Indexer_Controller {
 		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service());
 		$this->embeddings_repo       = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->config                = $config ?: AIPS_Config::get_instance();
+		$this->post_clusters_service = $post_clusters_service ?: ($container->has(AIPS_Post_Clusters_Service::class) ? $container->make(AIPS_Post_Clusters_Service::class) : new AIPS_Post_Clusters_Service());
+		$this->rate_limiter          = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter());
+		$this->topics_repo           = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->authors_repo          = $authors_repo ?: ($container->has(AIPS_Authors_Repository::class) ? $container->make(AIPS_Authors_Repository::class) : new AIPS_Authors_Repository());
 
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_indexer_get_status', array($this, 'ajax_get_status'));
@@ -70,6 +98,12 @@ class AIPS_Content_Indexer_Controller {
 		add_action('wp_ajax_aips_indexer_save_settings', array($this, 'ajax_save_settings'));
 		add_action('wp_ajax_aips_indexer_search_posts', array($this, 'ajax_search_posts'));
 		add_action('wp_ajax_aips_indexer_fetch_meow_environments', array($this, 'ajax_fetch_meow_environments'));
+		add_action('wp_ajax_aips_indexer_get_post_clusters', array($this, 'ajax_get_post_clusters'));
+		add_action('wp_ajax_aips_indexer_save_pillar', array($this, 'ajax_save_pillar'));
+		add_action('wp_ajax_aips_indexer_rename_post_cluster', array($this, 'ajax_rename_post_cluster'));
+		add_action('wp_ajax_aips_indexer_generate_gap_ideas', array($this, 'ajax_generate_gap_ideas'));
+		add_action('wp_ajax_aips_indexer_commit_gap_topics', array($this, 'ajax_commit_gap_topics'));
+		add_action('wp_ajax_aips_indexer_resume_cooldown', array($this, 'ajax_resume_cooldown'));
 	}
 
 	/**
@@ -80,11 +114,14 @@ class AIPS_Content_Indexer_Controller {
 			wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'ai-post-scheduler'));
 		}
 
-		$post_types  = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
-		$status      = $this->indexer_service->get_indexing_status($post_types);
-		$stats       = $this->embeddings_repo->get_stats();
-		$stored_dims = $this->embeddings_repo->get_stored_dimensions();
-		$active_dims = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
+		$post_types      = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+		$status          = $this->indexer_service->get_indexing_status($post_types);
+		$stats           = $this->embeddings_repo->get_stats();
+		$stored_dims     = $this->embeddings_repo->get_stored_dimensions();
+		$active_dims     = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
+		$cooldown_status = $this->rate_limiter->get_cooldown_status();
+		$queue_status    = $this->indexer_service->get_queue_status();
+		$authors         = $this->authors_repo->get_all(true);
 
 		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
 
@@ -93,11 +130,11 @@ class AIPS_Content_Indexer_Controller {
 		unset($all_post_types['attachment']);
 
 		$settings = array(
-			'embeddings_enabled'       => (bool) $this->config->get_option('aips_embeddings_enabled', true),
-			'embeddings_provider'      => (string) $this->config->get_option('aips_embeddings_provider', ''),
-			'embeddings_model'         => (string) $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small'),
-			'embeddings_env_id'        => (string) $this->config->get_option('aips_embeddings_env_id', ''),
-			'embeddings_dimensions'    => $active_dims,
+			'embeddings_enabled'             => (bool) $this->config->get_option('aips_embeddings_enabled', true),
+			'embeddings_provider'            => (string) $this->config->get_option('aips_embeddings_provider', ''),
+			'embeddings_model'               => (string) $this->config->get_option('aips_embeddings_model', 'text-embedding-3-small'),
+			'embeddings_env_id'              => (string) $this->config->get_option('aips_embeddings_env_id', ''),
+			'embeddings_dimensions'          => $active_dims,
 			'post_types'                     => $post_types,
 			'similarity_threshold'           => (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65),
 			'auto_index_on_publish'          => (bool) $this->config->get_option('aips_auto_index_on_publish', true),
@@ -115,6 +152,17 @@ class AIPS_Content_Indexer_Controller {
 			'related_posts_layout'           => (string) $this->config->get_option('aips_related_posts_layout', 'grid'),
 			'deduplication_mode'             => (string) $this->config->get_option('aips_deduplication_mode', 'warn'),
 			'deduplication_threshold'        => (float) $this->config->get_option('aips_deduplication_threshold', 0.85),
+			'publish_execution_timing'       => (string) $this->config->get_option('aips_indexer_publish_execution_timing', 'queued'),
+			'batch_size'                     => (int) $this->config->get_option('aips_indexer_batch_size', 10),
+			'queue_debounce_seconds'         => (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15),
+			'quota_pause_enabled'            => (bool) $this->config->get_option('aips_indexer_quota_pause_enabled', true),
+			'queue_notifications_enabled'    => (bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true),
+			'error_pause_duration'           => (int) $this->config->get_option('aips_indexer_error_pause_duration', 30),
+			'error_pause_unit'               => (string) $this->config->get_option('aips_indexer_error_pause_unit', 'minutes'),
+			'consecutive_error_threshold'    => (int) $this->config->get_option('aips_indexer_consecutive_error_threshold', 2),
+			'post_cluster_threshold'         => (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65),
+			'cooldown'                       => $cooldown_status,
+			'queue_status'                   => $queue_status,
 		);
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/content-indexer.php';
@@ -141,6 +189,8 @@ class AIPS_Content_Indexer_Controller {
 			'stored_dimensions'  => $stored_dims,
 			'active_dimensions'  => $active_dims,
 			'dimension_mismatch' => $dimension_mismatch,
+			'cooldown'           => $this->rate_limiter->get_cooldown_status(),
+			'queue_status'       => $this->indexer_service->get_queue_status(),
 		));
 	}
 
@@ -359,8 +409,213 @@ class AIPS_Content_Indexer_Controller {
 			$this->config->set_option('aips_deduplication_threshold', (float) $_POST['deduplication_threshold']);
 		}
 
+		if (isset($_POST['publish_execution_timing'])) {
+			$timing = sanitize_key($_POST['publish_execution_timing']);
+			$this->config->set_option('aips_indexer_publish_execution_timing', in_array($timing, array('immediate', 'queued', 'disabled'), true) ? $timing : 'queued');
+		}
+
+		if (isset($_POST['batch_size'])) {
+			$this->config->set_option('aips_indexer_batch_size', max(1, min(50, absint($_POST['batch_size']))));
+		}
+
+		if (isset($_POST['queue_debounce_seconds'])) {
+			$this->config->set_option('aips_indexer_queue_debounce_seconds', max(5, min(300, absint($_POST['queue_debounce_seconds']))));
+		}
+
+		if (isset($_POST['quota_pause_enabled'])) {
+			$this->config->set_option('aips_indexer_quota_pause_enabled', filter_var($_POST['quota_pause_enabled'], FILTER_VALIDATE_BOOLEAN));
+		}
+
+		if (isset($_POST['queue_notifications_enabled'])) {
+			$this->config->set_option('aips_indexer_queue_notifications_enabled', filter_var($_POST['queue_notifications_enabled'], FILTER_VALIDATE_BOOLEAN));
+		}
+
+		if (isset($_POST['error_pause_duration'])) {
+			$this->config->set_option('aips_indexer_error_pause_duration', max(1, absint($_POST['error_pause_duration'])));
+		}
+
+		if (isset($_POST['error_pause_unit'])) {
+			$unit = sanitize_key($_POST['error_pause_unit']);
+			$this->config->set_option('aips_indexer_error_pause_unit', in_array($unit, array('minutes', 'hours', 'days'), true) ? $unit : 'minutes');
+		}
+
+		if (isset($_POST['consecutive_error_threshold'])) {
+			$this->config->set_option('aips_indexer_consecutive_error_threshold', max(1, min(10, absint($_POST['consecutive_error_threshold']))));
+		}
+
+		if (isset($_POST['post_cluster_threshold'])) {
+			$this->config->set_option('aips_indexer_post_cluster_threshold', max(0.1, min(0.99, (float) $_POST['post_cluster_threshold'])));
+		}
+
+		if (isset($_POST['embeddings_scope'])) {
+			$scope = sanitize_key($_POST['embeddings_scope']);
+			$this->config->set_option('aips_embeddings_scope', in_array($scope, array('aips_only', 'all_posts'), true) ? $scope : 'aips_only');
+		}
+
+		if (isset($_POST['embeddings_rate_limits_enabled'])) {
+			$this->config->set_option('aips_embeddings_rate_limits_enabled', filter_var($_POST['embeddings_rate_limits_enabled'], FILTER_VALIDATE_BOOLEAN));
+		}
+
+		if (isset($_POST['embeddings_daily_limit'])) {
+			$this->config->set_option('aips_embeddings_daily_limit', absint($_POST['embeddings_daily_limit']));
+		}
+
+		if (isset($_POST['embeddings_weekly_limit'])) {
+			$this->config->set_option('aips_embeddings_weekly_limit', absint($_POST['embeddings_weekly_limit']));
+		}
+
+		if (isset($_POST['embeddings_monthly_limit'])) {
+			$this->config->set_option('aips_embeddings_monthly_limit', absint($_POST['embeddings_monthly_limit']));
+		}
+
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
+		));
+	}
+
+	/**
+	 * AJAX: Get post clusters and orphan posts.
+	 */
+	public function ajax_get_post_clusters() {
+		$this->verify_request();
+
+		$threshold = isset($_POST['threshold']) ? (float) $_POST['threshold'] : (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65);
+		$min_size  = isset($_POST['min_size']) ? absint($_POST['min_size']) : 2;
+
+		$results = $this->post_clusters_service->get_post_clusters($threshold, $min_size);
+
+		AIPS_Ajax_Response::success($results);
+	}
+
+	/**
+	 * AJAX: Designate a pillar post for a post cluster.
+	 */
+	public function ajax_save_pillar() {
+		$this->verify_request();
+
+		$cluster_id     = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
+		$pillar_post_id = isset($_POST['pillar_post_id']) ? absint($_POST['pillar_post_id']) : 0;
+
+		if (empty($cluster_id) || $pillar_post_id <= 0) {
+			AIPS_Ajax_Response::error(__('Missing cluster ID or valid pillar post ID.', 'ai-post-scheduler'));
+		}
+
+		$success = $this->post_clusters_service->set_pillar_post($cluster_id, $pillar_post_id);
+
+		if ($success) {
+			AIPS_Ajax_Response::success(array('message' => __('Pillar post designated successfully.', 'ai-post-scheduler')));
+		} else {
+			AIPS_Ajax_Response::error(__('Failed to save pillar post designation.', 'ai-post-scheduler'));
+		}
+	}
+
+	/**
+	 * AJAX: Rename a post cluster.
+	 */
+	public function ajax_rename_post_cluster() {
+		$this->verify_request();
+
+		$cluster_id  = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
+		$custom_name = isset($_POST['custom_name']) ? sanitize_text_field($_POST['custom_name']) : '';
+
+		if (empty($cluster_id) || empty($custom_name)) {
+			AIPS_Ajax_Response::error(__('Cluster ID and custom name are required.', 'ai-post-scheduler'));
+		}
+
+		$this->post_clusters_service->rename_cluster($cluster_id, $custom_name);
+
+		AIPS_Ajax_Response::success(array('message' => __('Cluster renamed successfully.', 'ai-post-scheduler')));
+	}
+
+	/**
+	 * AJAX: Generate AI content gap suggestions for a post cluster.
+	 */
+	public function ajax_generate_gap_ideas() {
+		$this->verify_request();
+
+		$cluster_id      = isset($_POST['cluster_id']) ? sanitize_text_field($_POST['cluster_id']) : '';
+		$num_suggestions = isset($_POST['num_suggestions']) ? max(1, min(10, absint($_POST['num_suggestions']))) : 5;
+
+		if (empty($cluster_id)) {
+			AIPS_Ajax_Response::error(__('Missing cluster ID.', 'ai-post-scheduler'));
+		}
+
+		$suggestions = $this->post_clusters_service->generate_gap_suggestions($cluster_id, $num_suggestions);
+
+		if (is_wp_error($suggestions)) {
+			AIPS_Ajax_Response::error($suggestions->get_error_message());
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'cluster_id'  => $cluster_id,
+			'suggestions' => $suggestions,
+			'count'       => count($suggestions),
+		));
+	}
+
+	/**
+	 * AJAX: Commit content gap ideas directly into Author Topics pending approval.
+	 */
+	public function ajax_commit_gap_topics() {
+		$this->verify_request();
+
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$topics    = isset($_POST['topics']) && is_array($_POST['topics']) ? array_map('sanitize_text_field', $_POST['topics']) : array();
+
+		if ($author_id <= 0) {
+			AIPS_Ajax_Response::error(__('Please select a valid author.', 'ai-post-scheduler'));
+		}
+
+		if (empty($topics)) {
+			AIPS_Ajax_Response::error(__('No topics provided to commit.', 'ai-post-scheduler'));
+		}
+
+		$author = $this->authors_repo->get_by_id($author_id);
+		if (!$author) {
+			AIPS_Ajax_Response::error(__('Selected author does not exist.', 'ai-post-scheduler'));
+		}
+
+		$inserted = 0;
+		foreach ($topics as $title) {
+			$title = trim($title);
+			if (empty($title)) {
+				continue;
+			}
+
+			$id = $this->topics_repo->create(array(
+				'author_id'    => $author_id,
+				'topic_title'  => $title,
+				'status'       => 'pending',
+				'generated_at' => AIPS_DateTime::now()->timestamp(),
+			));
+
+			if ($id) {
+				$inserted++;
+			}
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => sprintf(
+				/* translators: 1: number of topics, 2: author name */
+				__('Successfully committed %1$d topic(s) to author "%2$s".', 'ai-post-scheduler'),
+				$inserted,
+				$author->name
+			),
+			'inserted' => $inserted,
+		));
+	}
+
+	/**
+	 * AJAX: Clear active cooldown and resume indexing.
+	 */
+	public function ajax_resume_cooldown() {
+		$this->verify_request();
+
+		$this->rate_limiter->clear_cooldown();
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => __('Cooldown cleared. Indexing operations have been resumed.', 'ai-post-scheduler'),
+			'cooldown' => $this->rate_limiter->get_cooldown_status(),
 		));
 	}
 

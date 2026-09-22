@@ -79,8 +79,14 @@ class AIPS_Settings_UI {
 	public function ai_deduplication_section_callback() {
 	}
 
-    /**
-     * Render the description for the feedback settings section.
+	/**
+	 * Render the description for the Authors settings section.
+	 *
+	 * @return void
+	 */
+	public function authors_section_callback() {
+		echo '<p>' . esc_html__('Configure default auto-approval policies and dual-boundary semantic gates for author topics.', 'ai-post-scheduler') . '</p>';
+	}
      *
      * @return void
      */
@@ -1459,6 +1465,176 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render publish indexing execution timing mode (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_publish_execution_timing_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_indexer_publish_execution_timing', 'queued');
+		?>
+		<fieldset>
+			<label style="display:block;margin-bottom:6px;">
+				<input type="radio" name="aips_indexer_publish_execution_timing" value="queued" <?php checked($value, 'queued'); ?>>
+				<strong><?php esc_html_e('Debounced Background Batch Queue (Recommended)', 'ai-post-scheduler'); ?></strong>
+				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Buffers posts when published and processes them in rate-limited background batches via WP-Cron.', 'ai-post-scheduler'); ?></span>
+			</label>
+			<label style="display:block;margin-bottom:6px;">
+				<input type="radio" name="aips_indexer_publish_execution_timing" value="immediate" <?php checked($value, 'immediate'); ?>>
+				<strong><?php esc_html_e('Immediate (Synchronous on Publish)', 'ai-post-scheduler'); ?></strong>
+				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Generates vector embeddings and relationships immediately upon post publishing. May slightly slow down post saving.', 'ai-post-scheduler'); ?></span>
+			</label>
+			<label style="display:block;">
+				<input type="radio" name="aips_indexer_publish_execution_timing" value="disabled" <?php checked($value, 'disabled'); ?>>
+				<strong><?php esc_html_e('Disabled', 'ai-post-scheduler'); ?></strong>
+				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Do not vectorize posts on publish. Indexing must be initiated manually from Content Indexer.', 'ai-post-scheduler'); ?></span>
+			</label>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render Batch Queue and Quota Pause configuration (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_batch_config_field_callback() {
+		$config        = AIPS_Config::get_instance();
+		$batch_size    = (int) $config->get_option('aips_indexer_batch_size', 10);
+		$debounce_sec  = (int) $config->get_option('aips_indexer_queue_debounce_seconds', 15);
+		$quota_pause   = (bool) $config->get_option('aips_indexer_quota_pause_enabled', true);
+		$notifications = (bool) $config->get_option('aips_indexer_queue_notifications_enabled', true);
+		?>
+		<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px;">
+			<div>
+				<label for="aips_indexer_batch_size"><strong><?php esc_html_e('Batch Size:', 'ai-post-scheduler'); ?></strong></label><br>
+				<input type="number" min="1" max="50" step="1" name="aips_indexer_batch_size" id="aips_indexer_batch_size" value="<?php echo esc_attr((string) $batch_size); ?>" class="small-text">
+				<p class="description"><?php esc_html_e('Posts per chunk (1-50).', 'ai-post-scheduler'); ?></p>
+			</div>
+			<div>
+				<label for="aips_indexer_queue_debounce_seconds"><strong><?php esc_html_e('Debounce Delay:', 'ai-post-scheduler'); ?></strong></label><br>
+				<input type="number" min="5" max="300" step="5" name="aips_indexer_queue_debounce_seconds" id="aips_indexer_queue_debounce_seconds" value="<?php echo esc_attr((string) $debounce_sec); ?>" class="small-text">
+				<p class="description"><?php esc_html_e('Seconds before processing queue.', 'ai-post-scheduler'); ?></p>
+			</div>
+		</div>
+		<div>
+			<label for="aips_indexer_quota_pause_enabled" style="display:block;margin-bottom:6px;">
+				<input type="checkbox" name="aips_indexer_quota_pause_enabled" id="aips_indexer_quota_pause_enabled" value="1" <?php checked($quota_pause); ?>>
+				<?php esc_html_e('Auto-Pause indexing queue when approaching rate limits or remote quota', 'ai-post-scheduler'); ?>
+			</label>
+			<label for="aips_indexer_queue_notifications_enabled" style="display:block;">
+				<input type="checkbox" name="aips_indexer_queue_notifications_enabled" id="aips_indexer_queue_notifications_enabled" value="1" <?php checked($notifications); ?>>
+				<?php esc_html_e('Notify admin via email when background indexing queue is paused or exhausts quota', 'ai-post-scheduler'); ?>
+			</label>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render Rate Limit Error Pattern Auto-Cooldown fields (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_error_cooldown_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$duration  = (int) $config->get_option('aips_indexer_error_pause_duration', 30);
+		$unit      = (string) $config->get_option('aips_indexer_error_pause_unit', 'minutes');
+		$threshold = (int) $config->get_option('aips_indexer_consecutive_error_threshold', 2);
+		?>
+		<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+			<div>
+				<label for="aips_indexer_error_pause_duration"><strong><?php esc_html_e('Cooldown Duration:', 'ai-post-scheduler'); ?></strong></label><br>
+				<input type="number" min="1" max="100" step="1" name="aips_indexer_error_pause_duration" id="aips_indexer_error_pause_duration" value="<?php echo esc_attr((string) $duration); ?>" class="small-text">
+				<select name="aips_indexer_error_pause_unit" id="aips_indexer_error_pause_unit">
+					<option value="minutes" <?php selected($unit, 'minutes'); ?>><?php esc_html_e('Minutes', 'ai-post-scheduler'); ?></option>
+					<option value="hours" <?php selected($unit, 'hours'); ?>><?php esc_html_e('Hours', 'ai-post-scheduler'); ?></option>
+					<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				</select>
+			</div>
+			<div>
+				<label for="aips_indexer_consecutive_error_threshold"><strong><?php esc_html_e('Consecutive Errors to Trigger:', 'ai-post-scheduler'); ?></strong></label><br>
+				<input type="number" min="1" max="10" step="1" name="aips_indexer_consecutive_error_threshold" id="aips_indexer_consecutive_error_threshold" value="<?php echo esc_attr((string) $threshold); ?>" class="small-text">
+				<span class="description"><?php esc_html_e('failures', 'ai-post-scheduler'); ?></span>
+			</div>
+		</div>
+		<p class="description" style="margin-top:8px;">
+			<?php esc_html_e('When remote provider returns HTTP 429 ("Resource exhausted" / "Quota exceeded"), indexing halts automatically for the configured duration.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render Post Cluster similarity threshold setting (Card 4).
+	 *
+	 * @return void
+	 */
+	public function indexer_post_cluster_threshold_field_callback() {
+		$value = (float) AIPS_Config::get_instance()->get_option('aips_indexer_post_cluster_threshold', 0.65);
+		?>
+		<input type="number" step="0.05" min="0.30" max="0.95" name="aips_indexer_post_cluster_threshold" id="aips_indexer_post_cluster_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Minimum similarity threshold for grouping connected posts into a thematic cluster. Default: 0.65', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Global Author Topic Auto-Approval Mode.
+	 *
+	 * @return void
+	 */
+	public function author_topic_auto_approval_mode_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_mode', 'similarity');
+		?>
+		<select name="aips_author_topic_auto_approval_mode" id="aips_author_topic_auto_approval_mode">
+			<option value="similarity" <?php selected($value, 'similarity'); ?>><?php esc_html_e('Dual-Boundary Semantic Gate (Vector Similarity)', 'ai-post-scheduler'); ?></option>
+			<option value="manual" <?php selected($value, 'manual'); ?>><?php esc_html_e('Manual Review (Hold in Pending)', 'ai-post-scheduler'); ?></option>
+			<option value="all" <?php selected($value, 'all'); ?>><?php esc_html_e('Auto-Approve All (Unfiltered)', 'ai-post-scheduler'); ?></option>
+		</select>
+		<p class="description"><?php esc_html_e('Default auto-approval behavior for generated topics across all authors inheriting global policy.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Global Author Topic Minimum Niche Relevance %.
+	 *
+	 * @return void
+	 */
+	public function author_topic_auto_approval_min_score_field_callback() {
+		$value = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_min_score', 70);
+		?>
+		<input type="number" min="0" max="100" step="1" name="aips_author_topic_auto_approval_min_score" id="aips_author_topic_auto_approval_min_score" value="<?php echo esc_attr((string) $value); ?>" class="small-text"> %
+		<p class="description"><?php esc_html_e('Minimum cosine relevance percentage against the author persona and focus niche. Topics below this threshold fail approval.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Global Author Topic Maximum Duplicate Ceiling.
+	 *
+	 * @return void
+	 */
+	public function author_topic_auto_approval_max_similarity_field_callback() {
+		$value = (float) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_max_similarity', 0.85);
+		?>
+		<input type="number" min="0.50" max="0.99" step="0.01" name="aips_author_topic_auto_approval_max_similarity" id="aips_author_topic_auto_approval_max_similarity" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Maximum cosine similarity allowed against existing topics and published articles. Topics at or above this score are flagged as duplicates.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Global Author Topic Sub-Threshold Fallback Handling.
+	 *
+	 * @return void
+	 */
+	public function author_topic_auto_approval_fallback_field_callback() {
+		$value = (string) AIPS_Config::get_instance()->get_option('aips_author_topic_auto_approval_fallback', 'reject');
+		?>
+		<select name="aips_author_topic_auto_approval_fallback" id="aips_author_topic_auto_approval_fallback">
+			<option value="reject" <?php selected($value, 'reject'); ?>><?php esc_html_e('Immediate Rejection (Move to Rejected tab)', 'ai-post-scheduler'); ?></option>
+			<option value="smart_split" <?php selected($value, 'smart_split'); ?>><?php esc_html_e('Smart Split (Keep relevant near-duplicates in Pending for manual review)', 'ai-post-scheduler'); ?></option>
+		</select>
+		<p class="description"><?php esc_html_e('Determines whether non-qualifying topics are rejected outright or held in Pending when they are on-niche but close to the duplicate threshold.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
 	 * Render related posts enable toggle (Card 5).
 	 *
 	 * @return void
@@ -1624,6 +1800,50 @@ class AIPS_Settings_UI {
 			}
 		}
 		return !empty($sanitized) ? array_values(array_unique($sanitized)) : array('post');
+	}
+
+	/**
+	 * Sanitize publish execution timing.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string ('queued', 'immediate', 'disabled').
+	 */
+	public function sanitize_publish_execution_timing($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('queued', 'immediate', 'disabled'), true) ? $value : 'queued';
+	}
+
+	/**
+	 * Sanitize error pause unit.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string ('minutes', 'hours', 'days').
+	 */
+	public function sanitize_error_pause_unit($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('minutes', 'hours', 'days'), true) ? $value : 'minutes';
+	}
+
+	/**
+	 * Sanitize author topic auto approval mode.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string ('similarity', 'manual', 'all').
+	 */
+	public function sanitize_author_topic_auto_approval_mode($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('similarity', 'manual', 'all'), true) ? $value : 'similarity';
+	}
+
+	/**
+	 * Sanitize author topic auto approval fallback.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string ('reject', 'smart_split').
+	 */
+	public function sanitize_author_topic_auto_approval_fallback($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('reject', 'smart_split'), true) ? $value : 'reject';
 	}
 
 }

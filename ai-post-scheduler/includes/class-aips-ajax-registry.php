@@ -333,6 +333,12 @@ class AIPS_Ajax_Registry {
 		'aips_indexer_save_settings'           => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_search_posts'            => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_fetch_meow_environments' => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_get_post_clusters'       => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_save_pillar'             => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_rename_post_cluster'     => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_generate_gap_ideas'      => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_commit_gap_topics'       => 'AIPS_Content_Indexer_Controller',
+		'aips_indexer_resume_cooldown'         => 'AIPS_Content_Indexer_Controller',
 	);
 
 	/**

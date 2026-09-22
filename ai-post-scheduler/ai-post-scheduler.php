@@ -623,6 +623,11 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
+        // Process pending background indexing queue (single event / cron worker)
+        add_action('aips_process_pending_indexer_queue', function () {
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
+        });
+
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)

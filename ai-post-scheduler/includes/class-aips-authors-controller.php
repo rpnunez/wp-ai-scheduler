@@ -147,10 +147,10 @@ class AIPS_Authors_Controller {
 				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
 				: wp_json_encode(array()),
 			// Topic auto-approval configuration
-			'topic_auto_approval_mode' => isset($_POST['topic_auto_approval_mode']) && in_array($_POST['topic_auto_approval_mode'], array('manual', 'all', 'score', 'similarity'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_mode'])) : 'manual',
+			'topic_auto_approval_mode' => isset($_POST['topic_auto_approval_mode']) && in_array($_POST['topic_auto_approval_mode'], array('inherit', 'manual', 'all', 'score', 'similarity'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_mode'])) : 'inherit',
 			'topic_auto_approval_min_score' => isset($_POST['topic_auto_approval_min_score']) ? max(1, min(100, absint($_POST['topic_auto_approval_min_score']))) : 70,
 			'topic_auto_approval_max_similarity' => isset($_POST['topic_auto_approval_max_similarity']) ? max(0.0, min(1.0, (float) $_POST['topic_auto_approval_max_similarity'])) : 0.80,
-			'topic_auto_approval_fallback' => isset($_POST['topic_auto_approval_fallback']) && in_array($_POST['topic_auto_approval_fallback'], array('pending', 'rejected'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_fallback'])) : 'pending',
+			'topic_auto_approval_fallback' => isset($_POST['topic_auto_approval_fallback']) && in_array($_POST['topic_auto_approval_fallback'], array('smart_split', 'pending', 'rejected'), true) ? sanitize_text_field(wp_unslash($_POST['topic_auto_approval_fallback'])) : 'smart_split',
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		

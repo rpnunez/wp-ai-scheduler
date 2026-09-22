@@ -415,6 +415,28 @@ class AIPS_Content_Indexer_Service {
 			$post_status
 		);
 
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		$cooldown     = $rate_limiter->get_cooldown_status();
+
+		if ($cooldown['is_paused']) {
+			$status = $this->get_indexing_status($post_types, $post_status);
+			return array(
+				'success'             => 0,
+				'failed'              => 0,
+				'last_post_id'        => $last_post_id,
+				'done'                => true,
+				'total_indexed'       => $status['indexed'],
+				'total_posts'         => $status['total_posts'],
+				'percent'             => $status['percent'],
+				'rate_limit_exceeded' => true,
+				'rate_limit_error'    => array(
+					'message' => $cooldown['reason'],
+					'data'    => $cooldown,
+				),
+				'rate_limits'         => $status['rate_limits'],
+			);
+		}
+
 		$success     = 0;
 		$failed      = 0;
 		$new_last_id = $last_post_id;
@@ -434,7 +456,9 @@ class AIPS_Content_Indexer_Service {
 
 				if (is_wp_error($result)) {
 					$failed++;
-					if ($result->get_error_code() === 'rate_limit_exceeded') {
+					$cooldown_res = $rate_limiter->record_failure($result);
+
+					if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
 						$rate_limit_error = array(
 							'message' => $result->get_error_message(),
 							'data'    => $result->get_error_data(),
@@ -442,6 +466,7 @@ class AIPS_Content_Indexer_Service {
 						break;
 					}
 				} else {
+					$rate_limiter->record_success();
 					$success++;
 				}
 
@@ -651,12 +676,137 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		if ('publish' === $post->post_status) {
-			$this->index_post($post_id, true);
+			$timing = (string) $this->config->get_option('aips_indexer_publish_execution_timing', 'queued');
+			if ('immediate' === $timing) {
+				$this->index_post($post_id, true);
+			} else {
+				$this->enqueue_post_for_indexing($post_id);
+			}
 		} else {
 			// If post moved to draft/trash, delete its relationships and embedding
 			$this->embeddings_repo->delete_by_post_id($post_id);
 			$this->relationships_repo->delete_for_object('post', $post_id);
 		}
+	}
+
+	/**
+	 * Buffer a published post ID into the debounced background indexing queue.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 * @return void
+	 */
+	public function enqueue_post_for_indexing(int $post_id): void {
+		$post_id = absint($post_id);
+		if ($post_id <= 0) {
+			return;
+		}
+
+		$queue = (array) get_option('aips_pending_index_queue', array());
+		if (!in_array($post_id, $queue, true)) {
+			$queue[] = $post_id;
+			update_option('aips_pending_index_queue', array_values(array_unique($queue)), false);
+		}
+
+		// Schedule debounced single event worker if not already queued
+		if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+			$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
+			wp_schedule_single_event(time() + $debounce, 'aips_process_pending_indexer_queue');
+		}
+	}
+
+	/**
+	 * Process pending post IDs in the background indexing queue in slices.
+	 *
+	 * Respects quota auto-pause, cooldown status, post types, scope, and rate limits.
+	 *
+	 * @return array Processed summary results.
+	 */
+	public function process_pending_indexer_queue(): array {
+		if (!$this->embeddings_service->is_enabled()) {
+			return array('status' => 'disabled', 'processed' => 0);
+		}
+
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		$cooldown     = $rate_limiter->get_cooldown_status();
+
+		// If currently in cooldown, reschedule worker for cooldown expiry and yield
+		if ($cooldown['is_paused']) {
+			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+				wp_schedule_single_event($cooldown['paused_until'] + 5, 'aips_process_pending_indexer_queue');
+			}
+			return array('status' => 'cooldown_active', 'paused_until' => $cooldown['paused_until']);
+		}
+
+		// If approaching hard quota (>=90%), pause queue until daily reset
+		$quota_pause = (bool) $this->config->get_option('aips_indexer_quota_pause_enabled', true);
+		if ($quota_pause && $rate_limiter->is_approaching_quota(0.90)) {
+			$stats = $rate_limiter->get_usage_stats();
+			$delay = max(3600, (int) $stats['daily_reset_in'] + 60);
+			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+				wp_schedule_single_event(time() + $delay, 'aips_process_pending_indexer_queue');
+			}
+			$this->logger->info('Embeddings queue auto-paused: approaching API quota limit.');
+			return array('status' => 'quota_paused', 'reschedule_in' => $delay);
+		}
+
+		$queue = (array) get_option('aips_pending_index_queue', array());
+		if (empty($queue)) {
+			return array('status' => 'empty', 'processed' => 0);
+		}
+
+		$batch_size = max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
+		$slice      = array_slice($queue, 0, $batch_size);
+		$remaining  = array_slice($queue, $batch_size);
+
+		$success = 0;
+		$failed  = 0;
+
+		foreach ($slice as $post_id) {
+			$post = get_post($post_id);
+			if (!$post || 'publish' !== $post->post_status || !$this->is_post_in_scope($post)) {
+				continue;
+			}
+
+			$result = $this->index_post($post_id, true);
+
+			if (is_wp_error($result)) {
+				$failed++;
+				$rate_limiter->record_failure($result);
+
+				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+					// Break slice early on rate limit / exhaustion
+					break;
+				}
+			} else {
+				$rate_limiter->record_success();
+				$success++;
+			}
+		}
+
+		// Update pending queue
+		update_option('aips_pending_index_queue', array_values($remaining), false);
+
+		// If more items remain and not in cooldown, schedule next batch
+		$cooldown = $rate_limiter->get_cooldown_status();
+		if (!empty($remaining)) {
+			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (time() + 5);
+			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+				wp_schedule_single_event($next_time, 'aips_process_pending_indexer_queue');
+			}
+		}
+
+		if ((bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true)) {
+			$this->logger->info(
+				sprintf('Processed background indexing queue slice: %d succeeded, %d failed, %d remaining.', $success, $failed, count($remaining))
+			);
+		}
+
+		return array(
+			'status'    => 'processed',
+			'success'   => $success,
+			'failed'    => $failed,
+			'remaining' => count($remaining),
+		);
 	}
 
 	/**

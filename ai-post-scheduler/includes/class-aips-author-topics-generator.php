@@ -66,6 +66,11 @@ class AIPS_Author_Topics_Generator {
 	private $prompt_builder;
 
 	/**
+	 * @var AIPS_Embeddings_Repository
+	 */
+	private $embeddings_repo;
+
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param AIPS_AI_Service_Interface|null $ai_service AI service instance (optional for testing).
@@ -76,17 +81,19 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $feedback_repository Feedback repository (optional for testing).
 	 * @param object|null $prompt_builder Topic prompt builder (optional for testing).
 	 * @param object|null $deduplication_service Deduplication service (optional for testing).
-   * @param object|null $authors_repository Authors repository (optional for testing).
+	 * @param object|null $authors_repository Authors repository (optional for testing).
+	 * @param object|null $embeddings_repo Embeddings repository (optional for testing).
 	 */
-	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null) {
+	public function __construct(?AIPS_AI_Service_Interface $ai_service = null, ?AIPS_Logger_Interface $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null, $deduplication_service = null, $authors_repository = null, $embeddings_repo = null) {
 		$container = AIPS_Container::get_instance();
 		$this->ai_service = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
 		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
-		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
+		$this->embeddings_repo = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger, null, null, $this->embeddings_repo);
+		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service($this->embeddings_repo, null, $this->embeddings_service, null, $this->logger));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
 			null,
@@ -441,25 +448,135 @@ class AIPS_Author_Topics_Generator {
 	}
 
 	/**
+	 * Compute or retrieve cached composite reference embedding vector for an Author.
+	 *
+	 * Aggregates the author's persona, bio, focus topics/niche, and the centroid of
+	 * all published posts written by this author to form an accurate baseline profile vector.
+	 *
+	 * @param object $author Author object.
+	 * @return array|null Composite vector array or null if unavailable.
+	 */
+	public function get_author_composite_embedding($author): ?array {
+		if (!$this->embeddings_service->is_enabled()) {
+			return null;
+		}
+
+		$author_id = isset($author->id) ? (int) $author->id : 0;
+		$cache_key = 'aips_author_composite_vec_' . $author_id;
+		$cached    = get_transient($cache_key);
+		if (is_array($cached) && !empty($cached)) {
+			return $cached;
+		}
+
+		// 1. Build composite profile text from persona, bio, style, goals, and focus topics
+		$profile_parts = array(
+			!empty($author->name) ? $author->name : '',
+			!empty($author->author_persona) ? $author->author_persona : (!empty($author->persona) ? $author->persona : ''),
+			!empty($author->author_bio) ? $author->author_bio : (!empty($author->bio) ? $author->bio : ''),
+			!empty($author->writing_style) ? $author->writing_style : '',
+			!empty($author->content_goals) ? $author->content_goals : '',
+			!empty($author->target_audience) ? $author->target_audience : '',
+			!empty($author->niche) ? $author->niche : '',
+		);
+		$profile_text = trim(implode(' ', array_filter($profile_parts)));
+		if (empty($profile_text)) {
+			return null;
+		}
+
+		$profile_vec = $this->embeddings_service->generate_embedding($profile_text);
+		if (is_wp_error($profile_vec) || !is_array($profile_vec)) {
+			return null;
+		}
+
+		$vectors = array($profile_vec);
+
+		// 2. Aggregate embeddings of published posts by this author
+		if (!empty($author->post_author) || !empty($author->wp_user_id)) {
+			$user_id  = !empty($author->post_author) ? (int) $author->post_author : (int) $author->wp_user_id;
+			$post_ids = get_posts(array(
+				'author'         => $user_id,
+				'post_status'    => 'publish',
+				'posts_per_page' => 20,
+				'fields'         => 'ids',
+			));
+
+			if (!empty($post_ids)) {
+				foreach ($post_ids as $pid) {
+					$row = $this->embeddings_repo->get_by_post_id((int) $pid);
+					if ($row && !empty($row->embedding)) {
+						$pvec = $this->embeddings_repo->decode_embedding($row->embedding);
+						if (!empty($pvec) && count($pvec) === count($profile_vec)) {
+							$vectors[] = $pvec;
+						}
+					}
+				}
+			}
+		}
+
+		// 3. Compute centroid across profile vector and author's published post vectors
+		$dimensions = count($profile_vec);
+		$count      = count($vectors);
+		$composite  = array_fill(0, $dimensions, 0.0);
+
+		foreach ($vectors as $v) {
+			for ($i = 0; $i < $dimensions; $i++) {
+				$composite[$i] += (float) $v[$i];
+			}
+		}
+
+		for ($i = 0; $i < $dimensions; $i++) {
+			$composite[$i] /= $count;
+		}
+
+		set_transient($cache_key, $composite, 12 * HOUR_IN_SECONDS);
+		return $composite;
+	}
+
+	/**
 	 * Apply author auto-approval rules to generated topics.
 	 *
-	 * Evaluates topics against the author's configured auto-approval policy (all, score, similarity),
-	 * setting status to 'approved' (or fallback 'rejected'/'pending') and enriching metadata.
+	 * Supports the Dual-Boundary Semantic Gate (Minimum Niche Relevance + Maximum Duplicate Guard),
+	 * quality score thresholding, and global Settings > Authors policy inheritance with Smart Split rejection.
 	 *
 	 * @param object $author Author object.
 	 * @param array  $topics List of topic arrays.
 	 * @return array Processed topic arrays.
 	 */
 	public function apply_auto_approval_rules($author, array $topics): array {
-		$mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'manual';
+		$config = AIPS_Config::get_instance();
+
+		// Determine effective policy: inherit from global settings or use author custom settings
+		$author_mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'inherit';
+
+		if ($author_mode === 'inherit') {
+			$global_enabled = (bool) $config->get_option('aips_author_topic_auto_approval_enabled', false);
+			if (!$global_enabled) {
+				return $topics; // Manual review by default
+			}
+			$mode           = (string) $config->get_option('aips_author_topic_approval_mode', 'embeddings');
+			$min_score      = 70;
+			$min_relevance  = (float) $config->get_option('aips_author_topic_min_relevance', 0.65);
+			$max_similarity = (float) $config->get_option('aips_author_topic_max_duplicate', 0.80);
+			$fallback       = (string) $config->get_option('aips_author_topic_fallback_action', 'smart_split');
+		} else {
+			$mode           = $author_mode;
+			$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
+			// In similarity/embeddings mode, topic_auto_approval_min_score stores relevance percentage (1-100)
+			$min_relevance  = isset($author->topic_auto_approval_min_score) ? max(0.01, min(1.0, (float) ($author->topic_auto_approval_min_score / 100))) : 0.65;
+			$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
+			$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'smart_split';
+		}
+
 		if ($mode === 'manual') {
 			return $topics;
 		}
 
-		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
-		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
-		$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'pending';
-		$now            = AIPS_DateTime::now()->timestamp();
+		$now                 = AIPS_DateTime::now()->timestamp();
+		$author_baseline_vec = null;
+
+		if (in_array($mode, array('similarity', 'embeddings'), true)) {
+			$author_baseline_vec = $this->get_author_composite_embedding($author);
+		}
 
 		foreach ($topics as &$topic) {
 			$meta = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
@@ -467,15 +584,16 @@ class AIPS_Author_Topics_Generator {
 				$meta = array();
 			}
 
-			$qualifies = false;
-			$reason    = '';
-			$note      = '';
+			$qualifies        = false;
+			$is_dup_rejection = false;
+			$reason           = '';
+			$note             = '';
 
 			switch ($mode) {
 				case 'all':
 					$qualifies = true;
 					$reason    = 'auto_approve_all';
-					$note      = __('Auto-approved: Author policy is set to auto-approve all topics.', 'ai-post-scheduler');
+					$note      = __('Auto-approved: Policy is set to auto-approve all topics.', 'ai-post-scheduler');
 					break;
 
 				case 'score':
@@ -494,18 +612,58 @@ class AIPS_Author_Topics_Generator {
 					break;
 
 				case 'similarity':
-					$dup_sim = isset($meta['duplicate_similarity']) ? (float) $meta['duplicate_similarity'] : (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
-					if ($dup_sim < $max_similarity) {
-						$qualifies = true;
-						$reason    = 'similarity_dedupe_guard_passed';
-						$note      = sprintf(__('Auto-approved: Duplicate similarity %.2f%% is below maximum threshold of %.2f%%.', 'ai-post-scheduler'), $dup_sim * 100, $max_similarity * 100);
-					} else {
-						$qualifies = false;
-						$reason    = 'similarity_dedupe_guard_exceeded';
-						$note      = sprintf(__('Did not qualify: Duplicate similarity %.2f%% met or exceeded maximum threshold of %.2f%%.', 'ai-post-scheduler'), $dup_sim * 100, $max_similarity * 100);
+				case 'embeddings':
+					$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
+					$dup_sim     = isset($meta['duplicate_similarity']) ? (float) $meta['duplicate_similarity'] : (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
+
+					// Compute topic relevance to author composite baseline vector
+					$rel_sim = 0.70;
+					if (!empty($author_baseline_vec) && !empty($topic_title)) {
+						$tvec = $this->embeddings_service->generate_embedding($topic_title);
+						if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
+							$sim_calc = $this->embeddings_service->calculate_similarity($tvec, $author_baseline_vec);
+							if (!is_wp_error($sim_calc)) {
+								$rel_sim = (float) $sim_calc;
+							}
+						}
 					}
-					$meta['auto_approval_similarity']     = round($dup_sim, 4);
+
+					$meta['auto_approval_relevance']      = round($rel_sim, 4);
+					$meta['auto_approval_duplicate_sim']  = round($dup_sim, 4);
+					$meta['auto_approval_min_relevance']  = round($min_relevance, 4);
 					$meta['auto_approval_max_similarity'] = round($max_similarity, 4);
+
+					// Dual-Boundary Semantic Evaluation:
+					if ($dup_sim >= $max_similarity) {
+						// Upper bound breach: Duplicate / cannibalization hazard
+						$qualifies        = false;
+						$is_dup_rejection = true;
+						$reason           = 'rejected_duplicate_cannibalization';
+						$note             = sprintf(
+							__('Auto-rejected: Duplicate similarity %.1f%% met or exceeded maximum threshold of %.1f%%.', 'ai-post-scheduler'),
+							$dup_sim * 100,
+							$max_similarity * 100
+						);
+					} elseif ($rel_sim < $min_relevance) {
+						// Lower bound breach: Off-topic / low niche relevance
+						$qualifies        = false;
+						$is_dup_rejection = false;
+						$reason           = 'low_niche_relevance';
+						$note             = sprintf(
+							__('Did not qualify: Niche relevance %.1f%% is below minimum required %.1f%%.', 'ai-post-scheduler'),
+							$rel_sim * 100,
+							$min_relevance * 100
+						);
+					} else {
+						// Passed both gates!
+						$qualifies = true;
+						$reason    = 'semantic_dual_gate_passed';
+						$note      = sprintf(
+							__('Auto-approved: Passed semantic gate (Relevance: %.1f%%, Duplicate: %.1f%%).', 'ai-post-scheduler'),
+							$rel_sim * 100,
+							$dup_sim * 100
+						);
+					}
 					break;
 
 				default:
@@ -522,7 +680,11 @@ class AIPS_Author_Topics_Generator {
 				$meta['auto_approval_reason'] = $reason;
 				$meta['auto_approval_note']   = $note;
 			} else {
-				if ($fallback === 'rejected') {
+				// Rejection & Fallback resolution:
+				// Smart Split rejects duplicates immediately and holds low-relevance in pending for review
+				$should_reject = ($fallback === 'rejected') || ($fallback === 'smart_split' && $is_dup_rejection);
+
+				if ($should_reject) {
 					$topic['status']              = 'rejected';
 					$topic['reviewed_at']         = $now;
 					$topic['reviewed_by']         = 0;

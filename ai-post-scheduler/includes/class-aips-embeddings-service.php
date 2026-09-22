@@ -123,13 +123,13 @@ class AIPS_Embeddings_Service {
 		// backend is Meow AI Engine, the WordPress AI Client, or another adapter.
 		$embedding = $this->ai_service->generate_embedding($text, $options);
 
+		// Record quota consumption immediately upon making the outgoing AI provider request
+		$this->rate_limiter->record_usage(1);
+
 		if (is_wp_error($embedding)) {
 			$this->logger->log('Embedding generation failed: ' . $embedding->get_error_message(), 'error');
 			return $embedding;
 		}
-
-		// Record quota consumption on successful generation
-		$this->rate_limiter->record_usage(1);
 
 		// Cache the result
 		$this->embedding_cache[$cache_key] = $embedding;

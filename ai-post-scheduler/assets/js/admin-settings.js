@@ -81,6 +81,15 @@
 					$('#aips_embeddings_dimensions').val(selected.data('dimensions'));
 				}
 			});
+			function updateAuthorApprovalFields() {
+				var mode = $('#aips_author_topic_auto_approval_mode').val();
+				var isSimilarity = mode === 'similarity';
+				$('#aips_author_topic_auto_approval_min_score, #aips_author_topic_auto_approval_max_similarity, #aips_author_topic_auto_approval_fallback')
+					.closest('tr')
+					.toggle(isSimilarity);
+			}
+			$(document).on('change', '#aips_author_topic_auto_approval_mode', updateAuthorApprovalFields);
+			updateAuthorApprovalFields();
 		},
 
 		/**

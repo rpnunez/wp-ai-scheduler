@@ -245,10 +245,10 @@
 			$('#author_id').val('');
 
 			// Reset auto-approval fields
-			$('#topic_auto_approval_mode').val('manual');
-			$('#topic_auto_approval_min_score').val('70');
+			$('#topic_auto_approval_mode').val('inherit');
+			$('#topic_auto_approval_min_score').val('65');
 			$('#topic_auto_approval_max_similarity').val('0.80');
-			$('#topic_auto_approval_fallback').val('pending');
+			$('#topic_auto_approval_fallback').val('smart_split');
 			this.toggleAutoApprovalFields();
 
 			// Show form and hide loader
@@ -276,10 +276,10 @@
 		 * Show or hide the Topic Auto-Approval fields based on the selected mode.
 		 */
 		toggleAutoApprovalFields: function () {
-			const mode = $('#topic_auto_approval_mode').val() || 'manual';
+			const mode = $('#topic_auto_approval_mode').val() || 'inherit';
 			$('#aips-auto-approval-score-group').toggle(mode === 'score');
 			$('#aips-auto-approval-similarity-group').toggle(mode === 'similarity');
-			$('#aips-auto-approval-fallback-group').toggle(mode !== 'manual');
+			$('#aips-auto-approval-fallback-group').toggle(mode !== 'manual' && mode !== 'inherit');
 		},
 
 		/**

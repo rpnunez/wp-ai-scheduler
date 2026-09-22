@@ -334,6 +334,58 @@ class AIPS_Settings {
 				'sanitize_callback' => 'floatval',
 				'default'           => $defaults['aips_deduplication_threshold'],
 			),
+			'aips_indexer_publish_execution_timing' => array(
+				'sanitize_callback' => array($ui, 'sanitize_publish_execution_timing'),
+				'default'           => $defaults['aips_indexer_publish_execution_timing'],
+			),
+			'aips_indexer_batch_size' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_batch_size'],
+			),
+			'aips_indexer_queue_debounce_seconds' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_queue_debounce_seconds'],
+			),
+			'aips_indexer_quota_pause_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_quota_pause_enabled'],
+			),
+			'aips_indexer_queue_notifications_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_queue_notifications_enabled'],
+			),
+			'aips_indexer_error_pause_duration' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_error_pause_duration'],
+			),
+			'aips_indexer_error_pause_unit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_error_pause_unit'),
+				'default'           => $defaults['aips_indexer_error_pause_unit'],
+			),
+			'aips_indexer_consecutive_error_threshold' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_consecutive_error_threshold'],
+			),
+			'aips_indexer_post_cluster_threshold' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_indexer_post_cluster_threshold'],
+			),
+			'aips_author_topic_auto_approval_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_mode'),
+				'default'           => $defaults['aips_author_topic_auto_approval_mode'],
+			),
+			'aips_author_topic_auto_approval_min_score' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_author_topic_auto_approval_min_score'],
+			),
+			'aips_author_topic_auto_approval_max_similarity' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_author_topic_auto_approval_max_similarity'],
+			),
+			'aips_author_topic_auto_approval_fallback' => array(
+				'sanitize_callback' => array($ui, 'sanitize_author_topic_auto_approval_fallback'),
+				'default'           => $defaults['aips_author_topic_auto_approval_fallback'],
+			),
 		);
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
@@ -598,6 +650,30 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_indexer_publish_execution_timing',
+            __('Publish Indexing Mode', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_publish_execution_timing_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_batch_config',
+            __('Batch Queue & Quota Pause', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_batch_config_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_error_cooldown',
+            __('Rate Limit Error Auto-Cooldown', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_error_cooldown_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
             'aips_indexer_verbose_history',
             __('Activity Logging', 'ai-post-scheduler'),
             array($this->ui, 'indexer_verbose_history_field_callback'),
@@ -617,6 +693,14 @@ class AIPS_Settings {
             'aips_indexer_similarity_threshold',
             __('Related Posts Similarity Threshold', 'ai-post-scheduler'),
             array($this->ui, 'indexer_similarity_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_indexer_post_cluster_threshold',
+            __('Post Cluster Similarity Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'indexer_post_cluster_threshold_field_callback'),
             'aips-settings',
             'aips_ai_scope_section'
         );
@@ -695,6 +779,48 @@ class AIPS_Settings {
             array($this->ui, 'deduplication_threshold_field_callback'),
             'aips-settings',
             'aips_ai_deduplication_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Authors Section: Global Topic Approval & Semantic Gate
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_authors_section',
+            __('Global Author Topic Policy & Semantic Gate', 'ai-post-scheduler'),
+            array($this->ui, 'authors_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_mode',
+            __('Default Auto-Approval Mode', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_mode_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_min_score',
+            __('Minimum Niche Relevance %', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_min_score_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_max_similarity',
+            __('Maximum Duplicate Ceiling', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_max_similarity_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_fallback',
+            __('Sub-Threshold Handling', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_fallback_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
         );
 
         // -----------------------------------------------------------------------

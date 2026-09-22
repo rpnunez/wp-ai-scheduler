@@ -26,6 +26,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-tab-nav" id="aips-settings-tab-nav">
 					<button type="button" class="aips-tab-link active" data-tab="settings-general"><?php esc_html_e('General', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-tab-link" data-tab="settings-authors"><?php esc_html_e('Authors', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-notifications"><?php esc_html_e('Notifications', 'ai-post-scheduler'); ?></button>
 					<button type="button" class="aips-tab-link" data-tab="settings-resilience"><?php esc_html_e('Resilience &amp; Limits', 'ai-post-scheduler'); ?></button>
@@ -129,6 +130,25 @@ if (!defined('ABSPATH')) {
 							</div>
 						</div>
 
+						<p class="submit">
+							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+						</p>
+					</div>
+
+					<!-- Authors Tab -->
+					<div id="settings-authors-tab" class="aips-tab-content" style="display:none;">
+						<p class="description"><?php esc_html_e('Configure default topic generation, auto-approval thresholds, and semantic duplicate filters for authors.', 'ai-post-scheduler'); ?></p>
+						<div class="aips-settings-section-card">
+							<div class="aips-settings-section-header">
+								<h3 class="aips-settings-section-title"><?php esc_html_e('Global Author Topics Auto-Approval &amp; Semantic Gate', 'ai-post-scheduler'); ?></h3>
+								<p class="description"><?php esc_html_e('Set the baseline semantic gate for new author topics. Authors set to "Inherit Global Policy" will use these thresholds.', 'ai-post-scheduler'); ?></p>
+							</div>
+							<div class="aips-settings-section-body">
+								<table class="form-table" role="presentation">
+									<?php do_settings_fields('aips-settings', 'aips_authors_section'); ?>
+								</table>
+							</div>
+						</div>
 						<p class="submit">
 							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 						</p>
