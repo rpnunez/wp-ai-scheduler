@@ -87,12 +87,15 @@ class AIPS_Settings_UI {
 	public function authors_section_callback() {
 		echo '<p>' . esc_html__('Configure default auto-approval policies and dual-boundary semantic gates for author topics.', 'ai-post-scheduler') . '</p>';
 	}
-     *
-     * @return void
-     */
-    public function feedback_section_callback() {
-        echo '<p>' . esc_html__('Configure how the plugin evaluates and deduplicates generated topic suggestions.', 'ai-post-scheduler') . '</p>';
-    }
+
+	/**
+	 * Render the description for the feedback settings section.
+	 *
+	 * @return void
+	 */
+	public function feedback_section_callback() {
+		echo '<p>' . esc_html__('Configure how the plugin evaluates and deduplicates generated topic suggestions.', 'ai-post-scheduler') . '</p>';
+	}
 
     /**
      * Render the description for the API keys settings section.
