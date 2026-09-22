@@ -116,14 +116,14 @@ class AIPS_Similarity_Evaluator {
 		?AIPS_Deduplication_Service $deduplication_service = null,
 		?AIPS_Logger_Interface $logger = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->config                = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
-		$this->embeddings_repo       = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->embeddings_service    = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->relationships_repo    = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
-		$this->ai_service            = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service());
-		$this->logger                = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$container                   = class_exists('AIPS_Container') ? AIPS_Container::get_instance() : null;
+		$this->config                = $config ?: ($container && $container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
+		$this->embeddings_repo       = $embeddings_repo;
+		$this->embeddings_service    = $embeddings_service;
+		$this->relationships_repo    = $relationships_repo;
+		$this->ai_service            = $ai_service;
+		$this->deduplication_service = $deduplication_service;
+		$this->logger                = $logger;
 	}
 
 	/**
@@ -443,9 +443,10 @@ class AIPS_Similarity_Evaluator {
 
 				// Step 3: Lazy decoding via repository cache
 				if (isset($cand->embedding)) {
+					$emb_repo = $this->get_embeddings_repository();
 					$cand_vec = is_array($cand->embedding)
 						? $cand->embedding
-						: ($this->embeddings_repo ? $this->embeddings_repo->decode_embedding($cand->embedding, $type, $cand_id, isset($cand->content_hash) ? $cand->content_hash : '') : array());
+						: ($emb_repo ? $emb_repo->decode_embedding($cand->embedding, $type, $cand_id, isset($cand->content_hash) ? $cand->content_hash : '') : array());
 				}
 			} elseif (is_array($cand)) {
 				$cand_id = isset($cand['object_id']) ? (int) $cand['object_id'] : (isset($cand['id']) ? (int) $cand['id'] : 0);
@@ -454,9 +455,10 @@ class AIPS_Similarity_Evaluator {
 
 				// Step 3: Lazy decoding via repository cache
 				if (isset($cand['embedding'])) {
+					$emb_repo = $this->get_embeddings_repository();
 					$cand_vec = is_array($cand['embedding'])
 						? $cand['embedding']
-						: ($this->embeddings_repo ? $this->embeddings_repo->decode_embedding($cand['embedding'], $type, $cand_id, isset($cand['content_hash']) ? $cand['content_hash'] : '') : array());
+						: ($emb_repo ? $emb_repo->decode_embedding($cand['embedding'], $type, $cand_id, isset($cand['content_hash']) ? $cand['content_hash'] : '') : array());
 				}
 			}
 
@@ -714,9 +716,10 @@ class AIPS_Similarity_Evaluator {
 			);
 		}
 
-		$raw_duplicates = array();
-		if ($this->embeddings_repo) {
-			$emb = $this->embeddings_repo->get_by_post_id($post_id);
+		$raw_duplicates  = array();
+		$embeddings_repo = $this->get_embeddings_repository();
+		if ($embeddings_repo) {
+			$emb = $embeddings_repo->get_by_post_id($post_id);
 			if (!$emb) {
 				return array(
 					'post_id'            => $post_id,
@@ -729,8 +732,9 @@ class AIPS_Similarity_Evaluator {
 				);
 			}
 
-			if ($this->relationships_repo) {
-				$raw_duplicates = $this->relationships_repo->get_top_duplicates($post_id, 5);
+			$relationships_repo = $this->get_relationships_repository();
+			if ($relationships_repo) {
+				$raw_duplicates = $relationships_repo->get_top_duplicates($post_id, 5);
 			}
 		}
 

@@ -81,14 +81,14 @@ class AIPS_Embeddings_Service {
 		?AIPS_Author_Topics_Repository $topics_repo = null,
 		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
-		$container = AIPS_Container::get_instance();
-		$this->ai_service           = $ai_service ?: ($container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
-		$this->logger               = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->config               = $config ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
-		$this->rate_limiter         = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter($this->config, $this->logger));
-		$this->embeddings_repo      = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : null);
-		$this->topics_repo          = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : null);
-		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : null);
+		$container                  = class_exists('AIPS_Container') ? AIPS_Container::get_instance() : null;
+		$this->ai_service           = $ai_service ?: ($container && $container->has(AIPS_AI_Service_Interface::class) ? $container->make(AIPS_AI_Service_Interface::class) : new AIPS_AI_Service());
+		$this->logger               = $logger ?: ($container && $container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->config               = $config ?: ($container && $container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
+		$this->rate_limiter         = $rate_limiter ?: ($container && $container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter($this->config, $this->logger));
+		$this->embeddings_repo      = $embeddings_repo;
+		$this->topics_repo          = $topics_repo;
+		$this->similarity_evaluator = $similarity_evaluator;
 		$this->embedding_cache      = array();
 	}
 
