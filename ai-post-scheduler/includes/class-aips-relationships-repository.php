@@ -406,39 +406,6 @@ class AIPS_Relationships_Repository {
 		return $this->wpdb->delete($this->table, $where, $formats);
 	}
 
-	/**
-	 * Delete relationships for a given source and relation type.
-	 *
-	 * @param string $source_type   Source entity type.
-	 * @param int    $source_id     Source ID.
-	 * @param string $relation_type Optional relation type filter.
-	 * @return int|false Number of rows deleted.
-	 */
-	public function delete_for_source($source_type, $source_id, $relation_type = '') {
-		$source_type = sanitize_key($source_type);
-		$source_id   = absint($source_id);
-
-		if (!empty($relation_type)) {
-			return $this->wpdb->delete(
-				$this->table,
-				array(
-					'source_type'   => $source_type,
-					'source_id'     => $source_id,
-					'relation_type' => sanitize_key($relation_type),
-				),
-				array('%s', '%d', '%s')
-			);
-		}
-
-		return $this->wpdb->delete(
-			$this->table,
-			array(
-				'source_type' => $source_type,
-				'source_id'   => $source_id,
-			),
-			array('%s', '%d')
-		);
-	}
 
 	/**
 	 * Delete all relationships referencing an object (as either source or target).
