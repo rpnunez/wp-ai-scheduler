@@ -131,9 +131,7 @@
 				return;
 			}
 
-			$button.prop('disabled', true);
-
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -147,14 +145,14 @@
 						location.reload();
 					} else {
 						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorArchive, 'error');
-						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
 					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false);
 				}
 			});
+
+			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.archiving || 'Archiving...' });
 		},
 
 		/**
@@ -168,7 +166,7 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			$.post(ajaxurl, {
+			var req = $.post(ajaxurl, {
 				action: 'aips_restore_campaign',
 				nonce: aipsAjax.nonce,
 				campaign_id: campaignId
@@ -181,6 +179,8 @@
 			}).fail(function() {
 				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 			});
+
+			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.restoring || 'Restoring...' });
 		},
 
 		/**
@@ -207,9 +207,7 @@
 				return;
 			}
 
-			$button.prop('disabled', true).addClass('is-busy');
-
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
@@ -223,14 +221,14 @@
 						location.reload();
 					} else {
 						AIPS.Utilities.showNotice(response.data.message || errorMessage, 'error');
-						$button.prop('disabled', false).removeClass('is-busy');
 					}
 				},
 				error: function() {
 					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false).removeClass('is-busy');
 				}
 			});
+
+			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.running || 'Running...' });
 		},
 
 		/**
@@ -248,7 +246,7 @@
 				return;
 			}
 
-			$.post(ajaxurl, {
+			var req = $.post(ajaxurl, {
 				action: 'aips_delete_campaign',
 				nonce: aipsAjax.nonce,
 				campaign_id: campaignId
@@ -261,6 +259,8 @@
 			}).fail(function() {
 				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
 			});
+
+			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.deleting || 'Deleting...' });
 		}
 	};
 
