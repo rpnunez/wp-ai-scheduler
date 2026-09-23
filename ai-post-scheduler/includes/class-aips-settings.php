@@ -310,357 +310,401 @@ class AIPS_Settings {
      */
 	public function register_settings() {
 		self::register_setting_schema($this->ui);
-        
-        // -----------------------------------------------------------------------
-        // General section: Default Post Status, Default Category
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_general_section',
-            __('General Settings', 'ai-post-scheduler'),
-            array($this->ui, 'general_section_callback'),
-            'aips-settings'
-        );
 
-        add_settings_field(
-            'aips_default_post_status',
-            __('Default Post Status', 'ai-post-scheduler'),
-            array($this->ui, 'post_status_field_callback'),
-            'aips-settings',
-            'aips_general_section'
-        );
+		$this->register_general_settings();
+		$this->register_ai_settings();
+		$this->register_feedback_settings();
+		$this->register_notifications_settings();
+		$this->register_api_keys_settings();
+		$this->register_developers_settings();
+		$this->register_resilience_settings();
+		$this->register_content_strategy_settings();
+		$this->register_cache_settings();
+	}
 
-        add_settings_field(
-            'aips_default_category',
-            __('Default Category', 'ai-post-scheduler'),
-            array($this->ui, 'category_field_callback'),
-            'aips-settings',
-            'aips_general_section'
-        );
+	/**
+	 * Register General settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_general_settings() {
+		add_settings_section(
+			'aips_general_section',
+			__('General Settings', 'ai-post-scheduler'),
+			array($this->ui, 'general_section_callback'),
+			'aips-settings'
+		);
 
-        // -----------------------------------------------------------------------
-        // AI section: AI Model, Environment ID
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_ai_section',
-            __('AI Settings', 'ai-post-scheduler'),
-            array($this->ui, 'ai_section_callback'),
-            'aips-settings'
-        );
+		add_settings_field(
+			'aips_default_post_status',
+			__('Default Post Status', 'ai-post-scheduler'),
+			array($this->ui, 'post_status_field_callback'),
+			'aips-settings',
+			'aips_general_section'
+		);
 
-        add_settings_field(
-            'aips_ai_provider',
-            __('AI Provider', 'ai-post-scheduler'),
-            array($this->ui, 'ai_provider_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_default_category',
+			__('Default Category', 'ai-post-scheduler'),
+			array($this->ui, 'category_field_callback'),
+			'aips-settings',
+			'aips_general_section'
+		);
+	}
+
+	/**
+	 * Register AI settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_ai_settings() {
+		add_settings_section(
+			'aips_ai_section',
+			__('AI Settings', 'ai-post-scheduler'),
+			array($this->ui, 'ai_section_callback'),
+			'aips-settings'
+		);
+
+		add_settings_field(
+			'aips_ai_provider',
+			__('AI Provider / Engine', 'ai-post-scheduler'),
+			array($this->ui, 'ai_provider_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
+
+		add_settings_field(
+			'aips_ai_model',
+			__('AI Model', 'ai-post-scheduler'),
+			array($this->ui, 'ai_model_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
 		add_settings_field(
 			'aips_wp_ai_connectors',
-			__('WordPress AI Connectors', 'ai-post-scheduler'),
+			__('WordPress AI Client Connector Priorities', 'ai-post-scheduler'),
 			array($this->ui, 'wp_ai_connectors_field_callback'),
 			'aips-settings',
 			'aips_ai_section'
 		);
 
-        add_settings_field(
-            'aips_ai_model',
-            __('AI Model', 'ai-post-scheduler'),
-            array($this->ui, 'ai_model_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
-
-        add_settings_field(
-            'aips_ai_env_id',
-            __('Environment ID', 'ai-post-scheduler'),
-            array($this->ui, 'ai_env_id_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
-
 		add_settings_field(
 			'aips_prevent_scheduled_ai_generation',
-			AIPS_Config::get_instance()->get_scheduled_ai_generation_prevention_label(),
+			__('Disable Automatic AI Generation (Global)', 'ai-post-scheduler'),
 			array($this->ui, 'prevent_scheduled_ai_generation_field_callback'),
 			'aips-settings',
 			'aips_ai_section'
 		);
 
-        add_settings_field(
-            'aips_max_tokens_limit',
-            __('Max Tokens Limit', 'ai-post-scheduler'),
-            array($this->ui, 'max_tokens_limit_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_ai_env_id',
+			__('Environment ID (Optional)', 'ai-post-scheduler'),
+			array($this->ui, 'ai_env_id_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
-        add_settings_field(
-            'aips_max_tokens_title',
-            __('Max Tokens for Post Titles', 'ai-post-scheduler'),
-            array($this->ui, 'max_tokens_title_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_max_tokens_limit',
+			__('Max Tokens (Global Cap)', 'ai-post-scheduler'),
+			array($this->ui, 'max_tokens_limit_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
-        add_settings_field(
-            'aips_max_tokens_excerpt',
-            __('Max Tokens for Post Excerpts', 'ai-post-scheduler'),
-            array($this->ui, 'max_tokens_excerpt_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_max_tokens_title',
+			__('Max Tokens: Title Prompt', 'ai-post-scheduler'),
+			array($this->ui, 'max_tokens_title_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
-        add_settings_field(
-            'aips_max_tokens_content',
-            __('Max Tokens for Post Content', 'ai-post-scheduler'),
-            array($this->ui, 'max_tokens_content_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_max_tokens_excerpt',
+			__('Max Tokens: Excerpt Prompt', 'ai-post-scheduler'),
+			array($this->ui, 'max_tokens_excerpt_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
-        add_settings_field(
-            'aips_conversational_generation',
-            __('Conversational Generation', 'ai-post-scheduler'),
-            array($this->ui, 'conversational_generation_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_max_tokens_content',
+			__('Max Tokens: Content Prompt', 'ai-post-scheduler'),
+			array($this->ui, 'max_tokens_content_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
-        add_settings_field(
-            'aips_conversational_metadata_turn',
-            __('Combined Metadata Turn', 'ai-post-scheduler'),
-            array($this->ui, 'conversational_metadata_turn_field_callback'),
-            'aips-settings',
-            'aips_ai_section'
-        );
+		add_settings_field(
+			'aips_conversational_generation',
+			__('Conversational Generation (Multi-Turn)', 'ai-post-scheduler'),
+			array($this->ui, 'conversational_generation_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
 
-        // -----------------------------------------------------------------------
-        // Feedback section: Topic Similarity Threshold
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_feedback_section',
-            __('Feedback Settings', 'ai-post-scheduler'),
-            array($this->ui, 'feedback_section_callback'),
-            'aips-settings'
-        );
+		add_settings_field(
+			'aips_conversational_metadata_turn',
+			__('Conversational Metadata Turn Strategy', 'ai-post-scheduler'),
+			array($this->ui, 'conversational_metadata_turn_field_callback'),
+			'aips-settings',
+			'aips_ai_section'
+		);
+	}
 
-        add_settings_field(
-            'aips_topic_similarity_threshold',
-            __('Topic Similarity Threshold', 'ai-post-scheduler'),
-            array($this->ui, 'topic_similarity_threshold_field_callback'),
-            'aips-settings',
-            'aips_feedback_section'
-        );
+	/**
+	 * Register Feedback settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_feedback_settings() {
+		add_settings_section(
+			'aips_feedback_section',
+			__('Feedback Settings', 'ai-post-scheduler'),
+			array($this->ui, 'feedback_section_callback'),
+			'aips-settings'
+		);
 
-        // -----------------------------------------------------------------------
-        // Notifications section: Email address + all per-type preferences
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_notifications_section',
-            __('Notifications', 'ai-post-scheduler'),
-            array($this->ui, 'notifications_section_callback'),
-            'aips-settings'
-        );
+		add_settings_field(
+			'aips_topic_similarity_threshold',
+			__('Topic Similarity Threshold', 'ai-post-scheduler'),
+			array($this->ui, 'topic_similarity_threshold_field_callback'),
+			'aips-settings',
+			'aips_feedback_section'
+		);
+	}
 
-        add_settings_field(
-            'aips_review_notifications_email',
-            __('Notifications Email Address', 'ai-post-scheduler'),
-            array($this->ui, 'review_notifications_email_field_callback'),
-            'aips-settings',
-            'aips_notifications_section'
-        );
+	/**
+	 * Register Notifications settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_notifications_settings() {
+		add_settings_section(
+			'aips_notifications_section',
+			__('Notifications', 'ai-post-scheduler'),
+			array($this->ui, 'notifications_section_callback'),
+			'aips-settings'
+		);
 
-        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
-            add_settings_field(
-                'aips_notification_preferences_' . $type,
-                $meta['label'],
-                array($this->ui, 'notification_preference_field_callback'),
-                'aips-settings',
-                'aips_notifications_section',
-                array(
-                    'type'        => $type,
-                    'description' => $meta['description'],
-                )
-            );
-        }
+		add_settings_field(
+			'aips_review_notifications_email',
+			__('Notification Email Address', 'ai-post-scheduler'),
+			array($this->ui, 'review_notifications_email_field_callback'),
+			'aips-settings',
+			'aips_notifications_section'
+		);
 
-        // -----------------------------------------------------------------------
-        // API Keys section: Unsplash Access Key
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_api_keys_section',
-            __('API Keys', 'ai-post-scheduler'),
-            array($this->ui, 'api_keys_section_callback'),
-            'aips-settings'
-        );
+		if (class_exists('AIPS_Notifications')) {
+			foreach (AIPS_Notifications::get_notification_type_registry() as $type_key => $type_info) {
+				$option_name = 'aips_notify_' . $type_key;
+				add_settings_field(
+					$option_name,
+					$type_info['label'],
+					array($this->ui, 'notification_type_checkbox_callback'),
+					'aips-settings',
+					'aips_notifications_section',
+					array(
+						'option_name' => $option_name,
+						'description' => $type_info['description'],
+					)
+				);
+			}
+		}
+	}
 
-        add_settings_field(
-            'aips_unsplash_access_key',
-            __('Unsplash Access Key', 'ai-post-scheduler'),
-            array($this->ui, 'unsplash_access_key_field_callback'),
-            'aips-settings',
-            'aips_api_keys_section'
-        );
+	/**
+	 * Register API Keys settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_api_keys_settings() {
+		add_settings_section(
+			'aips_api_keys_section',
+			__('API Keys', 'ai-post-scheduler'),
+			array($this->ui, 'api_keys_section_callback'),
+			'aips-settings'
+		);
 
-        // -----------------------------------------------------------------------
-        // Developers section: Enable Logging, Developer Mode
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_developers_section',
-            __('Developer Settings', 'ai-post-scheduler'),
-            array($this->ui, 'developers_section_callback'),
-            'aips-settings'
-        );
+		add_settings_field(
+			'aips_unsplash_access_key',
+			__('Unsplash Access Key', 'ai-post-scheduler'),
+			array($this->ui, 'unsplash_access_key_field_callback'),
+			'aips-settings',
+			'aips_api_keys_section'
+		);
+	}
 
-        add_settings_field(
-            'aips_enable_logging',
-            __('Enable Logging', 'ai-post-scheduler'),
-            array($this->ui, 'logging_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
+	/**
+	 * Register Developers settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_developers_settings() {
+		add_settings_section(
+			'aips_developers_section',
+			__('Developer Settings', 'ai-post-scheduler'),
+			array($this->ui, 'developers_section_callback'),
+			'aips-settings'
+		);
 
-        add_settings_field(
-            'aips_developer_mode',
-            __('Developer Mode', 'ai-post-scheduler'),
-            array($this->ui, 'developer_mode_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
+		add_settings_field(
+			'aips_enable_logging',
+			__('Enable Logging', 'ai-post-scheduler'),
+			array($this->ui, 'logging_field_callback'),
+			'aips-settings',
+			'aips_developers_section'
+		);
 
-        add_settings_field(
-            'aips_enable_telemetry',
-            __('Enable Telemetry', 'ai-post-scheduler'),
-            array($this->ui, 'enable_telemetry_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
+		add_settings_field(
+			'aips_developer_mode',
+			__('Developer Mode', 'ai-post-scheduler'),
+			array($this->ui, 'developer_mode_field_callback'),
+			'aips-settings',
+			'aips_developers_section'
+		);
 
-        add_settings_field(
-            'aips_cache_monitor_enabled',
-            __('Enable Cache Monitor', 'ai-post-scheduler'),
-            array($this->ui, 'cache_monitor_enabled_field_callback'),
-            'aips-settings',
-            'aips_developers_section'
-        );
+		add_settings_field(
+			'aips_enable_telemetry',
+			__('Enable Telemetry', 'ai-post-scheduler'),
+			array($this->ui, 'enable_telemetry_field_callback'),
+			'aips-settings',
+			'aips_developers_section'
+		);
 
-        add_settings_section(
-            'aips_resilience_section',
-            __('Resilience & Limits', 'ai-post-scheduler'),
-            array($this->ui, 'resilience_section_callback'),
-            'aips-settings'
-        );
+		add_settings_field(
+			'aips_cache_monitor_enabled',
+			__('Enable Cache Monitor', 'ai-post-scheduler'),
+			array($this->ui, 'cache_monitor_enabled_field_callback'),
+			'aips-settings',
+			'aips_developers_section'
+		);
+	}
 
-        add_settings_field(
-            'aips_enable_retry',
-            __('Enable Retry', 'ai-post-scheduler'),
-            array($this->ui, 'enable_retry_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+	/**
+	 * Register Resilience & Limits settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_resilience_settings() {
+		add_settings_section(
+			'aips_resilience_section',
+			__('Resilience & Limits', 'ai-post-scheduler'),
+			array($this->ui, 'resilience_section_callback'),
+			'aips-settings'
+		);
 
-        add_settings_field(
-            'aips_retry_max_attempts',
-            __('Max Retries on Failure', 'ai-post-scheduler'),
-            array($this->ui, 'max_retries_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_enable_retry',
+			__('Enable Retry', 'ai-post-scheduler'),
+			array($this->ui, 'enable_retry_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_retry_initial_delay',
-            __('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
-            array($this->ui, 'retry_initial_delay_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_retry_max_attempts',
+			__('Max Retries on Failure', 'ai-post-scheduler'),
+			array($this->ui, 'max_retries_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_enable_rate_limiting',
-            __('Enable Rate Limiting', 'ai-post-scheduler'),
-            array($this->ui, 'enable_rate_limiting_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_retry_initial_delay',
+			__('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
+			array($this->ui, 'retry_initial_delay_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_rate_limit_requests',
-            __('Rate Limit Max Requests', 'ai-post-scheduler'),
-            array($this->ui, 'rate_limit_requests_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_enable_rate_limiting',
+			__('Enable Rate Limiting', 'ai-post-scheduler'),
+			array($this->ui, 'enable_rate_limiting_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_rate_limit_period',
-            __('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
-            array($this->ui, 'rate_limit_period_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_rate_limit_requests',
+			__('Rate Limit Max Requests', 'ai-post-scheduler'),
+			array($this->ui, 'rate_limit_requests_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_enable_circuit_breaker',
-            __('Enable Circuit Breaker', 'ai-post-scheduler'),
-            array($this->ui, 'enable_circuit_breaker_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_rate_limit_period',
+			__('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
+			array($this->ui, 'rate_limit_period_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_circuit_breaker_threshold',
-            __('Circuit Breaker Failure Threshold', 'ai-post-scheduler'),
-            array($this->ui, 'circuit_breaker_threshold_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_enable_circuit_breaker',
+			__('Enable Circuit Breaker', 'ai-post-scheduler'),
+			array($this->ui, 'enable_circuit_breaker_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        add_settings_field(
-            'aips_circuit_breaker_timeout',
-            __('Circuit Breaker Timeout (Seconds)', 'ai-post-scheduler'),
-            array($this->ui, 'circuit_breaker_timeout_field_callback'),
-            'aips-settings',
-            'aips_resilience_section'
-        );
+		add_settings_field(
+			'aips_circuit_breaker_threshold',
+			__('Circuit Breaker Failure Threshold', 'ai-post-scheduler'),
+			array($this->ui, 'circuit_breaker_threshold_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
 
-        // -----------------------------------------------------------------------
-        // Site-wide Content Strategy settings
-        //
-        // Options are defined via self::get_content_strategy_options(), so the
-        // full list is maintained in ONE place. Both settings registration here
-        // and AIPS_Site_Context::get() read from that shared list — no duplicates.
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_content_strategy_section',
-            __('Site Content Strategy', 'ai-post-scheduler'),
-            array($this->ui, 'content_strategy_section_callback'),
-            'aips-settings'
-        );
+		add_settings_field(
+			'aips_circuit_breaker_timeout',
+			__('Circuit Breaker Timeout (Seconds)', 'ai-post-scheduler'),
+			array($this->ui, 'circuit_breaker_timeout_field_callback'),
+			'aips-settings',
+			'aips_resilience_section'
+		);
+	}
 
-        add_settings_field(
-            'aips_site_niche',
-            __('Site Niche / Primary Topic', 'ai-post-scheduler'),
-            array($this->ui, 'site_niche_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+	/**
+	 * Register Content Strategy settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_content_strategy_settings() {
+		add_settings_section(
+			'aips_content_strategy_section',
+			__('Site Content Strategy', 'ai-post-scheduler'),
+			array($this->ui, 'content_strategy_section_callback'),
+			'aips-settings'
+		);
 
-        add_settings_field(
-            'aips_site_target_audience',
-            __('Target Audience', 'ai-post-scheduler'),
-            array($this->ui, 'site_target_audience_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+		add_settings_field(
+			'aips_site_niche',
+			__('Site Niche / Primary Topic', 'ai-post-scheduler'),
+			array($this->ui, 'site_niche_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
 
-        add_settings_field(
-            'aips_site_content_goals',
-            __('Content Goals', 'ai-post-scheduler'),
-            array($this->ui, 'site_content_goals_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+		add_settings_field(
+			'aips_site_target_audience',
+			__('Target Audience', 'ai-post-scheduler'),
+			array($this->ui, 'site_target_audience_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
+
+		add_settings_field(
+			'aips_site_content_goals',
+			__('Content Goals', 'ai-post-scheduler'),
+			array($this->ui, 'site_content_goals_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
 
 		add_settings_field(
 			'aips_default_article_structure_id',
@@ -670,88 +714,86 @@ class AIPS_Settings {
 			'aips_content_strategy_section'
 		);
 
-        add_settings_field(
-            'aips_site_brand_voice',
-            __('Brand Voice / Tone', 'ai-post-scheduler'),
-            array($this->ui, 'site_brand_voice_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+		add_settings_field(
+			'aips_site_brand_voice',
+			__('Brand Voice / Tone', 'ai-post-scheduler'),
+			array($this->ui, 'site_brand_voice_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
 
-        add_settings_field(
-            'aips_site_content_language',
-            __('Content Language', 'ai-post-scheduler'),
-            array($this->ui, 'site_content_language_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+		add_settings_field(
+			'aips_site_content_language',
+			__('Content Language', 'ai-post-scheduler'),
+			array($this->ui, 'site_content_language_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
 
-        add_settings_field(
-            'aips_site_content_guidelines',
-            __('Content Guidelines', 'ai-post-scheduler'),
-            array($this->ui, 'site_content_guidelines_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+		add_settings_field(
+			'aips_site_content_guidelines',
+			__('Content Guidelines', 'ai-post-scheduler'),
+			array($this->ui, 'site_content_guidelines_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
 
-        add_settings_field(
-            'aips_site_excluded_topics',
-            __('Excluded Topics (site-wide)', 'ai-post-scheduler'),
-            array($this->ui, 'site_excluded_topics_field_callback'),
-            'aips-settings',
-            'aips_content_strategy_section'
-        );
+		add_settings_field(
+			'aips_site_excluded_topics',
+			__('Excluded Topics (site-wide)', 'ai-post-scheduler'),
+			array($this->ui, 'site_excluded_topics_field_callback'),
+			'aips-settings',
+			'aips_content_strategy_section'
+		);
+	}
 
-        // -----------------------------------------------------------------------
-        // Cache section: Driver selection + per-driver configuration.
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_cache_section',
-            '',
-            array($this->ui, 'cache_section_callback'),
-            'aips-settings'
-        );
+	/**
+	 * Register Cache settings section and fields.
+	 *
+	 * @return void
+	 */
+	private function register_cache_settings() {
+		add_settings_section(
+			'aips_cache_section',
+			'',
+			array($this->ui, 'cache_section_callback'),
+			'aips-settings'
+		);
 
-        add_settings_field(
-            'aips_enable_cache_system',
-            __('Enable Cache System?', 'ai-post-scheduler'),
-            array($this->ui, 'enable_cache_system_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
+		add_settings_field(
+			'aips_enable_cache_system',
+			__('Enable Cache System?', 'ai-post-scheduler'),
+			array($this->ui, 'enable_cache_system_field_callback'),
+			'aips-settings',
+			'aips_cache_section'
+		);
 
-        add_settings_field(
-            'aips_cache_driver',
-            __('Cache Driver', 'ai-post-scheduler'),
-            array($this->ui, 'cache_driver_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
+		add_settings_field(
+			'aips_cache_driver',
+			__('Cache Driver', 'ai-post-scheduler'),
+			array($this->ui, 'cache_driver_field_callback'),
+			'aips-settings',
+			'aips_cache_section'
+		);
 
-        add_settings_field(
-            'aips_cache_default_ttl',
-            __('Default TTL (seconds)', 'ai-post-scheduler'),
-            array($this->ui, 'cache_default_ttl_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
+		add_settings_field(
+			'aips_cache_default_ttl',
+			__('Default TTL (seconds)', 'ai-post-scheduler'),
+			array($this->ui, 'cache_default_ttl_field_callback'),
+			'aips-settings',
+			'aips_cache_section'
+		);
 
-        add_settings_field(
-            'aips_cache_db_prefix',
-            __('DB Cache Key Prefix', 'ai-post-scheduler'),
-            array($this->ui, 'cache_db_prefix_field_callback'),
-            'aips-settings',
-            'aips_cache_section'
-        );
+		add_settings_field(
+			'aips_cache_db_prefix',
+			__('DB Cache Key Prefix', 'ai-post-scheduler'),
+			array($this->ui, 'cache_db_prefix_field_callback'),
+			'aips-settings',
+			'aips_cache_section'
+		);
+	}
 
-
-
-
-
-
-    }
-
-    /**
+	/**
      * Return the canonical registry of site-wide content strategy options.
      *
      * This is the single source of truth for every option that belongs to the
