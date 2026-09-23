@@ -492,6 +492,23 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Logger_Interface::class)
             );
         });
+
+        // Register AIPS_Similarity_Evaluator
+        $container->singleton(AIPS_Similarity_Evaluator::class, function( $container ) {
+            return new AIPS_Similarity_Evaluator(
+                $container->make(AIPS_Config::class)
+            );
+        });
+
+        // Register AIPS_Post_Insights_Repository
+        $container->singleton(AIPS_Post_Insights_Repository::class, function( $container ) {
+            return new AIPS_Post_Insights_Repository();
+        });
+
+        // Register AIPS_Post_Insights_Controller
+        $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
+            return new AIPS_Post_Insights_Controller();
+        });
     }
 
     /**
@@ -971,6 +988,8 @@ final class AI_Post_Scheduler {
             new AIPS_Seeder_Admin();
         }
 
+        // Post Insights controller for editor metabox and post list column.
+        new AIPS_Post_Insights_Controller();
     }
 
     /**

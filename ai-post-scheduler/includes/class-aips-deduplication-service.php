@@ -47,6 +47,11 @@ class AIPS_Deduplication_Service {
 	private $logger;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Initialize deduplication service.
 	 */
 	public function __construct(
@@ -54,15 +59,17 @@ class AIPS_Deduplication_Service {
 		?AIPS_Relationships_Repository $relationships_repo = null,
 		?AIPS_Embeddings_Service $embeddings_service = null,
 		?AIPS_Config $config = null,
-		?AIPS_Logger_Interface $logger = null
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->embeddings_repo    = $embeddings_repo    ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->config             = $config             ?: AIPS_Config::get_instance();
-		$this->logger             = $logger             ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->embeddings_repo      = $embeddings_repo      ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo   = $relationships_repo   ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$this->embeddings_service   = $embeddings_service   ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->config               = $config               ?: AIPS_Config::get_instance();
+		$this->logger               = $logger               ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
 	}
 
 	/**
@@ -85,8 +92,8 @@ class AIPS_Deduplication_Service {
 
 		$candidate_posts = array();
 		foreach ($post_embeddings as $p_row) {
-			$vec = json_decode($p_row->embedding, true);
-			if (is_array($vec)) {
+			$vec = $this->embeddings_repo->decode_embedding($p_row->embedding, 'post', (int) $p_row->object_id, !empty($p_row->content_hash) ? $p_row->content_hash : '');
+			if (!empty($vec)) {
 				$candidate_posts[] = array(
 					'id'        => (int) $p_row->object_id,
 					'type'      => 'post',
@@ -100,8 +107,8 @@ class AIPS_Deduplication_Service {
 		$topic_embeddings = $this->embeddings_repo->get_all_for_similarity('topic');
 		$candidate_topics = array();
 		foreach ($topic_embeddings as $t_row) {
-			$vec = json_decode($t_row->embedding, true);
-			if (is_array($vec)) {
+			$vec = $this->embeddings_repo->decode_embedding($t_row->embedding, 'topic', (int) $t_row->object_id, !empty($t_row->content_hash) ? $t_row->content_hash : '');
+			if (!empty($vec)) {
 				$candidate_topics[] = array(
 					'id'        => (int) $t_row->object_id,
 					'type'      => 'topic',
@@ -129,18 +136,13 @@ class AIPS_Deduplication_Service {
 			$best_type       = '';
 			$best_id         = 0;
 
-			foreach ($all_candidates as $cand) {
-				if (count($cand['embedding']) !== count($embedding)) {
-					continue;
-				}
-
-				$sim = $this->embeddings_service->calculate_similarity($embedding, $cand['embedding']);
-				if (!is_wp_error($sim) && $sim > $best_similarity) {
-					$best_similarity = (float) $sim;
-					$best_type       = $cand['type'];
-					$best_id         = $cand['id'];
-					$best_match      = !empty($cand['title']) ? $cand['title'] : "{$cand['type']} #{$cand['id']}";
-				}
+			$matches = $this->similarity_evaluator->find_top_matches($embedding, $all_candidates, 0.0, 1);
+			if (!empty($matches)) {
+				$top             = $matches[0];
+				$best_similarity = (float) $top['similarity'];
+				$best_type       = $top['type'];
+				$best_id         = $top['id'];
+				$best_match      = !empty($top['title']) ? $top['title'] : "{$top['type']} #{$top['id']}";
 			}
 
 			$metadata = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
@@ -204,19 +206,16 @@ class AIPS_Deduplication_Service {
 		}
 
 		$candidates = $this->embeddings_repo->get_all_for_similarity('post', array($post_type), 'publish');
+		$matches    = $this->similarity_evaluator->find_top_matches($embedding, $candidates, 0.0, 1, 'post');
+
 		$best_sim   = 0.0;
 		$best_id    = 0;
 		$best_title = '';
 
-		foreach ($candidates as $cand) {
-			$vec = json_decode($cand->embedding, true);
-			if (is_array($vec) && count($vec) === count($embedding)) {
-				$sim = $this->embeddings_service->calculate_similarity($embedding, $vec);
-				if (!is_wp_error($sim) && $sim > $best_sim) {
-					$best_sim = (float) $sim;
-					$best_id  = (int) $cand->object_id;
-				}
-			}
+		if (!empty($matches)) {
+			$best_sim   = (float) $matches[0]['similarity'];
+			$best_id    = (int) $matches[0]['id'];
+			$best_title = get_the_title($best_id);
 		}
 
 		$is_dup = ($best_sim >= $threshold);
@@ -252,33 +251,39 @@ class AIPS_Deduplication_Service {
 	/**
 	 * Run a site-wide Content Cannibalization / Duplicate Post audit.
 	 *
-	 * @param float $threshold Minimum similarity threshold (default: 0.80).
-	 * @param int   $limit     Max clusters to return.
+	 * @param float  $threshold   Minimum similarity threshold (default: 0.80).
+	 * @param int    $limit       Max clusters to return.
+	 * @param string $entity_type Entity filter ('all', 'posts', 'topics'). Default 'all'.
 	 * @return array List of cannibalizing post pairs with similarity scores and URLs.
 	 */
-	public function get_cannibalization_audit_results($threshold = 0.80, $limit = 50) {
-		$threshold = (float) $threshold;
-		$limit     = absint($limit);
+	public function get_cannibalization_audit_results($threshold = 0.80, $limit = 50, $entity_type = 'all') {
+		$threshold   = (float) $threshold;
+		$limit       = absint($limit);
+		$entity_type = sanitize_key($entity_type);
 
-		$pairs = $this->relationships_repo->get_top_duplicate_pairs($threshold, $limit);
+		$pairs = $this->relationships_repo->get_top_duplicate_pairs($threshold, $limit, $entity_type);
 		$results = array();
 
 		foreach ($pairs as $pair) {
+			$s_type = !empty($pair->source_post_type) ? $pair->source_post_type : 'post';
+			$t_type = !empty($pair->target_post_type) ? $pair->target_post_type : 'post';
+
 			$results[] = array(
 				'source_id'        => (int) $pair->source_id,
 				'source_title'     => $pair->source_title,
-				'source_post_type' => $pair->source_post_type,
-				'source_url'       => get_permalink((int) $pair->source_id),
-				'source_edit_url'  => get_edit_post_link((int) $pair->source_id, ''),
+				'source_post_type' => $s_type,
+				'source_url'       => $s_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_permalink((int) $pair->source_id),
+				'source_edit_url'  => $s_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_edit_post_link((int) $pair->source_id, ''),
 				'source_date'      => $pair->source_date,
 				'target_id'        => (int) $pair->target_id,
 				'target_title'     => $pair->target_title,
-				'target_post_type' => $pair->target_post_type,
-				'target_url'       => get_permalink((int) $pair->target_id),
-				'target_edit_url'  => get_edit_post_link((int) $pair->target_id, ''),
+				'target_post_type' => $t_type,
+				'target_url'       => $t_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_permalink((int) $pair->target_id),
+				'target_edit_url'  => $t_type === 'topic' ? admin_url('admin.php?page=aips-authors') : get_edit_post_link((int) $pair->target_id, ''),
 				'target_date'      => $pair->target_date,
 				'similarity'       => round((float) $pair->similarity, 4),
 				'similarity_pct'   => round(((float) $pair->similarity) * 100, 1),
+				'audit_type'       => !empty($pair->audit_type) ? $pair->audit_type : 'post_duplicate',
 			);
 		}
 

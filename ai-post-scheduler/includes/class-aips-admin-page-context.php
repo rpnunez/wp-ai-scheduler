@@ -281,9 +281,21 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-database',
 						'description' => __('Vector embeddings index and semantic post search.', 'ai-post-scheduler'),
 					),
+					'aips-content-clusters' => array(
+						'label'       => __('Topic Clusters', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-networking',
+						'description' => __('2D semantic similarity cluster visualizer and graph.', 'ai-post-scheduler'),
+					),
+					'aips-content-cannibalization' => array(
+						'label'       => __('Cannibalization Shield', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-shield',
+						'description' => __('Semantic duplicate detection and cannibalization risk audit.', 'ai-post-scheduler'),
+					),
 				),
 				'child_pages' => array(
-					'aips-content-indexer' => 'aips-content-indexer',
+					'aips-content-indexer'         => 'aips-content-indexer',
+					'aips-post-clusters'           => 'aips-content-clusters',
+					'aips-cannibalization'         => 'aips-content-cannibalization',
 				),
 			),
 			self::HUB_HISTORY => array(

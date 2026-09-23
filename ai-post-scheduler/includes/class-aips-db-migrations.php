@@ -183,7 +183,11 @@ class AIPS_DB_Migrations {
 
 		if ( version_compare( $from_version, '3.6.5', '<' ) ) {
 			$this->migrate_to_3_6_5();
-    }
+		}
+
+		if ( version_compare( $from_version, '3.6.7', '<' ) ) {
+			$this->migrate_to_3_6_7();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1271,4 +1275,106 @@ class AIPS_DB_Migrations {
 
 		$this->logger->log( 'Migration 3.6.5: Consolidated aips_post_embeddings into aips_embeddings and dropped legacy table.', 'info' );
 	}
+
+	/**
+	 * Migration for version 3.6.7.
+	 *
+	 * Alters the `embedding` column in `aips_embeddings` to MEDIUMBLOB for
+	 * IEEE 754 float32 binary packing (~82% storage reduction) and converts
+	 * existing JSON-encoded embeddings to binary blobs using chunked cursor
+	 * pagination and server pacing.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_6_7() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_embeddings';
+
+		// Guard: Check if table exists
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		// 1. Alter column type to MEDIUMBLOB if not already MEDIUMBLOB
+		$col_info = $wpdb->get_row( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'embedding'
+		) );
+
+		if ( $col_info && false === stripos( (string) $col_info->Type, 'blob' ) ) {
+			$wpdb->query( "ALTER TABLE `{$table}` MODIFY COLUMN `embedding` MEDIUMBLOB NOT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		// 2. Convert existing JSON-encoded embedding rows to binary packed format
+		// Processed in paced chunks using indexed cursor pagination (id > $last_id) to prevent memory spikes, timeouts, and table locks
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+
+		$chunk_size         = (int) apply_filters( 'aips_migration_3_6_7_chunk_size', 250 );
+		$chunk_size         = max( 10, min( 1000, $chunk_size ) );
+		$sleep_microseconds = (int) apply_filters( 'aips_migration_3_6_7_chunk_sleep_us', 250000 ); // 250ms default pacing between chunks
+		$last_id            = 0;
+		$total_converted    = 0;
+		$chunk_count        = 0;
+
+		while ( true ) {
+			// Extend PHP execution timer per chunk
+			if ( function_exists( 'set_time_limit' ) ) {
+				@set_time_limit( 120 );
+			}
+
+			$rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT id, embedding FROM `{$table}` WHERE id > %d ORDER BY id ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$last_id,
+				$chunk_size
+			) );
+
+			if ( empty( $rows ) ) {
+				break;
+			}
+
+			$chunk_count++;
+			$chunk_converted = 0;
+
+			foreach ( $rows as $row ) {
+				$last_id = (int) $row->id;
+				$raw     = (string) $row->embedding;
+				$trimmed = ltrim( $raw );
+
+				if ( '' !== $trimmed && ( '[' === $trimmed[0] || '{' === $trimmed[0] ) ) {
+					$decoded = json_decode( $trimmed, true );
+					if ( is_array( $decoded ) && ! empty( $decoded ) ) {
+						$packed = pack( 'f*', ...array_map( 'floatval', array_values( $decoded ) ) );
+						$wpdb->update(
+							$table,
+							array( 'embedding' => $packed ),
+							array( 'id' => (int) $row->id ),
+							array( '%s' ),
+							array( '%d' )
+						);
+						$chunk_converted++;
+						$total_converted++;
+					}
+				}
+			}
+
+			// Host server breathing pause between chunks
+			if ( $sleep_microseconds > 0 && count( $rows ) === $chunk_size ) {
+				usleep( $sleep_microseconds );
+			}
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.6.7: Converted %d legacy JSON embeddings to binary float32 across %d chunks (MEDIUMBLOB).',
+				$total_converted,
+				$chunk_count
+			),
+			'info'
+		);
+	}
 }
+

@@ -284,6 +284,11 @@ class AIPS_Ajax_Registry {
 		'aips_indexer_save_settings'                 => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_search_posts'                  => 'AIPS_Content_Indexer_Controller',
 
+		// Post Insights Controller
+		'aips_get_post_ai_insights'                  => 'AIPS_Post_Insights_Controller',
+		'aips_reindex_single_post'                   => 'AIPS_Post_Insights_Controller',
+		'aips_toggle_single_pillar'                  => 'AIPS_Post_Insights_Controller',
+
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',
