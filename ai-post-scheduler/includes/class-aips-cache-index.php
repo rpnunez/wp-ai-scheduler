@@ -60,6 +60,13 @@ class AIPS_Cache_Index {
 	private $pending_access = array();
 
 	/**
+	 * In-memory map of key_hash to cache_group for pending access timestamps.
+	 *
+	 * @var array<string, string>
+	 */
+	private $pending_access_groups = array();
+
+	/**
 	 * Whether the shutdown hook has been registered for this request.
 	 *
 	 * @var bool
@@ -143,7 +150,7 @@ class AIPS_Cache_Index {
 	public function record_delete( string $key, string $group ): void {
 		$composite = $group . ':' . $key;
 		$key_hash  = hash( 'sha256', $composite );
-		unset( $this->pending_writes[ $composite ], $this->pending_access[ $key_hash ] );
+		unset( $this->pending_writes[ $composite ], $this->pending_access[ $key_hash ], $this->pending_access_groups[ $key_hash ] );
 
 		if (!$this->enabled || !$this->table_ready()) {
 			return;
@@ -160,13 +167,38 @@ class AIPS_Cache_Index {
 	}
 
 	/**
+	 * Remove all buffered entries for a specific cache group from memory.
+	 *
+	 * Purges any unwritten sets or pending access timestamps for the group
+	 * so they are not re-inserted on shutdown after a group flush.
+	 *
+	 * @param string $group Cache group.
+	 * @return void
+	 */
+	public function record_delete_group( string $group ): void {
+		$prefix = $group . ':';
+		foreach ( $this->pending_writes as $composite => $row ) {
+			if ( 0 === strpos( $composite, $prefix ) || ( isset( $row['cache_group'] ) && $row['cache_group'] === $group ) ) {
+				unset( $this->pending_writes[ $composite ] );
+			}
+		}
+
+		foreach ( $this->pending_access_groups as $key_hash => $entry_group ) {
+			if ( $entry_group === $group ) {
+				unset( $this->pending_access[ $key_hash ], $this->pending_access_groups[ $key_hash ] );
+			}
+		}
+	}
+
+	/**
 	 * Clear all index rows (called on full flush).
 	 *
 	 * @return void
 	 */
 	public function record_flush(): void {
-		$this->pending_writes = array();
-		$this->pending_access = array();
+		$this->pending_writes        = array();
+		$this->pending_access        = array();
+		$this->pending_access_groups = array();
 
 		if (!$this->enabled || !$this->table_ready()) {
 			return;
@@ -198,8 +230,9 @@ class AIPS_Cache_Index {
 		}
 
 		try {
-			$key_hash = hash( 'sha256', $group . ':' . $key );
-			$this->pending_access[ $key_hash ] = AIPS_DateTime::now()->timestamp();
+			$key_hash                                  = hash( 'sha256', $group . ':' . $key );
+			$this->pending_access[ $key_hash ]        = AIPS_DateTime::now()->timestamp();
+			$this->pending_access_groups[ $key_hash ] = $group;
 			$this->register_shutdown_hook();
 			$this->maybe_flush_early();
 		} catch ( Throwable $e ) {
@@ -216,8 +249,9 @@ class AIPS_Cache_Index {
 	 */
 	public function flush_buffer(): void {
 		if (!$this->enabled || !$this->table_ready()) {
-			$this->pending_writes = array();
-			$this->pending_access = array();
+			$this->pending_writes        = array();
+			$this->pending_access        = array();
+			$this->pending_access_groups = array();
 			return;
 		}
 
@@ -307,7 +341,8 @@ class AIPS_Cache_Index {
 				updated_at = VALUES(updated_at),
 				expires_at = VALUES(expires_at),
 				value_size = VALUES(value_size),
-				value_type = VALUES(value_type)";
+				value_type = VALUES(value_type),
+				last_accessed_at = VALUES(last_accessed_at)";
 
 			try {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
@@ -324,8 +359,9 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	private function flush_pending_access(): void {
-		$access = $this->pending_access;
-		$this->pending_access = array();
+		$access                      = $this->pending_access;
+		$this->pending_access        = array();
+		$this->pending_access_groups = array();
 
 		if (empty($access)) {
 			return;

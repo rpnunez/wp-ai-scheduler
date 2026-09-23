@@ -1027,6 +1027,12 @@ class AIPS_Schedule_Processor {
         $resume_at   = $now + AIPS_Config::get_instance()->get_batch_resume_cooldown_seconds();
         $claimed     = isset($schedule->claimed_next_run) ? (int) $schedule->claimed_next_run : 0;
 
+        if ($claimed <= $now) {
+            $claimed = !empty($schedule->frequency) && $schedule->frequency !== 'once'
+                ? $this->interval_calculator->calculate_next_run($schedule->frequency, $now)
+                : $resume_at + HOUR_IN_SECONDS;
+        }
+
         $run_state = array(
             'status'    => self::RUN_STATE_YIELDED,
             'completed' => isset($data['completed']) ? (int) $data['completed'] : 0,

@@ -1,3 +1,19 @@
+## [3.6.7] - 2026-09-22
+
+### Added
+- **Performance & Cache Architecture Hardening:**
+  - Multi-tiered caching with in-memory request L1 LRU store, reducing duplicate driver reads within single web requests and cron batches.
+  - Multi-key driver batching (`get_multiple()`, `set_multiple()`, `delete_multiple()`) across Database, Transients, and Object Cache drivers.
+  - Asynchronous / shutdown write buffering for `AIPS_Cache_Index` to minimize blocking database writes and access telemetry updates during request execution.
+  - In-memory group purging for `AIPS_Cache_Index` to avoid resurrecting flushed cache group entries on request shutdown.
+  - Compound database indexes on `wp_aips_cache_index` (`(cache_group, last_accessed_at)` and `(expires_at, last_accessed_at)`).
+  - 2-stage pagination for generation history queries to eliminate large table scans on offset pagination.
+- **Scheduler Load Pacing & Execution Resilience:**
+  - Dynamic time-budget tracking with graceful pre-timeout yield and cooldown-based resumption via single cron events.
+  - Staggered cron schedule execution to prevent concurrent batch stampedes.
+  - Inter-generation delay pacing (`aips_generation_delay_seconds`) to smooth AI API consumption and server load.
+  - Fallback recurrence resolution when resuming yielded batches with past or missing claim timestamps.
+
 ## [3.6.6] - 2026-09-04
 
 ### Added

@@ -195,6 +195,24 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 		$this->assertSame( '0', (string) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
 	}
 
+	public function test_index_delete_group_drops_buffered_writes_and_accesses() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache_index';
+		$wpdb->query( "DELETE FROM {$table}" );
+
+		$index = new AIPS_Cache_Index();
+		$index->record_set( 'key1', 'val1', 0, 'purge-grp' );
+		$index->record_set( 'key2', 'val2', 0, 'purge-grp' );
+		$index->record_set( 'keep1', 'val3', 0, 'keep-grp' );
+		$index->record_access( 'key1', 'purge-grp' );
+
+		$index->record_delete_group( 'purge-grp' );
+		$index->flush_buffer();
+
+		$this->assertSame( '1', (string) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) );
+		$this->assertSame( 'keep1', (string) $wpdb->get_var( "SELECT cache_key FROM {$table} LIMIT 1" ) );
+	}
+
 	public function test_index_buffer_flushes_early_past_threshold() {
 		global $wpdb;
 		$table = $wpdb->prefix . 'aips_cache_index';
@@ -510,6 +528,53 @@ class Test_AIPS_Performance_Hardening extends WP_UnitTestCase {
 		);
 
 		$this->assertFalse( wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 13 ) ) );
+	}
+
+	public function test_defer_yielded_batch_handles_missing_claimed_next_run() {
+		update_option( 'aips_batch_resume_cooldown_minutes', 10 );
+		AIPS_Config::get_instance()->flush_option_cache();
+
+		$now      = AIPS_DateTime::now()->timestamp();
+		$schedule = $this->schedule_row( 14, $now - 60, array( 'frequency' => 'hourly' ) );
+
+		$repository = $this->createMock( AIPS_Schedule_Repository_Interface::class );
+		$repository->expects( $this->once() )
+			->method( 'update_run_state' )
+			->with(
+				14,
+				$this->callback(
+					function ( $state ) use ( $now ) {
+						return AIPS_Schedule_Processor::RUN_STATE_YIELDED === $state['status']
+							&& isset( $state['resume_next_run'] )
+							&& $state['resume_next_run'] > $now
+							&& 2 === $state['completed']
+							&& 5 === $state['total'];
+					}
+				)
+			);
+		$repository->expects( $this->once() )
+			->method( 'update' )
+			->with(
+				14,
+				$this->callback(
+					function ( $data ) use ( $now ) {
+						return abs( $data['next_run'] - ( $now + 10 * MINUTE_IN_SECONDS ) ) <= 2;
+					}
+				)
+			);
+
+		$method = new ReflectionMethod( AIPS_Schedule_Processor::class, 'defer_yielded_batch' );
+		$method->setAccessible( true );
+		$method->invoke(
+			$this->make_processor( $repository ),
+			$schedule,
+			new WP_Error( 'batch_interrupted_timeout', 'paused', array( 'completed' => 2, 'total' => 5 ) ),
+			null
+		);
+
+		$event = wp_next_scheduled( AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array( 14 ) );
+		$this->assertNotFalse( $event );
+		$this->assertLessThanOrEqual( 2, abs( $event - ( $now + 10 * MINUTE_IN_SECONDS ) ) );
 	}
 
 	// -----------------------------------------------------------------------
