@@ -29,3 +29,12 @@
 **Decision:** Extracted the single topic processing logic into a new private method `process_single_topic_embedding`. `process_approved_embeddings_batch` now serves strictly as an orchestrator.
 **Consequence:** Increased the number of private methods, but significantly improved readability, testability, and adherence to the Single Responsibility Principle. Backwards compatibility remains intact. Added missing DocBlocks for the new function.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced.
+## 2026-09-08 - Extract History Repository Query Builder Logic
+
+**Context:** The `AIPS_History_Repository` contained "God Methods" (`get_history` and `get_partial_generations`) that were overly long, handling query parameter defaults, complex dynamic SQL select and where clause building, query execution, and pagination aggregation all within a single block.
+
+**Decision:** Extracted the SQL clause generation into dedicated helper methods: `build_history_select_fields`, `build_history_where_clauses`, and `build_partial_generations_where_clauses`. The `get_history` and `get_partial_generations` methods now orchestrate the parameter resolution, delegate SQL construction, and handle database execution and pagination.
+
+**Consequence:** Improved separation of concerns, reduced method length, increased readability, and made the query construction logic independently testable or modifiable in the future, all without altering the public contract.
+
+**Tests:** Existing tests in `AIPS_History_Repository_Test` verified the refactor, with some failures already existing as pre-existing regressions.
