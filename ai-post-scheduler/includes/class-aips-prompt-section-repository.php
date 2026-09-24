@@ -183,7 +183,9 @@ class AIPS_Prompt_Section_Repository {
 		$format = array('%s', '%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
-		$insert_id = $this->wpdb->insert_id;
+		// Read insert_id before cache invalidation: invalidation can write
+		// to other tables (cache, cache index), which overwrites it.
+		$insert_id = $result ? (int) $this->wpdb->insert_id : 0;
 
 		if ( $result ) {
 			$this->invalidate_cache_domain( 'prompt_section', array(), 'prompt_section_created' );

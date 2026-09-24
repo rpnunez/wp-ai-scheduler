@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Tests for Author Topic Auto-Approval Rules in AIPS_Author_Topics_Generator.
  *
