@@ -288,9 +288,14 @@ class AIPS_Component_Regeneration_Service {
 
 		// Build the content prompt using the generation context
 		$prompt = $this->post_content_prompt_builder->build($generation_context);
+		$content_context = $this->prompt_builder->build_content_context($generation_context);
+		$options = array();
+		if (!empty($content_context)) {
+			$options['context'] = $content_context;
+		}
 
 		// Generate content using the prompt
-		$result = $this->generator->generate_content($prompt);
+		$result = $this->generator->generate_content($prompt, $options, 'content');
 		
 		if (is_wp_error($result)) {
 			return $result;

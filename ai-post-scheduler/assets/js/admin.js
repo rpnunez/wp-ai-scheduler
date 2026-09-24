@@ -850,6 +850,9 @@
                             $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
                         });
 
+                        // Restore language setting.
+                        $('#template_language').val(t.language || 'en');
+
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
@@ -1019,6 +1022,7 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    language: $('#template_language').val() || 'en',
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -1097,6 +1101,7 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    language: $('#template_language').val() || 'en',
                     is_active: 0 // Save as inactive draft
                 },
                 success: function(response) {
@@ -1176,6 +1181,7 @@
                 post_category: $('#post_category').val(),
                 post_tags: $('#post_tags').val(),
                 post_author: $('#post_author').val(),
+                language: $('#template_language').val() || 'en'
             };
 
             $.ajax({
@@ -4880,7 +4886,8 @@
                     var ids = [];
                     $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                     return ids;
-                }())
+                }()),
+                language: $('#template_language').val() || 'en'
             };
             
             $.ajax({
@@ -4910,7 +4917,9 @@
                         $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsTemplatesL10n.exampleTopic);
                         
                         // Update prompt sections
-                        $('#aips-preview-content-prompt').text(prompts.content || '-');
+                        $('#aips-preview-content-prompt').text(
+                            [prompts.content_context, prompts.content].filter(Boolean).join('\n\n') || '-'
+                        );
                         $('#aips-preview-title-prompt').text(prompts.title || '-');
                         $('#aips-preview-excerpt-prompt').text(prompts.excerpt || '-');
                         

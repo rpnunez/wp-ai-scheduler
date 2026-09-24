@@ -286,4 +286,36 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $this->assertFalse($config->get_circuit_breaker_config()['enabled']);
         $this->assertFalse($config->get_rate_limit_config()['enabled']);
     }
+
+    public function test_case_catalogue_order_includes_spanish_cases() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_AI_Service(), new AIPS_Test_Stress_Logger());
+        $cases   = $service->get_cases();
+        $case_ids = wp_list_pluck($cases, 'id');
+
+        $this->assertSame(
+            array(
+                'generate_title',
+                'generate_content',
+                'generate_excerpt',
+                'generate_spanish_title',
+                'generate_spanish_excerpt',
+                'generate_spanish_content',
+                'generate_json',
+            ),
+            array_slice($case_ids, 0, 7)
+        );
+    }
+
+    public function test_spanish_cases_execution_pass() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        $title_res = $service->run('generate_spanish_title');
+        $this->assertSame('passed', $title_res['status'], isset($title_res['error']) ? (string) $title_res['error'] : '');
+
+        $excerpt_res = $service->run('generate_spanish_excerpt');
+        $this->assertSame('passed', $excerpt_res['status'], isset($excerpt_res['error']) ? (string) $excerpt_res['error'] : '');
+
+        $content_res = $service->run('generate_spanish_content');
+        $this->assertSame('passed', $content_res['status'], isset($content_res['error']) ? (string) $content_res['error'] : '');
+    }
 }

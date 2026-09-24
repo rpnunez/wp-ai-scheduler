@@ -123,6 +123,7 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'language' => isset($_POST['language']) ? $this->normalize_language_code(sanitize_text_field(wp_unslash($_POST['language']))) : 'en',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -267,6 +268,7 @@ class AIPS_Templates_Controller {
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'affiliate_links_enabled' => isset($template->affiliate_links_enabled) ? $template->affiliate_links_enabled : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
+            'language' => isset($template->language) ? $template->language : 'en',
             'is_active' => $template->is_active,
         );
 
@@ -322,6 +324,7 @@ class AIPS_Templates_Controller {
             'post_category' => $this->extract_post_categories( isset($_POST['post_category']) ? $_POST['post_category'] : null ),
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'language' => isset($_POST['language']) ? $this->normalize_language_code(sanitize_text_field(wp_unslash($_POST['language']))) : 'en',
         );
 
         if (empty(trim($data['prompt_template']))) {
@@ -393,6 +396,7 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'language' => isset($_POST['language']) ? $this->normalize_language_code(sanitize_text_field(wp_unslash($_POST['language']))) : 'en',
         );
 
         if (empty(trim($template_data->prompt_template))) {
@@ -404,53 +408,9 @@ class AIPS_Templates_Controller {
         
         // Get voice if selected
         $voice = $prompt_builder->get_voice($template_data->voice_id);
-
         $sample_topic = 'Example Topic';
 
-        // Build content prompt
-        $content_prompt = $prompt_builder->get_post_content_builder()->build($template_data, $sample_topic, $voice);
-
-        // Build title prompt
-        $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $prompt_builder->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content);
-
-        // Build excerpt prompt (requires title and content)
-        $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $prompt_builder->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic);
-
-        // Build image prompt if enabled
-        $image_prompt_processed = $prompt_builder->get_post_featured_image_builder()->build($template_data, $sample_topic);
-
-        // Get voice name if applicable
-        $voice_name = '';
-        if ($voice && isset($voice->name)) {
-            $voice_name = $voice->name;
-        }
-
-        // Get article structure name if applicable
-        $structure_name = '';
-        if (isset($template_data->article_structure_id) && $template_data->article_structure_id > 0) {
-            $structure_manager = new AIPS_Article_Structure_Manager();
-            $structure = $structure_manager->get_structure($template_data->article_structure_id);
-            if ($structure && !is_wp_error($structure) && isset($structure['name'])) {
-                $structure_name = $structure['name'];
-            }
-        }
-
-        $result = array(
-            'prompts' => array(
-                'content' => $content_prompt,
-                'title' => $title_prompt,
-                'excerpt' => $excerpt_prompt,
-                'image' => $image_prompt_processed,
-            ),
-            'metadata' => array(
-                'voice' => $voice_name,
-                'article_structure' => $structure_name,
-                'sample_topic' => $sample_topic,
-                'include_sources' => !empty($template_data->include_sources),
-            ),
-        );
+        $result = $prompt_builder->build_prompts($template_data, $sample_topic, $voice);
 
         AIPS_Ajax_Response::success($result);
     }
@@ -467,6 +427,25 @@ class AIPS_Templates_Controller {
         }
 
         return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+    }
+
+    /**
+     * Validate a language code against the supported allowlist.
+     *
+     * Compares the given code against the same set of codes offered in the
+     * template language dropdown. Returns 'en' if the code is not recognized
+     * to prevent arbitrary strings from being interpolated into AI prompts.
+     *
+     * @param string $code Language code to validate.
+     * @return string Validated language code or 'en' as fallback.
+     */
+    private function normalize_language_code($code) {
+        $allowed = array(
+            'en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru',
+            'ja', 'ko', 'zh', 'ar', 'hi', 'tr', 'sv', 'da', 'fi', 'nb',
+        );
+
+        return in_array($code, $allowed, true) ? $code : 'en';
     }
 
     /**
