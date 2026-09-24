@@ -116,6 +116,16 @@
 		},
 
 		/**
+		 * Whether a template with this ID exists on the page.
+		 *
+		 * @param {string} id - The element ID of the <script type="text/html"> block.
+		 * @return {boolean}
+		 */
+		has: function (id) {
+			return this.get(id) !== '';
+		},
+
+		/**
 		 * HTML-escape a string so it is safe to insert into the DOM.
 		 *
 		 * @param {string} str - The raw string to escape.

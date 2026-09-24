@@ -8,6 +8,9 @@
  * Tab 2: Partial Generations - @see templates/admin/tab-partial-generations.php
  * Tab 3: Pending Review      - @see templates/admin/tab-pending-review.php
  * Tab 4: Content Indexer     - @see templates/admin/content-indexer.php
+ * Tab 5: Link Report         - @see templates/admin/link-report.php
+ * Tab 6: Link Rules          - @see templates/admin/link-rules.php
+ * Tab 7: Redirects           - @see templates/admin/redirects.php
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -25,12 +28,24 @@ $valid_tabs = array(
 	'aips-partial-generations',
 	'aips-pending-review',
 	'aips-content-indexer',
+	'aips-link-report',
+	'aips-link-rules',
+	'aips-redirects',
+	'aips-silos',
 	'aips-content-clusters',
 	'aips-content-cannibalization',
 );
 
 if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embeddings' === $active_tab) {
 	$active_tab = 'aips-content-indexer';
+} elseif ('link-report' === $active_tab || 'links' === $active_tab) {
+	$active_tab = 'aips-link-report';
+} elseif ('link-rules' === $active_tab || 'rules' === $active_tab) {
+	$active_tab = 'aips-link-rules';
+} elseif ('redirects' === $active_tab) {
+	$active_tab = 'aips-redirects';
+} elseif ('silos' === $active_tab || 'silo' === $active_tab) {
+	$active_tab = 'aips-silos';
 } elseif ('partial-generations' === $active_tab || 'partial' === $active_tab) {
 	$active_tab = 'aips-partial-generations';
 } elseif ('pending-review' === $active_tab || 'pending' === $active_tab) {
@@ -71,6 +86,34 @@ $rail_items = array(
 		'icon'        => 'dashicons-database',
 		'description' => __('Vectors & semantic embeddings', 'ai-post-scheduler'),
 		'active'      => ($active_tab === 'aips-content-indexer'),
+	),
+	array(
+		'key'         => 'aips-link-report',
+		'label'       => __('Link Report', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-admin-links',
+		'description' => __('Internal links, orphans & broken links', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-link-report'),
+	),
+	array(
+		'key'         => 'aips-link-rules',
+		'label'       => __('Link Rules', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-tag',
+		'description' => __('Always link a keyword to a post', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-link-rules'),
+	),
+	array(
+		'key'         => 'aips-redirects',
+		'label'       => __('Redirects', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-randomize',
+		'description' => __('Redirects created by AI Post Scheduler', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-redirects'),
+	),
+	array(
+		'key'         => 'aips-silos',
+		'label'       => __('Silos', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-index-card',
+		'description' => __('Pillars & their articles', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-silos'),
 	),
 	array(
 		'key'         => 'aips-content-clusters',
@@ -154,6 +197,50 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 					?>
 				</div>
 
+				<!-- Tab: Link Report -->
+				<div id="aips-link-report-tab" class="aips-tab-content<?php echo $active_tab === 'aips-link-report' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-link-report' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-link-report' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$link_report_controller = new AIPS_Link_Report_Controller();
+						extract($link_report_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/link-report.php';
+					}, __('Link Report', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Link Rules -->
+				<div id="aips-link-rules-tab" class="aips-tab-content<?php echo $active_tab === 'aips-link-rules' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-link-rules' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-link-rules' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$link_rules_controller = new AIPS_Link_Rules_Controller();
+						extract($link_rules_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/link-rules.php';
+					}, __('Link Rules', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Redirects -->
+				<div id="aips-redirects-tab" class="aips-tab-content<?php echo $active_tab === 'aips-redirects' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-redirects' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-redirects' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$redirects_controller = new AIPS_Redirects_Controller();
+						extract($redirects_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/redirects.php';
+					}, __('Redirects', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Silos -->
+				<div id="aips-silos-tab" class="aips-tab-content<?php echo $active_tab === 'aips-silos' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-silos' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-silos' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$silos_controller = new AIPS_Silos_Controller();
+						extract($silos_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/silos.php';
+					}, __('Silos', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
 				<!-- Tab 5: Topic Clusters -->
 				<div id="aips-content-clusters-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-clusters' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-clusters' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-clusters' ? '' : 'hidden'; ?>>
 					<?php
@@ -171,6 +258,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
 						extract($indexer_controller->get_cannibalization_view_data());
+						$consolidation_controller = new AIPS_Consolidation_Controller();
+						extract($consolidation_controller->get_view_data());
 						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
 					}, __('Cannibalization Shield', 'ai-post-scheduler'), true);
 					?>

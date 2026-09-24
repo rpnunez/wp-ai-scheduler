@@ -93,6 +93,7 @@ class AIPS_Ajax_Registry {
 		'aips_get_generation_queue'       => 'AIPS_Author_Topics_Controller',
 		'aips_bulk_generate_from_queue'   => 'AIPS_Author_Topics_Controller',
 		'aips_get_bulk_generate_estimate' => 'AIPS_Author_Topics_Controller',
+		'aips_save_author_topic'          => 'AIPS_Author_Topics_Controller',
 
 		// Authors Controller
 		'aips_save_author'                => 'AIPS_Authors_Controller',
@@ -286,6 +287,62 @@ class AIPS_Ajax_Registry {
 		'aips_get_post_ai_insights'                  => 'AIPS_Post_Insights_Controller',
 		'aips_reindex_single_post'                   => 'AIPS_Post_Insights_Controller',
 		'aips_toggle_single_pillar'                  => 'AIPS_Post_Insights_Controller',
+
+		// Link Report Controller
+		'aips_link_report_get'             => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_post_links'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_start_backfill'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_backfill_status' => 'AIPS_Link_Report_Controller',
+		'aips_link_report_pause_backfill'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_resume_backfill' => 'AIPS_Link_Report_Controller',
+		'aips_link_report_cancel_backfill' => 'AIPS_Link_Report_Controller',
+		'aips_link_report_suggest'            => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_suggestions'    => 'AIPS_Link_Report_Controller',
+		'aips_link_report_apply_suggestion'   => 'AIPS_Link_Report_Controller',
+		'aips_link_report_revert_suggestion'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_dismiss_suggestion' => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_post_panel'     => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_broken'         => 'AIPS_Link_Report_Controller',
+		'aips_link_report_fix_broken'         => 'AIPS_Link_Report_Controller',
+		'aips_link_report_undo_broken_fix'    => 'AIPS_Link_Report_Controller',
+		'aips_link_report_search_posts'       => 'AIPS_Link_Report_Controller',
+		'aips_autolink_start'                 => 'AIPS_Link_Report_Controller',
+		'aips_autolink_status'                => 'AIPS_Link_Report_Controller',
+		'aips_autolink_pause'                 => 'AIPS_Link_Report_Controller',
+		'aips_autolink_resume'                => 'AIPS_Link_Report_Controller',
+		'aips_autolink_cancel'                => 'AIPS_Link_Report_Controller',
+		'aips_autolink_undo_run'              => 'AIPS_Link_Report_Controller',
+
+		// Google Search Console Controller
+		'aips_gsc_test'       => 'AIPS_GSC_Controller',
+		'aips_gsc_sync'       => 'AIPS_GSC_Controller',
+		'aips_gsc_disconnect' => 'AIPS_GSC_Controller',
+
+		// Redirects Controller
+		'aips_redirects_list'         => 'AIPS_Redirects_Controller',
+		'aips_redirects_create'       => 'AIPS_Redirects_Controller',
+		'aips_redirects_toggle'       => 'AIPS_Redirects_Controller',
+		'aips_redirects_delete'       => 'AIPS_Redirects_Controller',
+		'aips_redirects_set_provider' => 'AIPS_Redirects_Controller',
+
+		// Consolidation (Cannibalization Shield)
+		'aips_consolidation_preview'  => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_merge'    => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_run'      => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_undo'     => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_history'  => 'AIPS_Consolidation_Controller',
+
+		// Silos (Content hub)
+		'aips_silos_overview'         => 'AIPS_Silos_Controller',
+		'aips_silos_confirm_pillar'   => 'AIPS_Silos_Controller',
+		'aips_silos_fix'              => 'AIPS_Silos_Controller',
+		'aips_silos_refresh'          => 'AIPS_Silos_Controller',
+
+		// Keyword Link Rules Controller
+		'aips_link_rules_list'   => 'AIPS_Link_Rules_Controller',
+		'aips_link_rules_save'   => 'AIPS_Link_Rules_Controller',
+		'aips_link_rules_toggle' => 'AIPS_Link_Rules_Controller',
+		'aips_link_rules_delete' => 'AIPS_Link_Rules_Controller',
 
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',

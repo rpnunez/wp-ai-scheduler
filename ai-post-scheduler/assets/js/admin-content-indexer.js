@@ -1780,6 +1780,14 @@
 									}
 								}
 
+								// Post-vs-post pairs can be consolidated (assets/js/admin-consolidation.js).
+								if ((c.source_type || 'post') === 'post' && (c.target_type || 'post') === 'post' && hasTemplates && AIPS.Templates.has('aips-tmpl-consolidate-btn')) {
+									actions += AIPS.Templates.render('aips-tmpl-consolidate-btn', {
+										a: c.source_id,
+										b: c.target_id
+									});
+								}
+
 								var targetBadgeType = 'post';
 								var targetBadgeLabel = aipsContentIndexerL10n.post || 'Post';
 								if (c.audit_type === 'cannibalization') {

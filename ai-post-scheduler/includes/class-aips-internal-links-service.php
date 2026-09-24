@@ -317,7 +317,9 @@ class AIPS_Internal_Links_Service {
 		// These must be excluded so regeneration does not produce fewer than max_suggestions
 		// when accepted/rejected/inserted rows exist for some top neighbors.
 		$existing_rows       = $this->links_repo->get_by_source_post($source_post_id);
-		$excluded_target_ids = array();
+		// Posts the source already links to (per the link index) never need a suggestion.
+		$link_index          = new AIPS_Link_Index_Repository();
+		$excluded_target_ids = array_values(array_filter(array_map('intval', wp_list_pluck($link_index->get_outbound($source_post_id, AIPS_Link_Index_Repository::TYPE_INTERNAL), 'target_post_id'))));
 		foreach ($existing_rows as $row) {
 			if ('pending' !== $row->status) {
 				$excluded_target_ids[] = (int) $row->target_post_id;
@@ -349,7 +351,7 @@ class AIPS_Internal_Links_Service {
 		// Delete only existing PENDING suggestions before reinserting.
 		// Accepted, rejected, and inserted suggestions are preserved so that
 		// editorial decisions and insertion tracking are not lost during regeneration.
-		$this->links_repo->delete_pending_by_source_post($source_post_id);
+		$this->links_repo->delete_pending_by_source_post($source_post_id, 'outbound');
 
 		$created_ids = array();
 

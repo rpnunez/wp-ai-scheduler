@@ -37,6 +37,9 @@ class AIPS_DB_Manager {
         'aips_cache_events',
         'aips_integration_field_mappings',
         'aips_content_audits',
+        'aips_link_index',
+        'aips_link_clicks',
+        'aips_redirects',
     );
 
     public function __construct() {
@@ -102,6 +105,9 @@ class AIPS_DB_Manager {
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
+        $table_link_index           = $tables['aips_link_index'];
+        $table_link_clicks          = $tables['aips_link_clicks'];
+        $table_redirects            = $tables['aips_redirects'];
 
         $sql = array();
 
@@ -550,6 +556,14 @@ class AIPS_DB_Manager {
             similarity_score float NOT NULL DEFAULT 0,
             anchor_text varchar(500) DEFAULT '',
             status varchar(20) NOT NULL DEFAULT 'pending',
+            origin varchar(20) NOT NULL DEFAULT 'outbound',
+            confidence decimal(5,4) NOT NULL DEFAULT 0.0000,
+            anchor_source varchar(20) NOT NULL DEFAULT '',
+            match_context text,
+            batch_id varchar(36) DEFAULT NULL,
+            before_snippet longtext,
+            after_snippet longtext,
+            applied_at bigint(20) unsigned NOT NULL DEFAULT 0,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
@@ -557,7 +571,67 @@ class AIPS_DB_Manager {
             KEY target_post_id (target_post_id),
             KEY status (status),
             KEY similarity_score (similarity_score),
+            KEY target_status (target_post_id, status),
+            KEY origin (origin),
+            KEY batch_id (batch_id),
             UNIQUE KEY source_target (source_post_id, target_post_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_link_index (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL DEFAULT 0,
+            target_url text NOT NULL,
+            url_hash char(32) NOT NULL DEFAULT '',
+            anchor_text varchar(500) DEFAULT '',
+            link_type varchar(10) NOT NULL DEFAULT 'internal',
+            rel varchar(100) DEFAULT '',
+            is_nofollow tinyint(1) NOT NULL DEFAULT 0,
+            inserted_by_aips tinyint(1) NOT NULL DEFAULT 0,
+            position int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY source_post_id (source_post_id),
+            KEY target_link (target_post_id, link_type),
+            KEY url_hash (url_hash),
+            KEY link_type (link_type)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_link_clicks (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL,
+            day_start bigint(20) unsigned NOT NULL DEFAULT 0,
+            clicks int(11) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY link_day (source_post_id, target_post_id, day_start),
+            KEY target_day (target_post_id, day_start),
+            KEY day_start (day_start)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_redirects (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_path varchar(500) NOT NULL,
+            source_hash char(32) NOT NULL,
+            target_url text NOT NULL,
+            target_post_id bigint(20) NOT NULL DEFAULT 0,
+            status_code smallint(3) NOT NULL DEFAULT 301,
+            provider varchar(20) NOT NULL DEFAULT 'aips',
+            provider_ref varchar(191) NOT NULL DEFAULT '',
+            provider_error varchar(255) NOT NULL DEFAULT '',
+            origin varchar(30) NOT NULL DEFAULT 'manual',
+            origin_ref bigint(20) NOT NULL DEFAULT 0,
+            enabled tinyint(1) NOT NULL DEFAULT 1,
+            hits bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_hit_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_hash (source_hash),
+            KEY provider (provider),
+            KEY origin (origin, origin_ref),
+            KEY target_post_id (target_post_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_affiliate_links (
@@ -883,6 +957,17 @@ class AIPS_DB_Manager {
                 array( 'updated_at', false ),
             ),
             'aips_affiliate_links' => array(
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
+            ),
+            'aips_link_index' => array(
+                array( 'created_at', false ),
+            ),
+            'aips_link_clicks' => array(
+                array( 'day_start', false ),
+            ),
+            'aips_redirects' => array(
+                array( 'last_hit_at', false ),
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
             ),

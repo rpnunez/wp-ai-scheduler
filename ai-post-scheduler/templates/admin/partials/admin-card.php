@@ -8,7 +8,7 @@
  * @since   3.7.0
  *
  * @var array<string, mixed> $args
- * @var callable|null        $body_callback
+ * @var callable|null        $content_callback
  */
 
 if (!defined('ABSPATH')) {
@@ -25,9 +25,10 @@ $card_actions  = isset($args['actions']) && is_array($args['actions']) ? $args['
 $card_body     = isset($args['body']) ? $args['body'] : '';
 $card_body_cl  = isset($args['body_class']) ? ' ' . $args['body_class'] : '';
 $card_footer   = isset($args['footer']) ? $args['footer'] : '';
+// include_partial() exposes the second render_card() argument as $content_callback.
 $callback      = isset($args['body_callback']) && is_callable($args['body_callback'])
 	? $args['body_callback']
-	: $body_callback;
+	: (isset($content_callback) ? $content_callback : null);
 
 $has_header = !empty($card_title) || !empty($card_actions) || !empty($card_badge);
 ?>

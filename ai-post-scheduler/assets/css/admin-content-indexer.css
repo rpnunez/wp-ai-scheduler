@@ -833,7 +833,8 @@
 /* Stat Metric Cards (Content Intelligence Hub) */
 .aips-content-intelligence-tab .aips-stats-grid,
 .aips-content-clusters-tab .aips-stats-grid,
-.aips-content-cannibalization-tab .aips-stats-grid {
+.aips-content-cannibalization-tab .aips-stats-grid,
+.aips-link-report-tab .aips-stats-grid {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
 	gap: 12px;
@@ -843,7 +844,8 @@
 @media (max-width: 1024px) {
 	.aips-content-intelligence-tab .aips-stats-grid,
 	.aips-content-clusters-tab .aips-stats-grid,
-	.aips-content-cannibalization-tab .aips-stats-grid {
+	.aips-content-cannibalization-tab .aips-stats-grid,
+	.aips-link-report-tab .aips-stats-grid {
 		grid-template-columns: repeat(2, 1fr);
 	}
 }
@@ -851,14 +853,16 @@
 @media (max-width: 600px) {
 	.aips-content-intelligence-tab .aips-stats-grid,
 	.aips-content-clusters-tab .aips-stats-grid,
-	.aips-content-cannibalization-tab .aips-stats-grid {
+	.aips-content-cannibalization-tab .aips-stats-grid,
+	.aips-link-report-tab .aips-stats-grid {
 		grid-template-columns: 1fr;
 	}
 }
 
 .aips-content-intelligence-tab .aips-stat-card,
 .aips-content-clusters-tab .aips-stat-card,
-.aips-content-cannibalization-tab .aips-stat-card {
+.aips-content-cannibalization-tab .aips-stat-card,
+.aips-link-report-tab .aips-stat-card {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
@@ -873,7 +877,8 @@
 
 .aips-content-intelligence-tab .aips-stat-header,
 .aips-content-clusters-tab .aips-stat-header,
-.aips-content-cannibalization-tab .aips-stat-header {
+.aips-content-cannibalization-tab .aips-stat-header,
+.aips-link-report-tab .aips-stat-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -882,7 +887,8 @@
 
 .aips-content-intelligence-tab .aips-stat-label,
 .aips-content-clusters-tab .aips-stat-label,
-.aips-content-cannibalization-tab .aips-stat-label {
+.aips-content-cannibalization-tab .aips-stat-label,
+.aips-link-report-tab .aips-stat-label {
 	font-size: 11px;
 	font-weight: 600;
 	text-transform: uppercase;
@@ -894,7 +900,8 @@
 
 .aips-content-intelligence-tab .aips-stat-icon,
 .aips-content-clusters-tab .aips-stat-icon,
-.aips-content-cannibalization-tab .aips-stat-icon {
+.aips-content-cannibalization-tab .aips-stat-icon,
+.aips-link-report-tab .aips-stat-icon {
 	font-size: 14px;
 	width: 14px;
 	height: 14px;
@@ -904,7 +911,8 @@
 
 .aips-content-intelligence-tab .aips-stat-value-wrap,
 .aips-content-clusters-tab .aips-stat-value-wrap,
-.aips-content-cannibalization-tab .aips-stat-value-wrap {
+.aips-content-cannibalization-tab .aips-stat-value-wrap,
+.aips-link-report-tab .aips-stat-value-wrap {
 	display: flex;
 	align-items: baseline;
 	gap: 6px;
@@ -913,7 +921,8 @@
 
 .aips-content-intelligence-tab .aips-stat-value,
 .aips-content-clusters-tab .aips-stat-value,
-.aips-content-cannibalization-tab .aips-stat-value {
+.aips-content-cannibalization-tab .aips-stat-value,
+.aips-link-report-tab .aips-stat-value {
 	margin: 0;
 	font-size: 18px;
 	font-weight: 700;
@@ -928,7 +937,8 @@
 
 .aips-content-intelligence-tab .aips-stat-total,
 .aips-content-clusters-tab .aips-stat-total,
-.aips-content-cannibalization-tab .aips-stat-total {
+.aips-content-cannibalization-tab .aips-stat-total,
+.aips-link-report-tab .aips-stat-total {
 	font-size: 11px;
 	font-weight: 500;
 	color: var(--aips-gray-400, #94a3b8);
@@ -936,7 +946,8 @@
 
 .aips-content-intelligence-tab .aips-stat-percent,
 .aips-content-clusters-tab .aips-stat-percent,
-.aips-content-cannibalization-tab .aips-stat-percent {
+.aips-content-cannibalization-tab .aips-stat-percent,
+.aips-link-report-tab .aips-stat-percent {
 	margin-left: auto;
 	font-size: 10px;
 	font-weight: 600;
@@ -958,7 +969,8 @@
 
 .aips-content-intelligence-tab .aips-stat-subtext,
 .aips-content-clusters-tab .aips-stat-subtext,
-.aips-content-cannibalization-tab .aips-stat-subtext {
+.aips-content-cannibalization-tab .aips-stat-subtext,
+.aips-link-report-tab .aips-stat-subtext {
 	margin: 2px 0 0;
 	font-size: 11px;
 	color: var(--aips-gray-500, #64748b);
@@ -1833,3 +1845,73 @@
 }
 
 
+
+/* Consolidation dialog and Recent Consolidations (since 3.7.7) */
+#aips-consolidations-panel {
+	margin-top: 20px;
+}
+
+.aips-consolidate-modal-content {
+	max-width: 760px;
+}
+
+.aips-consolidate-step {
+	margin: 0 0 18px;
+	padding: 0;
+	border: 0;
+}
+
+.aips-consolidate-step legend {
+	margin-bottom: 6px;
+}
+
+.aips-consolidate-choices,
+.aips-consolidate-modes {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.aips-consolidate-choice {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 10px 12px;
+	border: 1px solid var(--aips-border, #dcdcde);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.aips-consolidate-choice span {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.aips-consolidate-content {
+	width: 100%;
+	font-family: monospace;
+	font-size: 12px;
+}
+
+.aips-consolidate-preview {
+	width: 100%;
+	height: 320px;
+	border: 1px solid var(--aips-border, #dcdcde);
+	border-radius: 6px;
+	background: #fff;
+}
+
+.aips-consolidate-summary {
+	padding: 10px 12px;
+	border-left: 3px solid var(--aips-primary, #2271b1);
+	background: var(--aips-surface-muted, #f6f7f7);
+}
+
+.aips-consolidate-summary ul {
+	margin: 6px 0 0 18px;
+	list-style: disc;
+}

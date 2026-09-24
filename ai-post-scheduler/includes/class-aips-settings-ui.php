@@ -64,6 +64,30 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render the description for Card 7: Internal Link Automation.
+	 *
+	 * @return void
+	 */
+	public function ai_autolink_section_callback() {
+	}
+
+	/**
+	 * Render the description for the Link Index card (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_index_section_callback() {
+	}
+
+	/**
+	 * Render the description for the Keyword Link Rules card (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_rules_section_callback() {
+	}
+
+	/**
 	 * Render the description for Card 5: Frontend Related Posts Engine.
 	 *
 	 * @return void
@@ -384,6 +408,96 @@ class AIPS_Settings_UI {
         ?>
         <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
         <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Google Search Console connection (API Keys tab).
+     *
+     * Search Console data is private, so it needs a service account key
+     * rather than a plain API key. The saved key is never printed back.
+     *
+     * @return void
+     */
+    public function gsc_field_callback() {
+        $config     = AIPS_Config::get_instance();
+        $service    = AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class);
+        $client     = $service->get_client();
+        $email      = $client->get_client_email();
+        $unreadable = $client->has_unreadable_credentials();
+        $property   = $client->get_property();
+        $anchor     = (bool) $config->get_option('aips_gsc_anchor_enabled', true);
+        $status     = $service->get_status();
+        ?>
+        <div class="aips-gsc-field" id="aips-gsc-field">
+            <p class="aips-gsc-status">
+                <?php if ($email !== '') : ?>
+                    <span class="aips-badge aips-badge-success"><?php esc_html_e('Key saved', 'ai-post-scheduler'); ?></span>
+                    <?php
+                    /* translators: %s: service account email */
+                    printf(esc_html__('Service account: %s', 'ai-post-scheduler'), '<code>' . esc_html($email) . '</code>');
+                    ?>
+                <?php elseif ($unreadable) : ?>
+                    <span class="aips-badge aips-badge-danger"><?php esc_html_e('Key unreadable', 'ai-post-scheduler'); ?></span>
+                    <?php esc_html_e('The saved key can no longer be decrypted (the site\'s security salts changed). Paste the JSON key again.', 'ai-post-scheduler'); ?>
+                <?php else : ?>
+                    <span class="aips-badge aips-badge-neutral"><?php esc_html_e('Not connected', 'ai-post-scheduler'); ?></span>
+                <?php endif; ?>
+            </p>
+
+            <p>
+                <label for="aips_gsc_service_account"><strong><?php esc_html_e('Service account JSON key', 'ai-post-scheduler'); ?></strong></label><br>
+                <textarea name="aips_gsc_service_account" id="aips_gsc_service_account" rows="4" class="large-text code" autocomplete="off" spellcheck="false" placeholder="<?php echo esc_attr($email !== '' ? __('Leave empty to keep the saved key, or paste a new JSON key to replace it.', 'ai-post-scheduler') : __('Paste the contents of the downloaded JSON key file ({ "type": "service_account", ... })', 'ai-post-scheduler')); ?>"></textarea>
+            </p>
+
+            <p>
+                <label for="aips_gsc_property"><strong><?php esc_html_e('Property', 'ai-post-scheduler'); ?></strong></label><br>
+                <input type="text" name="aips_gsc_property" id="aips_gsc_property" value="<?php echo esc_attr($property); ?>" class="regular-text" placeholder="<?php echo esc_attr('sc-domain:' . wp_parse_url(home_url(), PHP_URL_HOST)); ?>">
+                <span class="description"><?php esc_html_e('Exactly as shown in Search Console: sc-domain:example.com for a Domain property, or https://example.com/ for a URL-prefix property.', 'ai-post-scheduler'); ?></span>
+            </p>
+
+            <p>
+                <label for="aips_gsc_anchor_enabled">
+                    <input type="checkbox" name="aips_gsc_anchor_enabled" id="aips_gsc_anchor_enabled" value="1" <?php checked($anchor); ?>>
+                    <?php esc_html_e('Prefer the search queries each post ranks for as anchor text in internal link suggestions', 'ai-post-scheduler'); ?>
+                </label>
+            </p>
+
+            <p class="aips-gsc-actions">
+                <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-gsc-test"><?php esc_html_e('Test Connection', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-gsc-sync"><?php esc_html_e('Sync Keywords Now', 'ai-post-scheduler'); ?></button>
+                <?php if ($email !== '' || $unreadable) : ?>
+                <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-gsc-disconnect"><?php esc_html_e('Disconnect', 'ai-post-scheduler'); ?></button>
+                <?php endif; ?>
+            </p>
+
+            <p class="description" id="aips-gsc-last-sync">
+                <?php
+                if ($status && $status['error'] !== '') {
+                    /* translators: 1: time ago, 2: error message */
+                    printf(esc_html__('Last sync failed %1$s ago: %2$s', 'ai-post-scheduler'), esc_html(human_time_diff((int) $status['time'])), esc_html($status['error']));
+                } elseif ($status) {
+                    /* translators: 1: time ago, 2: number of keywords, 3: number of posts */
+                    printf(esc_html__('Last synced %1$s ago: %2$d target keywords for %3$d posts. Syncs daily.', 'ai-post-scheduler'), esc_html(human_time_diff((int) $status['time'])), (int) $status['queries'], (int) $status['posts']);
+                } else {
+                    esc_html_e('Not synced yet. Save your settings first, then test and sync.', 'ai-post-scheduler');
+                }
+                ?>
+            </p>
+
+            <details class="aips-gsc-help">
+                <summary><?php esc_html_e('How to connect (why not an API key?)', 'ai-post-scheduler'); ?></summary>
+                <p><?php esc_html_e('Search Console data is private to verified site owners, so Google does not allow reading it with a plain API key. A service account is a robot Google user you create once and grant read-only access:', 'ai-post-scheduler'); ?></p>
+                <ol>
+                    <li><?php esc_html_e('In Google Cloud Console, create (or pick) a project and enable the "Google Search Console API".', 'ai-post-scheduler'); ?></li>
+                    <li><?php esc_html_e('Go to IAM & Admin → Service Accounts → Create service account (no roles needed).', 'ai-post-scheduler'); ?></li>
+                    <li><?php esc_html_e('Open it → Keys → Add key → Create new key → JSON. Paste the downloaded file above.', 'ai-post-scheduler'); ?></li>
+                    <li><?php esc_html_e('In Search Console → Settings → Users and permissions, add the service account email as a user with Restricted permission.', 'ai-post-scheduler'); ?></li>
+                    <li><?php esc_html_e('Enter the property, save settings, then click Test Connection and Sync Keywords Now.', 'ai-post-scheduler'); ?></li>
+                </ol>
+                <p><?php esc_html_e('The key is stored encrypted and only has read-only access. Only the top search queries per post are stored.', 'ai-post-scheduler'); ?></p>
+            </details>
+        </div>
         <?php
     }
 
@@ -762,6 +876,121 @@ class AIPS_Settings_UI {
         }
         $float = (float) $value;
         return min(1.0, max(0.1, $float));
+    }
+
+    /**
+     * Sanitize an auto-link confidence threshold (0.50 - 1.00).
+     *
+     * @param mixed $value Raw value.
+     * @return float
+     */
+    public function sanitize_autolink_threshold($value) {
+        if (!is_numeric($value)) {
+            return 0.85;
+        }
+        return round(min(1.0, max(0.5, (float) $value)), 2);
+    }
+
+    /**
+     * Sanitize an auto-link count limit (1 - 100).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_autolink_limit($value) {
+        return min(100, max(1, absint($value)));
+    }
+
+    /**
+     * Sanitize the number of posts indexed per link index rebuild batch (10 - 500).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_index_batch_size($value) {
+        return min(500, max(10, absint($value)));
+    }
+
+    /**
+     * Sanitize the pause between link index rebuild batches in seconds (0 - 600).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_index_batch_delay($value) {
+        return min(600, absint($value));
+    }
+
+    /**
+     * Sanitize the maximum rule links added to one post (1 - 20).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_rules_max_per_post($value) {
+        return min(20, max(1, absint($value)));
+    }
+
+    /**
+     * Sanitize the generation-time linking mode.
+     *
+     * @param mixed $value Raw value.
+     * @return string off|review|apply
+     */
+    public function sanitize_publish_linking_mode($value) {
+        $value = sanitize_key((string) $value);
+        return in_array($value, array('off', 'review', 'apply'), true) ? $value : 'review';
+    }
+
+    /**
+     * Sanitize the link click retention period (30–730 days).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_click_retention_days($value) {
+        return min(730, max(30, absint($value)));
+    }
+
+    /**
+     * Sanitize where the silo "In this guide" list goes on a pillar.
+     *
+     * @param mixed $value Raw value.
+     * @return string 'end' or 'after_first_paragraph'.
+     */
+    public function sanitize_silo_guide_position($value) {
+        return $value === 'after_first_paragraph' ? 'after_first_paragraph' : 'end';
+    }
+
+    /**
+     * Sanitize the number of articles in the silo "In this guide" list.
+     *
+     * @param mixed $value Raw value.
+     * @return int 1-50.
+     */
+    public function sanitize_silo_guide_max($value) {
+        return min(50, max(1, absint($value)));
+    }
+
+    /**
+     * Sanitize the silo "In this guide" list style.
+     *
+     * @param mixed $value Raw value.
+     * @return string 'aips' or 'theme'.
+     */
+    public function sanitize_silo_guide_style($value) {
+        return $value === 'theme' ? 'theme' : 'aips';
+    }
+
+    /**
+     * Sanitize the rel attribute applied to auto-inserted links.
+     *
+     * @param mixed $value Raw value.
+     * @return string One of '', 'nofollow', 'sponsored', 'ugc'.
+     */
+    public function sanitize_autolink_rel($value) {
+        $value = sanitize_key((string) $value);
+        return in_array($value, array('nofollow', 'sponsored', 'ugc'), true) ? $value : '';
     }
 
     /**
@@ -1489,6 +1718,313 @@ class AIPS_Settings_UI {
 					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
 				</div>
 			</div>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the link index toggle and post types (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_index_field_callback() {
+		$config        = AIPS_Config::get_instance();
+		$enabled       = (bool) $config->get_option('aips_link_index_enabled', true);
+		$selected_pts  = (array) $config->get_option('aips_link_index_post_types', array('post', 'page'));
+		$available_pts = get_post_types(array('public' => true), 'objects');
+		unset($available_pts['attachment']);
+		?>
+		<fieldset>
+			<label for="aips_link_index_enabled">
+				<input type="checkbox" name="aips_link_index_enabled" id="aips_link_index_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Keep a link index of published content (powers the Link Report and orphan detection)', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p class="description"><?php esc_html_e('Links are re-read whenever a post is saved. No AI calls are made.', 'ai-post-scheduler'); ?></p>
+			<?php foreach ($available_pts as $pt_slug => $pt_obj) : ?>
+				<label class="aips-checkbox-label-block">
+					<input type="checkbox" name="aips_link_index_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected_pts, true)); ?>>
+					<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
+				</label>
+			<?php endforeach; ?>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the keyword link rules toggle and per-post cap (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_rules_field_callback() {
+		$config  = AIPS_Config::get_instance();
+		$enabled = (bool) $config->get_option('aips_link_rules_enabled', true);
+		$max     = (int) $config->get_option('aips_link_rules_max_per_post', 3);
+		?>
+		<fieldset>
+			<label for="aips_link_rules_enabled">
+				<input type="checkbox" name="aips_link_rules_enabled" id="aips_link_rules_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Apply keyword link rules to published posts', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p>
+				<label for="aips_link_rules_max_per_post"><?php esc_html_e('Maximum rule links per post:', 'ai-post-scheduler'); ?></label>
+				<input type="number" min="1" max="20" step="1" name="aips_link_rules_max_per_post" id="aips_link_rules_max_per_post" value="<?php echo esc_attr((string) $max); ?>" class="small-text">
+			</p>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: %s: link to the Link Rules page */
+					esc_html__('Rules are added when a post is displayed, so post content is never changed. Manage rules under %s.', 'ai-post-scheduler'),
+					'<a href="' . esc_url(admin_url('admin.php?page=aips-generated-posts&tab=link-rules')) . '">' . esc_html__('Content → Link Rules', 'ai-post-scheduler') . '</a>'
+				);
+				?>
+			</p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the generation-time linking mode (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function publish_linking_field_callback() {
+		$config   = AIPS_Config::get_instance();
+		$mode     = (string) $config->get_option('aips_publish_linking_mode', 'review');
+		$outbound = (bool) $config->get_option('aips_publish_linking_outbound', true);
+		$modes    = array(
+			'off'    => __('Off', 'ai-post-scheduler'),
+			'review' => __('Find links and queue them for review (no content changes)', 'ai-post-scheduler'),
+			'apply'  => __('Insert confident links automatically, queue the rest for review', 'ai-post-scheduler'),
+		);
+		?>
+		<fieldset>
+			<?php foreach ($modes as $value => $label) : ?>
+				<label class="aips-checkbox-label-block">
+					<input type="radio" name="aips_publish_linking_mode" value="<?php echo esc_attr($value); ?>" <?php checked($mode, $value); ?>>
+					<?php echo esc_html($label); ?>
+				</label>
+			<?php endforeach; ?>
+			<label for="aips_publish_linking_outbound" class="aips-checkbox-label-block">
+				<input type="checkbox" name="aips_publish_linking_outbound" id="aips_publish_linking_outbound" value="1" <?php checked($outbound); ?>>
+				<?php esc_html_e('Also suggest links from the new post to related posts (Internal Links page)', 'ai-post-scheduler'); ?>
+			</label>
+			<p class="description"><?php esc_html_e('When a post generated by AI Post Scheduler is published, older related posts get links to it, about two minutes later in the background. "Insert automatically" uses the auto-apply threshold and caps above. Each publish appears in the Link Report run history, where its links can be undone at once.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the link click tracking toggle and retention (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_click_tracking_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$enabled   = (bool) $config->get_option('aips_link_click_tracking_enabled', false);
+		$retention = (int) $config->get_option('aips_link_click_retention_days', 365);
+		?>
+		<fieldset>
+			<label for="aips_link_click_tracking_enabled">
+				<input type="checkbox" name="aips_link_click_tracking_enabled" id="aips_link_click_tracking_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Count clicks on internal links in post content', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p>
+				<label for="aips_link_click_retention_days"><?php esc_html_e('Keep click counts for (days):', 'ai-post-scheduler'); ?></label>
+				<input type="number" min="30" max="730" step="1" name="aips_link_click_retention_days" id="aips_link_click_retention_days" value="<?php echo esc_attr((string) $retention); ?>" class="small-text">
+			</p>
+			<p class="description"><?php esc_html_e('Adds a small script to single posts that reports which internal link was clicked. Only a daily count per link is stored: no IP addresses, cookies or visitor IDs. Clicks by logged-in editors and known bots are ignored. Results appear in Content → Link Report.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the silo "In this guide" list settings (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function silo_guide_field_callback() {
+		$config   = AIPS_Config::get_instance();
+		$enabled  = (bool) $config->get_option('aips_silo_guide_enabled', true);
+		$position = (string) $config->get_option('aips_silo_guide_position', 'end');
+		$max      = (int) $config->get_option('aips_silo_guide_max', 10);
+		$style    = (string) $config->get_option('aips_silo_guide_style', 'aips');
+		$heading  = (string) $config->get_option('aips_silo_guide_heading', '');
+		?>
+		<fieldset>
+			<label for="aips_silo_guide_enabled">
+				<input type="checkbox" name="aips_silo_guide_enabled" id="aips_silo_guide_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Show an "In this guide" list of its articles on each silo pillar', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p>
+				<label for="aips_silo_guide_heading"><?php esc_html_e('Heading:', 'ai-post-scheduler'); ?></label>
+				<input type="text" name="aips_silo_guide_heading" id="aips_silo_guide_heading" value="<?php echo esc_attr($heading); ?>" placeholder="<?php esc_attr_e('In this guide', 'ai-post-scheduler'); ?>" class="regular-text">
+			</p>
+			<p>
+				<label for="aips_silo_guide_position"><?php esc_html_e('Place it:', 'ai-post-scheduler'); ?></label>
+				<select name="aips_silo_guide_position" id="aips_silo_guide_position">
+					<option value="end" <?php selected($position, 'end'); ?>><?php esc_html_e('At the end of the post', 'ai-post-scheduler'); ?></option>
+					<option value="after_first_paragraph" <?php selected($position, 'after_first_paragraph'); ?>><?php esc_html_e('After the first paragraph', 'ai-post-scheduler'); ?></option>
+				</select>
+			</p>
+			<p>
+				<label for="aips_silo_guide_max"><?php esc_html_e('List up to', 'ai-post-scheduler'); ?></label>
+				<input type="number" min="1" max="50" step="1" name="aips_silo_guide_max" id="aips_silo_guide_max" value="<?php echo esc_attr((string) $max); ?>" class="small-text">
+				<?php esc_html_e('articles, closest to the pillar first', 'ai-post-scheduler'); ?>
+			</p>
+			<p>
+				<label for="aips_silo_guide_style"><?php esc_html_e('Style:', 'ai-post-scheduler'); ?></label>
+				<select name="aips_silo_guide_style" id="aips_silo_guide_style">
+					<option value="aips" <?php selected($style, 'aips'); ?>><?php esc_html_e('AI Post Scheduler box (a light bordered box in your theme\'s colours)', 'ai-post-scheduler'); ?></option>
+					<option value="theme" <?php selected($style, 'theme'); ?>><?php esc_html_e('Plain HTML (your theme styles the heading and list)', 'ai-post-scheduler'); ?></option>
+				</select>
+			</p>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: %s: shortcode */
+					esc_html__('The list is added when the pillar is displayed; the pillar\'s content is never edited, and the list updates itself as articles join or leave the silo. Articles the pillar already links to in its text are left out. To place it yourself, put %s in the pillar. Silos are managed in Content → Silos.', 'ai-post-scheduler'),
+					'<code>[aips_silo_guide]</code>'
+				);
+				?>
+			</p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the link index rebuild throttle (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_index_throttle_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$batch_size = (int) $config->get_option('aips_link_index_batch_size', 50);
+		$delay      = (int) $config->get_option('aips_link_index_batch_delay', 20);
+		?>
+		<fieldset class="aips-link-index-throttle">
+			<div class="aips-rate-limits-grid">
+				<div class="aips-rate-limit-field">
+					<label for="aips_link_index_batch_size"><?php esc_html_e('Posts per batch:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="10" max="500" step="10" name="aips_link_index_batch_size" id="aips_link_index_batch_size" value="<?php echo esc_attr((string) $batch_size); ?>" class="small-text">
+				</div>
+				<div class="aips-rate-limit-field">
+					<label for="aips_link_index_batch_delay"><?php esc_html_e('Pause between batches:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0" max="600" step="5" name="aips_link_index_batch_delay" id="aips_link_index_batch_delay" value="<?php echo esc_attr((string) $delay); ?>" class="small-text">
+					<span class="description"><?php esc_html_e('seconds', 'ai-post-scheduler'); ?></span>
+				</div>
+			</div>
+			<p class="description"><?php esc_html_e('A full rebuild runs in the background as WP-Cron batches. Each batch only parses post HTML (no AI calls); lower the batch size or raise the pause on slow or shared hosting.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the bulk auto-linking toggle (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function autolink_enabled_field_callback() {
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_autolink_enabled', false);
+		?>
+		<label for="aips_autolink_enabled">
+			<input type="checkbox" name="aips_autolink_enabled" id="aips_autolink_enabled" value="1" <?php checked($enabled); ?>>
+			<strong><?php esc_html_e('Allow bulk auto-link runs to insert internal links automatically', 'ai-post-scheduler'); ?></strong>
+		</label>
+		<p class="description">
+			<?php esc_html_e('Links at or above the auto-apply threshold are inserted; links between the review and auto-apply thresholds wait in a review queue. Every insertion can be undone individually or per run.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the auto-apply and review confidence thresholds (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_thresholds_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$auto   = (float) $config->get_option('aips_autolink_auto_apply_threshold', 0.85);
+		$review = (float) $config->get_option('aips_autolink_review_threshold', 0.70);
+		?>
+		<fieldset class="aips-autolink-thresholds">
+			<div class="aips-rate-limits-grid">
+				<div class="aips-rate-limit-field">
+					<label for="aips_autolink_auto_apply_threshold"><?php esc_html_e('Auto-apply at:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0.5" max="1" step="0.01" name="aips_autolink_auto_apply_threshold" id="aips_autolink_auto_apply_threshold" value="<?php echo esc_attr((string) $auto); ?>" class="small-text">
+				</div>
+				<div class="aips-rate-limit-field">
+					<label for="aips_autolink_review_threshold"><?php esc_html_e('Send to review at:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0.5" max="1" step="0.01" name="aips_autolink_review_threshold" id="aips_autolink_review_threshold" value="<?php echo esc_attr((string) $review); ?>" class="small-text">
+				</div>
+			</div>
+			<p class="description"><?php esc_html_e('Confidence combines semantic similarity with anchor-text quality (0.50 - 1.00). Suggestions below the review threshold are skipped.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the per-post and per-target link caps (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_limits_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$fields = array(
+			'aips_autolink_max_links_per_post'          => array((int) $config->get_option('aips_autolink_max_links_per_post', 3), __('New links per post, per run:', 'ai-post-scheduler')),
+			'aips_autolink_max_total_internal_per_post' => array((int) $config->get_option('aips_autolink_max_total_internal_per_post', 15), __('Max internal links in a post:', 'ai-post-scheduler')),
+			'aips_autolink_max_inbound_per_target'      => array((int) $config->get_option('aips_autolink_max_inbound_per_target', 5), __('New inbound links per target, per run:', 'ai-post-scheduler')),
+		);
+		?>
+		<fieldset class="aips-autolink-limits">
+			<div class="aips-rate-limits-grid">
+				<?php foreach ($fields as $name => $field) : ?>
+					<div class="aips-rate-limit-field">
+						<label for="<?php echo esc_attr($name); ?>"><?php echo esc_html($field[1]); ?></label>
+						<input type="number" min="1" max="100" step="1" name="<?php echo esc_attr($name); ?>" id="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr((string) $field[0]); ?>" class="small-text">
+					</div>
+				<?php endforeach; ?>
+			</div>
+			<p class="description"><?php esc_html_e('Posts already at the internal link cap never receive automatic links.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render placement and link attribute options (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_placement_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$skip_first = (bool) $config->get_option('aips_autolink_skip_first_paragraph', true);
+		$rel        = (string) $config->get_option('aips_autolink_rel', '');
+		$new_tab    = (bool) $config->get_option('aips_autolink_target_blank', false);
+		$rel_labels = array(
+			''          => __('None (recommended for internal links)', 'ai-post-scheduler'),
+			'nofollow'  => 'nofollow',
+			'sponsored' => 'sponsored',
+			'ugc'       => 'ugc',
+		);
+		?>
+		<fieldset class="aips-autolink-placement">
+			<label for="aips_autolink_skip_first_paragraph">
+				<input type="checkbox" name="aips_autolink_skip_first_paragraph" id="aips_autolink_skip_first_paragraph" value="1" <?php checked($skip_first); ?>>
+				<?php esc_html_e('Never link inside the first paragraph', 'ai-post-scheduler'); ?>
+			</label>
+			<br>
+			<label for="aips_autolink_target_blank">
+				<input type="checkbox" name="aips_autolink_target_blank" id="aips_autolink_target_blank" value="1" <?php checked($new_tab); ?>>
+				<?php esc_html_e('Open auto-inserted links in a new tab', 'ai-post-scheduler'); ?>
+			</label>
+			<p>
+				<label for="aips_autolink_rel"><?php esc_html_e('rel attribute:', 'ai-post-scheduler'); ?></label>
+				<select name="aips_autolink_rel" id="aips_autolink_rel">
+					<?php foreach ($rel_labels as $value => $label) : ?>
+						<option value="<?php echo esc_attr($value); ?>" <?php selected($rel, $value); ?>><?php echo esc_html($label); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
+			<p class="description"><?php esc_html_e('Links are never placed inside headings, existing links, code, buttons, shortcodes or HTML blocks.', 'ai-post-scheduler'); ?></p>
 		</fieldset>
 		<?php
 	}

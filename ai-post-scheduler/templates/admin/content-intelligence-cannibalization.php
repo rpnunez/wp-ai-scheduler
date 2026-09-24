@@ -8,8 +8,9 @@
  * @package AI_Post_Scheduler
  * @since 3.0.0
  *
- * @var array $banners
- * @var array $settings
+ * @var array   $banners
+ * @var array   $settings
+ * @var array[] $consolidations Recent consolidations (AIPS_Consolidation_Service::get_history()).
  */
 
 if (!defined('ABSPATH')) {
@@ -123,6 +124,36 @@ if (!defined('ABSPATH')) {
 		</div>
 	</div>
 
+	<?php
+	$consolidations = isset($consolidations) ? (array) $consolidations : array();
+	AIPS_Admin_UI_Primitives::render_card(
+		array(
+			'id'          => 'aips-consolidations-panel',
+			'title'       => __('Recent Consolidations', 'ai-post-scheduler'),
+			'icon'        => 'dashicons-migrate',
+			'description' => __('Consolidating keeps one post of an overlapping pair. The other is moved to draft, its URL redirects to the kept post, and internal links to it are re-pointed. Undo reverses all of it.', 'ai-post-scheduler'),
+			'body_class'  => 'no-padding',
+		),
+		function () use ($consolidations) {
+			?>
+			<table class="aips-table widefat striped" id="aips-consolidations-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e('Kept', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Retired (now draft)', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Merged Content', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Links Re-pointed', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('When', 'ai-post-scheduler'); ?></th>
+						<th scope="col" class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+					</tr>
+				</thead>
+				<tbody id="aips-consolidations-tbody" data-initial="<?php echo esc_attr(wp_json_encode($consolidations)); ?>"></tbody>
+			</table>
+			<?php
+		}
+	);
+	?>
+
 </div><!-- /.aips-content-cannibalization-tab -->
 
 <!-- =====================================================================
@@ -194,4 +225,93 @@ if (!defined('ABSPATH')) {
 <!-- Template: Entity badge -->
 <script type="text/html" id="aips-tmpl-indexer-entity-badge">
 	<span class="aips-badge aips-badge-{{type}}">{{label}}</span>
+</script>
+
+<!-- Consolidation dialog -->
+<div id="aips-consolidate-modal" class="aips-modal" style="display:none;">
+	<div class="aips-modal-content aips-consolidate-modal-content" role="dialog" aria-modal="true" aria-labelledby="aips-consolidate-title">
+		<div class="aips-modal-header">
+			<h3 class="aips-modal-title" id="aips-consolidate-title"><?php esc_html_e('Consolidate Overlapping Posts', 'ai-post-scheduler'); ?></h3>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
+			<p class="aips-consolidate-loading" id="aips-consolidate-loading"><span class="spinner is-active"></span> <?php esc_html_e('Loading…', 'ai-post-scheduler'); ?></p>
+
+			<div id="aips-consolidate-body" class="aips-hidden">
+				<fieldset class="aips-consolidate-step">
+					<legend><strong><?php esc_html_e('1. Which post do you keep?', 'ai-post-scheduler'); ?></strong></legend>
+					<p class="description"><?php esc_html_e('The kept post stays published at its URL. The other post is moved to draft and its URL redirects to the kept post.', 'ai-post-scheduler'); ?></p>
+					<div id="aips-consolidate-choices" class="aips-consolidate-choices"></div>
+				</fieldset>
+
+				<fieldset class="aips-consolidate-step">
+					<legend><strong><?php esc_html_e('2. Merge the content (optional)', 'ai-post-scheduler'); ?></strong></legend>
+					<p class="description"><?php esc_html_e('AI writes one article from both posts, based on the kept post and adding what only the retired post covers. Review and edit it here before using it.', 'ai-post-scheduler'); ?></p>
+					<label class="aips-form-label" for="aips-consolidate-instructions"><?php esc_html_e('Extra instructions for the AI (optional)', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="aips-consolidate-instructions" class="aips-form-input" placeholder="<?php esc_attr_e('e.g. Keep it under 2,000 words', 'ai-post-scheduler'); ?>">
+					<p>
+						<button type="button" class="aips-btn aips-btn-secondary" id="aips-consolidate-generate">
+							<span class="dashicons dashicons-admin-customizer" aria-hidden="true"></span>
+							<?php esc_html_e('Generate Merged Draft', 'ai-post-scheduler'); ?>
+						</button>
+						<span class="aips-text-muted aips-hidden" id="aips-consolidate-ai-off"><?php esc_html_e('The AI provider is not available, so a merged draft cannot be generated.', 'ai-post-scheduler'); ?></span>
+					</p>
+					<div id="aips-consolidate-merge" class="aips-hidden">
+						<label class="aips-form-label" for="aips-consolidate-content"><?php esc_html_e('Merged draft (HTML, editable)', 'ai-post-scheduler'); ?></label>
+						<textarea id="aips-consolidate-content" class="aips-form-input aips-consolidate-content" rows="12"></textarea>
+						<p><button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-consolidate-preview-toggle"><?php esc_html_e('Show formatted preview', 'ai-post-scheduler'); ?></button></p>
+						<iframe id="aips-consolidate-preview" class="aips-consolidate-preview aips-hidden" sandbox="" title="<?php esc_attr_e('Merged draft preview', 'ai-post-scheduler'); ?>"></iframe>
+					</div>
+					<div class="aips-consolidate-modes">
+						<label><input type="radio" name="aips-consolidate-mode" value="none" checked> <?php esc_html_e('Don\'t change the kept post\'s content', 'ai-post-scheduler'); ?></label>
+						<label><input type="radio" name="aips-consolidate-mode" value="revision" disabled> <?php esc_html_e('Save the merged draft as a revision of the kept post (the live post is unchanged; restore the revision when you are happy with it)', 'ai-post-scheduler'); ?></label>
+						<label><input type="radio" name="aips-consolidate-mode" value="rewrite" disabled> <?php esc_html_e('Rewrite the kept post with the merged draft now (the old version stays in its revisions)', 'ai-post-scheduler'); ?></label>
+					</div>
+				</fieldset>
+
+				<div class="aips-consolidate-summary" id="aips-consolidate-summary"></div>
+			</div>
+		</div>
+		<div class="aips-modal-footer">
+			<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="aips-btn aips-btn-primary" id="aips-consolidate-run" disabled><?php esc_html_e('Consolidate', 'ai-post-scheduler'); ?></button>
+		</div>
+	</div>
+</div>
+
+<!-- Template: Consolidate action button (audit row) -->
+<script type="text/html" id="aips-tmpl-consolidate-btn">
+	<button type="button" class="aips-btn aips-btn-xs aips-btn-primary aips-consolidate-open" data-a="{{a}}" data-b="{{b}}"><?php esc_html_e('Consolidate', 'ai-post-scheduler'); ?></button>
+</script>
+
+<!-- Template: Keep choice in the dialog -->
+<script type="text/html" id="aips-tmpl-consolidate-choice">
+	<label class="aips-consolidate-choice">
+		<input type="radio" name="aips-consolidate-keep" value="{{id}}" {{checked}}>
+		<span>
+			<strong>{{title}}</strong>
+			<a href="{{url}}" target="_blank" rel="noopener" class="aips-text-muted">{{url}}</a>
+			<small class="aips-text-muted">{{meta}}</small>
+		</span>
+	</label>
+</script>
+
+<!-- Template: Recent consolidation row -->
+<script type="text/html" id="aips-tmpl-consolidation-row">
+	<tr class="{{row_class}}">
+		<td><a href="{{keep_url}}" target="_blank" rel="noopener">{{keep_title}}</a></td>
+		<td><a href="{{retire_edit}}" target="_blank" rel="noopener">{{retire_title}}</a><br><code class="aips-text-muted">{{retire_url}}</code></td>
+		<td>{{content_label}} <a href="{{revision_url}}" class="{{revision_class}}" target="_blank" rel="noopener"><?php esc_html_e('Review revision', 'ai-post-scheduler'); ?></a></td>
+		<td>{{links_repointed}}</td>
+		<td>{{when}}</td>
+		<td class="column-actions">
+			<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-consolidation-undo {{undo_class}}" data-id="{{id}}"><?php esc_html_e('Undo', 'ai-post-scheduler'); ?></button>
+			<span class="aips-badge aips-badge-neutral {{undone_class}}"><?php esc_html_e('Undone', 'ai-post-scheduler'); ?></span>
+		</td>
+	</tr>
+</script>
+
+<!-- Template: Recent consolidations empty row -->
+<script type="text/html" id="aips-tmpl-consolidation-empty">
+	<tr><td colspan="6" class="aips-text-muted">{{message}}</td></tr>
 </script>

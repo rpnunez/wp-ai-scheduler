@@ -218,6 +218,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_unsplash_access_key'],
 			),
+			'aips_gsc_service_account' => array(
+				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_credentials'),
+				'default'           => $defaults['aips_gsc_service_account'],
+			),
+			'aips_gsc_property' => array(
+				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_property'),
+				'default'           => $defaults['aips_gsc_property'],
+			),
+			'aips_gsc_anchor_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_gsc_anchor_enabled'],
+			),
 			'aips_review_notifications_email' => array(
 				'sanitize_callback' => array($ui, 'sanitize_notification_emails'),
 				'default'           => $defaults['aips_review_notifications_email'],
@@ -293,6 +305,106 @@ class AIPS_Settings {
 			'aips_indexer_verbose_history' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_indexer_verbose_history'],
+			),
+			'aips_link_index_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_index_enabled'],
+			),
+			'aips_link_index_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_link_index_post_types'],
+			),
+			'aips_link_index_batch_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_index_batch_size'),
+				'default'           => $defaults['aips_link_index_batch_size'],
+			),
+			'aips_link_index_batch_delay' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_index_batch_delay'),
+				'default'           => $defaults['aips_link_index_batch_delay'],
+			),
+			'aips_link_rules_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_rules_enabled'],
+			),
+			'aips_link_rules_max_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_rules_max_per_post'),
+				'default'           => $defaults['aips_link_rules_max_per_post'],
+			),
+			'aips_redirect_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_redirect_provider'],
+			),
+			'aips_publish_linking_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_publish_linking_mode'),
+				'default'           => $defaults['aips_publish_linking_mode'],
+			),
+			'aips_publish_linking_outbound' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_publish_linking_outbound'],
+			),
+			'aips_link_click_tracking_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_click_tracking_enabled'],
+			),
+			'aips_link_click_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
+				'default'           => $defaults['aips_link_click_retention_days'],
+			),
+			'aips_silo_guide_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_silo_guide_enabled'],
+			),
+			'aips_silo_guide_position' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_position'),
+				'default'           => $defaults['aips_silo_guide_position'],
+			),
+			'aips_silo_guide_max' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_max'),
+				'default'           => $defaults['aips_silo_guide_max'],
+			),
+			'aips_silo_guide_style' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_style'),
+				'default'           => $defaults['aips_silo_guide_style'],
+			),
+			'aips_silo_guide_heading' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_silo_guide_heading'],
+			),
+			'aips_autolink_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_enabled'],
+			),
+			'aips_autolink_auto_apply_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_threshold'),
+				'default'           => $defaults['aips_autolink_auto_apply_threshold'],
+			),
+			'aips_autolink_review_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_threshold'),
+				'default'           => $defaults['aips_autolink_review_threshold'],
+			),
+			'aips_autolink_max_links_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_links_per_post'],
+			),
+			'aips_autolink_max_total_internal_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_total_internal_per_post'],
+			),
+			'aips_autolink_max_inbound_per_target' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_inbound_per_target'],
+			),
+			'aips_autolink_skip_first_paragraph' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_skip_first_paragraph'],
+			),
+			'aips_autolink_rel' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_rel'),
+				'default'           => $defaults['aips_autolink_rel'],
+			),
+			'aips_autolink_target_blank' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_target_blank'],
 			),
 			'aips_embeddings_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
@@ -834,6 +946,136 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
+        // Internal Linking tab: Link Index card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_index_section',
+            __('Link Index', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_index',
+            __('Link Index', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_field_callback'),
+            'aips-settings',
+            'aips_link_index_section'
+        );
+
+        add_settings_field(
+            'aips_link_index_throttle',
+            __('Rebuild Speed', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_throttle_field_callback'),
+            'aips-settings',
+            'aips_link_index_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Keyword Link Rules card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_rules_section',
+            __('Keyword Link Rules', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_rules',
+            __('Keyword Link Rules', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_field_callback'),
+            'aips-settings',
+            'aips_link_rules_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Link Click Tracking card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_clicks_section',
+            __('Link Click Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_click_tracking',
+            __('Link Click Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'link_click_tracking_field_callback'),
+            'aips-settings',
+            'aips_link_clicks_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Topic Silos card ("In this guide" list on pillars)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_silo_section',
+            __('Topic Silos', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_silo_guide',
+            __('"In this guide" List', 'ai-post-scheduler'),
+            array($this->ui, 'silo_guide_field_callback'),
+            'aips-settings',
+            'aips_silo_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Internal Link Automation card (bulk auto-link guardrails)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_autolink_section',
+            __('Internal Link Automation', 'ai-post-scheduler'),
+            array($this->ui, 'ai_autolink_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_publish_linking',
+            __('Link New AIPS Posts on Publish', 'ai-post-scheduler'),
+            array($this->ui, 'publish_linking_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_enabled',
+            __('Bulk Auto-Linking', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_thresholds',
+            __('Confidence Thresholds', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_thresholds_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_limits',
+            __('Link Limits', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_placement',
+            __('Placement & Attributes', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_placement_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        // -----------------------------------------------------------------------
         // Authors Section: Global Topic Approval & Semantic Gate
         // -----------------------------------------------------------------------
         add_settings_section(
@@ -939,6 +1181,14 @@ class AIPS_Settings {
             'aips_unsplash_access_key',
             __('Unsplash Access Key', 'ai-post-scheduler'),
             array($this->ui, 'unsplash_access_key_field_callback'),
+            'aips-settings',
+            'aips_api_keys_section'
+        );
+
+        add_settings_field(
+            'aips_gsc',
+            __('Google Search Console', 'ai-post-scheduler'),
+            array($this->ui, 'gsc_field_callback'),
             'aips-settings',
             'aips_api_keys_section'
         );

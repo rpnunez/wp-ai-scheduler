@@ -281,6 +281,26 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-database',
 						'description' => __('Vector embeddings index and semantic post search.', 'ai-post-scheduler'),
 					),
+					'aips-link-report' => array(
+						'label'       => __('Link Report', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-admin-links',
+						'description' => __('Inbound, outbound and broken links for every published post, with orphan detection.', 'ai-post-scheduler'),
+					),
+					'aips-redirects' => array(
+						'label'       => __('Redirects', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-randomize',
+						'description' => __('Redirects created by AI Post Scheduler, served by your redirect plugin or built in.', 'ai-post-scheduler'),
+					),
+					'aips-link-rules' => array(
+						'label'       => __('Link Rules', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-tag',
+						'description' => __('Keyword rules that link a phrase to a chosen post everywhere it appears.', 'ai-post-scheduler'),
+					),
+					'aips-silos' => array(
+						'label'       => __('Silos', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-index-card',
+						'description' => __('Topic clusters with a confirmed pillar: articles link up to the pillar, and the pillar lists its articles.', 'ai-post-scheduler'),
+					),
 					'aips-content-clusters' => array(
 						'label'       => __('Topic Clusters', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-networking',
@@ -323,6 +343,11 @@ class AIPS_Admin_Page_Context {
 						'label'       => __('AI Engine', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-rest-api',
 						'description' => __('Models & AI provider connection', 'ai-post-scheduler'),
+					),
+					'settings-linking' => array(
+						'label'       => __('Internal Linking', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-admin-links',
+						'description' => __('Link index, Link Report and automatic internal linking', 'ai-post-scheduler'),
 					),
 					'settings-feedback' => array(
 						'label'       => __('Feedback', 'ai-post-scheduler'),
