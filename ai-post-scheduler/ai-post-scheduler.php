@@ -2,8 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Description: Schedule AI-generated posts using advanced features & scheduling options.
- * Version: 3.6.6
+ * Version: 3.7.7
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -44,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.6.6');
+    define('AIPS_VERSION', '3.7.7');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -451,6 +450,64 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
+        // Register the link index (actual <a href> links in post content)
+        $container->singleton(AIPS_Link_Index_Repository::class, function( $container ) {
+            return new AIPS_Link_Index_Repository();
+        });
+
+        $container->singleton(AIPS_Link_Index_Service::class, function( $container ) {
+            return new AIPS_Link_Index_Service(
+                $container->make(AIPS_Link_Index_Repository::class)
+            );
+        });
+
+        $container->singleton(AIPS_Link_Rules_Service::class, function( $container ) {
+            return new AIPS_Link_Rules_Service();
+        });
+
+        $container->singleton(AIPS_Redirects_Service::class, function( $container ) {
+            return new AIPS_Redirects_Service();
+        });
+
+        $container->singleton(AIPS_Publish_Linking_Service::class, function( $container ) {
+            return new AIPS_Publish_Linking_Service();
+        });
+
+        $container->singleton(AIPS_Silo_Service::class, function( $container ) {
+            return new AIPS_Silo_Service();
+        });
+
+        $container->singleton(AIPS_GSC_Client::class, function( $container ) {
+            return new AIPS_GSC_Client();
+        });
+
+        $container->singleton(AIPS_GSC_Keywords_Service::class, function( $container ) {
+            return new AIPS_GSC_Keywords_Service($container->make(AIPS_GSC_Client::class));
+        });
+
+        $container->singleton(AIPS_Link_Clicks_Repository::class, function( $container ) {
+            return new AIPS_Link_Clicks_Repository();
+        });
+
+        $container->singleton(AIPS_Link_Click_Tracking_Service::class, function( $container ) {
+            return new AIPS_Link_Click_Tracking_Service(null, $container->make(AIPS_Link_Clicks_Repository::class));
+        });
+
+        $container->singleton(AIPS_Autolink_Run_Service::class, function( $container ) {
+            return new AIPS_Autolink_Run_Service(
+                $container->make(AIPS_Inbound_Links_Service::class),
+                $container->make(AIPS_Link_Index_Service::class)
+            );
+        });
+
+        $container->singleton(AIPS_Inbound_Links_Service::class, function( $container ) {
+            return new AIPS_Inbound_Links_Service(
+                null,
+                $container->make(AIPS_Link_Index_Service::class),
+                $container->make(AIPS_Relationships_Repository::class)
+            );
+        });
+
         // Register AIPS_Embeddings_Service
         $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
             return new AIPS_Embeddings_Service(
@@ -491,6 +548,22 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Config::class),
                 $container->make(AIPS_Logger_Interface::class)
             );
+        });
+
+        // Register AIPS_Similarity_Evaluator
+        $container->singleton(AIPS_Similarity_Evaluator::class, function( $container ) {
+            return new AIPS_Similarity_Evaluator(
+                $container->make(AIPS_Config::class)
+            );
+        });
+        // Register AIPS_Post_Insights_Repository
+        $container->singleton(AIPS_Post_Insights_Repository::class, function( $container ) {
+            return new AIPS_Post_Insights_Repository();
+        });
+
+        // Register AIPS_Post_Insights_Controller
+        $container->singleton(AIPS_Post_Insights_Controller::class, function( $container ) {
+            return new AIPS_Post_Insights_Controller();
         });
     }
 
@@ -623,6 +696,55 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
+        // Link index: record the links each published post contains, and turn
+        // links to a deleted post into broken internal links.
+        add_action('save_post', function ($post_id, $post) {
+            if (!is_object($post) || !isset($post->post_status)) {
+                return;
+            }
+            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_post_save($post_id, $post);
+        }, 20, 2);
+
+        add_action('before_delete_post', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
+        });
+
+        // Silos: keep the link index and the "In this guide" cache in step with
+        // pillar, cluster and settings changes (see AIPS_Silo_Service).
+        AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_common_hooks();
+
+        // Generation-time linking: when an AIPS post goes live, link older
+        // related posts to it in the background (see AIPS_Publish_Linking_Service).
+        add_action('transition_post_status', function ($new_status, $old_status, $post) {
+            if ($new_status === 'publish' && $old_status !== 'publish') {
+                AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_transition($new_status, $old_status, $post);
+            }
+        }, 20, 3);
+
+        add_action('aips_post_generated', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_generated($post_id);
+        }, 20);
+
+        // Re-qualify a post for generation-time linking on its next save, once
+        // an earlier pass's "already linked" flag is cleared (see on_run_undone()
+        // below) — a plain save doesn't fire transition_post_status when the
+        // post was already published.
+        add_action('save_post', function ($post_id, $post) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_saved($post_id, $post);
+        }, 20, 2);
+
+        // Undoing an auto-link run clears the one-time "already linked" flag
+        // for a publish-linking run, so the post can be linked again.
+        add_action('aips_autolink_run_undone', function ($run) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_run_undone($run);
+        });
+
+        // Process pending background indexing queue (single event / cron worker)
+        add_action('aips_process_pending_indexer_queue', function () {
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
+        });
+
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
@@ -722,6 +844,27 @@ final class AI_Post_Scheduler {
                 (string) $correlation_id
             );
         }, 10, 2);
+
+        // Link index scans: each tick indexes one batch and schedules the next,
+        // so scans can be paused, resumed and cancelled between batches.
+        // Generation-time linking pass for a newly published AIPS post.
+        add_action(AIPS_Publish_Linking_Service::CRON_HOOK, function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->process($post_id);
+        });
+
+        // Daily Search Console target keyword sync.
+        add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
+            AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
+        });
+
+        add_action(AIPS_Link_Index_Service::SCAN_TICK_HOOK, function( $job_id ) {
+            AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_scan_tick( $job_id );
+        });
+
+        // Bulk auto-link runs: same tick pattern, one batch of target posts per event.
+        add_action(AIPS_Autolink_Run_Service::TICK_HOOK, function( $job_id ) {
+            AIPS_Container::get_instance()->make( AIPS_Autolink_Run_Service::class )->process_tick( $job_id );
+        });
 
         // Async bulk-batch processing: each single event processes one slice of a stored job.
         // Args: job_id, start_index, batch_size, total_quantity, correlation_id.
@@ -957,6 +1100,12 @@ final class AI_Post_Scheduler {
         // Native WordPress post list/editor History links for plugin containers.
         new AIPS_Post_History_UI();
 
+        // "Internal Links" panel in the Classic and Block editors.
+        new AIPS_Internal_Links_Editor_Panel();
+
+        // Keep the daily Search Console sync scheduled while it is connected.
+        AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
+
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
         // the object (which would double-register all AJAX hooks).
@@ -971,6 +1120,8 @@ final class AI_Post_Scheduler {
             new AIPS_Seeder_Admin();
         }
 
+        // Post Insights controller for editor metabox and post list column.
+        new AIPS_Post_Insights_Controller();
     }
 
     /**
@@ -983,6 +1134,26 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+
+        // Keyword link rules are applied when posts are displayed (after
+        // blocks render, before shortcodes and the Related Posts block).
+        add_filter('the_content', function ($content) {
+            return AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)->filter_content($content);
+        }, 9);
+
+        // Silo pillars get an "In this guide" list of their articles when
+        // displayed (or where the [aips_silo_guide] shortcode is placed).
+        AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_frontend_hooks();
+
+        // Redirects AIPS serves itself (when no redirect plugin handles them).
+        // Runs early so it wins over canonical redirects and 404 handling.
+        add_action('template_redirect', function () {
+            AIPS_Container::get_instance()->make(AIPS_Redirects_Service::class)->maybe_redirect();
+        }, 1);
+
+        // Internal link click tracking (opt-in): tags content links and
+        // registers the aips/v1/link-click beacon endpoint.
+        AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->register_frontend();
     }
 }
 
