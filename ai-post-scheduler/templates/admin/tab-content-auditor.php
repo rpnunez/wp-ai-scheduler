@@ -33,7 +33,7 @@ $authors       = (new AIPS_Authors_Repository())->get_all(true);
 		</div>
 
 		<div class="aips-panel-body">
-			<form id="aips-auditor-form">
+			<form id="aips-auditor-form" data-aips-async="true">
 				<div class="aips-auditor-form-grid">
 					<div class="aips-form-group">
 						<label for="auditor-niche" class="aips-form-label">
@@ -286,7 +286,7 @@ $authors       = (new AIPS_Authors_Repository())->get_all(true);
 				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 			</div>
 			<div class="aips-modal-body">
-				<form id="aips-add-topic-author-form">
+				<form id="aips-add-topic-author-form" data-aips-async="true">
 					<div class="aips-form-group">
 						<label class="aips-form-label"><strong><?php esc_html_e('Topic Title', 'ai-post-scheduler'); ?></strong></label>
 						<input type="text" id="aips-modal-topic-title" class="regular-text" style="width: 100%;" required>

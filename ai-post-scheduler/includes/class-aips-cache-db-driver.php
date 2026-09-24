@@ -141,7 +141,11 @@ class AIPS_Cache_Db_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorable_
 		$table       = $wpdb->prefix . 'aips_cache';
 		$cache_key   = $this->namespace_key( $key );
 		$cache_group = (string) $group;
-		$cache_value = maybe_serialize( $value );
+		// maybe_serialize() stores ints, floats and booleans as bare strings, so
+		// they would read back as '42' / '' / '1'. Serialize every non-string
+		// so values keep their type; strings keep the existing format, and
+		// maybe_unserialize() still reads rows written before this change.
+		$cache_value = is_string( $value ) ? maybe_serialize( $value ) : serialize( $value );
 
 		$now_ts = AIPS_DateTime::now()->timestamp();
 
