@@ -1,0 +1,23 @@
+{
+  "id": "551d098a08d00fffe6dbba4cc4476daabe035ebe",
+  "type": "controller_datetime_gap",
+  "severity": "medium",
+  "status": "resolved",
+  "path": "ai-post-scheduler/includes/class-aips-telemetry-controller.php",
+  "symbol": "AIPS_Telemetry_Controller",
+  "anchor": "render_page/ajax_get_telemetry:date-range-defaults",
+  "summary": "Telemetry default date ranges were reported as being calculated in the controller with current_time() plus strtotime().",
+  "why_it_matters": "Ad-hoc date maths in controllers drifts from the UTC-first storage and site-timezone display rules that AIPS_DateTime centralises.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-telemetry-controller.php:47",
+    "ai-post-scheduler/includes/class-aips-telemetry-controller.php:48",
+    "ai-post-scheduler/includes/class-aips-telemetry-controller.php:73",
+    "ai-post-scheduler/includes/class-aips-telemetry-controller.php:76"
+  ],
+  "suggested_fix": "Derive both the render and AJAX defaults from AIPS_DateTime.",
+  "first_seen_run_id": "aips-20260509T202750Z",
+  "last_seen_run_id": "aips-20260906T000000Z",
+  "resolved_by": "aips-20260906T000000Z",
+  "resolved_at": "2026-09-06T00:00:00Z",
+  "resolution": "Not reproducible on the current tree: render_page() and ajax_get_telemetry() already build their defaults with AIPS_DateTime::now()->toDisplay() and AIPS_DateTime::now()->advance('-29 days'). The file contains no current_time() or strtotime() call. Closed as already-fixed."
+}
