@@ -166,13 +166,13 @@ class AIPS_Ajax_Registry {
 		'aips_auditor_delete_audit'       => 'AIPS_Content_Auditor_Controller',
 
 		// History
-		'aips_bulk_delete_history'        => 'AIPS_History',
-		'aips_export_history'             => 'AIPS_History',
-		'aips_get_history_details'        => 'AIPS_History',
-		'aips_get_history_logs'           => 'AIPS_History',
-		'aips_get_history_modal_html'     => 'AIPS_History',
-		'aips_reload_history'             => 'AIPS_History',
-		'aips_retry_generation'           => 'AIPS_History',
+		'aips_bulk_delete_history'        => 'AIPS_History_Ajax_Controller',
+		'aips_export_history'             => 'AIPS_History_Ajax_Controller',
+		'aips_get_history_details'        => 'AIPS_History_Ajax_Controller',
+		'aips_get_history_logs'           => 'AIPS_History_Ajax_Controller',
+		'aips_get_history_modal_html'     => 'AIPS_History_Ajax_Controller',
+		'aips_reload_history'             => 'AIPS_History_Ajax_Controller',
+		'aips_retry_generation'           => 'AIPS_History_Ajax_Controller',
 
 		// Voices
 		'aips_save_voice'                 => 'AIPS_Voices',

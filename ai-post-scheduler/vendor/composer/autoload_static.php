@@ -150,6 +150,7 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_Generation_Session' => __DIR__ . '/../..' . '/includes/class-aips-generation-session.php',
         'AIPS_Generator' => __DIR__ . '/../..' . '/includes/class-aips-generator.php',
         'AIPS_History' => __DIR__ . '/../..' . '/includes/class-aips-history.php',
+        'AIPS_History_Ajax_Controller' => __DIR__ . '/../..' . '/includes/class-aips-history-ajax-controller.php',
         'AIPS_History_Container' => __DIR__ . '/../..' . '/includes/class-aips-history-container.php',
         'AIPS_History_Event' => __DIR__ . '/../..' . '/includes/class-aips-history-event.php',
         'AIPS_History_Event_Recorder' => __DIR__ . '/../..' . '/includes/class-aips-history-event-recorder.php',
