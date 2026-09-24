@@ -1,0 +1,881 @@
+/**
+ * Link Report (Content hub)
+ *
+ * Loads the per-post link counts over AJAX, handles search / filters /
+ * sorting / paging, the per-post drill-down modal, and the link index
+ * rebuild with progress polling.
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.4
+ */
+(function($) {
+	'use strict';
+
+	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
+
+	AIPS.LinkReport = {
+		state: {
+			paged: 1,
+			totalPages: 1,
+			orderby: 'inbound',
+			order: 'asc',
+			search: '',
+			postType: '',
+			orphansOnly: false,
+			loaded: false
+		},
+		searchTimer: null,
+		pollTimer: null,
+		suggestTarget: 0,
+		autolinkTimer: null,
+		broken: { rows: [], page: 1, totalPages: 1, pickRow: null, searchTimer: null },
+
+		init: function() {
+			this.$root = $('#aips-link-report');
+			if (!this.$root.length || typeof aipsLinkReportL10n === 'undefined') {
+				return;
+			}
+
+			this.bindEvents();
+			this.updateSortIndicators();
+
+			if (this.$root.closest('.aips-tab-content').is(':visible')) {
+				this.load();
+			}
+
+			this.pollAutolink();
+
+			if (String(this.$root.data('backfill-running')) === '1') {
+				this.startPolling();
+			} else if (String(this.$root.data('backfill-paused')) === '1') {
+				$('#aips-link-report-rebuild').prop('disabled', true);
+			}
+		},
+
+		bindEvents: function() {
+			$(document).on('click', '.aips-rail-item[data-tab="aips-link-report"]', this.onTabShown.bind(this));
+			$(document).on('input', '#aips-link-report-search', this.onSearch.bind(this));
+			$(document).on('change', '#aips-link-report-post-type, #aips-link-report-view', this.onFilterChange.bind(this));
+			$(document).on('click', '#aips-link-report-table .aips-sort-link', this.onSort.bind(this));
+			$(document).on('click', '#aips-link-report-prev', this.onPrev.bind(this));
+			$(document).on('click', '#aips-link-report-next', this.onNext.bind(this));
+			$(document).on('click', '.aips-link-report-details', this.onDetails.bind(this));
+			$(document).on('click', '#aips-link-report-rebuild', this.onRebuild.bind(this));
+			$(document).on('click', '#aips-link-scan-start', this.startRebuild.bind(this));
+			$(document).on('focus click', '#aips-link-scan-days', function() {
+				$('input[name="aips_link_scan_mode"][value="recent"]').prop('checked', true);
+			});
+			$(document).on('click', '#aips-link-backfill-pause', this.onScanControl.bind(this, 'aips_link_report_pause_backfill'));
+			$(document).on('click', '#aips-link-backfill-resume', this.onScanControl.bind(this, 'aips_link_report_resume_backfill'));
+			$(document).on('click', '#aips-link-backfill-cancel', this.onCancel.bind(this));
+			$(document).on('click', '#aips-autolink-start-btn', function() { $('#aips-autolink-modal').show(); });
+			$(document).on('click', '#aips-autolink-confirm', this.startAutolink.bind(this));
+			$(document).on('click', '#aips-autolink-pause', this.autolinkControl.bind(this, 'aips_autolink_pause'));
+			$(document).on('click', '#aips-autolink-resume', this.autolinkControl.bind(this, 'aips_autolink_resume'));
+			$(document).on('click', '#aips-autolink-cancel', this.onAutolinkCancel.bind(this));
+			$(document).on('click', '.aips-autolink-undo', this.onUndoRun.bind(this));
+			$(document).on('click', '#aips-broken-links-load', this.loadBroken.bind(this, 1));
+			$(document).on('click', '#aips-broken-links-prev', function() { this.loadBroken(this.broken.page - 1); }.bind(this));
+			$(document).on('click', '#aips-broken-links-next', function() { this.loadBroken(this.broken.page + 1); }.bind(this));
+			$(document).on('change', '.aips-broken-choice', this.onBrokenChoice.bind(this));
+			$(document).on('click', '.aips-broken-fix', this.onFixBroken.bind(this));
+			$(document).on('click', '.aips-broken-undo', this.onUndoFix.bind(this));
+			$(document).on('input', '#aips-broken-pick-search', this.onPickSearch.bind(this));
+			$(document).on('click', '.aips-broken-pick', this.onPick.bind(this));
+			$(document).on('click', '.aips-link-report-suggest', this.onSuggest.bind(this));
+			$(document).on('click', '#aips-link-suggestions-regenerate', this.onRegenerate.bind(this));
+			$(document).on('click', '#aips-link-suggestions-close', this.onCloseSuggestions.bind(this));
+			$(document).on('click', '.aips-link-suggestion-apply', this.onSuggestionAction.bind(this, 'aips_link_report_apply_suggestion'));
+			$(document).on('click', '.aips-link-suggestion-revert', this.onSuggestionAction.bind(this, 'aips_link_report_revert_suggestion'));
+			$(document).on('click', '.aips-link-suggestion-dismiss', this.onSuggestionAction.bind(this, 'aips_link_report_dismiss_suggestion'));
+		},
+
+		onTabShown: function() {
+			if (!this.state.loaded) {
+				this.load();
+			}
+		},
+
+		onSearch: function(e) {
+			var self = this;
+			clearTimeout(this.searchTimer);
+			this.searchTimer = setTimeout(function() {
+				self.state.search = $(e.currentTarget).val();
+				self.state.paged = 1;
+				self.load();
+			}, 300);
+		},
+
+		onFilterChange: function() {
+			this.state.postType = $('#aips-link-report-post-type').val() || '';
+			this.state.orphansOnly = $('#aips-link-report-view').val() === 'orphans';
+			this.state.paged = 1;
+			this.load();
+		},
+
+		onSort: function(e) {
+			var orderby = $(e.currentTarget).data('orderby');
+
+			if (this.state.orderby === orderby) {
+				this.state.order = this.state.order === 'asc' ? 'desc' : 'asc';
+			} else {
+				this.state.orderby = orderby;
+				this.state.order = orderby === 'title' ? 'asc' : 'desc';
+			}
+
+			this.state.paged = 1;
+			this.updateSortIndicators();
+			this.load();
+		},
+
+		onPrev: function() {
+			if (this.state.paged > 1) {
+				this.state.paged--;
+				this.load();
+			}
+		},
+
+		onNext: function() {
+			if (this.state.paged < this.state.totalPages) {
+				this.state.paged++;
+				this.load();
+			}
+		},
+
+		updateSortIndicators: function() {
+			var state = this.state;
+			$('#aips-link-report-table .aips-sort-link').each(function() {
+				var $btn = $(this);
+				if ($btn.data('orderby') === state.orderby) {
+					$btn.attr('aria-sort', state.order === 'asc' ? 'ascending' : 'descending');
+				} else {
+					$btn.removeAttr('aria-sort');
+				}
+			});
+		},
+
+		load: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			this.state.loaded = true;
+			$('#aips-link-report-loading').removeClass('aips-hidden');
+
+			$.post(ajaxurl, {
+				action: 'aips_link_report_get',
+				nonce: l10n.nonce,
+				paged: this.state.paged,
+				orderby: this.state.orderby,
+				order: this.state.order,
+				search: this.state.search,
+				post_type: this.state.postType,
+				orphans_only: this.state.orphansOnly ? 1 : 0
+			}).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.loadError, 'error');
+					return;
+				}
+				self.renderRows(response.data);
+				self.renderSummary(response.data.summary);
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.loadError, 'error');
+			}).always(function() {
+				$('#aips-link-report-loading').addClass('aips-hidden');
+			});
+		},
+
+		renderRows: function(data) {
+			var html = '';
+
+			$.each(data.rows, function(i, row) {
+				html += AIPS.Templates.render('aips-tmpl-link-report-row', {
+					id: row.id,
+					title: row.title,
+					post_type: row.post_type,
+					inbound: row.inbound,
+					outbound: row.outbound,
+					external: row.external,
+					broken: row.broken,
+					clicks: row.clicks,
+					edit_url: row.edit_url,
+					view_url: row.view_url,
+					orphan_class: row.is_orphan ? '' : 'aips-hidden',
+					suggestions_class: row.suggestions > 0 ? '' : 'aips-hidden',
+					suggestions_label: aipsLinkReportL10n.suggestionsPending.replace('%d', row.suggestions),
+					suggest_class: (row.is_orphan ? 'aips-btn-primary' : 'aips-btn-secondary') + (row.can_suggest ? '' : ' aips-hidden')
+				});
+			});
+
+			$('#aips-link-report-tbody').html(html);
+			$('#aips-link-report-table').toggleClass('aips-hidden', data.rows.length === 0);
+			$('#aips-link-report-empty-wrap').toggleClass('aips-hidden', data.rows.length !== 0);
+
+			this.state.totalPages = data.total_pages;
+			this.state.paged = data.page;
+
+			$('#aips-link-report-page-info').text(
+				aipsLinkReportL10n.pageInfo
+					.replace('%1$d', data.page)
+					.replace('%2$d', data.total_pages)
+					.replace('%3$d', data.total)
+			);
+			$('#aips-link-report-prev').prop('disabled', data.page <= 1);
+			$('#aips-link-report-next').prop('disabled', data.page >= data.total_pages);
+		},
+
+		renderSummary: function(summary) {
+			if (!summary) {
+				return;
+			}
+			$('#aips-link-stat-internal').text(summary.internal);
+			$('#aips-link-stat-external').text(summary.external);
+			$('#aips-link-stat-broken').text(summary.broken);
+
+			if (summary.built && typeof summary.orphans !== 'undefined') {
+				$('#aips-link-stat-orphans').text(summary.orphans + ' / ' + summary.posts).addClass('aips-text-warning');
+				$('#aips-link-stat-posts').closest('.aips-stat-total').remove();
+			}
+		},
+
+		onDetails: function(e) {
+			var l10n = aipsLinkReportL10n;
+			var postId = $(e.currentTarget).data('post-id');
+			var $modal = $('#aips-link-report-modal');
+
+			$('#aips-link-report-modal-title').text(l10n.loading);
+			$('#aips-link-report-inbound, #aips-link-report-outbound').empty();
+			$('#aips-link-report-inbound-count, #aips-link-report-outbound-count').text('');
+			$modal.show();
+
+			$.post(ajaxurl, {
+				action: 'aips_link_report_get_post_links',
+				nonce: l10n.nonce,
+				post_id: postId
+			}).done(function(response) {
+				if (!response || !response.success) {
+					$modal.hide();
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.loadError, 'error');
+					return;
+				}
+				AIPS.LinkReport.renderDetails(response.data);
+			}).fail(function() {
+				$modal.hide();
+				AIPS.Utilities.showToast(l10n.loadError, 'error');
+			});
+		},
+
+		renderDetails: function(data) {
+			var l10n = aipsLinkReportL10n;
+			var inbound = '';
+			var outbound = '';
+
+			$('#aips-link-report-modal-title').text(data.title);
+
+			$.each(data.inbound, function(i, link) {
+				inbound += AIPS.Templates.render('aips-tmpl-link-report-inbound-row', link);
+			});
+
+			$.each(data.outbound, function(i, link) {
+				var typeLabel = l10n.internal;
+				var typeClass = 'aips-badge-success';
+
+				if (link.is_broken) {
+					typeLabel = l10n.broken;
+					typeClass = 'aips-badge-danger';
+				} else if (link.type === 'external') {
+					typeLabel = link.is_nofollow ? l10n.externalNofollow : l10n.external;
+					typeClass = 'aips-badge-info';
+				}
+
+				outbound += AIPS.Templates.render('aips-tmpl-link-report-outbound-row', {
+					anchor: link.anchor,
+					url: link.url,
+					destination: link.target_title || link.url,
+					type_label: typeLabel,
+					type_class: typeClass,
+					clicks: link.type === 'internal' && !link.is_broken ? link.clicks : '—'
+				});
+			});
+
+			$('#aips-link-report-inbound').html(inbound || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 3, message: l10n.noInbound }));
+			$('#aips-link-report-outbound').html(outbound || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 4, message: l10n.noOutbound }));
+			$('#aips-link-report-inbound-count').text(data.inbound.length);
+			$('#aips-link-report-outbound-count').text(data.outbound.length);
+		},
+
+		onRebuild: function() {
+			$('#aips-link-scan-modal').show();
+		},
+
+		startRebuild: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var $btn = $('#aips-link-scan-start').prop('disabled', true);
+
+			$.post(ajaxurl, {
+				action: 'aips_link_report_start_backfill',
+				nonce: l10n.nonce,
+				mode: $('input[name="aips_link_scan_mode"]:checked').val() || 'missing',
+				days: parseInt($('#aips-link-scan-days').val(), 10) || 30
+			}).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+					return;
+				}
+				$('#aips-link-scan-modal').hide();
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderBackfill(response.data.backfill);
+				self.startPolling();
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.rebuildError, 'error');
+			}).always(function() {
+				$btn.prop('disabled', false);
+			});
+		},
+
+		onScanControl: function(action) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderBackfill(response.data.backfill);
+				if (response.data.backfill && response.data.backfill.status === 'processing') {
+					self.startPolling();
+				} else {
+					clearInterval(self.pollTimer);
+				}
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.rebuildError, 'error');
+			});
+		},
+
+		onCancel: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			AIPS.Utilities.confirm(l10n.confirmCancel, l10n.confirmCancelTitle, [
+				{ label: l10n.keepScanning, className: 'aips-btn aips-btn-secondary' },
+				{
+					label: l10n.cancelScan,
+					className: 'aips-btn aips-btn-danger-solid',
+					action: function() {
+						$.post(ajaxurl, { action: 'aips_link_report_cancel_backfill', nonce: l10n.nonce }).done(function(response) {
+							if (!response || !response.success) {
+								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+								return;
+							}
+							clearInterval(self.pollTimer);
+							AIPS.Utilities.showToast(response.data.message, 'success');
+							self.renderBackfill(response.data.backfill);
+							self.renderSummary(response.data.summary);
+							self.load();
+						});
+					}
+				}
+			]);
+		},
+
+		startPolling: function() {
+			var self = this;
+			clearInterval(this.pollTimer);
+			$('#aips-link-report-rebuild').prop('disabled', true);
+			this.pollTimer = setInterval(function() {
+				self.poll();
+			}, 5000);
+		},
+
+		poll: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$.post(ajaxurl, {
+				action: 'aips_link_report_backfill_status',
+				nonce: l10n.nonce
+			}).done(function(response) {
+				if (!response || !response.success) {
+					return;
+				}
+				var backfill = response.data.backfill;
+
+				self.renderSummary(response.data.summary);
+				self.renderBackfill(backfill);
+
+				if (!backfill || backfill.status !== 'processing') {
+					clearInterval(self.pollTimer);
+					if (backfill && backfill.status === 'completed') {
+						AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
+					}
+					self.load();
+				}
+			});
+		},
+
+		onSuggest: function(e) {
+			var $btn = $(e.currentTarget);
+			this.suggestTarget = parseInt($btn.data('post-id'), 10);
+			$('#aips-link-suggestions-title').text($btn.data('title'));
+			$('#aips-link-suggestions-wrap').removeClass('aips-hidden');
+			this.requestSuggestions('aips_link_report_suggest');
+
+			var el = document.getElementById('aips-link-suggestions-wrap');
+			if (el && el.scrollIntoView) {
+				el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		},
+
+		onRegenerate: function() {
+			if (this.suggestTarget) {
+				this.requestSuggestions('aips_link_report_suggest');
+			}
+		},
+
+		onCloseSuggestions: function() {
+			this.suggestTarget = 0;
+			$('#aips-link-suggestions-wrap').addClass('aips-hidden');
+			this.load();
+		},
+
+		requestSuggestions: function(action) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$('#aips-link-suggestions-loading').removeClass('aips-hidden');
+			$('#aips-link-suggestions-tbody').empty();
+
+			$.post(ajaxurl, {
+				action: action,
+				nonce: l10n.nonce,
+				post_id: this.suggestTarget
+			}).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.suggestError, 'error');
+					return;
+				}
+				self.renderSuggestions(response.data.suggestions);
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.suggestError, 'error');
+			}).always(function() {
+				$('#aips-link-suggestions-loading').addClass('aips-hidden');
+			});
+		},
+
+		onSuggestionAction: function(action, e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var $btn = $(e.currentTarget).prop('disabled', true);
+
+			$.post(ajaxurl, {
+				action: action,
+				nonce: l10n.nonce,
+				post_id: this.suggestTarget,
+				suggestion_id: $btn.data('id')
+			}).done(function(response) {
+				if (!response || !response.success) {
+					$btn.prop('disabled', false);
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.suggestError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderSuggestions(response.data.suggestions);
+				self.renderSummary(response.data.summary);
+			}).fail(function() {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(l10n.suggestError, 'error');
+			});
+		},
+
+		renderSuggestions: function(suggestions) {
+			var l10n = aipsLinkReportL10n;
+			var html = '';
+
+			$.each(suggestions || [], function(i, item) {
+				var inserted = item.status === 'inserted';
+				var confidenceClass = item.confidence >= 85 ? 'aips-badge-success' : (item.confidence >= 70 ? 'aips-badge-info' : 'aips-badge-secondary');
+
+				html += AIPS.Templates.render('aips-tmpl-link-suggestion-row', {
+					id: item.id,
+					status: item.status,
+					source_title: item.source_title,
+					source_edit: item.source_edit,
+					anchor_label: item.anchor || l10n.noAnchor,
+					gsc_class: item.anchor_source === 'gsc' ? '' : 'aips-hidden',
+					context: item.context,
+					confidence: item.confidence,
+					confidence_class: confidenceClass,
+					pending_class: inserted ? 'aips-hidden' : '',
+					inserted_class: inserted ? '' : 'aips-hidden',
+					apply_disabled: item.anchor ? '' : 'disabled'
+				});
+			});
+
+			$('#aips-link-suggestions-tbody').html(html || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 4, message: l10n.noSuggestions }));
+		},
+
+		startAutolink: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var $btn = $('#aips-autolink-confirm').prop('disabled', true);
+
+			$.post(ajaxurl, {
+				action: 'aips_autolink_start',
+				nonce: l10n.nonce,
+				scope: $('input[name="aips_autolink_scope"]:checked').val() || 'orphans',
+				dry_run: $('#aips-autolink-dry-run').is(':checked') ? 1 : 0
+			}).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+					return;
+				}
+				$('#aips-autolink-modal').hide();
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderAutolink(response.data.autolink);
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.autolinkError, 'error');
+			}).always(function() {
+				$btn.prop('disabled', false);
+			});
+		},
+
+		autolinkControl: function(action) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderAutolink(response.data.autolink);
+			});
+		},
+
+		onAutolinkCancel: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			AIPS.Utilities.confirm(l10n.confirmRunCancel, l10n.confirmRunCancelTitle, [
+				{ label: l10n.keepRunning, className: 'aips-btn aips-btn-secondary' },
+				{ label: l10n.cancelRun, className: 'aips-btn aips-btn-danger-solid', action: function() { self.autolinkControl('aips_autolink_cancel'); } }
+			]);
+		},
+
+		onUndoRun: function(e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var jobId = $(e.currentTarget).data('job-id');
+
+			AIPS.Utilities.confirm(l10n.confirmUndoRun, l10n.confirmUndoRunTitle, [
+				{ label: l10n.cancel, className: 'aips-btn aips-btn-secondary' },
+				{
+					label: l10n.undoRun,
+					className: 'aips-btn aips-btn-danger-solid',
+					action: function() {
+						$.post(ajaxurl, { action: 'aips_autolink_undo_run', nonce: l10n.nonce, job_id: jobId }).done(function(response) {
+							if (!response || !response.success) {
+								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+								return;
+							}
+							AIPS.Utilities.showToast(response.data.message, 'success');
+							self.renderAutolink(response.data.autolink);
+							self.renderSummary(response.data.summary);
+							self.load();
+						});
+					}
+				}
+			]);
+		},
+
+		pollAutolink: function() {
+			var self = this;
+
+			$.post(ajaxurl, { action: 'aips_autolink_status', nonce: aipsLinkReportL10n.nonce }).done(function(response) {
+				if (response && response.success) {
+					self.renderAutolink(response.data.autolink);
+					self.renderSummary(response.data.summary);
+				}
+			});
+		},
+
+		renderAutolink: function(autolink) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var current = autolink ? autolink.current : null;
+			var status = current ? current.status : '';
+			var running = status === 'processing';
+			var paused = status === 'paused';
+			var runs = (autolink && autolink.history) ? autolink.history.slice() : [];
+			var html = '';
+
+			$('#aips-autolink-banner').toggleClass('aips-hidden', !running && !paused);
+			$('#aips-autolink-spinner').toggleClass('aips-hidden', !running);
+			$('#aips-autolink-pause').toggleClass('aips-hidden', !running);
+			$('#aips-autolink-resume').toggleClass('aips-hidden', !paused);
+			$('#aips-autolink-start-btn').prop('disabled', running || paused);
+			$('#aips-autolink-title').text(paused ? l10n.runPaused : (current && !current.apply ? l10n.runRunningDry : l10n.runRunning));
+
+			if (running || paused) {
+				$('#aips-autolink-progress').text(
+					l10n.runProgress
+						.replace('%1$d', current.processed)
+						.replace('%2$d', current.total)
+						.replace('%3$d', current.applied)
+						.replace('%4$d', current.review)
+				);
+				runs.unshift(current);
+			}
+
+			if (autolink) {
+				$('#aips-autolink-review-link').contents().filter(function() { return this.nodeType === 3; }).last()
+					.replaceWith(' ' + l10n.reviewSuggestions.replace('%d', autolink.pending_review));
+			}
+
+			$.each(runs, function(i, run) {
+				var labels = { processing: l10n.statusRunning, paused: l10n.statusPaused, completed: l10n.statusCompleted, cancelled: l10n.statusCancelled };
+				var classes = { processing: 'aips-badge-info', paused: 'aips-badge-warning', completed: 'aips-badge-success', cancelled: 'aips-badge-secondary' };
+				var statusLabel = run.reverted ? l10n.statusUndone : (labels[run.status] || run.status);
+
+				html += AIPS.Templates.render('aips-tmpl-autolink-run-row', {
+					job_id: run.job_id,
+					started: new Date(run.started_at * 1000).toLocaleString(),
+					scope_label: (run.scope === 'publish' ? l10n.scopePublish.replace('%s', run.post_title || '') : (run.scope === 'silo' ? l10n.scopeSilo.replace('%s', run.post_title || '') : (run.scope === 'low' ? l10n.scopeLow : l10n.scopeOrphans))) + (run.apply ? '' : ' · ' + l10n.dryRun),
+					processed: run.processed,
+					total: run.total,
+					applied: run.applied,
+					review: run.review,
+					status_label: statusLabel,
+					status_class: run.reverted ? 'aips-badge-secondary' : (classes[run.status] || 'aips-badge-secondary'),
+					undo_class: (run.applied > 0 && !run.reverted && run.status !== 'processing' && run.status !== 'paused') ? '' : 'aips-hidden'
+				});
+			});
+
+			$('#aips-autolink-history-tbody').html(html || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 6, message: l10n.noRuns }));
+
+			clearTimeout(this.autolinkTimer);
+			if (running) {
+				this.autolinkTimer = setTimeout(function() { self.pollAutolink(); }, 5000);
+			}
+		},
+
+		loadBroken: function(page) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$('#aips-broken-links-loading').removeClass('aips-hidden');
+
+			$.post(ajaxurl, { action: 'aips_link_report_get_broken', nonce: l10n.nonce, paged: Math.max(1, page || 1) }).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					return;
+				}
+				self.renderBroken(response.data);
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.brokenError, 'error');
+			}).always(function() {
+				$('#aips-broken-links-loading').addClass('aips-hidden');
+			});
+		},
+
+		renderBroken: function(data) {
+			var l10n = aipsLinkReportL10n;
+			var self = this;
+			var html = '';
+
+			this.broken.rows = data.rows;
+			this.broken.page = data.page;
+			this.broken.totalPages = data.total_pages;
+
+			$.each(data.rows, function(i, row) {
+				html += AIPS.Templates.render('aips-tmpl-broken-row', {
+					index: i,
+					source_title: row.source_title,
+					source_edit: row.source_edit,
+					anchor: row.anchor || l10n.noAnchorText,
+					url: row.url,
+					occurrences_label: l10n.occurrences.replace('%d', row.occurrences),
+					occurrences_class: row.occurrences > 1 ? '' : 'aips-hidden'
+				});
+			});
+
+			$('#aips-broken-links-tbody').html(html || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 4, message: l10n.noBroken }));
+			$('#aips-broken-links-table').removeClass('aips-hidden');
+
+			$.each(data.rows, function(i) {
+				self.fillChoices(i);
+			});
+
+			$('#aips-broken-links-pagination').toggleClass('aips-hidden', data.total_pages <= 1);
+			$('#aips-broken-links-page-info').text(l10n.pageInfo.replace('%1$d', data.page).replace('%2$d', data.total_pages).replace('%3$d', data.total));
+			$('#aips-broken-links-prev').prop('disabled', data.page <= 1);
+			$('#aips-broken-links-next').prop('disabled', data.page >= data.total_pages);
+
+			this.renderFixes(data.fixes);
+		},
+
+		fillChoices: function(index, picked) {
+			var l10n = aipsLinkReportL10n;
+			var row = this.broken.rows[index];
+			var options = '';
+
+			if (picked) {
+				options += AIPS.Templates.render('aips-tmpl-broken-option', { value: picked.id, label: picked.title });
+			}
+			$.each(row.suggestions, function(i, suggestion) {
+				options += AIPS.Templates.render('aips-tmpl-broken-option', {
+					value: suggestion.id,
+					label: l10n.suggestionOption.replace('%1$s', suggestion.title).replace('%2$d', suggestion.score).replace('%%', '%')
+				});
+			});
+			options += AIPS.Templates.render('aips-tmpl-broken-option', { value: 'pick', label: l10n.choosePost });
+			options += AIPS.Templates.render('aips-tmpl-broken-option', { value: 'unlink', label: l10n.removeLink });
+
+			$('#aips-broken-choice-' + index).html(options);
+		},
+
+		onBrokenChoice: function(e) {
+			var $select = $(e.currentTarget);
+			if ($select.val() !== 'pick') {
+				return;
+			}
+			this.broken.pickRow = parseInt($select.data('row'), 10);
+			$('#aips-broken-pick-search').val('');
+			$('#aips-broken-pick-results').empty();
+			$('#aips-broken-pick-modal').show();
+			$('#aips-broken-pick-search').trigger('focus');
+		},
+
+		onPickSearch: function(e) {
+			var term = $(e.currentTarget).val();
+			clearTimeout(this.broken.searchTimer);
+			this.broken.searchTimer = setTimeout(function() {
+				$.post(ajaxurl, { action: 'aips_link_report_search_posts', nonce: aipsLinkReportL10n.nonce, term: term }).done(function(response) {
+					var html = '';
+					if (response && response.success) {
+						$.each(response.data.posts, function(i, post) {
+							html += AIPS.Templates.render('aips-tmpl-broken-pick-result', post);
+						});
+					}
+					$('#aips-broken-pick-results').html(html);
+				});
+			}, 300);
+		},
+
+		onPick: function(e) {
+			var $btn = $(e.currentTarget);
+			var index = this.broken.pickRow;
+
+			this.fillChoices(index, { id: $btn.data('id'), title: $btn.data('title') });
+			$('#aips-broken-choice-' + index).val(String($btn.data('id')));
+			$('#aips-broken-pick-modal').hide();
+		},
+
+		onFixBroken: function(e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var index = parseInt($(e.currentTarget).data('row'), 10);
+			var row = this.broken.rows[index];
+			var choice = $('#aips-broken-choice-' + index).val();
+			var $btn = $(e.currentTarget);
+
+			if (!row || !choice || choice === 'pick') {
+				AIPS.Utilities.showToast(l10n.chooseFirst, 'warning');
+				return;
+			}
+
+			$btn.prop('disabled', true);
+			$.post(ajaxurl, {
+				action: 'aips_link_report_fix_broken',
+				nonce: l10n.nonce,
+				source_id: row.source_id,
+				url: row.url,
+				mode: choice === 'unlink' ? 'unlink' : 'repoint',
+				target_id: choice === 'unlink' ? 0 : choice
+			}).done(function(response) {
+				if (!response || !response.success) {
+					$btn.prop('disabled', false);
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderSummary(response.data.summary);
+				self.loadBroken(self.broken.page);
+			}).fail(function() {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(l10n.brokenError, 'error');
+			});
+		},
+
+		onUndoFix: function(e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var $btn = $(e.currentTarget).prop('disabled', true);
+
+			$.post(ajaxurl, { action: 'aips_link_report_undo_broken_fix', nonce: l10n.nonce, fix_id: $btn.data('fix-id') }).done(function(response) {
+				if (!response || !response.success) {
+					$btn.prop('disabled', false);
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderSummary(response.data.summary);
+				self.loadBroken(self.broken.page);
+			}).fail(function() {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(l10n.brokenError, 'error');
+			});
+		},
+
+		renderFixes: function(fixes) {
+			var l10n = aipsLinkReportL10n;
+			var html = '';
+
+			$.each(fixes || [], function(i, fix) {
+				html += AIPS.Templates.render('aips-tmpl-broken-fix', {
+					id: fix.id,
+					action_label: fix.action === 'unlink' ? l10n.fixUnlinked : l10n.fixRepointed,
+					action_class: fix.action === 'unlink' ? 'aips-badge-secondary' : 'aips-badge-success',
+					source_title: fix.source_title,
+					source_edit: fix.source_edit,
+					detail: fix.new_url ? fix.old_url + ' → ' + fix.new_url : fix.old_url,
+					undo_class: fix.undone ? 'aips-hidden' : '',
+					undone_class: fix.undone ? '' : 'aips-hidden'
+				});
+			});
+
+			$('#aips-broken-fixes').html(html);
+			$('#aips-broken-fixes-wrap').toggleClass('aips-hidden', !html);
+		},
+
+		renderBackfill: function(backfill) {
+			var l10n = aipsLinkReportL10n;
+			var status = backfill ? backfill.status : '';
+			var running = status === 'processing' || status === 'pending';
+			var paused = status === 'paused';
+
+			$('#aips-link-backfill-banner').toggleClass('aips-hidden', !running && !paused);
+			$('#aips-link-backfill-spinner').toggleClass('aips-hidden', !running);
+			$('#aips-link-backfill-pause').toggleClass('aips-hidden', !running);
+			$('#aips-link-backfill-resume').toggleClass('aips-hidden', !paused);
+			$('#aips-link-backfill-title').text(paused ? l10n.scanPaused : l10n.scanRunning);
+			$('#aips-link-report-rebuild').prop('disabled', running || paused);
+
+			if (running || paused) {
+				$('#aips-link-backfill-progress').text(
+					l10n.progress
+						.replace('%1$d', backfill.processed)
+						.replace('%2$d', backfill.total)
+				);
+			}
+		}
+	};
+
+	$(document).ready(function() {
+		AIPS.LinkReport.init();
+	});
+})(jQuery);

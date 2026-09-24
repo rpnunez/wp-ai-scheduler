@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Automations_Controller
  *
- * Coordinates the Automations admin page and tab rendering.
+ * Coordinates the Automations admin hub, vertical navigation rail, and tab rendering.
  *
  * @package AI_Post_Scheduler
  */
@@ -37,67 +37,144 @@ class AIPS_Automations_Controller {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
 
-		$active_tab = self::get_active_tab_key();
-		$tabs = $this->get_tabs($active_tab);
-		$tab_actions = $this->get_tab_actions($active_tab);
+		$active_tab             = self::get_active_tab_key();
+		$tabs                   = $this->get_tabs($active_tab);
+		$tab_actions            = $this->get_tab_actions($active_tab);
+		$page_context           = $this->get_page_context($active_tab);
 		$automations_controller = $this;
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/automations.php';
 	}
 
 	/**
-	 * Get available Automations tabs.
+	 * Build contextual page context object for the active tab.
 	 *
 	 * @param string $active_tab Active tab key.
-	 * @return array<string, array{label:string, special?:bool}>
+	 * @return AIPS_Admin_Page_Context
+	 */
+	public function get_page_context($active_tab) {
+		$summary_items = array();
+
+		try {
+			if ('schedules' === $active_tab && class_exists('AIPS_Schedule_Repository')) {
+				$schedules  = AIPS_Schedule_Repository::instance()->get_all();
+				$active_cnt = count(array_filter($schedules, function($s) {
+					if (is_object($s)) {
+						return !empty($s->is_active);
+					}
+					return is_array($s) && !empty($s['is_active']);
+				}));
+				$summary_items = array(
+					array('label' => __('Active Pipelines', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-yes-alt'),
+					array('label' => __('Total Schedules', 'ai-post-scheduler'), 'value' => count($schedules), 'type' => 'neutral', 'icon' => 'dashicons-clock'),
+				);
+			} elseif ('campaigns' === $active_tab && class_exists('AIPS_Campaigns_Repository')) {
+				$stats = AIPS_Campaigns_Repository::instance()->get_summary_stats();
+				$summary_items = array(
+					array('label' => __('Active Campaigns', 'ai-post-scheduler'), 'value' => $stats['active'], 'type' => 'success', 'icon' => 'dashicons-calendar-alt'),
+					array('label' => __('Total Batches', 'ai-post-scheduler'), 'value' => $stats['total'], 'type' => 'neutral'),
+				);
+			} elseif ('authors' === $active_tab && class_exists('AIPS_Authors_Repository')) {
+				$authors       = (new AIPS_Authors_Repository())->get_all();
+				$summary_items = array(
+					array('label' => __('Author Personas', 'ai-post-scheduler'), 'value' => count($authors), 'type' => 'neutral', 'icon' => 'dashicons-admin-users'),
+				);
+			} elseif ('sources' === $active_tab && class_exists('AIPS_Sources_Repository')) {
+				$sources    = (new AIPS_Sources_Repository())->get_all(false);
+				$active_cnt = count(array_filter($sources, function($s) {
+					if (is_object($s)) {
+						return !empty($s->is_active);
+					}
+					return is_array($s) && !empty($s['is_active']);
+				}));
+				$summary_items = array(
+					array('label' => __('Active Feeds', 'ai-post-scheduler'), 'value' => $active_cnt, 'type' => 'success', 'icon' => 'dashicons-rss'),
+					array('label' => __('Total Sources', 'ai-post-scheduler'), 'value' => count($sources), 'type' => 'neutral'),
+				);
+			}
+		} catch (\Throwable $e) {
+			// Fail-safe: empty summary items
+		}
+
+		$tab_actions = $this->get_tab_actions($active_tab);
+
+		return AIPS_Admin_Page_Context::resolve(
+			self::PAGE_SLUG,
+			$active_tab,
+			null,
+			array(
+				'summary_items' => $summary_items,
+				'actions'       => $tab_actions,
+			)
+		);
+	}
+
+	/**
+	 * Get available Automations tabs with metadata for the vertical rail.
+	 *
+	 * @param string $active_tab Active tab key.
+	 * @return array<string, array{label:string, icon:string, description?:string, special?:bool}>
 	 */
 	public function get_tabs($active_tab = '') {
 		$tabs = array(
 			'schedules' => array(
-				'label' => __('Schedules', 'ai-post-scheduler'),
+				'label'       => __('Schedules', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-clock',
+				'description' => __('Recurring generation schedules', 'ai-post-scheduler'),
 			),
 			'campaigns' => array(
-				'label' => __('Campaigns', 'ai-post-scheduler'),
-			),
-			'templates' => array(
-				'label' => __('Templates', 'ai-post-scheduler'),
+				'label'       => __('Campaigns', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-calendar-alt',
+				'description' => __('Goal-oriented post campaigns', 'ai-post-scheduler'),
 			),
 			'authors' => array(
-				'label' => __('Authors', 'ai-post-scheduler'),
+				'label'       => __('Authors', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-admin-users',
+				'description' => __('Content author personas', 'ai-post-scheduler'),
 			),
 			'sources' => array(
-				'label' => __('Sources', 'ai-post-scheduler'),
+				'label'       => __('Sources', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-rss',
+				'description' => __('External RSS & curated data feeds', 'ai-post-scheduler'),
+			),
+			'monetization' => array(
+				'label'       => __('Monetization', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-money-alt',
+				'description' => __('Affiliate links & CTA injection', 'ai-post-scheduler'),
 			),
 			'internal-links' => array(
-				'label' => __('Internal Links', 'ai-post-scheduler'),
+				'label'       => __('Internal Links', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-admin-links',
+				'description' => __('Automated internal cross-linking', 'ai-post-scheduler'),
 			),
 			'taxonomy' => array(
-				'label' => __('Taxonomy', 'ai-post-scheduler'),
+				'label'       => __('Taxonomy', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-tag',
+				'description' => __('Category and tag rules', 'ai-post-scheduler'),
 			),
 		);
 
 		if (self::TAB_AUTHOR_TOPICS === $active_tab) {
 			$tabs = array_merge(
-				array_slice($tabs, 0, 4, true),
+				array_slice($tabs, 0, 3, true),
 				array(
 					self::TAB_AUTHOR_TOPICS => array(
-						'label'   => __("Author's Topics", 'ai-post-scheduler'),
-						'special' => true,
+						'label'       => __("Author's Topics", 'ai-post-scheduler'),
+						'icon'        => 'dashicons-arrow-right-alt2',
+						'description' => __('Manage generated topic ideas', 'ai-post-scheduler'),
+						'is_child'    => true,
+						'special'     => true,
 					),
 				),
-				array_slice($tabs, 4, null, true)
+				array_slice($tabs, 3, null, true)
 			);
 		}
 
 		return $tabs;
 	}
 
-
 	/**
 	 * Get header actions for the active Automations tab.
-	 *
-	 * These mirror the primary actions from the standalone pages because the
-	 * embedded tab templates intentionally suppress their own page headers.
 	 *
 	 * @param string $active_tab Active tab key.
 	 * @return array<int, array<string, mixed>>
@@ -112,15 +189,6 @@ class AIPS_Automations_Controller {
 						'class' => 'aips-btn aips-btn-primary',
 						'icon'  => 'dashicons-plus-alt',
 						'label' => __('Add New Campaign', 'ai-post-scheduler'),
-					),
-				);
-			case 'templates':
-				return array(
-					array(
-						'type'  => 'button',
-						'class' => 'aips-btn aips-btn-primary aips-add-template-btn',
-						'icon'  => 'dashicons-plus-alt',
-						'label' => __('Add Template', 'ai-post-scheduler'),
 					),
 				);
 			case 'authors':
@@ -154,6 +222,17 @@ class AIPS_Automations_Controller {
 						'class' => 'aips-btn aips-btn-primary',
 						'icon'  => 'dashicons-plus-alt2',
 						'label' => __('Add Source', 'ai-post-scheduler'),
+					),
+				);
+			case 'monetization':
+			case 'affiliate-links':
+				return array(
+					array(
+						'type'  => 'button',
+						'id'    => 'aips-afl-add-btn',
+						'class' => 'aips-btn aips-btn-primary',
+						'icon'  => 'dashicons-plus-alt2',
+						'label' => __('Add Mapping', 'ai-post-scheduler'),
 					),
 				);
 			case 'internal-links':
@@ -248,27 +327,51 @@ class AIPS_Automations_Controller {
 				'icon'       => 'dashicons-update',
 				'label'      => __('Generate Topics', 'ai-post-scheduler'),
 				'data_attrs' => array(
-					'id' => $author_id,
+					'author-id' => (string) $author_id,
 				),
 			),
-			array(
-				'type'  => 'link',
-				'url'   => AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('author_id' => $author_id)),
-				'class' => 'aips-btn aips-btn-secondary',
-				'icon'  => 'dashicons-admin-post',
-				'label' => __('View Generated Posts', 'ai-post-scheduler'),
-			)
 		);
 	}
 
 	/**
-	 * Get the active Automations tab key for the current request.
+	 * Get the active Automations tab key.
 	 *
 	 * @return string
 	 */
 	public static function get_active_tab_key() {
+		$page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+
+		if ('aips-schedule' === $page) {
+			return 'schedules';
+		}
+		if ('aips-campaigns' === $page) {
+			return 'campaigns';
+		}
+		if ('aips-authors' === $page) {
+			return 'authors';
+		}
+		if ('aips-author-topics' === $page) {
+			return self::TAB_AUTHOR_TOPICS;
+		}
+		if ('aips-sources' === $page || 'aips-source-data' === $page) {
+			return 'sources';
+		}
+		if ('aips-internal-links' === $page) {
+			return 'internal-links';
+		}
+		if ('aips-taxonomy' === $page) {
+			return 'taxonomy';
+		}
+		if ('aips-affiliate-links' === $page) {
+			return 'monetization';
+		}
+
 		$active_tab = filter_input(INPUT_GET, 'tab', FILTER_UNSAFE_RAW);
 		$active_tab = $active_tab ? sanitize_key($active_tab) : self::DEFAULT_TAB;
+
+		if ($active_tab === 'affiliate-links') {
+			$active_tab = 'monetization';
+		}
 
 		if (!self::is_tab_available($active_tab)) {
 			return self::DEFAULT_TAB;
@@ -290,7 +393,7 @@ class AIPS_Automations_Controller {
 
 		return in_array(
 			$tab,
-			array('schedules', 'campaigns', 'templates', 'authors', 'sources', 'internal-links', 'taxonomy'),
+			array('schedules', 'campaigns', 'authors', 'sources', 'monetization', 'affiliate-links', 'internal-links', 'taxonomy'),
 			true
 		);
 	}
@@ -326,29 +429,46 @@ class AIPS_Automations_Controller {
 	public function render_tab_content($active_tab) {
 		switch ($active_tab) {
 			case 'campaigns':
-				$this->render_campaigns_tab();
-				break;
-			case 'templates':
-				$this->render_templates_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_campaigns_tab();
+				}, __('Campaigns', 'ai-post-scheduler'), true);
 				break;
 			case 'authors':
-				$this->render_authors_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_authors_tab();
+				}, __('Authors', 'ai-post-scheduler'), true);
 				break;
 			case 'sources':
-				$this->render_sources_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_sources_tab();
+				}, __('Sources', 'ai-post-scheduler'), true);
 				break;
 			case self::TAB_AUTHOR_TOPICS:
-				$this->render_author_topics_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_author_topics_tab();
+				}, __("Author's Topics", 'ai-post-scheduler'), true);
+				break;
+			case 'monetization':
+			case 'affiliate-links':
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_monetization_tab();
+				}, __('Monetization', 'ai-post-scheduler'), true);
 				break;
 			case 'internal-links':
-				$this->render_internal_links_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_internal_links_tab();
+				}, __('Internal Links', 'ai-post-scheduler'), true);
 				break;
 			case 'taxonomy':
-				$this->render_taxonomy_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_taxonomy_tab();
+				}, __('Taxonomy', 'ai-post-scheduler'), true);
 				break;
 			case 'schedules':
 			default:
-				$this->render_schedules_tab();
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_schedules_tab();
+				}, __('Schedules', 'ai-post-scheduler'), true);
 				break;
 		}
 	}
@@ -359,7 +479,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_schedules_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
 	}
 
@@ -370,17 +489,7 @@ class AIPS_Automations_Controller {
 	 */
 	private function render_campaigns_tab() {
 		$controller = new AIPS_Campaigns_Controller();
-		$controller->render_page(true);
-	}
-
-	/**
-	 * Render templates tab content.
-	 *
-	 * @return void
-	 */
-	private function render_templates_tab() {
-		$templates_handler = new AIPS_Templates();
-		$templates_handler->render_page(true);
+		$controller->render_page();
 	}
 
 	/**
@@ -389,7 +498,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_authors_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
 	}
 
@@ -423,8 +531,16 @@ class AIPS_Automations_Controller {
 		$source_fetch_data_map = $data_repo->get_by_source_ids($all_source_ids);
 		$source_content_count_map = $data_repo->get_counts_by_source_ids($all_source_ids);
 
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
+	}
+
+	/**
+	 * Render monetization (affiliate links) tab content.
+	 *
+	 * @return void
+	 */
+	private function render_monetization_tab() {
+		include AIPS_PLUGIN_DIR . 'templates/admin/affiliate-links.php';
 	}
 
 	/**
@@ -435,21 +551,11 @@ class AIPS_Automations_Controller {
 	private function render_internal_links_tab() {
 		global $aips_internal_links_controller;
 
-		if ($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller) {
-			try {
-				$aips_internal_links_controller->render_page(true);
-				return;
-			} catch (Throwable $throwable) {
-				echo '<div class="notice notice-error"><p>' .
-					esc_html__('The Internal Links page could not be rendered. Please reload the page or check the plugin configuration.', 'ai-post-scheduler') .
-				'</p></div>';
-				return;
-			}
+		if (!($aips_internal_links_controller instanceof AIPS_Internal_Links_Controller)) {
+			$aips_internal_links_controller = new AIPS_Internal_Links_Controller();
 		}
 
-		echo '<div class="notice notice-error"><p>' .
-			esc_html__('The Internal Links controller is not available, so the Internal Links page could not be loaded.', 'ai-post-scheduler') .
-		'</p></div>';
+		$aips_internal_links_controller->render_page();
 	}
 
 	/**
@@ -458,7 +564,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_taxonomy_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/taxonomy.php';
 	}
 
@@ -468,7 +573,6 @@ class AIPS_Automations_Controller {
 	 * @return void
 	 */
 	private function render_author_topics_tab() {
-		$embedded = true;
 		include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
 	}
 

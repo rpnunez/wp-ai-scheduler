@@ -75,6 +75,49 @@ class Test_AIPS_Post_History_UI extends WP_UnitTestCase {
 
 		$this->assertArrayNotHasKey('aips_history', $actions);
 	}
+
+	public function test_register_insights_column() {
+		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($admin_id);
+
+		$ui = new AIPS_Post_History_UI();
+		$columns = $ui->register_insights_column(array('cb' => '', 'title' => 'Title', 'date' => 'Date'));
+
+		$this->assertArrayHasKey('aips_insights', $columns);
+		$this->assertSame('AI Insights', $columns['aips_insights']);
+	}
+
+	public function test_register_sortable_column() {
+		$ui = new AIPS_Post_History_UI();
+		$sortables = $ui->register_sortable_column(array('title' => 'title'));
+
+		$this->assertArrayHasKey('aips_insights', $sortables);
+		$this->assertSame('aips_similarity', $sortables['aips_insights']);
+	}
+
+	public function test_register_bulk_actions() {
+		$admin_id = self::factory()->user->create(array('role' => 'administrator'));
+		wp_set_current_user($admin_id);
+
+		$ui = new AIPS_Post_History_UI();
+		$bulk_actions = $ui->register_bulk_actions(array('trash' => 'Move to Trash'));
+
+		$this->assertArrayHasKey('aips_bulk_index', $bulk_actions);
+		$this->assertArrayHasKey('aips_bulk_audit', $bulk_actions);
+	}
+
+	public function test_handle_bulk_actions_queue_index() {
+		$post_id1 = self::factory()->post->create();
+		$post_id2 = self::factory()->post->create();
+
+		$ui = new AIPS_Post_History_UI();
+		$redirect = $ui->handle_bulk_actions('edit.php', 'aips_bulk_index', array($post_id1, $post_id2));
+
+		$this->assertStringContainsString('aips_queued_count=2', $redirect);
+		$queue = (array) get_option('aips_pending_index_queue', array());
+		$this->assertContains($post_id1, $queue);
+		$this->assertContains($post_id2, $queue);
+	}
 }
 
 if (!class_exists('AIPS_Test_Stub_History_Repository', false)) {

@@ -28,10 +28,9 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
             $btn.next('.spinner').addClass('is-active');
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -52,9 +51,13 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
                     $btn.next('.spinner').removeClass('is-active');
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: 'Generating Topics...',
+                timeout: 120000
             });
         },
 
@@ -187,13 +190,13 @@
 
             AIPS.Utilities.confirm(aipsPlannerL10n.confirmClear || 'Are you sure you want to clear all topics?', 'Notice', [
                 {
-                    text: 'Cancel',
-                    class: 'aips-btn-secondary aips-modal-close'
+                    label: aipsPlannerL10n.cancel || 'Cancel',
+                    className: 'aips-btn aips-btn-secondary'
                 },
                 {
-                    text: 'Clear Topics',
-                    class: 'aips-btn-primary',
-                    callback: function() {
+                    label: aipsPlannerL10n.clearTopics || 'Clear Topics',
+                    className: 'aips-btn aips-btn-danger-solid',
+                    action: function() {
                         $('#topics-list').empty();
                         $('#planner-results').removeClass('active');
                         $('#planner-niche').val('');
@@ -366,10 +369,9 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -414,9 +416,13 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
                     $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: 'Generating Posts...',
+                timeout: 300000
             });
         },
 
@@ -460,10 +466,9 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -497,9 +502,13 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
                     $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: 'Scheduling...',
+                timeout: 30000
             });
         }
     });
