@@ -28,6 +28,14 @@
   - New `AIPS_Silo_Service` and `AIPS_Silos_Controller` (AJAX `aips_silos_overview/confirm_pillar/fix/refresh`). Topic Clusters now store `pillar_confirmed` and a per-post `topic_score`. `AIPS_Inbound_Links_Service::generate_for_target()` accepts a fixed list of source posts, and `AIPS_Autolink_Run_Service` has a `silo` scope.
   - New hooks: `aips_silo_guide_items`, `aips_silo_guide_html`, `aips_link_index_render_html` and `aips_link_index_hash_salt`.
 
+### Fixed (code review pass over the whole branch)
+- **Generation-time linking:** undoing a publish-linking run (Link Report → Undo run) now clears the post's one-time "already linked" flag; a plain save of that post afterwards (not only a publish transition) re-qualifies it for another pass. New action `aips_autolink_run_undone`.
+- **Auto-link runs:** batch a target's inbound-link counts in one query instead of one query per suggestion.
+- **Broken-link fixer:** prime the post cache before scoring candidate replacements, instead of one lookup per candidate (up to ~100 per broken link).
+- **Silos:** re-detecting Topic Clusters now only re-indexes pillars whose own membership changed, instead of every confirmed pillar on every re-detection.
+- **Link click tracking:** the per-visitor rate limit increments atomically when a persistent object cache (Redis, Memcached, ...) is available, closing a race that let a burst of concurrent clicks slip past the cap.
+- **Redirects:** a bare path typed by hand (e.g. `/old-post/`) on a subdirectory WordPress install is now prefixed with the install's own path, so it matches the request the native provider sees.
+
 ### Fixed
 - **Cannibalization Shield:** the audit results table called `AIPS.Templates.has()`, which did not exist, so rendering results threw a JavaScript error. `AIPS.Templates.has()` has been added.
 

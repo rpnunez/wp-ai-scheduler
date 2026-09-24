@@ -43,6 +43,11 @@ class AIPS_Link_Click_Tracking_Service {
 	const RATE_LIMIT_WINDOW = 600;
 
 	/**
+	 * Object cache group for the atomic per-visitor rate limit counter.
+	 */
+	const RATE_LIMIT_CACHE_GROUP = 'aips_link_clicks';
+
+	/**
 	 * Transient that throttles pruning of old rows to once a day.
 	 */
 	const PRUNE_TRANSIENT = 'aips_link_clicks_pruned';
@@ -401,7 +406,20 @@ class AIPS_Link_Click_Tracking_Service {
 			return true;
 		}
 
-		$key   = 'aips_lc_' . substr(hash_hmac('sha256', $ip, wp_salt('nonce')), 0, 32);
+		$key = 'aips_lc_' . substr(hash_hmac('sha256', $ip, wp_salt('nonce')), 0, 32);
+
+		// A persistent object cache (Redis, Memcached, ...) increments
+		// atomically, so concurrent clicks from the same visitor can't slip
+		// past the cap the way a plain transient read-then-write would.
+		if (wp_using_ext_object_cache()) {
+			wp_cache_add($key, 0, self::RATE_LIMIT_CACHE_GROUP, self::RATE_LIMIT_WINDOW);
+			$count = wp_cache_incr($key, 1, self::RATE_LIMIT_CACHE_GROUP);
+			return $count !== false && $count <= self::RATE_LIMIT;
+		}
+
+		// No persistent object cache: a rough throttle backed by the options
+		// table. Good enough here — click counts are advisory reporting, not
+		// a security boundary — but not a hard cap under heavy concurrency.
 		$count = (int) get_transient($key);
 		if ($count >= self::RATE_LIMIT) {
 			return false;

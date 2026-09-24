@@ -405,10 +405,35 @@ class AIPS_Autolink_Run_Service {
 
 		$this->mark_reverted($job_id);
 
+		/**
+		 * Fires after a run was undone, so features that key off a run's scope
+		 * (e.g. AIPS_Publish_Linking_Service, whose one-time "already linked"
+		 * flag would otherwise never clear) can react.
+		 *
+		 * @param array $run Archived run state (job_id, scope, post_id when set, ...).
+		 */
+		do_action('aips_autolink_run_undone', $this->find_history($job_id));
+
 		return array(
 			'reverted'  => $reverted,
 			'conflicts' => $conflicts,
 		);
+	}
+
+	/**
+	 * A run's archived record by job ID, or an empty array.
+	 *
+	 * @param string $job_id Run ID.
+	 * @return array
+	 */
+	private function find_history(string $job_id): array {
+		foreach ((array) $this->config->get_option(self::HISTORY_OPTION, array()) as $run) {
+			if (isset($run['job_id']) && $run['job_id'] === $job_id) {
+				return $run;
+			}
+		}
+
+		return array();
 	}
 
 	/**
@@ -460,6 +485,17 @@ class AIPS_Autolink_Run_Service {
 		$index_repo = $this->link_index->get_repository();
 		$added      = 0;
 
+		// One eligible suggestion may have several rows in the same list (rare,
+		// but cheaper to guard than to assume); dedupe before the batch query.
+		$eligible_ids = array();
+		foreach ($result['suggestions'] as $suggestion) {
+			$source_id = (int) $suggestion['source_id'];
+			if ($suggestion['status'] === 'pending' && (!$only || isset($only[$source_id]))) {
+				$eligible_ids[$source_id] = true;
+			}
+		}
+		$counts = $eligible_ids ? $index_repo->get_counts_for_posts(array_keys($eligible_ids)) : array();
+
 		foreach ($result['suggestions'] as $suggestion) {
 			if ($suggestion['status'] !== 'pending') {
 				continue;
@@ -469,7 +505,6 @@ class AIPS_Autolink_Run_Service {
 			if ($only && !isset($only[$source_id])) {
 				continue;
 			}
-			$counts    = $index_repo->get_counts_for_posts(array($source_id));
 
 			$decision = $this->policy->evaluate(
 				array(

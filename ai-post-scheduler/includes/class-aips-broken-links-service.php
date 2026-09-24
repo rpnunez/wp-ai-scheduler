@@ -155,6 +155,12 @@ class AIPS_Broken_Links_Service {
 			}
 		}
 
+		if (!empty($candidates) && function_exists('_prime_post_caches')) {
+			// One suggest_replacements() call can look up up to 100 candidate
+			// posts; this turns that into one query instead of up to 100.
+			_prime_post_caches(array_keys($candidates), false, true);
+		}
+
 		$scored = array();
 		foreach (array_keys($candidates) as $id) {
 			$post = get_post($id);

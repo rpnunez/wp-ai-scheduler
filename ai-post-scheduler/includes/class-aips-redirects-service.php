@@ -446,6 +446,12 @@ class AIPS_Redirects_Service {
 				return new WP_Error('aips_redirect_source_external', __('The old URL must be on this site.', 'ai-post-scheduler'));
 			}
 			$source = $this->path_of($source);
+		} else {
+			// A bare path is site-relative. On a subdirectory install (e.g.
+			// example.com/blog/), the native provider matches against the
+			// full request path, which includes that prefix — add it here so
+			// a path typed by hand (rather than pasted as a full URL) matches.
+			$source = $this->prefix_home_path($source);
 		}
 
 		$source = '/' . ltrim((string) strtok($source, '?#'), '/');
@@ -568,6 +574,28 @@ class AIPS_Redirects_Service {
 	 */
 	private function path_of(string $url): string {
 		return '/' . ltrim(rawurldecode((string) wp_parse_url($url, PHP_URL_PATH)), '/');
+	}
+
+	/**
+	 * Prefix a bare, site-relative path with home_url()'s own path, when it
+	 * isn't already there (a no-op on the vast majority of sites, which are
+	 * installed at the domain root and have no such prefix).
+	 *
+	 * @param string $path Bare path, e.g. "/old-post/".
+	 * @return string
+	 */
+	private function prefix_home_path(string $path): string {
+		$home_path = trim((string) wp_parse_url(home_url(), PHP_URL_PATH), '/');
+		if ($home_path === '') {
+			return $path;
+		}
+
+		$normalized = '/' . ltrim($path, '/');
+		if ($normalized === '/' . $home_path || strpos($normalized, '/' . $home_path . '/') === 0) {
+			return $path; // Already includes the subdirectory.
+		}
+
+		return '/' . $home_path . $normalized;
 	}
 
 	/**

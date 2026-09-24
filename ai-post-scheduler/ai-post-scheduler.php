@@ -726,6 +726,20 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_generated($post_id);
         }, 20);
 
+        // Re-qualify a post for generation-time linking on its next save, once
+        // an earlier pass's "already linked" flag is cleared (see on_run_undone()
+        // below) — a plain save doesn't fire transition_post_status when the
+        // post was already published.
+        add_action('save_post', function ($post_id, $post) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_saved($post_id, $post);
+        }, 20, 2);
+
+        // Undoing an auto-link run clears the one-time "already linked" flag
+        // for a publish-linking run, so the post can be linked again.
+        add_action('aips_autolink_run_undone', function ($run) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_run_undone($run);
+        });
+
         // Process pending background indexing queue (single event / cron worker)
         add_action('aips_process_pending_indexer_queue', function () {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();

@@ -98,6 +98,14 @@ class AIPS_Silo_Service {
 	private $style_printed = false;
 
 	/**
+	 * @var bool Whether register_common_hooks() ran on this instance, so a
+	 *           pillar change re-indexes through the update_option hook
+	 *           rather than needing confirm_pillar() to do it directly (e.g.
+	 *           a test that builds the service without booting the plugin).
+	 */
+	private $hooks_registered = false;
+
+	/**
 	 * @param AIPS_Config|null                   $config        Config.
 	 * @param AIPS_Link_Index_Service|null       $link_index    Link index.
 	 * @param AIPS_Link_Insertion_Engine|null    $engine        Link engine (URL matching).
@@ -130,6 +138,8 @@ class AIPS_Silo_Service {
 			add_action('update_option_' . $option, array($this, 'bump_version'));
 		}
 		add_action('update_option_' . self::CLUSTERS_OPTION, array($this, 'on_clusters_updated'), 10, 2);
+
+		$this->hooks_registered = true;
 	}
 
 	/**
@@ -199,9 +209,10 @@ class AIPS_Silo_Service {
 			return new WP_Error('aips_silo_save_failed', __('The pillar could not be saved.', 'ai-post-scheduler'));
 		}
 
-		// Saving the clusters fires on_clusters_updated(), which re-indexes
-		// the old and new pillars; do it here too in case hooks are not loaded.
-		if (!has_action('update_option_' . self::CLUSTERS_OPTION, array($this, 'on_clusters_updated'))) {
+		// Saving the clusters fires on_clusters_updated(), which re-indexes the
+		// old and new pillars; do it here too when hooks were never registered
+		// (e.g. this instance was built directly, without booting the plugin).
+		if (!$this->hooks_registered) {
 			$this->bump_version();
 			$this->reindex(array_unique(array($previous, $post_id)));
 		}
@@ -517,18 +528,56 @@ class AIPS_Silo_Service {
 	 * @return void
 	 */
 	public function on_clusters_updated($old_value, $new_value): void {
-		$this->bump_version();
+		$before = $this->confirmed_pillar_checksums((array) $old_value);
+		$after  = $this->confirmed_pillar_checksums((array) $new_value);
 
-		$pillars = array();
-		foreach (array((array) $old_value, (array) $new_value) as $clusters) {
-			foreach ($clusters as $cluster) {
-				if (!empty($cluster['pillar_confirmed']) && !empty($cluster['pillar_id'])) {
-					$pillars[] = (int) $cluster['pillar_id'];
-				}
+		// Re-detection can shuffle a cluster's key (clusters are keyed by
+		// rank, which shifts as other clusters' sizes change), so compare by
+		// pillar post ID rather than by cluster ID: only a pillar whose own
+		// membership changed, or that gained or lost its confirmed status,
+		// needs its guide list rebuilt.
+		$changed = array();
+		foreach ($after as $pillar_id => $checksum) {
+			if (!isset($before[$pillar_id]) || $before[$pillar_id] !== $checksum) {
+				$changed[] = $pillar_id;
+			}
+		}
+		foreach ($before as $pillar_id => $checksum) {
+			if (!isset($after[$pillar_id])) {
+				// Lost its silo: re-index once more so a stale guide list drops out.
+				$changed[] = $pillar_id;
 			}
 		}
 
-		$this->reindex(array_unique($pillars));
+		if (empty($changed)) {
+			return;
+		}
+
+		$this->bump_version();
+		$this->reindex(array_unique($changed));
+	}
+
+	/**
+	 * Confirmed pillar post ID => a checksum of that silo's member IDs, from
+	 * a clusters array (as stored in the CLUSTERS_OPTION option).
+	 *
+	 * @param array $clusters Clusters, keyed by cluster ID.
+	 * @return array<int, string>
+	 */
+	private function confirmed_pillar_checksums(array $clusters): array {
+		$out = array();
+
+		foreach ($clusters as $cluster) {
+			if (!is_array($cluster) || empty($cluster['pillar_confirmed']) || empty($cluster['pillar_id'])) {
+				continue;
+			}
+
+			$members = $this->member_ids($cluster);
+			sort($members);
+			$out[(int) $cluster['pillar_id']] = md5(implode(',', $members));
+		}
+
+		return $out;
 	}
 
 	// -----------------------------------------------------------------------

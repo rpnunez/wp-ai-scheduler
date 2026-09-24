@@ -101,6 +101,43 @@ class AIPS_Publish_Linking_Service {
 	}
 
 	/**
+	 * aips_autolink_run_undone: undoing a publish-linking run removes the
+	 * links it inserted, so the post should be eligible for another pass.
+	 * Nothing is scheduled here — clearing the flag lets qualifies() pass
+	 * again, and the post picks it back up the next time it is saved
+	 * (see the save_post hook in boot_common()).
+	 *
+	 * @param array $run Archived run state (job_id, scope, post_id, ...).
+	 * @return void
+	 */
+	public function on_run_undone(array $run): void {
+		if (($run['scope'] ?? '') !== AIPS_Autolink_Run_Service::SCOPE_PUBLISH || empty($run['post_id'])) {
+			return;
+		}
+
+		delete_post_meta((int) $run['post_id'], self::DONE_META);
+	}
+
+	/**
+	 * maybe_schedule() on every save of a post already in scope, so a post
+	 * whose "already linked" flag was cleared (run undone, or the flag
+	 * removed by hand) is picked up again without a status transition.
+	 * Cheap: qualifies() short-circuits on the flag/meta checks below before
+	 * anything else runs.
+	 *
+	 * @param int     $post_id Post ID.
+	 * @param WP_Post $post    Post object.
+	 * @return void
+	 */
+	public function on_saved($post_id, $post): void {
+		if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id) || !$post instanceof WP_Post) {
+			return;
+		}
+
+		$this->maybe_schedule((int) $post_id);
+	}
+
+	/**
 	 * Schedule the background pass if this post qualifies and was not linked yet.
 	 *
 	 * @param int $post_id Post ID.
