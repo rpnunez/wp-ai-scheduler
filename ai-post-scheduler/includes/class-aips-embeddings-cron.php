@@ -92,6 +92,12 @@ class AIPS_Embeddings_Cron {
 			return;
 		}
 
+		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
+			$this->logger->log('Embeddings cron: Vector embeddings system is disabled in settings. Skipping author embeddings batch.', 'info');
+			delete_transient("aips_embeddings_progress_{$author_id}");
+			return;
+		}
+
 		$this->logger->log(
 			sprintf(
 				'Processing embeddings batch for author %d (batch_size: %d, last_processed_id: %d)',
