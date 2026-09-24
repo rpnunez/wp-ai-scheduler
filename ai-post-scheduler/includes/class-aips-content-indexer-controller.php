@@ -112,13 +112,67 @@ class AIPS_Content_Indexer_Controller {
 	 * @return array
 	 */
 	private function get_shared_view_data(): array {
-		$post_types      = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
-		$status          = $this->indexer_service->get_indexing_status($post_types);
-		$stats           = $this->embeddings_repo->get_stats();
-		$stored_dims     = $this->embeddings_repo->get_stored_dimensions();
-		$active_dims     = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
-		$cooldown_status = $this->rate_limiter->get_cooldown_status();
-		$queue_status    = $this->indexer_service->get_queue_status();
+		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+
+		try {
+			$status = $this->indexer_service->get_indexing_status($post_types);
+		} catch (\Throwable $e) {
+			$status = array(
+				'total_posts'        => 0,
+				'indexed'            => 0,
+				'unindexed'          => 0,
+				'percent'            => 0,
+				'total_topics'       => 0,
+				'indexed_topics'     => 0,
+				'unindexed_topics'   => 0,
+				'topics_percent'     => 0,
+				'posts'              => array('total' => 0, 'indexed' => 0, 'unindexed' => 0, 'percent' => 0),
+				'topics'             => array('total' => 0, 'indexed' => 0, 'unindexed' => 0, 'percent' => 0),
+				'combined'           => array('total' => 0, 'indexed' => 0, 'unindexed' => 0, 'percent' => 0),
+				'post_types'         => $post_types,
+				'scope'              => 'aips_only',
+				'embeddings_enabled' => true,
+				'rate_limits'        => array(),
+			);
+		}
+
+		try {
+			$stats = $this->embeddings_repo->get_stats();
+		} catch (\Throwable $e) {
+			$stats = array(
+				'total'        => 0,
+				'posts'        => 0,
+				'topics'       => 0,
+				'by_post_type' => array(),
+				'models'       => array(),
+			);
+		}
+
+		try {
+			$stored_dims = $this->embeddings_repo->get_stored_dimensions();
+		} catch (\Throwable $e) {
+			$stored_dims = array();
+		}
+
+		$active_dims = (int) $this->config->get_option('aips_embeddings_dimensions', 1536);
+
+		try {
+			$cooldown_status = $this->rate_limiter->get_cooldown_status();
+		} catch (\Throwable $e) {
+			$cooldown_status = array(
+				'active'              => false,
+				'remaining_seconds'   => 0,
+				'remaining_formatted' => '00:00',
+				'until'               => 0,
+				'reason'              => '',
+			);
+		}
+
+		try {
+			$queue_status = $this->indexer_service->get_queue_status();
+		} catch (\Throwable $e) {
+			$queue_status = array('is_running' => false, 'pending_count' => 0);
+		}
 
 		$dimension_mismatch = (!empty($stored_dims) && (count($stored_dims) > 1 || !in_array($active_dims, $stored_dims, true)));
 
@@ -286,24 +340,29 @@ class AIPS_Content_Indexer_Controller {
 
 		// Post Types Breakdown
 		$all_post_types = get_post_types(array('public' => true), 'objects');
-		unset($all_post_types['attachment']);
+		if (isset($all_post_types['attachment'])) {
+			unset($all_post_types['attachment']);
+		}
 
 		$post_type_breakdown = array();
-		foreach ($all_post_types as $pt_slug => $pt_obj) {
-			$in_scope     = in_array($pt_slug, $settings['post_types'], true);
-			$pt_counts    = wp_count_posts($pt_slug);
-			$pt_published = isset($pt_counts->publish) ? (int) $pt_counts->publish : 0;
-			$pt_indexed   = isset($stats['by_post_type'][$pt_slug]) ? (int) $stats['by_post_type'][$pt_slug] : 0;
-			$pt_pct       = $pt_published > 0 ? (int) min(100, round(($pt_indexed / $pt_published) * 100)) : 0;
+		if (is_array($all_post_types)) {
+			foreach ($all_post_types as $pt_slug => $pt_obj) {
+				$in_scope     = in_array($pt_slug, $settings['post_types'], true);
+				$pt_counts    = wp_count_posts($pt_slug);
+				$pt_published = (is_object($pt_counts) && isset($pt_counts->publish)) ? (int) $pt_counts->publish : 0;
+				$pt_indexed   = isset($stats['by_post_type'][$pt_slug]) ? (int) $stats['by_post_type'][$pt_slug] : 0;
+				$pt_pct       = $pt_published > 0 ? (int) min(100, round(($pt_indexed / $pt_published) * 100)) : 0;
+				$label        = (is_object($pt_obj) && isset($pt_obj->labels->singular_name)) ? $pt_obj->labels->singular_name : (string) $pt_slug;
 
-			$post_type_breakdown[] = array(
-				'slug'             => $pt_slug,
-				'label'            => $pt_obj->labels->singular_name,
-				'in_scope'         => $in_scope,
-				'published_count'  => $pt_published,
-				'indexed_count'    => $pt_indexed,
-				'coverage_percent' => $pt_pct,
-			);
+				$post_type_breakdown[] = array(
+					'slug'             => $pt_slug,
+					'label'            => $label,
+					'in_scope'         => $in_scope,
+					'published_count'  => $pt_published,
+					'indexed_count'    => $pt_indexed,
+					'coverage_percent' => $pt_pct,
+				);
+			}
 		}
 
 		return array_merge($shared, compact('metrics', 'post_type_breakdown', 'all_post_types'));
@@ -324,7 +383,11 @@ class AIPS_Content_Indexer_Controller {
 			'threshold_percent' => (int) round($cluster_threshold * 100),
 		);
 
-		$authors = $this->authors_repo->get_all(true);
+		try {
+			$authors = $this->authors_repo->get_all(true);
+		} catch (\Throwable $e) {
+			$authors = array();
+		}
 
 		return array_merge($shared, compact('cluster_config', 'authors'));
 	}

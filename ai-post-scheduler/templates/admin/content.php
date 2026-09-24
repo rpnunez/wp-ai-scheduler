@@ -146,31 +146,33 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 				<!-- Tab 4: Content Indexer -->
 				<div id="aips-content-indexer-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-indexer' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-indexer' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-indexer' ? '' : 'hidden'; ?>>
 					<?php
-					$indexer_controller = new AIPS_Content_Indexer_Controller();
-					extract($indexer_controller->get_intelligence_hub_view_data());
-					include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence.php';
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$indexer_controller = new AIPS_Content_Indexer_Controller();
+						extract($indexer_controller->get_intelligence_hub_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence.php';
+					}, __('Content Indexer', 'ai-post-scheduler'), true);
 					?>
 				</div>
 
 				<!-- Tab 5: Topic Clusters -->
 				<div id="aips-content-clusters-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-clusters' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-clusters' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-clusters' ? '' : 'hidden'; ?>>
 					<?php
-					if (!isset($indexer_controller)) {
+					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
-					}
-					extract($indexer_controller->get_clusters_view_data());
-					include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-clusters.php';
+						extract($indexer_controller->get_clusters_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-clusters.php';
+					}, __('Topic Clusters', 'ai-post-scheduler'), true);
 					?>
 				</div>
 
 				<!-- Tab 6: Cannibalization Shield -->
 				<div id="aips-content-cannibalization-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-cannibalization' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-cannibalization' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-cannibalization' ? '' : 'hidden'; ?>>
 					<?php
-					if (!isset($indexer_controller)) {
+					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
-					}
-					extract($indexer_controller->get_cannibalization_view_data());
-					include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
+						extract($indexer_controller->get_cannibalization_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
+					}, __('Cannibalization Shield', 'ai-post-scheduler'), true);
 					?>
 				</div>
 			</main>

@@ -40,6 +40,20 @@ class AIPS_Relationships_Repository {
 	}
 
 	/**
+	 * Check if the relationships table exists in the database.
+	 *
+	 * @return bool
+	 */
+	public function table_exists(): bool {
+		static $exists = null;
+		if ($exists === null) {
+			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
+			$exists = ($found === $this->table);
+		}
+		return (bool) $exists;
+	}
+
+	/**
 	 * Upsert a relationship record.
 	 *
 	 * @param string $source_type   Source entity type ('post', 'topic').
@@ -51,6 +65,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function upsert($source_type, $source_id, $target_type, $target_id, $similarity, $relation_type = 'related_post') {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		$source_type   = sanitize_key($source_type);
 		$source_id     = absint($source_id);
 		$target_type   = sanitize_key($target_type);
@@ -110,6 +128,10 @@ class AIPS_Relationships_Repository {
 	 * @return void
 	 */
 	public function sync_for_source($source_type, $source_id, array $targets, $relation_type = 'related_post') {
+		if (!$this->table_exists()) {
+			return;
+		}
+
 		$source_type   = sanitize_key($source_type);
 		$source_id     = absint($source_id);
 		$relation_type = sanitize_key($relation_type);
@@ -158,6 +180,10 @@ class AIPS_Relationships_Repository {
 	 * @return object[] Array of relationship rows.
 	 */
 	public function get_related($source_type, $source_id, $limit = 5, $min_similarity = 0.60, $relation_type = 'related_post') {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$source_type    = sanitize_key($source_type);
 		$source_id      = absint($source_id);
 		$limit          = absint($limit);
@@ -165,7 +191,7 @@ class AIPS_Relationships_Repository {
 		$relation_type  = sanitize_key($relation_type);
 		$topics_table   = $this->wpdb->prefix . 'aips_author_topics';
 
-		return $this->wpdb->get_results(
+		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT r.*, 
 					COALESCE(p.post_title, t.topic_title) as post_title,
@@ -200,12 +226,16 @@ class AIPS_Relationships_Repository {
 	 * @return array{nodes: array, edges: array} Graph payload.
 	 */
 	public function get_graph_data($source_type, $source_id, $limit = 15, $min_similarity = 0.50) {
+		if (!$this->table_exists()) {
+			return array('nodes' => array(), 'edges' => array());
+		}
+
 		$source_type    = sanitize_key($source_type);
 		$source_id      = absint($source_id);
 		$limit          = absint($limit);
 		$min_similarity = (float) $min_similarity;
 
-		$neighbors = $this->get_related($source_type, $source_id, $limit, $min_similarity, 'related_post');
+		$neighbors = (array) $this->get_related($source_type, $source_id, $limit, $min_similarity, 'related_post');
 
 		$nodes = array();
 		$edges = array();
@@ -240,6 +270,10 @@ class AIPS_Relationships_Repository {
 
 		$neighbor_ids = array();
 		foreach ($neighbors as $n) {
+			if (!is_object($n) || !isset($n->target_id)) {
+				continue;
+			}
+
 			$n_id   = (int) $n->target_id;
 			$n_type = $n->target_type;
 			$n_key  = "{$n_type}_{$n_id}";
@@ -269,7 +303,7 @@ class AIPS_Relationships_Repository {
 		// Also fetch secondary interconnections between neighbors to form a rich cluster graph
 		if (count($neighbor_ids) > 1) {
 			$placeholders = implode(',', array_fill(0, count($neighbor_ids), '%d'));
-			$inter_rows   = $this->wpdb->get_results(
+			$inter_rows   = (array) $this->wpdb->get_results(
 				$this->wpdb->prepare(
 					"SELECT source_id, target_id, similarity
 					FROM {$this->table}
@@ -288,6 +322,9 @@ class AIPS_Relationships_Repository {
 			}
 
 			foreach ($inter_rows as $row) {
+				if (!is_object($row) || !isset($row->source_id) || !isset($row->target_id)) {
+					continue;
+				}
 				$src = "post_{$row->source_id}";
 				$tgt = "post_{$row->target_id}";
 				if ($src !== $tgt && !isset($seen_edges["{$src}->{$tgt}"]) && !isset($seen_edges["{$tgt}->{$src}"])) {
@@ -317,6 +354,10 @@ class AIPS_Relationships_Repository {
 	 * @return array Cluster pairings.
 	 */
 	public function get_top_duplicate_pairs($min_similarity = 0.85, $limit = 50, $entity_type = 'all') {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$min_similarity = (float) $min_similarity;
 		$limit          = absint($limit);
 		$entity_type    = sanitize_key($entity_type);
@@ -392,6 +433,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function delete_for_source($source_type, $source_id, $relation_type = '') {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		$where = array(
 			'source_type' => sanitize_key($source_type),
 			'source_id'   => absint($source_id),
@@ -415,6 +460,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function delete_for_object($type, $id) {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		$type = sanitize_key($type);
 		$id   = absint($id);
 
@@ -438,6 +487,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function clear_all($relation_type = '') {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		if (!empty($relation_type)) {
 			return $this->wpdb->delete(
 				$this->table,
@@ -456,6 +509,10 @@ class AIPS_Relationships_Repository {
 	 * @return int
 	 */
 	public function count($relation_type = '') {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
 		if (!empty($relation_type)) {
 			return (int) $this->wpdb->get_var(
 				$this->wpdb->prepare(

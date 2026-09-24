@@ -59,10 +59,22 @@ class AIPS_DB_Migrations {
 	public static function check_and_run() {
 		$current_version = AIPS_Config::get_instance()->get_option( 'aips_db_version' );
 
-		if ( version_compare( $current_version, AIPS_VERSION, '<' ) ) {
+		if ( empty( $current_version ) || version_compare( $current_version, AIPS_VERSION, '<' ) || ! self::critical_tables_exist() ) {
 			$instance = new self();
-			$instance->run_upgrade( $current_version );
+			$instance->run_upgrade( (string) $current_version );
 		}
+	}
+
+	/**
+	 * Check if critical plugin tables exist in database.
+	 *
+	 * @return bool
+	 */
+	public static function critical_tables_exist(): bool {
+		global $wpdb;
+		$required_table = $wpdb->prefix . 'aips_embeddings';
+		$found          = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $required_table ) );
+		return ( $found === $required_table );
 	}
 
 	/**
