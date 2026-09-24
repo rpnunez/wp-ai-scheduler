@@ -100,7 +100,9 @@ class AIPS_Repository_Cache_Observer {
 			
 			$this->record_telemetry($context);
 			
-			if (AIPS_DEBUG_LEVEL > 1) {
+			// Gated on debug level to avoid a log write on every cache op in
+			// production; filterable so tests can assert on logged entries.
+			if (apply_filters('aips_repository_cache_log_enabled', AIPS_DEBUG_LEVEL > 0)) {
 				$this->record_log($context);
 			}
 		} catch (Throwable $e) {

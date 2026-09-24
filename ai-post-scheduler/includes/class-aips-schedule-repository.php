@@ -310,13 +310,14 @@ class AIPS_Schedule_Repository implements AIPS_Schedule_Repository_Interface {
         }
         
         $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
+        $insert_id = $this->wpdb->insert_id;
         
         if ($result) {
             delete_transient('aips_pending_schedule_stats');
             $this->invalidate_cache_domain( 'schedule', array(), 'schedule_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $result ? $insert_id : false;
     }
     
     /**

@@ -86,7 +86,10 @@ class AIPS_Author_Topics_Generator {
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
-		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
+        // When a caller explicitly injects its own embeddings_service (e.g. tests), the
+        // container's shared AIPS_Deduplication_Service singleton (built with the
+        // production embeddings_service) must not silently override it.
+        $this->deduplication_service = $deduplication_service ?: ($embeddings_service === null && $container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service(null, null, $this->embeddings_service, null, $this->logger));
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic(
 			null,

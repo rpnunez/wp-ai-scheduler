@@ -197,12 +197,15 @@ class AIPS_Template_Repository {
         $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
 
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        // Capture insert_id before any other DB write (e.g. cache invalidation)
+        // can overwrite it on the shared $wpdb instance.
+        $insert_id = $this->wpdb->insert_id;
 
         if ( $result ) {
             $this->invalidate_cache_domain( 'template', array(), 'template_created' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $result ? $insert_id : false;
     }
 
     /**

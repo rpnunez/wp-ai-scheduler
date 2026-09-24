@@ -183,12 +183,13 @@ class AIPS_Prompt_Section_Repository {
 		$format = array('%s', '%s', '%s', '%s', '%d', '%d', '%d');
 
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+		$insert_id = $this->wpdb->insert_id;
 
 		if ( $result ) {
 			$this->invalidate_cache_domain( 'prompt_section', array(), 'prompt_section_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**

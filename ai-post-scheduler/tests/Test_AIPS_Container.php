@@ -33,6 +33,9 @@ class Test_AIPS_Container extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		$this->container->clear();
+		// Restore the real plugin bindings so later tests in this process don't
+		// inherit an empty container.
+		AI_Post_Scheduler::get_instance()->register_container_bindings();
 		parent::tearDown();
 	}
 

@@ -52,7 +52,7 @@ class AIPS_Deduplication_Service {
 	public function __construct(
 		?AIPS_Embeddings_Repository $embeddings_repo = null,
 		?AIPS_Relationships_Repository $relationships_repo = null,
-		?AIPS_Embeddings_Service $embeddings_service = null,
+		$embeddings_service = null,
 		?AIPS_Config $config = null,
 		?AIPS_Logger_Interface $logger = null
 	) {

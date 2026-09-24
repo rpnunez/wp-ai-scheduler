@@ -80,9 +80,12 @@ class AIPS_Meow_AI_Provider implements AIPS_AI_Provider_Interface {
             $native['model'] = $params['model'];
         }
 
-        // Translate canonical env_id to Meow's native envId parameter.
+        // Translate canonical env_id to Meow's native envId parameter,
+        // tolerating the legacy camelCase key for backward compatibility.
         if (!empty($params['env_id'])) {
             $native['envId'] = $params['env_id'];
+        } elseif (!empty($params['envId'])) {
+            $native['envId'] = $params['envId'];
         }
 
         if (isset($params['max_tokens'])) {

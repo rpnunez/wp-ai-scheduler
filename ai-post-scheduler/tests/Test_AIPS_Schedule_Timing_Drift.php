@@ -128,7 +128,7 @@ class Test_AIPS_Schedule_Timing_Drift extends WP_UnitTestCase {
 	 */
 	public function test_author_last_run_updates() {
 		$repo = new AIPS_Authors_Repository();
-		$author_id = $repo->save(array(
+		$author_id = $repo->create(array(
 			'name' => 'Test Timing Author',
 			'system_prompt' => 'Test prompt',
 			'is_active' => 1,

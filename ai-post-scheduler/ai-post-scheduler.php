@@ -355,9 +355,13 @@ final class AI_Post_Scheduler {
      * Registers the most-duplicated singletons to validate the container works
      * correctly before more complex refactors.
      *
+     * Public so tests that call AIPS_Container::clear() (e.g. to isolate
+     * container behavior) can re-register the real bindings afterward and
+     * avoid leaking an empty container into every later test in the process.
+     *
      * @return void
      */
-    private function register_container_bindings() {
+    public function register_container_bindings() {
         $container = AIPS_Container::get_instance();
 
         // Register AIPS_Config (uses get_instance() instead of instance())

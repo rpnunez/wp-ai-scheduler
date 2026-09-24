@@ -116,17 +116,18 @@ class AIPS_Author_Topics_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		$insert_id = $this->wpdb->insert_id;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author_topic',
 				array(
 					'author_id' => isset( $data['author_id'] ) ? absint( $data['author_id'] ) : 0,
-					'topic_id'  => (int) $this->wpdb->insert_id,
+					'topic_id'  => $insert_id,
 				),
 				'author_topic_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 	
 	/**
