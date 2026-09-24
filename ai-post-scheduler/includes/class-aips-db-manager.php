@@ -37,6 +37,7 @@ class AIPS_DB_Manager {
         'aips_cache_events',
         'aips_integration_field_mappings',
         'aips_content_audits',
+        'aips_link_index',
     );
 
     public function __construct() {
@@ -102,6 +103,7 @@ class AIPS_DB_Manager {
         $table_cache_events         = $tables['aips_cache_events'];
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
+        $table_link_index           = $tables['aips_link_index'];
 
         $sql = array();
 
@@ -560,6 +562,26 @@ class AIPS_DB_Manager {
             UNIQUE KEY source_target (source_post_id, target_post_id)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_link_index (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL DEFAULT 0,
+            target_url text NOT NULL,
+            url_hash char(32) NOT NULL DEFAULT '',
+            anchor_text varchar(500) DEFAULT '',
+            link_type varchar(10) NOT NULL DEFAULT 'internal',
+            rel varchar(100) DEFAULT '',
+            is_nofollow tinyint(1) NOT NULL DEFAULT 0,
+            inserted_by_aips tinyint(1) NOT NULL DEFAULT 0,
+            position int(11) NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY source_post_id (source_post_id),
+            KEY target_link (target_post_id, link_type),
+            KEY url_hash (url_hash),
+            KEY link_type (link_type)
+        ) $charset_collate;";
+
         $sql[] = "CREATE TABLE $table_affiliate_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             tag varchar(255) NOT NULL,
@@ -885,6 +907,9 @@ class AIPS_DB_Manager {
             'aips_affiliate_links' => array(
                 array( 'created_at', false ),
                 array( 'updated_at', false ),
+            ),
+            'aips_link_index' => array(
+                array( 'created_at', false ),
             ),
             'aips_cache' => array(
                 array( 'expires_at', false ),
