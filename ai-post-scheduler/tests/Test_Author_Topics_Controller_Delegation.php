@@ -218,7 +218,7 @@ public function test_compute_embeddings_for_all_delegates_to_expansion_service()
 			)
 		);
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -274,7 +274,7 @@ public function test_get_bulk_generate_estimate_delegates_to_history_repository(
 			->with( 20 )
 			->willReturn( array( 'per_post_seconds' => 45, 'sample_size' => 10 ) );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -297,7 +297,7 @@ public function test_get_bulk_generate_estimate_delegates_to_history_repository(
 public function test_get_bulk_generate_estimate_permission_denied() {
 		wp_set_current_user( $this->subscriber_user_id );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->getMock();
 

@@ -94,11 +94,6 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	private $interval_calculator;
 
 	/**
-	 * @var AIPS_Topic_Expansion_Service Service for topic expansion
-	 */
-	private $expansion_service;
-
-	/**
 	 * @var AIPS_Generation_Execution_Runner Shared execution harness.
 	 */
 	private $runner;

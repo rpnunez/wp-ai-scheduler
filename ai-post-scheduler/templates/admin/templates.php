@@ -61,7 +61,7 @@ if (!defined('ABSPATH')) {
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
                                 <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
                                     <?php $campaign = $campaign_map[(int) $template->campaign_id]; ?>
-                                    <div class="cell-meta" style="margin-top: 4px;">
+                                    <div class="cell-meta aips-mt-xs">
                                         <a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($campaign->id)), admin_url('admin.php'))); ?>">
                                             <?php echo esc_html($campaign->name); ?>
                                         </a>
@@ -89,15 +89,15 @@ if (!defined('ABSPATH')) {
                                 ?>
                             </td>
                             <td class="column-stats">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div class="aips-flex aips-flex-column aips-gap-xs">
                                     <div>
-                                        <strong style="font-size: 14px;"><?php echo esc_html($generated_count); ?></strong>
+                                        <strong class="aips-text-base"><?php echo esc_html($generated_count); ?></strong>
                                         <span class="cell-meta"><?php esc_html_e('generated', 'ai-post-scheduler'); ?></span>
-                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'template_id' => absint( $template->id ) ), admin_url( 'admin.php' ) ) ); ?>" style="font-size: 12px; margin-left: 4px;">
+                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'template_id' => absint( $template->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-text-sm aips-ml-xs">
                                             <?php esc_html_e('(view)', 'ai-post-scheduler'); ?>
                                         </a>
                                     </div>
-                                    <div class="cell-meta" style="font-size: 11px;">
+                                    <div class="cell-meta aips-text-xs">
                                         <?php esc_html_e('Pending:', 'ai-post-scheduler'); ?>
                                         <?php esc_html_e('Today:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['today']); ?> |
                                         <?php esc_html_e('Week:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['week']); ?> |
@@ -664,21 +664,21 @@ if (!defined('ABSPATH')) {
 
                     <!-- Step 5: Post-Save Next Steps (shown after successful save) -->
                     <div class="aips-wizard-step-content aips-post-save-step" data-step="5" style="display: none;">
-                        <div style="text-align: center; padding: 30px 20px;">
-                            <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
-                            <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
-                            <p class="description" style="font-size: 14px; margin-bottom: 24px;"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
+                        <div class="aips-text-center aips-p-lg">
+                            <span class="dashicons dashicons-yes-alt aips-icon-xl aips-text-success"></span>
+                            <h3 class="aips-heading-lg aips-mt-md" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
+                            <p class="description aips-text-base aips-mb-lg"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
                             
-                            <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
-                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px; text-decoration: none;">
+                            <div class="aips-next-steps-grid aips-flex aips-gap-md aips-justify-center aips-flex-wrap">
+                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary aips-inline-flex aips-items-center aips-gap-xs">
                                     <span class="dashicons dashicons-calendar-alt"></span>
                                     <?php esc_html_e('Schedule This Template', 'ai-post-scheduler'); ?>
                                 </a>
-                                <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary aips-inline-flex aips-items-center aips-gap-xs">
                                     <span class="dashicons dashicons-controls-play"></span>
                                     <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                 </button>
-                                <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost aips-inline-flex aips-items-center aips-gap-xs">
                                     <span class="dashicons dashicons-dismiss"></span>
                                     <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
                                 </button>

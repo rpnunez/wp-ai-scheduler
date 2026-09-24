@@ -142,6 +142,7 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_get_generation_queue', array($this, 'ajax_get_generation_queue'));
 		add_action('wp_ajax_aips_bulk_generate_from_queue', array($this, 'ajax_bulk_generate_from_queue'));
 		add_action('wp_ajax_aips_get_bulk_generate_estimate', array($this, 'ajax_get_bulk_generate_estimate'));
+		add_action('wp_ajax_aips_save_author_topic', array($this, 'ajax_save_author_topic'));
 	}
 
 	/**
@@ -316,6 +317,68 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::success(array(), __('Topic updated successfully.', 'ai-post-scheduler'));
 		} else {
 			AIPS_Ajax_Response::error(__('Failed to update topic.', 'ai-post-scheduler'));
+		}
+	}
+
+	/**
+	 * AJAX handler for creating/saving an author topic (e.g. from Content Auditor).
+	 */
+	public function ajax_save_author_topic() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$author_id   = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$topic_title = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : (isset($_POST['topic_title']) ? sanitize_text_field(wp_unslash($_POST['topic_title'])) : '');
+		$status      = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : 'approved';
+
+		if (!$author_id || empty($topic_title)) {
+			AIPS_Ajax_Response::error(__('Author ID and topic title are required.', 'ai-post-scheduler'));
+		}
+
+		$allowed_statuses = array('pending', 'approved', 'rejected');
+		if (!in_array($status, $allowed_statuses, true)) {
+			$status = 'approved';
+		}
+
+		$topic_data = array(
+			'author_id'    => $author_id,
+			'topic_title'  => $topic_title,
+			'topic_prompt' => isset($_POST['topic_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['topic_prompt'])) : '',
+			'status'       => $status,
+			'score'        => isset($_POST['score']) ? absint($_POST['score']) : 50,
+			'metadata'     => isset($_POST['metadata']) ? sanitize_text_field(wp_unslash($_POST['metadata'])) : '',
+		);
+
+		$topic_id = $this->repository->create($topic_data);
+
+		if ($topic_id) {
+			$this->logs_repository->log(
+				$topic_id,
+				'created',
+				sprintf(
+					/* translators: %s: topic title */
+					__('Topic "%s" created manually.', 'ai-post-scheduler'),
+					$topic_title
+				),
+				get_current_user_id()
+			);
+
+			AIPS_Ajax_Response::success(
+				array(
+					'topic_id'    => $topic_id,
+					'author_id'   => $author_id,
+					'topic_title' => $topic_title,
+					'status'      => $status,
+				),
+				__('Topic saved successfully.', 'ai-post-scheduler')
+			);
+		} else {
+			AIPS_Ajax_Response::error(__('Failed to save topic.', 'ai-post-scheduler'));
 		}
 	}
 

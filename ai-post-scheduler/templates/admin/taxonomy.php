@@ -58,7 +58,7 @@ $initial_tab = ($categories_total === 0 && $tags_total > 0) ? 'tags' : 'categori
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
 				<div class="aips-filter-left aips-btn-group aips-btn-group-inline">
-					<select class="aips-bulk-action-select aips-form-select" style="width: auto;">
+					<select class="aips-bulk-action-select aips-form-select aips-w-auto">
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
@@ -134,8 +134,8 @@ $initial_tab = ($categories_total === 0 && $tags_total > 0) ? 'tags' : 'categori
 				<label for="base_posts"><?php esc_html_e('Base Posts', 'ai-post-scheduler'); ?></label>
 				<input type="text" id="base_posts" name="base_posts" class="aips-form-input" placeholder="<?php esc_attr_e('Search and select posts...', 'ai-post-scheduler'); ?>">
 				<p class="description"><?php esc_html_e('Search for posts to base the taxonomy generation on.', 'ai-post-scheduler'); ?></p>
-				<div id="base-post-search-results" style="margin-top: 10px;"></div>
-				<div id="selected-posts-container" style="margin-top: 10px;"></div>
+				<div id="base-post-search-results" class="aips-mt-sm"></div>
+				<div id="selected-posts-container" class="aips-mt-sm"></div>
 			</div>
 			</div>
 			<div class="aips-modal-footer form-actions">
