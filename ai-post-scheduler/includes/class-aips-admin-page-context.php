@@ -329,6 +329,11 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-rest-api',
 						'description' => __('Models & AI provider connection', 'ai-post-scheduler'),
 					),
+					'settings-linking' => array(
+						'label'       => __('Internal Linking', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-admin-links',
+						'description' => __('Link index, Link Report and automatic internal linking', 'ai-post-scheduler'),
+					),
 					'settings-feedback' => array(
 						'label'       => __('Feedback', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-thumbs-up',

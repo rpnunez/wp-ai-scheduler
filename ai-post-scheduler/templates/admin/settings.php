@@ -28,6 +28,13 @@ $settings_rail_items = array(
 		'active'      => ($active_settings_tab === 'settings-ai'),
 	),
 	array(
+		'key'         => 'settings-linking',
+		'label'       => __('Internal Linking', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-admin-links',
+		'description' => __('Link index & auto-linking', 'ai-post-scheduler'),
+		'active'      => ($active_settings_tab === 'settings-linking'),
+	),
+	array(
 		'key'         => 'settings-feedback',
 		'label'       => __('Feedback & Topics', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-thumbs-up',
@@ -167,7 +174,22 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 									</table>
 								</div>
 
-								<!-- Card 7: Internal Link Automation -->
+								<p class="submit">
+									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+								</p>
+							</div>
+
+							<!-- Internal Linking Tab -->
+							<div id="settings-linking-tab" class="aips-tab-content<?php echo 'settings-linking' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-linking' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-linking' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Configure the link index behind the Link Report and orphan detection, and the guardrails for automatic internal linking.', 'ai-post-scheduler'); ?></p>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Link Index', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_link_index_section'); ?>
+									</table>
+								</div>
+
 								<div class="aips-settings-section-card">
 									<h3 class="aips-settings-card-title"><?php esc_html_e('Internal Link Automation', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">

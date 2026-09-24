@@ -302,6 +302,14 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_post_types'),
 				'default'           => $defaults['aips_link_index_post_types'],
 			),
+			'aips_link_index_batch_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_index_batch_size'),
+				'default'           => $defaults['aips_link_index_batch_size'],
+			),
+			'aips_link_index_batch_delay' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_index_batch_delay'),
+				'default'           => $defaults['aips_link_index_batch_delay'],
+			),
 			'aips_autolink_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_autolink_enabled'],
@@ -878,12 +886,12 @@ class AIPS_Settings {
         );
 
         // -----------------------------------------------------------------------
-        // Card 7: Internal Link Automation (bulk auto-link guardrails)
+        // Internal Linking tab: Link Index card
         // -----------------------------------------------------------------------
         add_settings_section(
-            'aips_ai_autolink_section',
-            __('Internal Link Automation', 'ai-post-scheduler'),
-            array($this->ui, 'ai_autolink_section_callback'),
+            'aips_link_index_section',
+            __('Link Index', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_section_callback'),
             'aips-settings'
         );
 
@@ -892,7 +900,25 @@ class AIPS_Settings {
             __('Link Index', 'ai-post-scheduler'),
             array($this->ui, 'link_index_field_callback'),
             'aips-settings',
-            'aips_ai_autolink_section'
+            'aips_link_index_section'
+        );
+
+        add_settings_field(
+            'aips_link_index_throttle',
+            __('Rebuild Speed', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_throttle_field_callback'),
+            'aips-settings',
+            'aips_link_index_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Internal Link Automation card (bulk auto-link guardrails)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_autolink_section',
+            __('Internal Link Automation', 'ai-post-scheduler'),
+            array($this->ui, 'ai_autolink_section_callback'),
+            'aips-settings'
         );
 
         add_settings_field(

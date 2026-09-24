@@ -837,7 +837,8 @@ final class AI_Post_Scheduler {
             AIPS_Link_Index_Service::BACKFILL_JOB_TYPE,
             function( $post_id, $job_id, $job ) {
                 return AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_backfill_item( $post_id );
-            }
+            },
+            array( 'log_item_success' => false )
         );
 
         $processor->register(

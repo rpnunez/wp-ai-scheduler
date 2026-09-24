@@ -294,6 +294,8 @@ class AIPS_Batch_Queue_Service {
 	 * @param array    $prefix_args    Caller-specific args prepended to each event's args array.
 	 *                                 Must be serialisable (no closures).
 	 * @param string   $correlation_id Correlation ID for tracing (may be empty string).
+	 * @param array    $slice_options  Optional AIPS_Batch_Slicer overrides (items_per_slice,
+	 *                                 max_slices, window_seconds). Empty uses the defaults.
 	 * @return array|WP_Error{
 	 *   num_batches: int,
 	 *   posts_per_batch: int,
@@ -306,18 +308,21 @@ class AIPS_Batch_Queue_Service {
 		int $item_count,
 		int $base_timestamp,
 		array $prefix_args = array(),
-		string $correlation_id = ''
+		string $correlation_id = '',
+		array $slice_options = array()
 	) {
-		$result = $this->job_scheduler->schedule_batched(
-			$hook,
-			$item_count,
-			array(
-				'prefix_args'     => $prefix_args,
-				'base_timestamp'  => $this->normalize_base_timestamp( $base_timestamp ),
-				'context'         => 'default',
-				'correlation_id'  => $correlation_id,
-			)
+		$options = array(
+			'prefix_args'     => $prefix_args,
+			'base_timestamp'  => $this->normalize_base_timestamp( $base_timestamp ),
+			'context'         => 'default',
+			'correlation_id'  => $correlation_id,
 		);
+
+		if ( ! empty( $slice_options ) ) {
+			$options['slice_options'] = $slice_options;
+		}
+
+		$result = $this->job_scheduler->schedule_batched( $hook, $item_count, $options );
 
 		if (is_wp_error($result)) {
 			return $result;

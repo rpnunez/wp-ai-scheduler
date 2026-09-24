@@ -44,7 +44,7 @@ foreach ($post_types as $type_slug => $type_label) {
 				<p class="aips-banner-desc"><?php esc_html_e('Saved posts are not being re-read, so these numbers may be out of date.', 'ai-post-scheduler'); ?></p>
 			</div>
 			<div>
-				<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#settings-ai')); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+				<a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings&tab=settings-linking')); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
 					<span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
 					<?php esc_html_e('Open Settings', 'ai-post-scheduler'); ?>
 				</a>
@@ -61,10 +61,20 @@ foreach ($post_types as $type_slug => $type_label) {
 				<span class="dashicons dashicons-warning aips-stat-icon" aria-hidden="true"></span>
 			</div>
 			<div class="aips-stat-value-wrap">
-				<span class="aips-stat-value aips-text-warning" id="aips-link-stat-orphans"><?php echo esc_html((string) $orphan_count); ?></span>
-				<span class="aips-stat-total">/ <span id="aips-link-stat-posts"><?php echo esc_html((string) $total_posts); ?></span></span>
+				<?php if ($never_indexed) : ?>
+					<span class="aips-stat-value" id="aips-link-stat-orphans">&mdash;</span>
+				<?php else : ?>
+					<span class="aips-stat-value aips-text-warning" id="aips-link-stat-orphans"><?php echo esc_html((string) $orphan_count); ?></span>
+					<span class="aips-stat-total">/ <span id="aips-link-stat-posts"><?php echo esc_html((string) $total_posts); ?></span></span>
+				<?php endif; ?>
 			</div>
-			<p class="aips-stat-subtext"><?php esc_html_e('Published posts no other post links to', 'ai-post-scheduler'); ?></p>
+			<p class="aips-stat-subtext">
+				<?php
+				echo $never_indexed
+					? esc_html__('Build the link index to find orphans', 'ai-post-scheduler')
+					: esc_html__('Published posts no other post links to', 'ai-post-scheduler');
+				?>
+			</p>
 		</div>
 
 		<div class="aips-stat-card">

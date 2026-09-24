@@ -249,6 +249,8 @@ class AIPS_Config {
             'aips_author_topic_auto_approval_fallback' => 'reject',
             'aips_link_index_enabled'                  => true,
             'aips_link_index_post_types'               => array('post', 'page'),
+            'aips_link_index_batch_size'               => 50,
+            'aips_link_index_batch_delay'              => 20,
             'aips_autolink_enabled'                    => false,
             'aips_autolink_auto_apply_threshold'       => 0.85,
             'aips_autolink_review_threshold'           => 0.70,

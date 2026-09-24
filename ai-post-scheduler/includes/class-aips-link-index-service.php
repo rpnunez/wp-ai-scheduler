@@ -283,7 +283,8 @@ class AIPS_Link_Index_Service {
 			count($post_ids),
 			time(),
 			array($job_id),
-			(string) AIPS_Correlation_ID::get()
+			(string) AIPS_Correlation_ID::get(),
+			$this->get_backfill_slice_options(count($post_ids))
 		);
 
 		if (is_wp_error($dispatch)) {
@@ -296,6 +297,26 @@ class AIPS_Link_Index_Service {
 		return array(
 			'job_id' => $job_id,
 			'total'  => count($post_ids),
+		);
+	}
+
+	/**
+	 * Batch slicing for a rebuild: fixed-size batches spaced by the configured
+	 * pause, replacing the shared "at most 10 slices in 10 minutes" default
+	 * (which would put hundreds of posts in one cron request on large sites).
+	 *
+	 * @param int $post_count Posts in the rebuild.
+	 * @return array{items_per_slice:int, max_slices:int, window_seconds:int}
+	 */
+	public function get_backfill_slice_options(int $post_count): array {
+		$batch_size = min(500, max(10, (int) $this->config->get_option('aips_link_index_batch_size', 50)));
+		$delay      = min(600, max(0, (int) $this->config->get_option('aips_link_index_batch_delay', 20)));
+		$slices     = max(1, (int) ceil(max(1, $post_count) / $batch_size));
+
+		return array(
+			'items_per_slice' => $batch_size,
+			'max_slices'      => $slices,
+			'window_seconds'  => ($slices - 1) * $delay,
 		);
 	}
 

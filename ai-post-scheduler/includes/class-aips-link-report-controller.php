@@ -73,6 +73,23 @@ class AIPS_Link_Report_Controller {
 	}
 
 	/**
+	 * Site totals plus orphan and in-scope post counts for the stat tiles.
+	 *
+	 * @return array
+	 */
+	private function get_totals(): array {
+		$scope = array('post_types' => $this->service->get_post_types());
+
+		return array_merge(
+			$this->repository->get_summary(),
+			array(
+				'orphans' => $this->repository->get_report_count($scope + array('orphans_only' => true)),
+				'posts'   => $this->repository->get_report_count($scope),
+			)
+		);
+	}
+
+	/**
 	 * AJAX: one page of the Link Report.
 	 *
 	 * @return void
@@ -119,7 +136,7 @@ class AIPS_Link_Report_Controller {
 			'total'       => $total,
 			'page'        => $args['page'],
 			'total_pages' => max(1, (int) ceil($total / self::PER_PAGE)),
-			'summary'     => $this->repository->get_summary(),
+			'summary'     => $this->get_totals(),
 		));
 	}
 
@@ -208,7 +225,7 @@ class AIPS_Link_Report_Controller {
 
 		AIPS_Ajax_Response::success(array(
 			'backfill' => $this->service->get_backfill_status(),
-			'summary'  => $this->repository->get_summary(),
+			'summary'  => $this->get_totals(),
 		));
 	}
 

@@ -10,8 +10,27 @@
 }
 
 .aips-link-report-tab .aips-link-report-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--aips-space-3);
 	padding: var(--aips-space-4);
 	border-bottom: 1px solid var(--aips-border-color);
+}
+
+.aips-link-report-tab .aips-link-report-toolbar .aips-toolbar-search {
+	flex: 1 1 280px;
+}
+
+.aips-link-report-tab .aips-link-report-toolbar .aips-toolbar-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-3);
+}
+
+.aips-link-report-tab .aips-link-report-toolbar .aips-toolbar-filters select {
+	width: auto;
+	min-width: 200px;
 }
 
 .aips-link-report-tab .aips-sort-link {
@@ -19,8 +38,9 @@
 	border: 0;
 	padding: 0;
 	font: inherit;
-	font-weight: var(--aips-font-semibold);
 	color: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
 	cursor: pointer;
 }
 

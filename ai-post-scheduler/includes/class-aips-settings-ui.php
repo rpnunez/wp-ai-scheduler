@@ -72,6 +72,14 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render the description for the Link Index card (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_index_section_callback() {
+	}
+
+	/**
 	 * Render the description for Card 5: Frontend Related Posts Engine.
 	 *
 	 * @return void
@@ -793,6 +801,26 @@ class AIPS_Settings_UI {
      */
     public function sanitize_autolink_limit($value) {
         return min(100, max(1, absint($value)));
+    }
+
+    /**
+     * Sanitize the number of posts indexed per link index rebuild batch (10 - 500).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_index_batch_size($value) {
+        return min(500, max(10, absint($value)));
+    }
+
+    /**
+     * Sanitize the pause between link index rebuild batches in seconds (0 - 600).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_index_batch_delay($value) {
+        return min(600, absint($value));
     }
 
     /**
@@ -1536,7 +1564,7 @@ class AIPS_Settings_UI {
 	}
 
 	/**
-	 * Render the link index toggle and post types (Card 7).
+	 * Render the link index toggle and post types (Internal Linking tab).
 	 *
 	 * @return void
 	 */
@@ -1564,7 +1592,34 @@ class AIPS_Settings_UI {
 	}
 
 	/**
-	 * Render the bulk auto-linking toggle (Card 7).
+	 * Render the link index rebuild throttle (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_index_throttle_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$batch_size = (int) $config->get_option('aips_link_index_batch_size', 50);
+		$delay      = (int) $config->get_option('aips_link_index_batch_delay', 20);
+		?>
+		<fieldset class="aips-link-index-throttle">
+			<div class="aips-rate-limits-grid">
+				<div class="aips-rate-limit-field">
+					<label for="aips_link_index_batch_size"><?php esc_html_e('Posts per batch:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="10" max="500" step="10" name="aips_link_index_batch_size" id="aips_link_index_batch_size" value="<?php echo esc_attr((string) $batch_size); ?>" class="small-text">
+				</div>
+				<div class="aips-rate-limit-field">
+					<label for="aips_link_index_batch_delay"><?php esc_html_e('Pause between batches:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0" max="600" step="5" name="aips_link_index_batch_delay" id="aips_link_index_batch_delay" value="<?php echo esc_attr((string) $delay); ?>" class="small-text">
+					<span class="description"><?php esc_html_e('seconds', 'ai-post-scheduler'); ?></span>
+				</div>
+			</div>
+			<p class="description"><?php esc_html_e('A full rebuild runs in the background as WP-Cron batches. Each batch only parses post HTML (no AI calls); lower the batch size or raise the pause on slow or shared hosting.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the bulk auto-linking toggle (Internal Linking tab).
 	 *
 	 * @return void
 	 */
