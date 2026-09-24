@@ -322,7 +322,7 @@
          *     "You're about to delete this item. Are you sure?",
          *     'Notice',
          *     [
-         *         { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+         *         { label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
          *         { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() { doDelete(); } }
          *     ]
          * );
@@ -369,9 +369,9 @@
             }
 
             $.each(buttons, function(i, btn) {
-                var label     = btn.label     || 'OK';
-                var className = btn.className || 'aips-btn aips-btn-secondary';
-                var action    = typeof btn.action === 'function' ? btn.action : null;
+                var label     = btn.label     || btn.text  || 'OK';
+                var className = btn.className || btn.class || 'aips-btn aips-btn-secondary';
+                var action    = typeof btn.action === 'function' ? btn.action : (typeof btn.callback === 'function' ? btn.callback : null);
 
                 var $btn = $('<button type="button"></button>')
                     .addClass(className)

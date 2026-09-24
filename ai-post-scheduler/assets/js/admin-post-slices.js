@@ -179,7 +179,7 @@
 			var self = this;
 
 			AIPS.Utilities.confirm(aipsPostSlicesL10n.deleteConfirm, 'Confirm', [
-				{ label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsAdminL10n.confirmDeleteButton || 'Delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					var req = $.post(aipsAjax.ajaxUrl, {
 						action:   'aips_delete_post_slice',

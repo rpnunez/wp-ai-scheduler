@@ -937,8 +937,8 @@
             var id = $btn.data('id');
 
             AIPS.Utilities.confirm('Are you sure you want to clone this template?', 'Confirm', [
-                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: 'Yes, clone', className: 'aips-btn aips-btn-primary', action: function() {
                     var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
@@ -1508,7 +1508,7 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
             AIPS.Utilities.confirm(aipsVoicesL10n.deleteVoiceConfirm, 'Confirm', [
-                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
                         url: aipsAjax.ajaxUrl,
@@ -2180,7 +2180,7 @@
             var $row = $el.closest('tr');
 
             AIPS.Utilities.confirm(aipsScheduleL10n.deleteScheduleConfirm, 'Notice', [
-                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
                         url: aipsAjax.ajaxUrl,
@@ -2827,44 +2827,53 @@
             var id = $btn.data('id');
             var type = $btn.data('type');
 
-            if (!confirm('Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.')) {
-                return;
-            }
+            AIPS.Utilities.confirm(
+                'Reset the circuit breaker for this schedule? This will allow it to attempt generation on its next run.',
+                'Reset Circuit Breaker',
+                [
+                    { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    {
+                        label: 'Yes, Reset',
+                        className: 'aips-btn aips-btn-primary',
+                        action: function() {
+                            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+                            $.post(ajaxurl, {
+                                action: 'aips_reset_schedule_circuit',
+                                nonce: aipsData.nonce,
+                                id: id,
+                                type: type
+                            })
+                            .done(function(response) {
+                                if (response.success) {
+                                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
 
-            $.post(ajaxurl, {
-                action: 'aips_reset_schedule_circuit',
-                nonce: aipsData.nonce,
-                id: id,
-                type: type
-            })
-            .done(function(response) {
-                if (response.success) {
-                    AIPS.showNotice(response.data.message || 'Circuit breaker reset successfully.', 'success');
+                                    // Update the row's circuit state
+                                    var $row = $btn.closest('.aips-unified-row');
+                                    $row.attr('data-circuit-state', 'closed');
 
-                    // Update the row's circuit state
-                    var $row = $btn.closest('.aips-unified-row');
-                    $row.attr('data-circuit-state', 'closed');
+                                    // Update health indicator badge
+                                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
+                                        '<div style="display:flex;align-items:center;gap:8px;">' +
+                                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
+                                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
+                                    );
 
-                    // Update health indicator badge
-                    $row.find('.column-status .aips-schedule-status-wrapper').first().html(
-                        '<div style="display:flex;align-items:center;gap:8px;">' +
-                        '<span class="aips-badge aips-badge-success" title="Circuit Breaker Status">' +
-                        '<span class="dashicons dashicons-yes"></span> Healthy</span></div>'
-                    );
-
-                    // Remove the reset button
-                    $btn.remove();
-                } else {
-                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
-                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
-                }
-            })
-            .fail(function() {
-                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
-                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
-            });
+                                    // Remove the reset button
+                                    $btn.remove();
+                                } else {
+                                    AIPS.showNotice(response.data || 'Failed to reset circuit breaker.', 'error');
+                                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                                }
+                            })
+                            .fail(function() {
+                                AIPS.showNotice('An error occurred while resetting the circuit breaker.', 'error');
+                                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                            });
+                        }
+                    }
+                ]
+            );
         },
 
         /**
@@ -2879,35 +2888,44 @@
             var id = $btn.data('id');
             var type = $btn.data('type');
 
-            if (!confirm('Resume the incomplete batch for this schedule? This will continue generation from where it left off.')) {
-                return;
-            }
+            AIPS.Utilities.confirm(
+                'Resume the incomplete batch for this schedule? This will continue generation from where it left off.',
+                'Resume Batch',
+                [
+                    { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    {
+                        label: 'Yes, Resume',
+                        className: 'aips-btn aips-btn-primary',
+                        action: function() {
+                            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
 
-            $btn.prop('disabled', true).find('.dashicons').addClass('aips-spin');
+                            $.post(ajaxurl, {
+                                action: 'aips_resume_schedule_batch',
+                                nonce: aipsData.nonce,
+                                id: id,
+                                type: type
+                            })
+                            .done(function(response) {
+                                if (response.success) {
+                                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
 
-            $.post(ajaxurl, {
-                action: 'aips_resume_schedule_batch',
-                nonce: aipsData.nonce,
-                id: id,
-                type: type
-            })
-            .done(function(response) {
-                if (response.success) {
-                    AIPS.showNotice(response.data.message || 'Batch resumed successfully.', 'success');
-
-                    // Optionally reload the page or update the UI
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
-                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
-                }
-            })
-            .fail(function() {
-                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
-                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
-            });
+                                    // Optionally reload the page or update the UI
+                                    setTimeout(function() {
+                                        window.location.reload();
+                                    }, 1500);
+                                } else {
+                                    AIPS.showNotice(response.data || 'Failed to resume batch.', 'error');
+                                    $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                                }
+                            })
+                            .fail(function() {
+                                AIPS.showNotice('An error occurred while resuming the batch.', 'error');
+                                $btn.prop('disabled', false).find('.dashicons').removeClass('aips-spin');
+                            });
+                        }
+                    }
+                ]
+            );
         },
 
         /**
@@ -4117,7 +4135,7 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
             AIPS.Utilities.confirm(aipsStructuresL10n.deleteStructureConfirm, 'Confirm', [
-                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                         if (response.success) {
@@ -4276,7 +4294,7 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
             AIPS.Utilities.confirm(aipsStructuresL10n.deleteSectionConfirm, 'Confirm', [
-                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmCancelButton || 'Cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
                         if (response.success) {

@@ -154,10 +154,10 @@
 			const message = (aipsAuthorsL10n.confirmGenerateTopicsBulk || 'Generate topics now for %d selected author(s)?').replace('%d', authorIds.length);
 
 			AIPS.Utilities.confirm(message, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, generate',
-					className: 'aips-btn aips-btn-danger-solid',
+					className: 'aips-btn aips-btn-primary',
 					action: () => {
 						const requests = authorIds.map((authorId) => {
 							return $.ajax({
@@ -194,7 +194,7 @@
 			const message = (aipsAuthorsL10n.confirmDeleteBulk || 'Delete %d selected author(s)?').replace('%d', authorIds.length);
 
 			AIPS.Utilities.confirm(message, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
@@ -431,7 +431,7 @@
 			const authorId = $(e.currentTarget).data('id') || $(e.currentTarget).data('author-id') || $(e.currentTarget).closest('[data-author-id]').data('author-id');
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDelete, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
@@ -480,10 +480,10 @@
 			const $btn = $(e.currentTarget);
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGenerateTopics, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, generate',
-					className: 'aips-btn aips-btn-danger-solid',
+					className: 'aips-btn aips-btn-primary',
 					action: () => {
 						var req = $.ajax({
 							url: ajaxurl,
@@ -1519,7 +1519,7 @@
 			const topicId = $(e.currentTarget).data('id');
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDeleteTopic, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, delete',
 					className: 'aips-btn aips-btn-danger-solid',
@@ -1662,10 +1662,10 @@
 			const $btn = $(e.currentTarget);
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePost, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, generate',
-					className: 'aips-btn aips-btn-danger-solid',
+					className: 'aips-btn aips-btn-primary',
 					action: () => {
 						var req = $.ajax({
 							url: ajaxurl,
@@ -2008,10 +2008,10 @@
 			}
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmPublishPost || 'Are you sure you want to publish this post?', 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, publish',
-					className: 'aips-btn aips-btn-danger-solid',
+					className: 'aips-btn aips-btn-primary',
 					action: () => {
 						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.publishing || 'Publishing...');
 
@@ -2139,11 +2139,15 @@
 
 			// Confirm action
 			const confirmMessage = this.getBulkConfirmMessage(action, ids.length, activeTab);
+			const isDestructive = (action === 'delete');
+			const confirmBtnClass = isDestructive ? 'aips-btn aips-btn-danger-solid' : 'aips-btn aips-btn-primary';
+			const confirmBtnLabel = isDestructive ? (aipsAuthorsL10n.confirmDelete || 'Yes, delete') : (action === 'approve' ? 'Yes, approve' : 'Yes, continue');
+
 			AIPS.Utilities.confirm(confirmMessage, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
-					label: 'Yes, continue',
-					className: 'aips-btn aips-btn-danger-solid',
+					label: confirmBtnLabel,
+					className: confirmBtnClass,
 					action: () => {
 						// Disable button while processing
 						AIPS.Utilities.setButtonLoading($button, aipsAuthorsL10n.processing || 'Processing...');
@@ -2936,10 +2940,10 @@
 			const $button = $('.aips-queue-bulk-action-execute');
 
 			AIPS.Utilities.confirm(confirmMessage, 'Notice', [
-				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{
 					label: 'Yes, generate',
-					className: 'aips-btn aips-btn-danger-solid',
+					className: 'aips-btn aips-btn-primary',
 					action: () => {
 						var req = $.ajax({
 							url: ajaxurl,

@@ -677,15 +677,25 @@
 		 * @return {void}
 		 */
 		onReindexDimensionClick: function () {
-			if (!confirm('This will clear stored vector embeddings and re-index all content using the active environment and model. Proceed?')) {
-				return;
-			}
-			this.handleClearIndex();
-			$('.aips-tab-link[data-tab="scanner"]').trigger('click');
 			var self = this;
-			setTimeout(function () {
-				self.handleStartIndexing();
-			}, 600);
+			AIPS.Utilities.confirm(
+				'This will clear stored vector embeddings and re-index all content using the active environment and model. Proceed?',
+				'Re-index Embeddings',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Proceed',
+						className: 'aips-btn aips-btn-primary',
+						action: function () {
+							self.handleClearIndex(true);
+							$('.aips-tab-link[data-tab="scanner"]').trigger('click');
+							setTimeout(function () {
+								self.handleStartIndexing();
+							}, 600);
+						}
+					}
+				]
+			);
 		},
 
 		/**
@@ -1190,33 +1200,52 @@
 
 		/**
 		 * Clear entire index.
+		 *
+		 * @param {boolean} [skipConfirm=false] Whether to skip the confirmation prompt.
 		 */
-		handleClearIndex: function () {
-			if (!confirm(aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.')) {
+		handleClearIndex: function (skipConfirm) {
+			var self = this;
+
+			function doClear() {
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						action: 'aips_indexer_clear_index',
+						nonce: aipsContentIndexerL10n.nonce
+					},
+					success: function (res) {
+						if (res.success) {
+							self.lastPostId = 0;
+							$('#aips-stat-indexed').text('0');
+							$('#aips-stat-percent').text('0%');
+							$('#aips-index-progress-bar').css('width', '0%');
+							$('#aips-stat-topics').text('0');
+							AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Index cleared.', 'success');
+							self.reloadGraph();
+						}
+					}
+				});
+			}
+
+			if (skipConfirm) {
+				doClear();
 				return;
 			}
 
-			var self = this;
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'aips_indexer_clear_index',
-					nonce: aipsContentIndexerL10n.nonce
-				},
-				success: function (res) {
-					if (res.success) {
-						self.lastPostId = 0;
-						$('#aips-stat-indexed').text('0');
-						$('#aips-stat-percent').text('0%');
-						$('#aips-index-progress-bar').css('width', '0%');
-						$('#aips-stat-topics').text('0');
-						AIPS.Utilities && AIPS.Utilities.showNotice(res.data.message || 'Index cleared.', 'success');
-						self.reloadGraph();
+			AIPS.Utilities.confirm(
+				aipsContentIndexerL10n.confirmClear || 'Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.',
+				'Clear Semantic Index',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Clear Index',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: doClear
 					}
-				}
-			});
+				]
+			);
 		},
 
 		/**

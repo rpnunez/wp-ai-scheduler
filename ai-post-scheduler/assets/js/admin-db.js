@@ -20,8 +20,8 @@
             e.preventDefault();
             var $btn = $(this);
             AIPS.Utilities.confirm('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.', 'Confirm', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, repair', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: 'Yes, repair', className: 'aips-btn aips-btn-primary', action: function() {
                     var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
@@ -62,8 +62,8 @@
             e.preventDefault();
             var $btn = $(this);
             AIPS.Utilities.confirm('Run the date/time repair routine? This will normalize legacy date/time storage and backfill missing next-run values for active schedules, authors, and sources.', 'Confirm', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, fix values', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: 'Yes, fix values', className: 'aips-btn aips-btn-primary', action: function() {
                     var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
@@ -114,7 +114,7 @@
             }
 
             AIPS.Utilities.confirm(msg, 'Confirm', [
-                { label: 'No, cancel',    className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel',    className: 'aips-btn aips-btn-secondary' },
                 { label: 'Yes, reinstall', className: 'aips-btn aips-btn-danger-solid', action: function() {
                     var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
@@ -158,7 +158,7 @@
             e.preventDefault();
             var $btn = $(this);
             AIPS.Utilities.confirm('Are you sure you want to WIPE ALL DATA? This cannot be undone.', 'Warning', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: 'Yes, wipe all data', className: 'aips-btn aips-btn-danger-solid', action: function() {
                     var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
@@ -208,8 +208,8 @@
                 'Use this when duplicate cron events have accumulated and are causing excessive AI calls. Continue?',
                 'Flush WP-Cron Events',
                 [
-                    { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                    { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+                    { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-primary', action: function() {
                         $result.hide().empty();
 
                         var req = $.ajax({
