@@ -2113,52 +2113,136 @@ button.aips-btn-secondary:active {
     margin-top: 20px;
 }
 
-.aips-stats-grid {
+/* Standardized Admin Stat Grid & Metric Cards */
+.aips-stats-grid,
+.aips-author-topics-stats,
+.aips-post-slices-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
-.aips-stat-card {
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    border-radius: 4px;
-    padding: 20px;
+.aips-stat-card,
+.aips-stats-grid .aips-stat-card,
+.aips-author-topics-stats .aips-stat-card,
+.aips-post-slices-summary .aips-stat-card,
+.aips-post-slices-summary-card {
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 86px;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.aips-stat-card:hover,
+.aips-stats-grid .aips-stat-card:hover,
+.aips-author-topics-stats .aips-stat-card:hover,
+.aips-post-slices-summary .aips-stat-card:hover,
+.aips-post-slices-summary-card:hover {
+    border-color: #c3c4c7;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.aips-stat-header {
     display: flex;
     align-items: center;
-    gap: 15px;
+    justify-content: space-between;
+    margin-bottom: 4px;
 }
 
-.aips-stat-card.aips-stat-warning {
-    border-left: 4px solid #dba617;
+.aips-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.3;
 }
 
 .aips-stat-icon {
-    font-size: 40px;
-    width: 50px;
-    height: 50px;
-    color: #2271b1;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    line-height: 16px;
+    flex-shrink: 0;
 }
 
-.aips-stat-warning .aips-stat-icon {
-    color: #dba617;
-}
-
-.aips-stat-content {
+.aips-stat-value-wrap {
     display: flex;
-    flex-direction: column;
+    align-items: baseline;
+    gap: 6px;
+    margin: 2px 0 0;
 }
 
-.aips-stat-number {
-    font-size: 28px;
-    font-weight: 600;
+.aips-stat-value,
+.aips-post-slices-summary-value {
+    font-size: 24px;
+    font-weight: 700;
     color: #1d2327;
     line-height: 1.2;
 }
 
-.aips-stat-label {
+.aips-stat-total {
     font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.aips-stat-subtext {
+    font-size: 11px;
+    color: #64748b;
+    margin: 6px 0 0;
+    line-height: 1.35;
+}
+
+.aips-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #f0f0f1;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.aips-progress-fill {
+    height: 100%;
+    background: #2271b1;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* Stat color variants */
+.aips-stat-value.aips-text-success,
+.aips-text-success {
+    color: #00a32a;
+}
+
+.aips-stat-value.aips-text-warning,
+.aips-text-warning {
+    color: #dba617;
+}
+
+.aips-stat-value.aips-text-danger,
+.aips-text-danger {
+    color: #d63638;
+}
+
+.aips-stat-value.aips-text-info,
+.aips-text-info {
+    color: #2271b1;
+}
+
+.aips-stat-value.aips-text-muted,
+.aips-text-muted {
     color: #646970;
 }
 

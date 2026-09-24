@@ -22,22 +22,46 @@ $initial_tab = ($categories_total === 0 && $tags_total > 0) ? 'tags' : 'categori
 ?>
 
 		<!-- Taxonomy Stats -->
-		<div class="aips-author-topics-stats">
-			<div class="aips-stat-card aips-stat-pending">
-				<span class="aips-stat-value" id="stat-pending-count"><?php echo esc_html($status_counts['categories']['pending'] + $status_counts['tags']['pending']); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
-			</div>
-			<div class="aips-stat-card aips-stat-approved">
-				<span class="aips-stat-value" id="stat-approved-count"><?php echo esc_html($status_counts['categories']['approved'] + $status_counts['tags']['approved']); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></span>
-			</div>
-			<div class="aips-stat-card aips-stat-rejected">
-				<span class="aips-stat-value" id="stat-rejected-count"><?php echo esc_html($status_counts['categories']['rejected'] + $status_counts['tags']['rejected']); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
+		<div class="aips-stats-grid">
+			<div class="aips-stat-card">
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-clock aips-stat-icon" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-warning" id="stat-pending-count"><?php echo esc_html($status_counts['categories']['pending'] + $status_counts['tags']['pending']); ?></span>
+				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Awaiting review and approval', 'ai-post-scheduler'); ?></p>
 			</div>
 			<div class="aips-stat-card">
-				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_items); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Total Items', 'ai-post-scheduler'); ?></span>
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-yes aips-stat-icon" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-success" id="stat-approved-count"><?php echo esc_html($status_counts['categories']['approved'] + $status_counts['tags']['approved']); ?></span>
+				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Terms accepted into taxonomy', 'ai-post-scheduler'); ?></p>
+			</div>
+			<div class="aips-stat-card">
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-no aips-stat-icon" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-danger" id="stat-rejected-count"><?php echo esc_html($status_counts['categories']['rejected'] + $status_counts['tags']['rejected']); ?></span>
+				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Dismissed suggestion terms', 'ai-post-scheduler'); ?></p>
+			</div>
+			<div class="aips-stat-card">
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Total Items', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-category aips-stat-icon" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_items); ?></span>
+				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('All generated categories and tags', 'ai-post-scheduler'); ?></p>
 			</div>
 		</div>
 
