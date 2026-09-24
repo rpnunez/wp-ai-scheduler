@@ -1980,12 +1980,20 @@ class AIPS_Admin_Assets {
             'aips-content-indexer-script',
             'aipsContentIndexerL10n',
             array(
-                'nonce'            => wp_create_nonce('aips_ajax_nonce'),
-                'startScan'        => __('Start Scan', 'ai-post-scheduler'),
-                'resumeScan'       => __('Resume Scan', 'ai-post-scheduler'),
-                'indexingPaused'   => __('Indexing Paused', 'ai-post-scheduler'),
-                'indexingComplete' => __('Content indexing complete!', 'ai-post-scheduler'),
-                'confirmClear'     => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
+                'nonce'                 => wp_create_nonce('aips_ajax_nonce'),
+                'startScan'             => __('Start Scan', 'ai-post-scheduler'),
+                'resumeScan'            => __('Resume Scan', 'ai-post-scheduler'),
+                'indexingPaused'        => __('Indexing Paused', 'ai-post-scheduler'),
+                'indexingComplete'      => __('Content indexing complete!', 'ai-post-scheduler'),
+                'confirmClear'          => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
+                'indexed'               => __('Indexed', 'ai-post-scheduler'),
+                'pendingIndex'          => __('Pending Index', 'ai-post-scheduler'),
+                'authorTopic'           => __('Author Topic', 'ai-post-scheduler'),
+                'post'                  => __('Post', 'ai-post-scheduler'),
+                'noAuditDuplicates'     => __('No high-similarity duplicate or cannibalizing clusters found. Great job!', 'ai-post-scheduler'),
+                'editSource'            => __('Edit Source', 'ai-post-scheduler'),
+                'editTarget'            => __('Edit Target', 'ai-post-scheduler'),
+                'cannibalizationRisk'   => __('Cannibalization Risk', 'ai-post-scheduler'),
             )
         );
     }

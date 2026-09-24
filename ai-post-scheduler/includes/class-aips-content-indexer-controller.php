@@ -521,7 +521,8 @@ class AIPS_Content_Indexer_Controller {
 					$post_id = (int) $indexed_topics[0]->object_id;
 				}
 			} else {
-				$indexed_ids = $this->embeddings_repo->get_all_for_similarity('post', array('post'), 'publish');
+				$post_types  = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+				$indexed_ids = $this->embeddings_repo->get_all_for_similarity('post', $post_types, 'publish');
 				if (!empty($indexed_ids)) {
 					$post_id = (int) $indexed_ids[0]->object_id;
 				}
@@ -566,18 +567,20 @@ class AIPS_Content_Indexer_Controller {
 	public function ajax_search_posts() {
 		$this->verify_request();
 
-		$query = isset($_POST['q']) ? sanitize_text_field($_POST['q']) : '';
-		if (empty($query)) {
-			AIPS_Ajax_Response::success(array('results' => array()));
-			return;
+		$query      = isset($_POST['q']) ? sanitize_text_field($_POST['q']) : '';
+		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+
+		$args = array(
+			'post_type'      => $post_types,
+			'post_status'    => 'publish',
+			'posts_per_page' => 15,
+		);
+
+		if (!empty($query)) {
+			$args['s'] = $query;
 		}
 
-		$posts = get_posts(array(
-			'post_type'      => $this->config->get_option('aips_indexer_post_types', array('post')),
-			'post_status'    => 'publish',
-			's'              => $query,
-			'posts_per_page' => 15,
-		));
+		$posts = get_posts($args);
 
 		$results = array();
 		if (!empty($posts)) {
