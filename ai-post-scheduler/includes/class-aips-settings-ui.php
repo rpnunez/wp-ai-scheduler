@@ -953,6 +953,36 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Sanitize where the silo "In this guide" list goes on a pillar.
+     *
+     * @param mixed $value Raw value.
+     * @return string 'end' or 'after_first_paragraph'.
+     */
+    public function sanitize_silo_guide_position($value) {
+        return $value === 'after_first_paragraph' ? 'after_first_paragraph' : 'end';
+    }
+
+    /**
+     * Sanitize the number of articles in the silo "In this guide" list.
+     *
+     * @param mixed $value Raw value.
+     * @return int 1-50.
+     */
+    public function sanitize_silo_guide_max($value) {
+        return min(50, max(1, absint($value)));
+    }
+
+    /**
+     * Sanitize the silo "In this guide" list style.
+     *
+     * @param mixed $value Raw value.
+     * @return string 'aips' or 'theme'.
+     */
+    public function sanitize_silo_guide_style($value) {
+        return $value === 'theme' ? 'theme' : 'aips';
+    }
+
+    /**
      * Sanitize the rel attribute applied to auto-inserted links.
      *
      * @param mixed $value Raw value.
@@ -1803,6 +1833,60 @@ class AIPS_Settings_UI {
 				<input type="number" min="30" max="730" step="1" name="aips_link_click_retention_days" id="aips_link_click_retention_days" value="<?php echo esc_attr((string) $retention); ?>" class="small-text">
 			</p>
 			<p class="description"><?php esc_html_e('Adds a small script to single posts that reports which internal link was clicked. Only a daily count per link is stored: no IP addresses, cookies or visitor IDs. Clicks by logged-in editors and known bots are ignored. Results appear in Content → Link Report.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the silo "In this guide" list settings (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function silo_guide_field_callback() {
+		$config   = AIPS_Config::get_instance();
+		$enabled  = (bool) $config->get_option('aips_silo_guide_enabled', true);
+		$position = (string) $config->get_option('aips_silo_guide_position', 'end');
+		$max      = (int) $config->get_option('aips_silo_guide_max', 10);
+		$style    = (string) $config->get_option('aips_silo_guide_style', 'aips');
+		$heading  = (string) $config->get_option('aips_silo_guide_heading', '');
+		?>
+		<fieldset>
+			<label for="aips_silo_guide_enabled">
+				<input type="checkbox" name="aips_silo_guide_enabled" id="aips_silo_guide_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Show an "In this guide" list of its articles on each silo pillar', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p>
+				<label for="aips_silo_guide_heading"><?php esc_html_e('Heading:', 'ai-post-scheduler'); ?></label>
+				<input type="text" name="aips_silo_guide_heading" id="aips_silo_guide_heading" value="<?php echo esc_attr($heading); ?>" placeholder="<?php esc_attr_e('In this guide', 'ai-post-scheduler'); ?>" class="regular-text">
+			</p>
+			<p>
+				<label for="aips_silo_guide_position"><?php esc_html_e('Place it:', 'ai-post-scheduler'); ?></label>
+				<select name="aips_silo_guide_position" id="aips_silo_guide_position">
+					<option value="end" <?php selected($position, 'end'); ?>><?php esc_html_e('At the end of the post', 'ai-post-scheduler'); ?></option>
+					<option value="after_first_paragraph" <?php selected($position, 'after_first_paragraph'); ?>><?php esc_html_e('After the first paragraph', 'ai-post-scheduler'); ?></option>
+				</select>
+			</p>
+			<p>
+				<label for="aips_silo_guide_max"><?php esc_html_e('List up to', 'ai-post-scheduler'); ?></label>
+				<input type="number" min="1" max="50" step="1" name="aips_silo_guide_max" id="aips_silo_guide_max" value="<?php echo esc_attr((string) $max); ?>" class="small-text">
+				<?php esc_html_e('articles, closest to the pillar first', 'ai-post-scheduler'); ?>
+			</p>
+			<p>
+				<label for="aips_silo_guide_style"><?php esc_html_e('Style:', 'ai-post-scheduler'); ?></label>
+				<select name="aips_silo_guide_style" id="aips_silo_guide_style">
+					<option value="aips" <?php selected($style, 'aips'); ?>><?php esc_html_e('AI Post Scheduler box (a light bordered box in your theme\'s colours)', 'ai-post-scheduler'); ?></option>
+					<option value="theme" <?php selected($style, 'theme'); ?>><?php esc_html_e('Plain HTML (your theme styles the heading and list)', 'ai-post-scheduler'); ?></option>
+				</select>
+			</p>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: %s: shortcode */
+					esc_html__('The list is added when the pillar is displayed; the pillar\'s content is never edited, and the list updates itself as articles join or leave the silo. Articles the pillar already links to in its text are left out. To place it yourself, put %s in the pillar. Silos are managed in Content → Silos.', 'ai-post-scheduler'),
+					'<code>[aips_silo_guide]</code>'
+				);
+				?>
+			</p>
 		</fieldset>
 		<?php
 	}

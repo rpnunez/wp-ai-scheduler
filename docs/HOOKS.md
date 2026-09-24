@@ -521,6 +521,39 @@ Fires after a consolidation was undone.
     *   `array $record`: The consolidation record (see `aips_posts_consolidated`).
     *   `string[] $warnings`: Steps that were skipped because a post was edited in the meantime.
 
+#### `aips_silo_guide_items`
+Filters the articles listed in a silo pillar's "In this guide" list.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array[] $items`: Items with `id`, `title`, `url` and `score` (closest to the pillar first, capped by the setting).
+    *   `int $pillar_id`: The pillar post.
+
+#### `aips_silo_guide_html`
+Filters the HTML of a silo pillar's "In this guide" list.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: The `<nav class="aips-silo-guide">` markup.
+    *   `array[] $items`: The listed items.
+    *   `int $pillar_id`: The pillar post.
+
+#### `aips_link_index_render_html`
+Filters the HTML the link index reads for a post, after keyword link rules, so that links added when the post is displayed are counted. Silos use it for the "In this guide" list.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $html`: HTML to index.
+    *   `int $post_id`: The post.
+
+#### `aips_link_index_hash_salt`
+Filters extra state mixed into a post's link index hash. When the salt changes, the next scan re-indexes the post.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $salt`: Extra state (default empty).
+    *   `int $post_id`: The post.
+
 #### `aips_inbound_anchor_phrases`
 Filters the phrases used to place inbound links to a post (most specific first). Defaults to the post's top Google Search Console queries (when connected), the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
 

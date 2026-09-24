@@ -262,3 +262,93 @@
 .aips-redirects-toolbar {
 	padding: 12px 16px;
 }
+
+/* Silos tab (since 3.7.7) */
+.aips-silos-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.aips-silos-list {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.aips-silo-card {
+	padding: 14px 16px;
+	border: 1px solid var(--aips-border, #dcdcde);
+	border-radius: 8px;
+	background: var(--aips-surface, #fff);
+}
+
+.aips-silo-card-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+
+.aips-silo-card-title {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.aips-silo-health {
+	min-width: 180px;
+	text-align: right;
+}
+
+.aips-silo-health-bar {
+	height: 8px;
+	border-radius: 4px;
+	background: var(--aips-surface-muted, #f0f0f1);
+	overflow: hidden;
+}
+
+.aips-silo-health-bar span {
+	display: block;
+	height: 100%;
+	background: #d63638;
+}
+
+.aips-silo-health-bar span.is-fair {
+	background: #dba617;
+}
+
+.aips-silo-health-bar span.is-good {
+	background: #00a32a;
+}
+
+.aips-silo-stats {
+	margin: 10px 0;
+	padding-left: 18px;
+	list-style: disc;
+}
+
+.aips-silo-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.aips-silo-actions select,
+#aips-silos-candidates-table select {
+	max-width: 240px;
+}
+
+.aips-silo-members {
+	margin-top: 12px;
+}
+
+.aips-silos-tab .aips-hidden {
+	display: none;
+}

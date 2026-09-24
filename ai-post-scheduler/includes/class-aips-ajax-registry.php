@@ -332,6 +332,12 @@ class AIPS_Ajax_Registry {
 		'aips_consolidation_undo'     => 'AIPS_Consolidation_Controller',
 		'aips_consolidation_history'  => 'AIPS_Consolidation_Controller',
 
+		// Silos (Content hub)
+		'aips_silos_overview'         => 'AIPS_Silos_Controller',
+		'aips_silos_confirm_pillar'   => 'AIPS_Silos_Controller',
+		'aips_silos_fix'              => 'AIPS_Silos_Controller',
+		'aips_silos_refresh'          => 'AIPS_Silos_Controller',
+
 		// Keyword Link Rules Controller
 		'aips_link_rules_list'   => 'AIPS_Link_Rules_Controller',
 		'aips_link_rules_save'   => 'AIPS_Link_Rules_Controller',

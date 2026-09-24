@@ -644,7 +644,7 @@
 				html += AIPS.Templates.render('aips-tmpl-autolink-run-row', {
 					job_id: run.job_id,
 					started: new Date(run.started_at * 1000).toLocaleString(),
-					scope_label: (run.scope === 'publish' ? l10n.scopePublish.replace('%s', run.post_title || '') : (run.scope === 'low' ? l10n.scopeLow : l10n.scopeOrphans)) + (run.apply ? '' : ' · ' + l10n.dryRun),
+					scope_label: (run.scope === 'publish' ? l10n.scopePublish.replace('%s', run.post_title || '') : (run.scope === 'silo' ? l10n.scopeSilo.replace('%s', run.post_title || '') : (run.scope === 'low' ? l10n.scopeLow : l10n.scopeOrphans))) + (run.apply ? '' : ' · ' + l10n.dryRun),
 					processed: run.processed,
 					total: run.total,
 					applied: run.applied,

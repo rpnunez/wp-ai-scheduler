@@ -123,11 +123,16 @@ class AIPS_Inbound_Links_Service {
 	 * Pending inbound suggestions for the target are replaced; accepted,
 	 * inserted, rejected and reverted rows are kept.
 	 *
-	 * @param int $target_id Post that should receive links.
-	 * @param int $max       Maximum suggestions to keep.
+	 * When $only_sources is given (source ID => similarity), only those posts
+	 * are considered, each must contain an anchor phrase, and pending
+	 * suggestions from other sources are kept (used by silos: members → pillar).
+	 *
+	 * @param int                $target_id    Post that should receive links.
+	 * @param int                $max          Maximum suggestions to keep.
+	 * @param array<int, float>  $only_sources Optional source ID => similarity (0-1).
 	 * @return array{suggestions:array, phrases:string[], semantic:int, keyword:int}|WP_Error
 	 */
-	public function generate_for_target(int $target_id, int $max = 10) {
+	public function generate_for_target(int $target_id, int $max = 10, array $only_sources = array()) {
 		$target = get_post($target_id);
 		if (!$target instanceof WP_Post || !$this->link_index->is_post_in_scope($target)) {
 			return new WP_Error('aips_inbound_invalid_target', __('Suggestions are only available for published posts in the link index.', 'ai-post-scheduler'));
@@ -135,7 +140,8 @@ class AIPS_Inbound_Links_Service {
 
 		$phrases    = $this->get_anchor_phrases($target);
 		$gsc        = array_map('mb_strtolower', $this->get_search_queries($target_id));
-		$candidates = $this->find_candidates($target, $phrases);
+		$restricted = !empty($only_sources);
+		$candidates = $restricted ? $this->given_candidates($only_sources, $target_id) : $this->find_candidates($target, $phrases);
 		$target_url = (string) get_permalink($target_id);
 		$settings   = $this->policy->get_settings();
 		$found      = array();
@@ -160,7 +166,7 @@ class AIPS_Inbound_Links_Service {
 			);
 			$occurrence = !empty($occurrences) ? $occurrences[0] : null;
 
-			if ($occurrence === null && $candidate['via'] === 'keyword') {
+			if ($occurrence === null && $candidate['via'] !== 'semantic') {
 				continue;
 			}
 
@@ -181,7 +187,9 @@ class AIPS_Inbound_Links_Service {
 		});
 		$found = array_slice($found, 0, max(1, $max));
 
-		$this->links_repo->delete_pending_by_target_post($target_id, self::ORIGIN);
+		if (!$restricted) {
+			$this->links_repo->delete_pending_by_target_post($target_id, self::ORIGIN);
+		}
 		foreach ($found as $suggestion) {
 			$this->links_repo->save_suggestion($suggestion);
 		}
@@ -488,6 +496,29 @@ class AIPS_Inbound_Links_Service {
 		}
 
 		return $candidate['via'] === 'keyword' ? 'keyword' : 'phrase';
+	}
+
+	/**
+	 * Candidates from a fixed list of source posts (e.g. silo members).
+	 *
+	 * @param array<int, float> $sources   Source ID => similarity.
+	 * @param int               $target_id Target post (excluded).
+	 * @return array<int, array{similarity:float, via:string}>
+	 */
+	private function given_candidates(array $sources, int $target_id): array {
+		$candidates = array();
+
+		foreach ($sources as $id => $similarity) {
+			$id = (int) $id;
+			if ($id > 0 && $id !== $target_id) {
+				$candidates[$id] = array(
+					'similarity' => max(0.0, min(1.0, (float) $similarity)),
+					'via'        => 'given',
+				);
+			}
+		}
+
+		return $candidates;
 	}
 
 	/**

@@ -206,12 +206,29 @@ class AIPS_Link_Index_Service {
 			? AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)
 			: new AIPS_Link_Rules_Service($this->config);
 
-		$hash = md5((string) $post->post_content . '|rules:' . ($rules->is_enabled() ? $rules->get_version() : 'off'));
+		/**
+		 * Filters extra state mixed into a post's index hash, so render-time
+		 * additions (such as a silo's "In this guide" list) trigger re-indexing.
+		 *
+		 * @param string $salt    Extra state.
+		 * @param int    $post_id Post ID.
+		 */
+		$salt = (string) apply_filters('aips_link_index_hash_salt', '', $post_id);
+		$hash = md5((string) $post->post_content . '|rules:' . ($rules->is_enabled() ? $rules->get_version() : 'off') . $salt);
 		if (!$force && get_post_meta($post_id, self::HASH_META_KEY, true) === $hash) {
 			return array('status' => 'unchanged', 'links' => 0);
 		}
 
 		$html    = $rules->apply_to_html((string) $post->post_content, $post_id)['html'];
+
+		/**
+		 * Filters the HTML indexed for a post, after keyword link rules, so
+		 * links added when the post is displayed are counted.
+		 *
+		 * @param string $html    HTML to index.
+		 * @param int    $post_id Post ID.
+		 */
+		$html    = (string) apply_filters('aips_link_index_render_html', $html, $post_id);
 		$rows    = $this->build_rows($html);
 		$written = $this->repository->sync_for_source($post_id, $rows);
 

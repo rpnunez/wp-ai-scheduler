@@ -31,6 +31,7 @@ $valid_tabs = array(
 	'aips-link-report',
 	'aips-link-rules',
 	'aips-redirects',
+	'aips-silos',
 	'aips-content-clusters',
 	'aips-content-cannibalization',
 );
@@ -43,6 +44,8 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 	$active_tab = 'aips-link-rules';
 } elseif ('redirects' === $active_tab) {
 	$active_tab = 'aips-redirects';
+} elseif ('silos' === $active_tab || 'silo' === $active_tab) {
+	$active_tab = 'aips-silos';
 } elseif ('partial-generations' === $active_tab || 'partial' === $active_tab) {
 	$active_tab = 'aips-partial-generations';
 } elseif ('pending-review' === $active_tab || 'pending' === $active_tab) {
@@ -104,6 +107,13 @@ $rail_items = array(
 		'icon'        => 'dashicons-randomize',
 		'description' => __('Redirects created by AI Post Scheduler', 'ai-post-scheduler'),
 		'active'      => ($active_tab === 'aips-redirects'),
+	),
+	array(
+		'key'         => 'aips-silos',
+		'label'       => __('Silos', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-index-card',
+		'description' => __('Pillars & their articles', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-silos'),
 	),
 	array(
 		'key'         => 'aips-content-clusters',
@@ -217,6 +227,17 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 						extract($redirects_controller->get_view_data());
 						include AIPS_PLUGIN_DIR . 'templates/admin/redirects.php';
 					}, __('Redirects', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Silos -->
+				<div id="aips-silos-tab" class="aips-tab-content<?php echo $active_tab === 'aips-silos' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-silos' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-silos' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$silos_controller = new AIPS_Silos_Controller();
+						extract($silos_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/silos.php';
+					}, __('Silos', 'ai-post-scheduler'), true);
 					?>
 				</div>
 

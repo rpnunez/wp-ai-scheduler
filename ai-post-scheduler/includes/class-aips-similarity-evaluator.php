@@ -1188,9 +1188,12 @@ class AIPS_Similarity_Evaluator {
 			$cohesion = !empty($pair_sims) ? (array_sum($pair_sims) / count($pair_sims)) : $threshold;
 
 			// Determine pillar post: saved preference, or highest degree centrality
-			$pillar_id = 0;
+			$pillar_id        = 0;
+			$pillar_confirmed = false;
 			if (isset($saved_clusters[$cluster_key]['pillar_id']) && in_array((int) $saved_clusters[$cluster_key]['pillar_id'], $comp_ids, true)) {
 				$pillar_id = (int) $saved_clusters[$cluster_key]['pillar_id'];
+				// Chosen by a person (Topic Clusters or Silos), not by degree.
+				$pillar_confirmed = !empty($saved_clusters[$cluster_key]['pillar_confirmed']);
 			} else {
 				// Highest connection degree
 				$best_degree = -1;
@@ -1221,6 +1224,8 @@ class AIPS_Similarity_Evaluator {
 					'url'       => $posts[$cid]['url'],
 					'edit_url'  => $posts[$cid]['edit_url'],
 					'is_pillar' => ($cid === $pillar_id),
+					// How close the post is to the cluster's overall topic (0-1).
+					'topic_score' => round((float) $this->cosine_similarity($posts[$cid]['embedding'], $centroid), 4),
 				);
 			}
 
@@ -1229,6 +1234,7 @@ class AIPS_Similarity_Evaluator {
 				'name'         => $name,
 				'pillar_id'    => $pillar_id,
 				'pillar_title' => $posts[$pillar_id]['title'],
+				'pillar_confirmed' => $pillar_confirmed,
 				'color'        => $color,
 				'post_count'   => count($comp_ids),
 				'cohesion_pct' => round($cohesion * 100, 1),
@@ -1369,8 +1375,13 @@ class AIPS_Similarity_Evaluator {
 		}
 
 		$post_id = absint($post_id);
-		$clusters[$cluster_id]['pillar_id']    = $post_id;
-		$clusters[$cluster_id]['pillar_title'] = get_the_title($post_id);
+		if (!in_array($post_id, array_map('intval', isset($clusters[$cluster_id]['member_ids']) ? (array) $clusters[$cluster_id]['member_ids'] : array()), true)) {
+			return false;
+		}
+
+		$clusters[$cluster_id]['pillar_id']        = $post_id;
+		$clusters[$cluster_id]['pillar_title']     = get_the_title($post_id);
+		$clusters[$cluster_id]['pillar_confirmed'] = true;
 
 		if (!empty($clusters[$cluster_id]['posts'])) {
 			foreach ($clusters[$cluster_id]['posts'] as &$p) {

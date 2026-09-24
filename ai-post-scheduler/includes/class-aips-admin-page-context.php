@@ -296,6 +296,11 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-tag',
 						'description' => __('Keyword rules that link a phrase to a chosen post everywhere it appears.', 'ai-post-scheduler'),
 					),
+					'aips-silos' => array(
+						'label'       => __('Silos', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-index-card',
+						'description' => __('Topic clusters with a confirmed pillar: articles link up to the pillar, and the pillar lists its articles.', 'ai-post-scheduler'),
+					),
 					'aips-content-clusters' => array(
 						'label'       => __('Topic Clusters', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-networking',

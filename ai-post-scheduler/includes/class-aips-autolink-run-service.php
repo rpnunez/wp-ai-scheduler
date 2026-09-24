@@ -85,6 +85,11 @@ class AIPS_Autolink_Run_Service {
 	const SCOPE_PUBLISH = 'publish';
 
 	/**
+	 * Scope: fix a silo (members → pillar, see AIPS_Silo_Service).
+	 */
+	const SCOPE_SILO = 'silo';
+
+	/**
 	 * @var AIPS_Inbound_Links_Service
 	 */
 	private $inbound;
@@ -274,6 +279,10 @@ class AIPS_Autolink_Run_Service {
 	 * @param int    $user_id    User to act as (kses: must be able to post unfiltered HTML).
 	 * @param string $scope      Scope label for the history.
 	 * @param array  $extra      Extra fields stored with the run (e.g. post_id, post_title).
+	 *                           Two keys change the run and are not stored:
+	 *                           'only_sources' (source ID => similarity) limits
+	 *                           link sources; 'ignore_target_cap' lifts the
+	 *                           per-target inbound cap.
 	 * @return array Public run state.
 	 */
 	public function run_now(array $target_ids, bool $apply, int $user_id, string $scope = self::SCOPE_PUBLISH, array $extra = array()): array {
@@ -314,6 +323,7 @@ class AIPS_Autolink_Run_Service {
 			wp_set_current_user($previous_user);
 		}
 
+		unset($state['only_sources'], $state['ignore_target_cap']);
 		$state['status']      = AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED;
 		$state['finished_at'] = time();
 		$this->archive($state);
@@ -440,7 +450,8 @@ class AIPS_Autolink_Run_Service {
 	 * @return void
 	 */
 	private function process_target(int $target_id, array &$state): void {
-		$result = $this->inbound->generate_for_target($target_id, self::SUGGESTIONS_PER_TARGET);
+		$only   = isset($state['only_sources']) ? (array) $state['only_sources'] : array();
+		$result = $this->inbound->generate_for_target($target_id, $only ? count($only) : self::SUGGESTIONS_PER_TARGET, $only);
 		if (is_wp_error($result)) {
 			$state['skipped']++;
 			return;
@@ -455,6 +466,9 @@ class AIPS_Autolink_Run_Service {
 			}
 
 			$source_id = (int) $suggestion['source_id'];
+			if ($only && !isset($only[$source_id])) {
+				continue;
+			}
 			$counts    = $index_repo->get_counts_for_posts(array($source_id));
 
 			$decision = $this->policy->evaluate(
@@ -467,7 +481,7 @@ class AIPS_Autolink_Run_Service {
 				array(
 					'source_internal_links' => isset($counts[$source_id]) ? $counts[$source_id]['outbound'] : 0,
 					'source_new_links'      => isset($state['source_new'][$source_id]) ? (int) $state['source_new'][$source_id] : 0,
-					'target_new_inbound'    => $added,
+					'target_new_inbound'    => empty($state['ignore_target_cap']) ? $added : 0,
 				)
 			);
 

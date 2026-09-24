@@ -60,8 +60,8 @@ Tier 1 was delivered as slices 0–14 (section 3).
 | Slice | Feature | Contents |
 |---|---|---|
 | T3-1 | Generation-time linking | Settings: `aips_publish_linking_mode` (`off`\|`review`\|`apply`, default `review`) and `aips_publish_linking_outbound` (bool). A hook on the first publish of AIPS-generated posts (`transition_post_status` → `publish`, with `_aips_generated_post`) schedules a single cron event, so the publish request stays fast. The worker generates inbound suggestions for the new post and applies or queues them through `AIPS_Autolink_Policy`. When outbound linking is on, it also queues outbound suggestions. Each publish is recorded as a run, so it can be undone as a whole from the Link Report run history. |
-| T3-2 | Silo model | For every cluster with a pillar, a `AIPS_Silo_Service` computes the member ↔ pillar link matrix from the link index: which members lack a link to the pillar and which the pillar lacks a link to. It also computes a gap score. No schema; this is read-only. |
-| T3-3 | Silo UI | A "Silos" rail item in the Content hub: a card per silo with its gap score and a list of missing links, plus Fix silo, which creates suggestions and applies them per policy or sends them to review. Fixes are undoable through the existing run and suggestion undo. |
+| T3-2 | Silo model | For every cluster with a pillar, a `AIPS_Silo_Service` computes the member ↔ pillar link matrix from the link index: which members lack a link to the pillar and which the pillar lacks a link to. It also computes a gap score. No schema; this is read-only. **Done.** |
+| T3-3 | Silo UI | A "Silos" rail item in the Content hub: a card per silo with its gap score and a list of missing links, plus Fix silo, which creates suggestions and applies them per policy or sends them to review. Fixes are undoable through the existing run and suggestion undo. **Done**, following D16 and D19–D21. |
 | T3-4 | Abilities API | `wp_register_ability` guarded by `function_exists`: find-related, suggest-links, link-report summary, orphans and apply-suggestion (manage_options). |
 | T3-5 | MCP bridge tools | The same operations as MCP bridge tools, plus schema updates in `mcp-bridge-schema.json` and `docs/MCP_BRIDGE.md`. |
 | T3-6 | Redirects module | The `aips_redirects` table records every AIPS redirect and which provider serves it: Redirection, Yoast SEO Premium, Rank Math, or built in. There's a built-in `template_redirect` handler, a "move all to provider" action, and the Content → Redirects tab. |
@@ -122,6 +122,9 @@ This is the original slice plan, kept for traceability. Where the implementation
 | D15 | Abilities / MCP tools (item 14) | **On hold** (2026-09-24). |
 | D16 | Silo "Fix silo" direction | **Decided:** members → pillar links in the text, and a render-time "In this guide" list of members on the pillar, which is never edited. |
 | D17 | Consolidation: retired post | Moved to draft, plus a "Posts Consolidated" notification with configurable channels. |
+| D19 | Silo pillars | Only confirmed pillars form silos; AIPS suggests one for the other clusters. |
+| D20 | "In this guide" list | End of the post or after the first paragraph, capped at 10 by default, with an AIPS or plain theme style and a shortcode. |
+| D21 | Fix silo policy | Follows Bulk Auto-Linking. Silo health appears only on the Silos screen. |
 | D18 | Consolidation: merged content | Optional AI-merged draft, saved as a revision of the kept post or written into it. |
 | D13 | Redirects | Use Redirection, Yoast SEO Premium or Rank Math when one is installed, and fall back to AIPS's own table otherwise. AIPS records every redirect it creates, so redirects can be moved when you switch providers. In effect this is a lightweight redirect plugin. |
 | D14 | Generation-time default | `review` (suggestions only). It can be switched to `apply` in Settings. |

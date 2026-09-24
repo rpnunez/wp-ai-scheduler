@@ -187,6 +187,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_link_rules_assets();
 			$this->enqueue_redirects_assets();
 			$this->enqueue_consolidation_assets();
+			$this->enqueue_silos_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -2092,6 +2093,8 @@ class AIPS_Admin_Assets {
                 'scopeLow'              => __(' · Fewer than 3 inbound links', 'ai-post-scheduler'),
                 /* translators: %s: title of the newly published post */
                 'scopePublish'          => __(' · New post: %s', 'ai-post-scheduler'),
+                /* translators: %s: title of the silo pillar */
+                'scopeSilo'             => __(' · Silo: %s', 'ai-post-scheduler'),
                 'dryRun'                => __('Dry run', 'ai-post-scheduler'),
                 'statusRunning'         => __('Running', 'ai-post-scheduler'),
                 'statusPaused'          => __('Paused', 'ai-post-scheduler'),
@@ -2152,6 +2155,52 @@ class AIPS_Admin_Assets {
                 'confirmMoveTitle'    => __('Move existing redirects', 'ai-post-scheduler'),
                 'confirmMove'         => __('Move every AI Post Scheduler redirect to the selected provider? Each one is removed from the plugin that serves it now and re-created in the new one.', 'ai-post-scheduler'),
                 'moveRedirects'       => __('Move redirects', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
+     * Enqueue assets for the Silos tab of the Content hub.
+     *
+     * @return void
+     */
+    private function enqueue_silos_assets() {
+        wp_enqueue_script(
+            'aips-silos-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-silos.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-silos-script',
+            'aipsSilosL10n',
+            array(
+                'nonce'        => wp_create_nonce('aips_ajax_nonce'),
+                'error'        => __('The silos request failed. Please try again.', 'ai-post-scheduler'),
+                'noSilos'      => __('No silos yet. Confirm a pillar for a cluster below to create one.', 'ai-post-scheduler'),
+                'noClusters'   => __('No topic clusters yet. Clusters are found from post embeddings: index your posts in Content Indexer, then click Re-detect Clusters.', 'ai-post-scheduler'),
+                'allConfirmed' => __('Every cluster has a confirmed pillar.', 'ai-post-scheduler'),
+                /* translators: %d: silo health percentage */
+                'health'       => __('Silo health %d%%', 'ai-post-scheduler'),
+                /* translators: 1: articles linking to the pillar, 2: total articles */
+                'upLabel'      => __('%1$d of %2$d articles link to the pillar', 'ai-post-scheduler'),
+                /* translators: 1: articles the pillar reaches, 2: total articles, 3: via its text, 4: via the guide list */
+                'downLabel'    => __('The pillar reaches %1$d of %2$d articles (%3$d in its text, %4$d in the "In this guide" list)', 'ai-post-scheduler'),
+                'yes'          => __('Yes', 'ai-post-scheduler'),
+                'missing'      => __('Missing', 'ai-post-scheduler'),
+                'down'         => array(
+                    'text'  => __('In its text', 'ai-post-scheduler'),
+                    'guide' => __('In the guide list', 'ai-post-scheduler'),
+                    'none'  => __('Not linked', 'ai-post-scheduler'),
+                ),
+                /* translators: %d: number of articles */
+                'articles'     => __('%d articles', 'ai-post-scheduler'),
+                /* translators: 1: inbound internal links, 2: word count, 3: topic match percentage */
+                'reasons'      => __('%1$d inbound links · %2$d words · %3$d%% topic match', 'ai-post-scheduler'),
+                'showArticles' => __('Show articles', 'ai-post-scheduler'),
+                'hideArticles' => __('Hide articles', 'ai-post-scheduler'),
             )
         );
     }

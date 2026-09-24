@@ -473,6 +473,10 @@ final class AI_Post_Scheduler {
             return new AIPS_Publish_Linking_Service();
         });
 
+        $container->singleton(AIPS_Silo_Service::class, function( $container ) {
+            return new AIPS_Silo_Service();
+        });
+
         $container->singleton(AIPS_GSC_Client::class, function( $container ) {
             return new AIPS_GSC_Client();
         });
@@ -705,6 +709,10 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
             AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
         });
+
+        // Silos: keep the link index and the "In this guide" cache in step with
+        // pillar, cluster and settings changes (see AIPS_Silo_Service).
+        AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_common_hooks();
 
         // Generation-time linking: when an AIPS post goes live, link older
         // related posts to it in the background (see AIPS_Publish_Linking_Service).
@@ -1118,6 +1126,10 @@ final class AI_Post_Scheduler {
         add_filter('the_content', function ($content) {
             return AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)->filter_content($content);
         }, 9);
+
+        // Silo pillars get an "In this guide" list of their articles when
+        // displayed (or where the [aips_silo_guide] shortcode is placed).
+        AIPS_Container::get_instance()->make(AIPS_Silo_Service::class)->register_frontend_hooks();
 
         // Redirects AIPS serves itself (when no redirect plugin handles them).
         // Runs early so it wins over canonical redirects and 404 handling.

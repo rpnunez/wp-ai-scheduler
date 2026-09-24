@@ -350,6 +350,26 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
 				'default'           => $defaults['aips_link_click_retention_days'],
 			),
+			'aips_silo_guide_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_silo_guide_enabled'],
+			),
+			'aips_silo_guide_position' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_position'),
+				'default'           => $defaults['aips_silo_guide_position'],
+			),
+			'aips_silo_guide_max' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_max'),
+				'default'           => $defaults['aips_silo_guide_max'],
+			),
+			'aips_silo_guide_style' => array(
+				'sanitize_callback' => array($ui, 'sanitize_silo_guide_style'),
+				'default'           => $defaults['aips_silo_guide_style'],
+			),
+			'aips_silo_guide_heading' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_silo_guide_heading'],
+			),
 			'aips_autolink_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_autolink_enabled'],
@@ -985,6 +1005,24 @@ class AIPS_Settings {
             array($this->ui, 'link_click_tracking_field_callback'),
             'aips-settings',
             'aips_link_clicks_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Topic Silos card ("In this guide" list on pillars)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_silo_section',
+            __('Topic Silos', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_silo_guide',
+            __('"In this guide" List', 'ai-post-scheduler'),
+            array($this->ui, 'silo_guide_field_callback'),
+            'aips-settings',
+            'aips_silo_section'
         );
 
         // -----------------------------------------------------------------------

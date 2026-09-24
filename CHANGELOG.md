@@ -18,6 +18,16 @@
   - The new **Recent Consolidations** card lists each consolidation with **Undo**. Undo republishes the retired post, removes the redirect, restores the re-pointed links, and deletes the saved revision or restores the pre-merge content. It skips, and reports, any step whose post was edited since.
   - New classes: `AIPS_Consolidation_Service`, `AIPS_Consolidation_Controller` (AJAX `aips_consolidation_preview/merge/run/undo/history`) and `AIPS_Prompt_Builder_Consolidation`. New hooks: `aips_posts_consolidated` and `aips_posts_consolidation_undone`.
 
+- **Silos** (new **Content → Silos** tab): a silo is a Topic Cluster whose pillar you confirmed.
+  - Each silo card shows a health score, how many articles link up to the pillar, and how the pillar reaches its articles (through its text or the guide list), with a per-article breakdown.
+  - **Fix Silo** adds the missing article → pillar links to the articles' text. It is an auto-link run limited to that silo's articles and exempt from the per-post inbound cap. It follows **Bulk Auto-Linking**: confident links are inserted, the rest go to review, and the run appears in the Link Report history as "Silo: …", where **Undo run** removes its links.
+  - **Clusters Without a Pillar:** AIPS suggests a pillar from inbound links (40%), length (30%) and closeness to the cluster's topic (30%). Nothing happens until you click **Use This** or pick another article. Pillars chosen in Topic Clusters count as confirmed too.
+  - **"In this guide" list:** each pillar gets a list of its articles when it is displayed. The pillar's content is never edited, and the list updates as articles join or leave. It leaves out articles the pillar already links to, lists the closest matches first, and is capped (10 by default).
+  - A new **Settings → Internal Linking → Topic Silos** card controls the list: on/off, heading, position (end of post or after the first paragraph), how many articles, and style. Style is either an AIPS box that uses the theme's colours, or plain HTML for the theme to style.
+  - The `[aips_silo_guide]` shortcode places the list by hand. The link index counts the list's links.
+  - New `AIPS_Silo_Service` and `AIPS_Silos_Controller` (AJAX `aips_silos_overview/confirm_pillar/fix/refresh`). Topic Clusters now store `pillar_confirmed` and a per-post `topic_score`. `AIPS_Inbound_Links_Service::generate_for_target()` accepts a fixed list of source posts, and `AIPS_Autolink_Run_Service` has a `silo` scope.
+  - New hooks: `aips_silo_guide_items`, `aips_silo_guide_html`, `aips_link_index_render_html` and `aips_link_index_hash_salt`.
+
 ### Fixed
 - **Cannibalization Shield:** the audit results table called `AIPS.Templates.has()`, which did not exist, so rendering results threw a JavaScript error. `AIPS.Templates.has()` has been added.
 
