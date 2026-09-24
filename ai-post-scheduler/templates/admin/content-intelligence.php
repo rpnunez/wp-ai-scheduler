@@ -250,7 +250,7 @@ if (!defined('ABSPATH')) {
 				</div>
 
 				<label class="aips-checkbox-control">
-					<input type="checkbox" id="aips-toggle-clusters" value="1">
+					<input type="checkbox" id="aips-toggle-clusters" value="1" checked>
 					<span class="aips-control-label"><?php esc_html_e('Show Post Clusters', 'ai-post-scheduler'); ?></span>
 				</label>
 
