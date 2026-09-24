@@ -1536,6 +1536,34 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render the link index toggle and post types (Card 7).
+	 *
+	 * @return void
+	 */
+	public function link_index_field_callback() {
+		$config        = AIPS_Config::get_instance();
+		$enabled       = (bool) $config->get_option('aips_link_index_enabled', true);
+		$selected_pts  = (array) $config->get_option('aips_link_index_post_types', array('post', 'page'));
+		$available_pts = get_post_types(array('public' => true), 'objects');
+		unset($available_pts['attachment']);
+		?>
+		<fieldset>
+			<label for="aips_link_index_enabled">
+				<input type="checkbox" name="aips_link_index_enabled" id="aips_link_index_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Keep a link index of published content (powers the Link Report and orphan detection)', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p class="description"><?php esc_html_e('Links are re-read whenever a post is saved. No AI calls are made.', 'ai-post-scheduler'); ?></p>
+			<?php foreach ($available_pts as $pt_slug => $pt_obj) : ?>
+				<label class="aips-checkbox-label-block">
+					<input type="checkbox" name="aips_link_index_post_types[]" value="<?php echo esc_attr($pt_slug); ?>" <?php checked(in_array($pt_slug, $selected_pts, true)); ?>>
+					<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
+				</label>
+			<?php endforeach; ?>
+		</fieldset>
+		<?php
+	}
+
+	/**
 	 * Render the bulk auto-linking toggle (Card 7).
 	 *
 	 * @return void

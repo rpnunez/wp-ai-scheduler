@@ -450,6 +450,17 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
+        // Register the link index (actual <a href> links in post content)
+        $container->singleton(AIPS_Link_Index_Repository::class, function( $container ) {
+            return new AIPS_Link_Index_Repository();
+        });
+
+        $container->singleton(AIPS_Link_Index_Service::class, function( $container ) {
+            return new AIPS_Link_Index_Service(
+                $container->make(AIPS_Link_Index_Repository::class)
+            );
+        });
+
         // Register AIPS_Embeddings_Service
         $container->singleton(AIPS_Embeddings_Service::class, function( $container ) {
             return new AIPS_Embeddings_Service(
@@ -638,6 +649,19 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
 
+        // Link index: record the links each published post contains, and turn
+        // links to a deleted post into broken internal links.
+        add_action('save_post', function ($post_id, $post) {
+            if (!is_object($post) || !isset($post->post_status)) {
+                return;
+            }
+            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_post_save($post_id, $post);
+        }, 20, 2);
+
+        add_action('before_delete_post', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
+        });
+
         // Process pending background indexing queue (single event / cron worker)
         add_action('aips_process_pending_indexer_queue', function () {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
@@ -806,6 +830,13 @@ final class AI_Post_Scheduler {
                 $generator = new AIPS_Generator();
 
                 return $generator->generate_post( $template, null, $topic );
+            }
+        );
+
+        $processor->register(
+            AIPS_Link_Index_Service::BACKFILL_JOB_TYPE,
+            function( $post_id, $job_id, $job ) {
+                return AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_backfill_item( $post_id );
             }
         );
 

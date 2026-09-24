@@ -294,6 +294,14 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_indexer_verbose_history'],
 			),
+			'aips_link_index_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_index_enabled'],
+			),
+			'aips_link_index_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_link_index_post_types'],
+			),
 			'aips_autolink_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_autolink_enabled'],
@@ -877,6 +885,14 @@ class AIPS_Settings {
             __('Internal Link Automation', 'ai-post-scheduler'),
             array($this->ui, 'ai_autolink_section_callback'),
             'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_index',
+            __('Link Index', 'ai-post-scheduler'),
+            array($this->ui, 'link_index_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
         );
 
         add_settings_field(
