@@ -168,6 +168,11 @@ class AIPS_Bulk_Batch_Processor {
 		int    $total_quantity,
 		string $correlation_id = ''
 	): void {
+		$timeout = (int) AIPS_Config::get_instance()->get_option('aips_generation_timeout_seconds', 120);
+		if (function_exists('set_time_limit') && $timeout > 0) {
+			@set_time_limit($timeout);
+		}
+
 		if ( ! empty( $correlation_id ) ) {
 			AIPS_Correlation_ID::set( $correlation_id );
 		}

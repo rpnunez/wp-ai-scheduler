@@ -349,6 +349,11 @@ INSTRUCTIONS
             $lines[] = 'Topics to avoid globally: ' . $ctx['excluded_topics'];
         }
 
+        $global_prompt = trim((string) AIPS_Config::get_instance()->get_option('aips_global_system_prompt'));
+        if (!empty($global_prompt)) {
+            $lines[] = 'Global AI instructions: ' . $global_prompt;
+        }
+
         if (empty($lines)) {
             return '';
         }
