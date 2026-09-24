@@ -437,3 +437,28 @@ Filters the Gutenberg blocks whose content never receives inserted internal link
 *   **Type:** `filter`
 *   **Arguments:**
     *   `string[] $blocks`: Block names, e.g. `core/heading`, `core/code`, `core/html`, `core/buttons`, `core/navigation`.
+
+#### `aips_inbound_anchor_phrases`
+Filters the phrases used to place inbound links to a post (most specific first). Defaults to the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string[] $phrases`: Anchor phrases.
+    *   `WP_Post $target`: The post that should receive links.
+
+#### `aips_internal_link_inserted`
+Fires after a suggested internal link is inserted into its source post.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $suggestion_id`: Row ID in `aips_internal_links`.
+    *   `int $source_id`: Post that received the link.
+    *   `int $target_id`: Post being linked to.
+
+#### `aips_internal_link_reverted`
+Fires after an inserted internal link is undone and the original text restored.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $suggestion_id`: Row ID in `aips_internal_links`.
+    *   `int $source_id`: Post the link was removed from.

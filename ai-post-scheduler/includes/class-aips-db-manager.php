@@ -552,6 +552,14 @@ class AIPS_DB_Manager {
             similarity_score float NOT NULL DEFAULT 0,
             anchor_text varchar(500) DEFAULT '',
             status varchar(20) NOT NULL DEFAULT 'pending',
+            origin varchar(20) NOT NULL DEFAULT 'outbound',
+            confidence decimal(5,4) NOT NULL DEFAULT 0.0000,
+            anchor_source varchar(20) NOT NULL DEFAULT '',
+            match_context text,
+            batch_id varchar(36) DEFAULT NULL,
+            before_snippet longtext,
+            after_snippet longtext,
+            applied_at bigint(20) unsigned NOT NULL DEFAULT 0,
             created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
@@ -559,6 +567,9 @@ class AIPS_DB_Manager {
             KEY target_post_id (target_post_id),
             KEY status (status),
             KEY similarity_score (similarity_score),
+            KEY target_status (target_post_id, status),
+            KEY origin (origin),
+            KEY batch_id (batch_id),
             UNIQUE KEY source_target (source_post_id, target_post_id)
         ) $charset_collate;";
 

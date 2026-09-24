@@ -296,6 +296,11 @@ class AIPS_Ajax_Registry {
 		'aips_link_report_pause_backfill'  => 'AIPS_Link_Report_Controller',
 		'aips_link_report_resume_backfill' => 'AIPS_Link_Report_Controller',
 		'aips_link_report_cancel_backfill' => 'AIPS_Link_Report_Controller',
+		'aips_link_report_suggest'            => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_suggestions'    => 'AIPS_Link_Report_Controller',
+		'aips_link_report_apply_suggestion'   => 'AIPS_Link_Report_Controller',
+		'aips_link_report_revert_suggestion'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_dismiss_suggestion' => 'AIPS_Link_Report_Controller',
 
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',

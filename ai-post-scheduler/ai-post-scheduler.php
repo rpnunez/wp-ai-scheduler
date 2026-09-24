@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.4
+ * Version: 3.7.5
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.4');
+    define('AIPS_VERSION', '3.7.5');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -458,6 +458,14 @@ final class AI_Post_Scheduler {
         $container->singleton(AIPS_Link_Index_Service::class, function( $container ) {
             return new AIPS_Link_Index_Service(
                 $container->make(AIPS_Link_Index_Repository::class)
+            );
+        });
+
+        $container->singleton(AIPS_Inbound_Links_Service::class, function( $container ) {
+            return new AIPS_Inbound_Links_Service(
+                null,
+                $container->make(AIPS_Link_Index_Service::class),
+                $container->make(AIPS_Relationships_Repository::class)
             );
         });
 

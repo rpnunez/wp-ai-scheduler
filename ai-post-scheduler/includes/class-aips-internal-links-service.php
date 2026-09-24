@@ -349,7 +349,7 @@ class AIPS_Internal_Links_Service {
 		// Delete only existing PENDING suggestions before reinserting.
 		// Accepted, rejected, and inserted suggestions are preserved so that
 		// editorial decisions and insertion tracking are not lost during regeneration.
-		$this->links_repo->delete_pending_by_source_post($source_post_id);
+		$this->links_repo->delete_pending_by_source_post($source_post_id, 'outbound');
 
 		$created_ids = array();
 

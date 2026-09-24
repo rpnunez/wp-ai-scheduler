@@ -240,6 +240,57 @@ foreach ($post_types as $type_slug => $type_label) {
 	);
 	?>
 
+	<!-- Inbound link suggestions -->
+	<div class="aips-hidden" id="aips-link-suggestions-wrap">
+		<?php
+		AIPS_Admin_UI_Primitives::render_card(
+			array(
+				'id'          => 'aips-link-suggestions-panel',
+				'title'       => __('Suggested Inbound Links', 'ai-post-scheduler'),
+				'icon'        => 'dashicons-randomize',
+				'description' => __('Existing posts that could link to the selected post, found from semantic similarity (embeddings) with a keyword fallback. Links are placed in body text only and every insertion can be undone.', 'ai-post-scheduler'),
+				'actions'     => array(
+					array(
+						'id'    => 'aips-link-suggestions-regenerate',
+						'label' => __('Find Again', 'ai-post-scheduler'),
+						'icon'  => 'dashicons-update',
+					),
+					array(
+						'id'    => 'aips-link-suggestions-close',
+						'label' => __('Close', 'ai-post-scheduler'),
+						'icon'  => 'dashicons-no-alt',
+						'class' => 'aips-btn aips-btn-ghost aips-btn-sm',
+					),
+				),
+				'body_class'  => 'no-padding',
+			),
+			function () {
+				?>
+				<p class="aips-link-suggestions-target">
+					<?php esc_html_e('Linking to:', 'ai-post-scheduler'); ?>
+					<strong id="aips-link-suggestions-title"></strong>
+				</p>
+				<div id="aips-link-suggestions-loading" class="aips-audit-loading aips-hidden">
+					<span class="spinner is-active"></span>
+					<?php esc_html_e('Finding posts that could link here…', 'ai-post-scheduler'); ?>
+				</div>
+				<table class="aips-table widefat striped" id="aips-link-suggestions-table">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e('Link From', 'ai-post-scheduler'); ?></th>
+							<th scope="col"><?php esc_html_e('Anchor Text in Context', 'ai-post-scheduler'); ?></th>
+							<th scope="col"><?php esc_html_e('Confidence', 'ai-post-scheduler'); ?></th>
+							<th scope="col" class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr>
+					</thead>
+					<tbody id="aips-link-suggestions-tbody"></tbody>
+				</table>
+				<?php
+			}
+		);
+		?>
+	</div>
+
 	<!-- Scan options -->
 	<div class="aips-modal" id="aips-link-scan-modal" role="dialog" aria-modal="true" aria-labelledby="aips-link-scan-modal-title" style="display:none;">
 		<div class="aips-modal-content">
@@ -326,12 +377,14 @@ foreach ($post_types as $type_slug => $type_label) {
 				<strong><a href="{{edit_url}}">{{title}}</a></strong>
 				<span class="aips-text-muted">{{post_type}}</span>
 				<span class="aips-badge aips-badge-warning {{orphan_class}}"><?php esc_html_e('Orphan', 'ai-post-scheduler'); ?></span>
+				<span class="aips-badge aips-badge-info {{suggestions_class}}">{{suggestions_label}}</span>
 			</td>
 			<td>{{inbound}}</td>
 			<td>{{outbound}}</td>
 			<td>{{external}}</td>
 			<td>{{broken}}</td>
 			<td class="column-actions">
+				<button type="button" class="aips-btn aips-btn-sm {{suggest_class}} aips-link-report-suggest" data-post-id="{{id}}" data-title="{{title}}"><?php esc_html_e('Suggest Links', 'ai-post-scheduler'); ?></button>
 				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-link-report-details" data-post-id="{{id}}"><?php esc_html_e('View Links', 'ai-post-scheduler'); ?></button>
 				<a href="{{view_url}}" class="aips-btn aips-btn-sm aips-btn-ghost" target="_blank" rel="noopener"><?php esc_html_e('View Post', 'ai-post-scheduler'); ?></a>
 			</td>
@@ -355,5 +408,23 @@ foreach ($post_types as $type_slug => $type_label) {
 
 	<script type="text/html" id="aips-tmpl-link-report-empty-row">
 		<tr><td colspan="{{colspan}}" class="aips-text-muted">{{message}}</td></tr>
+	</script>
+	<script type="text/html" id="aips-tmpl-link-suggestion-row">
+		<tr data-suggestion-id="{{id}}" class="aips-link-suggestion-{{status}}">
+			<td>
+				<a href="{{source_edit}}">{{source_title}}</a>
+				<span class="aips-badge aips-badge-success {{inserted_class}}"><?php esc_html_e('Link inserted', 'ai-post-scheduler'); ?></span>
+			</td>
+			<td>
+				<strong>{{anchor_label}}</strong>
+				<span class="aips-text-muted aips-link-suggestion-context">{{context}}</span>
+			</td>
+			<td><span class="aips-badge {{confidence_class}}">{{confidence}}%</span></td>
+			<td class="column-actions">
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-link-suggestion-apply {{pending_class}}" data-id="{{id}}" {{apply_disabled}}><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-link-suggestion-dismiss {{pending_class}}" data-id="{{id}}"><?php esc_html_e('Dismiss', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-link-suggestion-revert {{inserted_class}}" data-id="{{id}}"><?php esc_html_e('Undo', 'ai-post-scheduler'); ?></button>
+			</td>
+		</tr>
 	</script>
 </div><!-- /.aips-link-report-tab -->

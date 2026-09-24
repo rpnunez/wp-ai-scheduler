@@ -35,9 +35,17 @@ class AIPS_Link_Report_Controller {
 	private $repository;
 
 	/**
-	 * @param AIPS_Link_Index_Service|null $service Link index service.
+	 * @var AIPS_Inbound_Links_Service|null
 	 */
-	public function __construct(?AIPS_Link_Index_Service $service = null) {
+	private $inbound;
+
+	/**
+	 * @param AIPS_Link_Index_Service|null    $service Link index service.
+	 * @param AIPS_Inbound_Links_Service|null $inbound Inbound suggestions service (lazy by default).
+	 */
+	public function __construct(?AIPS_Link_Index_Service $service = null, ?AIPS_Inbound_Links_Service $inbound = null) {
+		$this->inbound = $inbound;
+
 		$container        = AIPS_Container::get_instance();
 		$this->service    = $service ?: ($container->has(AIPS_Link_Index_Service::class) ? $container->make(AIPS_Link_Index_Service::class) : new AIPS_Link_Index_Service());
 		$this->repository = $this->service->get_repository();
@@ -49,6 +57,11 @@ class AIPS_Link_Report_Controller {
 		add_action('wp_ajax_aips_link_report_pause_backfill', array($this, 'ajax_pause_backfill'));
 		add_action('wp_ajax_aips_link_report_resume_backfill', array($this, 'ajax_resume_backfill'));
 		add_action('wp_ajax_aips_link_report_cancel_backfill', array($this, 'ajax_cancel_backfill'));
+		add_action('wp_ajax_aips_link_report_suggest', array($this, 'ajax_suggest'));
+		add_action('wp_ajax_aips_link_report_get_suggestions', array($this, 'ajax_get_suggestions'));
+		add_action('wp_ajax_aips_link_report_apply_suggestion', array($this, 'ajax_apply_suggestion'));
+		add_action('wp_ajax_aips_link_report_revert_suggestion', array($this, 'ajax_revert_suggestion'));
+		add_action('wp_ajax_aips_link_report_dismiss_suggestion', array($this, 'ajax_dismiss_suggestion'));
 	}
 
 	/**
@@ -114,10 +127,12 @@ class AIPS_Link_Report_Controller {
 			'page'         => isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1,
 		);
 
-		$total = $this->repository->get_report_count($args);
-		$rows  = array();
+		$total   = $this->repository->get_report_count($args);
+		$rows    = array();
+		$page    = $this->repository->get_report_page($args);
+		$pending = (new AIPS_Internal_Links_Repository())->count_pending_by_targets(wp_list_pluck($page, 'ID'), AIPS_Inbound_Links_Service::ORIGIN);
 
-		foreach ($this->repository->get_report_page($args) as $row) {
+		foreach ($page as $row) {
 			$type_object = get_post_type_object($row->post_type);
 
 			$rows[] = array(
@@ -129,6 +144,7 @@ class AIPS_Link_Report_Controller {
 				'external'   => (int) $row->external,
 				'broken'     => (int) $row->broken,
 				'is_orphan'  => ((int) $row->inbound === 0),
+				'suggestions' => isset($pending[(int) $row->ID]) ? $pending[(int) $row->ID] : 0,
 				'edit_url'   => (string) get_edit_post_link((int) $row->ID, 'raw'),
 				'view_url'   => (string) get_permalink((int) $row->ID),
 			);
@@ -289,6 +305,128 @@ class AIPS_Link_Report_Controller {
 			'backfill' => $this->service->get_backfill_status(),
 			'summary'  => $this->get_totals(),
 		));
+	}
+
+	/**
+	 * AJAX: generate inbound link suggestions for a post.
+	 *
+	 * @return void
+	 */
+	public function ajax_suggest() {
+		$this->verify_request();
+
+		$target_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$result    = $this->get_inbound()->generate_for_target($target_id);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'post_id'     => $target_id,
+			'title'       => get_the_title($target_id),
+			'suggestions' => $result['suggestions'],
+			'phrases'     => $result['phrases'],
+		));
+	}
+
+	/**
+	 * AJAX: existing inbound suggestions (pending and inserted) for a post.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_suggestions() {
+		$this->verify_request();
+
+		$target_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		if (!$target_id || !get_post($target_id)) {
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'), 'not_found');
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'post_id'     => $target_id,
+			'title'       => get_the_title($target_id),
+			'suggestions' => $this->get_inbound()->get_suggestions($target_id),
+		));
+	}
+
+	/**
+	 * AJAX: insert one suggested link.
+	 *
+	 * @return void
+	 */
+	public function ajax_apply_suggestion() {
+		$this->verify_request();
+		$this->respond_with_suggestions($this->get_inbound()->apply($this->suggestion_id()), __('Link inserted.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: undo an inserted link.
+	 *
+	 * @return void
+	 */
+	public function ajax_revert_suggestion() {
+		$this->verify_request();
+		$this->respond_with_suggestions($this->get_inbound()->revert($this->suggestion_id()), __('Link removed and original text restored.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: dismiss a pending suggestion.
+	 *
+	 * @return void
+	 */
+	public function ajax_dismiss_suggestion() {
+		$this->verify_request();
+
+		$result = $this->get_inbound()->dismiss($this->suggestion_id())
+			? true
+			: new WP_Error('aips_inbound_not_pending', __('This suggestion is no longer pending.', 'ai-post-scheduler'));
+
+		$this->respond_with_suggestions($result, __('Suggestion dismissed.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Send a suggestion action result with the target's refreshed suggestions.
+	 *
+	 * @param mixed  $result  Service result (WP_Error on failure).
+	 * @param string $message Success message.
+	 * @return void
+	 */
+	private function respond_with_suggestions($result, string $message) {
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
+		}
+
+		$target_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+
+		AIPS_Ajax_Response::success(array(
+			'message'     => $message,
+			'post_id'     => $target_id,
+			'suggestions' => $target_id ? $this->get_inbound()->get_suggestions($target_id) : array(),
+			'summary'     => $this->get_totals(),
+		));
+	}
+
+	/**
+	 * Suggestion ID from the request.
+	 *
+	 * @return int
+	 */
+	private function suggestion_id(): int {
+		return isset($_POST['suggestion_id']) ? absint($_POST['suggestion_id']) : 0;
+	}
+
+	/**
+	 * @return AIPS_Inbound_Links_Service
+	 */
+	private function get_inbound(): AIPS_Inbound_Links_Service {
+		if ($this->inbound === null) {
+			$container     = AIPS_Container::get_instance();
+			$this->inbound = $container->has(AIPS_Inbound_Links_Service::class)
+				? $container->make(AIPS_Inbound_Links_Service::class)
+				: new AIPS_Inbound_Links_Service(null, $this->service);
+		}
+		return $this->inbound;
 	}
 
 	/**

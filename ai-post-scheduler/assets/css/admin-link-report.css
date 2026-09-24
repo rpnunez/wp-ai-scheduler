@@ -89,3 +89,27 @@
 #aips-link-report-modal .aips-modal-body h3:first-child {
 	margin-top: 0;
 }
+
+#aips-link-suggestions-wrap {
+	margin-top: var(--aips-space-5);
+}
+
+.aips-link-report-tab .aips-link-suggestions-target {
+	margin: 0;
+	padding: var(--aips-space-3) var(--aips-space-4);
+	border-bottom: 1px solid var(--aips-border-color);
+}
+
+.aips-link-report-tab .aips-link-suggestion-context {
+	display: block;
+	font-size: 12px;
+	margin-top: var(--aips-space-1);
+}
+
+.aips-link-report-tab tr.aips-link-suggestion-inserted {
+	background: var(--aips-success-light, #f0fdf4);
+}
+
+.aips-link-report-tab #aips-link-report-table .column-actions .aips-btn {
+	margin-bottom: var(--aips-space-1);
+}

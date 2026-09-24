@@ -2043,6 +2043,11 @@ class AIPS_Admin_Assets {
                 'confirmCancel'       => __('Stop the scan now? Posts scanned so far stay in the index; you can start a new scan later.', 'ai-post-scheduler'),
                 'keepScanning'        => __('Keep scanning', 'ai-post-scheduler'),
                 'cancelScan'          => __('Cancel scan', 'ai-post-scheduler'),
+                /* translators: %d: number of pending link suggestions */
+                'suggestionsPending'  => __('%d suggested', 'ai-post-scheduler'),
+                'suggestError'        => __('Could not load link suggestions.', 'ai-post-scheduler'),
+                'noSuggestions'       => __('No suitable posts found. Posts need related content (embeddings) or a phrase from this post\'s title in their text.', 'ai-post-scheduler'),
+                'noAnchor'            => __('(no anchor text found — link manually)', 'ai-post-scheduler'),
                 /* translators: 1: processed posts, 2: total posts */
                 'progress'            => __('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
             )
