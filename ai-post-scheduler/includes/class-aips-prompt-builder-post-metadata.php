@@ -18,25 +18,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-class AIPS_Prompt_Builder_Post_Metadata {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
-
-	/**
-	 * @var AIPS_Prompt_Builder_Diversity_Injector Diversity block builder.
-	 */
-	private $diversity_injector;
+class AIPS_Prompt_Builder_Post_Metadata extends AIPS_Prompt_Builder_Section_Base {
 
 	/**
 	 * @param AIPS_Template_Processor|null                $template_processor Optional template processor.
 	 * @param AIPS_Prompt_Builder_Diversity_Injector|null $diversity_injector Optional diversity injector.
 	 */
 	public function __construct($template_processor = null, $diversity_injector = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->diversity_injector = $diversity_injector ?: new AIPS_Prompt_Builder_Diversity_Injector();
+		parent::__construct($template_processor, $diversity_injector);
 	}
 
 	/**
@@ -65,7 +54,7 @@ class AIPS_Prompt_Builder_Post_Metadata {
 		if ($context->get_type() === 'template') {
 			$voice_obj = $context->get_voice();
 			if ($voice_obj && !empty($voice_obj->excerpt_instructions)) {
-				$excerpt_instructions .= "\n" . $this->template_processor->process($voice_obj->excerpt_instructions, $topic_str);
+				$excerpt_instructions .= "\n" . $this->get_template_processor()->process($voice_obj->excerpt_instructions, $topic_str);
 			}
 		} elseif ($context->get_type() === 'topic' && method_exists($context, 'get_author')) {
 			$author_obj = $context->get_author();
@@ -169,13 +158,13 @@ class AIPS_Prompt_Builder_Post_Metadata {
 			$voice_obj = $context->get_voice();
 
 			if ($voice_obj && !empty($voice_obj->title_prompt)) {
-				return $this->template_processor->process($voice_obj->title_prompt, $topic_str);
+				return $this->get_template_processor()->process($voice_obj->title_prompt, $topic_str);
 			}
 		}
 
 		$title_prompt = $context->get_title_prompt();
 
-		return !empty($title_prompt) ? $this->template_processor->process($title_prompt, $topic_str) : '';
+		return !empty($title_prompt) ? $this->get_template_processor()->process($title_prompt, $topic_str) : '';
 	}
 
 	/**
@@ -233,9 +222,9 @@ class AIPS_Prompt_Builder_Post_Metadata {
 	 */
 	private function append_diversity_blocks($prompt, $subject) {
 		$blocks = array(
-			$this->diversity_injector->build_avoid_titles_block($subject),
-			$this->diversity_injector->build_content_format_block($subject),
-			$this->diversity_injector->build_post_slice_block($subject),
+			$this->get_diversity_injector()->build_avoid_titles_block($subject),
+			$this->get_diversity_injector()->build_content_format_block($subject),
+			$this->get_diversity_injector()->build_post_slice_block($subject),
 		);
 
 		foreach ($blocks as $block) {
