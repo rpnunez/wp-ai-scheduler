@@ -83,34 +83,18 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$this->assertFalse( (bool) get_option( 'aips_indexer_verbose_history' ) );
 	}
 
+	/**
+	 * The verbose history control now lives on the main Settings screen
+	 * (the Content Intelligence hub no longer renders a settings form).
+	 */
 	public function test_settings_template_exposes_verbose_history_control() {
-		$status = array();
-		$stats = array();
-		$all_post_types = array();
-		$dimension_mismatch = false;
-		$settings = array(
-			'embeddings_provider'       => '',
-			'embeddings_model'          => 'text-embedding-3-small',
-			'embeddings_env_id'         => '',
-			'embeddings_dimensions'     => 1536,
-			'post_types'                => array(),
-			'similarity_threshold'      => 0.65,
-			'auto_index_on_publish'     => true,
-			'verbose_history'           => false,
-			'related_posts_enabled'     => true,
-			'related_posts_auto_append' => false,
-			'related_posts_count'       => 4,
-			'related_posts_heading'     => 'Related Articles',
-			'related_posts_layout'      => 'grid',
-			'deduplication_mode'        => 'warn',
-			'deduplication_threshold'   => 0.85,
-		);
+		$ui = new AIPS_Settings_UI();
 
 		ob_start();
-		include AIPS_PLUGIN_DIR . 'templates/admin/content-indexer.php';
+		$ui->indexer_verbose_history_field_callback();
 		$html = ob_get_clean();
 
-		$this->assertStringContainsString( 'name="verbose_history"', $html );
+		$this->assertStringContainsString( 'name="aips_indexer_verbose_history"', $html );
 	}
 
 	/**

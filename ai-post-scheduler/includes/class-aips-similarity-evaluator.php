@@ -29,6 +29,11 @@ class AIPS_Similarity_Evaluator {
 	private $embeddings_repo;
 
 	/**
+	 * @var AIPS_Embeddings_Service|null
+	 */
+	private $embeddings_service;
+
+	/**
 	 * @var AIPS_Relationships_Repository|null
 	 */
 	private $relationships_repo;
