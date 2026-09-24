@@ -155,6 +155,7 @@ class AIPS_Config {
             'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
+            'aips_persist_table_filters' => true,
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
             // Notifications

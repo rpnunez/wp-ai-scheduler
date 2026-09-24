@@ -463,12 +463,23 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
 		}
 
+		$reason          = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
+		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
+
 		$success_count = 0;
 		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'approved', get_current_user_id());
 			if ($result) {
 				$this->logs_repository->log_approval($topic_id, get_current_user_id());
+
+				// Record feedback and apply reward if feedback context is provided
+				if (!empty($reason) || !empty($reason_category)) {
+					$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+					$this->penalty_service->apply_reward($topic_id, $reason_category);
+				}
+
 				$success_count++;
 			} else {
 				$failed_count++;
@@ -505,6 +516,10 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
 		}
 
+		$reason          = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
+		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
+
 		$success_count = 0;
 		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
@@ -513,6 +528,13 @@ class AIPS_Author_Topics_Controller {
 				$this->embeddings_repo->delete('topic', $topic_id);
 				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$this->logs_repository->log_rejection($topic_id, get_current_user_id());
+
+				// Record feedback and apply penalty if feedback context is provided
+				if (!empty($reason) || !empty($reason_category)) {
+					$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+					$this->penalty_service->apply_penalty($topic_id, $reason_category);
+				}
+
 				$success_count++;
 			} else {
 				$failed_count++;
