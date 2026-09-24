@@ -1,6 +1,6 @@
 <?php
 /**
- * Affiliate Links Admin Page
+ * Affiliate Links Admin Partial Template
  *
  * @package AI_Post_Scheduler
  * @since 3.1.0
@@ -10,38 +10,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
 
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e( 'Affiliate Links', 'ai-post-scheduler' ); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e( 'Map post tags to affiliate URLs and configure CTA block injection into generated posts.', 'ai-post-scheduler' ); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" id="aips-afl-add-btn" class="aips-btn aips-btn-primary">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e( 'Add Mapping', 'ai-post-scheduler' ); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<!-- Filter Bar -->
-		<div class="aips-content-panel" style="margin-bottom:20px;">
-			<div class="aips-filter-bar" style="padding:12px 16px;">
+		<!-- Mappings Panel -->
+		<div class="aips-content-panel">
+			<!-- Filter Bar -->
+			<div class="aips-filter-bar">
 				<div class="aips-filter-left">
 					<label class="screen-reader-text" for="aips-afl-search"><?php esc_html_e( 'Search mappings:', 'ai-post-scheduler' ); ?></label>
-					<input type="search" id="aips-afl-search" class="aips-form-input" placeholder="<?php esc_attr_e( 'Search by tag or label…', 'ai-post-scheduler' ); ?>" style="min-width:240px;">
+					<input type="search" id="aips-afl-search" class="aips-form-input aips-min-w-240" placeholder="<?php esc_attr_e( 'Search by tag or label…', 'ai-post-scheduler' ); ?>">
 					<button type="button" id="aips-afl-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
-		</div>
 
-		<!-- Mappings Table -->
-		<div class="aips-content-panel">
 			<div class="aips-panel-body no-padding">
 				<table class="aips-table" id="aips-afl-table">
 					<thead>
@@ -58,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<tbody id="aips-afl-tbody">
 						<tr class="aips-table-loading">
 							<td colspan="7">
-								<span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span>
+								<span class="spinner is-active aips-spinner-inline"></span>
 								<?php esc_html_e( 'Loading…', 'ai-post-scheduler' ); ?>
 							</td>
 						</tr>
@@ -67,22 +47,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 
 			<!-- Pagination -->
-			<div class="aips-panel-footer" id="aips-afl-pagination" style="padding:12px 16px;display:none;">
+			<div class="aips-panel-footer" id="aips-afl-pagination" style="display:none;">
 				<div class="aips-pagination">
 					<button type="button" id="aips-afl-prev" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e( '&laquo; Prev', 'ai-post-scheduler' ); ?></button>
-					<span id="aips-afl-page-info" style="margin:0 12px;font-size:13px;"></span>
+					<span id="aips-afl-page-info" class="aips-page-info"></span>
 					<button type="button" id="aips-afl-next" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e( 'Next &raquo;', 'ai-post-scheduler' ); ?></button>
 				</div>
 			</div>
 		</div>
 
-	</div><!-- /.aips-page-container -->
-</div><!-- /.wrap -->
-
 <!-- Create / Edit Modal -->
 <div id="aips-afl-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-afl-modal-title">
 	<div class="aips-modal-backdrop"></div>
-	<div class="aips-modal-dialog" style="max-width:640px;">
+	<div class="aips-modal-dialog aips-modal-md">
 		<div class="aips-modal-header">
 			<h2 id="aips-afl-modal-title" class="aips-modal-title"><?php esc_html_e( 'Affiliate Link Mapping', 'ai-post-scheduler' ); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e( 'Close', 'ai-post-scheduler' ); ?>">&times;</button>
@@ -120,10 +97,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</label>
 			</div>
 
-			<hr style="margin:20px 0;">
+			<hr class="aips-divider">
 
 			<!-- CTA Configuration -->
-			<h3 style="margin:0 0 16px;font-size:14px;font-weight:600;"><?php esc_html_e( 'CTA Block Configuration', 'ai-post-scheduler' ); ?></h3>
+			<h3 class="aips-heading-sm aips-mb-md"><?php esc_html_e( 'CTA Block Configuration', 'ai-post-scheduler' ); ?></h3>
 
 			<div class="aips-form-group">
 				<label class="aips-form-label" for="aips-afl-cta-html"><?php esc_html_e( 'CTA HTML', 'ai-post-scheduler' ); ?></label>
@@ -155,7 +132,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 			<div class="aips-form-group">
 				<label class="aips-form-label" for="aips-afl-max-insertions"><?php esc_html_e( 'Max Insertions per Post', 'ai-post-scheduler' ); ?></label>
-				<input type="number" id="aips-afl-max-insertions" class="aips-form-input" value="1" min="1" max="20" style="max-width:80px;">
+				<input type="number" id="aips-afl-max-insertions" class="aips-form-input aips-w-xs" value="1" min="1" max="20">
 			</div>
 
 			<div class="aips-form-group">
@@ -226,8 +203,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 				+ '<span class="screen-reader-text"><?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?></span>'
 				+ '<span class="aips-toggle-slider"></span></label>';
 			var aiIcon = item.use_ai_injection == 1
-				? '<span class="dashicons dashicons-yes-alt" style="color:#00a32a;" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'
-				: '<span style="color:#ccc;">—</span>';
+				? '<span class="dashicons dashicons-yes-alt aips-text-success" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'
+				: '<span class="aips-text-muted">—</span>';
 			var shortUrl = item.affiliate_url.length > 40 ? item.affiliate_url.substring(0, 40) + '…' : item.affiliate_url;
 			var slugBadge = (cloakingEnabled && item.slug)
 				? '<div style="margin-top:3px;"><a href="' + homeUrl + '/' + cloakingPrefix + '/' + item.slug + '/" target="_blank" rel="noopener" style="font-size:11px;color:#2563eb;text-decoration:none;"><span class="dashicons dashicons-admin-links" style="font-size:14px;width:14px;height:14px;vertical-align:text-bottom;"></span> /' + cloakingPrefix + '/' + item.slug + '/</a></div>'

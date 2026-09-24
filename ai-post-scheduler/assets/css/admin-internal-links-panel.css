@@ -1,0 +1,119 @@
+/**
+ * Editor "Internal Links" panel (Classic meta box + Block Editor panel).
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.5
+ */
+
+.aips-link-panel .aips-link-panel-counts {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 6px;
+	margin: 0 0 10px;
+	padding: 0;
+	list-style: none;
+}
+
+.aips-link-panel .aips-link-panel-counts li,
+.aips-link-panel .aips-link-panel-count {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin: 0;
+	padding: 6px 2px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.aips-link-panel .aips-link-panel-counts strong {
+	font-size: 16px;
+	line-height: 1.2;
+}
+
+.aips-link-panel .aips-link-panel-counts span {
+	font-size: 11px;
+	color: #50575e;
+}
+
+.aips-link-panel .aips-link-panel-broken strong {
+	color: #d63638;
+}
+
+.aips-link-panel .aips-link-panel-orphan {
+	margin: 0 0 10px;
+	padding: 6px 8px;
+	border-left: 3px solid #dba617;
+	background: #fcf9e8;
+}
+
+.aips-link-panel .aips-link-panel-heading {
+	margin: 12px 0 6px;
+	font-weight: 600;
+}
+
+.aips-link-panel .aips-link-panel-sources,
+.aips-link-panel .aips-link-panel-suggestions {
+	margin: 0 0 8px;
+	padding: 0;
+	list-style: none;
+}
+
+.aips-link-panel .aips-link-panel-sources li {
+	margin-bottom: 4px;
+}
+
+.aips-link-panel .aips-link-panel-suggestion {
+	margin: 0 0 8px;
+	padding: 8px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.aips-link-panel .aips-link-suggestion-inserted {
+	border-color: #68de7c;
+	background: #edfaef;
+}
+
+.aips-link-panel .aips-link-panel-confidence {
+	float: right;
+	font-weight: 600;
+}
+
+.aips-link-panel .aips-link-panel-context {
+	display: block;
+	margin: 4px 0 6px;
+	font-size: 12px;
+	color: #50575e;
+}
+
+.aips-link-panel .aips-link-panel-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+
+.aips-link-panel .aips-link-panel-inserted {
+	font-weight: 600;
+	color: #00a32a;
+}
+
+.aips-link-panel .aips-link-panel-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.aips-link-panel .aips-link-panel-message:empty {
+	display: none;
+}
+
+.aips-link-panel .aips-link-panel-error {
+	color: #d63638;
+}
+
+.aips-link-panel .hidden {
+	display: none;
+}

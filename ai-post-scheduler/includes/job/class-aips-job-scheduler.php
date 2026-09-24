@@ -212,6 +212,13 @@ class AIPS_Job_Scheduler {
 	 *     @type array    $metadata        Shared metadata for all jobs.
 	 *     @type string   $correlation_id  Correlation ID for batch.
 	 *     @type array    $retry_options   Retry configuration for each job.
+	 *     @type int      $index_offset    Absolute position the first slice starts at
+	 *                                     (default 0). Used when resuming a batch that
+	 *                                     an earlier run left partly complete.
+	 *     @type int      $total_override  Total reported to the hook instead of
+	 *                                     $item_count. Used with $index_offset so a
+	 *                                     resumed batch reports the original total
+	 *                                     rather than only the remaining items.
 	 * }
 	 * @return AIPS_Dispatch_Summary|WP_Error
 	 */
@@ -248,7 +255,9 @@ class AIPS_Job_Scheduler {
 	 *     job_type: string,
 	 *     metadata: array,
 	 *     correlation_id: string,
-	 *     retry_options: array
+	 *     retry_options: array,
+	 *     index_offset: int,
+	 *     total_override: int|null
 	 * } Parsed options with defaults applied.
 	 */
 	private function parse_batched_options(array $options): array {
@@ -275,6 +284,8 @@ class AIPS_Job_Scheduler {
 			'metadata'       => isset($options['metadata']) ? $options['metadata'] : array(),
 			'correlation_id' => $correlation_id,
 			'retry_options'  => isset($options['retry_options']) ? $options['retry_options'] : array(),
+			'index_offset'   => isset($options['index_offset']) ? max(0, (int) $options['index_offset']) : 0,
+			'total_override' => isset($options['total_override']) ? max(0, (int) $options['total_override']) : null,
 		);
 	}
 
@@ -324,12 +335,19 @@ class AIPS_Job_Scheduler {
 		array $parsed_options,
 		AIPS_Slice_Configuration $slice_config
 	): AIPS_Job_Definition {
-		$start_index = $slice * $slice_config->get_items_per_slice();
-		$slice_size  = min($slice_config->get_items_per_slice(), $item_count - $start_index);
+		// $slice_start indexes into this dispatch's own item_count; $start_index is
+		// the absolute position reported to the hook, which a resumed dispatch
+		// shifts forward by the number of items an earlier run already completed.
+		$slice_start = $slice * $slice_config->get_items_per_slice();
+		$slice_size  = min($slice_config->get_items_per_slice(), $item_count - $slice_start);
+		$start_index = $parsed_options['index_offset'] + $slice_start;
+		$total       = $parsed_options['total_override'] !== null
+			? $parsed_options['total_override']
+			: $item_count;
 		$delay       = (int) round($slice * $slice_config->get_interval_seconds());
 		$args        = array_merge(
 			$parsed_options['prefix_args'],
-			array($start_index, $slice_size, $item_count, $parsed_options['correlation_id'])
+			array($start_index, $slice_size, $total, $parsed_options['correlation_id'])
 		);
 
 		return new AIPS_Job_Definition(

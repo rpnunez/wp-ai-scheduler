@@ -28,10 +28,9 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
             $btn.next('.spinner').addClass('is-active');
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -52,9 +51,13 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
                     $btn.next('.spinner').removeClass('is-active');
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: 'Generating Topics...',
+                timeout: 120000
             });
         },
 
@@ -150,14 +153,26 @@
         },
 
         /**
-         * Update the "N selected" label next to the topic list.
+         * Update the "N selected" label next to the topic list and sync Select All state.
          *
-         * Counts the number of checked `.topic-checkbox` elements (regardless of
-         * visibility) and updates every `.selection-count` element.
+         * Counts the total number of checked `.topic-checkbox` elements across all topics,
+         * updates every `.selection-count` element, and synchronizes the `#check-all-topics`
+         * checkbox state with visible checkboxes.
          */
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
             $('.selection-count').text(count + ' selected');
+
+            // Keep "Select All" checkbox in sync
+            var $selectAll = $('#check-all-topics');
+            var visibleCheckboxes = $('.topic-checkbox:visible');
+            var checkedVisibleCheckboxes = visibleCheckboxes.filter(':checked');
+
+            if (visibleCheckboxes.length > 0) {
+                $selectAll.prop('checked', visibleCheckboxes.length === checkedVisibleCheckboxes.length);
+            } else {
+                $selectAll.prop('checked', false);
+            }
         },
 
         /**
@@ -175,13 +190,13 @@
 
             AIPS.Utilities.confirm(aipsPlannerL10n.confirmClear || 'Are you sure you want to clear all topics?', 'Notice', [
                 {
-                    text: 'Cancel',
-                    class: 'aips-btn-secondary aips-modal-close'
+                    label: aipsPlannerL10n.cancel || 'Cancel',
+                    className: 'aips-btn aips-btn-secondary'
                 },
                 {
-                    text: 'Clear Topics',
-                    class: 'aips-btn-primary',
-                    callback: function() {
+                    label: aipsPlannerL10n.clearTopics || 'Clear Topics',
+                    className: 'aips-btn aips-btn-danger-solid',
+                    action: function() {
                         $('#topics-list').empty();
                         $('#planner-results').removeClass('active');
                         $('#planner-niche').val('');
@@ -260,7 +275,7 @@
          */
         copySelectedTopics: function() {
             var topics = [];
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -334,7 +349,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -354,10 +369,9 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -381,7 +395,7 @@
                             var successMsg = data.message || 'Posts generated successfully.';
                             AIPS.Utilities.showToast(successMsg, 'success');
 
-                            $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                            $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                                 $(this).remove();
                                 window.AIPS.updateSelectionCount();
 
@@ -402,9 +416,13 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
                     $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: 'Generating Posts...',
+                timeout: 300000
             });
         },
 
@@ -423,7 +441,7 @@
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
-            $('.topic-checkbox:checked').each(function() {
+            $('.topic-checkbox:visible:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
@@ -448,10 +466,9 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
 
-            $.ajax({
+            var req = $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
@@ -466,7 +483,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
 
-                        $('.topic-checkbox:checked').closest('.topic-item').fadeOut(200, function() {
+                        $('.topic-checkbox:visible:checked').closest('.topic-item').fadeOut(200, function() {
                             $(this).remove();
                             window.AIPS.updateSelectionCount();
 
@@ -485,9 +502,13 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
                     $btn.nextAll('.spinner').first().removeClass('is-active');
                 }
+            });
+
+            AIPS.Utilities.withLock($btn, req, {
+                loadingText: 'Scheduling...',
+                timeout: 30000
             });
         }
     });

@@ -5,49 +5,6 @@
  * @since 1.8.0
  */
 
-/* Modal Styles */
-.aips-modal {
-	position: fixed;
-	z-index: 9999;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(0,0,0,0.5);
-	display: none;
-}
-
-.aips-modal-content {
-	background-color: #fff;
-	margin: 5% auto;
-	padding: 20px;
-	border: 1px solid #888;
-	width: 80%;
-	max-width: 600px;
-	border-radius: 4px;
-	position: relative;
-	max-height: 80vh;
-	overflow-y: auto;
-}
-
-.aips-modal-content.aips-modal-large {
-	max-width: 900px;
-}
-
-.aips-modal-close {
-	color: #aaa;
-	float: right;
-	font-size: 28px;
-	font-weight: bold;
-	cursor: pointer;
-	line-height: 20px;
-}
-
-.aips-modal-close:hover,
-.aips-modal-close:focus {
-	color: #000;
-}
-
 /* Form Styles */
 .form-group {
 	margin-bottom: 20px;
@@ -1175,3 +1132,96 @@
 	color: #721c24;
 	border: 1px solid #f5c6cb;
 }
+
+/* Inline Health Indicator and Author Title Cell */
+.aips-author-title-cell {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.aips-author-header {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	line-height: 1.4;
+}
+
+.aips-author-name {
+	font-weight: 600;
+	color: var(--aips-gray-900, #1d2327);
+}
+
+.aips-author-name a {
+	color: var(--aips-primary, #2271b1);
+	text-decoration: none;
+}
+
+.aips-author-name a:hover {
+	text-decoration: underline;
+}
+
+.aips-health-dot,
+.aips-quality-indicator {
+	display: inline-block;
+	width: 9px;
+	height: 9px;
+	min-width: 9px;
+	min-height: 9px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin: 0;
+	vertical-align: middle;
+}
+
+.aips-health-dot.aips-health-good,
+.aips-health-dot.aips-health-healthy,
+.aips-quality-indicator.aips-quality-healthy {
+	background-color: var(--aips-success, #00a32a);
+	box-shadow: 0 0 0 2px rgba(0, 163, 42, 0.2);
+}
+
+.aips-health-dot.aips-health-warning,
+.aips-quality-indicator.aips-quality-warning {
+	background-color: var(--aips-warning, #dba617);
+	box-shadow: 0 0 0 2px rgba(219, 166, 23, 0.2);
+}
+
+.aips-health-dot.aips-health-poor,
+.aips-health-dot.aips-health-critical,
+.aips-quality-indicator.aips-quality-critical {
+	background-color: var(--aips-danger, #d63638);
+	box-shadow: 0 0 0 2px rgba(214, 54, 56, 0.2);
+}
+
+.aips-health-dot.aips-health-unknown,
+.aips-quality-indicator.aips-quality-unknown {
+	background-color: var(--aips-gray-400, #8c8f94);
+}
+
+/* Combined Topics and Posts Column */
+.aips-author-stats-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.aips-stats-badges-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.aips-stats-badges-row .aips-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	padding: 3px 8px;
+	border-radius: 4px;
+	font-weight: 500;
+	text-decoration: none;
+}
+
+

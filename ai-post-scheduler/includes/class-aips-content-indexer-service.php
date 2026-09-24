@@ -57,6 +57,11 @@ class AIPS_Content_Indexer_Service {
 	private $config;
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Initialize the content indexer service.
 	 */
 	public function __construct(
@@ -66,17 +71,19 @@ class AIPS_Content_Indexer_Service {
 		?AIPS_History_Service_Interface $history_service = null,
 		?AIPS_Logger_Interface $logger = null,
 		?AIPS_Config $config = null,
-		?AIPS_Author_Topics_Repository $topics_repo = null
+		?AIPS_Author_Topics_Repository $topics_repo = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->embeddings_repo    = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->history_service    = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->logger             = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
-		$this->config             = $config ?: AIPS_Config::get_instance();
-		$this->topics_repo        = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->embeddings_repo      = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo   = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$this->embeddings_service   = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->history_service      = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->logger               = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->config               = $config ?: AIPS_Config::get_instance();
+		$this->topics_repo          = $topics_repo ?: ($container->has(AIPS_Author_Topics_Repository::class) ? $container->make(AIPS_Author_Topics_Repository::class) : new AIPS_Author_Topics_Repository());
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
 	}
 
 	/**
@@ -90,6 +97,10 @@ class AIPS_Content_Indexer_Service {
 	 * @return true|WP_Error
 	 */
 	public function index_post($post_id, $compute_relationships = true) {
+		if (!$this->embeddings_service->is_enabled()) {
+			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		$post_id = absint($post_id);
 		$post    = get_post($post_id);
 
@@ -175,17 +186,13 @@ class AIPS_Content_Indexer_Service {
 		if (is_wp_error($embedding)) {
 			$duration      = round(microtime(true) - $start_time, 3);
 			$error_message = $embedding->get_error_message();
-
-			$container->record_error(
-				sprintf(__('Embedding generation failed for post #%d: %s', 'ai-post-scheduler'), $post_id, $error_message),
-				array(
-					'post_id'    => $post_id,
-					'error_code' => $embedding->get_error_code(),
-					'duration'   => $duration,
-				),
-				$embedding
+			$error_details = array(
+				'post_id'    => $post_id,
+				'error_code' => $embedding->get_error_code(),
+				'duration'   => $duration,
 			);
-			$container->complete_failure($error_message);
+
+			$container->complete_failure($error_message, $error_details);
 
 			$this->logger->log(
 				sprintf('Failed to generate embedding for post %d (%s): %s', $post_id, $post->post_type, $error_message),
@@ -230,7 +237,7 @@ class AIPS_Content_Indexer_Service {
 			);
 		}
 
-		$this->embeddings_repo->upsert(
+		$persisted = $this->embeddings_repo->upsert(
 			'post',
 			$post_id,
 			$embedding,
@@ -239,6 +246,31 @@ class AIPS_Content_Indexer_Service {
 			$content_hash,
 			$post->post_type
 		);
+
+		if ($persisted === false) {
+			$error_message = sprintf(
+				/* translators: %d: WordPress post ID. */
+				__('Could not save the embedding vector for post #%d.', 'ai-post-scheduler'),
+				$post_id
+			);
+			$error = new WP_Error('embedding_persistence_failed', $error_message);
+
+			$container->complete_failure(
+				$error_message,
+				array(
+					'post_id'    => $post_id,
+					'dimensions' => $dimensions,
+					'model'      => $model,
+					'provider'   => $provider,
+				)
+			);
+			$this->logger->log(
+				sprintf('Failed to persist embedding for post %d (%s).', $post_id, $post->post_type),
+				'error'
+			);
+
+			return $error;
+		}
 
 		if ($verbose) {
 			$container->record(
@@ -273,25 +305,36 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$total_duration = round(microtime(true) - $start_time, 3);
+		$completion_details = array(
+			'dimensions' => $dimensions,
+			'duration'   => $total_duration,
+			'model'      => $model,
+			'provider'   => $provider,
+		);
+		if ($compute_relationships) {
+			$completion_details['relationships_saved'] = $rel_count;
+		}
 
 		// complete_success only merges columns whitelisted by the repository update;
 		// dimensions/duration/relationships live in the final activity log entry.
-		$container->record(
-			'activity',
-			sprintf(
+		$completion_message = $compute_relationships
+			? sprintf(
 				/* translators: 1: dimensions, 2: total duration seconds, 3: related-post count. */
 				__('Indexed post: %1$d dims, %2$ss, %3$d related', 'ai-post-scheduler'),
 				$dimensions,
 				$total_duration,
 				$rel_count
-			),
-			array(
-				'dimensions'          => $dimensions,
-				'duration'            => $total_duration,
-				'relationships_saved' => $rel_count,
-				'model'               => $model,
-				'provider'            => $provider,
 			)
+			: sprintf(
+				/* translators: 1: dimensions, 2: total duration seconds. */
+				__('Indexed post: %1$d dims, %2$ss', 'ai-post-scheduler'),
+				$dimensions,
+				$total_duration
+			);
+		$container->record(
+			'activity',
+			$completion_message,
+			$completion_details
 		);
 
 		$container->complete_success(array(
@@ -310,66 +353,139 @@ class AIPS_Content_Indexer_Service {
 	/**
 	 * Index a single Author Topic.
 	 *
+	 * Computes the embedding vector via AIPS_Embeddings_Service, persists it,
+	 * and precomputes cross-entity similarity against published posts to flag
+	 * potential keyword cannibalization.
+	 *
 	 * @param int    $topic_id Topic ID.
-	 * @param string $title    Topic title.
-	 * @return true|WP_Error
+	 * @param string $title    Optional topic title (kept for signature compatibility).
+	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
 	public function index_topic($topic_id, $title = '') {
 		$topic_id = absint($topic_id);
-
-		if (empty($title)) {
-			$topic_obj = $this->topics_repo->get_by_id($topic_id);
-			if ($topic_obj && !empty($topic_obj->topic_title)) {
-				$title = $topic_obj->topic_title;
-			}
+		if ($topic_id <= 0) {
+			return new WP_Error('invalid_topic_id', __('Invalid topic ID.', 'ai-post-scheduler'));
 		}
 
-		if (empty($title)) {
-			return new WP_Error('empty_topic', __('Topic not found or empty.', 'ai-post-scheduler'));
-		}
-
-		$content_hash = md5($title);
-		$embedding    = $this->embeddings_service->generate_embedding($title);
-
+		$embedding = $this->embeddings_service->compute_topic_embedding($topic_id);
 		if (is_wp_error($embedding)) {
 			return $embedding;
 		}
 
-		$dimensions = count($embedding);
-		$ai_config  = $this->config->get_ai_config();
-		$model      = !empty($ai_config['model']) ? $ai_config['model'] : 'default';
+		if (!is_array($embedding) || empty($embedding)) {
+			return new WP_Error('empty_embedding', __('Failed to compute topic embedding.', 'ai-post-scheduler'));
+		}
 
-		$this->embeddings_repo->upsert(
-			'topic',
-			$topic_id,
-			$embedding,
-			$model,
-			$dimensions,
-			$content_hash,
-			''
-		);
+		$dimensions = count($embedding);
+
+		// Precompute cross-entity similarity against published posts to flag potential cannibalization
+		$post_vectors = $this->embeddings_repo->get_all_for_similarity_by_type('post', 'publish');
+		if (!empty($post_vectors)) {
+			$min_sim = (float) $this->config->get_option('aips_indexer_similarity_threshold', 0.65);
+			$matches = array();
+			foreach ($post_vectors as $pv) {
+				$p_vec = $this->embeddings_repo->decode_embedding($pv->embedding);
+				if (!empty($p_vec) && count($p_vec) === $dimensions) {
+					$sim = $this->similarity_evaluator->cosine_similarity($embedding, $p_vec);
+					if ($sim >= $min_sim) {
+						$matches[] = array(
+							'target_type' => 'post',
+							'target_id'   => (int) $pv->post_id,
+							'similarity'  => (float) $sim,
+						);
+					}
+				}
+			}
+			if (!empty($matches)) {
+				$this->relationships_repo->sync_for_source('topic', $topic_id, $matches, 'similar');
+			}
+		}
 
 		return true;
 	}
 
 	/**
-	 * Process a batch of unindexed posts (progressive AJAX chunk runner & WP-Cron worker).
+	 * Process a batch of unindexed items (posts or topics).
 	 *
-	 * @param int             $batch_size   Number of posts to vectorize in this slice.
-	 * @param int             $last_post_id Cursor pagination: process IDs > this.
+	 * @param int             $batch_size   Number of items to vectorize in this slice.
+	 * @param int             $last_post_id Cursor pagination for posts: process IDs > this.
 	 * @param string[]|string $post_types   Post types to index.
 	 * @param string          $post_status  Post status to index.
-	 * @return array{success: int, failed: int, last_post_id: int, done: bool, total_indexed: int, total_posts: int, percent: int}
+	 * @param string          $entity_scope Entity scope ('all', 'posts', 'topics'). Default 'all'.
+	 * @return array
 	 */
 	public function process_indexing_batch(
 		$batch_size = 10,
 		$last_post_id = 0,
 		$post_types = array('post'),
-		$post_status = 'publish'
+		$post_status = 'publish',
+		$entity_scope = 'all'
 	) {
 		$post_types = (array) $post_types;
 		if (empty($post_types)) {
 			$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+		}
+
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		$cooldown     = $rate_limiter->get_cooldown_status();
+
+		if ($cooldown['is_paused']) {
+			$status = $this->get_indexing_status($post_types, $post_status);
+			return array(
+				'success'             => 0,
+				'failed'              => 0,
+				'last_post_id'        => $last_post_id,
+				'done'                => true,
+				'total_indexed'       => $status['indexed'],
+				'total_posts'         => $status['total_posts'],
+				'percent'             => $status['percent'],
+				'status'              => $status,
+				'rate_limit_exceeded' => true,
+				'rate_limit_error'    => array(
+					'message' => $cooldown['reason'],
+					'data'    => $cooldown,
+				),
+				'rate_limits'         => $status['rate_limits'],
+			);
+		}
+
+		// Entity Scope: Topics only
+		if ($entity_scope === 'topics') {
+			$topic_ids = $this->embeddings_repo->get_unindexed_topic_ids($batch_size);
+			$success   = 0;
+			$failed    = 0;
+			$rate_err  = null;
+
+			foreach ($topic_ids as $tid) {
+				$res = $this->index_topic($tid);
+				if (is_wp_error($res)) {
+					$failed++;
+					$rate_limiter->record_failure($res);
+					if ($rate_limiter->is_rate_limit_or_exhaustion_error($res)) {
+						$rate_err = array('message' => $res->get_error_message());
+						break;
+					}
+				} else {
+					$success++;
+					$rate_limiter->record_success();
+				}
+			}
+
+			$status = $this->get_indexing_status($post_types, $post_status);
+			return array(
+				'success'             => $success,
+				'failed'              => $failed,
+				'last_post_id'        => 0,
+				'done'                => empty($topic_ids) || count($topic_ids) < $batch_size || !empty($rate_err),
+				'total_indexed'       => $status['indexed_topics'],
+				'total_posts'         => $status['total_topics'],
+				'percent'             => $status['topics_percent'],
+				'status'              => $status,
+				'rate_limit_exceeded' => !empty($rate_err),
+				'rate_limit_error'    => $rate_err,
+				'rate_limits'         => $status['rate_limits'],
+				'entity_scope'        => 'topics',
+			);
 		}
 
 		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
@@ -390,13 +506,25 @@ class AIPS_Content_Indexer_Service {
 			$generated_correlation = true;
 		}
 
+		$rate_limit_error = null;
+
 		try {
 			foreach ($post_ids as $post_id) {
 				$result = $this->index_post($post_id, true);
 
 				if (is_wp_error($result)) {
 					$failed++;
+					$cooldown_res = $rate_limiter->record_failure($result);
+
+					if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+						$rate_limit_error = array(
+							'message' => $result->get_error_message(),
+							'data'    => $result->get_error_data(),
+						);
+						break;
+					}
 				} else {
+					$rate_limiter->record_success();
 					$success++;
 				}
 
@@ -409,16 +537,47 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$status = $this->get_indexing_status($post_types, $post_status);
-		$done   = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0;
+
+		if ($entity_scope === 'all' && empty($rate_limit_error)) {
+			if (empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0) {
+				$topic_batch = $batch_size - $success;
+				if ($topic_batch > 0 && $status['unindexed_topics'] > 0) {
+					$topic_ids = $this->embeddings_repo->get_unindexed_topic_ids($topic_batch);
+					foreach ($topic_ids as $tid) {
+						$res = $this->index_topic($tid);
+						if (is_wp_error($res)) {
+							$failed++;
+							$rate_limiter->record_failure($res);
+							if ($rate_limiter->is_rate_limit_or_exhaustion_error($res)) {
+								$rate_limit_error = array('message' => $res->get_error_message());
+								break;
+							}
+						} else {
+							$success++;
+							$rate_limiter->record_success();
+						}
+					}
+					$status = $this->get_indexing_status($post_types, $post_status);
+				}
+			}
+			$done = ($status['unindexed'] === 0 && $status['unindexed_topics'] === 0) || !empty($rate_limit_error);
+		} else {
+			$done = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0 || !empty($rate_limit_error);
+		}
 
 		return array(
-			'success'       => $success,
-			'failed'        => $failed,
-			'last_post_id'  => $new_last_id,
-			'done'          => $done,
-			'total_indexed' => $status['indexed'],
-			'total_posts'   => $status['total_posts'],
-			'percent'       => $status['percent'],
+			'success'             => $success,
+			'failed'              => $failed,
+			'last_post_id'        => $new_last_id,
+			'done'                => $done,
+			'total_indexed'       => $status['indexed'],
+			'total_posts'         => $status['total_posts'],
+			'percent'             => $status['percent'],
+			'status'              => $status,
+			'rate_limit_exceeded' => !empty($rate_limit_error),
+			'rate_limit_error'    => $rate_limit_error,
+			'rate_limits'         => $status['rate_limits'],
+			'entity_scope'        => $entity_scope,
 		);
 	}
 
@@ -438,8 +597,8 @@ class AIPS_Content_Indexer_Service {
 			return 0;
 		}
 
-		$source_vector = json_decode($source->embedding, true);
-		if (!is_array($source_vector)) {
+		$source_vector = $this->embeddings_repo->decode_embedding($source->embedding);
+		if (empty($source_vector)) {
 			return 0;
 		}
 
@@ -452,8 +611,8 @@ class AIPS_Content_Indexer_Service {
 			if ($cid === $post_id) {
 				continue;
 			}
-			$vec = json_decode($row->embedding, true);
-			if (is_array($vec) && count($vec) === count($source_vector)) {
+			$vec = $this->embeddings_repo->decode_embedding($row->embedding);
+			if (!empty($vec) && count($vec) === count($source_vector)) {
 				$candidate_vectors[] = array(
 					'id'        => $cid,
 					'embedding' => $vec,
@@ -465,20 +624,14 @@ class AIPS_Content_Indexer_Service {
 			return 0;
 		}
 
-		$neighbors = $this->embeddings_service->find_nearest_neighbors($source_vector, $candidate_vectors, $top_k);
-		if (!is_array($neighbors)) {
-			$neighbors = array();
-		}
-
+		$matches = $this->similarity_evaluator->find_top_matches($source_vector, $candidate_vectors, $min_sim, $top_k, 'post');
 		$targets = array();
-		foreach ($neighbors as $n) {
-			if (isset($n['similarity']) && $n['similarity'] >= $min_sim) {
-				$targets[] = array(
-					'target_type' => 'post',
-					'target_id'   => (int) $n['id'],
-					'similarity'  => (float) $n['similarity'],
-				);
-			}
+		foreach ($matches as $m) {
+			$targets[] = array(
+				'target_type' => 'post',
+				'target_id'   => (int) $m['id'],
+				'similarity'  => (float) $m['similarity'],
+			);
 		}
 
 		$this->relationships_repo->sync_for_source('post', $post_id, $targets, 'related_post');
@@ -486,11 +639,56 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Get indexing status across configured post types.
+	 * Check if a post is within the configured indexing scope.
+	 *
+	 * @param int|WP_Post $post Post ID or WP_Post object.
+	 * @return bool True if within scope, false otherwise.
+	 */
+	public function is_post_in_scope($post): bool {
+		$post = get_post($post);
+		if (!$post) {
+			return false;
+		}
+
+		$scope = (string) $this->config->get_option('aips_embeddings_scope', 'aips_only');
+
+		if ('aips_only' === $scope) {
+			$meta = get_post_meta($post->ID, '_aips_generated_post', true);
+			return !empty($meta);
+		}
+
+		if ('date_range' === $scope) {
+			$date_after = (string) $this->config->get_option('aips_embeddings_date_after', '');
+			$date_days  = (int) $this->config->get_option('aips_embeddings_date_days', 30);
+
+			$raw_date  = $post->post_date_gmt && '0000-00-00 00:00:00' !== $post->post_date_gmt ? $post->post_date_gmt : $post->post_date;
+			$dt        = AIPS_DateTime::fromMysqlOrNull($raw_date);
+			$post_time = $dt ? $dt->timestamp() : 0;
+
+			if (!empty($date_after)) {
+				try {
+					$after_time = AIPS_DateTime::fromDate($date_after)->timestamp();
+					return $post_time >= $after_time;
+				} catch (\Exception $e) {
+					// Invalid date fallback
+				}
+			}
+
+			if ($date_days > 0) {
+				$cutoff = AIPS_DateTime::now()->timestamp() - ($date_days * DAY_IN_SECONDS);
+				return $post_time >= $cutoff;
+			}
+		}
+
+		return true; // 'all' scope
+	}
+
+	/**
+	 * Get indexing status across configured post types and scope.
 	 *
 	 * @param string[]|string $post_types  Post types to check.
 	 * @param string          $post_status Status to filter.
-	 * @return array{total_posts: int, indexed: int, unindexed: int, percent: int, post_types: array}
+	 * @return array
 	 */
 	public function get_indexing_status($post_types = array('post'), $post_status = 'publish') {
 		$post_types  = (array) $post_types;
@@ -500,24 +698,51 @@ class AIPS_Content_Indexer_Service {
 			$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		}
 
-		$total_posts = 0;
-		foreach ($post_types as $pt) {
-			$counts = wp_count_posts($pt);
-			if (isset($counts->$post_status)) {
-				$total_posts += (int) $counts->$post_status;
-			}
-		}
+		$scope       = (string) $this->config->get_option('aips_embeddings_scope', 'aips_only');
+		$total_posts = $this->embeddings_repo->count_total_posts_for_scope($post_types, $post_status, $scope);
+		$indexed     = $this->embeddings_repo->count_indexed_for_types($post_types, $post_status, $scope);
+		$unindexed   = max(0, $total_posts - $indexed);
+		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
 
-		$indexed   = $this->embeddings_repo->count_indexed_for_types($post_types, $post_status);
-		$unindexed = max(0, $total_posts - $indexed);
-		$percent   = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
+		$total_topics     = $this->embeddings_repo->get_total_topic_count();
+		$unindexed_topics = $this->embeddings_repo->get_unindexed_topic_count();
+		$indexed_topics   = max(0, $total_topics - $unindexed_topics);
+		$topics_percent   = $total_topics > 0 ? min(100, (int) round(($indexed_topics / $total_topics) * 100)) : 0;
+
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		$usage_stats  = $rate_limiter->get_usage_stats();
 
 		return array(
-			'total_posts' => $total_posts,
-			'indexed'     => $indexed,
-			'unindexed'   => $unindexed,
-			'percent'     => $percent,
-			'post_types'  => $post_types,
+			'total_posts'        => $total_posts,
+			'indexed'            => $indexed,
+			'unindexed'          => $unindexed,
+			'percent'            => $percent,
+			'total_topics'       => $total_topics,
+			'indexed_topics'     => $indexed_topics,
+			'unindexed_topics'   => $unindexed_topics,
+			'topics_percent'     => $topics_percent,
+			'posts'              => array(
+				'total'     => $total_posts,
+				'indexed'   => $indexed,
+				'unindexed' => $unindexed,
+				'percent'   => $percent,
+			),
+			'topics'             => array(
+				'total'     => $total_topics,
+				'indexed'   => $indexed_topics,
+				'unindexed' => $unindexed_topics,
+				'percent'   => $topics_percent,
+			),
+			'combined'           => array(
+				'total'     => $total_posts + $total_topics,
+				'indexed'   => $indexed + $indexed_topics,
+				'unindexed' => $unindexed + $unindexed_topics,
+				'percent'   => ($total_posts + $total_topics) > 0 ? min(100, (int) round((($indexed + $indexed_topics) / ($total_posts + $total_topics)) * 100)) : 0,
+			),
+			'post_types'         => $post_types,
+			'scope'              => $scope,
+			'embeddings_enabled' => $this->embeddings_service->is_enabled(),
+			'rate_limits'        => $usage_stats,
 		);
 	}
 
@@ -545,6 +770,24 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
+		/**
+		 * Skip semantic re-indexing for this save.
+		 *
+		 * Bulk link insertion returns true here: adding an <a> tag does not
+		 * change a post's text, and recomputing relationships on every edit
+		 * of a bulk run would rescan every stored vector each time.
+		 *
+		 * @param bool $skip    Default false.
+		 * @param int  $post_id Post being saved.
+		 */
+		if (apply_filters('aips_content_indexer_skip_post_save', false, $post_id)) {
+			return;
+		}
+
+		if (!$this->embeddings_service->is_enabled()) {
+			return;
+		}
+
 		if (!$this->config->get_option('aips_auto_index_on_publish', true)) {
 			return;
 		}
@@ -554,13 +797,143 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
+		// Enforce scope check on real-time continuous indexing
+		if (!$this->is_post_in_scope($post)) {
+			return;
+		}
+
 		if ('publish' === $post->post_status) {
-			$this->index_post($post_id, true);
+			$timing = (string) $this->config->get_option('aips_indexer_publish_execution_timing', 'queued');
+			if ('immediate' === $timing) {
+				$this->index_post($post_id, true);
+			} else {
+				$this->enqueue_post_for_indexing($post_id);
+			}
 		} else {
 			// If post moved to draft/trash, delete its relationships and embedding
 			$this->embeddings_repo->delete_by_post_id($post_id);
 			$this->relationships_repo->delete_for_object('post', $post_id);
 		}
+	}
+
+	/**
+	 * Buffer a published post ID into the debounced background indexing queue.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 * @return void
+	 */
+	public function enqueue_post_for_indexing(int $post_id): void {
+		$post_id = absint($post_id);
+		if ($post_id <= 0) {
+			return;
+		}
+
+		$queue = (array) get_option('aips_pending_index_queue', array());
+		if (!in_array($post_id, $queue, true)) {
+			$queue[] = $post_id;
+			update_option('aips_pending_index_queue', array_values(array_unique($queue)), false);
+		}
+
+		// Schedule debounced single event worker if not already queued
+		if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+			$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
+			wp_schedule_single_event(time() + $debounce, 'aips_process_pending_indexer_queue');
+		}
+	}
+
+	/**
+	 * Process pending post IDs in the background indexing queue in slices.
+	 *
+	 * Respects quota auto-pause, cooldown status, post types, scope, and rate limits.
+	 *
+	 * @return array Processed summary results.
+	 */
+	public function process_pending_indexer_queue(): array {
+		if (!$this->embeddings_service->is_enabled()) {
+			return array('status' => 'disabled', 'processed' => 0);
+		}
+
+		$rate_limiter = $this->embeddings_service->get_rate_limiter();
+		$cooldown     = $rate_limiter->get_cooldown_status();
+
+		// If currently in cooldown, reschedule worker for cooldown expiry and yield
+		if ($cooldown['is_paused']) {
+			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+				wp_schedule_single_event($cooldown['paused_until'] + 5, 'aips_process_pending_indexer_queue');
+			}
+			return array('status' => 'cooldown_active', 'paused_until' => $cooldown['paused_until']);
+		}
+
+		// If approaching hard quota (>=90%), pause queue until daily reset
+		$quota_pause = (bool) $this->config->get_option('aips_indexer_quota_pause_enabled', true);
+		if ($quota_pause && $rate_limiter->is_approaching_quota(0.90)) {
+			$stats = $rate_limiter->get_usage_stats();
+			$delay = max(3600, (int) $stats['daily_reset_in'] + 60);
+			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+				wp_schedule_single_event(time() + $delay, 'aips_process_pending_indexer_queue');
+			}
+			$this->logger->info('Embeddings queue auto-paused: approaching API quota limit.');
+			return array('status' => 'quota_paused', 'reschedule_in' => $delay);
+		}
+
+		$queue = (array) get_option('aips_pending_index_queue', array());
+		if (empty($queue)) {
+			return array('status' => 'empty', 'processed' => 0);
+		}
+
+		$batch_size = max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
+		$slice      = array_slice($queue, 0, $batch_size);
+		$remaining  = array_slice($queue, $batch_size);
+
+		$success = 0;
+		$failed  = 0;
+
+		foreach ($slice as $post_id) {
+			$post = get_post($post_id);
+			if (!$post || 'publish' !== $post->post_status || !$this->is_post_in_scope($post)) {
+				continue;
+			}
+
+			$result = $this->index_post($post_id, true);
+
+			if (is_wp_error($result)) {
+				$failed++;
+				$rate_limiter->record_failure($result);
+
+				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+					// Break slice early on rate limit / exhaustion
+					break;
+				}
+			} else {
+				$rate_limiter->record_success();
+				$success++;
+			}
+		}
+
+		// Update pending queue
+		update_option('aips_pending_index_queue', array_values($remaining), false);
+
+		// If more items remain and not in cooldown, schedule next batch
+		$cooldown = $rate_limiter->get_cooldown_status();
+		if (!empty($remaining)) {
+			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + 5);
+			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+				wp_schedule_single_event($next_time, 'aips_process_pending_indexer_queue');
+			}
+		}
+
+		if ((bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true)) {
+			$this->logger->info(
+				sprintf('Processed background indexing queue slice: %d succeeded, %d failed, %d remaining.', $success, $failed, count($remaining))
+			);
+		}
+
+		return array(
+			'status'    => 'processed',
+			'success'   => $success,
+			'failed'    => $failed,
+			'remaining' => count($remaining),
+		);
 	}
 
 	/**

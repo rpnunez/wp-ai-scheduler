@@ -32,6 +32,13 @@
 **PR:** To be created
 **Learning:** The internal links service looped over suggestion results and called `get_post()` individually to fetch titles for anchor text, resulting in N+1 queries.
 **Action:** When looping over post IDs to call `get_post()`, use `_prime_post_caches(array_unique($post_ids), false, true)` before the loop (with a `function_exists` check) to bulk load the posts.
+
+## 2025-05-18 - [N+1 Query Reduction]
+**Area:** ai-post-scheduler/includes/class-aips-generated-posts-controller.php
+**Status:** opened PR
+**PR:** ⚡ Bolt: Prevent N+1 queries in Generated Posts controller
+**Learning:** Using `_prime_post_caches` prevents N+1 queries in loops calling `get_post()`.
+**Action:** Pre-fetch post IDs into arrays and use `_prime_post_caches()` before loops.
 ## 2026-08-28 - [Batch Template Schedules Lookup]
 **Area:** ai-post-scheduler/includes/class-aips-generated-posts-controller.php
 **Status:** opened PR

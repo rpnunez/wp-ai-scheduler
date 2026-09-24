@@ -26,39 +26,32 @@ class AIPS_Admin_Menu_Helper {
 	 */
 	private static $page_slugs = array(
 		'dashboard'            => 'ai-post-scheduler',
-		'templates'            => 'aips-templates',
-		'authors'              => 'aips-authors',
-		'post_slices'          => 'aips-post-slices',
-		'schedule'             => 'aips-schedule',
-		'campaigns'            => 'aips-campaigns',
+		'automations'          => 'aips-automations',
+		'studio'               => 'aips-studio',
+		'research'             => 'aips-research',
+		'generated_posts'      => 'aips-generated-posts',
+		'content'              => 'aips-generated-posts',
+		'history'              => 'aips-history',
+		'settings'             => 'aips-settings',
+		'diagnostics'          => 'aips-diagnostics',
 		'campaign_wizard'      => 'aips-campaign-wizard',
 		'campaign_detail'      => 'aips-campaign-detail',
-		'generated_posts'      => 'aips-generated-posts',
 		'author_topics'        => 'aips-author-topics',
-		'system_status'        => 'aips-status',
-		'operations_insights'   => 'aips-operations-insights',
-		'telemetry'            => 'aips-telemetry',
-		'settings'             => 'aips-settings',
 		'onboarding'           => 'aips-onboarding',
-		'history'              => 'aips-history',
 		'dev_tools'            => 'aips-dev-tools',
-		'diagnostics'          => 'aips-diagnostics',
-		'automations'          => 'aips-automations',
-		'research'             => 'aips-research',
 	);
 
 	/**
-	 * Map of logical diagnostics page names to Diagnostics tabs.
+	 * Map of logical studio page names to Studio sections.
 	 *
 	 * @var array<string, string>
 	 */
-	private static $diagnostics_tabs = array(
-		'system_status'      => 'status',
-		// 'seeder' links are redirected to Dev Tools (Seed Configuration moved)
-		'seeder'             => 'dev-tools',
-		'operations_insights' => 'operations-insights',
-		'telemetry'          => 'telemetry',
-		'dev_tools'          => 'dev-tools',
+	private static $studio_tabs = array(
+		'templates'          => 'templates',
+		'voices'             => 'voices',
+		'structures'         => 'structures',
+		'article_structures' => 'structures',
+		'post_slices'        => 'post-slices',
 	);
 
 	/**
@@ -67,14 +60,38 @@ class AIPS_Admin_Menu_Helper {
 	 * @var array<string, string>
 	 */
 	private static $automations_tabs = array(
-		'schedule'       => 'schedules',
-		'campaigns'      => 'campaigns',
-		'templates'      => 'templates',
-		'authors'        => 'authors',
-		'author_topics'  => 'author-topics',
-		'sources'        => 'sources',
-		'internal_links' => 'internal-links',
-		'taxonomy'       => 'taxonomy',
+		'schedule'        => 'schedules',
+		'schedules'       => 'schedules',
+		'campaigns'       => 'campaigns',
+		'authors'         => 'authors',
+		'author_topics'   => 'author-topics',
+		'sources'         => 'sources',
+		'monetization'    => 'monetization',
+		'affiliate_links' => 'monetization',
+		'internal_links'  => 'internal-links',
+		'taxonomy'        => 'taxonomy',
+	);
+
+	/**
+	 * Map of logical diagnostics page names to Diagnostics tabs.
+	 *
+	 * @var array<string, string>
+	 */
+	private static $diagnostics_tabs = array(
+		'system_status'       => 'status',
+		'seeder'              => 'dev-tools',
+		'operations_insights' => 'operations-insights',
+		'telemetry'           => 'telemetry',
+		'dev_tools'           => 'dev-tools',
+	);
+
+	/**
+	 * Map of logical content page names to Content tabs.
+	 *
+	 * @var array<string, string>
+	 */
+	private static $content_tabs = array(
+		'content_indexer' => 'content-indexer',
 	);
 
 	/**
@@ -85,9 +102,9 @@ class AIPS_Admin_Menu_Helper {
 	 * @return string The escaped admin URL.
 	 */
 	public static function get_page_url($page, $args = array()) {
-		if (isset(self::$diagnostics_tabs[$page])) {
-			$args = array_merge(array('tab' => self::$diagnostics_tabs[$page]), $args);
-			$url  = admin_url('admin.php?page=aips-diagnostics');
+		if (isset(self::$studio_tabs[$page])) {
+			$args = array_merge(array('tab' => self::$studio_tabs[$page]), $args);
+			$url  = admin_url('admin.php?page=aips-studio');
 
 			if (!empty($args)) {
 				$url = add_query_arg($args, $url);
@@ -99,6 +116,28 @@ class AIPS_Admin_Menu_Helper {
 		if (isset(self::$automations_tabs[$page])) {
 			$args = array_merge(array('tab' => self::$automations_tabs[$page]), $args);
 			$url  = admin_url('admin.php?page=aips-automations');
+
+			if (!empty($args)) {
+				$url = add_query_arg($args, $url);
+			}
+
+			return $url;
+		}
+
+		if (isset(self::$diagnostics_tabs[$page])) {
+			$args = array_merge(array('tab' => self::$diagnostics_tabs[$page]), $args);
+			$url  = admin_url('admin.php?page=aips-diagnostics');
+
+			if (!empty($args)) {
+				$url = add_query_arg($args, $url);
+			}
+
+			return $url;
+		}
+
+		if (isset(self::$content_tabs[$page])) {
+			$args = array_merge(array('tab' => self::$content_tabs[$page]), $args);
+			$url  = admin_url('admin.php?page=aips-generated-posts');
 
 			if (!empty($args)) {
 				$url = add_query_arg($args, $url);
@@ -132,4 +171,38 @@ class AIPS_Admin_Menu_Helper {
 	public static function get_slug($page) {
 		return isset(self::$page_slugs[$page]) ? self::$page_slugs[$page] : $page;
 	}
+
+	/**
+	 * Safely execute a page or tab render callback with centralized exception catching and error logging.
+	 *
+	 * Prevents uncaught fatal exceptions or raw error messages from leaking into the admin UI,
+	 * logging full trace details to AIPS_Logger and displaying a graceful user-facing fallback container.
+	 *
+	 * @param callable $callback Render callback.
+	 * @param string   $title    User-facing module/page title.
+	 * @param bool     $is_tab   True if rendering an embedded tab canvas, false if rendering a top-level page wrap.
+	 * @return void
+	 */
+	public static function safe_render(callable $callback, string $title = 'Page', bool $is_tab = false) {
+		try {
+			call_user_func($callback);
+		} catch (\Throwable $throwable) {
+			if (class_exists('AIPS_Logger')) {
+				AIPS_Logger::instance()->error(sprintf('%s render exception: %s', $title, $throwable->getMessage()), array(
+					'file'  => $throwable->getFile(),
+					'line'  => $throwable->getLine(),
+					'trace' => $throwable->getTraceAsString(),
+				));
+			} else {
+				error_log(sprintf('[AIPS] %s render exception: %s in %s:%d', $title, $throwable->getMessage(), $throwable->getFile(), $throwable->getLine()));
+			}
+
+			if ($is_tab) {
+				include AIPS_PLUGIN_DIR . 'templates/admin/errors/tab-error.php';
+			} else {
+				include AIPS_PLUGIN_DIR . 'templates/admin/errors/page-error.php';
+			}
+		}
+	}
 }
+
