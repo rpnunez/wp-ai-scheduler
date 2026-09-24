@@ -58,7 +58,7 @@ class AIPS_Content_Auditor_Repository {
 		$gap_count      = isset($report['modules']['gaps']['gap_count']) ? (int) $report['modules']['gaps']['gap_count'] : 0;
 
 		$report_json = wp_json_encode($report);
-		$now_ts      = AIPS_DateTime::now_ts();
+		$now_ts      = AIPS_DateTime::now()->timestamp();
 
 		$data = array(
 			'niche'                 => $niche,

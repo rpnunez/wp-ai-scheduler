@@ -10,7 +10,6 @@ class Test_N_Plus_One extends WP_UnitTestCase {
     public function test_get_all_pending_stats() {
         global $wpdb;
         $table_templates = $wpdb->prefix . 'aips_templates';
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
 
         // Create 2 templates
         $wpdb->insert($table_templates, array('name' => 'T1', 'prompt_template' => 'P1', 'is_active' => 1));
@@ -18,22 +17,30 @@ class Test_N_Plus_One extends WP_UnitTestCase {
         $wpdb->insert($table_templates, array('name' => 'T2', 'prompt_template' => 'P2', 'is_active' => 1));
         $t2 = $wpdb->insert_id;
 
-        // Create schedules
+        // Create schedules through the repository so its cached
+        // get_active_schedules() result is invalidated. next_run is a UTC
+        // timestamp column.
+        $schedule_repository = new AIPS_Schedule_Repository();
+        $now = AIPS_DateTime::now()->timestamp();
+
         // T1: 1 today
-        $wpdb->insert($table_schedule, array(
+        $schedule_repository->create(array(
             'template_id' => $t1,
             'frequency' => 'daily',
-            'next_run' => current_time('mysql'),
+            'next_run' => $now,
             'is_active' => 1
         ));
 
         // T2: 1 today, 1 week
-        $wpdb->insert($table_schedule, array(
+        $schedule_repository->create(array(
             'template_id' => $t2,
             'frequency' => 'daily',
-            'next_run' => current_time('mysql'),
+            'next_run' => $now,
             'is_active' => 1
         ));
+
+        // Stats are cached in a transient; make sure this run computes them.
+        delete_transient('aips_pending_schedule_stats');
 
         $templates = new AIPS_Templates();
         $stats = $templates->get_all_pending_stats();

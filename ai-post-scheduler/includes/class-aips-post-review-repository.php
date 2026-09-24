@@ -131,6 +131,7 @@ class AIPS_Post_Review_Repository {
 				h.*,
 				t.name as template_name,
 				p.post_title,
+				p.post_status,
 				p.post_modified,
 				p.post_author as wp_post_author
 			FROM {$this->table_name} h

@@ -30,15 +30,10 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		$this->container->clear();
-
-		// Restore the plugin's bindings: the container is a process-wide
-		// singleton, so leaving it empty breaks every later test that resolves
-		// a service (e.g. the save_post indexer hook).
-		$plugin = AI_Post_Scheduler::get_instance();
-		$method = ( new ReflectionClass( $plugin ) )->getMethod( 'register_container_bindings' );
-		$method->setAccessible( true );
-		$method->invoke( $plugin );
-
+		// Restore the real plugin bindings: the container is a process-wide
+		// singleton, so leaving it empty (from clear() above) would break every
+		// later test that resolves a service (e.g. the save_post indexer hook).
+		AI_Post_Scheduler::get_instance()->register_container_bindings();
 		$_POST = array();
 		$_REQUEST = array();
 

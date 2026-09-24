@@ -106,8 +106,13 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 		$this->assertTrue( $meta['auto_approved'] );
 		$this->assertEquals( 80, $meta['auto_approval_score'] );
 
-		$meta = json_decode( $result[1]['metadata'], true );
-		$this->assertTrue( $meta['auto_rejected'] );
+		// evaluate_author_topic_auto_approval() records a single "auto_approved"
+		// flag (true/false) rather than a separate auto_rejected key; the
+		// decision itself (checked above) already distinguishes rejected from
+		// pending.
+		$rejected_meta = json_decode( $result[1]['metadata'], true );
+		$this->assertFalse( $rejected_meta['auto_approved'] );
+		$this->assertSame( 'score', $rejected_meta['auto_approval_rule'] );
 	}
 
 	/**
@@ -148,9 +153,13 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 
 		$meta = json_decode( $result[0]['metadata'], true );
 		$this->assertTrue( $meta['auto_approved'] );
-		$this->assertEquals( 0.25, $meta['auto_approval_similarity'] );
+		$this->assertEquals( 0.25, $meta['auto_approval_duplicate_sim'] );
 
-		$meta = json_decode( $result[1]['metadata'], true );
-		$this->assertTrue( $meta['auto_approval_evaluated'] );
+		// Confirms the duplicate topic was actually evaluated (its recorded
+		// duplicate similarity matches the metadata it was given) rather than
+		// skipped, and that it did not qualify.
+		$pending_meta = json_decode( $result[1]['metadata'], true );
+		$this->assertFalse( $pending_meta['auto_approved'] );
+		$this->assertSame( 0.92, $pending_meta['auto_approval_duplicate_sim'] );
 	}
 }
