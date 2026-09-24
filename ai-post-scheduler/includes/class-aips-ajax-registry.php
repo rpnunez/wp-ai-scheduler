@@ -325,6 +325,13 @@ class AIPS_Ajax_Registry {
 		'aips_redirects_delete'       => 'AIPS_Redirects_Controller',
 		'aips_redirects_set_provider' => 'AIPS_Redirects_Controller',
 
+		// Consolidation (Cannibalization Shield)
+		'aips_consolidation_preview'  => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_merge'    => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_run'      => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_undo'     => 'AIPS_Consolidation_Controller',
+		'aips_consolidation_history'  => 'AIPS_Consolidation_Controller',
+
 		// Keyword Link Rules Controller
 		'aips_link_rules_list'   => 'AIPS_Link_Rules_Controller',
 		'aips_link_rules_save'   => 'AIPS_Link_Rules_Controller',

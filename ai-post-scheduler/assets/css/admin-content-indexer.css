@@ -1845,3 +1845,73 @@
 }
 
 
+
+/* Consolidation dialog and Recent Consolidations (since 3.7.7) */
+#aips-consolidations-panel {
+	margin-top: 20px;
+}
+
+.aips-consolidate-modal-content {
+	max-width: 760px;
+}
+
+.aips-consolidate-step {
+	margin: 0 0 18px;
+	padding: 0;
+	border: 0;
+}
+
+.aips-consolidate-step legend {
+	margin-bottom: 6px;
+}
+
+.aips-consolidate-choices,
+.aips-consolidate-modes {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.aips-consolidate-choice {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 10px 12px;
+	border: 1px solid var(--aips-border, #dcdcde);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.aips-consolidate-choice span {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.aips-consolidate-content {
+	width: 100%;
+	font-family: monospace;
+	font-size: 12px;
+}
+
+.aips-consolidate-preview {
+	width: 100%;
+	height: 320px;
+	border: 1px solid var(--aips-border, #dcdcde);
+	border-radius: 6px;
+	background: #fff;
+}
+
+.aips-consolidate-summary {
+	padding: 10px 12px;
+	border-left: 3px solid var(--aips-primary, #2271b1);
+	background: var(--aips-surface-muted, #f6f7f7);
+}
+
+.aips-consolidate-summary ul {
+	margin: 6px 0 0 18px;
+	list-style: disc;
+}

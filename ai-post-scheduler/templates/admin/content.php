@@ -237,6 +237,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
 						extract($indexer_controller->get_cannibalization_view_data());
+						$consolidation_controller = new AIPS_Consolidation_Controller();
+						extract($consolidation_controller->get_view_data());
 						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence-cannibalization.php';
 					}, __('Cannibalization Shield', 'ai-post-scheduler'), true);
 					?>

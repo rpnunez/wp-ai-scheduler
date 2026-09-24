@@ -173,6 +173,7 @@ class AIPS_Config {
 				'manual_generation_completed' => 'db',
 				'post_ready_for_review' => 'db',
 				'post_rejected' => 'db',
+				'post_consolidated' => 'both',
 				'partial_generation_completed' => 'db',
 				'post_generated' => 'both',
             ),

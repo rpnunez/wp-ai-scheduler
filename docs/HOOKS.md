@@ -506,6 +506,21 @@ Fires after AIPS creates a redirect.
 *   **Arguments:**
     *   `object $redirect`: The stored `aips_redirects` row (`source_path`, `target_url`, `status_code`, `provider`, `provider_ref`, `origin`, ...).
 
+#### `aips_posts_consolidated`
+Fires after two overlapping posts were consolidated (Cannibalization Shield → Consolidate).
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `array $record`: `id`, `keep_id`, `retire_id`, `retire_url`, `previous_status`, `redirect_id`, `content_mode` (`none`, `revision` or `rewrite`), `revision_id`, `fixes`, `links_repointed`, `link_failures`, `user_id`, `time`.
+
+#### `aips_posts_consolidation_undone`
+Fires after a consolidation was undone.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `array $record`: The consolidation record (see `aips_posts_consolidated`).
+    *   `string[] $warnings`: Steps that were skipped because a post was edited in the meantime.
+
 #### `aips_inbound_anchor_phrases`
 Filters the phrases used to place inbound links to a post (most specific first). Defaults to the post's top Google Search Console queries (when connected), the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
 

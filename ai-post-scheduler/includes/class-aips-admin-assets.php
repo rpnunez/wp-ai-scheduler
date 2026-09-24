@@ -186,6 +186,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_link_report_assets();
 			$this->enqueue_link_rules_assets();
 			$this->enqueue_redirects_assets();
+			$this->enqueue_consolidation_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -237,6 +238,7 @@ class AIPS_Admin_Assets {
 			|| $this->is_automations_tab($page, 'content-indexer')
 		) {
 			$this->enqueue_content_indexer_assets();
+			$this->enqueue_consolidation_assets();
 		}
 
         if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
@@ -2150,6 +2152,56 @@ class AIPS_Admin_Assets {
                 'confirmMoveTitle'    => __('Move existing redirects', 'ai-post-scheduler'),
                 'confirmMove'         => __('Move every AI Post Scheduler redirect to the selected provider? Each one is removed from the plugin that serves it now and re-created in the new one.', 'ai-post-scheduler'),
                 'moveRedirects'       => __('Move redirects', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
+     * Enqueue assets for consolidating overlapping posts (Cannibalization Shield).
+     *
+     * @return void
+     */
+    private function enqueue_consolidation_assets() {
+        wp_enqueue_script(
+            'aips-consolidation-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-consolidation.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-consolidation-script',
+            'aipsConsolidationL10n',
+            array(
+                'nonce'            => wp_create_nonce('aips_ajax_nonce'),
+                'error'            => __('The consolidation request failed. Please try again.', 'ai-post-scheduler'),
+                /* translators: 1: publish date, 2: word count */
+                'postMeta'         => __('Published %1$s · %2$d words', 'ai-post-scheduler'),
+                'mergeDiscarded'   => __('The merged draft was discarded because it was written for the other post. Generate it again.', 'ai-post-scheduler'),
+                'summaryHeading'   => __('Consolidating will:', 'ai-post-scheduler'),
+                /* translators: %s: retired post title */
+                'summaryDraft'     => __('Move "%s" to draft.', 'ai-post-scheduler'),
+                /* translators: 1: old URL, 2: kept post title, 3: redirect provider */
+                'summaryRedirect'  => __('Redirect %1$s to "%2$s" (301, served by %3$s).', 'ai-post-scheduler'),
+                /* translators: %s: kept post title */
+                'summaryLinks'     => __('Re-point internal links to the retired post so they link to "%s".', 'ai-post-scheduler'),
+                'summaryNotify'    => __('Send a "Posts Consolidated" notification (set its channels under Settings → Notifications).', 'ai-post-scheduler'),
+                'summaryRevision'  => __('Save the merged draft as a revision of the kept post. The live post does not change until you restore that revision.', 'ai-post-scheduler'),
+                'summaryRewrite'   => __('Replace the kept post\'s content with the merged draft now.', 'ai-post-scheduler'),
+                'confirmRunTitle'  => __('Consolidate posts', 'ai-post-scheduler'),
+                'confirmRun'       => __('Consolidate these posts? You can undo this from Recent Consolidations.', 'ai-post-scheduler'),
+                'consolidate'      => __('Consolidate', 'ai-post-scheduler'),
+                'confirmUndoTitle' => __('Undo consolidation', 'ai-post-scheduler'),
+                'confirmUndo'      => __('Republish the retired post, remove its redirect, restore the re-pointed links and undo any merged content?', 'ai-post-scheduler'),
+                'undo'             => __('Undo', 'ai-post-scheduler'),
+                'cancel'           => __('Cancel', 'ai-post-scheduler'),
+                'noConsolidations' => __('No consolidations yet. Use Consolidate on a post pair in the audit above.', 'ai-post-scheduler'),
+                'contentModes'     => array(
+                    'none'     => __('Not merged', 'ai-post-scheduler'),
+                    'revision' => __('Saved as revision', 'ai-post-scheduler'),
+                    'rewrite'  => __('Rewritten', 'ai-post-scheduler'),
+                ),
             )
         );
     }

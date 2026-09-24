@@ -65,7 +65,7 @@ Tier 1 was delivered as slices 0–14 (section 3).
 | T3-4 | Abilities API | `wp_register_ability` guarded by `function_exists`: find-related, suggest-links, link-report summary, orphans and apply-suggestion (manage_options). |
 | T3-5 | MCP bridge tools | The same operations as MCP bridge tools, plus schema updates in `mcp-bridge-schema.json` and `docs/MCP_BRIDGE.md`. |
 | T3-6 | Redirects module | The `aips_redirects` table records every AIPS redirect and which provider serves it: Redirection, Yoast SEO Premium, Rank Math, or built in. There's a built-in `template_redirect` handler, a "move all to provider" action, and the Content → Redirects tab. |
-| T3-7 | Consolidation flow | From a cannibalization pair: preview, then (optionally) an AI draft merged into the primary as a *draft revision*, then redirect, then re-point inbound links (reusing the broken-link repoint), then set the secondary to draft. Recorded so it can be undone. |
+| T3-7 | Consolidation flow | From a cannibalization pair: preview, then (optionally) an AI draft merged into the primary, saved as a *revision* or written into it, then redirect, then re-point inbound links (reusing the broken-link repoint), then set the secondary to draft and notify. Recorded so it can be undone. **Done.** |
 | T3-8 | Cross-site linking | Deferred until D12 is decided. |
 
 ---
@@ -120,7 +120,9 @@ This is the original slice plan, kept for traceability. Where the implementation
 | — | Click data in suggestion ranking | Deferred. |
 | D12 | Cross-site linking | **On hold** (2026-09-24). |
 | D15 | Abilities / MCP tools (item 14) | **On hold** (2026-09-24). |
-| D16 | *Open:* Silo "Fix silo" direction | Options: members → pillar only; both directions in the text; or members → pillar in the text plus a render-time "In this guide" list on the pillar. See the tracker. |
+| D16 | Silo "Fix silo" direction | **Decided:** members → pillar links in the text, and a render-time "In this guide" list of members on the pillar, which is never edited. |
+| D17 | Consolidation: retired post | Moved to draft, plus a "Posts Consolidated" notification with configurable channels. |
+| D18 | Consolidation: merged content | Optional AI-merged draft, saved as a revision of the kept post or written into it. |
 | D13 | Redirects | Use Redirection, Yoast SEO Premium or Rank Math when one is installed, and fall back to AIPS's own table otherwise. AIPS records every redirect it creates, so redirects can be moved when you switch providers. In effect this is a lightweight redirect plugin. |
 | D14 | Generation-time default | `review` (suggestions only). It can be switched to `apply` in Settings. |
 

@@ -11,6 +11,15 @@
   - Tested against Redirection 5.10.1 and Rank Math 1.0.279. The Yoast SEO Premium adapter uses Yoast's documented redirect manager API but hasn't been tested.
   - New classes: `AIPS_Redirects_Service`, `AIPS_Redirects_Repository`, `AIPS_Redirects_Controller`, and the provider interface `AIPS_Redirect_Provider`.
   - New hooks: `aips_redirect_providers`, `aips_redirection_group_id` and `aips_redirect_created`.
+- **Consolidate overlapping posts:** post-vs-post pairs in **Cannibalization Shield** now have a **Consolidate** button.
+  - Choose which post to keep. The other one is moved to draft, its old URL gets a 301 redirect to the kept post (through the redirect manager, origin "consolidation"), and every indexed internal link to it is re-pointed to the kept post. Links in the kept post itself are removed instead, keeping their text.
+  - Optional **AI-merged draft**: AI writes one article from both posts, based on the kept post and adding what only the other covers. You can review and edit the HTML, preview it in a sandboxed frame, then either **save it as a revision** of the kept post (the live post is unchanged until you restore it) or **rewrite** the kept post with it now.
+  - A new **Posts Consolidated** notification type (DB + email by default) can be set under **Settings → Notifications** like the others.
+  - The new **Recent Consolidations** card lists each consolidation with **Undo**. Undo republishes the retired post, removes the redirect, restores the re-pointed links, and deletes the saved revision or restores the pre-merge content. It skips, and reports, any step whose post was edited since.
+  - New classes: `AIPS_Consolidation_Service`, `AIPS_Consolidation_Controller` (AJAX `aips_consolidation_preview/merge/run/undo/history`) and `AIPS_Prompt_Builder_Consolidation`. New hooks: `aips_posts_consolidated` and `aips_posts_consolidation_undone`.
+
+### Fixed
+- **Cannibalization Shield:** the audit results table called `AIPS.Templates.has()`, which did not exist, so rendering results threw a JavaScript error. `AIPS.Templates.has()` has been added.
 
 ## [3.7.6] - 2026-09-24
 
