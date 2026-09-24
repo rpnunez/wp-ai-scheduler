@@ -26,7 +26,12 @@ class AIPS_Integration_ACF implements AIPS_Integration_Interface {
 	}
 
 	public function is_available() {
-		return function_exists('acf_get_field_groups') && function_exists('acf_get_fields') && function_exists('update_field');
+		$plugin_active = function_exists('acf_get_field_groups') && function_exists('acf_get_fields') && function_exists('update_field');
+		if (!$plugin_active) {
+			return false;
+		}
+
+		return AIPS_Config::get_instance()->is_acf_integration_enabled();
 	}
 
 	public function get_field_groups($post_type = null) {

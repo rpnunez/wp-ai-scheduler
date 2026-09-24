@@ -333,10 +333,11 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		$base_run = !empty($author->topic_generation_next_run) ? (int) $author->topic_generation_next_run : AIPS_DateTime::now()->timestamp();
+		$base_run  = !empty($author->topic_generation_next_run) ? (int) $author->topic_generation_next_run : AIPS_DateTime::now()->timestamp();
+		$frequency = !empty($author->topic_generation_frequency) ? $author->topic_generation_frequency : (string) AIPS_Config::get_instance()->get_option('aips_author_topic_generation_frequency', 'weekly');
 
 		// Advance from the scheduled slot to preserve phase and time-of-day.
-		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency, $base_run);
+		$next_run = $this->interval_calculator->calculate_next_run($frequency, $base_run);
 		
 		$this->authors_repository->update_topic_generation_schedule($author->id, $next_run);
 		

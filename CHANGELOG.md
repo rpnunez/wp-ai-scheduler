@@ -1,3 +1,11 @@
+## [Unreleased]
+
+## [3.7.9] - 2026-09-24
+
+### Added
+- **Settings Integrations Tab & ACF Integration Gate**: Added a dedicated "Integrations" tab to the Settings page. Gated Advanced Custom Fields (ACF) integration behind an explicit toggle (`aips_integration_acf_enabled`), disabled by default. Template editor only detects and displays ACF field groups when ACF is active on the site and enabled in Settings.
+- **Content Generation Global Settings**: Added dedicated "Content Generation" tab in Settings to configure global defaults for enabled post types, default post type, post status, category, author, featured image generation, template post quantities (manual/scheduled), author topic quantities & frequencies, and author post quantities & frequencies. Added Post Type support to Authors, along with dynamic inheritance across Templates, Schedules, and Authors.
+
 ## [3.7.8] - 2026-09-24
 
 ### Added
@@ -141,47 +149,6 @@
 - **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma) and WP AI Client connector fallback.
 - **Vector Dimension Mismatch Guard**: Detection of dimension variance between stored vectors and active environments with one-click guided re-index.
 - **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
-- **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
-
-## [Unreleased]
-
-- **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
-
-- **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
-- **Content Intelligence Suite & Dedicated Pages**: Restructured the tab-heavy Content Indexer into the modern **Content Intelligence** suite using a Hybrid 2-Level architecture:
-  - **Primary Hub (`aips-content-intelligence`)**: Interactive Semantic Graph Visualizer, multi-dimensional vector health metrics, and backfill scan coverage controls.
-  - **Dedicated Topic Clusters & Gaps Page (`aips-post-clusters`)**: Standalone workflow page for thematic topic clusters, core Pillar Post designation, community cohesion meters, and AI gap topic generation with 1-click author assignment.
-  - **Dedicated Cannibalization & Duplicate Audit Page (`aips-cannibalization`)**: Standalone risk audit page with grouped risk tiers, pairwise similarity comparisons, and direct editorial action links.
-  - **Seamless Navigation & Backward Compatibility**: Persistent suite navigation tabs across all sub-pages and automatic redirection from legacy `?page=aips-content-indexer` URLs.
-- **Vector Embeddings Scope Filtering**: Added configurable indexing scope filters (`aips_only`, `date_range`, `all`) defaulting conservatively to AIPS-generated posts (`_aips_generated_post = '1'`) to prevent runaway token usage on sites with large legacy archives.
-- **Embeddings Rate Limiting & Quota Protection**: Added persistent sliding-window usage tracking across rolling 24h, 7d, and 30d windows with automated backfill scan halting and quota alert notifications upon breach. Persisted in `wp_options` (`autoload = false`) to guarantee resilience across AIPS Cache flushes and object cache invalidations.
-- **Settings > AI Vector Configuration Consolidation**: Consolidated all Vector Embeddings controls (master toggle, scope filter, rate limits, model, environment ID, dimensions) under the dedicated **Settings > AI** section, with live usage gauges and deep links in the Content Indexer hub.
-- **Embeddings System Enable/Disable Toggle**: Added global toggle (`aips_embeddings_enabled`) allowing administrators to fully enable or disable vector embeddings generation, continuous post indexing on publish/update, background topic embeddings cron jobs, and semantic duplicate detection.
-- **Author Topic Auto-Approval Policies**: Added configurable auto-approval policies per author with support for "Auto-Approve All", AI Quality Score thresholds, and Semantic Similarity Deduplication Guards, along with configurable fallback actions (`pending` vs `rejected`), full audit logging to topic logs, and dynamic UI controls in the Author management modal.
-- **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
-- **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.
-
-### Changed
-- **Prompt Hardening**: Source and article content are now delimited as reference data with explicit prompt-injection boundaries, metadata generation preserves voice excerpt instructions, and structured metadata schemas reject unexpected properties.
-- **Title Regeneration**: Template and topic regeneration now use the same context-aware path and include saved post content when conversational replay is unavailable.
-- **Stress Test: Integration (meta field) cases**: The Diagnostics > Stress Test page gained four cases that exercise the Integration generation engine end to end — a single native custom field, a batched multi-field run (the N-fields-to-one-call path), native custom fields written onto a generated **custom post type** post, and (only when ACF is installed and active) an ACF field-group case. Each drives the real `AIPS_Integration_Manager` against the page's isolated AI service and reads the written values back to verify them.
-- **Stress Test: Export Results**: An "Export Results" button downloads the full run — provider/model/version snapshot, per-case status, timings, compared values, and the complete AI request/response log — as a single JSON file for sharing and analysis.
-- **Meta-field template setup script**: `scripts/create-meta-field-templates.php` (WP-CLI `wp eval-file`) creates two ready-to-run Templates wired to native WordPress custom fields, for exercising integration generation without ACF.
-
-### Changed
-- **Cache Read Refactor**: Refactored `AIPS_Cacheable_Repository::cache_read` God method into smaller components to enforce Separation of Concerns.
-
-
-### Fixed
-- **Content Auditor Tab**: Fixed fatal error `Class "AIPS_Author_Repository" not found` in `templates/admin/tab-content-auditor.php` by correcting class name to `AIPS_Authors_Repository`.
-- **Short-form AI Responses**: Reserve at least 1200 output tokens for title and excerpt requests so reasoning-capable connector models do not cut off visible responses after spending the smaller configured budget on internal reasoning. The global Max Tokens Limit remains authoritative.
-- **WordPress AI Client Detection**: Treat locally registered connectors with configured credentials as available without requiring a successful remote model-catalog request during admin page loads. Live generation now surfaces the AI Client's connector/model error instead of showing a false missing-provider notice.
-- **Stress Test Reliability**: Give AIPS-scoped WordPress AI Client requests a 90-second timeout, retry one transient provider failure during interactive stress tests, and provide sufficient structured-output budget for reasoning-capable models.
-- **Integration Field Mappings Hardening**: The Integrations save endpoint now validates each submitted field key against its own integration's adapter (instead of assuming every row shares the first row's adapter) and rejects rows referencing an unavailable integration. Native WordPress Custom Field generation now refuses to overwrite WordPress-core-internal or AIPS-owned meta keys (`_wp_*`, `_edit_*`, `_oembed_*`, `_menu_item_*`, `_thumbnail_id`, `_aips*`) even when "Show Advanced Custom Meta Fields" is enabled, and hides those reserved keys from discovery. Single-line integration fields are sanitized as single-line text, and a non-text AI value for a text field is now rejected instead of writing the literal string `Array`. Native-meta discovery also surfaces meta registered site-wide (no post-type subtype), not just per-post-type registrations.
-
-### Security
-- **Dev Tools Gating**: Cache Monitor and the Seeder are now disabled by default and properly enforce their feature flags (`aips_cache_monitor_enabled`, `aips_developer_mode`) at every layer — menu, Diagnostics tab, page render, and AJAX handlers — closing gaps where the flag was only checked for UI visibility. The AI scaffold generator ("Dev Tools") AJAX handler now also re-checks `aips_developer_mode`.
-- **MCP Bridge**: `mcp-bridge.php` is now disabled by default and can only be enabled by defining `AIPS_MCP_BRIDGE_ENABLED` and a shared-secret `AIPS_MCP_BRIDGE_TOKEN` in `wp-config.php` — it can no longer be turned on from the WordPress admin UI. All HTTP requests must now present a matching `token` field, closing a CSRF gap on this previously cookie-auth-only endpoint. See `docs/MCP_BRIDGE.md`.
 
 ## [3.5.1] - 2026-07-25
 

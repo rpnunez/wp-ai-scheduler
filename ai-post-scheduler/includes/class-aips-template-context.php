@@ -112,7 +112,10 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @return bool True if enabled.
 	 */
 	public function should_generate_featured_image() {
-		return !empty($this->template->generate_featured_image);
+		if (isset($this->template->generate_featured_image) && $this->template->generate_featured_image !== null && $this->template->generate_featured_image !== '') {
+			return !empty($this->template->generate_featured_image);
+		}
+		return (bool) AIPS_Config::get_instance()->get_option('aips_default_generate_featured_image', 0);
 	}
 
 	/**
@@ -121,7 +124,10 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @return string Image source type.
 	 */
 	public function get_featured_image_source() {
-		return isset($this->template->featured_image_source) ? $this->template->featured_image_source : 'ai_prompt';
+		if (!empty($this->template->featured_image_source) && 'default' !== $this->template->featured_image_source) {
+			return $this->template->featured_image_source;
+		}
+		return (string) AIPS_Config::get_instance()->get_option('aips_default_featured_image_source', 'ai_prompt');
 	}
 
 	/**
@@ -148,7 +154,11 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @return string Post status.
 	 */
 	public function get_post_status() {
-		return $this->template->post_status;
+		$status = isset($this->template->post_status) ? $this->template->post_status : '';
+		if (empty($status) || 'default' === $status) {
+			return (string) AIPS_Config::get_instance()->get_option('aips_default_post_status', 'draft');
+		}
+		return $status;
 	}
 
 	/**
@@ -157,7 +167,11 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @return string Post type.
 	 */
 	public function get_post_type() {
-		return isset($this->template->post_type) ? sanitize_key($this->template->post_type) : 'post';
+		$type = isset($this->template->post_type) ? sanitize_key($this->template->post_type) : '';
+		if (empty($type) || 'default' === $type) {
+			return AIPS_Config::get_instance()->get_default_generation_post_type();
+		}
+		return $type;
 	}
 
 	/**
@@ -166,7 +180,12 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @return int|string Post category ID(s).
 	 */
 	public function get_post_category() {
-		return $this->template->post_category;
+		$category = isset($this->template->post_category) ? $this->template->post_category : '';
+		if (empty($category) || '0' === (string) $category) {
+			$default_cat = AIPS_Config::get_instance()->get_option('aips_default_category', 0);
+			return !empty($default_cat) ? $default_cat : $category;
+		}
+		return $category;
 	}
 
 	/**
@@ -184,7 +203,11 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @return int Post author ID.
 	 */
 	public function get_post_author() {
-		return isset($this->template->post_author) ? $this->template->post_author : get_current_user_id();
+		$author = isset($this->template->post_author) ? absint($this->template->post_author) : 0;
+		if (empty($author)) {
+			return (int) AIPS_Config::get_instance()->get_option('aips_default_post_author', 1);
+		}
+		return $author;
 	}
 
 	/**

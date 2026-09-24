@@ -8,6 +8,11 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+$is_embedded_templates_view = !empty($embedded);
+$template_config = AIPS_Config::get_instance();
+$template_allowed_post_types = $template_config->get_generation_post_types();
+$template_default_post_type = $template_config->get_default_generation_post_type();
+$template_default_post_status = $template_config->get_option('aips_default_post_status', 'draft');
 ?>
         <?php if (!empty($templates)): ?>
         <!-- Content Panel with Filter Bar -->
@@ -288,10 +293,13 @@ if (!defined('ABSPATH')) {
                                 <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Which WordPress post type this template generates. Includes custom post types registered by other plugins (e.g. ACF). This cannot be changed after the template is saved.', 'ai-post-scheduler'); ?>"></span>
                             </label>
                             <select id="template_post_type" name="post_type">
+                                <option value="default"><?php printf(esc_html__('— Use Global Default (%s) —', 'ai-post-scheduler'), esc_html(isset($selectable_post_types[$template_default_post_type]['label']) ? $selectable_post_types[$template_default_post_type]['label'] : $template_default_post_type)); ?></option>
                                 <?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
-                                <option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_key, 'post'); ?>>
-                                    <?php echo esc_html($post_type_info['label']); ?>
-                                </option>
+                                    <?php if (in_array($post_type_key, $template_allowed_post_types, true)): ?>
+                                        <option value="<?php echo esc_attr($post_type_key); ?>">
+                                            <?php echo esc_html($post_type_info['label']); ?>
+                                        </option>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </select>
                             <p class="description" id="template_post_type_locked_notice" style="display: none;">
@@ -558,6 +566,7 @@ if (!defined('ABSPATH')) {
                             <div class="aips-form-row">
                                 <label for="post_status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></label>
                                 <select id="post_status" name="post_status">
+                                    <option value="default"><?php printf(esc_html__('— Use Global Default (%s) —', 'ai-post-scheduler'), esc_html(ucfirst($template_default_post_status))); ?></option>
                                     <option value="draft"><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
                                     <option value="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></option>
                                     <option value="publish"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></option>

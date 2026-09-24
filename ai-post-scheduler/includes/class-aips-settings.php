@@ -98,6 +98,14 @@ class AIPS_Settings {
 		$defaults = AIPS_Config::get_instance()->get_default_options();
 
 		$settings = array(
+			'aips_generation_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_post_types'),
+				'default'           => $defaults['aips_generation_post_types'],
+			),
+			'aips_default_post_type' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_default_post_type'],
+			),
 			'aips_default_post_status' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_default_post_status'],
@@ -105,6 +113,74 @@ class AIPS_Settings {
 			'aips_default_category' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_default_category'],
+			),
+			'aips_default_post_author' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_default_post_author'],
+			),
+			'aips_default_generate_featured_image' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_default_generate_featured_image'],
+			),
+			'aips_default_featured_image_source' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_default_featured_image_source'],
+			),
+			'aips_template_manual_post_quantity' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_template_manual_post_quantity'],
+			),
+			'aips_template_scheduled_post_quantity' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_template_scheduled_post_quantity'],
+			),
+			'aips_author_topic_generation_frequency' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_author_topic_generation_frequency'],
+			),
+			'aips_author_topic_scheduled_quantity' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_author_topic_scheduled_quantity'],
+			),
+			'aips_author_topic_manual_quantity' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_author_topic_manual_quantity'],
+			),
+			'aips_author_topic_auto_approval_mode' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_author_topic_auto_approval_mode'],
+			),
+			'aips_author_topic_auto_approval_min_score' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_author_topic_auto_approval_min_score'],
+			),
+			'aips_author_topic_auto_approval_max_similarity' => array(
+				'sanitize_callback' => 'floatval',
+				'default'           => $defaults['aips_author_topic_auto_approval_max_similarity'],
+			),
+			'aips_author_topic_auto_approval_fallback' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_author_topic_auto_approval_fallback'],
+			),
+			'aips_author_post_generation_frequency' => array(
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => $defaults['aips_author_post_generation_frequency'],
+			),
+			'aips_author_post_scheduled_quantity' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_author_post_scheduled_quantity'],
+			),
+			'aips_author_post_manual_quantity' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_author_post_manual_quantity'],
+			),
+			'aips_author_max_posts_per_topic' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_author_max_posts_per_topic'],
+			),
+			'aips_integration_acf_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_integration_acf_enabled'],
 			),
 			'aips_enable_logging' => array(
 				'sanitize_callback' => 'absint',
@@ -576,13 +652,39 @@ class AIPS_Settings {
 		self::register_setting_schema($this->ui);
         
         // -----------------------------------------------------------------------
-        // General section: Default Post Status, Default Category
+        // General section: Overview / Status
         // -----------------------------------------------------------------------
         add_settings_section(
             'aips_general_section',
-            __('General Settings', 'ai-post-scheduler'),
+            __('General Overview', 'ai-post-scheduler'),
             array($this->ui, 'general_section_callback'),
             'aips-settings'
+        );
+
+        // -----------------------------------------------------------------------
+        // Content Generation: Post Defaults
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_generation_post_defaults_section',
+            __('Post Defaults', 'ai-post-scheduler'),
+            array($this->ui, 'generation_post_defaults_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_generation_post_types',
+            __('Enabled Post Types', 'ai-post-scheduler'),
+            array($this->ui, 'generation_post_types_field_callback'),
+            'aips-settings',
+            'aips_generation_post_defaults_section'
+        );
+
+        add_settings_field(
+            'aips_default_post_type',
+            __('Default Post Type', 'ai-post-scheduler'),
+            array($this->ui, 'default_post_type_field_callback'),
+            'aips-settings',
+            'aips_generation_post_defaults_section'
         );
 
         add_settings_field(
@@ -590,7 +692,7 @@ class AIPS_Settings {
             __('Default Post Status', 'ai-post-scheduler'),
             array($this->ui, 'post_status_field_callback'),
             'aips-settings',
-            'aips_general_section'
+            'aips_generation_post_defaults_section'
         );
 
         add_settings_field(
@@ -598,7 +700,165 @@ class AIPS_Settings {
             __('Default Category', 'ai-post-scheduler'),
             array($this->ui, 'category_field_callback'),
             'aips-settings',
-            'aips_general_section'
+            'aips_generation_post_defaults_section'
+        );
+
+        add_settings_field(
+            'aips_default_post_author',
+            __('Default Post Author', 'ai-post-scheduler'),
+            array($this->ui, 'default_post_author_field_callback'),
+            'aips-settings',
+            'aips_generation_post_defaults_section'
+        );
+
+        add_settings_field(
+            'aips_default_generate_featured_image',
+            __('Generate Featured Image', 'ai-post-scheduler'),
+            array($this->ui, 'default_generate_featured_image_field_callback'),
+            'aips-settings',
+            'aips_generation_post_defaults_section'
+        );
+
+        add_settings_field(
+            'aips_default_featured_image_source',
+            __('Default Featured Image Source', 'ai-post-scheduler'),
+            array($this->ui, 'default_featured_image_source_field_callback'),
+            'aips-settings',
+            'aips_generation_post_defaults_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Content Generation: Template Generation
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_generation_templates_section',
+            __('Template Post Generation', 'ai-post-scheduler'),
+            array($this->ui, 'generation_templates_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_template_manual_post_quantity',
+            __('Manual Generation Post Quantity', 'ai-post-scheduler'),
+            array($this->ui, 'template_manual_post_quantity_field_callback'),
+            'aips-settings',
+            'aips_generation_templates_section'
+        );
+
+        add_settings_field(
+            'aips_template_scheduled_post_quantity',
+            __('Scheduled Generation Post Quantity', 'ai-post-scheduler'),
+            array($this->ui, 'template_scheduled_post_quantity_field_callback'),
+            'aips-settings',
+            'aips_generation_templates_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Content Generation: Author Topic Generation
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_generation_author_topics_section',
+            __('Author Topic Generation', 'ai-post-scheduler'),
+            array($this->ui, 'generation_author_topics_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_author_topic_generation_frequency',
+            __('Default Topic Schedule Frequency', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_frequency_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_scheduled_quantity',
+            __('Default Scheduled Topics Quantity', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_scheduled_quantity_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_manual_quantity',
+            __('Default Manual Topics Quantity', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_manual_quantity_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_mode',
+            __('Default Auto-Approval Mode', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_mode_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_min_score',
+            __('Default Auto-Approval Minimum Score', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_min_score_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_max_similarity',
+            __('Default Auto-Approval Maximum Similarity', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_max_similarity_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        add_settings_field(
+            'aips_author_topic_auto_approval_fallback',
+            __('Default Auto-Approval Fallback', 'ai-post-scheduler'),
+            array($this->ui, 'author_topic_auto_approval_fallback_field_callback'),
+            'aips-settings',
+            'aips_generation_author_topics_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Content Generation: Author Post Generation
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_generation_author_posts_section',
+            __('Author Post Generation', 'ai-post-scheduler'),
+            array($this->ui, 'generation_author_posts_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_author_post_generation_frequency',
+            __('Default Post Schedule Frequency', 'ai-post-scheduler'),
+            array($this->ui, 'author_post_frequency_field_callback'),
+            'aips-settings',
+            'aips_generation_author_posts_section'
+        );
+
+        add_settings_field(
+            'aips_author_post_scheduled_quantity',
+            __('Default Scheduled Posts Quantity', 'ai-post-scheduler'),
+            array($this->ui, 'author_post_scheduled_quantity_field_callback'),
+            'aips-settings',
+            'aips_generation_author_posts_section'
+        );
+
+        add_settings_field(
+            'aips_author_post_manual_quantity',
+            __('Default Manual Posts Quantity', 'ai-post-scheduler'),
+            array($this->ui, 'author_post_manual_quantity_field_callback'),
+            'aips-settings',
+            'aips_generation_author_posts_section'
+        );
+
+        add_settings_field(
+            'aips_author_max_posts_per_topic',
+            __('Default Max Posts Per Topic', 'ai-post-scheduler'),
+            array($this->ui, 'author_max_posts_per_topic_field_callback'),
+            'aips-settings',
+            'aips_generation_author_posts_section'
         );
 
         // -----------------------------------------------------------------------
@@ -1470,11 +1730,23 @@ class AIPS_Settings {
             'aips_cache_section'
         );
 
+        // -----------------------------------------------------------------------
+        // Integrations section: Third-party plugin integrations (ACF, etc.)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_integrations_section',
+            __('Plugin Integrations', 'ai-post-scheduler'),
+            array($this->ui, 'integrations_section_callback'),
+            'aips-settings'
+        );
 
-
-
-
-
+        add_settings_field(
+            'aips_integration_acf_enabled',
+            __('Advanced Custom Fields (ACF)', 'ai-post-scheduler'),
+            array($this->ui, 'integration_acf_enabled_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
     }
 
     /**

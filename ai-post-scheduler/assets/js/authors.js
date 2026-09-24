@@ -239,6 +239,7 @@
 			$('#aips-author-modal').find('.aips-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
+			$('#author_post_type').val('default');
 
 			// Reset auto-approval fields
 			$('#topic_auto_approval_mode').val('inherit');
@@ -334,6 +335,7 @@
 						$('#author_excluded_topics').val(author.excluded_topics || '');
 						$('#author_preferred_content_length').val(author.preferred_content_length || '');
 						$('#author_language').val(author.language || 'en');
+						$('#author_post_type').val(author.post_type || 'default');
 						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
 						$('#author_manual_post_generation_quantity').val(author.manual_post_generation_quantity || 1);
 						$('#author_scheduled_post_generation_quantity').val(author.scheduled_post_generation_quantity || 1);

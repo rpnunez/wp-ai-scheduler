@@ -323,6 +323,7 @@ class AIPS_DB_Manager {
             post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_is_active tinyint(1) DEFAULT 1,
             post_status varchar(50) DEFAULT 'draft',
+            post_type varchar(50) DEFAULT NULL,
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,

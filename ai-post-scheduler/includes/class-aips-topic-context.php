@@ -130,7 +130,10 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return bool True if enabled in author settings.
 	 */
 	public function should_generate_featured_image() {
-		return !empty($this->author->generate_featured_image);
+		if (isset($this->author->generate_featured_image) && $this->author->generate_featured_image !== null && $this->author->generate_featured_image !== '') {
+			return !empty($this->author->generate_featured_image);
+		}
+		return (bool) AIPS_Config::get_instance()->get_option('aips_default_generate_featured_image', 0);
 	}
 
 	/**
@@ -139,7 +142,10 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return string Image source type from author settings.
 	 */
 	public function get_featured_image_source() {
-		return isset($this->author->featured_image_source) ? $this->author->featured_image_source : 'ai_prompt';
+		if (!empty($this->author->featured_image_source) && 'default' !== $this->author->featured_image_source) {
+			return $this->author->featured_image_source;
+		}
+		return (string) AIPS_Config::get_instance()->get_option('aips_default_featured_image_source', 'ai_prompt');
 	}
 
 	/**
@@ -166,7 +172,11 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return string Post status from author settings.
 	 */
 	public function get_post_status() {
-		return isset($this->author->post_status) ? $this->author->post_status : 'draft';
+		$status = isset($this->author->post_status) ? $this->author->post_status : '';
+		if (empty($status) || 'default' === $status) {
+			return (string) AIPS_Config::get_instance()->get_option('aips_default_post_status', 'draft');
+		}
+		return $status;
 	}
 
 	/**
@@ -175,7 +185,11 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return string Post type from author settings or 'post'.
 	 */
 	public function get_post_type() {
-		return isset($this->author->post_type) ? sanitize_key($this->author->post_type) : 'post';
+		$type = isset($this->author->post_type) ? sanitize_key($this->author->post_type) : '';
+		if (empty($type) || 'default' === $type) {
+			return AIPS_Config::get_instance()->get_default_generation_post_type();
+		}
+		return $type;
 	}
 
 	/**
@@ -184,7 +198,12 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return int|string Post category from author settings.
 	 */
 	public function get_post_category() {
-		return isset($this->author->post_category) ? $this->author->post_category : '';
+		$category = isset($this->author->post_category) ? $this->author->post_category : '';
+		if (empty($category) || '0' === (string) $category) {
+			$default_cat = AIPS_Config::get_instance()->get_option('aips_default_category', 0);
+			return !empty($default_cat) ? $default_cat : $category;
+		}
+		return $category;
 	}
 
 	/**
@@ -202,7 +221,12 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @return int Post author ID from author settings.
 	 */
 	public function get_post_author() {
-		return isset($this->author->post_author) ? $this->author->post_author : get_current_user_id();
+		$author = isset($this->author->post_author) ? absint($this->author->post_author) : 0;
+		if (empty($author)) {
+			$default_author = (int) AIPS_Config::get_instance()->get_option('aips_default_post_author', 1);
+			return !empty($default_author) ? $default_author : get_current_user_id();
+		}
+		return $author;
 	}
 
 	/**

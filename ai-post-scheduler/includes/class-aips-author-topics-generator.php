@@ -150,6 +150,10 @@ class AIPS_Author_Topics_Generator {
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
+
+		if (empty($author->topic_generation_quantity) || (int) $author->topic_generation_quantity < 1) {
+			$author->topic_generation_quantity = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_scheduled_quantity', 5);
+		}
 		
 		$this->logger->log("Starting topic generation for author: {$author->name} (ID: {$author->id})", 'info', array(
 			'author_id' => $author->id,

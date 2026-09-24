@@ -147,10 +147,32 @@ class AIPS_Config {
             // Conversational generation (requires a provider with supports_conversation())
             'aips_conversational_generation' => false,
             'aips_conversational_metadata_turn' => false,
-            // Post defaults
+            // Post defaults & Content Generation
+            'aips_generation_post_types' => array('post'),
+            'aips_default_post_type' => 'post',
             'aips_default_post_status' => 'draft',
             'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            'aips_default_generate_featured_image' => 0,
+            'aips_default_featured_image_source' => 'ai_prompt',
+            // Template Generation Defaults
+            'aips_template_manual_post_quantity' => 1,
+            'aips_template_scheduled_post_quantity' => 1,
+            // Author Topic Generation Defaults
+            'aips_author_topic_generation_frequency' => 'weekly',
+            'aips_author_topic_scheduled_quantity' => 5,
+            'aips_author_topic_manual_quantity' => 5,
+            'aips_author_topic_auto_approval_mode' => 'manual',
+            'aips_author_topic_auto_approval_min_score' => 70,
+            'aips_author_topic_auto_approval_max_similarity' => 0.8000,
+            'aips_author_topic_auto_approval_fallback' => 'pending',
+            // Author Post Generation Defaults
+            'aips_author_post_generation_frequency' => 'daily',
+            'aips_author_post_scheduled_quantity' => 1,
+            'aips_author_post_manual_quantity' => 1,
+            'aips_author_max_posts_per_topic' => 1,
+            // Integrations
+            'aips_integration_acf_enabled' => 0,
             // General
             'aips_unsplash_access_key' => '',
             'aips_gsc_service_account' => '',
@@ -891,5 +913,36 @@ class AIPS_Config {
             return WP_ENVIRONMENT_TYPE;
         }
         return $this->is_debug_mode() ? 'development' : 'production';
+    }
+
+    /**
+     * Get allowed post types for content generation.
+     *
+     * @return string[] Array of post type slugs.
+     */
+    public function get_generation_post_types() {
+        $types = (array) $this->get_option('aips_generation_post_types', array('post'));
+        $types = array_values(array_filter(array_map('sanitize_key', $types)));
+        return !empty($types) ? $types : array('post');
+    }
+
+    /**
+     * Get default post type for content generation.
+     *
+     * @return string Default post type slug.
+     */
+    public function get_default_generation_post_type() {
+        $default = (string) $this->get_option('aips_default_post_type', 'post');
+        $allowed = $this->get_generation_post_types();
+        return in_array($default, $allowed, true) ? $default : $allowed[0];
+    }
+
+    /**
+     * Check if the Advanced Custom Fields (ACF) integration is enabled in Settings.
+     *
+     * @return bool True if enabled.
+     */
+    public function is_acf_integration_enabled(): bool {
+        return (bool) $this->get_option('aips_integration_acf_enabled', 0);
     }
 }

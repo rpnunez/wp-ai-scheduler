@@ -66,9 +66,10 @@ class AIPS_Prompt_Builder_Topic {
 			 * topic_generation_quantity is not set or is less than 1.
 			 *
 			 * @since 2.6.0
-			 * @param int $quantity Default fallback quantity. Default 5.
+			 * @param int $quantity Default fallback quantity. Default from global settings.
 			 */
-			$quantity = max(1, (int) apply_filters('aips_default_topic_quantity', 5));
+			$default_qty = (int) AIPS_Config::get_instance()->get_option('aips_author_topic_scheduled_quantity', 5);
+			$quantity    = max(1, (int) apply_filters('aips_default_topic_quantity', $default_qty));
 		}
 
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
