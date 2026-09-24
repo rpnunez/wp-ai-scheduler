@@ -2074,6 +2074,18 @@ class AIPS_Admin_Assets {
                 'statusCompleted'       => __('Completed', 'ai-post-scheduler'),
                 'statusCancelled'       => __('Cancelled', 'ai-post-scheduler'),
                 'statusUndone'          => __('Undone', 'ai-post-scheduler'),
+                'brokenError'           => __('The broken-link request failed. Please try again.', 'ai-post-scheduler'),
+                'noBroken'              => __('No broken internal links. Nice!', 'ai-post-scheduler'),
+                'noAnchorText'          => __('(no anchor text)', 'ai-post-scheduler'),
+                /* translators: %d: number of links to the same URL in the post */
+                'occurrences'           => __('%d links to this URL in the post', 'ai-post-scheduler'),
+                /* translators: 1: post title, 2: match score percent */
+                'suggestionOption'      => __('%1$s (%2$d%% match)', 'ai-post-scheduler'),
+                'choosePost'            => __('Choose another post…', 'ai-post-scheduler'),
+                'removeLink'            => __('Remove link, keep text', 'ai-post-scheduler'),
+                'chooseFirst'           => __('Choose a post or "Remove link" first.', 'ai-post-scheduler'),
+                'fixRepointed'          => __('Re-pointed', 'ai-post-scheduler'),
+                'fixUnlinked'           => __('Link removed', 'ai-post-scheduler'),
                 /* translators: 1: processed posts, 2: total posts */
                 'progress'            => __('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
             )

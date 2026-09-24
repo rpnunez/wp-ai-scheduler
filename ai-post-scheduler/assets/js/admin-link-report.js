@@ -29,6 +29,7 @@
 		pollTimer: null,
 		suggestTarget: 0,
 		autolinkTimer: null,
+		broken: { rows: [], page: 1, totalPages: 1, pickRow: null, searchTimer: null },
 
 		init: function() {
 			this.$root = $('#aips-link-report');
@@ -74,6 +75,14 @@
 			$(document).on('click', '#aips-autolink-resume', this.autolinkControl.bind(this, 'aips_autolink_resume'));
 			$(document).on('click', '#aips-autolink-cancel', this.onAutolinkCancel.bind(this));
 			$(document).on('click', '.aips-autolink-undo', this.onUndoRun.bind(this));
+			$(document).on('click', '#aips-broken-links-load', this.loadBroken.bind(this, 1));
+			$(document).on('click', '#aips-broken-links-prev', function() { this.loadBroken(this.broken.page - 1); }.bind(this));
+			$(document).on('click', '#aips-broken-links-next', function() { this.loadBroken(this.broken.page + 1); }.bind(this));
+			$(document).on('change', '.aips-broken-choice', this.onBrokenChoice.bind(this));
+			$(document).on('click', '.aips-broken-fix', this.onFixBroken.bind(this));
+			$(document).on('click', '.aips-broken-undo', this.onUndoFix.bind(this));
+			$(document).on('input', '#aips-broken-pick-search', this.onPickSearch.bind(this));
+			$(document).on('click', '.aips-broken-pick', this.onPick.bind(this));
 			$(document).on('click', '.aips-link-report-suggest', this.onSuggest.bind(this));
 			$(document).on('click', '#aips-link-suggestions-regenerate', this.onRegenerate.bind(this));
 			$(document).on('click', '#aips-link-suggestions-close', this.onCloseSuggestions.bind(this));
@@ -649,6 +658,195 @@
 			if (running) {
 				this.autolinkTimer = setTimeout(function() { self.pollAutolink(); }, 5000);
 			}
+		},
+
+		loadBroken: function(page) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$('#aips-broken-links-loading').removeClass('aips-hidden');
+
+			$.post(ajaxurl, { action: 'aips_link_report_get_broken', nonce: l10n.nonce, paged: Math.max(1, page || 1) }).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					return;
+				}
+				self.renderBroken(response.data);
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.brokenError, 'error');
+			}).always(function() {
+				$('#aips-broken-links-loading').addClass('aips-hidden');
+			});
+		},
+
+		renderBroken: function(data) {
+			var l10n = aipsLinkReportL10n;
+			var self = this;
+			var html = '';
+
+			this.broken.rows = data.rows;
+			this.broken.page = data.page;
+			this.broken.totalPages = data.total_pages;
+
+			$.each(data.rows, function(i, row) {
+				html += AIPS.Templates.render('aips-tmpl-broken-row', {
+					index: i,
+					source_title: row.source_title,
+					source_edit: row.source_edit,
+					anchor: row.anchor || l10n.noAnchorText,
+					url: row.url,
+					occurrences_label: l10n.occurrences.replace('%d', row.occurrences),
+					occurrences_class: row.occurrences > 1 ? '' : 'aips-hidden'
+				});
+			});
+
+			$('#aips-broken-links-tbody').html(html || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 4, message: l10n.noBroken }));
+			$('#aips-broken-links-table').removeClass('aips-hidden');
+
+			$.each(data.rows, function(i) {
+				self.fillChoices(i);
+			});
+
+			$('#aips-broken-links-pagination').toggleClass('aips-hidden', data.total_pages <= 1);
+			$('#aips-broken-links-page-info').text(l10n.pageInfo.replace('%1$d', data.page).replace('%2$d', data.total_pages).replace('%3$d', data.total));
+			$('#aips-broken-links-prev').prop('disabled', data.page <= 1);
+			$('#aips-broken-links-next').prop('disabled', data.page >= data.total_pages);
+
+			this.renderFixes(data.fixes);
+		},
+
+		fillChoices: function(index, picked) {
+			var l10n = aipsLinkReportL10n;
+			var row = this.broken.rows[index];
+			var options = '';
+
+			if (picked) {
+				options += AIPS.Templates.render('aips-tmpl-broken-option', { value: picked.id, label: picked.title });
+			}
+			$.each(row.suggestions, function(i, suggestion) {
+				options += AIPS.Templates.render('aips-tmpl-broken-option', {
+					value: suggestion.id,
+					label: l10n.suggestionOption.replace('%1$s', suggestion.title).replace('%2$d', suggestion.score).replace('%%', '%')
+				});
+			});
+			options += AIPS.Templates.render('aips-tmpl-broken-option', { value: 'pick', label: l10n.choosePost });
+			options += AIPS.Templates.render('aips-tmpl-broken-option', { value: 'unlink', label: l10n.removeLink });
+
+			$('#aips-broken-choice-' + index).html(options);
+		},
+
+		onBrokenChoice: function(e) {
+			var $select = $(e.currentTarget);
+			if ($select.val() !== 'pick') {
+				return;
+			}
+			this.broken.pickRow = parseInt($select.data('row'), 10);
+			$('#aips-broken-pick-search').val('');
+			$('#aips-broken-pick-results').empty();
+			$('#aips-broken-pick-modal').show();
+			$('#aips-broken-pick-search').trigger('focus');
+		},
+
+		onPickSearch: function(e) {
+			var term = $(e.currentTarget).val();
+			clearTimeout(this.broken.searchTimer);
+			this.broken.searchTimer = setTimeout(function() {
+				$.post(ajaxurl, { action: 'aips_link_report_search_posts', nonce: aipsLinkReportL10n.nonce, term: term }).done(function(response) {
+					var html = '';
+					if (response && response.success) {
+						$.each(response.data.posts, function(i, post) {
+							html += AIPS.Templates.render('aips-tmpl-broken-pick-result', post);
+						});
+					}
+					$('#aips-broken-pick-results').html(html);
+				});
+			}, 300);
+		},
+
+		onPick: function(e) {
+			var $btn = $(e.currentTarget);
+			var index = this.broken.pickRow;
+
+			this.fillChoices(index, { id: $btn.data('id'), title: $btn.data('title') });
+			$('#aips-broken-choice-' + index).val(String($btn.data('id')));
+			$('#aips-broken-pick-modal').hide();
+		},
+
+		onFixBroken: function(e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var index = parseInt($(e.currentTarget).data('row'), 10);
+			var row = this.broken.rows[index];
+			var choice = $('#aips-broken-choice-' + index).val();
+			var $btn = $(e.currentTarget);
+
+			if (!row || !choice || choice === 'pick') {
+				AIPS.Utilities.showToast(l10n.chooseFirst, 'warning');
+				return;
+			}
+
+			$btn.prop('disabled', true);
+			$.post(ajaxurl, {
+				action: 'aips_link_report_fix_broken',
+				nonce: l10n.nonce,
+				source_id: row.source_id,
+				url: row.url,
+				mode: choice === 'unlink' ? 'unlink' : 'repoint',
+				target_id: choice === 'unlink' ? 0 : choice
+			}).done(function(response) {
+				if (!response || !response.success) {
+					$btn.prop('disabled', false);
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderSummary(response.data.summary);
+				self.loadBroken(self.broken.page);
+			}).fail(function() {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(l10n.brokenError, 'error');
+			});
+		},
+
+		onUndoFix: function(e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var $btn = $(e.currentTarget).prop('disabled', true);
+
+			$.post(ajaxurl, { action: 'aips_link_report_undo_broken_fix', nonce: l10n.nonce, fix_id: $btn.data('fix-id') }).done(function(response) {
+				if (!response || !response.success) {
+					$btn.prop('disabled', false);
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.brokenError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderSummary(response.data.summary);
+				self.loadBroken(self.broken.page);
+			}).fail(function() {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast(l10n.brokenError, 'error');
+			});
+		},
+
+		renderFixes: function(fixes) {
+			var l10n = aipsLinkReportL10n;
+			var html = '';
+
+			$.each(fixes || [], function(i, fix) {
+				html += AIPS.Templates.render('aips-tmpl-broken-fix', {
+					id: fix.id,
+					action_label: fix.action === 'unlink' ? l10n.fixUnlinked : l10n.fixRepointed,
+					action_class: fix.action === 'unlink' ? 'aips-badge-secondary' : 'aips-badge-success',
+					source_title: fix.source_title,
+					source_edit: fix.source_edit,
+					detail: fix.new_url ? fix.old_url + ' → ' + fix.new_url : fix.old_url,
+					undo_class: fix.undone ? 'aips-hidden' : '',
+					undone_class: fix.undone ? '' : 'aips-hidden'
+				});
+			});
+
+			$('#aips-broken-fixes').html(html);
+			$('#aips-broken-fixes-wrap').toggleClass('aips-hidden', !html);
 		},
 
 		renderBackfill: function(backfill) {

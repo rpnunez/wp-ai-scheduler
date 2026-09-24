@@ -487,6 +487,86 @@ class AIPS_Link_Index_Repository {
 	}
 
 	/**
+	 * Broken internal links grouped by source post and URL.
+	 *
+	 * @param int    $page     1-based page.
+	 * @param int    $per_page Rows per page (max 100).
+	 * @param string $search   Optional source title / URL search.
+	 * @return object[] Rows with source_post_id, source_title, target_url, anchor_text, occurrences.
+	 */
+	public function get_broken_links_page(int $page = 1, int $per_page = 20, string $search = ''): array {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
+		list($where, $args) = $this->broken_where($search);
+		$per_page = max(1, min(100, $per_page));
+		$args[]   = $per_page;
+		$args[]   = (max(1, $page) - 1) * $per_page;
+
+		return (array) $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT li.source_post_id, p.post_title AS source_title, li.target_url,
+					MIN(li.anchor_text) AS anchor_text, COUNT(*) AS occurrences
+				FROM {$this->table} li
+				INNER JOIN {$this->wpdb->posts} p ON p.ID = li.source_post_id
+				WHERE {$where}
+				GROUP BY li.source_post_id, p.post_title, li.target_url
+				ORDER BY p.post_title ASC, li.target_url ASC
+				LIMIT %d OFFSET %d",
+				$args
+			)
+		);
+	}
+
+	/**
+	 * Number of distinct (source post, URL) broken internal links.
+	 *
+	 * @param string $search Optional source title / URL search.
+	 * @return int
+	 */
+	public function get_broken_links_count(string $search = ''): int {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
+		list($where, $args) = $this->broken_where($search);
+
+		return (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM (
+					SELECT 1
+					FROM {$this->table} li
+					INNER JOIN {$this->wpdb->posts} p ON p.ID = li.source_post_id
+					WHERE {$where}
+					GROUP BY li.source_post_id, li.target_url
+				) grouped",
+				$args
+			)
+		);
+	}
+
+	/**
+	 * WHERE clause for broken internal links.
+	 *
+	 * @param string $search Optional search.
+	 * @return array{0:string, 1:array}
+	 */
+	private function broken_where(string $search): array {
+		$where = "li.link_type = %s AND li.target_post_id = 0 AND p.post_status = 'publish'";
+		$args  = array(self::TYPE_INTERNAL);
+
+		if ($search !== '') {
+			$like   = '%' . $this->wpdb->esc_like($search) . '%';
+			$where .= ' AND (p.post_title LIKE %s OR li.target_url LIKE %s)';
+			$args[] = $like;
+			$args[] = $like;
+		}
+
+		return array($where, $args);
+	}
+
+	/**
 	 * Get site-wide link index totals.
 	 *
 	 * @return array{total:int, internal:int, external:int, broken:int, sources:int}

@@ -113,3 +113,40 @@
 .aips-link-report-tab #aips-link-report-table .column-actions .aips-btn {
 	margin-bottom: var(--aips-space-1);
 }
+
+#aips-broken-links-panel {
+	margin-top: var(--aips-space-5);
+}
+
+.aips-link-report-tab .aips-broken-url {
+	display: block;
+	font-size: 12px;
+	word-break: break-all;
+}
+
+.aips-link-report-tab .aips-broken-choice {
+	max-width: 280px;
+}
+
+.aips-link-report-tab .aips-broken-fixes {
+	padding: var(--aips-space-4);
+	border-top: 1px solid var(--aips-border-color);
+}
+
+.aips-link-report-tab .aips-broken-fixes ul {
+	margin: 0;
+}
+
+.aips-link-report-tab .aips-broken-fixes li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--aips-space-2);
+	margin-bottom: var(--aips-space-2);
+}
+
+.aips-broken-pick-results {
+	margin: var(--aips-space-3) 0 0;
+	max-height: 280px;
+	overflow-y: auto;
+}

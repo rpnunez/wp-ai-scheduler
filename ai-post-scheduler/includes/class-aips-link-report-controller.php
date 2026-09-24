@@ -63,6 +63,10 @@ class AIPS_Link_Report_Controller {
 		add_action('wp_ajax_aips_link_report_revert_suggestion', array($this, 'ajax_revert_suggestion'));
 		add_action('wp_ajax_aips_link_report_dismiss_suggestion', array($this, 'ajax_dismiss_suggestion'));
 		add_action('wp_ajax_aips_link_report_get_post_panel', array($this, 'ajax_get_post_panel'));
+		add_action('wp_ajax_aips_link_report_get_broken', array($this, 'ajax_get_broken'));
+		add_action('wp_ajax_aips_link_report_fix_broken', array($this, 'ajax_fix_broken'));
+		add_action('wp_ajax_aips_link_report_undo_broken_fix', array($this, 'ajax_undo_broken_fix'));
+		add_action('wp_ajax_aips_link_report_search_posts', array($this, 'ajax_search_posts'));
 		add_action('wp_ajax_aips_autolink_start', array($this, 'ajax_autolink_start'));
 		add_action('wp_ajax_aips_autolink_status', array($this, 'ajax_autolink_status'));
 		add_action('wp_ajax_aips_autolink_pause', array($this, 'ajax_autolink_pause'));
@@ -394,6 +398,119 @@ class AIPS_Link_Report_Controller {
 			: new WP_Error('aips_inbound_not_pending', __('This suggestion is no longer pending.', 'ai-post-scheduler'));
 
 		$this->respond_with_suggestions($result, __('Suggestion dismissed.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: one page of broken internal links with replacement suggestions.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_broken() {
+		$this->verify_request();
+
+		$page   = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
+		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+		$broken = $this->get_broken_service();
+
+		AIPS_Ajax_Response::success(array_merge(
+			$broken->get_page($page, $search),
+			array('fixes' => $broken->get_recent_fixes())
+		));
+	}
+
+	/**
+	 * AJAX: re-point or remove a broken link.
+	 *
+	 * @return void
+	 */
+	public function ajax_fix_broken() {
+		$this->verify_request();
+
+		$source_id = isset($_POST['source_id']) ? absint($_POST['source_id']) : 0;
+		$url       = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '';
+		$target_id = isset($_POST['target_id']) ? absint($_POST['target_id']) : 0;
+		$mode      = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'repoint';
+
+		if (!$source_id || $url === '') {
+			AIPS_Ajax_Response::error(__('Missing post or link.', 'ai-post-scheduler'), 'invalid_request');
+		}
+
+		$broken = $this->get_broken_service();
+		$result = ($mode === 'unlink') ? $broken->unlink($source_id, $url) : $broken->repoint($source_id, $url, $target_id);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message' => ($mode === 'unlink')
+				? __('Link removed; its text was kept.', 'ai-post-scheduler')
+				: __('Link re-pointed to the selected post.', 'ai-post-scheduler'),
+			'fix_id'  => $result['fix_id'],
+			'summary' => $this->get_totals(),
+		));
+	}
+
+	/**
+	 * AJAX: undo a broken-link fix.
+	 *
+	 * @return void
+	 */
+	public function ajax_undo_broken_fix() {
+		$this->verify_request();
+
+		$fix_id = isset($_POST['fix_id']) ? sanitize_text_field(wp_unslash($_POST['fix_id'])) : '';
+		$result = $this->get_broken_service()->undo($fix_id);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message' => __('Fix undone; the original link is back.', 'ai-post-scheduler'),
+			'summary' => $this->get_totals(),
+		));
+	}
+
+	/**
+	 * AJAX: find published posts by title for a manual replacement target.
+	 *
+	 * @return void
+	 */
+	public function ajax_search_posts() {
+		$this->verify_request();
+
+		$term = isset($_POST['term']) ? sanitize_text_field(wp_unslash($_POST['term'])) : '';
+		if (mb_strlen($term) < 2) {
+			AIPS_Ajax_Response::success(array('posts' => array()));
+		}
+
+		$ids = get_posts(array(
+			's'              => $term,
+			'post_type'      => $this->service->get_post_types(),
+			'post_status'    => 'publish',
+			'posts_per_page' => 10,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		));
+
+		$posts = array();
+		foreach ((array) $ids as $id) {
+			$posts[] = array(
+				'id'    => (int) $id,
+				'title' => get_the_title($id),
+				'url'   => (string) get_permalink($id),
+			);
+		}
+
+		AIPS_Ajax_Response::success(array('posts' => $posts));
+	}
+
+	/**
+	 * @return AIPS_Broken_Links_Service
+	 */
+	private function get_broken_service(): AIPS_Broken_Links_Service {
+		return new AIPS_Broken_Links_Service($this->service);
 	}
 
 	/**
