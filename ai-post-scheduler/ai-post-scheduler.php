@@ -461,6 +461,10 @@ final class AI_Post_Scheduler {
             );
         });
 
+        $container->singleton(AIPS_Link_Rules_Service::class, function( $container ) {
+            return new AIPS_Link_Rules_Service();
+        });
+
         $container->singleton(AIPS_Autolink_Run_Service::class, function( $container ) {
             return new AIPS_Autolink_Run_Service(
                 $container->make(AIPS_Inbound_Links_Service::class),
@@ -1058,6 +1062,12 @@ final class AI_Post_Scheduler {
      */
     private function boot_frontend() {
         new AIPS_Admin_Bar();
+
+        // Keyword link rules are applied when posts are displayed (after
+        // blocks render, before shortcodes and the Related Posts block).
+        add_filter('the_content', function ($content) {
+            return AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)->filter_content($content);
+        }, 9);
     }
 }
 

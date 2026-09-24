@@ -313,6 +313,12 @@ class AIPS_Ajax_Registry {
 		'aips_autolink_cancel'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_undo_run'              => 'AIPS_Link_Report_Controller',
 
+		// Keyword Link Rules Controller
+		'aips_link_rules_list'   => 'AIPS_Link_Rules_Controller',
+		'aips_link_rules_save'   => 'AIPS_Link_Rules_Controller',
+		'aips_link_rules_toggle' => 'AIPS_Link_Rules_Controller',
+		'aips_link_rules_delete' => 'AIPS_Link_Rules_Controller',
+
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',

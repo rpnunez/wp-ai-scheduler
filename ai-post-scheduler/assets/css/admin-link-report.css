@@ -150,3 +150,76 @@
 	max-height: 280px;
 	overflow-y: auto;
 }
+
+/* Link Rules tab */
+.aips-link-rules-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px;
+	padding: 16px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.aips-link-rules-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.aips-link-rules-field label {
+	font-weight: 600;
+}
+
+.aips-link-rules-target {
+	position: relative;
+	flex: 1 1 260px;
+}
+
+.aips-link-rules-results {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 20;
+	margin: 2px 0 0;
+	padding: 0;
+	list-style: none;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.aips-link-rules-results:empty {
+	display: none;
+}
+
+.aips-link-rules-results li {
+	margin: 0;
+}
+
+.aips-link-rules-results .aips-btn {
+	width: 100%;
+	justify-content: flex-start;
+	text-align: left;
+}
+
+.aips-link-rules-submit {
+	flex-direction: row;
+}
+
+.aips-link-rules-tab .aips-hidden {
+	display: none;
+}
+
+.aips-link-rules-note {
+	padding: 8px 16px 16px;
+}
+
+@media (max-width: 782px) {
+	.aips-link-rules-form {
+		flex-direction: column;
+		align-items: stretch;
+	}
+}

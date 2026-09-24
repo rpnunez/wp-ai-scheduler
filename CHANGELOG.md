@@ -1,3 +1,8 @@
+## [3.7.6] - 2026-09-24
+
+### Added
+- **Keyword Link Rules:** New "Link Rules" section in the Content hub side navigation (below Link Report). Each rule links a keyword or phrase to a chosen post wherever it appears in published content (up to N times per post per rule, capped per post by **Settings → Internal Linking → Keyword Link Rules**, default 3). Rules are applied when a post is displayed (`the_content`, priority 9, cached per post and rule version), never written into post content, so editing, disabling or deleting a rule takes effect immediately. Longer keywords win, links go only into body text (never headings, existing links, code, buttons or shortcodes), a post never links to itself, and targets already linked are skipped. The link index counts rule links (`AIPS_Link_Rules_Service`, `AIPS_Link_Rules_Controller`; AJAX `aips_link_rules_list/save/toggle/delete`).
+
 ## [3.7.5] - 2026-09-24
 
 ### Added

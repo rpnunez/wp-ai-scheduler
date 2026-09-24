@@ -191,6 +191,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 								</div>
 
 								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Keyword Link Rules', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_link_rules_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
 									<h3 class="aips-settings-card-title"><?php esc_html_e('Internal Link Automation', 'ai-post-scheduler'); ?></h3>
 									<table class="form-table" role="presentation">
 										<?php do_settings_fields('aips-settings', 'aips_ai_autolink_section'); ?>

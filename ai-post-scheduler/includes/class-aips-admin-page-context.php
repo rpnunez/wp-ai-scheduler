@@ -286,6 +286,11 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-admin-links',
 						'description' => __('Inbound, outbound and broken links for every published post, with orphan detection.', 'ai-post-scheduler'),
 					),
+					'aips-link-rules' => array(
+						'label'       => __('Link Rules', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-tag',
+						'description' => __('Keyword rules that link a phrase to a chosen post everywhere it appears.', 'ai-post-scheduler'),
+					),
 					'aips-content-clusters' => array(
 						'label'       => __('Topic Clusters', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-networking',

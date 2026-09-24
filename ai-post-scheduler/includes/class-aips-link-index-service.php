@@ -200,12 +200,19 @@ class AIPS_Link_Index_Service {
 			return array('status' => 'removed', 'links' => 0);
 		}
 
-		$hash = md5((string) $post->post_content);
+		// Index the post as visitors see it: keyword link rules are applied at
+		// render time, so include them (and their version in the hash).
+		$rules = AIPS_Container::get_instance()->has(AIPS_Link_Rules_Service::class)
+			? AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)
+			: new AIPS_Link_Rules_Service($this->config);
+
+		$hash = md5((string) $post->post_content . '|rules:' . ($rules->is_enabled() ? $rules->get_version() : 'off'));
 		if (!$force && get_post_meta($post_id, self::HASH_META_KEY, true) === $hash) {
 			return array('status' => 'unchanged', 'links' => 0);
 		}
 
-		$rows    = $this->build_rows((string) $post->post_content);
+		$html    = $rules->apply_to_html((string) $post->post_content, $post_id)['html'];
+		$rows    = $this->build_rows($html);
 		$written = $this->repository->sync_for_source($post_id, $rows);
 
 		update_post_meta($post_id, self::HASH_META_KEY, $hash);

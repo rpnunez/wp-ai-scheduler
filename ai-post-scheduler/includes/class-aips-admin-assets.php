@@ -184,6 +184,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_generated_posts_assets();
 			$this->enqueue_content_indexer_assets();
 			$this->enqueue_link_report_assets();
+			$this->enqueue_link_rules_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -2088,6 +2089,42 @@ class AIPS_Admin_Assets {
                 'fixUnlinked'           => __('Link removed', 'ai-post-scheduler'),
                 /* translators: 1: processed posts, 2: total posts */
                 'progress'            => __('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
+     * Enqueue assets for the Link Rules tab of the Content hub.
+     *
+     * @return void
+     */
+    private function enqueue_link_rules_assets() {
+        wp_enqueue_script(
+            'aips-link-rules-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-link-rules.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-link-rules-script',
+            'aipsLinkRulesL10n',
+            array(
+                'nonce'              => wp_create_nonce('aips_ajax_nonce'),
+                'error'              => __('The link rules request failed. Please try again.', 'ai-post-scheduler'),
+                'noRules'            => __('No link rules yet. Add a keyword and the post it should link to above.', 'ai-post-scheduler'),
+                'chooseTarget'       => __('Search for and choose the post to link to.', 'ai-post-scheduler'),
+                'active'             => __('Active', 'ai-post-scheduler'),
+                'disabled'           => __('Disabled', 'ai-post-scheduler'),
+                'enable'             => __('Enable', 'ai-post-scheduler'),
+                'disable'            => __('Disable', 'ai-post-scheduler'),
+                'addRule'            => __('Add Rule', 'ai-post-scheduler'),
+                'updateRule'         => __('Update Rule', 'ai-post-scheduler'),
+                'cancel'             => __('Cancel', 'ai-post-scheduler'),
+                'deleteRule'         => __('Delete rule', 'ai-post-scheduler'),
+                'confirmDeleteTitle' => __('Delete link rule', 'ai-post-scheduler'),
+                'confirmDelete'      => __('Delete this rule? Its links disappear from your posts right away.', 'ai-post-scheduler'),
             )
         );
     }

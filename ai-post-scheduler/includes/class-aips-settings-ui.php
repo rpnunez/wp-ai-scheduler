@@ -80,6 +80,14 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render the description for the Keyword Link Rules card (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_rules_section_callback() {
+	}
+
+	/**
 	 * Render the description for Card 5: Frontend Related Posts Engine.
 	 *
 	 * @return void
@@ -821,6 +829,16 @@ class AIPS_Settings_UI {
      */
     public function sanitize_link_index_batch_delay($value) {
         return min(600, absint($value));
+    }
+
+    /**
+     * Sanitize the maximum rule links added to one post (1 - 20).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_rules_max_per_post($value) {
+        return min(20, max(1, absint($value)));
     }
 
     /**
@@ -1587,6 +1605,38 @@ class AIPS_Settings_UI {
 					<strong><?php echo esc_html($pt_obj->labels->name); ?></strong> <code>(<?php echo esc_html($pt_slug); ?>)</code>
 				</label>
 			<?php endforeach; ?>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the keyword link rules toggle and per-post cap (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_rules_field_callback() {
+		$config  = AIPS_Config::get_instance();
+		$enabled = (bool) $config->get_option('aips_link_rules_enabled', true);
+		$max     = (int) $config->get_option('aips_link_rules_max_per_post', 3);
+		?>
+		<fieldset>
+			<label for="aips_link_rules_enabled">
+				<input type="checkbox" name="aips_link_rules_enabled" id="aips_link_rules_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Apply keyword link rules to published posts', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p>
+				<label for="aips_link_rules_max_per_post"><?php esc_html_e('Maximum rule links per post:', 'ai-post-scheduler'); ?></label>
+				<input type="number" min="1" max="20" step="1" name="aips_link_rules_max_per_post" id="aips_link_rules_max_per_post" value="<?php echo esc_attr((string) $max); ?>" class="small-text">
+			</p>
+			<p class="description">
+				<?php
+				printf(
+					/* translators: %s: link to the Link Rules page */
+					esc_html__('Rules are added when a post is displayed, so post content is never changed. Manage rules under %s.', 'ai-post-scheduler'),
+					'<a href="' . esc_url(admin_url('admin.php?page=aips-generated-posts&tab=link-rules')) . '">' . esc_html__('Content → Link Rules', 'ai-post-scheduler') . '</a>'
+				);
+				?>
+			</p>
 		</fieldset>
 		<?php
 	}
