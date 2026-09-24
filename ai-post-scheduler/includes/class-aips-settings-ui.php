@@ -64,6 +64,14 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render the description for Card 7: Internal Link Automation.
+	 *
+	 * @return void
+	 */
+	public function ai_autolink_section_callback() {
+	}
+
+	/**
 	 * Render the description for Card 5: Frontend Related Posts Engine.
 	 *
 	 * @return void
@@ -762,6 +770,40 @@ class AIPS_Settings_UI {
         }
         $float = (float) $value;
         return min(1.0, max(0.1, $float));
+    }
+
+    /**
+     * Sanitize an auto-link confidence threshold (0.50 - 1.00).
+     *
+     * @param mixed $value Raw value.
+     * @return float
+     */
+    public function sanitize_autolink_threshold($value) {
+        if (!is_numeric($value)) {
+            return 0.85;
+        }
+        return round(min(1.0, max(0.5, (float) $value)), 2);
+    }
+
+    /**
+     * Sanitize an auto-link count limit (1 - 100).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_autolink_limit($value) {
+        return min(100, max(1, absint($value)));
+    }
+
+    /**
+     * Sanitize the rel attribute applied to auto-inserted links.
+     *
+     * @param mixed $value Raw value.
+     * @return string One of '', 'nofollow', 'sponsored', 'ugc'.
+     */
+    public function sanitize_autolink_rel($value) {
+        $value = sanitize_key((string) $value);
+        return in_array($value, array('nofollow', 'sponsored', 'ugc'), true) ? $value : '';
     }
 
     /**
@@ -1489,6 +1531,117 @@ class AIPS_Settings_UI {
 					<span class="description"><?php esc_html_e('posts (0 = unlimited)', 'ai-post-scheduler'); ?></span>
 				</div>
 			</div>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the bulk auto-linking toggle (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_enabled_field_callback() {
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_autolink_enabled', false);
+		?>
+		<label for="aips_autolink_enabled">
+			<input type="checkbox" name="aips_autolink_enabled" id="aips_autolink_enabled" value="1" <?php checked($enabled); ?>>
+			<strong><?php esc_html_e('Allow bulk auto-link runs to insert internal links automatically', 'ai-post-scheduler'); ?></strong>
+		</label>
+		<p class="description">
+			<?php esc_html_e('Links at or above the auto-apply threshold are inserted; links between the review and auto-apply thresholds wait in a review queue. Every insertion can be undone individually or per run.', 'ai-post-scheduler'); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render the auto-apply and review confidence thresholds (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_thresholds_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$auto   = (float) $config->get_option('aips_autolink_auto_apply_threshold', 0.85);
+		$review = (float) $config->get_option('aips_autolink_review_threshold', 0.70);
+		?>
+		<fieldset class="aips-autolink-thresholds">
+			<div class="aips-rate-limits-grid">
+				<div class="aips-rate-limit-field">
+					<label for="aips_autolink_auto_apply_threshold"><?php esc_html_e('Auto-apply at:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0.5" max="1" step="0.01" name="aips_autolink_auto_apply_threshold" id="aips_autolink_auto_apply_threshold" value="<?php echo esc_attr((string) $auto); ?>" class="small-text">
+				</div>
+				<div class="aips-rate-limit-field">
+					<label for="aips_autolink_review_threshold"><?php esc_html_e('Send to review at:', 'ai-post-scheduler'); ?></label>
+					<input type="number" min="0.5" max="1" step="0.01" name="aips_autolink_review_threshold" id="aips_autolink_review_threshold" value="<?php echo esc_attr((string) $review); ?>" class="small-text">
+				</div>
+			</div>
+			<p class="description"><?php esc_html_e('Confidence combines semantic similarity with anchor-text quality (0.50 - 1.00). Suggestions below the review threshold are skipped.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the per-post and per-target link caps (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_limits_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$fields = array(
+			'aips_autolink_max_links_per_post'          => array((int) $config->get_option('aips_autolink_max_links_per_post', 3), __('New links per post, per run:', 'ai-post-scheduler')),
+			'aips_autolink_max_total_internal_per_post' => array((int) $config->get_option('aips_autolink_max_total_internal_per_post', 15), __('Max internal links in a post:', 'ai-post-scheduler')),
+			'aips_autolink_max_inbound_per_target'      => array((int) $config->get_option('aips_autolink_max_inbound_per_target', 5), __('New inbound links per target, per run:', 'ai-post-scheduler')),
+		);
+		?>
+		<fieldset class="aips-autolink-limits">
+			<div class="aips-rate-limits-grid">
+				<?php foreach ($fields as $name => $field) : ?>
+					<div class="aips-rate-limit-field">
+						<label for="<?php echo esc_attr($name); ?>"><?php echo esc_html($field[1]); ?></label>
+						<input type="number" min="1" max="100" step="1" name="<?php echo esc_attr($name); ?>" id="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr((string) $field[0]); ?>" class="small-text">
+					</div>
+				<?php endforeach; ?>
+			</div>
+			<p class="description"><?php esc_html_e('Posts already at the internal link cap never receive automatic links.', 'ai-post-scheduler'); ?></p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render placement and link attribute options (Card 7).
+	 *
+	 * @return void
+	 */
+	public function autolink_placement_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$skip_first = (bool) $config->get_option('aips_autolink_skip_first_paragraph', true);
+		$rel        = (string) $config->get_option('aips_autolink_rel', '');
+		$new_tab    = (bool) $config->get_option('aips_autolink_target_blank', false);
+		$rel_labels = array(
+			''          => __('None (recommended for internal links)', 'ai-post-scheduler'),
+			'nofollow'  => 'nofollow',
+			'sponsored' => 'sponsored',
+			'ugc'       => 'ugc',
+		);
+		?>
+		<fieldset class="aips-autolink-placement">
+			<label for="aips_autolink_skip_first_paragraph">
+				<input type="checkbox" name="aips_autolink_skip_first_paragraph" id="aips_autolink_skip_first_paragraph" value="1" <?php checked($skip_first); ?>>
+				<?php esc_html_e('Never link inside the first paragraph', 'ai-post-scheduler'); ?>
+			</label>
+			<br>
+			<label for="aips_autolink_target_blank">
+				<input type="checkbox" name="aips_autolink_target_blank" id="aips_autolink_target_blank" value="1" <?php checked($new_tab); ?>>
+				<?php esc_html_e('Open auto-inserted links in a new tab', 'ai-post-scheduler'); ?>
+			</label>
+			<p>
+				<label for="aips_autolink_rel"><?php esc_html_e('rel attribute:', 'ai-post-scheduler'); ?></label>
+				<select name="aips_autolink_rel" id="aips_autolink_rel">
+					<?php foreach ($rel_labels as $value => $label) : ?>
+						<option value="<?php echo esc_attr($value); ?>" <?php selected($rel, $value); ?>><?php echo esc_html($label); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
+			<p class="description"><?php esc_html_e('Links are never placed inside headings, existing links, code, buttons, shortcodes or HTML blocks.', 'ai-post-scheduler'); ?></p>
 		</fieldset>
 		<?php
 	}

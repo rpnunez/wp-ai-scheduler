@@ -430,3 +430,10 @@ Filters the host names treated as internal when classifying links. Hosts compare
 *   **Type:** `filter`
 *   **Arguments:**
     *   `string[] $hosts`: Defaults to the hosts of `home_url()` and `site_url()`.
+
+#### `aips_link_insertion_skip_blocks`
+Filters the Gutenberg blocks whose content never receives inserted internal links.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string[] $blocks`: Block names, e.g. `core/heading`, `core/code`, `core/html`, `core/buttons`, `core/navigation`.

@@ -2,6 +2,13 @@
 
 ### Added
 - **Link Index (storage):** New `aips_link_index` table and `AIPS_Link_Index_Repository` recording every `<a href>` found in post content (source, resolved target post, URL, anchor, internal/external, rel/nofollow, AIPS-inserted flag). Provides inbound/outbound/external/broken counts per post, true orphan detection (zero inbound internal links), a paginated Link Report query, and site totals. Internal only in this release; indexing hooks and the Link Report page follow.
+- **Link Extractor & URL Resolver:** `AIPS_Link_Extractor` (quote-aware `<a href>` parsing that ignores comments/block JSON, scripts and non-page schemes) and `AIPS_Link_Url_Resolver` (internal/external classification and cached URL-to-post resolution incl. `?p=`, attachments and old slugs). New filters `aips_link_resolver_url` and `aips_link_resolver_internal_hosts`.
+- **Link Insertion Engine:** `AIPS_Link_Insertion_Engine` finds whole-word anchor phrases only in linkable text (never in headings, existing links, code, buttons, shortcodes or HTML blocks), inserts links without touching surrounding markup, and reverts them with conflict detection. New filter `aips_link_insertion_skip_blocks`.
+- **Internal Link Automation settings:** New Settings card with bulk auto-linking toggle (off by default), auto-apply/review confidence thresholds, per-post/per-target link caps, first-paragraph skip and rel/new-tab options, evaluated by `AIPS_Autolink_Policy` (apply / review / skip with reason codes).
+
+### Fixed
+- **Settings defaults:** Added the missing `aips_author_topic_auto_approval_*` defaults to `AIPS_Config::get_default_options()` (matching the Settings UI fallbacks), which raised "Undefined array key" warnings whenever settings were registered.
+- **AJAX registry:** Registered `aips_save_author_topic`, which returned `0` because it was missing from `AIPS_Ajax_Registry`.
 
 ## [3.7.3] - 2026-09-07
 

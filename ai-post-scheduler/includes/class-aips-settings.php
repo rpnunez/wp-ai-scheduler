@@ -294,6 +294,42 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_indexer_verbose_history'],
 			),
+			'aips_autolink_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_enabled'],
+			),
+			'aips_autolink_auto_apply_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_threshold'),
+				'default'           => $defaults['aips_autolink_auto_apply_threshold'],
+			),
+			'aips_autolink_review_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_threshold'),
+				'default'           => $defaults['aips_autolink_review_threshold'],
+			),
+			'aips_autolink_max_links_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_links_per_post'],
+			),
+			'aips_autolink_max_total_internal_per_post' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_total_internal_per_post'],
+			),
+			'aips_autolink_max_inbound_per_target' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_limit'),
+				'default'           => $defaults['aips_autolink_max_inbound_per_target'],
+			),
+			'aips_autolink_skip_first_paragraph' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_skip_first_paragraph'],
+			),
+			'aips_autolink_rel' => array(
+				'sanitize_callback' => array($ui, 'sanitize_autolink_rel'),
+				'default'           => $defaults['aips_autolink_rel'],
+			),
+			'aips_autolink_target_blank' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_autolink_target_blank'],
+			),
 			'aips_embeddings_env_id' => array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_embeddings_env_id'],
@@ -831,6 +867,48 @@ class AIPS_Settings {
             array($this->ui, 'deduplication_threshold_field_callback'),
             'aips-settings',
             'aips_ai_deduplication_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Card 7: Internal Link Automation (bulk auto-link guardrails)
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_autolink_section',
+            __('Internal Link Automation', 'ai-post-scheduler'),
+            array($this->ui, 'ai_autolink_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_autolink_enabled',
+            __('Bulk Auto-Linking', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_enabled_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_thresholds',
+            __('Confidence Thresholds', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_thresholds_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_limits',
+            __('Link Limits', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
+        );
+
+        add_settings_field(
+            'aips_autolink_placement',
+            __('Placement & Attributes', 'ai-post-scheduler'),
+            array($this->ui, 'autolink_placement_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
         );
 
         // -----------------------------------------------------------------------
