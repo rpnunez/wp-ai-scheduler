@@ -24,6 +24,8 @@
 
 ### Changed
 - **Grouped Blueprint Schedules:** Consolidated persona topic-generation and post-generation schedules into single Blueprint rows with stages, resolving row count inflation.
+- **Vector Storage Optimization**: Migrated embeddings storage from JSON to IEEE 754 Float32 binary packing (`MEDIUMBLOB`), yielding an 82% storage reduction (down to 6.1 KB per vector) and faster decoding.
+- **Resilient DB Migration**: Added a highly resilient background migration script that chunk-converts legacy JSON vectors to binary, with pacing and timeout protections for high-volume production sites.
 
 ### Fixed
 - **Terminal Outcome Metrics:** Success and failure rates now compute over terminal outcomes via `AIPS_Outcome_Rate`, with accurate post attribution and zero-value tile handling.
@@ -42,11 +44,8 @@
 - **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
 
 ## [3.6.5] - 2026-08-28
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 ### Added
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
 - **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
 - **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
 - **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
@@ -64,7 +63,15 @@
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.
-### Added
+- **Content Intelligence Suite & Dedicated Pages**: Restructured the tab-heavy Content Indexer into the modern **Content Intelligence** suite using a Hybrid 2-Level architecture:
+  - **Primary Hub (`aips-content-intelligence`)**: Interactive Semantic Graph Visualizer, multi-dimensional vector health metrics, and backfill scan coverage controls.
+  - **Dedicated Topic Clusters & Gaps Page (`aips-post-clusters`)**: Standalone workflow page for thematic topic clusters, core Pillar Post designation, community cohesion meters, and AI gap topic generation with 1-click author assignment.
+  - **Dedicated Cannibalization & Duplicate Audit Page (`aips-cannibalization`)**: Standalone risk audit page with grouped risk tiers, pairwise similarity comparisons, and direct editorial action links.
+  - **Seamless Navigation & Backward Compatibility**: Persistent suite navigation tabs across all sub-pages and automatic redirection from legacy `?page=aips-content-indexer` URLs.
+- **Vector Embeddings Scope Filtering**: Added configurable indexing scope filters (`aips_only`, `date_range`, `all`) defaulting conservatively to AIPS-generated posts (`_aips_generated_post = '1'`) to prevent runaway token usage on sites with large legacy archives.
+- **Embeddings Rate Limiting & Quota Protection**: Added persistent sliding-window usage tracking across rolling 24h, 7d, and 30d windows with automated backfill scan halting and quota alert notifications upon breach. Persisted in `wp_options` (`autoload = false`) to guarantee resilience across AIPS Cache flushes and object cache invalidations.
+- **Settings > AI Vector Configuration Consolidation**: Consolidated all Vector Embeddings controls (master toggle, scope filter, rate limits, model, environment ID, dimensions) under the dedicated **Settings > AI** section, with live usage gauges and deep links in the Content Indexer hub.
+- **Embeddings System Enable/Disable Toggle**: Added global toggle (`aips_embeddings_enabled`) allowing administrators to fully enable or disable vector embeddings generation, continuous post indexing on publish/update, background topic embeddings cron jobs, and semantic duplicate detection.
 - **Author Topic Auto-Approval Policies**: Added configurable auto-approval policies per author with support for "Auto-Approve All", AI Quality Score thresholds, and Semantic Similarity Deduplication Guards, along with configurable fallback actions (`pending` vs `rejected`), full audit logging to topic logs, and dynamic UI controls in the Author management modal.
 - **WordPress AI Connector Routing**: Added Settings > AI controls for using all available WordPress AI connectors or an ordered allowlist, with connector-specific failover and short-lived health cooldowns. Request validation and content-policy failures are surfaced without provider shopping.
 - **Prompt Context Digest**: Added bounded beginning/outline/conclusion context for stateless title and excerpt requests, preserving article-wide signal without resending unbounded bodies.

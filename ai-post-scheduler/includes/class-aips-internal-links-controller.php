@@ -173,12 +173,16 @@ class AIPS_Internal_Links_Controller {
 		$post_id_raw = isset($_POST['post_id']) ? wp_unslash($_POST['post_id']) : 0;
 		$post_id     = absint($post_id_raw);
 
-		$max_suggestions_raw = isset($_POST['max_suggestions']) ? wp_unslash($_POST['max_suggestions']) : AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS;
-		$max_suggestions     = is_numeric($max_suggestions_raw) ? (int) $max_suggestions_raw : (int) AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS;
+		$evaluator           = $this->service->get_similarity_evaluator();
+		$default_max         = $evaluator->get_default_max_suggestions();
+		$default_threshold   = $evaluator->get_default_threshold('internal_links');
+
+		$max_suggestions_raw = isset($_POST['max_suggestions']) ? wp_unslash($_POST['max_suggestions']) : $default_max;
+		$max_suggestions     = is_numeric($max_suggestions_raw) ? (int) $max_suggestions_raw : (int) $default_max;
 		$max_suggestions     = max(1, min(20, $max_suggestions));
 
-		$threshold_raw = isset($_POST['threshold']) ? wp_unslash($_POST['threshold']) : AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
-		$threshold     = is_numeric($threshold_raw) ? (float) $threshold_raw : (float) AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
+		$threshold_raw = isset($_POST['threshold']) ? wp_unslash($_POST['threshold']) : $default_threshold;
+		$threshold     = is_numeric($threshold_raw) ? (float) $threshold_raw : (float) $default_threshold;
 		$threshold     = max(0, min(1, $threshold));
 		if (!$post_id) {
 			AIPS_Ajax_Response::error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));

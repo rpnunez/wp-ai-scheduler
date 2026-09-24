@@ -67,9 +67,9 @@ class AIPS_Author_Topics_Controller {
 	private $history_service;
 
 	/**
-	 * @var AIPS_Topic_Expansion_Service Service for topic expansion/similarity
+	 * @var AIPS_Similarity_Evaluator Service for topic expansion and similarity evaluation
 	 */
-	private $expansion_service;
+	private $similarity_evaluator;
 
 	/**
 	 * @var AIPS_History_Repository_Interface Repository for history data
@@ -87,14 +87,26 @@ class AIPS_Author_Topics_Controller {
 	private $job_scheduler;
 
 	/**
+	 * @var AIPS_Embeddings_Repository Embeddings repository
+	 */
+	private $embeddings_repo;
+
+	/**
+	 * @var AIPS_Relationships_Repository Relationships repository
+	 */
+	private $relationships_repo;
+
+	/**
 	 * Initialize the controller.
 	 *
-	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
+	 * @param AIPS_Similarity_Evaluator|null     $similarity_evaluator   Similarity evaluator.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
+	 * @param AIPS_Embeddings_Repository|null    $embeddings_repo        Embeddings repository.
+	 * @param AIPS_Relationships_Repository|null $relationships_repo     Relationships repository.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
+	public function __construct($similarity_evaluator = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null, ?AIPS_Embeddings_Repository $embeddings_repo = null, ?AIPS_Relationships_Repository $relationships_repo = null) {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
@@ -102,10 +114,12 @@ class AIPS_Author_Topics_Controller {
 		$this->post_generator         = new AIPS_Author_Post_Generator();
 		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
 		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
-		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$this->similarity_evaluator   = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
 		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->embeddings_repo        = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo     = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -220,6 +234,10 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 
 		if ($result) {
+			// Purge topic vector embedding and relationships upon rejection
+			$this->embeddings_repo->delete('topic', $topic_id);
+			$this->relationships_repo->delete_for_object('topic', $topic_id);
+
 			// Get topic details for logging
 			$topic = $this->repository->get_by_id($topic_id);
 
@@ -322,6 +340,8 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->delete($topic_id);
 
 		if ($result) {
+			$this->embeddings_repo->delete('topic', $topic_id);
+			$this->relationships_repo->delete_for_object('topic', $topic_id);
 			AIPS_Ajax_Response::success(array(), __('Topic deleted successfully.', 'ai-post-scheduler'));
 		} else {
 			AIPS_Ajax_Response::error(__('Failed to delete topic.', 'ai-post-scheduler'));
@@ -505,6 +525,8 @@ class AIPS_Author_Topics_Controller {
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 			if ($result) {
+				$this->embeddings_repo->delete('topic', $topic_id);
+				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$this->logs_repository->log_rejection($topic_id, get_current_user_id());
 
 				// Record feedback and apply penalty if feedback context is provided
@@ -569,6 +591,8 @@ class AIPS_Author_Topics_Controller {
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->delete($topic_id);
 			if ($result) {
+				$this->embeddings_repo->delete('topic', $topic_id);
+				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$success_count++;
 			} else {
 				$failed_count++;
@@ -727,15 +751,19 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+		$topic_id  = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 5;
+		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 5;
 
 		if (!$topic_id || !$author_id) {
 			AIPS_Ajax_Response::error(__('Invalid topic or author ID.', 'ai-post-scheduler'));
 		}
 
-		$similar_topics = $this->expansion_service->find_similar_topics($topic_id, $author_id, $limit);
+		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
+			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
+			: new AIPS_Similarity_Evaluator();
+
+		$similar_topics = $similarity_evaluator->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
 		foreach ($similar_topics as &$item) {
@@ -743,7 +771,7 @@ class AIPS_Author_Topics_Controller {
 				$topic = $this->repository->get_by_id($item['id']);
 				if ($topic) {
 					$item['topic_title'] = $topic->topic_title;
-					$item['status'] = $topic->status;
+					$item['status']      = $topic->status;
 				}
 			}
 		}
@@ -764,13 +792,17 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 10;
+		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 10;
 
 		if (!$author_id) {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 
-		$suggestions = $this->expansion_service->suggest_related_topics($author_id, $limit);
+		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
+			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
+			: new AIPS_Similarity_Evaluator();
+
+		$suggestions = $similarity_evaluator->suggest_related_topics($author_id, $limit);
 
 		AIPS_Ajax_Response::success(array('suggestions' => $suggestions));
 	}
@@ -788,6 +820,10 @@ class AIPS_Author_Topics_Controller {
 
 		if (!current_user_can('manage_options')) {
 			AIPS_Ajax_Response::permission_denied();
+		}
+
+		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
+			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;

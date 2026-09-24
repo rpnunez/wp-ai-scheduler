@@ -54,6 +54,9 @@ class AIPS_Admin_Assets {
 	private const PAGE_SETTINGS = 'aips-settings';
 	private const PAGE_TELEMETRY = 'aips-telemetry';
 	private const PAGE_INTERNAL_LINKS = 'aips-internal-links';
+	private const PAGE_CONTENT_INTELLIGENCE = 'aips-content-intelligence';
+	private const PAGE_POST_CLUSTERS = 'aips-post-clusters';
+	private const PAGE_CANNIBALIZATION = 'aips-cannibalization';
 	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
 	private const PAGE_STRESS_TEST    = 'aips-stress-test';
@@ -219,7 +222,17 @@ class AIPS_Admin_Assets {
 			$this->enqueue_internal_links_assets();
 		}
 
-		if (self::PAGE_CONTENT_INDEXER === $page || $this->hook_contains($hook, self::PAGE_CONTENT_INDEXER) || $this->is_automations_tab($page, 'content-indexer')) {
+		if (
+			self::PAGE_CONTENT_INTELLIGENCE === $page
+			|| self::PAGE_POST_CLUSTERS === $page
+			|| self::PAGE_CANNIBALIZATION === $page
+			|| self::PAGE_CONTENT_INDEXER === $page
+			|| $this->hook_contains($hook, self::PAGE_CONTENT_INTELLIGENCE)
+			|| $this->hook_contains($hook, self::PAGE_POST_CLUSTERS)
+			|| $this->hook_contains($hook, self::PAGE_CANNIBALIZATION)
+			|| $this->hook_contains($hook, self::PAGE_CONTENT_INDEXER)
+			|| $this->is_automations_tab($page, 'content-indexer')
+		) {
 			$this->enqueue_content_indexer_assets();
 		}
 
@@ -892,7 +905,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-slices',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-slices.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1716,6 +1729,7 @@ class AIPS_Admin_Assets {
                 'nonceRebuildCaches'                  => wp_create_nonce('aips_rebuild_caches'),
                 'nonceRefreshSystem'                    => wp_create_nonce('aips_status_refresh_system'),
                 'nonceCacheMaintenance'                 => wp_create_nonce('aips_status_cache_maintenance'),
+                'nonceClearEmbeddingsCache'             => wp_create_nonce('aips_status_clear_embeddings_cache'),
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),
@@ -1957,7 +1971,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-content-indexer-script',
             AIPS_PLUGIN_URL . 'assets/js/admin-content-indexer.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -1966,12 +1980,20 @@ class AIPS_Admin_Assets {
             'aips-content-indexer-script',
             'aipsContentIndexerL10n',
             array(
-                'nonce'            => wp_create_nonce('aips_ajax_nonce'),
-                'startScan'        => __('Start Backfill Scan', 'ai-post-scheduler'),
-                'resumeScan'       => __('Resume Scan', 'ai-post-scheduler'),
-                'indexingPaused'   => __('Indexing Paused', 'ai-post-scheduler'),
-                'indexingComplete' => __('Content indexing complete!', 'ai-post-scheduler'),
-                'confirmClear'     => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
+                'nonce'                 => wp_create_nonce('aips_ajax_nonce'),
+                'startScan'             => __('Start Scan', 'ai-post-scheduler'),
+                'resumeScan'            => __('Resume Scan', 'ai-post-scheduler'),
+                'indexingPaused'        => __('Indexing Paused', 'ai-post-scheduler'),
+                'indexingComplete'      => __('Content indexing complete!', 'ai-post-scheduler'),
+                'confirmClear'          => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
+                'indexed'               => __('Indexed', 'ai-post-scheduler'),
+                'pendingIndex'          => __('Pending Index', 'ai-post-scheduler'),
+                'authorTopic'           => __('Author Topic', 'ai-post-scheduler'),
+                'post'                  => __('Post', 'ai-post-scheduler'),
+                'noAuditDuplicates'     => __('No high-similarity duplicate or cannibalizing clusters found. Great job!', 'ai-post-scheduler'),
+                'editSource'            => __('Edit Source', 'ai-post-scheduler'),
+                'editTarget'            => __('Edit Target', 'ai-post-scheduler'),
+                'cannibalizationRisk'   => __('Cannibalization Risk', 'ai-post-scheduler'),
             )
         );
     }

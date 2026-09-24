@@ -150,9 +150,89 @@ class AIPS_Admin_Menu {
             null,
             __('Author Topics', 'ai-post-scheduler'),
             __('Author Topics', 'ai-post-scheduler'),
-            'manage_options',
             'aips-author-topics',
             array($this, 'render_author_topics_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Sources', 'ai-post-scheduler'),
+            __('Sources', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-sources',
+            array($this, 'render_sources_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('View Source Data', 'ai-post-scheduler'),
+            __('View Source Data', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-source-data',
+            array($this, 'render_source_data_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Taxonomy', 'ai-post-scheduler'),
+            __('Taxonomy', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-taxonomy',
+            array($this, 'render_taxonomy_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Internal Links', 'ai-post-scheduler'),
+            __('Internal Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-internal-links',
+            array($this, 'render_internal_links_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Content Intelligence', 'ai-post-scheduler'),
+            __('Content Intelligence', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-intelligence',
+            array($this, 'render_content_intelligence_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
+            __('Topic Clusters & Gaps', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-post-clusters',
+            array($this, 'render_post_clusters_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Cannibalization Audit', 'ai-post-scheduler'),
+            __('Cannibalization Audit', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-cannibalization',
+            array($this, 'render_cannibalization_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Content Indexer', 'ai-post-scheduler'),
+            __('Content Indexer', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-content-indexer',
+            array($this, 'render_content_indexer_page')
+        );
+
+        add_submenu_page(
+            null,
+            __('Affiliate Links', 'ai-post-scheduler'),
+            __('Affiliate Links', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-affiliate-links',
+            array($this, 'render_affiliate_links_page')
         );
 
         add_submenu_page(
@@ -726,10 +806,19 @@ class AIPS_Admin_Menu {
         $this->redirect_to_hub('aips-automations', 'internal-links');
     }
 
+    public function render_content_intelligence_page() {
+        $this->redirect_to_hub('aips-content', 'content-indexer');
+    }
+
+    public function render_post_clusters_page() {
+        $this->redirect_to_hub('aips-content', 'clusters');
+    }
+
+    public function render_cannibalization_page() {
+        $this->redirect_to_hub('aips-content', 'cannibalization');
+    }
+
     public function render_content_indexer_page() {
-        AIPS_Admin_Menu_Helper::safe_render(function() {
-            $controller = new AIPS_Content_Indexer_Controller();
-            $controller->render_page();
-        }, __('Content Indexer', 'ai-post-scheduler'));
+        $this->redirect_to_hub('aips-content', 'content-indexer');
     }
 }

@@ -113,7 +113,6 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		$this->generator = new AIPS_Generator();
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
 		$this->job_scheduler = new AIPS_Job_Scheduler();
@@ -424,8 +423,12 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		 * @since 2.6.0
 		 * @param int $limit Default context limit. Default 5.
 		 */
+		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
+			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
+			: new AIPS_Similarity_Evaluator();
+
 		$context_limit    = max(1, (int) apply_filters('aips_topic_expansion_context_limit', 5));
-		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, $context_limit);
+		$expanded_context = $similarity_evaluator->get_expanded_context($author->id, $topic->id, $context_limit);
 		
 		if (!empty($expanded_context)) {
 			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');

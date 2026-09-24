@@ -56,6 +56,7 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_rebuild_caches', array($this, 'ajax_rebuild_caches'));
 		add_action('wp_ajax_aips_status_refresh_system', array($this, 'ajax_refresh_system'));
 		add_action('wp_ajax_aips_status_cache_maintenance', array($this, 'ajax_cache_maintenance'));
+		add_action('wp_ajax_aips_status_clear_embeddings_cache', array($this, 'ajax_clear_embeddings_cache'));
 		add_action('wp_ajax_aips_status_cleanup_notifications', array($this, 'ajax_cleanup_notifications'));
 		add_action('wp_ajax_aips_status_reset_resilience', array($this, 'ajax_reset_resilience'));
 		add_action('wp_ajax_aips_status_repair_datetime', array($this, 'ajax_repair_datetime'));
@@ -199,6 +200,22 @@ class AIPS_System_Status_Controller {
 		$this->verify_request('aips_status_cache_maintenance');
 
 		$result = $this->diagnostics_service->run_cache_maintenance();
+		if (empty($result['success'])) {
+			AIPS_Ajax_Response::error($result['message']);
+		}
+
+		AIPS_Ajax_Response::success($result);
+	}
+
+	/**
+	 * AJAX: Clear embeddings cache.
+	 *
+	 * @return void
+	 */
+	public function ajax_clear_embeddings_cache() {
+		$this->verify_request('aips_status_clear_embeddings_cache');
+
+		$result = $this->diagnostics_service->clear_embeddings_cache();
 		if (empty($result['success'])) {
 			AIPS_Ajax_Response::error($result['message']);
 		}

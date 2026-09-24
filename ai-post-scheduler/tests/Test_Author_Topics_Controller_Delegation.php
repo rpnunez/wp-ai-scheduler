@@ -65,7 +65,7 @@ class Test_Author_Topics_Controller_Delegation extends WP_UnitTestCase {
 public function test_get_similar_topics_delegates_to_expansion_service() {
 		wp_set_current_user( $this->admin_user_id );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->onlyMethods( array( 'find_similar_topics' ) )
 			->getMock();
@@ -96,7 +96,7 @@ public function test_get_similar_topics_delegates_to_expansion_service() {
 public function test_get_similar_topics_requires_topic_and_author_id() {
 		wp_set_current_user( $this->admin_user_id );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->onlyMethods( array( 'find_similar_topics' ) )
 			->getMock();
@@ -126,7 +126,7 @@ public function test_get_similar_topics_requires_topic_and_author_id() {
 public function test_suggest_related_topics_delegates_to_expansion_service() {
 		wp_set_current_user( $this->admin_user_id );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->onlyMethods( array( 'suggest_related_topics' ) )
 			->getMock();
@@ -161,7 +161,7 @@ public function test_suggest_related_topics_delegates_to_expansion_service() {
 public function test_compute_embeddings_for_author_delegates_to_expansion_service() {
 		wp_set_current_user( $this->admin_user_id );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Topic_Expansion_Service' )
+		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
 			->disableOriginalConstructor()
 			->getMock();
 
