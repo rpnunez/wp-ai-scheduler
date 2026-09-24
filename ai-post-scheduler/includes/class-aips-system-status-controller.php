@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
  * operation logic lives in AIPS_System_Diagnostics_Service; handlers here only
  * verify nonces/capabilities, sanitize input, and shape the JSON response.
  */
-class AIPS_System_Status_Controller {
+class AIPS_System_Status_Controller extends AIPS_Ajax_Controller_Base {
 	/**
 	 * @var AIPS_Resilience_Service|null
 	 */
@@ -36,44 +36,37 @@ class AIPS_System_Status_Controller {
 	 */
 	private $container;
 
-	public function __construct() {
-		$this->container = AIPS_Container::get_instance();
-
-		$this->resilience_service = $this->container->has(AIPS_Resilience_Service::class)
-			? $this->container->make(AIPS_Resilience_Service::class)
-			: (class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null);
-
-		$this->diagnostics_service = $this->container->has(AIPS_System_Diagnostics_Service::class)
-			? $this->container->make(AIPS_System_Diagnostics_Service::class)
-			: new AIPS_System_Diagnostics_Service();
-
-		add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
-		add_action('wp_ajax_aips_status_reschedule_missed_cron', array($this, 'ajax_reschedule_missed_cron'));
-		add_action('wp_ajax_aips_status_retry_failed_slices', array($this, 'ajax_retry_failed_slices'));
-		add_action('wp_ajax_aips_status_repair_campaign_data', array($this, 'ajax_repair_campaign_data'));
-		add_action('wp_ajax_aips_status_clear_partial_generations', array($this, 'ajax_clear_partial_generations'));
-		add_action('wp_ajax_aips_status_cleanup_stale_jobs_cache', array($this, 'ajax_cleanup_stale_jobs_cache'));
-		add_action('wp_ajax_aips_rebuild_caches', array($this, 'ajax_rebuild_caches'));
-		add_action('wp_ajax_aips_status_refresh_system', array($this, 'ajax_refresh_system'));
-		add_action('wp_ajax_aips_status_cache_maintenance', array($this, 'ajax_cache_maintenance'));
-		add_action('wp_ajax_aips_status_cleanup_notifications', array($this, 'ajax_cleanup_notifications'));
-		add_action('wp_ajax_aips_status_reset_resilience', array($this, 'ajax_reset_resilience'));
-		add_action('wp_ajax_aips_status_repair_datetime', array($this, 'ajax_repair_datetime'));
-	}
-
 	/**
-	 * Verify the per-action nonce and capability, terminating on failure.
-	 *
-	 * @param string $action AJAX action name (doubles as nonce action).
-	 * @return void
+	 * @var array<string, string>
 	 */
-	private function verify_request($action) {
-		if ( ! check_ajax_referer($action, 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
+	protected array $actions = array(
+		'aips_reset_circuit_breaker'            => 'ajax_reset_circuit_breaker',
+		'aips_status_reschedule_missed_cron'    => 'ajax_reschedule_missed_cron',
+		'aips_status_retry_failed_slices'       => 'ajax_retry_failed_slices',
+		'aips_status_repair_campaign_data'      => 'ajax_repair_campaign_data',
+		'aips_status_clear_partial_generations' => 'ajax_clear_partial_generations',
+		'aips_status_cleanup_stale_jobs_cache'  => 'ajax_cleanup_stale_jobs_cache',
+		'aips_rebuild_caches'                   => 'ajax_rebuild_caches',
+		'aips_status_refresh_system'            => 'ajax_refresh_system',
+		'aips_status_cache_maintenance'         => 'ajax_cache_maintenance',
+		'aips_status_cleanup_notifications'     => 'ajax_cleanup_notifications',
+		'aips_status_reset_resilience'          => 'ajax_reset_resilience',
+		'aips_status_repair_datetime'           => 'ajax_repair_datetime',
+	);
+
+	public function __construct(?AIPS_Resilience_Service $resilience_service = null, ?AIPS_System_Diagnostics_Service $diagnostics_service = null) {
+		$container = AIPS_Container::get_instance();
+		$this->container = $container;
+
+		$this->resilience_service = $resilience_service ?: $container->makeIfExists(AIPS_Resilience_Service::class, function() {
+			return class_exists('AIPS_Resilience_Service') ? new AIPS_Resilience_Service() : null;
+		});
+
+		$this->diagnostics_service = $diagnostics_service ?: $container->makeIfExists(AIPS_System_Diagnostics_Service::class, function() {
+			return new AIPS_System_Diagnostics_Service();
+		});
+
+		parent::__construct();
 	}
 
 	/**
