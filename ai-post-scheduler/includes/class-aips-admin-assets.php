@@ -183,6 +183,7 @@ class AIPS_Admin_Assets {
         if (self::PAGE_GENERATED_POSTS === $page || $this->hook_contains($hook, self::PAGE_GENERATED_POSTS)) {
 			$this->enqueue_generated_posts_assets();
 			$this->enqueue_content_indexer_assets();
+			$this->enqueue_link_report_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -1994,6 +1995,55 @@ class AIPS_Admin_Assets {
                 'editSource'            => __('Edit Source', 'ai-post-scheduler'),
                 'editTarget'            => __('Edit Target', 'ai-post-scheduler'),
                 'cannibalizationRisk'   => __('Cannibalization Risk', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
+     * Enqueue assets for the Link Report tab of the Content hub.
+     *
+     * @return void
+     */
+    private function enqueue_link_report_assets() {
+        wp_enqueue_style(
+            'aips-link-report-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-link-report.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-link-report-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-link-report.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-link-report-script',
+            'aipsLinkReportL10n',
+            array(
+                'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+                'loading'             => __('Loading…', 'ai-post-scheduler'),
+                'loadError'           => __('Could not load the link report.', 'ai-post-scheduler'),
+                /* translators: 1: current page, 2: total pages, 3: total posts */
+                'pageInfo'            => __('Page %1$d of %2$d (%3$d posts)', 'ai-post-scheduler'),
+                'internal'            => __('Internal', 'ai-post-scheduler'),
+                'external'            => __('External', 'ai-post-scheduler'),
+                'externalNofollow'    => __('External (nofollow)', 'ai-post-scheduler'),
+                'broken'              => __('Broken', 'ai-post-scheduler'),
+                'noInbound'           => __('No other post links here yet — this post is an orphan.', 'ai-post-scheduler'),
+                'noOutbound'          => __('This post contains no links.', 'ai-post-scheduler'),
+                'confirmRebuildTitle' => __('Rebuild link index', 'ai-post-scheduler'),
+                'confirmRebuild'      => __('Re-scan every published post for links in the background? This makes no AI calls and can run while you keep working.', 'ai-post-scheduler'),
+                'cancel'              => __('Cancel', 'ai-post-scheduler'),
+                'rebuild'             => __('Rebuild', 'ai-post-scheduler'),
+                'rebuildError'        => __('Could not start the link index rebuild.', 'ai-post-scheduler'),
+                'rebuildDone'         => __('Link index is up to date.', 'ai-post-scheduler'),
+                'rebuildFailed'       => __('The link index rebuild finished with errors. See History for details.', 'ai-post-scheduler'),
+                /* translators: 1: processed posts, 2: total posts */
+                'progress'            => __('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
             )
         );
     }

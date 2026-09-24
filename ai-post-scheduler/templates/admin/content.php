@@ -8,6 +8,7 @@
  * Tab 2: Partial Generations - @see templates/admin/tab-partial-generations.php
  * Tab 3: Pending Review      - @see templates/admin/tab-pending-review.php
  * Tab 4: Content Indexer     - @see templates/admin/content-indexer.php
+ * Tab 5: Link Report         - @see templates/admin/link-report.php
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -25,12 +26,15 @@ $valid_tabs = array(
 	'aips-partial-generations',
 	'aips-pending-review',
 	'aips-content-indexer',
+	'aips-link-report',
 	'aips-content-clusters',
 	'aips-content-cannibalization',
 );
 
 if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embeddings' === $active_tab) {
 	$active_tab = 'aips-content-indexer';
+} elseif ('link-report' === $active_tab || 'links' === $active_tab) {
+	$active_tab = 'aips-link-report';
 } elseif ('partial-generations' === $active_tab || 'partial' === $active_tab) {
 	$active_tab = 'aips-partial-generations';
 } elseif ('pending-review' === $active_tab || 'pending' === $active_tab) {
@@ -71,6 +75,13 @@ $rail_items = array(
 		'icon'        => 'dashicons-database',
 		'description' => __('Vectors & semantic embeddings', 'ai-post-scheduler'),
 		'active'      => ($active_tab === 'aips-content-indexer'),
+	),
+	array(
+		'key'         => 'aips-link-report',
+		'label'       => __('Link Report', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-admin-links',
+		'description' => __('Internal links, orphans & broken links', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-link-report'),
 	),
 	array(
 		'key'         => 'aips-content-clusters',
@@ -151,6 +162,17 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 						extract($indexer_controller->get_intelligence_hub_view_data());
 						include AIPS_PLUGIN_DIR . 'templates/admin/content-intelligence.php';
 					}, __('Content Indexer', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Link Report -->
+				<div id="aips-link-report-tab" class="aips-tab-content<?php echo $active_tab === 'aips-link-report' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-link-report' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-link-report' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$link_report_controller = new AIPS_Link_Report_Controller();
+						extract($link_report_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/link-report.php';
+					}, __('Link Report', 'ai-post-scheduler'), true);
 					?>
 				</div>
 

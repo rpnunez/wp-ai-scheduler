@@ -288,6 +288,12 @@ class AIPS_Ajax_Registry {
 		'aips_reindex_single_post'                   => 'AIPS_Post_Insights_Controller',
 		'aips_toggle_single_pillar'                  => 'AIPS_Post_Insights_Controller',
 
+		// Link Report Controller
+		'aips_link_report_get'             => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_post_links'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_start_backfill'  => 'AIPS_Link_Report_Controller',
+		'aips_link_report_backfill_status' => 'AIPS_Link_Report_Controller',
+
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',
 		'aips_get_field_assist_history' => 'AIPS_AI_Assistance_Controller',

@@ -281,6 +281,11 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-database',
 						'description' => __('Vector embeddings index and semantic post search.', 'ai-post-scheduler'),
 					),
+					'aips-link-report' => array(
+						'label'       => __('Link Report', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-admin-links',
+						'description' => __('Inbound, outbound and broken links for every published post, with orphan detection.', 'ai-post-scheduler'),
+					),
 					'aips-content-clusters' => array(
 						'label'       => __('Topic Clusters', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-networking',

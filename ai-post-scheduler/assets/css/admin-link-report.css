@@ -1,0 +1,71 @@
+/**
+ * Link Report (Content hub) styles.
+ *
+ * @package AI_Post_Scheduler
+ * @since 3.7.4
+ */
+
+.aips-link-report-tab .aips-text-danger {
+	color: var(--aips-danger);
+}
+
+.aips-link-report-tab .aips-link-report-toolbar {
+	padding: var(--aips-space-4);
+	border-bottom: 1px solid var(--aips-border-color);
+}
+
+.aips-link-report-tab .aips-sort-link {
+	background: none;
+	border: 0;
+	padding: 0;
+	font: inherit;
+	font-weight: var(--aips-font-semibold);
+	color: inherit;
+	cursor: pointer;
+}
+
+.aips-link-report-tab .aips-sort-link:hover,
+.aips-link-report-tab .aips-sort-link:focus-visible {
+	color: var(--aips-primary);
+}
+
+.aips-link-report-tab .aips-sort-link[aria-sort="ascending"]::after {
+	content: " \25B2";
+	font-size: 0.7em;
+}
+
+.aips-link-report-tab .aips-sort-link[aria-sort="descending"]::after {
+	content: " \25BC";
+	font-size: 0.7em;
+}
+
+.aips-link-report-tab #aips-link-report-table td .aips-text-muted {
+	display: block;
+	font-size: 12px;
+}
+
+.aips-link-report-tab .aips-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-4);
+	border-top: 1px solid var(--aips-border-color);
+}
+
+.aips-link-report-tab .aips-pagination-info {
+	color: var(--aips-gray-600);
+}
+
+.aips-link-report-tab .aips-banner-title .spinner {
+	float: none;
+	margin: 0 var(--aips-space-2) 0 0;
+}
+
+#aips-link-report-modal .aips-modal-body h3 {
+	margin-top: var(--aips-space-5);
+}
+
+#aips-link-report-modal .aips-modal-body h3:first-child {
+	margin-top: 0;
+}
