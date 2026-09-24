@@ -218,6 +218,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'sanitize_text_field',
 				'default'           => $defaults['aips_unsplash_access_key'],
 			),
+			'aips_gsc_service_account' => array(
+				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_credentials'),
+				'default'           => $defaults['aips_gsc_service_account'],
+			),
+			'aips_gsc_property' => array(
+				'sanitize_callback' => array('AIPS_GSC_Client', 'sanitize_property'),
+				'default'           => $defaults['aips_gsc_property'],
+			),
+			'aips_gsc_anchor_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_gsc_anchor_enabled'],
+			),
 			'aips_review_notifications_email' => array(
 				'sanitize_callback' => array($ui, 'sanitize_notification_emails'),
 				'default'           => $defaults['aips_review_notifications_email'],
@@ -1111,6 +1123,14 @@ class AIPS_Settings {
             'aips_unsplash_access_key',
             __('Unsplash Access Key', 'ai-post-scheduler'),
             array($this->ui, 'unsplash_access_key_field_callback'),
+            'aips-settings',
+            'aips_api_keys_section'
+        );
+
+        add_settings_field(
+            'aips_gsc',
+            __('Google Search Console', 'ai-post-scheduler'),
+            array($this->ui, 'gsc_field_callback'),
             'aips-settings',
             'aips_api_keys_section'
         );

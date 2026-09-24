@@ -153,6 +153,9 @@ class AIPS_Config {
             'aips_default_post_author' => 1,
             // General
             'aips_unsplash_access_key' => '',
+            'aips_gsc_service_account' => '',
+            'aips_gsc_property'        => '',
+            'aips_gsc_anchor_enabled'  => true,
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_persist_table_filters' => true,

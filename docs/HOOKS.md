@@ -453,8 +453,15 @@ Filters how many days of internal link clicks the Link Report shows (default 30)
 *   **Arguments:**
     *   `int $days`: Report window in days.
 
+#### `aips_gsc_max_rows`
+Filters the maximum number of Google Search Console rows (page × query) read per keyword sync (3.7.6).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $max_rows`: Default `100000` (four API pages of 25,000 rows).
+
 #### `aips_inbound_anchor_phrases`
-Filters the phrases used to place inbound links to a post (most specific first). Defaults to the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
+Filters the phrases used to place inbound links to a post (most specific first). Defaults to the post's top Google Search Console queries (when connected), the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
 
 *   **Type:** `filter`
 *   **Arguments:**

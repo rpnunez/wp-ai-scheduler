@@ -504,6 +504,7 @@
 					source_title: item.source_title,
 					source_edit: item.source_edit,
 					anchor_label: item.anchor || l10n.noAnchor,
+					gsc_class: item.anchor_source === 'gsc' ? '' : 'aips-hidden',
 					context: item.context,
 					confidence: item.confidence,
 					confidence_class: confidenceClass,

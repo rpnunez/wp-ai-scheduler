@@ -678,6 +678,7 @@ foreach ($post_types as $type_slug => $type_label) {
 			</td>
 			<td>
 				<strong>{{anchor_label}}</strong>
+				<span class="aips-badge aips-badge-info {{gsc_class}}" title="<?php esc_attr_e('Visitors find the linked post on Google with this search query (Search Console).', 'ai-post-scheduler'); ?>"><?php esc_html_e('Search query', 'ai-post-scheduler'); ?></span>
 				<span class="aips-text-muted aips-link-suggestion-context">{{context}}</span>
 			</td>
 			<td><span class="aips-badge {{confidence_class}}">{{confidence}}%</span></td>

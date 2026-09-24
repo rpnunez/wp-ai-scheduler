@@ -79,6 +79,13 @@ class AIPS_Inbound_Links_Service {
 	private $relationships_repo;
 
 	/**
+	 * Search Console queries per target post (request cache).
+	 *
+	 * @var array<int, string[]>
+	 */
+	private $search_queries = array();
+
+	/**
 	 * @var AIPS_Link_Insertion_Engine
 	 */
 	private $engine;
@@ -127,6 +134,7 @@ class AIPS_Inbound_Links_Service {
 		}
 
 		$phrases    = $this->get_anchor_phrases($target);
+		$gsc        = array_map('mb_strtolower', $this->get_search_queries($target_id));
 		$candidates = $this->find_candidates($target, $phrases);
 		$target_url = (string) get_permalink($target_id);
 		$settings   = $this->policy->get_settings();
@@ -160,9 +168,9 @@ class AIPS_Inbound_Links_Service {
 				'source_post_id'   => $source_id,
 				'target_post_id'   => $target_id,
 				'similarity_score' => $candidate['similarity'],
-				'confidence'       => $this->score($candidate, $occurrence, $phrases),
+				'confidence'       => $this->score($candidate, $occurrence, $phrases, $gsc),
 				'anchor_text'      => $occurrence ? $occurrence['text'] : '',
-				'anchor_source'    => $occurrence ? ($candidate['via'] === 'keyword' ? 'keyword' : 'phrase') : 'none',
+				'anchor_source'    => $this->anchor_source($candidate, $occurrence, $gsc),
 				'match_context'    => $occurrence ? $this->context_snippet((string) $source->post_content, $occurrence) : '',
 				'origin'           => self::ORIGIN,
 			);
@@ -397,7 +405,8 @@ class AIPS_Inbound_Links_Service {
 	 * @return string[]
 	 */
 	public function get_anchor_phrases(WP_Post $target): array {
-		$phrases = array();
+		// Real search queries the target ranks for (Search Console) come first.
+		$phrases = $this->get_search_queries($target->ID);
 
 		foreach (array('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') as $meta_key) {
 			$value = (string) get_post_meta($target->ID, $meta_key, true);
@@ -441,7 +450,44 @@ class AIPS_Inbound_Links_Service {
 		 * @param string[] $phrases Phrases, most specific first.
 		 * @param WP_Post  $target  Target post.
 		 */
-		return array_values((array) apply_filters('aips_inbound_anchor_phrases', array_slice(array_values($unique), 0, 15), $target));
+		return array_values((array) apply_filters('aips_inbound_anchor_phrases', array_slice(array_values($unique), 0, 20), $target));
+	}
+
+	/**
+	 * Search Console queries for a post (empty unless connected and enabled).
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string[]
+	 */
+	private function get_search_queries(int $post_id): array {
+		if (!isset($this->search_queries[$post_id])) {
+			$container = AIPS_Container::get_instance();
+			$gsc       = $container->has(AIPS_GSC_Keywords_Service::class) ? $container->make(AIPS_GSC_Keywords_Service::class) : new AIPS_GSC_Keywords_Service();
+
+			$this->search_queries[$post_id] = $gsc->get_anchor_queries($post_id);
+		}
+
+		return $this->search_queries[$post_id];
+	}
+
+	/**
+	 * Where a suggestion's anchor text came from.
+	 *
+	 * @param array      $candidate  Candidate (via semantic|keyword).
+	 * @param array|null $occurrence Matched occurrence.
+	 * @param string[]   $gsc        Lower-cased Search Console queries.
+	 * @return string gsc|keyword|phrase|none
+	 */
+	private function anchor_source(array $candidate, ?array $occurrence, array $gsc): string {
+		if (!$occurrence) {
+			return 'none';
+		}
+
+		if (in_array(mb_strtolower((string) $occurrence['phrase']), $gsc, true)) {
+			return 'gsc';
+		}
+
+		return $candidate['via'] === 'keyword' ? 'keyword' : 'phrase';
 	}
 
 	/**
@@ -511,13 +557,18 @@ class AIPS_Inbound_Links_Service {
 	 * @param string[]   $phrases    Anchor phrases (priority order).
 	 * @return float
 	 */
-	private function score(array $candidate, ?array $occurrence, array $phrases): float {
+	private function score(array $candidate, ?array $occurrence, array $phrases, array $gsc = array()): float {
 		$anchor_score = 0.0;
 
 		if ($occurrence) {
 			$words        = count(preg_split('/\s+/u', trim($occurrence['phrase'])));
 			$rank         = array_search($occurrence['phrase'], $phrases, true);
 			$anchor_score = min(1.0, $words / 3) * ($rank === 0 ? 1.0 : 0.9);
+
+			// A query the target already ranks for is a proven anchor.
+			if (in_array(mb_strtolower((string) $occurrence['phrase']), $gsc, true)) {
+				$anchor_score = min(1.0, $words / 2);
+			}
 		}
 
 		if ($candidate['via'] === 'keyword') {

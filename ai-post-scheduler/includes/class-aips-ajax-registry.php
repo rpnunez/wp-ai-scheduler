@@ -313,6 +313,11 @@ class AIPS_Ajax_Registry {
 		'aips_autolink_cancel'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_undo_run'              => 'AIPS_Link_Report_Controller',
 
+		// Google Search Console Controller
+		'aips_gsc_test'       => 'AIPS_GSC_Controller',
+		'aips_gsc_sync'       => 'AIPS_GSC_Controller',
+		'aips_gsc_disconnect' => 'AIPS_GSC_Controller',
+
 		// Keyword Link Rules Controller
 		'aips_link_rules_list'   => 'AIPS_Link_Rules_Controller',
 		'aips_link_rules_save'   => 'AIPS_Link_Rules_Controller',

@@ -1708,6 +1708,24 @@ class AIPS_Admin_Assets {
 				'saveError'     => __('Failed to save settings.', 'ai-post-scheduler'),
 				'payloadError'  => __('No settings were found to save.', 'ai-post-scheduler'),
 			));
+            wp_enqueue_script(
+                'aips-admin-gsc',
+                AIPS_PLUGIN_URL . 'assets/js/admin-gsc.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-gsc', 'aipsGscL10n', array(
+                'nonce'                  => wp_create_nonce('aips_ajax_nonce'),
+                'working'                => __('Working…', 'ai-post-scheduler'),
+                'error'                  => __('The Search Console request failed. Please try again.', 'ai-post-scheduler'),
+                'cancel'                 => __('Cancel', 'ai-post-scheduler'),
+                'disconnect'             => __('Disconnect', 'ai-post-scheduler'),
+                'disconnected'           => __('Not connected', 'ai-post-scheduler'),
+                'confirmDisconnectTitle' => __('Disconnect Search Console', 'ai-post-scheduler'),
+                'confirmDisconnect'      => __('Delete the saved service account key? Daily keyword syncs stop until you add a key again.', 'ai-post-scheduler'),
+            ));
     }
 
     /**

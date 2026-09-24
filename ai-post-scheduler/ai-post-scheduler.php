@@ -465,6 +465,14 @@ final class AI_Post_Scheduler {
             return new AIPS_Link_Rules_Service();
         });
 
+        $container->singleton(AIPS_GSC_Client::class, function( $container ) {
+            return new AIPS_GSC_Client();
+        });
+
+        $container->singleton(AIPS_GSC_Keywords_Service::class, function( $container ) {
+            return new AIPS_GSC_Keywords_Service($container->make(AIPS_GSC_Client::class));
+        });
+
         $container->singleton(AIPS_Link_Clicks_Repository::class, function( $container ) {
             return new AIPS_Link_Clicks_Repository();
         });
@@ -797,6 +805,11 @@ final class AI_Post_Scheduler {
 
         // Link index scans: each tick indexes one batch and schedules the next,
         // so scans can be paused, resumed and cancelled between batches.
+        // Daily Search Console target keyword sync.
+        add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
+            AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
+        });
+
         add_action(AIPS_Link_Index_Service::SCAN_TICK_HOOK, function( $job_id ) {
             AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_scan_tick( $job_id );
         });
@@ -1042,6 +1055,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Keep the daily Search Console sync scheduled while it is connected.
+        AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();
 
         // Internal Links controller must be available globally so the admin-menu
         // render callback can call $controller->render_page() without reconstructing
