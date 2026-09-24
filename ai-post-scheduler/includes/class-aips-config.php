@@ -256,6 +256,8 @@ class AIPS_Config {
             'aips_link_index_batch_delay'              => 20,
             'aips_link_rules_enabled'                  => true,
             'aips_link_rules_max_per_post'             => 3,
+            'aips_publish_linking_mode'                => 'review',
+            'aips_publish_linking_outbound'            => true,
             'aips_link_click_tracking_enabled'         => false,
             'aips_link_click_retention_days'           => 365,
             'aips_autolink_enabled'                    => false,

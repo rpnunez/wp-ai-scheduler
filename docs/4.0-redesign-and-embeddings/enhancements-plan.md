@@ -26,7 +26,7 @@ Verification: every ✅ item was smoke-tested against the Docker MariaDB 10.6 te
 | Wave 4: slices 10, 12 | ✅ 2 / 2 |
 | Then: slice 13, then slice 14 | ✅ 13, 🟡 14 |
 | Tier 2: items 6–10 | ✅ 3, 🟡 1 (item 6), ⬜ 1 (item 9) |
-| Tier 3: items 11–15 | 🔄 13 (T3-1) in progress, ⬜ everything else |
+| Tier 3: items 11–15 | ✅ item 13 (T3-1). ⬜ Items 11, 14, 12 and 15. Next: T3-2 |
 
 ---
 
@@ -100,7 +100,7 @@ Order: 13 → 11 → 14 → 12 → 15. The slices are defined in the plan, secti
 
 | Slice | Feature (#) | Status | Notes |
 |---|---|---|---|
-| T3-1 | Linking at generation time, both directions (13) | 🔄 | Publishing an AIPS post runs inbound (and optionally outbound) linking in the background, applying or reviewing per policy. It is recorded as a run, so it can be undone. |
+| T3-1 | Linking at generation time, both directions (13) | ✅ | `class-aips-publish-linking-service.php` and `AIPS_Autolink_Run_Service::run_now()`. Triggered by `aips_post_generated` and by `transition_post_status` → publish, when the post has the `_aips_generated_post` meta. A background `aips_publish_linking` event runs about two minutes later. Modes: off, review (default) or apply. Outbound suggestions are optional. Each publish is recorded as a "New post: …" run, so it can be undone. Links are inserted as the post author or an administrator (kses-safe). The setting is under Settings → Internal Linking → Internal Link Automation. |
 | T3-2 | Silo model (11) | ⬜ | The member ↔ pillar link matrix and a gap score, from the link index and clusters. |
 | T3-3 | Silo UI and Fix silo (11) | ⬜ | Content hub "Silos" rail item. |
 | T3-4 | Abilities API (14) | ⬜ | `wp_register_ability` when it's available. |
@@ -128,7 +128,7 @@ Order: 13 → 11 → 14 → 12 → 15. The slices are defined in the plan, secti
 | D11 | Default rel/target | ✅ None. |
 | D12 | Cross-site model | ⬜ Open |
 | D13 | Redirect storage | ⬜ Open |
-| D14 | Publish-linking default | ⬜ Open. `review` is proposed. |
+| D14 | Publish-linking default | ✅ `review` (only suggestions). Easy to change in Settings. |
 
 ---
 

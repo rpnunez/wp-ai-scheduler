@@ -40,7 +40,7 @@ Tier 1 was delivered as slices 0–14 (section 3).
 | 9 | Update links automatically when a slug changes, plus a bulk URL changer | Open |
 | 10 | Click tracking on internal links | **Done.** Using click data to rank suggestions is **deferred** (decision, 2026-09-24). |
 
-### Tier 3: features nobody else has together (**next**)
+### Tier 3: features nobody else has together (**in progress**: T3-1 is done)
 | # | Feature | Summary |
 |---|---|---|
 | 13 | **Linking at generation time, in both directions** | When an AIPS-generated post is published, it gets outbound links *and* inbound links from older posts. This happens automatically or goes to review, under the same policy and undo as runs. |
@@ -120,7 +120,7 @@ This is the original slice plan, kept for traceability. Where the implementation
 | — | Click data in suggestion ranking | Deferred. |
 | D12 | *Open:* cross-site linking model | Choices: a hub site, or peer-to-peer. How are sites authenticated (Application Passwords)? Do embeddings go to a shared index, or does each site query the others? And how does it relate to licensing? |
 | D13 | *Open:* redirects for consolidation | Use a redirect plugin when one is present and fall back to the plugin's own table, or require a redirect plugin? |
-| D14 | *Open:* generation-time default | Should publish linking be `review` (proposed) or `apply` by default? |
+| D14 | Generation-time default | `review` (suggestions only). It can be switched to `apply` in Settings. |
 
 ---
 

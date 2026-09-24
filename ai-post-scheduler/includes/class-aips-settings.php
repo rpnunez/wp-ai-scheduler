@@ -330,6 +330,14 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_link_rules_max_per_post'),
 				'default'           => $defaults['aips_link_rules_max_per_post'],
 			),
+			'aips_publish_linking_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_publish_linking_mode'),
+				'default'           => $defaults['aips_publish_linking_mode'],
+			),
+			'aips_publish_linking_outbound' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_publish_linking_outbound'],
+			),
 			'aips_link_click_tracking_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_link_click_tracking_enabled'],
@@ -983,6 +991,14 @@ class AIPS_Settings {
             __('Internal Link Automation', 'ai-post-scheduler'),
             array($this->ui, 'ai_autolink_section_callback'),
             'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_publish_linking',
+            __('Link New AIPS Posts on Publish', 'ai-post-scheduler'),
+            array($this->ui, 'publish_linking_field_callback'),
+            'aips-settings',
+            'aips_ai_autolink_section'
         );
 
         add_settings_field(

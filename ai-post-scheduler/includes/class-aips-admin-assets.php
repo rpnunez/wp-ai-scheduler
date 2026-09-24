@@ -2087,6 +2087,8 @@ class AIPS_Admin_Assets {
                 'noRuns'                => __('No auto-link runs yet.', 'ai-post-scheduler'),
                 'scopeOrphans'          => __(' · Orphans', 'ai-post-scheduler'),
                 'scopeLow'              => __(' · Fewer than 3 inbound links', 'ai-post-scheduler'),
+                /* translators: %s: title of the newly published post */
+                'scopePublish'          => __(' · New post: %s', 'ai-post-scheduler'),
                 'dryRun'                => __('Dry run', 'ai-post-scheduler'),
                 'statusRunning'         => __('Running', 'ai-post-scheduler'),
                 'statusPaused'          => __('Paused', 'ai-post-scheduler'),

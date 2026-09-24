@@ -80,6 +80,11 @@ class AIPS_Autolink_Run_Service {
 	const SCOPE_LOW = 'low';
 
 	/**
+	 * Scope of the small runs made when an AIPS post is published.
+	 */
+	const SCOPE_PUBLISH = 'publish';
+
+	/**
 	 * @var AIPS_Inbound_Links_Service
 	 */
 	private $inbound;
@@ -255,6 +260,65 @@ class AIPS_Autolink_Run_Service {
 		if ($status === AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
 			$this->schedule_tick($state['job_id'], min(600, max(0, (int) $this->config->get_option('aips_link_index_batch_delay', 20))));
 		}
+	}
+
+	/**
+	 * Run inbound linking for a few targets right away (no cron ticks) and
+	 * record it in the run history, so it can be undone like any other run.
+	 *
+	 * Used for generation-time linking. Does not touch the current run slot,
+	 * so it can happen while a bulk run is going.
+	 *
+	 * @param int[]  $target_ids Posts that should receive links.
+	 * @param bool   $apply      Insert links the policy approves (false = suggestions only).
+	 * @param int    $user_id    User to act as (kses: must be able to post unfiltered HTML).
+	 * @param string $scope      Scope label for the history.
+	 * @param array  $extra      Extra fields stored with the run (e.g. post_id, post_title).
+	 * @return array Public run state.
+	 */
+	public function run_now(array $target_ids, bool $apply, int $user_id, string $scope = self::SCOPE_PUBLISH, array $extra = array()): array {
+		$target_ids = array_values(array_filter(array_map('absint', $target_ids)));
+
+		$state = array_merge($extra, array(
+			'job_id'      => wp_generate_uuid4(), // Fits aips_internal_links.batch_id (varchar 36).
+			'scope'       => $scope,
+			'apply'       => $apply,
+			'dry_run'     => !$apply,
+			'user_id'     => $user_id,
+			'started_at'  => time(),
+			'finished_at' => 0,
+			'status'      => AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING,
+			'processed'   => 0,
+			'total'       => count($target_ids),
+			'applied'     => 0,
+			'review'      => 0,
+			'skipped'     => 0,
+			'errors'      => 0,
+			'reverted'    => false,
+			'source_new'  => array(),
+		));
+
+		$previous_user = get_current_user_id();
+		if ($user_id > 0) {
+			wp_set_current_user($user_id);
+		}
+		add_filter('aips_content_indexer_skip_post_save', '__return_true');
+
+		try {
+			foreach ($target_ids as $target_id) {
+				$this->process_target($target_id, $state);
+				$state['processed']++;
+			}
+		} finally {
+			remove_filter('aips_content_indexer_skip_post_save', '__return_true');
+			wp_set_current_user($previous_user);
+		}
+
+		$state['status']      = AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED;
+		$state['finished_at'] = time();
+		$this->archive($state);
+
+		return $this->public_state($state);
 	}
 
 	/**

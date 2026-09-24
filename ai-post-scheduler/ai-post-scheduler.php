@@ -465,6 +465,10 @@ final class AI_Post_Scheduler {
             return new AIPS_Link_Rules_Service();
         });
 
+        $container->singleton(AIPS_Publish_Linking_Service::class, function( $container ) {
+            return new AIPS_Publish_Linking_Service();
+        });
+
         $container->singleton(AIPS_GSC_Client::class, function( $container ) {
             return new AIPS_GSC_Client();
         });
@@ -698,6 +702,18 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
         });
 
+        // Generation-time linking: when an AIPS post goes live, link older
+        // related posts to it in the background (see AIPS_Publish_Linking_Service).
+        add_action('transition_post_status', function ($new_status, $old_status, $post) {
+            if ($new_status === 'publish' && $old_status !== 'publish') {
+                AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_transition($new_status, $old_status, $post);
+            }
+        }, 20, 3);
+
+        add_action('aips_post_generated', function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->on_generated($post_id);
+        }, 20);
+
         // Process pending background indexing queue (single event / cron worker)
         add_action('aips_process_pending_indexer_queue', function () {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
@@ -805,6 +821,11 @@ final class AI_Post_Scheduler {
 
         // Link index scans: each tick indexes one batch and schedules the next,
         // so scans can be paused, resumed and cancelled between batches.
+        // Generation-time linking pass for a newly published AIPS post.
+        add_action(AIPS_Publish_Linking_Service::CRON_HOOK, function ($post_id) {
+            AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->process($post_id);
+        });
+
         // Daily Search Console target keyword sync.
         add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
             AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
