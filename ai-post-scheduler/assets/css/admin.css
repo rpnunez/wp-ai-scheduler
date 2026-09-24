@@ -2327,6 +2327,41 @@ button.aips-btn-secondary:active {
     text-decoration: none;
 }
 
+.aips-modal-section {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--aips-gray-200, #e2e8f0);
+}
+
+.aips-modal-section:last-child {
+    border-bottom: none;
+}
+
+.aips-modal-section-title {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--aips-gray-700, #334155);
+}
+
+.aips-content-preview-box {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--aips-gray-200, #e2e8f0);
+    border-radius: 6px;
+    padding: 14px 16px;
+    background: var(--aips-gray-50, #f8fafc);
+}
+
+.aips-modal-content-body {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--aips-gray-800, #1e293b);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .aips-post-success-summary {
     text-align: center;
     padding: 20px 20px 0;
@@ -4924,8 +4959,13 @@ input[type="submit"].is-busy,
    Utility Classes
    ========================================================================== */
 
-.hidden {
+.hidden,
+.aips-hidden {
     display: none !important;
+}
+
+.aips-w-full {
+    width: 100% !important;
 }
 
 .dashicons-icon-lg {
