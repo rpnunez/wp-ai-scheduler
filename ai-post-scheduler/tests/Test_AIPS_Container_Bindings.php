@@ -94,6 +94,8 @@ class Test_AIPS_Container_Bindings extends WP_UnitTestCase {
 			AIPS_Monetization_AI_Service::class,
 			AIPS_Monetization_Controller::class,
 			AIPS_Link_Cloaking_Service::class,
+			AIPS_Referral_Programs_Repository::class,
+			AIPS_Referral_Delivery_Service::class,
 		);
 
 		foreach ($bindings as $binding) {
