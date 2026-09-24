@@ -54,6 +54,20 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Check if the embeddings table exists in the database.
+	 *
+	 * @return bool
+	 */
+	public function table_exists(): bool {
+		static $exists = null;
+		if ($exists === null) {
+			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
+			$exists = ($found === $this->table);
+		}
+		return (bool) $exists;
+	}
+
+	/**
 	 * Get a single embedding record by object type and ID.
 	 *
 	 * @param string $object_type Entity type ('post', 'topic', etc.).
@@ -61,6 +75,10 @@ class AIPS_Embeddings_Repository {
 	 * @return object|null Row object or null if not found.
 	 */
 	public function get_by_object($object_type, $object_id) {
+		if (!$this->table_exists()) {
+			return null;
+		}
+
 		$object_type = sanitize_key($object_type);
 		$object_id   = absint($object_id);
 
@@ -90,14 +108,14 @@ class AIPS_Embeddings_Repository {
 	 * @return array<int, object> Array of row objects keyed by post_id.
 	 */
 	public function get_by_post_ids(array $post_ids) {
-		if (empty($post_ids)) {
+		if (empty($post_ids) || !$this->table_exists()) {
 			return array();
 		}
 
 		$post_ids     = array_map('absint', $post_ids);
 		$placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
 
-		$rows = $this->wpdb->get_results(
+		$rows = (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE object_type = 'post' AND object_id IN ($placeholders)",
 				...$post_ids
@@ -106,7 +124,9 @@ class AIPS_Embeddings_Repository {
 
 		$indexed = array();
 		foreach ($rows as $row) {
-			$indexed[(int) $row->object_id] = $row;
+			if (is_object($row) && isset($row->object_id)) {
+				$indexed[(int) $row->object_id] = $row;
+			}
 		}
 
 		return $indexed;
@@ -121,6 +141,10 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of row objects with object_id, object_post_type, model, dimensions, and embedding.
 	 */
 	public function get_all_for_similarity($object_type = 'post', $post_types = array('post'), $post_status = 'publish') {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$object_type = sanitize_key($object_type);
 
 		if ('post' === $object_type) {
@@ -145,10 +169,10 @@ class AIPS_Embeddings_Repository {
 				...array_values(array_merge($post_types, array($post_status)))
 			);
 
-			return $this->wpdb->get_results($sql);
+			return (array) $this->wpdb->get_results($sql);
 		}
 
-		return $this->wpdb->get_results(
+		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT object_id, object_post_type, embedding, dimensions, model
 				FROM {$this->table}
@@ -585,6 +609,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int[] Array of unindexed post IDs.
 	 */
 	public function get_unindexed_post_ids($limit = 20, $last_post_id = 0, $post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$post_types   = (array) $post_types;
 		$post_types   = array_map('sanitize_key', $post_types);
 		$post_status  = sanitize_key($post_status);
@@ -649,6 +677,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int Count of indexed records.
 	 */
 	public function count_indexed_for_types($post_types = array('post'), $post_status = 'publish', $scope = null, array $scope_args = array()) {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
 		$post_types  = (array) $post_types;
 		$post_types  = array_map('sanitize_key', $post_types);
 		$post_status = sanitize_key($post_status);
@@ -728,6 +760,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function count($object_type = '', $object_post_type = '') {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
 		$where = array();
 		$args  = array();
 
@@ -757,18 +793,28 @@ class AIPS_Embeddings_Repository {
 	 * @return array Index statistics breakdown.
 	 */
 	public function get_stats() {
+		if (!$this->table_exists()) {
+			return array(
+				'total'        => 0,
+				'posts'        => 0,
+				'topics'       => 0,
+				'by_post_type' => array(),
+				'models'       => array(),
+			);
+		}
+
 		$total_embeddings = $this->count();
 		$post_embeddings  = $this->count('post');
 		$topic_embeddings = $this->count('topic');
 
-		$models = $this->wpdb->get_results(
+		$models = (array) $this->wpdb->get_results(
 			"SELECT model, dimensions, COUNT(*) as total_count 
 			FROM {$this->table} 
 			WHERE model != '' 
 			GROUP BY model, dimensions"
 		);
 
-		$by_post_type = $this->wpdb->get_results(
+		$by_post_type = (array) $this->wpdb->get_results(
 			"SELECT object_post_type, COUNT(*) as count 
 			FROM {$this->table} 
 			WHERE object_type = 'post' 
@@ -777,8 +823,10 @@ class AIPS_Embeddings_Repository {
 
 		$post_type_map = array();
 		foreach ($by_post_type as $row) {
-			$type = !empty($row->object_post_type) ? $row->object_post_type : 'post';
-			$post_type_map[$type] = (int) $row->count;
+			if (is_object($row) && isset($row->object_post_type)) {
+				$type = !empty($row->object_post_type) ? $row->object_post_type : 'post';
+				$post_type_map[$type] = (int) $row->count;
+			}
 		}
 
 		return array(
@@ -797,6 +845,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_total_indexed($object_type = 'post') {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
 		return $this->count($object_type);
 	}
 
@@ -806,6 +858,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int[]
 	 */
 	public function get_all_indexed_post_ids() {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$results = $this->wpdb->get_col(
 			$this->wpdb->prepare(
 				"SELECT object_id FROM {$this->table} WHERE object_type = 'post' ORDER BY object_id ASC"
@@ -824,10 +880,14 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of rows with post_id and embedding columns.
 	 */
 	public function get_all_for_similarity_by_type($post_type = 'post', $post_status = 'publish') {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$post_type   = sanitize_key($post_type);
 		$post_status = sanitize_key($post_status);
 
-		return $this->wpdb->get_results(
+		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT e.object_id AS post_id, e.embedding
 				FROM {$this->table} e
@@ -848,6 +908,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int[] Array of distinct dimension integers.
 	 */
 	public function get_stored_dimensions() {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$results = $this->wpdb->get_col(
 			"SELECT DISTINCT dimensions FROM {$this->table} WHERE dimensions > 0 ORDER BY dimensions ASC"
 		);
@@ -867,7 +931,7 @@ class AIPS_Embeddings_Repository {
 			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $topics_table));
 			$exists = ($found === $topics_table);
 		}
-		return $exists;
+		return (bool) $exists;
 	}
 
 	/**
@@ -877,7 +941,7 @@ class AIPS_Embeddings_Repository {
 	 * @return int[] Array of unindexed topic IDs.
 	 */
 	public function get_unindexed_topic_ids(int $limit = 50): array {
-		if (!$this->topics_table_exists()) {
+		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return array();
 		}
 
@@ -907,7 +971,7 @@ class AIPS_Embeddings_Repository {
 	 * @return int
 	 */
 	public function get_unindexed_topic_count(): int {
-		if (!$this->topics_table_exists()) {
+		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return 0;
 		}
 
@@ -953,6 +1017,10 @@ class AIPS_Embeddings_Repository {
 	 * @return int[]
 	 */
 	public function get_all_indexed_topic_ids(): array {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$results = $this->wpdb->get_col(
 			"SELECT object_id FROM {$this->table} WHERE object_type = 'topic' ORDER BY object_id ASC"
 		);
@@ -966,7 +1034,7 @@ class AIPS_Embeddings_Repository {
 	 * @return object[] Array of topic objects with topic_id, topic_title, author_id, status, and embedding.
 	 */
 	public function get_all_topics_for_similarity(): array {
-		if (!$this->topics_table_exists()) {
+		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return array();
 		}
 

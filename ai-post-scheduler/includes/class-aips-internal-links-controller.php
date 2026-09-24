@@ -105,10 +105,9 @@ class AIPS_Internal_Links_Controller {
 	/**
 	 * Render the Internal Links admin page.
 	 *
-	 * @param bool $embedded Whether the page is being rendered inside another admin page.
 	 * @return void
 	 */
-	public function render_page($embedded = false) {
+	public function render_page() {
 		$summary       = $this->service->get_dashboard_summary();
 		$links_repo    = $this->links_repo;
 		$service       = $this->service;

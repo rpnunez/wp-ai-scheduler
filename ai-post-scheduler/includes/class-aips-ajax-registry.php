@@ -127,9 +127,6 @@ class AIPS_Ajax_Registry {
 		'aips_get_session_json'           => 'AIPS_Generated_Posts_Controller',
 		'aips_download_session_json'      => 'AIPS_Generated_Posts_Controller',
 
-		// Calendar Controller
-		'aips_get_calendar_events'        => 'AIPS_Calendar_Controller',
-
 		// Structures Controller
 		'aips_get_structures'             => 'AIPS_Structures_Controller',
 		'aips_get_structure'              => 'AIPS_Structures_Controller',
@@ -167,6 +164,7 @@ class AIPS_Ajax_Registry {
 
 		// History
 		'aips_bulk_delete_history'        => 'AIPS_History',
+		'aips_clear_history'              => 'AIPS_History',
 		'aips_export_history'             => 'AIPS_History',
 		'aips_get_history_details'        => 'AIPS_History',
 		'aips_get_history_logs'           => 'AIPS_History',
@@ -278,6 +276,11 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
+
+		// Post Insights Controller
+		'aips_get_post_ai_insights'                  => 'AIPS_Post_Insights_Controller',
+		'aips_reindex_single_post'                   => 'AIPS_Post_Insights_Controller',
+		'aips_toggle_single_pillar'                  => 'AIPS_Post_Insights_Controller',
 
 		// AI Assistance Controller
 		'aips_ai_field_assist'          => 'AIPS_AI_Assistance_Controller',

@@ -1,8 +1,39 @@
-## [3.6.7] - 2026-09-22
+## [3.7.3] - 2026-09-07
+
+### Fixed
+- **Rail Sidebar Styles & Layout:** Fortified CSS specificity and width constraints on `.aips-rail-layout`, `.aips-rail-sidebar`, and `.aips-rail-item` across both anchor links and button triggers to eliminate unstyled link fallbacks and prevent responsive collapse on desktop viewports.
+- **Asset Versioning:** Bumped version to 3.7.3 to invalidate cached admin stylesheets.
+
+## [3.7.2] - 2026-09-07
+
+### Added
+- **Admin UI Primitives:** Introduced `AIPS_Admin_UI_Primitives` class with reusable partial templates for Hub Shells, Page Headers, Vertical Rails, Action Toolbars, Content Panels, Badges, Empty States, and Error Fallbacks.
+
+### Fixed
+- **Content Indexer Subtabs:** Fixed initial tab stacking where all 4 nested subtabs rendered simultaneously on load.
+- **Server-rendered Rail Navigation:** Fixed click interception in `switchAipsTab` allowing native URL navigation for server-rendered multi-tab pages (Automations, Diagnostics).
+- **CSS & Asset Cache:** Bumped plugin version to bust admin asset cache.
+
+## [3.6.7] - 2026-09-07
+
+### Added
+- **8 Core Hub Navigation:** Streamlined top-level menu down to 8 core hubs (Dashboard, Automations, Studio, Research, Content, History, Settings, Diagnostics).
+- **Studio Launchpad:** Workspace grid with quick actions, live counts, and drill-down navigation for Templates, Voices, Structures, and Post Slices.
+- **Automations Vertical Rail:** Left-aligned vertical navigation rail with active state indicators and seamless tab switching.
+- **Content Hub Integration:** Integrated Content Indexer as a tab alongside Generated Posts, Partial Generations, and Pending Review.
 
 ### Changed
+- **Grouped Blueprint Schedules:** Consolidated persona topic-generation and post-generation schedules into single Blueprint rows with stages, resolving row count inflation.
 - **Vector Storage Optimization**: Migrated embeddings storage from JSON to IEEE 754 Float32 binary packing (`MEDIUMBLOB`), yielding an 82% storage reduction (down to 6.1 KB per vector) and faster decoding.
 - **Resilient DB Migration**: Added a highly resilient background migration script that chunk-converts legacy JSON vectors to binary, with pacing and timeout protections for high-volume production sites.
+
+### Fixed
+- **Terminal Outcome Metrics:** Success and failure rates now compute over terminal outcomes via `AIPS_Outcome_Rate`, with accurate post attribution and zero-value tile handling.
+- **Accessibility & Contrast (WCAG 2.2 SC 1.4.3):** Dimmed text, muted labels, and telemetry empty-state contrast raised to AA standards ($\ge 4.5:1$ on composited backgrounds).
+- **History Grouping:** Fixed double-firing click events on history group expand/collapse.
+
+### Removed
+- **Schedule Calendar:** Fully removed Schedule Calendar views, controllers, assets, endpoints, and tests in favor of the consolidated schedule view and upcoming runs panel.
 
 ## [3.6.6] - 2026-09-04
 

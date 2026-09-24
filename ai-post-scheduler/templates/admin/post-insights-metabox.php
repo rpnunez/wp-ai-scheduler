@@ -29,7 +29,7 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 	<!-- Top Status & Risk Banner -->
 	<div class="aips-insight-risk-row">
 		<span class="aips-risk-pill aips-risk-<?php echo esc_attr($overall_risk); ?>">
-			<span class="dashicons dashicons-shield"></span>
+			<span class="dashicons dashicons-shield" aria-hidden="true"></span>
 			<strong><?php echo esc_html($overall_label); ?></strong>
 			<?php if ($max_similarity > 0) : ?>
 				(<?php echo esc_html((string) $max_similarity); ?>%)
@@ -37,8 +37,8 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 		</span>
 
 		<?php if (!empty($cluster['is_pillar'])) : ?>
-			<span class="aips-pillar-tag" title="<?php esc_attr_e('Designated Pillar Post for this topic cluster', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-star-filled aips-pillar-icon"></span>
+			<span class="aips-badge aips-badge-primary aips-pillar-tag" title="<?php esc_attr_e('Designated Pillar Post for this topic cluster', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-star-filled aips-pillar-icon" aria-hidden="true"></span>
 				<?php esc_html_e('Pillar Post', 'ai-post-scheduler'); ?>
 			</span>
 		<?php endif; ?>
@@ -47,7 +47,7 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 	<!-- Vector Indexing Status Section -->
 	<div class="aips-insight-section">
 		<h4 class="aips-insight-section-title">
-			<span class="dashicons dashicons-database"></span>
+			<span class="dashicons dashicons-database" aria-hidden="true"></span>
 			<?php esc_html_e('Vector Embedding', 'ai-post-scheduler'); ?>
 		</h4>
 		<div class="aips-insight-detail">
@@ -62,8 +62,8 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 				</p>
 			<?php endif; ?>
 
-			<button type="button" class="button button-small aips-reindex-post-btn" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
-				<span class="dashicons dashicons-update"></span>
+			<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-reindex-post-btn" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
+				<span class="dashicons dashicons-update" aria-hidden="true"></span>
 				<?php echo $is_indexed ? esc_html__('Re-Index Vector', 'ai-post-scheduler') : esc_html__('Index Now', 'ai-post-scheduler'); ?>
 			</button>
 		</div>
@@ -72,7 +72,7 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 	<!-- Post Cluster & Topic Pillar -->
 	<div class="aips-insight-section">
 		<h4 class="aips-insight-section-title">
-			<span class="dashicons dashicons-networking"></span>
+			<span class="dashicons dashicons-networking" aria-hidden="true"></span>
 			<?php esc_html_e('Post Cluster', 'ai-post-scheduler'); ?>
 		</h4>
 		<div class="aips-insight-detail">
@@ -81,8 +81,8 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 					<strong><?php echo esc_html($cluster['name']); ?></strong>
 					<span class="aips-insight-meta">(<?php echo esc_html((string) $cluster['post_count']); ?> <?php esc_html_e('posts', 'ai-post-scheduler'); ?>)</span>
 				</p>
-				<button type="button" class="button button-small aips-toggle-pillar-btn <?php echo !empty($cluster['is_pillar']) ? 'active' : ''; ?>" data-cluster-id="<?php echo esc_attr($cluster['cluster_id']); ?>" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
-					<span class="dashicons <?php echo !empty($cluster['is_pillar']) ? 'dashicons-star-filled' : 'dashicons-star-empty'; ?>"></span>
+				<button type="button" class="aips-btn aips-btn-xs aips-btn-secondary aips-toggle-pillar-btn <?php echo !empty($cluster['is_pillar']) ? 'active' : ''; ?>" data-cluster-id="<?php echo esc_attr($cluster['cluster_id']); ?>" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
+					<span class="dashicons <?php echo !empty($cluster['is_pillar']) ? 'dashicons-star-filled' : 'dashicons-star-empty'; ?>" aria-hidden="true"></span>
 					<?php echo !empty($cluster['is_pillar']) ? esc_html__('Designated Pillar', 'ai-post-scheduler') : esc_html__('Set as Pillar', 'ai-post-scheduler'); ?>
 				</button>
 			<?php else : ?>
@@ -96,7 +96,7 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 	<!-- Top Duplicate Candidates -->
 	<div class="aips-insight-section">
 		<h4 class="aips-insight-section-title">
-			<span class="dashicons dashicons-admin-page"></span>
+			<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
 			<?php esc_html_e('Semantic Duplicate Risk', 'ai-post-scheduler'); ?>
 		</h4>
 		<div class="aips-insight-detail">
@@ -127,7 +127,7 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 	<?php if ($history) : ?>
 		<div class="aips-insight-section aips-generation-context-section">
 			<h4 class="aips-insight-section-title">
-				<span class="dashicons dashicons-art"></span>
+				<span class="dashicons dashicons-art" aria-hidden="true"></span>
 				<?php esc_html_e('AI Generation Context', 'ai-post-scheduler'); ?>
 			</h4>
 			<div class="aips-context-grid">
@@ -167,8 +167,8 @@ $overall_label    = isset($insights['overall_label']) ? $insights['overall_label
 
 			<?php if (!empty($history['history_url'])) : ?>
 				<div class="aips-insight-footer-action">
-					<a href="<?php echo esc_url($history['history_url']); ?>" class="button button-secondary aips-open-history-modal" data-history-id="<?php echo esc_attr((string) $history['id']); ?>" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
-						<span class="dashicons dashicons-backup"></span>
+					<a href="<?php echo esc_url($history['history_url']); ?>" class="aips-btn aips-btn-xs aips-btn-secondary aips-open-history-modal" data-history-id="<?php echo esc_attr((string) $history['id']); ?>" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
+						<span class="dashicons dashicons-backup" aria-hidden="true"></span>
 						<?php esc_html_e('View AI Generation History', 'ai-post-scheduler'); ?>
 					</a>
 				</div>
