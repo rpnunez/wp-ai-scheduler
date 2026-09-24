@@ -410,7 +410,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'aips-templates-script', 'aips-datetime-script'),
             AIPS_VERSION,
             true
         );
@@ -1019,8 +1019,47 @@ class AIPS_Admin_Assets {
                 'deleteSchedulesFinalConfirm'    => __('This action cannot be undone. Continue?', 'ai-post-scheduler'),
                 /* translators: %d: number of selected schedules that are not deletable */
                 'deleteSchedulesSkipNotice'      => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
-                // Status strip
+                // Status strip - Health & Statistics Bar
                 'scheduleStatusLoadFailed'       => __('Unable to load schedule status.', 'ai-post-scheduler'),
+                'tileScheduleHealth'             => __('Schedule Health', 'ai-post-scheduler'),
+                'tileNextScheduledRun'           => __('Next Scheduled Run', 'ai-post-scheduler'),
+                'tile24hOutput'                  => __('24h Generation Output', 'ai-post-scheduler'),
+                'tileQueueResilience'            => __('Queue & Resilience', 'ai-post-scheduler'),
+                'healthOperational'              => __('System Operational', 'ai-post-scheduler'),
+                'healthAttention'                => __('Attention Needed', 'ai-post-scheduler'),
+                'healthCritical'                 => __('System Issue', 'ai-post-scheduler'),
+                'noRunsScheduled'                => __('No runs scheduled', 'ai-post-scheduler'),
+                'pastDue'                        => __('Past due', 'ai-post-scheduler'),
+                /* translators: %d: number of minutes */
+                'timeInMinutes'                  => __('In %dm', 'ai-post-scheduler'),
+                /* translators: 1: number of hours, 2: formatted minutes string (e.g. " 15m") */
+                'timeInHoursMinutes'             => __('In %1$dh%2$s', 'ai-post-scheduler'),
+                /* translators: %d: number of active schedules */
+                'activeCountSingular'            => __('%d Active', 'ai-post-scheduler'),
+                /* translators: %d: number of active schedules */
+                'activeCountPlural'              => __('%d Active', 'ai-post-scheduler'),
+                /* translators: %d: number of paused schedules */
+                'pausedCountSingular'            => __('%d Paused', 'ai-post-scheduler'),
+                /* translators: %d: number of paused schedules */
+                'pausedCountPlural'              => __('%d Paused', 'ai-post-scheduler'),
+                /* translators: %d: number of posts */
+                'postsCountSingular'             => __('%d Post', 'ai-post-scheduler'),
+                /* translators: %d: number of posts */
+                'postsCountPlural'               => __('%d Posts', 'ai-post-scheduler'),
+                /* translators: %d: number of failed generations */
+                'failedCountSingular'            => __('%d Failed', 'ai-post-scheduler'),
+                /* translators: %d: number of failed generations */
+                'failedCountPlural'              => __('%d Failed', 'ai-post-scheduler'),
+                /* translators: %d: percentage success rate */
+                'successRate'                    => __('%d%% Success Rate', 'ai-post-scheduler'),
+                /* translators: %d: number of pending queue items */
+                'queuePendingSingular'           => __('%d Pending', 'ai-post-scheduler'),
+                /* translators: %d: number of pending queue items */
+                'queuePendingPlural'             => __('%d Pending', 'ai-post-scheduler'),
+                'queueIdle'                      => __('Queue Idle', 'ai-post-scheduler'),
+                /* translators: 1: remaining rate limit requests, 2: max rate limit requests */
+                'rateLimitStatus'                => __('Rate Limit: %1$d/%2$d', 'ai-post-scheduler'),
+                'rateLimitDisabled'              => __('Rate Limiting: Off', 'ai-post-scheduler'),
                 'queueDepthLabel'                => __('Queue depth:', 'ai-post-scheduler'),
                 'bulkPendingLabel'               => __('Bulk pending:', 'ai-post-scheduler'),
                 'bulkFailedLabel'                => __('Bulk failed:', 'ai-post-scheduler'),
