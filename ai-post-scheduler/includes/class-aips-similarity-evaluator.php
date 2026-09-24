@@ -1248,28 +1248,32 @@ class AIPS_Similarity_Evaluator {
 			$member_posts = array();
 			foreach ($comp_ids as $cid) {
 				$member_posts[] = array(
-					'id'        => $cid,
-					'title'     => $posts[$cid]['title'],
-					'post_type' => $posts[$cid]['post_type'],
-					'url'       => $posts[$cid]['url'],
-					'edit_url'  => $posts[$cid]['edit_url'],
-					'is_pillar' => ($cid === $pillar_id),
+					'id'                     => $cid,
+					'title'                  => $posts[$cid]['title'],
+					'post_type'              => $posts[$cid]['post_type'],
+					'url'                    => $posts[$cid]['url'],
+					'view_url'               => $posts[$cid]['url'],
+					'edit_url'               => $posts[$cid]['edit_url'],
+					'is_pillar'              => ($cid === $pillar_id),
 					// How close the post is to the cluster's overall topic (0-1).
-					'topic_score' => round((float) $this->cosine_similarity($posts[$cid]['embedding'], $centroid), 4),
+					'topic_score'            => round((float) $this->cosine_similarity($posts[$cid]['embedding'], $centroid), 4),
+					'similarity_to_centroid' => round((float) $this->cosine_similarity($posts[$cid]['embedding'], $centroid), 4),
 				);
 			}
 
 			$clusters[$cluster_key] = array(
-				'id'           => $cluster_key,
-				'name'         => $name,
-				'pillar_id'    => $pillar_id,
-				'pillar_title' => $posts[$pillar_id]['title'],
+				'id'               => $cluster_key,
+				'name'             => $name,
+				'pillar_id'        => $pillar_id,
+				'pillar_post_id'   => $pillar_id,
+				'pillar_title'     => $posts[$pillar_id]['title'],
 				'pillar_confirmed' => $pillar_confirmed,
-				'color'        => $color,
-				'post_count'   => count($comp_ids),
-				'cohesion_pct' => round($cohesion * 100, 1),
-				'member_ids'   => $comp_ids,
-				'posts'        => $member_posts,
+				'color'            => $color,
+				'post_count'       => count($comp_ids),
+				'cohesion_score'   => round($cohesion, 4),
+				'cohesion_pct'     => round($cohesion * 100, 1),
+				'member_ids'       => $comp_ids,
+				'posts'            => $member_posts,
 			);
 
 			// Sync pillar_spoke relationships for the designated pillar

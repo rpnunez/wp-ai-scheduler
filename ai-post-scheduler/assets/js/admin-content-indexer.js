@@ -2194,15 +2194,16 @@
 						var cardsHtml = '';
 						data.clusters.forEach(function (cluster) {
 							var postsHtml = '';
-							var pillarId = cluster.pillar_post_id;
-							var pillarTitle = '';
+							var pillarId = cluster.pillar_post_id !== undefined ? cluster.pillar_post_id : cluster.pillar_id;
+							var pillarTitle = cluster.pillar_title || '';
 
 							(cluster.posts || []).forEach(function (p) {
-								var isPillar = (p.id === pillarId);
-								if (isPillar) {
+								var isPillar = (p.id === pillarId) || !!p.is_pillar;
+								if (isPillar && !pillarTitle) {
 									pillarTitle = p.title;
 								}
-								var simPct = Math.round((p.similarity_to_centroid || 0) * 100);
+								var rawScore = p.similarity_to_centroid !== undefined ? p.similarity_to_centroid : (p.topic_score !== undefined ? p.topic_score : 0);
+								var simPct = Math.round(rawScore * 100);
 
 								postsHtml += AIPS.Templates.render('aips-tmpl-indexer-cluster-post-row', {
 									clusterId: cluster.id,
@@ -2214,12 +2215,12 @@
 									isPillarClass: isPillar ? 'is-pillar' : '',
 									starIconClass: isPillar ? 'dashicons-star-filled' : 'dashicons-star-empty',
 									starColor: isPillar ? '#f59e0b' : '#94a3b8',
-									viewUrl: p.view_url || '#',
+									viewUrl: p.view_url || p.url || '#',
 									editUrl: p.edit_url || '#'
 								});
 							});
 
-							var cohesionPct = Math.round((cluster.cohesion_score || 0) * 100);
+							var cohesionPct = cluster.cohesion_pct !== undefined ? Math.round(cluster.cohesion_pct) : Math.round((cluster.cohesion_score || 0) * 100);
 							var cohesionTier = cohesionPct >= 75 ? 'low' : (cohesionPct >= 60 ? 'medium' : 'high');
 							var pillarBadgeHtml = pillarTitle ? AIPS.Templates.render('aips-tmpl-indexer-pillar-tag', {
 								title: AIPS.Templates.escape(pillarTitle)
