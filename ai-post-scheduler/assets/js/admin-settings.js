@@ -25,18 +25,40 @@
 		},
 
 		/**
-		 * Activate a settings tab from the current URL hash if one exists.
+		 * Activate a settings tab from the current URL hash, query parameter, or localStorage if one exists.
 		 *
 		 * @return {void}
 		 */
 		activateSettingsTabFromHash: function() {
+			var tabId = '';
 			var hash = window.location.hash ? window.location.hash.replace(/^#/, '') : '';
-			if (!hash) {
+			if (hash) {
+				tabId = hash;
+			} else {
+				try {
+					var params = new URLSearchParams(window.location.search);
+					tabId = params.get('tab') || '';
+				} catch (e) {}
+			}
+
+			if (!tabId) {
+				try {
+					tabId = localStorage.getItem('aips_active_tab_aips-settings') || '';
+				} catch (e) {}
+			}
+
+			if (tabId === 'engine' || tabId === 'settings-engine' || tabId === 'ai') {
+				tabId = 'settings-ai';
+			} else if (tabId === 'linking' || tabId === 'internal-linking') {
+				tabId = 'settings-linking';
+			}
+
+			if (!tabId) {
 				return;
 			}
 
 			var $link = $('#aips-settings-tab-nav .aips-tab-link, #aips-settings-tab-nav .aips-rail-item').filter(function() {
-				return $(this).attr('data-tab') === hash;
+				return $(this).attr('data-tab') === tabId || $(this).data('tab') === tabId;
 			});
 			if ($link.length) {
 				$link.trigger('click');
@@ -49,8 +71,16 @@
 		 * @return {void}
 		 */
 		bindSettingsEvents: function() {
-			$('#aips-settings-form').on('submit', AIPS.onSettingsFormSubmit);
-			$(document).on('aips:tabSwitch', AIPS.onSettingsTabSwitch);
+			if (this._adminSettingsEventsBound) {
+				return;
+			}
+			this._adminSettingsEventsBound = true;
+
+			$('#aips-settings-form').off('submit.aipsSettings').on('submit.aipsSettings', AIPS.onSettingsFormSubmit);
+			$(document).off('aips:tabSwitch.aipsSettings').on('aips:tabSwitch.aipsSettings', AIPS.onSettingsTabSwitch);
+			if (AIPS.testConnection) {
+				$(document).off('click.aipsTestConn', '#aips-test-connection').on('click.aipsTestConn', '#aips-test-connection', AIPS.testConnection);
+			}
 			$(document).on('click', '[data-aips-connector-move]', AIPS.onConnectorMove);
 			$(document).on('change', 'input[name="aips_embeddings_scope"], #aips_embeddings_scope', function() {
 				var val = $(this).val();
@@ -232,6 +262,10 @@
 		onSettingsFormSubmit: function(e) {
 			e.preventDefault();
 
+			if (AIPS._settingsSaving) {
+				return;
+			}
+
 			var $form = $(this);
 			var $activeTab = $form.find('.aips-tab-content:visible').first();
 			var $submit = $activeTab.find('input[type="submit"], button[type="submit"]');
@@ -249,6 +283,8 @@
 				);
 				return;
 			}
+
+			AIPS._settingsSaving = true;
 
 			var req = $.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -278,6 +314,8 @@
 					message = xhr.responseJSON.data.message;
 				}
 				AIPS.Utilities.showToast(message, 'error');
+			}).always(function() {
+				AIPS._settingsSaving = false;
 			});
 
 			AIPS.Utilities.withLock($submit, req, { loadingText: savingLabel });
@@ -386,15 +424,53 @@
 		},
 
 		/**
-		 * Update the URL hash to reflect the newly active settings tab.
+		 * Update the URL, hidden fields, and referer to reflect the newly active settings tab.
 		 *
 		 * @param {Event}  e     Custom jQuery event.
 		 * @param {string} tabId The ID of the tab that was just activated.
 		 * @return {void}
 		 */
 		onSettingsTabSwitch: function(e, tabId) {
-			if ($('#aips-settings-tab-nav').length && history.replaceState) {
-				history.replaceState(null, '', '#' + tabId);
+			if ($('#aips-settings-tab-nav').length) {
+				if (history.replaceState) {
+					try {
+						var url = new URL(window.location.href);
+						url.searchParams.set('tab', tabId);
+						url.hash = tabId;
+						history.replaceState(null, '', url.toString());
+					} catch (err) {
+						history.replaceState(null, '', '#' + tabId);
+					}
+				} else {
+					window.location.hash = tabId;
+				}
+
+				$('#aips_active_tab').val(tabId);
+
+				var $referer = $('input[name="_wp_http_referer"]');
+				if ($referer.length) {
+					$referer.each(function() {
+						var refVal = $(this).val();
+						if (refVal) {
+							try {
+								var refUrl = new URL(refVal, window.location.origin);
+								refUrl.searchParams.set('tab', tabId);
+								$(this).val(refUrl.pathname + refUrl.search + refUrl.hash);
+							} catch (err) {
+								if (refVal.indexOf('tab=') > -1) {
+									refVal = refVal.replace(/([?&])tab=[^&#]*/, '$1tab=' + encodeURIComponent(tabId));
+								} else {
+									refVal += (refVal.indexOf('?') > -1 ? '&' : '?') + 'tab=' + encodeURIComponent(tabId);
+								}
+								$(this).val(refVal);
+							}
+						}
+					});
+				}
+
+				try {
+					localStorage.setItem('aips_active_tab_aips-settings', tabId);
+				} catch (err) {}
 			}
 		}
 

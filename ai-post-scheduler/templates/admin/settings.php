@@ -11,6 +11,27 @@ if (!defined('ABSPATH')) {
 }
 
 $active_settings_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'settings-general';
+if ('engine' === $active_settings_tab || 'settings-engine' === $active_settings_tab || 'ai' === $active_settings_tab) {
+	$active_settings_tab = 'settings-ai';
+} elseif ('linking' === $active_settings_tab || 'internal-linking' === $active_settings_tab) {
+	$active_settings_tab = 'settings-linking';
+} elseif ('general' === $active_settings_tab) {
+	$active_settings_tab = 'settings-general';
+} elseif ('feedback' === $active_settings_tab || 'topics' === $active_settings_tab) {
+	$active_settings_tab = 'settings-feedback';
+} elseif ('notifications' === $active_settings_tab) {
+	$active_settings_tab = 'settings-notifications';
+} elseif ('resilience' === $active_settings_tab || 'limits' === $active_settings_tab) {
+	$active_settings_tab = 'settings-resilience';
+} elseif ('content-strategy' === $active_settings_tab || 'strategy' === $active_settings_tab) {
+	$active_settings_tab = 'settings-content-strategy';
+} elseif ('cache' === $active_settings_tab || 'performance' === $active_settings_tab) {
+	$active_settings_tab = 'settings-cache';
+} elseif ('api-keys' === $active_settings_tab || 'api' === $active_settings_tab || 'keys' === $active_settings_tab) {
+	$active_settings_tab = 'settings-api-keys';
+} elseif ('developers' === $active_settings_tab || 'dev' === $active_settings_tab || 'debug' === $active_settings_tab) {
+	$active_settings_tab = 'settings-developers';
+}
 
 $settings_rail_items = array(
 	array(
@@ -18,13 +39,15 @@ $settings_rail_items = array(
 		'label'       => __('General', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-admin-generic',
 		'description' => __('Defaults & post settings', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-general'),
 		'active'      => ($active_settings_tab === 'settings-general'),
 	),
 	array(
 		'key'         => 'settings-ai',
-		'label'       => __('AI Engine', 'ai-post-scheduler'),
+		'label'       => __('Engine', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-rest-api',
 		'description' => __('Models & AI connection', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-ai'),
 		'active'      => ($active_settings_tab === 'settings-ai'),
 	),
 	array(
@@ -32,6 +55,7 @@ $settings_rail_items = array(
 		'label'       => __('Internal Linking', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-admin-links',
 		'description' => __('Link index & auto-linking', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-linking'),
 		'active'      => ($active_settings_tab === 'settings-linking'),
 	),
 	array(
@@ -39,6 +63,7 @@ $settings_rail_items = array(
 		'label'       => __('Feedback & Topics', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-thumbs-up',
 		'description' => __('Deduplication & scoring', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-feedback'),
 		'active'      => ($active_settings_tab === 'settings-feedback'),
 	),
 	array(
@@ -46,6 +71,7 @@ $settings_rail_items = array(
 		'label'       => __('Notifications', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-email-alt',
 		'description' => __('Email & alert channels', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-notifications'),
 		'active'      => ($active_settings_tab === 'settings-notifications'),
 	),
 	array(
@@ -53,6 +79,7 @@ $settings_rail_items = array(
 		'label'       => __('Resilience & Limits', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-shield',
 		'description' => __('Failover & circuit breaker', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-resilience'),
 		'active'      => ($active_settings_tab === 'settings-resilience'),
 	),
 	array(
@@ -60,6 +87,7 @@ $settings_rail_items = array(
 		'label'       => __('Content Strategy', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-art',
 		'description' => __('Brand voice & persona', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-content-strategy'),
 		'active'      => ($active_settings_tab === 'settings-content-strategy'),
 	),
 	array(
@@ -67,6 +95,7 @@ $settings_rail_items = array(
 		'label'       => __('Performance', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-performance',
 		'description' => __('Caching layer & driver', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-cache'),
 		'active'      => ($active_settings_tab === 'settings-cache'),
 	),
 	array(
@@ -74,6 +103,7 @@ $settings_rail_items = array(
 		'label'       => __('API Keys', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-admin-network',
 		'description' => __('Third-party credentials', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-api-keys'),
 		'active'      => ($active_settings_tab === 'settings-api-keys'),
 	),
 	array(
@@ -81,6 +111,7 @@ $settings_rail_items = array(
 		'label'       => __('Developers', 'ai-post-scheduler'),
 		'icon'        => 'dashicons-editor-code',
 		'description' => __('Debug & dev tools', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-developers'),
 		'active'      => ($active_settings_tab === 'settings-developers'),
 	),
 );
@@ -109,14 +140,18 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 				<div class="aips-content-panel">
 					<div class="aips-panel-body">
 						<form method="post" action="options.php" id="aips-settings-form" data-aips-async="true">
+							<input type="hidden" name="active_tab" id="aips_active_tab" value="<?php echo esc_attr($active_settings_tab); ?>">
 							<?php settings_fields('aips_settings'); ?>
 
 							<!-- General Tab -->
 							<div id="settings-general-tab" class="aips-tab-content<?php echo 'settings-general' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-general' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-general' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Configure default settings for AI-generated posts.', 'ai-post-scheduler'); ?></p>
-								<table class="form-table" role="presentation">
-									<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('General Defaults', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -249,9 +284,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Notifications Tab -->
 							<div id="settings-notifications-tab" class="aips-tab-content<?php echo 'settings-notifications' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-notifications' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-notifications' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Configure the notification email address and delivery channels for all plugin notifications.', 'ai-post-scheduler'); ?></p>
-								<table class="form-table" role="presentation">
-									<?php do_settings_fields('aips-settings', 'aips_notifications_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Notification Channels & Delivery', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_notifications_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -260,9 +298,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Resilience & Limits Tab -->
 							<div id="settings-resilience-tab" class="aips-tab-content<?php echo 'settings-resilience' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-resilience' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-resilience' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Configure advanced resilience options to protect the application from failing and being blocked when external services return errors.', 'ai-post-scheduler'); ?></p>
-								<table class="form-table" role="presentation">
-									<?php do_settings_fields('aips-settings', 'aips_resilience_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Failover & Rate Limiting Guardrails', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_resilience_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -271,9 +312,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Content Strategy Tab -->
 							<div id="settings-content-strategy-tab" class="aips-tab-content<?php echo 'settings-content-strategy' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-content-strategy' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-content-strategy' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler'); ?></p>
-								<table class="form-table" role="presentation">
-									<?php do_settings_fields('aips-settings', 'aips_content_strategy_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Brand Persona & Strategy Guidelines', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_content_strategy_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -282,11 +326,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Performance Tab -->
 							<div id="settings-cache-tab" class="aips-tab-content<?php echo 'settings-cache' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-cache' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-cache' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Configure performance-related options for the plugin, including the internal cache layer used to speed up database reads, template processing, and scheduled operations.', 'ai-post-scheduler'); ?></p>
-
-								<h3 class="aips-settings-card-title"><?php esc_html_e('Cache System', 'ai-post-scheduler'); ?></h3>
-								<table class="form-table" role="presentation" id="aips-cache-settings-table">
-									<?php do_settings_fields('aips-settings', 'aips_cache_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Cache System & Storage Engine', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation" id="aips-cache-settings-table">
+										<?php do_settings_fields('aips-settings', 'aips_cache_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -295,9 +340,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- API Keys Tab -->
 							<div id="settings-api-keys-tab" class="aips-tab-content<?php echo 'settings-api-keys' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-api-keys' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-api-keys' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Enter API keys for third-party services used by the plugin.', 'ai-post-scheduler'); ?></p>
-								<table class="form-table" role="presentation">
-									<?php do_settings_fields('aips-settings', 'aips_api_keys_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Third-Party Service Credentials', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_api_keys_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -306,9 +354,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 							<!-- Developers Tab -->
 							<div id="settings-developers-tab" class="aips-tab-content<?php echo 'settings-developers' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-developers' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-developers' === $active_settings_tab ? '' : 'hidden'; ?>>
 								<p class="description"><?php esc_html_e('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler'); ?></p>
-								<table class="form-table" role="presentation">
-									<?php do_settings_fields('aips-settings', 'aips_developers_section'); ?>
-								</table>
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Diagnostics & Debugging Tools', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_developers_section'); ?>
+									</table>
+								</div>
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>

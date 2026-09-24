@@ -787,10 +787,26 @@ class AIPS_Content_Indexer_Controller {
 		$clusters = $this->similarity_evaluator->detect_post_clusters($threshold);
 		$orphans  = $this->similarity_evaluator->get_orphan_posts($threshold);
 
+		$total_clusters  = count($clusters);
+		$clustered_posts = 0;
+		$cohesion_sum    = 0.0;
+		foreach ($clusters as $c) {
+			$clustered_posts += isset($c['post_count']) ? (int) $c['post_count'] : (isset($c['posts']) ? count($c['posts']) : 0);
+			$cohesion_sum    += isset($c['cohesion_pct']) ? (float) $c['cohesion_pct'] : 0.0;
+		}
+		$avg_cohesion = $total_clusters > 0 ? round($cohesion_sum / $total_clusters, 1) : 0;
+		$orphan_count = count($orphans);
+
 		AIPS_Ajax_Response::success(array(
 			'clusters' => array_values($clusters),
 			'orphans'  => $orphans,
-			'count'    => count($clusters),
+			'count'    => $total_clusters,
+			'stats'    => array(
+				'total_clusters'  => $total_clusters,
+				'clustered_posts' => $clustered_posts,
+				'avg_cohesion'    => $avg_cohesion,
+				'orphan_posts'    => $orphan_count,
+			),
 		));
 	}
 
