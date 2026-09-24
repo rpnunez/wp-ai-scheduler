@@ -276,6 +276,11 @@ class AIPS_Ajax_Registry {
 		'aips_internal_links_start_indexing'         => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_get_status'             => 'AIPS_Internal_Links_Controller',
 		'aips_internal_links_reindex_post'           => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_clear_index'            => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_get_post_for_insertion' => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_find_insert_locations'  => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_apply_insertion'        => 'AIPS_Internal_Links_Controller',
+		'aips_internal_links_apply_bulk_insertions'  => 'AIPS_Internal_Links_Controller',
 
 		// Post Insights Controller
 		'aips_get_post_ai_insights'                  => 'AIPS_Post_Insights_Controller',

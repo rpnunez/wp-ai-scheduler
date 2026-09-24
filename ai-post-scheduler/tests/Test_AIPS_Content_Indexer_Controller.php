@@ -112,4 +112,62 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'name="verbose_history"', $html );
 	}
+
+	/**
+	 * Cluster endpoints must resolve their AIPS_Similarity_Evaluator methods
+	 * (previously a fatal "undefined method" after the clusters consolidation).
+	 */
+	public function test_ajax_get_post_clusters_returns_clusters_and_orphans() {
+		$admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
+		$evaluator = $this->createMock( AIPS_Similarity_Evaluator::class );
+		$evaluator->expects( $this->once() )
+			->method( 'detect_post_clusters' )
+			->with( 0.7 )
+			->willReturn( array( 'cluster_1' => array( 'id' => 'cluster_1' ) ) );
+		$evaluator->expects( $this->once() )
+			->method( 'get_orphan_posts' )
+			->with( 0.7 )
+			->willReturn( array( array( 'id' => 5 ) ) );
+
+		$controller = new AIPS_Content_Indexer_Controller( null, null, null, null, null, $evaluator );
+
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'threshold' => '0.7',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax_response( array( $controller, 'ajax_get_post_clusters' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( 1, $response['data']['count'] );
+		$this->assertSame( 'cluster_1', $response['data']['clusters'][0]['id'] );
+		$this->assertSame( 5, $response['data']['orphans'][0]['id'] );
+	}
+
+	public function test_ajax_rename_post_cluster_delegates_to_evaluator() {
+		$admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
+		$evaluator = $this->createMock( AIPS_Similarity_Evaluator::class );
+		$evaluator->expects( $this->once() )
+			->method( 'rename_post_cluster' )
+			->with( 'cluster_1', 'New Name' )
+			->willReturn( true );
+
+		$controller = new AIPS_Content_Indexer_Controller( null, null, null, null, null, $evaluator );
+
+		$_POST = array(
+			'nonce'       => wp_create_nonce( 'aips_ajax_nonce' ),
+			'cluster_id'  => 'cluster_1',
+			'custom_name' => 'New Name',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax_response( array( $controller, 'ajax_rename_post_cluster' ) );
+
+		$this->assertTrue( $response['success'] );
+	}
 }
