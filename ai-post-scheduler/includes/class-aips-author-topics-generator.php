@@ -182,8 +182,15 @@ class AIPS_Author_Topics_Generator {
 			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
 		}
 		
-		// Flag semantically similar candidates and apply auto-approval rules via Similarity Evaluator
-		$topics = $this->similarity_evaluator->evaluate_generated_author_topics($topics, $author, $apply_auto_approval);
+		// Flag semantically similar candidates against existing posts/topics (sets
+		// metadata['potential_duplicate'] / ['duplicate_similarity'], which
+		// apply_auto_approval_rules() below reads), then apply auto-approval rules.
+		// This used to call AIPS_Similarity_Evaluator::evaluate_generated_author_topics(),
+		// a method that doesn't exist, fataling on every real topic-generation run.
+		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
+		if ($apply_auto_approval) {
+			$topics = $this->apply_auto_approval_rules($author, $topics);
+		}
 		
 		// Save topics to database
 		$saved_topics = array();
