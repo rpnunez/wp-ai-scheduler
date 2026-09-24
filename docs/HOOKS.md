@@ -412,3 +412,21 @@ Filters the rendered HTML output for the Related Posts block, shortcode, or auto
     *   `int $post_id`: The source post ID.
     *   `array $posts`: The list of related post arrays.
 
+
+---
+
+### Link Index
+
+#### `aips_link_resolver_url`
+Filters a link URL after it has been made absolute and its fragment removed, before it is classified as internal/external and resolved to a post ID. Useful for multilingual setups that map language domains or path prefixes onto the primary site URL.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string $url`: Absolute `http(s)` URL without fragment.
+
+#### `aips_link_resolver_internal_hosts`
+Filters the host names treated as internal when classifying links. Hosts compare case-insensitively and ignore a leading `www.`.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `string[] $hosts`: Defaults to the hosts of `home_url()` and `site_url()`.
