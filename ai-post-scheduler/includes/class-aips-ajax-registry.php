@@ -93,6 +93,7 @@ class AIPS_Ajax_Registry {
 		'aips_get_generation_queue'       => 'AIPS_Author_Topics_Controller',
 		'aips_bulk_generate_from_queue'   => 'AIPS_Author_Topics_Controller',
 		'aips_get_bulk_generate_estimate' => 'AIPS_Author_Topics_Controller',
+		'aips_save_author_topic'          => 'AIPS_Author_Topics_Controller',
 
 		// Authors Controller
 		'aips_save_author'                => 'AIPS_Authors_Controller',
