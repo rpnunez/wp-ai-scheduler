@@ -73,7 +73,7 @@ class AIPS_Link_Report_Controller {
 	/**
 	 * Data for the initial server render of templates/admin/link-report.php.
 	 *
-	 * @return array{summary:array, orphan_count:int, total_posts:int, post_types:array<string,string>, enabled:bool, backfill:array|null}
+	 * @return array{summary:array, is_built:bool, orphan_count:int, total_posts:int, post_types:array<string,string>, enabled:bool, backfill:array|null, autolink:array}
 	 */
 	public function get_view_data(): array {
 		$post_types = array();
@@ -86,6 +86,7 @@ class AIPS_Link_Report_Controller {
 
 		return array(
 			'summary'      => $this->repository->get_summary(),
+			'is_built'     => $this->service->is_built(),
 			'orphan_count' => $this->repository->get_report_count($scope + array('orphans_only' => true)),
 			'total_posts'  => $this->repository->get_report_count($scope),
 			'post_types'   => $post_types,
@@ -108,6 +109,7 @@ class AIPS_Link_Report_Controller {
 			array(
 				'orphans' => $this->repository->get_report_count($scope + array('orphans_only' => true)),
 				'posts'   => $this->repository->get_report_count($scope),
+				'built'   => $this->service->is_built(),
 			)
 		);
 	}

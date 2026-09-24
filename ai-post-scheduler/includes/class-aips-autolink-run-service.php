@@ -147,7 +147,7 @@ class AIPS_Autolink_Run_Service {
 			return new WP_Error('aips_autolink_run_in_progress', __('An auto-link run is already running or paused. Resume or cancel it first.', 'ai-post-scheduler'));
 		}
 
-		if ($this->link_index->get_repository()->get_summary()['sources'] === 0) {
+		if (!$this->link_index->is_built()) {
 			return new WP_Error('aips_autolink_no_index', __('Build the link index first so auto-linking knows which posts need links.', 'ai-post-scheduler'));
 		}
 

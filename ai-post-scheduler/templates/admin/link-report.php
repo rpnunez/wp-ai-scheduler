@@ -11,6 +11,7 @@
  * @since 3.7.4
  *
  * @var array      $summary      Site totals from AIPS_Link_Index_Repository::get_summary().
+ * @var bool       $is_built     Whether any post has been scanned yet.
  * @var int        $orphan_count Published posts with zero inbound internal links.
  * @var int        $total_posts  Published posts in scope.
  * @var array      $post_types   Indexed post types (slug => label).
@@ -25,7 +26,7 @@ if (!defined('ABSPATH')) {
 
 $backfill_running = is_array($backfill) && in_array($backfill['status'], array('pending', 'processing'), true);
 $backfill_paused  = is_array($backfill) && $backfill['status'] === AIPS_Link_Index_Service::STATUS_PAUSED;
-$never_indexed    = (int) $summary['sources'] === 0;
+$never_indexed    = empty($is_built);
 
 $type_filter_options = array('' => __('All indexed post types', 'ai-post-scheduler'));
 foreach ($post_types as $type_slug => $type_label) {

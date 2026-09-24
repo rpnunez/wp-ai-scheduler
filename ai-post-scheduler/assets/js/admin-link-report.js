@@ -222,7 +222,7 @@
 			$('#aips-link-stat-external').text(summary.external);
 			$('#aips-link-stat-broken').text(summary.broken);
 
-			if (summary.sources > 0 && typeof summary.orphans !== 'undefined') {
+			if (summary.built && typeof summary.orphans !== 'undefined') {
 				$('#aips-link-stat-orphans').text(summary.orphans + ' / ' + summary.posts).addClass('aips-text-warning');
 				$('#aips-link-stat-posts').closest('.aips-stat-total').remove();
 			}

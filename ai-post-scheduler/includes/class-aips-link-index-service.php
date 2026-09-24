@@ -145,6 +145,30 @@ class AIPS_Link_Index_Service {
 	}
 
 	/**
+	 * Whether the link index has been built (at least one post scanned).
+	 *
+	 * Uses the scan marker rather than stored links, so a site whose posts
+	 * contain no links yet still counts as indexed.
+	 *
+	 * @return bool
+	 */
+	public function is_built(): bool {
+		$ids = get_posts(array(
+			'post_type'              => $this->get_post_types(),
+			'post_status'            => 'publish',
+			'posts_per_page'         => 1,
+			'fields'                 => 'ids',
+			'meta_key'               => self::HASH_META_KEY,
+			'no_found_rows'          => true,
+			'suppress_filters'       => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
+		));
+
+		return !empty($ids);
+	}
+
+	/**
 	 * Whether a post's links belong in the index (published, indexed type).
 	 *
 	 * @param WP_Post $post Post.

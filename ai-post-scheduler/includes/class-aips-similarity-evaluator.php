@@ -1307,7 +1307,7 @@ class AIPS_Similarity_Evaluator {
 		// Prefer the link index (real <a href> links, one batched query); fall back
 		// to the content LIKE scan only while the index has not been built.
 		$link_index     = new AIPS_Link_Index_Repository();
-		$use_link_index = $link_index->get_summary()['sources'] > 0;
+		$use_link_index = (new AIPS_Link_Index_Service($link_index))->is_built();
 		$link_counts    = $use_link_index ? $link_index->get_counts_for_posts(array_keys($posts)) : array();
 
 		$orphans = array();
