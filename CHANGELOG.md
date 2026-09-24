@@ -1,3 +1,8 @@
+## [3.7.4] - 2026-09-24
+
+### Added
+- **Link Index (storage):** New `aips_link_index` table and `AIPS_Link_Index_Repository` recording every `<a href>` found in post content (source, resolved target post, URL, anchor, internal/external, rel/nofollow, AIPS-inserted flag). Provides inbound/outbound/external/broken counts per post, true orphan detection (zero inbound internal links), a paginated Link Report query, and site totals. Internal only in this release; indexing hooks and the Link Report page follow.
+
 ## [3.7.3] - 2026-09-07
 
 ### Fixed
