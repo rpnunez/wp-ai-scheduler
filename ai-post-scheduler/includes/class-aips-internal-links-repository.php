@@ -34,7 +34,7 @@ class AIPS_Internal_Links_Repository {
 	 *
 	 * @var string[]
 	 */
-	const VALID_STATUSES = array( 'pending', 'accepted', 'rejected', 'inserted' );
+	const VALID_STATUSES = array( 'pending', 'accepted', 'rejected', 'inserted', 'reverted' );
 
 	/**
 	 * Initialize the repository.
@@ -97,7 +97,7 @@ class AIPS_Internal_Links_Repository {
 	 * @param string $search   Optional. Search term applied to source/target post titles.
 	 * @return object[] Array of row objects with extra post title columns.
 	 */
-	public function get_paginated($per_page = 20, $page = 1, $status = '', $search = '') {
+	public function get_paginated($per_page = 20, $page = 1, $status = '', $search = '', $origin = '') {
 		$per_page = max(1, absint($per_page));
 		$offset   = ($page - 1) * $per_page;
 
@@ -107,6 +107,11 @@ class AIPS_Internal_Links_Repository {
 		if ($status && in_array($status, self::VALID_STATUSES, true)) {
 			$where_clauses[] = 'il.status = %s';
 			$params[]        = $status;
+		}
+
+		if ($origin !== '') {
+			$where_clauses[] = 'il.origin = %s';
+			$params[]        = sanitize_key($origin);
 		}
 
 		if (!empty($search)) {
@@ -145,13 +150,18 @@ class AIPS_Internal_Links_Repository {
 	 * @param string $search Optional. Search term.
 	 * @return int Total count.
 	 */
-	public function get_paginated_count($status = '', $search = '') {
+	public function get_paginated_count($status = '', $search = '', $origin = '') {
 		$where_clauses = array('1=1');
 		$params        = array();
 
 		if ($status && in_array($status, self::VALID_STATUSES, true)) {
 			$where_clauses[] = 'il.status = %s';
 			$params[]        = $status;
+		}
+
+		if ($origin !== '') {
+			$where_clauses[] = 'il.origin = %s';
+			$params[]        = sanitize_key($origin);
 		}
 
 		if (!empty($search)) {
@@ -311,18 +321,234 @@ class AIPS_Internal_Links_Repository {
 	 * Accepted, rejected, and inserted suggestions are preserved so that
 	 * editorial decisions are not lost when suggestions are regenerated.
 	 *
-	 * @param int $source_post_id Source post ID.
+	 * @param int    $source_post_id Source post ID.
+	 * @param string $origin         Optional. Only delete suggestions of this
+	 *                               origin ('outbound', 'inbound', ...).
 	 * @return int|false Number of deleted rows or false on failure.
 	 */
-	public function delete_pending_by_source_post($source_post_id) {
-		return $this->wpdb->delete(
-			$this->table,
-			array(
-				'source_post_id' => absint($source_post_id),
-				'status'         => 'pending',
-			),
-			array('%d', '%s')
+	public function delete_pending_by_source_post($source_post_id, $origin = '') {
+		$where  = array(
+			'source_post_id' => absint($source_post_id),
+			'status'         => 'pending',
 		);
+		$format = array('%d', '%s');
+
+		if ($origin !== '') {
+			$where['origin'] = sanitize_key($origin);
+			$format[]        = '%s';
+		}
+
+		return $this->wpdb->delete($this->table, $where, $format);
+	}
+
+	/**
+	 * Delete only PENDING suggestions that point at a target post.
+	 *
+	 * @param int    $target_post_id Target post ID.
+	 * @param string $origin         Optional origin filter.
+	 * @return int|false Number of deleted rows or false on failure.
+	 */
+	public function delete_pending_by_target_post($target_post_id, $origin = '') {
+		$where  = array(
+			'target_post_id' => absint($target_post_id),
+			'status'         => 'pending',
+		);
+		$format = array('%d', '%s');
+
+		if ($origin !== '') {
+			$where['origin'] = sanitize_key($origin);
+			$format[]        = '%s';
+		}
+
+		return $this->wpdb->delete($this->table, $where, $format);
+	}
+
+	/**
+	 * Create or refresh a suggestion for a source/target pair.
+	 *
+	 * An existing PENDING row is updated in place; rows with any other status
+	 * (accepted, rejected, inserted, reverted) are left untouched so editorial
+	 * decisions survive regeneration.
+	 *
+	 * Keys: source_post_id, target_post_id (required), similarity_score,
+	 * confidence, anchor_text, anchor_source, match_context, origin.
+	 *
+	 * @param array $data Suggestion data.
+	 * @return array{id:int, action:string}|false action is inserted, updated or kept.
+	 */
+	public function save_suggestion(array $data) {
+		$source = isset($data['source_post_id']) ? absint($data['source_post_id']) : 0;
+		$target = isset($data['target_post_id']) ? absint($data['target_post_id']) : 0;
+		if ($source <= 0 || $target <= 0 || $source === $target) {
+			return false;
+		}
+
+		$fields = array(
+			'similarity_score' => isset($data['similarity_score']) ? (float) $data['similarity_score'] : 0.0,
+			'confidence'       => isset($data['confidence']) ? max(0.0, min(1.0, (float) $data['confidence'])) : 0.0,
+			'anchor_text'      => isset($data['anchor_text']) ? sanitize_text_field($data['anchor_text']) : '',
+			'anchor_source'    => isset($data['anchor_source']) ? sanitize_key($data['anchor_source']) : '',
+			'match_context'    => isset($data['match_context']) ? sanitize_textarea_field($data['match_context']) : '',
+			'origin'           => isset($data['origin']) ? sanitize_key($data['origin']) : 'outbound',
+			'updated_at'       => AIPS_DateTime::now()->timestamp(),
+		);
+		$formats = array('%f', '%f', '%s', '%s', '%s', '%s', '%d');
+
+		$existing = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT id, status FROM {$this->table} WHERE source_post_id = %d AND target_post_id = %d LIMIT 1",
+				$source,
+				$target
+			)
+		);
+
+		if ($existing) {
+			if ($existing->status !== 'pending') {
+				return array('id' => (int) $existing->id, 'action' => 'kept');
+			}
+
+			$this->wpdb->update($this->table, $fields, array('id' => (int) $existing->id), $formats, array('%d'));
+			return array('id' => (int) $existing->id, 'action' => 'updated');
+		}
+
+		$fields['source_post_id'] = $source;
+		$fields['target_post_id'] = $target;
+		$fields['status']         = 'pending';
+		$fields['created_at']     = $fields['updated_at'];
+		$formats                  = array_merge($formats, array('%d', '%d', '%s', '%d'));
+
+		$result = $this->wpdb->insert($this->table, $fields, $formats);
+
+		return $result ? array('id' => (int) $this->wpdb->insert_id, 'action' => 'inserted') : false;
+	}
+
+	/**
+	 * Suggestions pointing at a target post, with source post titles.
+	 *
+	 * @param int      $target_post_id Target post ID.
+	 * @param string[] $statuses       Optional status filter.
+	 * @param string   $origin         Optional origin filter.
+	 * @return object[]
+	 */
+	public function get_by_target_post($target_post_id, array $statuses = array(), $origin = '') {
+		$sql  = "SELECT il.*, sp.post_title AS source_post_title
+			FROM {$this->table} il
+			LEFT JOIN {$this->wpdb->posts} sp ON il.source_post_id = sp.ID
+			WHERE il.target_post_id = %d";
+		$args = array(absint($target_post_id));
+
+		$statuses = array_values(array_intersect($statuses, self::VALID_STATUSES));
+		if (!empty($statuses)) {
+			$sql .= ' AND il.status IN (' . implode(', ', array_fill(0, count($statuses), '%s')) . ')';
+			$args = array_merge($args, $statuses);
+		}
+
+		if ($origin !== '') {
+			$sql   .= ' AND il.origin = %s';
+			$args[] = sanitize_key($origin);
+		}
+
+		$sql .= ' ORDER BY il.confidence DESC, il.similarity_score DESC';
+
+		return (array) $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
+	}
+
+	/**
+	 * Count pending suggestions per target post.
+	 *
+	 * @param int[]  $target_post_ids Target post IDs.
+	 * @param string $origin          Optional origin filter.
+	 * @return array<int, int> target_post_id => pending count.
+	 */
+	public function count_pending_by_targets(array $target_post_ids, $origin = '') {
+		$ids = array_values(array_unique(array_filter(array_map('absint', $target_post_ids))));
+		if (empty($ids)) {
+			return array();
+		}
+
+		$sql  = "SELECT target_post_id, COUNT(*) AS pending FROM {$this->table}
+			WHERE status = 'pending' AND target_post_id IN (" . implode(', ', array_fill(0, count($ids), '%d')) . ')';
+		$args = $ids;
+
+		if ($origin !== '') {
+			$sql   .= ' AND origin = %s';
+			$args[] = sanitize_key($origin);
+		}
+
+		$sql .= ' GROUP BY target_post_id';
+
+		$counts = array();
+		foreach ((array) $this->wpdb->get_results($this->wpdb->prepare($sql, $args)) as $row) {
+			$counts[(int) $row->target_post_id] = (int) $row->pending;
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Suggestion IDs belonging to an auto-link run.
+	 *
+	 * @param string $batch_id Run ID.
+	 * @param string $status   Optional status filter.
+	 * @return int[]
+	 */
+	public function get_ids_by_batch($batch_id, $status = '') {
+		$sql  = "SELECT id FROM {$this->table} WHERE batch_id = %s";
+		$args = array(sanitize_text_field($batch_id));
+
+		if ($status !== '' && in_array($status, self::VALID_STATUSES, true)) {
+			$sql   .= ' AND status = %s';
+			$args[] = $status;
+		}
+
+		return array_map('intval', (array) $this->wpdb->get_col($this->wpdb->prepare($sql . ' ORDER BY id DESC', $args)));
+	}
+
+	/**
+	 * Count pending inbound suggestions awaiting review.
+	 *
+	 * @return int
+	 */
+	public function count_pending_inbound() {
+		return (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table} WHERE status = 'pending' AND origin = %s",
+				'inbound'
+			)
+		);
+	}
+
+	/**
+	 * Record that a suggestion was inserted into its source post.
+	 *
+	 * @param int    $id             Row ID.
+	 * @param string $before_snippet Content snippet before insertion.
+	 * @param string $after_snippet  Content snippet after insertion.
+	 * @param string $anchor_text    Anchor text actually used.
+	 * @param string $batch_id       Optional batch identifier.
+	 * @return int|false
+	 */
+	public function mark_applied($id, $before_snippet, $after_snippet, $anchor_text = '', $batch_id = '') {
+		$data   = array(
+			'status'         => 'inserted',
+			'before_snippet' => (string) $before_snippet,
+			'after_snippet'  => (string) $after_snippet,
+			'applied_at'     => AIPS_DateTime::now()->timestamp(),
+			'updated_at'     => AIPS_DateTime::now()->timestamp(),
+		);
+		$format = array('%s', '%s', '%s', '%d', '%d');
+
+		if ($anchor_text !== '') {
+			$data['anchor_text'] = sanitize_text_field($anchor_text);
+			$format[]            = '%s';
+		}
+
+		if ($batch_id !== '') {
+			$data['batch_id'] = sanitize_text_field($batch_id);
+			$format[]         = '%s';
+		}
+
+		return $this->wpdb->update($this->table, $data, array('id' => absint($id)), $format, array('%d'));
 	}
 
 	/**
