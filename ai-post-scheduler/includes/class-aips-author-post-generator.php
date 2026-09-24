@@ -99,24 +99,48 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	private $expansion_service;
 
 	/**
-	 * @var AIPS_Generation_Execution_Runner Shared execution harness.
-	 */
-	private $runner;
-
-	/**
 	 * Initialize the generator.
+	 *
+	 * Container-aware with optional constructor injection so tests can supply
+	 * doubles. Shared collaborators ($runner, $history_service, $logger,
+	 * $authors_repository, $job_scheduler) are declared on
+	 * AIPS_Author_Slice_Scheduler_Base; do not redeclare them here.
+	 *
+	 * @param AIPS_Generator|null                    $generator          Post content engine.
+	 * @param AIPS_Logger_Interface|null             $logger             Logger instance.
+	 * @param object|null                            $history_service    History service.
+	 * @param object|null                            $authors_repository Authors repository.
+	 * @param object|null                            $topics_repository  Topics repository.
+	 * @param object|null                            $logs_repository    Author topic logs repository.
+	 * @param object|null                            $interval_calculator Interval calculator.
+	 * @param object|null                            $expansion_service  Topic expansion service.
+	 * @param AIPS_Generation_Execution_Runner|null  $runner             Shared execution harness.
+	 * @param object|null                            $job_scheduler      Job scheduler.
 	 */
-	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->generator = new AIPS_Generator();
-		$this->logger = new AIPS_Logger();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->expansion_service = new AIPS_Topic_Expansion_Service();
-		$this->history_service = new AIPS_History_Service();
-		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
-		$this->job_scheduler = new AIPS_Job_Scheduler();
+	public function __construct(
+		$generator = null,
+		?AIPS_Logger_Interface $logger = null,
+		$history_service = null,
+		$authors_repository = null,
+		$topics_repository = null,
+		$logs_repository = null,
+		$interval_calculator = null,
+		$expansion_service = null,
+		$runner = null,
+		$job_scheduler = null
+	) {
+		$container = AIPS_Container::get_instance();
+
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
+		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
+		$this->generator = $generator ?: ($container->has(AIPS_Generator::class) ? $container->make(AIPS_Generator::class) : new AIPS_Generator());
+		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->interval_calculator = $interval_calculator ?: new AIPS_Interval_Calculator();
+		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
+		$this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
+		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler();
 	}
 
 	/**
@@ -208,15 +232,14 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		
 		// Below threshold — process inline (original behaviour).
 		foreach ($due_authors as $author) {
-			$this->runner->run(
+			$this->run_slice(
 				function() use ($author) {
 					$this->generate_posts_for_author($author, null, 'scheduled', true);
 				},
-				'author_post_generation',
 				array('author_id' => $author->id)
 			);
 		}
-		
+
 		$this->logger->log('Completed scheduled author post generation', 'info');
 	}
 
@@ -246,11 +269,10 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 			return;
 		}
 
-		$this->runner->run(
+		$this->run_slice(
 			function() use ($author) {
 				$this->generate_posts_for_author($author, null, 'scheduled', true);
 			},
-			'author_post_generation',
 			array('author_id' => $author->id)
 		);
 
@@ -441,39 +463,14 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 			
 			if (is_wp_error($post_id)) {
 				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
-				
-				// The Generator now handles all logging internally via History Container
-				// We can optionally log additional high-level activity here
-				$history = $this->history_service->create('topic_post_generation', array(
-					'topic_id' => $topic->id,
-					'author_id' => $author->id,
-				));
-				
-				$history->record(
-					'activity',
-					sprintf(
-						__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
-						$topic->topic_title,
-						$post_id->get_error_message()
-					),
-					array(
-						'event_type' => 'topic_post_generation',
-						'event_status' => 'failed',
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-					),
-					null,
-					array(
-						'author_id' => $author->id,
-						'author_name' => $author->name,
-						'error' => $post_id->get_error_message(),
-					)
-				);
-				
+
+				// History is recorded by AIPS_Generator on its own
+				// post_generation container, including the canonical
+				// author_post_generation activity row the schedule feed reads.
 				return $post_id;
 			}
-			
-			// Log the post generation
+
+			// Record the domain post-generation log row (author topic logs table).
 			$this->logs_repository->log_post_generation(
 				$topic->id,
 				$post_id,
@@ -484,48 +481,14 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 
 			// Always record author's last run timestamp on successful generation.
 			$this->authors_repository->update_post_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());
-			
-			// Get post status for activity log
-			$post = get_post($post_id);
-			$post_status = $post ? $post->post_status : 'unknown';
-			$post_title = $post ? $post->post_title : $topic->topic_title;
-			
-			// Log successful post generation using new History API
-			$history = $this->history_service->create('topic_post_generation', array(
-				'post_id' => $post_id,
-				'topic_id' => $topic->id,
-				'author_id' => $author->id,
-			));
-			
-			$history->record(
-				'activity',
-				sprintf(
-					__('Generated %s from topic "%s" for author "%s"', 'ai-post-scheduler'),
-					$post_status === 'publish' ? __('post', 'ai-post-scheduler') : __('draft', 'ai-post-scheduler'),
-					$topic->topic_title,
-					$author->name
-				),
-				array(
-					'event_type' => 'topic_post_generation',
-					'event_status' => 'success',
-					'topic_id' => $topic->id,
-					'topic_title' => $topic->topic_title,
-				),
-				array(
-					'post_id' => $post_id,
-					'post_title' => $post_title,
-					'post_status' => $post_status,
-				),
-				array(
-					'author_id' => $author->id,
-					'author_name' => $author->name,
-				)
-			);
-			
+
+			// The activity/history record (including the canonical
+			// author_post_generation row the schedule feed reads) is emitted by
+			// AIPS_Generator on its post_generation container.
 			$this->logger->log("Successfully generated post {$post_id} from topic {$topic->id}", 'info');
-			
+
 			return $post_id;
-			
+
 		} catch (Exception $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
 
@@ -551,12 +514,18 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				do_action('aips_generation_failed', $payload);
 			}
 			
-			// Log exception using new History API
-			$history = $this->history_service->create('topic_post_generation', array(
+			// A thrown Throwable unwinds past AIPS_Generator's own terminal
+			// records, so its post_generation container never gets the canonical
+			// activity row. Emit a compensating record here on a canonical
+			// post_generation container (carrying author_id) with the
+			// author_post_generation event_type so the schedule feed still
+			// surfaces the failure. This is not the double-logging removed from
+			// the success/WP_Error paths — those are recorded by the generator.
+			$history = $this->history_service->create('post_generation', array(
 				'topic_id' => $topic->id,
 				'author_id' => $author->id,
 			));
-			
+
 			$history->record(
 				'activity',
 				sprintf(
@@ -565,7 +534,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					$e->getMessage()
 				),
 				array(
-					'event_type' => 'topic_post_generation',
+					'event_type' => 'author_post_generation',
 					'event_status' => 'failed',
 					'topic_id' => $topic->id,
 					'topic_title' => $topic->topic_title,
@@ -577,7 +546,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'error' => $e->getMessage(),
 				)
 			);
-			
+
 			return new WP_Error('generation_failed', $e->getMessage());
 		}
 	}
