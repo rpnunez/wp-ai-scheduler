@@ -31,12 +31,19 @@ class AIPS_Calendar_Controller {
 	
 	/**
 	 * Initialize the controller.
+	 *
+	 * @param bool $register_ajax_hooks Whether to register the wp_ajax_* handler.
+	 *                                  Pass false when using this class purely for
+	 *                                  occurrence calculation (e.g. from the REST controller).
 	 */
-	public function __construct() {
+	public function __construct($register_ajax_hooks = true) {
 		$this->schedule_repo = new AIPS_Schedule_Repository();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->template_repo = new AIPS_Template_Repository();
-		add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));
+
+		if ($register_ajax_hooks) {
+			add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));
+		}
 	}
 	
 	/**
@@ -251,6 +258,7 @@ class AIPS_Calendar_Controller {
 	/**
 	 * AJAX handler to get calendar events.
 	 *
+	 * @deprecated 3.7.0 Use GET /aips/v1/calendar/events.
 	 * @return void
 	 */
 	public function ajax_get_calendar_events() {

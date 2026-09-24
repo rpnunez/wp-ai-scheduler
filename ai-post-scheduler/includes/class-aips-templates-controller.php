@@ -90,6 +90,9 @@ class AIPS_Templates_Controller {
         );
     }
 
+    /**
+     * @deprecated 3.7.0 Use POST /aips/v1/templates or PUT /aips/v1/templates/{id}.
+     */
     public function ajax_save_template() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -167,6 +170,9 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * @deprecated 3.7.0 Use DELETE /aips/v1/templates/{id}.
+     */
     public function ajax_delete_template() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -202,6 +208,9 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * @deprecated 3.7.0 Use GET /aips/v1/templates/{id}.
+     */
     public function ajax_get_template() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -226,6 +235,9 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * @deprecated 3.7.0 Use POST /aips/v1/templates/{id}/clone.
+     */
     public function ajax_clone_template() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
