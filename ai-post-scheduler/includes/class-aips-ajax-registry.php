@@ -301,6 +301,7 @@ class AIPS_Ajax_Registry {
 		'aips_link_report_apply_suggestion'   => 'AIPS_Link_Report_Controller',
 		'aips_link_report_revert_suggestion'  => 'AIPS_Link_Report_Controller',
 		'aips_link_report_dismiss_suggestion' => 'AIPS_Link_Report_Controller',
+		'aips_link_report_get_post_panel'     => 'AIPS_Link_Report_Controller',
 		'aips_autolink_start'                 => 'AIPS_Link_Report_Controller',
 		'aips_autolink_status'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_pause'                 => 'AIPS_Link_Report_Controller',

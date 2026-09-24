@@ -62,6 +62,7 @@ class AIPS_Link_Report_Controller {
 		add_action('wp_ajax_aips_link_report_apply_suggestion', array($this, 'ajax_apply_suggestion'));
 		add_action('wp_ajax_aips_link_report_revert_suggestion', array($this, 'ajax_revert_suggestion'));
 		add_action('wp_ajax_aips_link_report_dismiss_suggestion', array($this, 'ajax_dismiss_suggestion'));
+		add_action('wp_ajax_aips_link_report_get_post_panel', array($this, 'ajax_get_post_panel'));
 		add_action('wp_ajax_aips_autolink_start', array($this, 'ajax_autolink_start'));
 		add_action('wp_ajax_aips_autolink_status', array($this, 'ajax_autolink_status'));
 		add_action('wp_ajax_aips_autolink_pause', array($this, 'ajax_autolink_pause'));
@@ -393,6 +394,64 @@ class AIPS_Link_Report_Controller {
 			: new WP_Error('aips_inbound_not_pending', __('This suggestion is no longer pending.', 'ai-post-scheduler'));
 
 		$this->respond_with_suggestions($result, __('Suggestion dismissed.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: everything the editor "Internal Links" panel shows for one post.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_post_panel() {
+		$this->verify_request();
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$post    = $post_id ? get_post($post_id) : null;
+		if (!$post) {
+			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'), 'not_found');
+		}
+
+		AIPS_Ajax_Response::success($this->get_post_panel_data($post));
+	}
+
+	/**
+	 * Link data for one post: counts, sources linking to it and inbound suggestions.
+	 *
+	 * @param WP_Post $post Post.
+	 * @return array
+	 */
+	public function get_post_panel_data(WP_Post $post): array {
+		$post_id  = (int) $post->ID;
+		$in_scope = $this->service->is_post_in_scope($post);
+		$indexed  = $in_scope && get_post_meta($post_id, AIPS_Link_Index_Service::HASH_META_KEY, true) !== '';
+		$counts   = $this->repository->get_counts_for_posts(array($post_id));
+		$counts   = isset($counts[$post_id]) ? $counts[$post_id] : array('inbound' => 0, 'outbound' => 0, 'external' => 0, 'broken' => 0);
+
+		$sources = array();
+		$seen    = array();
+		foreach ($this->repository->get_inbound($post_id) as $link) {
+			$source_id = (int) $link->source_post_id;
+			if (isset($seen[$source_id])) {
+				continue;
+			}
+			$seen[$source_id] = true;
+			$sources[]        = array(
+				'title'  => get_the_title($source_id),
+				'edit'   => (string) get_edit_post_link($source_id, 'raw'),
+				'anchor' => (string) $link->anchor_text,
+			);
+		}
+
+		return array(
+			'post_id'     => $post_id,
+			'in_scope'    => $in_scope,
+			'indexed'     => $indexed,
+			'counts'      => $counts,
+			'is_orphan'   => $indexed && $counts['inbound'] === 0,
+			'can_suggest' => $in_scope && AIPS_Inbound_Links_Service::should_suggest($counts['inbound']),
+			'sources'     => array_slice($sources, 0, 20),
+			'suggestions' => $in_scope ? $this->get_inbound()->get_suggestions($post_id) : array(),
+			'report_url'  => admin_url('admin.php?page=aips-generated-posts&tab=link-report'),
+		);
 	}
 
 	/**
