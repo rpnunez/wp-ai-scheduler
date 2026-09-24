@@ -1068,16 +1068,34 @@ class AIPS_Similarity_Evaluator {
 			return array();
 		}
 
-		// Decode post vectors
+		// Cap candidate posts for cluster detection to preserve response time and avoid execution timeouts on large libraries
+		$max_candidates = (int) apply_filters('aips_cluster_detection_max_posts', 250);
+		if (count($candidates) > $max_candidates) {
+			$candidates = array_slice($candidates, -$max_candidates);
+		}
+
+		// Decode and unit-normalize post vectors for ultra-fast dot-product cosine similarity
 		$posts = array();
 		foreach ($candidates as $row) {
 			$vec = $this->get_embeddings_repository()->decode_embedding($row->embedding);
 			if (!empty($vec)) {
+				// Pre-normalize vector
+				$norm = 0.0;
+				foreach ($vec as $val) {
+					$norm += ((float) $val) * ((float) $val);
+				}
+				$norm = sqrt($norm);
+				if ($norm > 1e-9) {
+					foreach ($vec as $idx => $val) {
+						$vec[$idx] = ((float) $val) / $norm;
+					}
+				}
+
 				$pid = (int) $row->object_id;
 				$posts[$pid] = array(
 					'id'        => $pid,
 					'title'     => get_the_title($pid),
-					'post_type' => $row->post_type,
+					'post_type' => isset($row->object_post_type) ? $row->object_post_type : (isset($row->post_type) ? $row->post_type : 'post'),
 					'url'       => get_permalink($pid),
 					'edit_url'  => get_edit_post_link($pid, ''),
 					'embedding' => $vec,
@@ -1091,25 +1109,37 @@ class AIPS_Similarity_Evaluator {
 			return array();
 		}
 
-		// Build similarity adjacency graph
+		// Build similarity adjacency graph with execution time guard
 		$adjacency = array();
 		foreach ($post_ids as $pid) {
 			$adjacency[$pid] = array();
 		}
 
+		$start_time = microtime(true);
 		for ($i = 0; $i < $total; $i++) {
-			$id_a = $post_ids[$i];
+			// Enforce 8-second time budget guard to guarantee server never hits 30s timeout
+			if (($i % 25 === 0) && (microtime(true) - $start_time > 8.0)) {
+				break;
+			}
+
+			$id_a  = $post_ids[$i];
 			$vec_a = $posts[$id_a]['embedding'];
+			$dim   = count($vec_a);
 
 			for ($j = $i + 1; $j < $total; $j++) {
-				$id_b = $post_ids[$j];
+				$id_b  = $post_ids[$j];
 				$vec_b = $posts[$id_b]['embedding'];
 
-				if (count($vec_a) === count($vec_b)) {
-					$sim = $this->cosine_similarity($vec_a, $vec_b);
-					if ((float) $sim >= $threshold) {
-						$adjacency[$id_a][$id_b] = (float) $sim;
-						$adjacency[$id_b][$id_a] = (float) $sim;
+				if ($dim === count($vec_b)) {
+					// Fast single-pass dot product on pre-normalized vectors
+					$sim = 0.0;
+					for ($k = 0; $k < $dim; $k++) {
+						$sim += $vec_a[$k] * $vec_b[$k];
+					}
+
+					if ($sim >= $threshold) {
+						$adjacency[$id_a][$id_b] = $sim;
+						$adjacency[$id_b][$id_a] = $sim;
 					}
 				}
 			}
@@ -1271,15 +1301,33 @@ class AIPS_Similarity_Evaluator {
 			return array();
 		}
 
+		// Cap candidate posts for orphan analysis to prevent execution timeouts on large sites
+		$max_candidates = (int) apply_filters('aips_cluster_detection_max_posts', 250);
+		if (count($candidates) > $max_candidates) {
+			$candidates = array_slice($candidates, -$max_candidates);
+		}
+
+		// Decode and unit-normalize post vectors
 		$posts = array();
 		foreach ($candidates as $row) {
 			$vec = $this->get_embeddings_repository()->decode_embedding($row->embedding);
 			if (!empty($vec)) {
+				$norm = 0.0;
+				foreach ($vec as $val) {
+					$norm += ((float) $val) * ((float) $val);
+				}
+				$norm = sqrt($norm);
+				if ($norm > 1e-9) {
+					foreach ($vec as $idx => $val) {
+						$vec[$idx] = ((float) $val) / $norm;
+					}
+				}
+
 				$pid = (int) $row->object_id;
 				$posts[$pid] = array(
 					'id'        => $pid,
 					'title'     => get_the_title($pid),
-					'post_type' => $row->post_type,
+					'post_type' => isset($row->object_post_type) ? $row->object_post_type : (isset($row->post_type) ? $row->post_type : 'post'),
 					'url'       => get_permalink($pid),
 					'edit_url'  => get_edit_post_link($pid, ''),
 					'embedding' => $vec,
@@ -1291,18 +1339,28 @@ class AIPS_Similarity_Evaluator {
 		$post_ids = array_keys($posts);
 		$total    = count($post_ids);
 
-		// Calculate semantic neighbors
+		// Calculate semantic neighbors with time budget guard
+		$start_time = microtime(true);
 		for ($i = 0; $i < $total; $i++) {
-			$id_a = $post_ids[$i];
+			if (($i % 25 === 0) && (microtime(true) - $start_time > 8.0)) {
+				break;
+			}
+
+			$id_a  = $post_ids[$i];
 			$vec_a = $posts[$id_a]['embedding'];
+			$dim   = count($vec_a);
 
 			for ($j = $i + 1; $j < $total; $j++) {
-				$id_b = $post_ids[$j];
+				$id_b  = $post_ids[$j];
 				$vec_b = $posts[$id_b]['embedding'];
 
-				if (count($vec_a) === count($vec_b)) {
-					$sim = $this->cosine_similarity($vec_a, $vec_b);
-					if ((float) $sim >= $threshold) {
+				if ($dim === count($vec_b)) {
+					$sim = 0.0;
+					for ($k = 0; $k < $dim; $k++) {
+						$sim += $vec_a[$k] * $vec_b[$k];
+					}
+
+					if ($sim >= $threshold) {
 						$posts[$id_a]['neighbors']++;
 						$posts[$id_b]['neighbors']++;
 					}

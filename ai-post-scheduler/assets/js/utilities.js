@@ -217,12 +217,14 @@
          * @param {number}  [opts.duration]   - Auto-dismiss delay in ms (0 = no auto-dismiss). Default 6000.
          */
         showToast: function(message, type, opts) {
-            type = type || 'info';
+            var validTypes = ['success', 'error', 'warning', 'info'];
+            type = (type && validTypes.indexOf(type) !== -1) ? type : 'info';
             opts = opts || {};
             var duration = opts.duration !== undefined ? opts.duration : 6000;
             var isHtml   = opts.isHtml || false;
 
             var iconMap = { success: '\u2713', error: '\u2715', warning: '\u26A0', info: '\u2139' };
+            var toastIcon = iconMap[type] || '\u2139';
 
             var $container = $('#aips-toast-container');
             if (!$container.length) {
@@ -232,10 +234,10 @@
             }
 
             var closeLabel = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.closeLabel) ? aipsUtilitiesL10n.closeLabel : 'Close notification';
-            var safeMessage = isHtml ? message : $('<div>').text(message).html();
+            var safeMessage = isHtml ? message : $('<div>').text(message || '').html();
 
             var $toast = $('<div class="aips-toast ' + type + '">')
-              .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+              .append('<span class="aips-toast-icon">' + toastIcon + '</span>')
               .append('<div class="aips-toast-message">' + safeMessage + '</div>')
               .append($('<button class="aips-toast-close">&times;</button>').attr('aria-label', closeLabel));
 
@@ -747,8 +749,23 @@
 		 * @param {string} message Plain-text notice message.
 		 * @return {void}
 		 */
-		showNotice: function(type, message) {
-			var noticeClass = type === 'success' ? 'notice notice-success' : 'notice notice-error';
+		showNotice: function(arg1, arg2) {
+			var validTypes = ['success', 'error', 'warning', 'info'];
+			var type = 'info';
+			var message = '';
+
+			if (typeof arg1 === 'string' && validTypes.indexOf(arg1.toLowerCase()) !== -1) {
+				type = arg1.toLowerCase();
+				message = arg2 || '';
+			} else if (typeof arg2 === 'string' && validTypes.indexOf(arg2.toLowerCase()) !== -1) {
+				type = arg2.toLowerCase();
+				message = arg1 || '';
+			} else {
+				message = arg1 || '';
+				type = 'info';
+			}
+
+			var noticeClass = type === 'success' ? 'notice notice-success' : (type === 'warning' ? 'notice notice-warning' : (type === 'info' ? 'notice notice-info' : 'notice notice-error'));
 			var $notice = $(document.createElement('div')).addClass(noticeClass);
 			var $message = $(document.createElement('p')).text(this.sanitizePlainText(message));
 

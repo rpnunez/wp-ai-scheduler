@@ -1842,8 +1842,8 @@
 				error: function () {
 					$btn.prop('disabled', false);
 					$loading.hide();
-					if (AIPS.Utilities) {
-						AIPS.Utilities.showNotice('Error running cannibalization audit.', 'error');
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Error running cannibalization audit.', 'error');
 					}
 				}
 			});
@@ -2023,8 +2023,8 @@
 					clearInterval(self.cooldownTimer);
 					self.cooldownTimer = null;
 					self.hideCooldownBanner();
-					if (AIPS.Utilities) {
-						AIPS.Utilities.showNotice('Auto-cooldown has expired. Indexing operations are ready to resume.', 'info');
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Auto-cooldown has expired. Indexing operations are ready to resume.', 'info');
 					}
 				} else {
 					self.updateCooldownDisplay(remaining);
@@ -2103,19 +2103,19 @@
 					$btn.prop('disabled', false).removeClass('updating-message');
 					if (res.success) {
 						self.hideCooldownBanner();
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice(res.data.message || 'Cooldown cleared. Operations resumed.', 'success');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(res.data.message || 'Cooldown cleared. Operations resumed.', 'success');
 						}
 					} else {
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice(res.data.message || 'Failed to clear cooldown.', 'error');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(res.data.message || 'Failed to clear cooldown.', 'error');
 						}
 					}
 				},
 				error: function () {
 					$btn.prop('disabled', false).removeClass('updating-message');
-					if (AIPS.Utilities) {
-						AIPS.Utilities.showNotice('AJAX error while clearing cooldown.', 'error');
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('AJAX error while clearing cooldown.', 'error');
 					}
 				}
 			});
@@ -2167,20 +2167,22 @@
 					$loading.hide();
 
 					if (!res.success) {
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice(res.data.message || 'Failed to generate post clusters.', 'error');
+						var errMsg = (res.data && res.data.message) ? res.data.message : 'Failed to generate post clusters.';
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(errMsg, 'error');
 						}
 						return;
 					}
 
-					var data = res.data;
+					var data = res.data || {};
 					self.clustersData = data;
+					var stats = data.stats || {};
 
 					// Update Summary Metrics
-					$('#aips-metric-clusters-count').text(data.stats.total_clusters || 0);
-					$('#aips-metric-posts-in-clusters').text(data.stats.clustered_posts || 0);
-					$('#aips-metric-avg-cohesion').text((data.stats.avg_cohesion || 0) + '%');
-					$('#aips-metric-orphans-count').text(data.stats.orphan_posts || 0);
+					$('#aips-metric-clusters-count').text(stats.total_clusters !== undefined ? stats.total_clusters : (data.clusters ? data.clusters.length : 0));
+					$('#aips-metric-posts-in-clusters').text(stats.clustered_posts !== undefined ? stats.clustered_posts : 0);
+					$('#aips-metric-avg-cohesion').text((stats.avg_cohesion !== undefined ? stats.avg_cohesion : '--') + (stats.avg_cohesion !== undefined ? '%' : ''));
+					$('#aips-metric-orphans-count').text(stats.orphan_posts !== undefined ? stats.orphan_posts : (data.orphans ? data.orphans.length : 0));
 
 					// Render Cluster Accordion Cards
 					if (!data.clusters || data.clusters.length === 0) {
@@ -2260,11 +2262,15 @@
 						$orphansCard.addClass('aips-hidden').hide();
 					}
 				},
-				error: function () {
+				error: function (xhr) {
 					$btn.prop('disabled', false);
 					$loading.hide();
-					if (AIPS.Utilities) {
-						AIPS.Utilities.showNotice('Error communicating with cluster generation service.', 'error');
+					var errMsg = 'Error communicating with cluster generation service.';
+					if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+						errMsg = xhr.responseJSON.data.message;
+					}
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast(errMsg, 'error');
 					}
 				}
 			});
@@ -2323,12 +2329,12 @@
 						$card.find('.aips-cluster-title').first().text(newName);
 						$btn.data('cluster-name', newName);
 						$card.find('.aips-cluster-gaps-btn').data('cluster-name', newName);
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice('Post cluster renamed successfully.', 'success');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast('Post cluster renamed successfully.', 'success');
 						}
 					} else {
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice(res.data.message || 'Failed to rename cluster.', 'error');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(res.data.message || 'Failed to rename cluster.', 'error');
 						}
 					}
 				}
@@ -2511,19 +2517,19 @@
 					$btn.prop('disabled', false).removeClass('updating-message');
 					if (res.success) {
 						self.onCloseGapModalClick();
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice(res.data.message || 'Topics committed successfully!', 'success');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(res.data.message || 'Topics committed successfully!', 'success');
 						}
 					} else {
-						if (AIPS.Utilities) {
-							AIPS.Utilities.showNotice(res.data.message || 'Failed to commit topics.', 'error');
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(res.data.message || 'Failed to commit topics.', 'error');
 						}
 					}
 				},
 				error: function () {
 					$btn.prop('disabled', false).removeClass('updating-message');
-					if (AIPS.Utilities) {
-						AIPS.Utilities.showNotice('Error saving topics to author.', 'error');
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Error saving topics to author.', 'error');
 					}
 				}
 			});

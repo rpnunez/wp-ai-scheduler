@@ -198,16 +198,68 @@
          * correct tab panel is displayed immediately after navigation.
          */
         handleInitialTabFromHash: function() {
-            // Check for hash in URL and activate the corresponding tab
+            var tabId = '';
             var hash = window.location.hash;
             if (hash) {
-                var tabId = hash.substring(1); // Remove the # prefix
+                tabId = hash.substring(1).replace(/^\/+/, '');
+            }
+
+            if (!tabId) {
+                try {
+                    var urlParams = new URLSearchParams(window.location.search);
+                    tabId = urlParams.get('tab') || '';
+                } catch (e) {}
+            }
+
+            var page = '';
+            try {
+                page = new URLSearchParams(window.location.search).get('page') || '';
+            } catch (e) {}
+
+            if (!tabId && page) {
+                try {
+                    tabId = localStorage.getItem('aips_active_tab_' + page) || '';
+                } catch (e) {}
+            }
+
+            if (tabId) {
+                // Handle aliases
+                if (tabId === 'engine' || tabId === 'settings-engine' || tabId === 'ai') {
+                    tabId = 'settings-ai';
+                } else if (tabId === 'linking' || tabId === 'internal-linking') {
+                    tabId = 'settings-linking';
+                } else if (tabId === 'clusters' || tabId === 'post-clusters' || tabId === 'content-clusters') {
+                    tabId = 'aips-content-clusters';
+                } else if (tabId === 'cannibalization' || tabId === 'content-cannibalization') {
+                    tabId = 'aips-content-cannibalization';
+                }
+
                 var $tabLink = $('.nav-tab[data-tab], .aips-tab-link[data-tab], .aips-rail-item[data-tab]').filter(function() {
-                    return $(this).data('tab') === tabId;
+                    return $(this).data('tab') === tabId || $(this).attr('data-tab') === tabId;
                 });
                 if ($tabLink.length) {
                     $tabLink.trigger('click');
                 }
+            }
+
+            // Bind hashchange listener once so browser navigation works
+            if (!this._hashChangeListenerBound) {
+                this._hashChangeListenerBound = true;
+                $(window).on('hashchange.aips', function() {
+                    var newHash = window.location.hash;
+                    if (newHash) {
+                        var targetTab = newHash.substring(1).replace(/^\/+/, '');
+                        if (targetTab === 'engine' || targetTab === 'settings-engine' || targetTab === 'ai') {
+                            targetTab = 'settings-ai';
+                        }
+                        var $link = $('.nav-tab[data-tab], .aips-tab-link[data-tab], .aips-rail-item[data-tab]').filter(function() {
+                            return $(this).data('tab') === targetTab || $(this).attr('data-tab') === targetTab;
+                        });
+                        if ($link.length && !$link.hasClass('active')) {
+                            $link.trigger('click');
+                        }
+                    }
+                });
             }
         },
 
@@ -499,10 +551,10 @@
          * Register event listeners for Settings page actions.
          */
         bindSettingsEvents: function() {
-            if (this._settingsEventsBound) {
+            if (this._adminCoreSettingsEventsBound) {
                 return;
             }
-            this._settingsEventsBound = true;
+            this._adminCoreSettingsEventsBound = true;
 
             $(document).on('click', '#aips-test-connection', this.testConnection);
         },
@@ -736,14 +788,51 @@
                 }
             }
 
-            // If URL hash is used on the page, update it smoothly
-            if (window.location.hash || $tabLink.is('.aips-hash-tab')) {
-                if (history.replaceState) {
-                    history.replaceState(null, null, '#' + tabId);
+            // Update URL hash and query param smoothly
+            try {
+                if (window.history && window.history.replaceState) {
+                    var currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('tab', tabId);
+                    currentUrl.hash = tabId;
+                    window.history.replaceState(null, '', currentUrl.toString());
                 } else {
                     window.location.hash = tabId;
                 }
+            } catch (err) {
+                window.location.hash = tabId;
             }
+
+            try {
+                var pageName = new URLSearchParams(window.location.search).get('page') || '';
+                if (pageName) {
+                    localStorage.setItem('aips_active_tab_' + pageName, tabId);
+                }
+            } catch (err) {}
+
+            // Keep form referer updated with active tab so server redirects preserve tab
+            var $refererInputs = $('input[name="_wp_http_referer"]');
+            if ($refererInputs.length) {
+                $refererInputs.each(function() {
+                    var val = $(this).val();
+                    if (val) {
+                        try {
+                            var refUrl = new URL(val, window.location.origin);
+                            refUrl.searchParams.set('tab', tabId);
+                            $(this).val(refUrl.pathname + refUrl.search + refUrl.hash);
+                        } catch (e) {
+                            if (val.indexOf('tab=') > -1) {
+                                val = val.replace(/([?&])tab=[^&#]*/, '$1tab=' + encodeURIComponent(tabId));
+                            } else {
+                                val += (val.indexOf('?') > -1 ? '&' : '?') + 'tab=' + encodeURIComponent(tabId);
+                            }
+                            $(this).val(val);
+                        }
+                    }
+                });
+            }
+
+            // Update any hidden active_tab fields
+            $('input[name="active_tab"], #aips_active_tab').val(tabId);
 
             // Notify other modules of the tab switch.
             // Passes tabId (string) as the first argument: $(document).on('aips:tabSwitch', function(e, tabId) { ... })
@@ -760,16 +849,40 @@
          * @param {Event} e - Submit event from the form element.
          */
         preserveTabOnSubmit: function(e) {
-            // Append current hash to form action to preserve active tab
+            var $form = $(this);
+            var tabId = '';
             var hash = window.location.hash;
             if (hash) {
-                var $form = $(this);
+                tabId = hash.substring(1).replace(/^\/+/, '');
+            }
+            if (!tabId) {
+                try {
+                    tabId = new URLSearchParams(window.location.search).get('tab') || '';
+                } catch (err) {}
+            }
+            if (!tabId) {
+                var $activeTab = $form.closest('.aips-tab-content');
+                if ($activeTab.length && $activeTab.attr('id')) {
+                    tabId = $activeTab.attr('id').replace(/-tab$/, '');
+                }
+            }
+            if (!tabId) {
+                var $activeRail = $('.aips-rail-item.active[data-tab]');
+                if ($activeRail.length) {
+                    tabId = $activeRail.data('tab');
+                }
+            }
+            if (tabId) {
+                var $tabInput = $form.find('input[name="tab"]');
+                if (!$tabInput.length) {
+                    $form.append($('<input type="hidden" name="tab">').val(tabId));
+                } else {
+                    $tabInput.val(tabId);
+                }
+            }
+            if (hash) {
                 var action = $form.attr('action') || window.location.pathname + window.location.search;
-                
-                // Remove existing hash if present
                 action = action.split('#')[0];
-                
-                // Add the hash to the action
                 $form.attr('action', action + hash);
             }
         },

@@ -340,7 +340,7 @@ class AIPS_Admin_Page_Context {
 						'description' => __('Defaults & post settings', 'ai-post-scheduler'),
 					),
 					'settings-ai' => array(
-						'label'       => __('AI Engine', 'ai-post-scheduler'),
+						'label'       => __('Engine', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-rest-api',
 						'description' => __('Models & AI provider connection', 'ai-post-scheduler'),
 					),
