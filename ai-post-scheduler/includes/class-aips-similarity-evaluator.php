@@ -1304,10 +1304,18 @@ class AIPS_Similarity_Evaluator {
 			}
 		}
 
+		// Prefer the link index (real <a href> links, one batched query); fall back
+		// to the content LIKE scan only while the index has not been built.
+		$link_index     = new AIPS_Link_Index_Repository();
+		$use_link_index = $link_index->get_summary()['sources'] > 0;
+		$link_counts    = $use_link_index ? $link_index->get_counts_for_posts(array_keys($posts)) : array();
+
 		$orphans = array();
 		foreach ($posts as $pid => $pdata) {
 			$is_island = ($pdata['neighbors'] <= 1);
-			$incoming_links = $this->count_incoming_internal_links($pid);
+			$incoming_links = $use_link_index
+				? (isset($link_counts[$pid]) ? $link_counts[$pid]['inbound'] : 0)
+				: $this->count_incoming_internal_links($pid);
 			$is_unlinked = ($incoming_links === 0);
 
 			$qualifies = false;
