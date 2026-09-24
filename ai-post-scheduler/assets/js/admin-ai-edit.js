@@ -603,7 +603,7 @@
 			
 			if (!options.skipConfirm && aiEditState.changedComponents.size > 0) {
 				AIPS.Utilities.confirm(aipsAIEditL10n.confirmClose, 'Notice', [
-					{ label: 'No, keep editing', className: 'aips-btn aips-btn-primary' },
+					{ label: 'No, keep editing', className: 'aips-btn aips-btn-secondary' },
 					{ label: 'Yes, discard changes', className: 'aips-btn aips-btn-danger-solid', action: function() {
 						$('#aips-ai-edit-modal').hide();
 						$('body').removeClass('aips-modal-open');

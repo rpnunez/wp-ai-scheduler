@@ -185,8 +185,8 @@
 				'Are you sure you want to publish this post now?',
 				'Confirm',
 				[
-					{ label: 'Cancel', className: 'aips-btn aips-btn-primary' },
-					{ label: 'Publish Now', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{ label: 'Publish Now', className: 'aips-btn aips-btn-primary', action: function () {
 						var req = $.ajax({
 							url: ajaxurl,
 							type: 'POST',

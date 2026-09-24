@@ -190,13 +190,13 @@
 
             AIPS.Utilities.confirm(aipsPlannerL10n.confirmClear || 'Are you sure you want to clear all topics?', 'Notice', [
                 {
-                    text: 'Cancel',
-                    class: 'aips-btn-secondary aips-modal-close'
+                    label: aipsPlannerL10n.cancel || 'Cancel',
+                    className: 'aips-btn aips-btn-secondary'
                 },
                 {
-                    text: 'Clear Topics',
-                    class: 'aips-btn-primary',
-                    callback: function() {
+                    label: aipsPlannerL10n.clearTopics || 'Clear Topics',
+                    className: 'aips-btn aips-btn-danger-solid',
+                    action: function() {
                         $('#topics-list').empty();
                         $('#planner-results').removeClass('active');
                         $('#planner-niche').val('');

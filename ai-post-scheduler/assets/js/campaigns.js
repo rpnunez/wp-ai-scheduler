@@ -86,34 +86,43 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmDuplicate)) {
-				return;
-			}
+			AIPS.Utilities.confirm(
+				aipsCampaignsL10n.confirmDuplicate || 'Duplicate this campaign?',
+				'Duplicate Campaign',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Duplicate',
+						className: 'aips-btn aips-btn-primary',
+						action: function () {
+							$button.prop('disabled', true);
 
-			$button.prop('disabled', true);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_duplicate_campaign',
-					nonce: aipsAjax.nonce,
-					campaign_id: campaignId
-				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDuplicate, 'error');
-						$button.prop('disabled', false);
+							$.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_duplicate_campaign',
+									nonce: aipsAjax.nonce,
+									campaign_id: campaignId
+								},
+								success: function(response) {
+									if (response.success) {
+										AIPS.Utilities.showNotice(response.data.message, 'success');
+										location.reload();
+									} else {
+										AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDuplicate, 'error');
+										$button.prop('disabled', false);
+									}
+								},
+								error: function() {
+									AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+									$button.prop('disabled', false);
+								}
+							});
+						}
 					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-					$button.prop('disabled', false);
-				}
-			});
+				]
+			);
 		},
 
 		/**
@@ -127,32 +136,41 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmArchive)) {
-				return;
-			}
+			AIPS.Utilities.confirm(
+				aipsCampaignsL10n.confirmArchive || 'Archive this campaign?',
+				'Archive Campaign',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Archive',
+						className: 'aips-btn aips-btn-secondary',
+						action: function () {
+							var req = $.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_archive_campaign',
+									nonce: aipsAjax.nonce,
+									campaign_id: campaignId
+								},
+								success: function(response) {
+									if (response.success) {
+										AIPS.Utilities.showNotice(response.data.message, 'success');
+										location.reload();
+									} else {
+										AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorArchive, 'error');
+									}
+								},
+								error: function() {
+									AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+								}
+							});
 
-			var req = $.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_archive_campaign',
-					nonce: aipsAjax.nonce,
-					campaign_id: campaignId
-				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorArchive, 'error');
+							AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.archiving || 'Archiving...' });
+						}
 					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-				}
-			});
-
-			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.archiving || 'Archiving...' });
+				]
+			);
 		},
 
 		/**
@@ -203,32 +221,41 @@
 				return;
 			}
 
-			if (!confirm(confirmMessage)) {
-				return;
-			}
+			AIPS.Utilities.confirm(
+				confirmMessage,
+				'Run Now',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Run Now',
+						className: 'aips-btn aips-btn-primary',
+						action: function () {
+							var req = $.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_run_now',
+									nonce: aipsAjax.nonce,
+									schedule_id: scheduleId
+								},
+								success: function(response) {
+									if (response.success) {
+										AIPS.Utilities.showNotice(response.data.message || successMessage, 'success');
+										location.reload();
+									} else {
+										AIPS.Utilities.showNotice(response.data.message || errorMessage, 'error');
+									}
+								},
+								error: function() {
+									AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+								}
+							});
 
-			var req = $.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_run_now',
-					nonce: aipsAjax.nonce,
-					schedule_id: scheduleId
-				},
-				success: function(response) {
-					if (response.success) {
-						AIPS.Utilities.showNotice(response.data.message || successMessage, 'success');
-						location.reload();
-					} else {
-						AIPS.Utilities.showNotice(response.data.message || errorMessage, 'error');
+							AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.running || 'Running...' });
+						}
 					}
-				},
-				error: function() {
-					AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-				}
-			});
-
-			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.running || 'Running...' });
+				]
+			);
 		},
 
 		/**
@@ -242,25 +269,34 @@
 			var $button = $(e.currentTarget);
 			var campaignId = $button.data('campaign-id');
 
-			if (!confirm(aipsCampaignsL10n.confirmDelete)) {
-				return;
-			}
+			AIPS.Utilities.confirm(
+				aipsCampaignsL10n.confirmDelete || 'Delete this campaign?',
+				'Delete Campaign',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Delete',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							var req = $.post(ajaxurl, {
+								action: 'aips_delete_campaign',
+								nonce: aipsAjax.nonce,
+								campaign_id: campaignId
+							}).done(function(response) {
+								if (response.success) {
+									location.reload();
+								} else {
+									AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDelete, 'error');
+								}
+							}).fail(function() {
+								AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
+							});
 
-			var req = $.post(ajaxurl, {
-				action: 'aips_delete_campaign',
-				nonce: aipsAjax.nonce,
-				campaign_id: campaignId
-			}).done(function(response) {
-				if (response.success) {
-					location.reload();
-				} else {
-					AIPS.Utilities.showNotice(response.data.message || aipsCampaignsL10n.errorDelete, 'error');
-				}
-			}).fail(function() {
-				AIPS.Utilities.showNotice(aipsCampaignsL10n.errorNetwork, 'error');
-			});
-
-			AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.deleting || 'Deleting...' });
+							AIPS.Utilities.withLock($button, req, { loadingText: aipsCampaignsL10n.deleting || 'Deleting...' });
+						}
+					}
+				]
+			);
 		}
 	};
 

@@ -445,15 +445,20 @@
 			e.preventDefault();
 			var id = parseInt($(e.currentTarget).data('id'), 10);
 			var self = this;
-			AIPS.Utilities.confirm(aipsSourcesL10n.deleteDataConfirm, '', {
-				confirm: { text: aipsSourcesL10n.delete || 'Delete', className: 'button-primary' },
-				cancel: { text: aipsSourcesL10n.cancel || 'Cancel', className: 'button' }
-			}, function(confirmed) {
-				if (!confirmed) {
-					return;
-				}
-				self.performDeleteSourceData(id);
-			});
+			AIPS.Utilities.confirm(
+				aipsSourcesL10n.deleteDataConfirm,
+				'Confirm',
+				[
+					{ label: aipsSourcesL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: aipsSourcesL10n.delete || 'Delete',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function() {
+							self.performDeleteSourceData(id);
+						}
+					}
+				]
+			);
 		},
 
 		/**

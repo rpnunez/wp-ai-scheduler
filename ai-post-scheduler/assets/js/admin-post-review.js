@@ -201,8 +201,8 @@
 			var $row   = $btn.closest('tr');
 
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
-				{ label: 'No, cancel',   className: 'aips-btn aips-btn-primary' },
-				{ label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: 'No, cancel',   className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, publish', className: 'aips-btn aips-btn-primary', action: function () {
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.loading || 'Publishing...');
 
 					$.ajax({
@@ -257,7 +257,7 @@
 			var $row      = $btn.closest('tr');
 
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
-				{ label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
 				{ label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.deleting || 'Deleting...');
 
@@ -305,8 +305,8 @@
 			var $row      = $btn.closest('tr');
 
 			AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
-				{ label: 'No, cancel',      className: 'aips-btn aips-btn-primary' },
-				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: 'No, cancel',      className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-primary', action: function () {
 					AIPS.Utilities.setButtonLoading($btn, aipsPostReviewL10n.regenerating || 'Regenerating...');
 
 					$.ajax({
@@ -419,8 +419,8 @@
 			var confirmMsg = aipsPostReviewL10n.confirmBulkPublish.replace('%d', count);
 
 			AIPS.Utilities.confirm(confirmMsg, 'Notice', [
-				{ label: 'No, cancel',   className: 'aips-btn aips-btn-primary' },
-				{ label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: 'No, cancel',   className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, publish', className: 'aips-btn aips-btn-primary', action: function () {
 					var postIds = [];
 					checkedBoxes.each(function () {
 						postIds.push($(this).data('post-id'));
@@ -473,7 +473,7 @@
 			var confirmMsg = aipsPostReviewL10n.confirmBulkDelete.replace('%d', count);
 
 			AIPS.Utilities.confirm(confirmMsg, 'Notice', [
-				{ label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+				{ label: 'No, cancel',  className: 'aips-btn aips-btn-secondary' },
 				{ label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					var items = [];
 					checkedBoxes.each(function () {
@@ -530,8 +530,8 @@
 			var confirmMsg = aipsPostReviewL10n.confirmBulkRegenerate.replace('%d', count);
 
 			AIPS.Utilities.confirm(confirmMsg, 'Notice', [
-				{ label: 'No, cancel',      className: 'aips-btn aips-btn-primary' },
-				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: 'No, cancel',      className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, regenerate', className: 'aips-btn aips-btn-primary', action: function () {
 					var items = [];
 					checkedBoxes.each(function () {
 						items.push({

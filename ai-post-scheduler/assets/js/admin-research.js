@@ -448,7 +448,7 @@
             var topicId = $el.data('id');
 
             AIPS.Utilities.confirm(aipsResearchL10n.deleteTopicConfirm, 'Notice', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
                 {
                     label: 'Yes, delete',
                     className: 'aips-btn aips-btn-danger-solid',
@@ -827,7 +827,7 @@
                 (aipsResearchL10n.deleteTopicsConfirm || 'Delete ' + AIPS.researchSelectedTopics.length + ' selected topic(s)?'),
                 'Notice',
                 [
-                    { label: aipsResearchL10n.cancel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                    { label: aipsResearchL10n.cancel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
                     {
                         label: aipsResearchL10n.confirmDelete || 'Yes, delete',
                         className: 'aips-btn aips-btn-danger-solid',

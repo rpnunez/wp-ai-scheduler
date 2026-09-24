@@ -183,10 +183,21 @@
 		 * @param {Event} e Click event from `#aips-clear-index-btn`.
 		 */
 		onClearIndexClick: function (e) {
-			if (!window.confirm(aipsInternalLinksL10n.confirmClearIndex)) {
-				return;
-			}
-			this.clearIndex();
+			var self = this;
+			AIPS.Utilities.confirm(
+				aipsInternalLinksL10n.confirmClearIndex || 'Clear internal links index?',
+				'Clear Index',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Clear Index',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							self.clearIndex();
+						}
+					}
+				]
+			);
 		},
 
 		/**
@@ -233,11 +244,25 @@
 		 * @param {Event} e Click event from an `.aips-il-delete-btn` element.
 		 */
 		onDeleteClick: function (e) {
-			if (!window.confirm(aipsInternalLinksL10n.confirmDelete)) {
-				return;
-			}
 			var $btn = $(e.currentTarget);
-			this.deleteSuggestion($btn.data('id'), $btn.closest('tr'));
+			var id = $btn.data('id');
+			var $row = $btn.closest('tr');
+			var self = this;
+
+			AIPS.Utilities.confirm(
+				aipsInternalLinksL10n.confirmDelete || 'Delete this suggestion?',
+				'Delete Suggestion',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Delete',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							self.deleteSuggestion(id, $row);
+						}
+					}
+				]
+			);
 		},
 
 		/**
