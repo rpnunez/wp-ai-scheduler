@@ -134,6 +134,97 @@ class AIPS_Bulk_Batch_Processor {
 	}
 
 	/**
+	 * Register default strategies for bulk batch processing.
+	 *
+	 * @return void
+	 */
+	public function register_default_strategies(): void {
+		$this->register(
+			'author_topic_post',
+			function( $topic_id, $job_id, $job ) {
+				return AIPS_Author_Post_Generator::instance()->generate_now( (int) $topic_id );
+			}
+		);
+
+		$this->register(
+			'planner_post',
+			function( $item, $job_id, $job ) {
+				$template_id = isset( $job->options['history_meta']['template_id'] )
+					? (int) $job->options['history_meta']['template_id']
+					: 0;
+
+				if ( $template_id <= 0 ) {
+					return new WP_Error(
+						'planner_post_missing_template',
+						__( 'planner_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
+					);
+				}
+
+				$template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
+
+				if ( ! $template || empty( $template->is_active ) ) {
+					return new WP_Error(
+						'planner_post_template_not_found',
+						/* translators: %d: template ID */
+						sprintf( __( 'Template %d not found or inactive for planner_post strategy.', 'ai-post-scheduler' ), $template_id )
+					);
+				}
+
+				$topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
+				$generator = new AIPS_Generator();
+
+				return $generator->generate_post( $template, null, $topic );
+			}
+		);
+
+		$this->register(
+			'trending_topic_post',
+			function( $item, $job_id, $job ) {
+				if ( ! is_array( $item ) || empty( $item['id'] ) || ! isset( $item['topic'] ) ) {
+					return new WP_Error(
+						'invalid_trending_topic_item',
+						__( 'Item must be an array with id and topic keys.', 'ai-post-scheduler' )
+					);
+				}
+
+				$template_id = isset( $job->options['history_meta']['template_id'] )
+					? (int) $job->options['history_meta']['template_id']
+					: 0;
+
+				if ( $template_id <= 0 ) {
+					return new WP_Error(
+						'trending_topic_post_missing_template',
+						__( 'trending_topic_post strategy requires a template_id stored in job options.', 'ai-post-scheduler' )
+					);
+				}
+
+				$template = ( new AIPS_Template_Repository() )->get_by_id( $template_id );
+
+				if ( ! $template || empty( $template->is_active ) ) {
+					return new WP_Error(
+						'trending_topic_post_template_not_found',
+						/* translators: %d: template ID */
+						sprintf( __( 'Template %d not found or inactive for trending_topic_post strategy.', 'ai-post-scheduler' ), $template_id )
+					);
+				}
+
+				$context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'cron' );
+				$generator = new AIPS_Generator();
+				$post_id   = $generator->generate_post( $context );
+
+				if ( is_wp_error( $post_id ) ) {
+					return $post_id;
+				}
+
+				update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_ID, absint( $item['id'] ) );
+				update_post_meta( $post_id, AIPS_Post_Manager::META_TRENDING_TOPIC_TEXT, sanitize_text_field( (string) $item['topic'] ) );
+
+				return $post_id;
+			}
+		);
+	}
+
+	/**
 	 * Return true when a strategy is registered for the given type.
 	 *
 	 * @param string $job_type Strategy key to check.
