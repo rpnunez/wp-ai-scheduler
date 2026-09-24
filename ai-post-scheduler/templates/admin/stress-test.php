@@ -6,7 +6,6 @@
  *   $cases       (array) – Case definitions from AIPS_Stress_Test_Service::get_cases()
  *   $environment (array) – Provider/model snapshot
  *   $test_data   (array) – Counts of leftover posts/attachments
- *   $embedded    (bool)  – Whether rendered inside a Diagnostics tab
  *
  * @package AI_Post_Scheduler
  * @since 3.2.0
@@ -16,7 +15,6 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$is_embedded  = !empty($embedded);
 $creates_data = false;
 
 foreach ($cases as $case) {
@@ -26,24 +24,6 @@ foreach ($cases as $case) {
 	}
 }
 ?>
-<?php if (!$is_embedded) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title">
-						<span class="dashicons dashicons-performance" style="font-size:30px;vertical-align:middle;margin-right:6px;"></span>
-						<?php esc_html_e('Stress Test', 'ai-post-scheduler'); ?>
-					</h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Exercise the configured AI provider end to end. Each case shows what the provider returned alongside what the plugin produced from it.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<div class="aips-content-panel aips-stress-test" id="aips-stress-test">
 
@@ -59,20 +39,24 @@ foreach ($cases as $case) {
 
 			<div class="aips-panel-header">
 				<h2><?php esc_html_e('Stress Test', 'ai-post-scheduler'); ?></h2>
-				<div class="aips-btn-group" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
-					<div class="aips-stress-history-picker" style="display:inline-flex;align-items:center;gap:6px;">
+				<div class="aips-btn-group aips-stress-actions-group">
+					<div class="aips-stress-history-picker">
 						<label for="aips-stress-history-select" class="screen-reader-text"><?php esc_html_e('Prior Runs', 'ai-post-scheduler'); ?></label>
-						<select id="aips-stress-history-select" class="aips-select" style="max-width:210px;height:36px;font-size:13px;padding:0 8px;">
+						<select id="aips-stress-history-select" class="aips-select aips-stress-history-select">
 							<option value=""><?php esc_html_e('— History / Prior Runs —', 'ai-post-scheduler'); ?></option>
 						</select>
 						<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-compare-btn" title="<?php esc_attr_e('Compare selected run against current results', 'ai-post-scheduler'); ?>" disabled>
 							<span class="dashicons dashicons-forms"></span>
 							<?php esc_html_e('Compare', 'ai-post-scheduler'); ?>
 						</button>
+						<a href="<?php echo esc_url(add_query_arg(array('page' => 'aips-diagnostics', 'tab' => 'stress-test', 'view' => 'history'), admin_url('admin.php'))); ?>" class="aips-btn aips-btn-ghost aips-stress-history-link">
+							<span class="dashicons dashicons-backup"></span>
+							<?php esc_html_e('Full History', 'ai-post-scheduler'); ?>
+						</a>
 					</div>
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-stress-run-all">
 						<span class="dashicons dashicons-controls-play"></span>
-						<?php esc_html_e('Run All', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Run Selected', 'ai-post-scheduler'); ?>
 					</button>
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-reset">
 						<span class="dashicons dashicons-update"></span>
@@ -150,7 +134,7 @@ foreach ($cases as $case) {
 						<h3></h3>
 						<p></p>
 					</div>
-					<div class="aips-stress-summary-actions" style="margin-left:auto;">
+					<div class="aips-stress-summary-actions">
 						<button type="button" class="aips-btn aips-btn-secondary" id="aips-stress-export">
 							<span class="dashicons dashicons-download"></span>
 							<?php esc_html_e('Export Results', 'ai-post-scheduler'); ?>
@@ -164,6 +148,9 @@ foreach ($cases as $case) {
 			<table class="aips-table aips-stress-table">
 				<thead>
 					<tr>
+						<th class="aips-stress-col-checkbox">
+							<input type="checkbox" id="aips-stress-toggle-all" class="aips-stress-toggle-all" checked title="<?php esc_attr_e('Toggle All', 'ai-post-scheduler'); ?>">
+						</th>
 						<th class="aips-stress-col-status"><span class="screen-reader-text"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></span></th>
 						<th><?php esc_html_e('Test Case', 'ai-post-scheduler'); ?></th>
 						<th class="aips-stress-col-result"><?php esc_html_e('Result', 'ai-post-scheduler'); ?></th>
@@ -174,6 +161,9 @@ foreach ($cases as $case) {
 				<tbody>
 					<?php foreach ($cases as $case) : ?>
 						<tr class="aips-stress-row" data-case="<?php echo esc_attr($case['id']); ?>" data-status="idle">
+							<td class="aips-stress-col-checkbox">
+								<input type="checkbox" class="aips-stress-case-checkbox" value="<?php echo esc_attr($case['id']); ?>" checked>
+							</td>
 							<td class="aips-stress-col-status">
 								<span class="aips-stress-indicator" aria-hidden="true"></span>
 							</td>
@@ -202,7 +192,7 @@ foreach ($cases as $case) {
 							</td>
 						</tr>
 						<tr class="aips-stress-details-row" id="aips-stress-details-<?php echo esc_attr($case['id']); ?>" hidden>
-							<td colspan="5">
+							<td colspan="6">
 								<div class="aips-stress-details"></div>
 							</td>
 						</tr>
@@ -211,20 +201,20 @@ foreach ($cases as $case) {
 			</table>
 
 			<!-- Side-by-Side Diff Modal -->
-			<div class="aips-modal" id="aips-stress-diff-modal" hidden style="display:none;">
+			<div class="aips-modal" id="aips-stress-diff-modal" hidden>
 				<div class="aips-modal-backdrop"></div>
-				<div class="aips-modal-dialog aips-modal-lg" style="max-width:980px;width:95vw;max-height:90vh;display:flex;flex-direction:column;">
-					<div class="aips-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
-						<h3 class="aips-modal-title" style="margin:0;display:flex;align-items:center;gap:6px;">
+				<div class="aips-modal-dialog aips-modal-lg aips-stress-diff-dialog">
+					<div class="aips-modal-header">
+						<h3 class="aips-modal-title">
 							<span class="dashicons dashicons-forms"></span>
 							<?php esc_html_e('Stress Test Comparison & Diff', 'ai-post-scheduler'); ?>
 						</h3>
-						<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>" style="background:none;border:none;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+						<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">&times;</button>
 					</div>
-					<div class="aips-modal-body" id="aips-stress-diff-body" style="overflow-y:auto;flex:1;padding:16px;">
+					<div class="aips-modal-body aips-stress-diff-body" id="aips-stress-diff-body">
 						<div class="aips-spinner"></div>
 					</div>
-					<div class="aips-modal-footer" style="padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;">
+					<div class="aips-modal-footer">
 						<button type="button" class="aips-btn aips-btn-secondary aips-modal-close-btn"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
@@ -241,8 +231,8 @@ foreach ($cases as $case) {
 			</script>
 
 			<script type="text/html" id="aips-tmpl-stress-spinner">
-				<div class="aips-spinner" style="text-align:center;padding:32px;">
-					<span class="dashicons dashicons-update" style="animation:spin 1s infinite linear;font-size:28px;"></span>
+				<div class="aips-spinner aips-stress-spinner-wrap">
+					<span class="dashicons dashicons-update aips-stress-spinner-icon"></span>
 				</div>
 			</script>
 
@@ -291,7 +281,7 @@ foreach ($cases as $case) {
 
 			<script type="text/html" id="aips-tmpl-stress-diff-row">
 				<tr class="{{changeClass}}">
-					<td><strong>{{label}}</strong><div style="font-size:11px;color:#64748b;">{{summary}}</div></td>
+					<td><strong>{{label}}</strong><div class="aips-stress-row-summary">{{summary}}</div></td>
 					<td><span class="aips-badge {{statusABadgeClass}}">{{statusA}}</span> ({{durationA}} ms)</td>
 					<td><span class="aips-badge {{statusBBadgeClass}}">{{statusB}}</span> ({{durationB}} ms)</td>
 					<td>{{deltaBadgeHtml}}</td>
@@ -300,7 +290,7 @@ foreach ($cases as $case) {
 			</script>
 
 			<script type="text/html" id="aips-tmpl-stress-single-run">
-				<div class="aips-stress-diff-card" style="margin-bottom:16px;">
+				<div class="aips-stress-diff-card aips-stress-single-run-card">
 					<h4>Stress Test Run #{{id}} <span class="aips-badge {{badgeClass}}">{{status}}</span></h4>
 					<div class="aips-stress-diff-meta-list">
 						<div><strong>Timestamp:</strong> {{date}}</div>
@@ -309,7 +299,7 @@ foreach ($cases as $case) {
 						<div><strong>Total Execution Time:</strong> {{duration}}</div>
 					</div>
 				</div>
-				<table class="aips-table" style="width:100%;">
+				<table class="aips-table aips-table-full-width">
 					<thead>
 						<tr>
 							<th>Case</th>
@@ -334,8 +324,3 @@ foreach ($cases as $case) {
 			</script>
 
 		</div>
-
-<?php if (!$is_embedded) : ?>
-	</div>
-</div>
-<?php endif; ?>

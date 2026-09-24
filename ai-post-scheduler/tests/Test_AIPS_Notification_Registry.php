@@ -34,9 +34,9 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 		$this->assertIsArray($registry);
 	}
 
-	public function test_get_type_registry_has_all_21_types() {
+	public function test_get_type_registry_has_all_23_types() {
 		$registry = AIPS_Notification_Registry::get_type_registry();
-		$this->assertCount(21, $registry);
+		$this->assertCount(23, $registry);
 	}
 
 	public function test_get_type_registry_contains_required_keys() {

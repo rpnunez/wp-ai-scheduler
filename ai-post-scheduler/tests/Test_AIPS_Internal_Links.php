@@ -286,4 +286,75 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 		$rows = $this->links_repo->get_by_source_post( 40 );
 		$this->assertCount( 5, $rows, 'One source should be able to have 5 link suggestions' );
 	}
+
+	/**
+	 * index_post should skip the AI call if the content hash has not changed.
+	 */
+	public function test_index_post_skips_ai_call_when_content_hash_matches() {
+		$p1 = wp_insert_post( array(
+			'post_title'   => 'Unchanged Article Title',
+			'post_content' => 'Sample body content for hashing test.',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+		) );
+
+		$emb_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'generate_embedding', 'get_active_model' ) )
+			->getMock();
+
+		// generate_embedding must be called exactly once despite calling index_post twice.
+		$emb_service->expects( $this->once() )
+			->method( 'generate_embedding' )
+			->willReturn( array( 0.1, 0.2, 0.3 ) );
+
+		$emb_service->method( 'get_active_model' )
+			->willReturn( 'text-embedding-3-small' );
+
+		$service = new AIPS_Internal_Links_Service(
+			$this->embeddings_repo,
+			$this->links_repo,
+			$emb_service
+		);
+
+		// First call: generates embedding and saves content hash
+		$res1 = $service->index_post( $p1 );
+		$this->assertTrue( $res1 );
+
+		$row = $this->embeddings_repo->get_by_post_id( $p1 );
+		$this->assertNotNull( $row );
+		$this->assertNotEmpty( $row->content_hash );
+
+		// Second call: skips AI generation because hash matches
+		$res2 = $service->index_post( $p1 );
+		$this->assertTrue( $res2 );
+	}
+
+	/**
+	 * generate_suggestions_for_post delegates to Similarity Evaluator and creates pending suggestions.
+	 */
+	public function test_generate_suggestions_for_post_uses_similarity_evaluator() {
+		$source_id = wp_insert_post( array( 'post_title' => 'Source Post', 'post_content' => 'Source content', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$target1   = wp_insert_post( array( 'post_title' => 'Target High Match', 'post_content' => 'High match content', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$target2   = wp_insert_post( array( 'post_title' => 'Target Low Match', 'post_content' => 'Low match content', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->embeddings_repo->upsert( 'post', $source_id, array( 1.0, 0.0, 0.0 ), 'test-model' );
+		$this->embeddings_repo->upsert( 'post', $target1,   array( 0.95, 0.05, 0.0 ), 'test-model' );
+		$this->embeddings_repo->upsert( 'post', $target2,   array( 0.20, 0.80, 0.0 ), 'test-model' );
+
+		$service = new AIPS_Internal_Links_Service(
+			$this->embeddings_repo,
+			$this->links_repo
+		);
+
+		$created_ids = $service->generate_suggestions_for_post( $source_id, 5, 0.70 );
+
+		$this->assertCount( 1, $created_ids, 'Only target1 with >= 0.70 similarity should qualify' );
+
+		$suggestions = $this->links_repo->get_by_source_post( $source_id );
+		$this->assertCount( 1, $suggestions );
+		$this->assertEquals( $target1, (int) $suggestions[0]->target_post_id );
+		$this->assertEquals( 'Target High Match', $suggestions[0]->anchor_text );
+		$this->assertEquals( 'pending', $suggestions[0]->status );
+	}
 }
