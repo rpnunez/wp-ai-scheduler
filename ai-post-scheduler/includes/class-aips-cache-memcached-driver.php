@@ -58,7 +58,6 @@ class AIPS_Cache_Memcached_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monit
 	 */
 	protected $generation = 0;
 
-
 	/**
 	 * Constructor.
 	 *
