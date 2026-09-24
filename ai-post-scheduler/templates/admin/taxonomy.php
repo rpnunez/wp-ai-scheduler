@@ -42,14 +42,14 @@ $initial_tab = ($categories_total === 0 && $tags_total > 0) ? 'tags' : 'categori
 		</div>
 
 		<!-- Taxonomy Panel -->
-		<div class="aips-content-panel" id="aips-taxonomy-panel">
+		<div class="aips-content-panel aips-panel-with-tabs" id="aips-taxonomy-panel">
 			<!-- Tabs -->
-			<div class="aips-topics-tabs aips-page-tabs">
-				<button class="aips-tab-link<?php echo 'categories' === $initial_tab ? ' active' : ''; ?>" data-tab="categories">
+			<div class="aips-tab-nav aips-panel-tab-nav aips-topics-tabs aips-page-tabs">
+				<button type="button" class="aips-tab-link<?php echo 'categories' === $initial_tab ? ' active' : ''; ?>" data-tab="categories">
 					<?php esc_html_e('Categories', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="categories-count"><?php echo esc_html($categories_total); ?></span>
 				</button>
-				<button class="aips-tab-link<?php echo 'tags' === $initial_tab ? ' active' : ''; ?>" data-tab="tags">
+				<button type="button" class="aips-tab-link<?php echo 'tags' === $initial_tab ? ' active' : ''; ?>" data-tab="tags">
 					<?php esc_html_e('Tags', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="tags-count"><?php echo esc_html($tags_total); ?></span>
 				</button>

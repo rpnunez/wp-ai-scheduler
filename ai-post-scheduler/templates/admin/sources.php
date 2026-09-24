@@ -41,6 +41,23 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			<?php if (!empty($sources)): ?>
 
 			<div class="aips-filter-bar">
+				<div class="aips-filter-left">
+					<?php if (!empty($source_groups)): ?>
+					<label class="screen-reader-text" for="aips-source-filter-group"><?php esc_html_e('Filter by Group:', 'ai-post-scheduler'); ?></label>
+					<select id="aips-source-filter-group" class="aips-form-select">
+						<option value=""><?php esc_html_e('All Groups', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($source_groups as $group): ?>
+						<option value="<?php echo esc_attr($group->term_id); ?>"><?php echo esc_html($group->name); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<?php endif; ?>
+					<label class="screen-reader-text" for="aips-source-filter-status"><?php esc_html_e('Filter by Status:', 'ai-post-scheduler'); ?></label>
+					<select id="aips-source-filter-status" class="aips-form-select">
+						<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
+						<option value="active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></option>
+						<option value="inactive"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></option>
+					</select>
+				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-source-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>">
@@ -48,10 +65,24 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 				</div>
 			</div>
 
+			<!-- Toolbar (Bulk Actions) -->
+			<div class="aips-panel-toolbar">
+				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+					<select id="aips-source-bulk-action" class="aips-form-select">
+						<option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
+						<option value="activate"><?php esc_html_e('Activate', 'ai-post-scheduler'); ?></option>
+						<option value="deactivate"><?php esc_html_e('Deactivate', 'ai-post-scheduler'); ?></option>
+						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+					</select>
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-source-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+
 			<div class="aips-panel-body no-padding">
 				<table class="aips-table aips-sources-table" id="aips-sources-table">
 					<thead>
 						<tr>
+							<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-sources-cb-all"></th>
 							<th class="column-label"><?php esc_html_e('Label', 'ai-post-scheduler'); ?></th>
 							<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
 							<th class="column-groups"><?php esc_html_e('Groups', 'ai-post-scheduler'); ?></th>
@@ -85,6 +116,7 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 							data-active="<?php echo esc_attr($source->is_active); ?>"
 							data-fetch-interval="<?php echo esc_attr($fetch_interval); ?>"
 							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
+							<th scope="row" class="check-column"><input type="checkbox" class="aips-source-cb" value="<?php echo esc_attr($source->id); ?>"></th>
 							<td class="column-label cell-primary">
 								<span class="aips-source-label-text"><?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?></span>
 								<?php if ($fetch_interval): ?>

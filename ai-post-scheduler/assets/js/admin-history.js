@@ -192,7 +192,9 @@
 				return;
 			}
 
-			$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
+			var isChecked = $toggle.is(':checked');
+			$renderer.find('.aips-json-viewer-toggle').prop('checked', isChecked);
+			$renderer.toggleClass('aips-json-viewer-enabled', isChecked);
 		},
 
 		/**
@@ -388,7 +390,7 @@
 					self.updateModalHeader($modal, response.data.container || {}, {
 						titleSelector: '#aips-history-modal-title',
 						actionsSelector: '#aips-history-modal-actions',
-						statusSelector: '#aips-history-modal-status',
+						statusSelector: '',
 						defaultTitle: l10n.historyDetailsTitle || 'History Details'
 					});
 					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
@@ -416,7 +418,7 @@
 			this.resetModalHeader($modal, {
 				titleSelector: '#aips-history-modal-title',
 				actionsSelector: '#aips-history-modal-actions',
-				statusSelector: '#aips-history-modal-status',
+				statusSelector: '',
 				defaultTitle: l10n.historyDetailsTitle || 'History Details'
 			});
 			$modal.find('#aips-history-modal-content').html(loadingHtml);
@@ -633,9 +635,11 @@
 			// Pagination links
 			$(document).on(
 				'click',
-				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next',
+				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next, .aips-history-page-nav, .aips-history-page-first, .aips-history-page-last',
 				this.loadPage.bind(this)
 			);
+			$(document).on('keydown', '.aips-history-page-input', this.onPageInputKeydown.bind(this));
+			$(document).on('change', '.aips-history-page-input', this.onPageInputChange.bind(this));
 
 			/* --- Filter & Search Events --- */
 			// Filter button and status dropdown
@@ -792,7 +796,7 @@
 			AIPS.HistoryModalShared.resetModalHeader($modal, {
 				titleSelector: '#aips-history-logs-modal-title',
 				actionsSelector: '#aips-history-logs-modal-actions',
-				statusSelector: '#aips-history-logs-modal-status',
+				statusSelector: '',
 				defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
 			});
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
@@ -824,7 +828,7 @@
 					AIPS.HistoryModalShared.updateModalHeader($modal, container, {
 						titleSelector: '#aips-history-logs-modal-title',
 						actionsSelector: '#aips-history-logs-modal-actions',
-						statusSelector: '#aips-history-logs-modal-status',
+						statusSelector: '',
 						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
 					});
 					$content.html(modalHtml);
@@ -1654,6 +1658,23 @@
 				return;
 			}
 			this.reload(parseInt(page, 10));
+		},
+
+		onPageInputKeydown: function (e) {
+			if (e.which === 13) {
+				e.preventDefault();
+				this.onPageInputChange(e);
+			}
+		},
+
+		onPageInputChange: function (e) {
+			var $input = $(e.currentTarget);
+			var page = parseInt($input.val(), 10);
+			var maxPage = parseInt($input.attr('max'), 10) || 1;
+			if (!isNaN(page) && page >= 1) {
+				page = Math.min(page, maxPage);
+				this.reload(page);
+			}
 		},
 
 		/**

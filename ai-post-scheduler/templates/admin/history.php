@@ -100,10 +100,9 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="7"><?php esc_html_e('7 days', 'ai-post-scheduler'); ?></button>
                         <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
                     </div>
-                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-history-more-filters" aria-expanded="false" aria-controls="aips-history-advanced-filters"><?php esc_html_e('More filters', 'ai-post-scheduler'); ?></button>
                     <button class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
                 </div>
-                <div id="aips-history-advanced-filters" class="aips-history-advanced-filters" hidden>
+                <div id="aips-history-advanced-filters" class="aips-history-advanced-filters">
                     <select id="aips-filter-domain" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
                         <option value="post_generation" <?php selected($domain_filter, 'post_generation'); ?>>Post Generation</option>
@@ -250,7 +249,6 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                 <div id="aips-history-logs-modal-actions" class="aips-history-modal-header-links"></div>
             </div>
             <div class="aips-history-modal-header-side">
-                <div id="aips-history-logs-modal-status"></div>
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
         </div>

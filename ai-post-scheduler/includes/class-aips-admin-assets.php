@@ -617,7 +617,6 @@ class AIPS_Admin_Assets {
                         <div id="aips-history-modal-actions" class="aips-history-modal-header-links"></div>
                     </div>
                     <div class="aips-history-modal-header-side">
-                        <div id="aips-history-modal-status"></div>
                         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
                     </div>
                 </div>
