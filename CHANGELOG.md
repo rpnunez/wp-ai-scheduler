@@ -1,30 +1,6 @@
-## [3.6.6] - 2026-09-04
-
-### Added
-- **Content Indexing History:** Added domain filtering, optional verbose embedding logs, and collapsible contiguous activity groups with bulk selection.
-
-### Fixed
-- **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
-
-## [3.6.5] - 2026-08-28
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
-
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
-### Added
-- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
-- **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
-- **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
-- **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
-  - Interactive SVG force-directed semantic graph visualizer with live similarity threshold controls and node inspection drawer.
-  - Progressive chunked backfill scanner with pause/resume controls and multi-CPT coverage counters.
-  - Duplicate & cannibalization clustering audit engine.
-- **AI-Powered Related Posts Presentation Layer**: Dynamic shortcode (`[aips_related_posts]`), Gutenberg block (`aips/related-posts`), auto-append single post filter, and customizable card grid and list layouts.
-- **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma) and WP AI Client connector fallback.
-- **Vector Dimension Mismatch Guard**: Detection of dimension variance between stored vectors and active environments with one-click guided re-index.
-- **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
-- **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
-
 ## [Unreleased]
+
+## [3.7.0] - 2026-09-24
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
@@ -57,6 +33,32 @@
 ### Security
 - **Dev Tools Gating**: Cache Monitor and the Seeder are now disabled by default and properly enforce their feature flags (`aips_cache_monitor_enabled`, `aips_developer_mode`) at every layer — menu, Diagnostics tab, page render, and AJAX handlers — closing gaps where the flag was only checked for UI visibility. The AI scaffold generator ("Dev Tools") AJAX handler now also re-checks `aips_developer_mode`.
 - **MCP Bridge**: `mcp-bridge.php` is now disabled by default and can only be enabled by defining `AIPS_MCP_BRIDGE_ENABLED` and a shared-secret `AIPS_MCP_BRIDGE_TOKEN` in `wp-config.php` — it can no longer be turned on from the WordPress admin UI. All HTTP requests must now present a matching `token` field, closing a CSRF gap on this previously cookie-auth-only endpoint. See `docs/MCP_BRIDGE.md`.
+
+## [3.6.6] - 2026-09-04
+
+### Added
+- **Content Indexing History:** Added domain filtering, optional verbose embedding logs, and collapsible contiguous activity groups with bulk selection.
+
+### Fixed
+- **History Accuracy:** Content indexing persistence failures now remain failed, modal summaries read nested indexing metrics, and grouped rows report in-progress items.
+
+## [3.6.5] - 2026-08-28
+- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
+
+- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
+### Added
+- **UX:** Fixed pagination parameter reset on clearing filters and search across Generated Posts tabs.
+- **Unified Semantic Vector Core**: Introduced `wp_aips_embeddings` (polymorphic store for posts, CPTs, and author topics) and `wp_aips_relationships` (precomputed cosine similarity matrix).
+- **Database Migration (`migrate_to_3_6_5`)**: Automated schema upgrade backfilling legacy vectors with post type resolution and dropping legacy tables.
+- **Top-Level Content Indexer Suite**: Centralized admin hub under **AI Post Scheduler → Content Indexer** featuring:
+  - Interactive SVG force-directed semantic graph visualizer with live similarity threshold controls and node inspection drawer.
+  - Progressive chunked backfill scanner with pause/resume controls and multi-CPT coverage counters.
+  - Duplicate & cannibalization clustering audit engine.
+- **AI-Powered Related Posts Presentation Layer**: Dynamic shortcode (`[aips_related_posts]`), Gutenberg block (`aips/related-posts`), auto-append single post filter, and customizable card grid and list layouts.
+- **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma) and WP AI Client connector fallback.
+- **Vector Dimension Mismatch Guard**: Detection of dimension variance between stored vectors and active environments with one-click guided re-index.
+- **Continuous Sync on Publish**: Automatically generates embeddings and updates relationship pairings when posts are published or updated.
+- **Prompt Context Injection**: Injects semantically related published articles directly into AI generation prompts across all context and legacy template flows.
 
 ## [3.5.1] - 2026-07-25
 
