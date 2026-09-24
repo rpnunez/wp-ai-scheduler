@@ -451,6 +451,42 @@ class AIPS_Link_Index_Repository {
 	}
 
 	/**
+	 * Published posts with fewer than $below distinct inbound internal links.
+	 *
+	 * @param string[] $post_types Post types to include.
+	 * @param int      $below      Inbound-link threshold (1 = orphans only).
+	 * @return int[] Post IDs, fewest inbound links first.
+	 */
+	public function get_post_ids_with_inbound_below(array $post_types, int $below): array {
+		$post_types = array_values(array_filter(array_map('sanitize_key', $post_types)));
+		if (empty($post_types) || !$this->table_exists()) {
+			return array();
+		}
+
+		$type_placeholders = implode(', ', array_fill(0, count($post_types), '%s'));
+
+		$ids = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT p.ID
+				FROM {$this->wpdb->posts} p
+				LEFT JOIN (
+					SELECT target_post_id, COUNT(DISTINCT source_post_id) AS inbound
+					FROM {$this->table}
+					WHERE link_type = %s AND target_post_id > 0 AND source_post_id <> target_post_id
+					GROUP BY target_post_id
+				) inb ON inb.target_post_id = p.ID
+				WHERE p.post_status = 'publish'
+				AND p.post_type IN ($type_placeholders)
+				AND COALESCE(inb.inbound, 0) < %d
+				ORDER BY COALESCE(inb.inbound, 0) ASC, p.ID ASC",
+				array_merge(array(self::TYPE_INTERNAL), $post_types, array(max(1, $below)))
+			)
+		);
+
+		return array_map('intval', (array) $ids);
+	}
+
+	/**
 	 * Get site-wide link index totals.
 	 *
 	 * @return array{total:int, internal:int, external:int, broken:int, sources:int}

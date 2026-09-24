@@ -469,3 +469,11 @@ Filters the inbound-link count below which the Link Report offers "Suggest Links
 *   **Type:** `filter`
 *   **Arguments:**
     *   `int $threshold`: Default `3` (posts linked from 0–2 other posts).
+
+#### `aips_content_indexer_skip_post_save`
+Skip semantic re-indexing (embeddings + relationships) for a post save. Auto-link runs return `true` while inserting links, because adding an `<a>` tag does not change a post's text.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $skip`: Default `false`.
+    *   `int $post_id`: Post being saved.

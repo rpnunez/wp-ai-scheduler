@@ -461,6 +461,13 @@ final class AI_Post_Scheduler {
             );
         });
 
+        $container->singleton(AIPS_Autolink_Run_Service::class, function( $container ) {
+            return new AIPS_Autolink_Run_Service(
+                $container->make(AIPS_Inbound_Links_Service::class),
+                $container->make(AIPS_Link_Index_Service::class)
+            );
+        });
+
         $container->singleton(AIPS_Inbound_Links_Service::class, function( $container ) {
             return new AIPS_Inbound_Links_Service(
                 null,
@@ -779,6 +786,11 @@ final class AI_Post_Scheduler {
         // so scans can be paused, resumed and cancelled between batches.
         add_action(AIPS_Link_Index_Service::SCAN_TICK_HOOK, function( $job_id ) {
             AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_scan_tick( $job_id );
+        });
+
+        // Bulk auto-link runs: same tick pattern, one batch of target posts per event.
+        add_action(AIPS_Autolink_Run_Service::TICK_HOOK, function( $job_id ) {
+            AIPS_Container::get_instance()->make( AIPS_Autolink_Run_Service::class )->process_tick( $job_id );
         });
 
         // Async bulk-batch processing: each single event processes one slice of a stored job.

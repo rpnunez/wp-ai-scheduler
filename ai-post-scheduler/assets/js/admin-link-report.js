@@ -28,6 +28,7 @@
 		searchTimer: null,
 		pollTimer: null,
 		suggestTarget: 0,
+		autolinkTimer: null,
 
 		init: function() {
 			this.$root = $('#aips-link-report');
@@ -41,6 +42,8 @@
 			if (this.$root.closest('.aips-tab-content').is(':visible')) {
 				this.load();
 			}
+
+			this.pollAutolink();
 
 			if (String(this.$root.data('backfill-running')) === '1') {
 				this.startPolling();
@@ -65,6 +68,12 @@
 			$(document).on('click', '#aips-link-backfill-pause', this.onScanControl.bind(this, 'aips_link_report_pause_backfill'));
 			$(document).on('click', '#aips-link-backfill-resume', this.onScanControl.bind(this, 'aips_link_report_resume_backfill'));
 			$(document).on('click', '#aips-link-backfill-cancel', this.onCancel.bind(this));
+			$(document).on('click', '#aips-autolink-start-btn', function() { $('#aips-autolink-modal').show(); });
+			$(document).on('click', '#aips-autolink-confirm', this.startAutolink.bind(this));
+			$(document).on('click', '#aips-autolink-pause', this.autolinkControl.bind(this, 'aips_autolink_pause'));
+			$(document).on('click', '#aips-autolink-resume', this.autolinkControl.bind(this, 'aips_autolink_resume'));
+			$(document).on('click', '#aips-autolink-cancel', this.onAutolinkCancel.bind(this));
+			$(document).on('click', '.aips-autolink-undo', this.onUndoRun.bind(this));
 			$(document).on('click', '.aips-link-report-suggest', this.onSuggest.bind(this));
 			$(document).on('click', '#aips-link-suggestions-regenerate', this.onRegenerate.bind(this));
 			$(document).on('click', '#aips-link-suggestions-close', this.onCloseSuggestions.bind(this));
@@ -494,6 +503,152 @@
 			});
 
 			$('#aips-link-suggestions-tbody').html(html || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 4, message: l10n.noSuggestions }));
+		},
+
+		startAutolink: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var $btn = $('#aips-autolink-confirm').prop('disabled', true);
+
+			$.post(ajaxurl, {
+				action: 'aips_autolink_start',
+				nonce: l10n.nonce,
+				scope: $('input[name="aips_autolink_scope"]:checked').val() || 'orphans',
+				dry_run: $('#aips-autolink-dry-run').is(':checked') ? 1 : 0
+			}).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+					return;
+				}
+				$('#aips-autolink-modal').hide();
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderAutolink(response.data.autolink);
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.autolinkError, 'error');
+			}).always(function() {
+				$btn.prop('disabled', false);
+			});
+		},
+
+		autolinkControl: function(action) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
+				if (!response || !response.success) {
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderAutolink(response.data.autolink);
+			});
+		},
+
+		onAutolinkCancel: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			AIPS.Utilities.confirm(l10n.confirmRunCancel, l10n.confirmRunCancelTitle, [
+				{ label: l10n.keepRunning, className: 'aips-btn aips-btn-secondary' },
+				{ label: l10n.cancelRun, className: 'aips-btn aips-btn-danger-solid', action: function() { self.autolinkControl('aips_autolink_cancel'); } }
+			]);
+		},
+
+		onUndoRun: function(e) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var jobId = $(e.currentTarget).data('job-id');
+
+			AIPS.Utilities.confirm(l10n.confirmUndoRun, l10n.confirmUndoRunTitle, [
+				{ label: l10n.cancel, className: 'aips-btn aips-btn-secondary' },
+				{
+					label: l10n.undoRun,
+					className: 'aips-btn aips-btn-danger-solid',
+					action: function() {
+						$.post(ajaxurl, { action: 'aips_autolink_undo_run', nonce: l10n.nonce, job_id: jobId }).done(function(response) {
+							if (!response || !response.success) {
+								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.autolinkError, 'error');
+								return;
+							}
+							AIPS.Utilities.showToast(response.data.message, 'success');
+							self.renderAutolink(response.data.autolink);
+							self.renderSummary(response.data.summary);
+							self.load();
+						});
+					}
+				}
+			]);
+		},
+
+		pollAutolink: function() {
+			var self = this;
+
+			$.post(ajaxurl, { action: 'aips_autolink_status', nonce: aipsLinkReportL10n.nonce }).done(function(response) {
+				if (response && response.success) {
+					self.renderAutolink(response.data.autolink);
+					self.renderSummary(response.data.summary);
+				}
+			});
+		},
+
+		renderAutolink: function(autolink) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+			var current = autolink ? autolink.current : null;
+			var status = current ? current.status : '';
+			var running = status === 'processing';
+			var paused = status === 'paused';
+			var runs = (autolink && autolink.history) ? autolink.history.slice() : [];
+			var html = '';
+
+			$('#aips-autolink-banner').toggleClass('aips-hidden', !running && !paused);
+			$('#aips-autolink-spinner').toggleClass('aips-hidden', !running);
+			$('#aips-autolink-pause').toggleClass('aips-hidden', !running);
+			$('#aips-autolink-resume').toggleClass('aips-hidden', !paused);
+			$('#aips-autolink-start-btn').prop('disabled', running || paused);
+			$('#aips-autolink-title').text(paused ? l10n.runPaused : (current && !current.apply ? l10n.runRunningDry : l10n.runRunning));
+
+			if (running || paused) {
+				$('#aips-autolink-progress').text(
+					l10n.runProgress
+						.replace('%1$d', current.processed)
+						.replace('%2$d', current.total)
+						.replace('%3$d', current.applied)
+						.replace('%4$d', current.review)
+				);
+				runs.unshift(current);
+			}
+
+			if (autolink) {
+				$('#aips-autolink-review-link').contents().filter(function() { return this.nodeType === 3; }).last()
+					.replaceWith(' ' + l10n.reviewSuggestions.replace('%d', autolink.pending_review));
+			}
+
+			$.each(runs, function(i, run) {
+				var labels = { processing: l10n.statusRunning, paused: l10n.statusPaused, completed: l10n.statusCompleted, cancelled: l10n.statusCancelled };
+				var classes = { processing: 'aips-badge-info', paused: 'aips-badge-warning', completed: 'aips-badge-success', cancelled: 'aips-badge-secondary' };
+				var statusLabel = run.reverted ? l10n.statusUndone : (labels[run.status] || run.status);
+
+				html += AIPS.Templates.render('aips-tmpl-autolink-run-row', {
+					job_id: run.job_id,
+					started: new Date(run.started_at * 1000).toLocaleString(),
+					scope_label: (run.scope === 'low' ? l10n.scopeLow : l10n.scopeOrphans) + (run.apply ? '' : ' · ' + l10n.dryRun),
+					processed: run.processed,
+					total: run.total,
+					applied: run.applied,
+					review: run.review,
+					status_label: statusLabel,
+					status_class: run.reverted ? 'aips-badge-secondary' : (classes[run.status] || 'aips-badge-secondary'),
+					undo_class: (run.applied > 0 && !run.reverted && run.status !== 'processing' && run.status !== 'paused') ? '' : 'aips-hidden'
+				});
+			});
+
+			$('#aips-autolink-history-tbody').html(html || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 6, message: l10n.noRuns }));
+
+			clearTimeout(this.autolinkTimer);
+			if (running) {
+				this.autolinkTimer = setTimeout(function() { self.pollAutolink(); }, 5000);
+			}
 		},
 
 		renderBackfill: function(backfill) {

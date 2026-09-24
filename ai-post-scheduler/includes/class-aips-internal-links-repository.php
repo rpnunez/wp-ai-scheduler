@@ -486,6 +486,39 @@ class AIPS_Internal_Links_Repository {
 	}
 
 	/**
+	 * Suggestion IDs belonging to an auto-link run.
+	 *
+	 * @param string $batch_id Run ID.
+	 * @param string $status   Optional status filter.
+	 * @return int[]
+	 */
+	public function get_ids_by_batch($batch_id, $status = '') {
+		$sql  = "SELECT id FROM {$this->table} WHERE batch_id = %s";
+		$args = array(sanitize_text_field($batch_id));
+
+		if ($status !== '' && in_array($status, self::VALID_STATUSES, true)) {
+			$sql   .= ' AND status = %s';
+			$args[] = $status;
+		}
+
+		return array_map('intval', (array) $this->wpdb->get_col($this->wpdb->prepare($sql . ' ORDER BY id DESC', $args)));
+	}
+
+	/**
+	 * Count pending inbound suggestions awaiting review.
+	 *
+	 * @return int
+	 */
+	public function count_pending_inbound() {
+		return (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table} WHERE status = 'pending' AND origin = %s",
+				'inbound'
+			)
+		);
+	}
+
+	/**
 	 * Record that a suggestion was inserted into its source post.
 	 *
 	 * @param int    $id             Row ID.

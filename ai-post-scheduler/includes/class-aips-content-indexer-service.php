@@ -770,6 +770,20 @@ class AIPS_Content_Indexer_Service {
 			return;
 		}
 
+		/**
+		 * Skip semantic re-indexing for this save.
+		 *
+		 * Bulk link insertion returns true here: adding an <a> tag does not
+		 * change a post's text, and recomputing relationships on every edit
+		 * of a bulk run would rescan every stored vector each time.
+		 *
+		 * @param bool $skip    Default false.
+		 * @param int  $post_id Post being saved.
+		 */
+		if (apply_filters('aips_content_indexer_skip_post_save', false, $post_id)) {
+			return;
+		}
+
 		if (!$this->embeddings_service->is_enabled()) {
 			return;
 		}

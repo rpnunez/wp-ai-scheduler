@@ -16,6 +16,7 @@
  * @var array      $post_types   Indexed post types (slug => label).
  * @var bool       $enabled      Whether automatic link indexing is enabled.
  * @var array|null $backfill     Most recent rebuild job status.
+ * @var array      $autolink     Auto-link state (enabled, current run, history, pending_review, review_url).
  */
 
 if (!defined('ABSPATH')) {
@@ -151,6 +152,84 @@ foreach ($post_types as $type_slug => $type_label) {
 			</div>
 		</div>
 	</div>
+
+	<?php
+	$autolink_threshold = (int) round((new AIPS_Autolink_Policy())->get_settings()['auto_apply_threshold'] * 100);
+	AIPS_Admin_UI_Primitives::render_card(
+		array(
+			'id'          => 'aips-autolink-panel',
+			'title'       => __('Automatic Linking', 'ai-post-scheduler'),
+			'icon'        => 'dashicons-controls-repeat',
+			'description' => $autolink['enabled']
+				/* translators: %d: auto-apply confidence threshold in percent */
+				? sprintf(__('Runs find inbound links for posts that need them. Links at or above %d%% confidence are inserted automatically; the rest wait for review. Every run can be undone.', 'ai-post-scheduler'), $autolink_threshold)
+				: __('Bulk Auto-Linking is off in Settings, so runs only create suggestions for you to review. Turn it on under Settings → Internal Linking to insert confident links automatically.', 'ai-post-scheduler'),
+			'actions'     => array(
+				array(
+					'type'  => 'link',
+					'url'   => $autolink['review_url'],
+					'label' => sprintf(
+						/* translators: %d: number of suggestions awaiting review */
+						__('Review Suggestions (%d)', 'ai-post-scheduler'),
+						(int) $autolink['pending_review']
+					),
+					'icon'  => 'dashicons-visibility',
+					'id'    => 'aips-autolink-review-link',
+				),
+				array(
+					'id'    => 'aips-autolink-start-btn',
+					'label' => __('Start Auto-Link Run', 'ai-post-scheduler'),
+					'icon'  => 'dashicons-controls-play',
+					'class' => 'aips-btn aips-btn-primary',
+				),
+			),
+			'body_class'  => 'no-padding',
+		),
+		function () {
+			?>
+			<div class="notice notice-info inline aips-banner aips-hidden" id="aips-autolink-banner">
+				<div class="aips-banner-inner">
+					<div>
+						<h4 class="aips-banner-title">
+							<span class="spinner is-active" id="aips-autolink-spinner" aria-hidden="true"></span>
+							<span id="aips-autolink-title"></span>
+						</h4>
+						<p class="aips-banner-desc" id="aips-autolink-progress"></p>
+					</div>
+					<div class="aips-link-backfill-controls">
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-autolink-pause">
+							<span class="dashicons dashicons-controls-pause" aria-hidden="true"></span>
+							<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
+						</button>
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-hidden" id="aips-autolink-resume">
+							<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
+							<?php esc_html_e('Resume', 'ai-post-scheduler'); ?>
+						</button>
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-danger" id="aips-autolink-cancel">
+							<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+							<?php esc_html_e('Cancel', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<table class="aips-table widefat striped" id="aips-autolink-history">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e('Run', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Posts', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Inserted', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('For Review', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+						<th scope="col" class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+					</tr>
+				</thead>
+				<tbody id="aips-autolink-history-tbody"></tbody>
+			</table>
+			<?php
+		}
+	);
+	?>
 
 	<?php
 	AIPS_Admin_UI_Primitives::render_card(
@@ -291,6 +370,45 @@ foreach ($post_types as $type_slug => $type_label) {
 		?>
 	</div>
 
+	<!-- Auto-link run options -->
+	<div class="aips-modal" id="aips-autolink-modal" role="dialog" aria-modal="true" aria-labelledby="aips-autolink-modal-title" style="display:none;">
+		<div class="aips-modal-content">
+			<div class="aips-modal-header">
+				<h2 id="aips-autolink-modal-title"><?php esc_html_e('Start an auto-link run', 'ai-post-scheduler'); ?></h2>
+				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">&times;</button>
+			</div>
+			<div class="aips-modal-body">
+				<fieldset>
+					<legend class="screen-reader-text"><?php esc_html_e('Which posts', 'ai-post-scheduler'); ?></legend>
+					<label class="aips-checkbox-label-block">
+						<input type="radio" name="aips_autolink_scope" value="orphans" checked>
+						<strong><?php esc_html_e('Orphans only', 'ai-post-scheduler'); ?></strong>
+						<span class="description"><?php esc_html_e('Posts no other post links to.', 'ai-post-scheduler'); ?></span>
+					</label>
+					<label class="aips-checkbox-label-block">
+						<input type="radio" name="aips_autolink_scope" value="low">
+						<strong><?php esc_html_e('Posts with fewer than 3 inbound links', 'ai-post-scheduler'); ?></strong>
+						<span class="description"><?php esc_html_e('Orphans plus weakly linked posts.', 'ai-post-scheduler'); ?></span>
+					</label>
+				</fieldset>
+				<p>
+					<label>
+						<input type="checkbox" id="aips-autolink-dry-run" <?php checked(!$autolink['enabled']); ?> <?php disabled(!$autolink['enabled']); ?>>
+						<?php esc_html_e('Dry run: only create suggestions for review, insert nothing', 'ai-post-scheduler'); ?>
+					</label>
+				</p>
+				<p class="description"><?php esc_html_e('Runs work in the background in small batches using the pause set under Settings → Internal Linking → Rebuild Speed, and can be paused or cancelled.', 'ai-post-scheduler'); ?></p>
+			</div>
+			<div class="aips-modal-footer">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-btn aips-btn-primary" id="aips-autolink-confirm">
+					<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
+					<?php esc_html_e('Start Run', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+	</div>
+
 	<!-- Scan options -->
 	<div class="aips-modal" id="aips-link-scan-modal" role="dialog" aria-modal="true" aria-labelledby="aips-link-scan-modal-title" style="display:none;">
 		<div class="aips-modal-content">
@@ -424,6 +542,18 @@ foreach ($post_types as $type_slug => $type_label) {
 				<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-link-suggestion-apply {{pending_class}}" data-id="{{id}}" {{apply_disabled}}><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></button>
 				<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-link-suggestion-dismiss {{pending_class}}" data-id="{{id}}"><?php esc_html_e('Dismiss', 'ai-post-scheduler'); ?></button>
 				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-link-suggestion-revert {{inserted_class}}" data-id="{{id}}"><?php esc_html_e('Undo', 'ai-post-scheduler'); ?></button>
+			</td>
+		</tr>
+	</script>
+	<script type="text/html" id="aips-tmpl-autolink-run-row">
+		<tr>
+			<td>{{started}}<span class="aips-text-muted">{{scope_label}}</span></td>
+			<td>{{processed}} / {{total}}</td>
+			<td>{{applied}}</td>
+			<td>{{review}}</td>
+			<td><span class="aips-badge {{status_class}}">{{status_label}}</span></td>
+			<td class="column-actions">
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-autolink-undo {{undo_class}}" data-job-id="{{job_id}}"><?php esc_html_e('Undo Run', 'ai-post-scheduler'); ?></button>
 			</td>
 		</tr>
 	</script>

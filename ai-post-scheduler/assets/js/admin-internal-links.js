@@ -53,7 +53,28 @@
 		 */
 		init: function () {
 			this.bindEvents();
+			this.applyUrlFilters();
 			this.loadSuggestions();
+		},
+
+		/**
+		 * Pre-select filters passed in the URL (e.g. the Link Report's
+		 * "Review suggestions" link: &origin=inbound&status=pending).
+		 */
+		applyUrlFilters: function () {
+			var params = new URLSearchParams(window.location.search);
+			var status = params.get('status') || '';
+			var origin = params.get('origin') || '';
+
+			if (status && $('#aips-il-status-filter option[value="' + status + '"]').length) {
+				this.currentStatus = status;
+				$('#aips-il-status-filter').val(status);
+			}
+
+			if (origin && $('#aips-il-origin-filter option[value="' + origin + '"]').length) {
+				this.currentOrigin = origin;
+				$('#aips-il-origin-filter').val(origin);
+			}
 		},
 
 		/**

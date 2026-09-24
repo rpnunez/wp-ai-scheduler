@@ -62,6 +62,12 @@ class AIPS_Link_Report_Controller {
 		add_action('wp_ajax_aips_link_report_apply_suggestion', array($this, 'ajax_apply_suggestion'));
 		add_action('wp_ajax_aips_link_report_revert_suggestion', array($this, 'ajax_revert_suggestion'));
 		add_action('wp_ajax_aips_link_report_dismiss_suggestion', array($this, 'ajax_dismiss_suggestion'));
+		add_action('wp_ajax_aips_autolink_start', array($this, 'ajax_autolink_start'));
+		add_action('wp_ajax_aips_autolink_status', array($this, 'ajax_autolink_status'));
+		add_action('wp_ajax_aips_autolink_pause', array($this, 'ajax_autolink_pause'));
+		add_action('wp_ajax_aips_autolink_resume', array($this, 'ajax_autolink_resume'));
+		add_action('wp_ajax_aips_autolink_cancel', array($this, 'ajax_autolink_cancel'));
+		add_action('wp_ajax_aips_autolink_undo_run', array($this, 'ajax_autolink_undo_run'));
 	}
 
 	/**
@@ -85,6 +91,7 @@ class AIPS_Link_Report_Controller {
 			'post_types'   => $post_types,
 			'enabled'      => $this->service->is_enabled(),
 			'backfill'     => $this->service->get_backfill_status(),
+			'autolink'     => $this->get_autolink_payload(),
 		);
 	}
 
@@ -384,6 +391,158 @@ class AIPS_Link_Report_Controller {
 			: new WP_Error('aips_inbound_not_pending', __('This suggestion is no longer pending.', 'ai-post-scheduler'));
 
 		$this->respond_with_suggestions($result, __('Suggestion dismissed.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: start a bulk auto-link run.
+	 *
+	 * @return void
+	 */
+	public function ajax_autolink_start() {
+		$this->verify_request();
+
+		$scope   = isset($_POST['scope']) ? sanitize_key(wp_unslash($_POST['scope'])) : AIPS_Autolink_Run_Service::SCOPE_ORPHANS;
+		$dry_run = isset($_POST['dry_run']) && filter_var(wp_unslash($_POST['dry_run']), FILTER_VALIDATE_BOOLEAN);
+		$result  = $this->get_runs()->start($scope, $dry_run);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => sprintf(
+				/* translators: %d: number of posts */
+				_n('Auto-linking %d post in the background.', 'Auto-linking %d posts in the background.', (int) $result['total'], 'ai-post-scheduler'),
+				(int) $result['total']
+			),
+			'autolink' => $this->get_autolink_payload(),
+		));
+	}
+
+	/**
+	 * AJAX: auto-link run progress and history.
+	 *
+	 * @return void
+	 */
+	public function ajax_autolink_status() {
+		$this->verify_request();
+		$this->get_runs()->ensure_scheduled();
+
+		AIPS_Ajax_Response::success(array(
+			'autolink' => $this->get_autolink_payload(),
+			'summary'  => $this->get_totals(),
+		));
+	}
+
+	/**
+	 * AJAX: pause the current run.
+	 *
+	 * @return void
+	 */
+	public function ajax_autolink_pause() {
+		$this->verify_request();
+		$this->respond_with_run($this->get_runs()->pause(), __('Auto-link run paused.', 'ai-post-scheduler'), __('There is no running auto-link run to pause.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: resume the paused run.
+	 *
+	 * @return void
+	 */
+	public function ajax_autolink_resume() {
+		$this->verify_request();
+		$this->respond_with_run($this->get_runs()->resume(), __('Auto-link run resumed.', 'ai-post-scheduler'), __('There is no paused auto-link run to resume.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: cancel the current run.
+	 *
+	 * @return void
+	 */
+	public function ajax_autolink_cancel() {
+		$this->verify_request();
+		$this->respond_with_run($this->get_runs()->cancel(), __('Auto-link run cancelled. Links already inserted can be undone from the run history.', 'ai-post-scheduler'), __('There is no auto-link run to cancel.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * AJAX: undo every link a run inserted.
+	 *
+	 * @return void
+	 */
+	public function ajax_autolink_undo_run() {
+		$this->verify_request();
+
+		$job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
+		$result = $this->get_runs()->undo_run($job_id);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
+		}
+
+		$message = $result['conflicts'] > 0
+			? sprintf(
+				/* translators: 1: links removed, 2: links that could not be removed */
+				__('Removed %1$d links. %2$d could not be undone because their posts were edited afterwards; remove those in the editor.', 'ai-post-scheduler'),
+				$result['reverted'],
+				$result['conflicts']
+			)
+			: sprintf(
+				/* translators: %d: links removed */
+				_n('Removed %d link and restored the original text.', 'Removed %d links and restored the original text.', $result['reverted'], 'ai-post-scheduler'),
+				$result['reverted']
+			);
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => $message,
+			'autolink' => $this->get_autolink_payload(),
+			'summary'  => $this->get_totals(),
+		));
+	}
+
+	/**
+	 * Respond to a run pause/resume/cancel request.
+	 *
+	 * @param bool   $ok      Whether the transition happened.
+	 * @param string $success Success message.
+	 * @param string $failure Failure message.
+	 * @return void
+	 */
+	private function respond_with_run(bool $ok, string $success, string $failure) {
+		if (!$ok) {
+			AIPS_Ajax_Response::error($failure, 'invalid_state');
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => $success,
+			'autolink' => $this->get_autolink_payload(),
+		));
+	}
+
+	/**
+	 * Auto-link state for the Link Report.
+	 *
+	 * @return array{enabled:bool, current:array|null, history:array[], pending_review:int, review_url:string}
+	 */
+	private function get_autolink_payload(): array {
+		$runs = $this->get_runs();
+
+		return array(
+			'enabled'        => (new AIPS_Autolink_Policy())->is_enabled(),
+			'current'        => $runs->get_current(),
+			'history'        => $runs->get_history(),
+			'pending_review' => (new AIPS_Internal_Links_Repository())->count_pending_inbound(),
+			'review_url'     => admin_url('admin.php?page=aips-automations&tab=internal-links&origin=inbound&status=pending'),
+		);
+	}
+
+	/**
+	 * @return AIPS_Autolink_Run_Service
+	 */
+	private function get_runs(): AIPS_Autolink_Run_Service {
+		$container = AIPS_Container::get_instance();
+		return $container->has(AIPS_Autolink_Run_Service::class)
+			? $container->make(AIPS_Autolink_Run_Service::class)
+			: new AIPS_Autolink_Run_Service($this->get_inbound(), $this->service);
 	}
 
 	/**

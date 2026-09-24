@@ -222,10 +222,11 @@ class AIPS_Inbound_Links_Service {
 	 * The anchor phrase is located again in the current content, so edits
 	 * made since the suggestion was generated are respected.
 	 *
-	 * @param int $suggestion_id Suggestion row ID.
+	 * @param int    $suggestion_id Suggestion row ID.
+	 * @param string $batch_id      Optional auto-link run ID, for undoing a whole run.
 	 * @return array{id:int, anchor:string}|WP_Error
 	 */
-	public function apply(int $suggestion_id) {
+	public function apply(int $suggestion_id, string $batch_id = '') {
 		$row = $this->links_repo->get_by_id($suggestion_id);
 		if (!$row || $row->status !== 'pending') {
 			return new WP_Error('aips_inbound_not_pending', __('This suggestion is no longer pending.', 'ai-post-scheduler'));
@@ -287,7 +288,7 @@ class AIPS_Inbound_Links_Service {
 			return $saved;
 		}
 
-		$this->links_repo->mark_applied($suggestion_id, $inserted['before_snippet'], $inserted['after_snippet'], $occurrences[0]['text']);
+		$this->links_repo->mark_applied($suggestion_id, $inserted['before_snippet'], $inserted['after_snippet'], $occurrences[0]['text'], $batch_id);
 
 		/**
 		 * Fires after an internal link suggestion is inserted into its source post.
