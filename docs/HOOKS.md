@@ -462,3 +462,10 @@ Fires after an inserted internal link is undone and the original text restored.
 *   **Arguments:**
     *   `int $suggestion_id`: Row ID in `aips_internal_links`.
     *   `int $source_id`: Post the link was removed from.
+
+#### `aips_inbound_suggest_below`
+Filters the inbound-link count below which the Link Report offers "Suggest Links" for a post.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $threshold`: Default `3` (posts linked from 0–2 other posts).

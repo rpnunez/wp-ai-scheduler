@@ -184,7 +184,7 @@
 					orphan_class: row.is_orphan ? '' : 'aips-hidden',
 					suggestions_class: row.suggestions > 0 ? '' : 'aips-hidden',
 					suggestions_label: aipsLinkReportL10n.suggestionsPending.replace('%d', row.suggestions),
-					suggest_class: row.is_orphan ? 'aips-btn-primary' : 'aips-btn-secondary'
+					suggest_class: (row.is_orphan ? 'aips-btn-primary' : 'aips-btn-secondary') + (row.can_suggest ? '' : ' aips-hidden')
 				});
 			});
 

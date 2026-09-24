@@ -30,6 +30,11 @@ class AIPS_Inbound_Links_Service {
 	const ORIGIN = 'inbound';
 
 	/**
+	 * Posts with fewer inbound links than this are offered "Suggest Links".
+	 */
+	const SUGGEST_BELOW_INBOUND = 3;
+
+	/**
 	 * Semantic candidates fetched per target before filtering.
 	 */
 	const SEMANTIC_CANDIDATES = 30;
@@ -363,6 +368,21 @@ class AIPS_Inbound_Links_Service {
 		}
 
 		return (bool) $this->links_repo->update_status($suggestion_id, 'rejected');
+	}
+
+	/**
+	 * Whether a post with this many inbound links should be offered suggestions.
+	 *
+	 * @param int $inbound Distinct posts currently linking to it.
+	 * @return bool
+	 */
+	public static function should_suggest(int $inbound): bool {
+		/**
+		 * Filter the inbound-link count below which a post is offered link suggestions.
+		 *
+		 * @param int $threshold Default 3.
+		 */
+		return $inbound < (int) apply_filters('aips_inbound_suggest_below', self::SUGGEST_BELOW_INBOUND);
 	}
 
 	/**

@@ -145,6 +145,7 @@ class AIPS_Link_Report_Controller {
 				'broken'     => (int) $row->broken,
 				'is_orphan'  => ((int) $row->inbound === 0),
 				'suggestions' => isset($pending[(int) $row->ID]) ? $pending[(int) $row->ID] : 0,
+				'can_suggest' => AIPS_Inbound_Links_Service::should_suggest((int) $row->inbound),
 				'edit_url'   => (string) get_edit_post_link((int) $row->ID, 'raw'),
 				'view_url'   => (string) get_permalink((int) $row->ID),
 			);
