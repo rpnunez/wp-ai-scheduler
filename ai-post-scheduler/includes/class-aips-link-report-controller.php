@@ -46,6 +46,9 @@ class AIPS_Link_Report_Controller {
 		add_action('wp_ajax_aips_link_report_get_post_links', array($this, 'ajax_get_post_links'));
 		add_action('wp_ajax_aips_link_report_start_backfill', array($this, 'ajax_start_backfill'));
 		add_action('wp_ajax_aips_link_report_backfill_status', array($this, 'ajax_backfill_status'));
+		add_action('wp_ajax_aips_link_report_pause_backfill', array($this, 'ajax_pause_backfill'));
+		add_action('wp_ajax_aips_link_report_resume_backfill', array($this, 'ajax_resume_backfill'));
+		add_action('wp_ajax_aips_link_report_cancel_backfill', array($this, 'ajax_cancel_backfill'));
 	}
 
 	/**
@@ -199,7 +202,9 @@ class AIPS_Link_Report_Controller {
 			AIPS_Ajax_Response::error(__('The link index is disabled in Settings.', 'ai-post-scheduler'), 'disabled');
 		}
 
-		$result = $this->service->start_backfill();
+		$mode   = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : AIPS_Link_Index_Service::MODE_MISSING;
+		$days   = isset($_POST['days']) ? absint($_POST['days']) : 30;
+		$result = $this->service->start_backfill($mode, $days);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
@@ -208,7 +213,7 @@ class AIPS_Link_Report_Controller {
 		AIPS_Ajax_Response::success(array(
 			'message'  => sprintf(
 				/* translators: %d: number of posts queued */
-				_n('Indexing %d post in the background.', 'Indexing %d posts in the background.', (int) $result['total'], 'ai-post-scheduler'),
+				_n('Scanning %d post for links in the background.', 'Scanning %d posts for links in the background.', (int) $result['total'], 'ai-post-scheduler'),
 				(int) $result['total']
 			),
 			'backfill' => $this->service->get_backfill_status(),
@@ -223,7 +228,64 @@ class AIPS_Link_Report_Controller {
 	public function ajax_backfill_status() {
 		$this->verify_request();
 
+		$this->service->ensure_scan_scheduled();
+
 		AIPS_Ajax_Response::success(array(
+			'backfill' => $this->service->get_backfill_status(),
+			'summary'  => $this->get_totals(),
+		));
+	}
+
+	/**
+	 * AJAX: pause the running scan after its current batch.
+	 *
+	 * @return void
+	 */
+	public function ajax_pause_backfill() {
+		$this->verify_request();
+
+		if (!$this->service->pause_backfill()) {
+			AIPS_Ajax_Response::error(__('There is no running link scan to pause.', 'ai-post-scheduler'), 'not_running');
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => __('Link scan paused. Resume it any time to continue where it stopped.', 'ai-post-scheduler'),
+			'backfill' => $this->service->get_backfill_status(),
+		));
+	}
+
+	/**
+	 * AJAX: resume a paused scan.
+	 *
+	 * @return void
+	 */
+	public function ajax_resume_backfill() {
+		$this->verify_request();
+
+		if (!$this->service->resume_backfill()) {
+			AIPS_Ajax_Response::error(__('There is no paused link scan to resume.', 'ai-post-scheduler'), 'not_paused');
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => __('Link scan resumed.', 'ai-post-scheduler'),
+			'backfill' => $this->service->get_backfill_status(),
+		));
+	}
+
+	/**
+	 * AJAX: cancel the running or paused scan.
+	 *
+	 * @return void
+	 */
+	public function ajax_cancel_backfill() {
+		$this->verify_request();
+
+		if (!$this->service->cancel_backfill()) {
+			AIPS_Ajax_Response::error(__('There is no link scan to cancel.', 'ai-post-scheduler'), 'not_running');
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'message'  => __('Link scan cancelled. Posts scanned so far stay in the index.', 'ai-post-scheduler'),
 			'backfill' => $this->service->get_backfill_status(),
 			'summary'  => $this->get_totals(),
 		));

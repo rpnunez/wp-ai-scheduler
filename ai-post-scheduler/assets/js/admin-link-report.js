@@ -41,8 +41,10 @@
 				this.load();
 			}
 
-			if (this.$root.data('backfill-running') === 1 || this.$root.data('backfill-running') === '1') {
+			if (String(this.$root.data('backfill-running')) === '1') {
 				this.startPolling();
+			} else if (String(this.$root.data('backfill-paused')) === '1') {
+				$('#aips-link-report-rebuild').prop('disabled', true);
 			}
 		},
 
@@ -55,6 +57,13 @@
 			$(document).on('click', '#aips-link-report-next', this.onNext.bind(this));
 			$(document).on('click', '.aips-link-report-details', this.onDetails.bind(this));
 			$(document).on('click', '#aips-link-report-rebuild', this.onRebuild.bind(this));
+			$(document).on('click', '#aips-link-scan-start', this.startRebuild.bind(this));
+			$(document).on('focus click', '#aips-link-scan-days', function() {
+				$('input[name="aips_link_scan_mode"][value="recent"]').prop('checked', true);
+			});
+			$(document).on('click', '#aips-link-backfill-pause', this.onScanControl.bind(this, 'aips_link_report_pause_backfill'));
+			$(document).on('click', '#aips-link-backfill-resume', this.onScanControl.bind(this, 'aips_link_report_resume_backfill'));
+			$(document).on('click', '#aips-link-backfill-cancel', this.onCancel.bind(this));
 		},
 
 		onTabShown: function() {
@@ -266,42 +275,80 @@
 		},
 
 		onRebuild: function() {
-			var self = this;
-			var l10n = aipsLinkReportL10n;
-
-			AIPS.Utilities.confirm(l10n.confirmRebuild, l10n.confirmRebuildTitle, [
-				{ label: l10n.cancel, className: 'aips-btn aips-btn-secondary' },
-				{
-					label: l10n.rebuild,
-					className: 'aips-btn aips-btn-primary',
-					action: function() {
-						self.startRebuild();
-					}
-				}
-			]);
+			$('#aips-link-scan-modal').show();
 		},
 
 		startRebuild: function() {
 			var self = this;
 			var l10n = aipsLinkReportL10n;
-			var $btn = $('#aips-link-report-rebuild').prop('disabled', true);
+			var $btn = $('#aips-link-scan-start').prop('disabled', true);
 
 			$.post(ajaxurl, {
 				action: 'aips_link_report_start_backfill',
-				nonce: l10n.nonce
+				nonce: l10n.nonce,
+				mode: $('input[name="aips_link_scan_mode"]:checked').val() || 'missing',
+				days: parseInt($('#aips-link-scan-days').val(), 10) || 30
 			}).done(function(response) {
 				if (!response || !response.success) {
-					$btn.prop('disabled', false);
+					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+					return;
+				}
+				$('#aips-link-scan-modal').hide();
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				self.renderBackfill(response.data.backfill);
+				self.startPolling();
+			}).fail(function() {
+				AIPS.Utilities.showToast(l10n.rebuildError, 'error');
+			}).always(function() {
+				$btn.prop('disabled', false);
+			});
+		},
+
+		onScanControl: function(action) {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			$.post(ajaxurl, { action: action, nonce: l10n.nonce }).done(function(response) {
+				if (!response || !response.success) {
 					AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
 				self.renderBackfill(response.data.backfill);
-				self.startPolling();
+				if (response.data.backfill && response.data.backfill.status === 'processing') {
+					self.startPolling();
+				} else {
+					clearInterval(self.pollTimer);
+				}
 			}).fail(function() {
-				$btn.prop('disabled', false);
 				AIPS.Utilities.showToast(l10n.rebuildError, 'error');
 			});
+		},
+
+		onCancel: function() {
+			var self = this;
+			var l10n = aipsLinkReportL10n;
+
+			AIPS.Utilities.confirm(l10n.confirmCancel, l10n.confirmCancelTitle, [
+				{ label: l10n.keepScanning, className: 'aips-btn aips-btn-secondary' },
+				{
+					label: l10n.cancelScan,
+					className: 'aips-btn aips-btn-danger-solid',
+					action: function() {
+						$.post(ajaxurl, { action: 'aips_link_report_cancel_backfill', nonce: l10n.nonce }).done(function(response) {
+							if (!response || !response.success) {
+								AIPS.Utilities.showToast((response && response.data && response.data.message) || l10n.rebuildError, 'error');
+								return;
+							}
+							clearInterval(self.pollTimer);
+							AIPS.Utilities.showToast(response.data.message, 'success');
+							self.renderBackfill(response.data.backfill);
+							self.renderSummary(response.data.summary);
+							self.load();
+						});
+					}
+				}
+			]);
 		},
 
 		startPolling: function() {
@@ -324,26 +371,37 @@
 				if (!response || !response.success) {
 					return;
 				}
-				self.renderSummary(response.data.summary);
-				self.renderBackfill(response.data.backfill);
-
 				var backfill = response.data.backfill;
-				if (!backfill || (backfill.status !== 'pending' && backfill.status !== 'processing')) {
+
+				self.renderSummary(response.data.summary);
+				self.renderBackfill(backfill);
+
+				if (!backfill || backfill.status !== 'processing') {
 					clearInterval(self.pollTimer);
-					$('#aips-link-report-rebuild').prop('disabled', false);
-					AIPS.Utilities.showToast(backfill && backfill.status === 'failed' ? l10n.rebuildFailed : l10n.rebuildDone, backfill && backfill.status === 'failed' ? 'warning' : 'success');
+					if (backfill && backfill.status === 'completed') {
+						AIPS.Utilities.showToast(l10n.rebuildDone, 'success');
+					}
 					self.load();
 				}
 			});
 		},
 
 		renderBackfill: function(backfill) {
-			var running = backfill && (backfill.status === 'pending' || backfill.status === 'processing');
+			var l10n = aipsLinkReportL10n;
+			var status = backfill ? backfill.status : '';
+			var running = status === 'processing' || status === 'pending';
+			var paused = status === 'paused';
 
-			$('#aips-link-backfill-banner').toggleClass('aips-hidden', !running);
-			if (running) {
+			$('#aips-link-backfill-banner').toggleClass('aips-hidden', !running && !paused);
+			$('#aips-link-backfill-spinner').toggleClass('aips-hidden', !running);
+			$('#aips-link-backfill-pause').toggleClass('aips-hidden', !running);
+			$('#aips-link-backfill-resume').toggleClass('aips-hidden', !paused);
+			$('#aips-link-backfill-title').text(paused ? l10n.scanPaused : l10n.scanRunning);
+			$('#aips-link-report-rebuild').prop('disabled', running || paused);
+
+			if (running || paused) {
 				$('#aips-link-backfill-progress').text(
-					aipsLinkReportL10n.progress
+					l10n.progress
 						.replace('%1$d', backfill.processed)
 						.replace('%2$d', backfill.total)
 				);

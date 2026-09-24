@@ -66,13 +66,6 @@ class AIPS_Bulk_Batch_Processor {
 	private $strategies = array();
 
 	/**
-	 * Per-strategy options keyed by job type (see register()).
-	 *
-	 * @var array<string, array>
-	 */
-	private $strategy_options = array();
-
-	/**
 	 * @var AIPS_Bulk_Batch_Job_Store
 	 */
 	private $job_store;
@@ -134,15 +127,10 @@ class AIPS_Bulk_Batch_Processor {
 	 * @param string   $job_type Strategy key; must match the `job_type` used
 	 *                           when creating the job via AIPS_Bulk_Batch_Job_Store.
 	 * @param callable $handler  fn( $item, string $job_id, object $job ): int|WP_Error
-	 * @param array    $options  Optional. 'log_item_success' (bool, default true):
-	 *                           record a History activity entry for every
-	 *                           successful item. Disable for high-volume,
-	 *                           non-generation jobs; failures are always logged.
 	 * @return void
 	 */
-	public function register( string $job_type, callable $handler, array $options = array() ): void {
-		$this->strategies[ $job_type ]       = $handler;
-		$this->strategy_options[ $job_type ] = array_merge( array( 'log_item_success' => true ), $options );
+	public function register( string $job_type, callable $handler ): void {
+		$this->strategies[ $job_type ] = $handler;
 	}
 
 	/**
@@ -297,9 +285,6 @@ class AIPS_Bulk_Batch_Processor {
 					);
 				} else {
 					$success_count++;
-					if ( empty( $this->strategy_options[ $job_type ]['log_item_success'] ) ) {
-						continue;
-					}
 					$post_result = is_array( $result ) ? $result : (int) $result;
 					$history->record(
 						'activity',

@@ -23,6 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 $backfill_running = is_array($backfill) && in_array($backfill['status'], array('pending', 'processing'), true);
+$backfill_paused  = is_array($backfill) && $backfill['status'] === AIPS_Link_Index_Service::STATUS_PAUSED;
 $never_indexed    = (int) $summary['sources'] === 0;
 
 $type_filter_options = array('' => __('All indexed post types', 'ai-post-scheduler'));
@@ -31,7 +32,7 @@ foreach ($post_types as $type_slug => $type_label) {
 }
 ?>
 
-<div class="aips-link-report-tab" id="aips-link-report" data-backfill-running="<?php echo $backfill_running ? '1' : '0'; ?>">
+<div class="aips-link-report-tab" id="aips-link-report" data-backfill-running="<?php echo $backfill_running ? '1' : '0'; ?>" data-backfill-paused="<?php echo $backfill_paused ? '1' : '0'; ?>">
 
 	<?php if (!$enabled) : ?>
 	<div class="notice notice-warning inline aips-banner">
@@ -111,17 +112,19 @@ foreach ($post_types as $type_slug => $type_label) {
 		</div>
 	</div>
 
-	<!-- Rebuild progress -->
-	<div class="notice notice-info inline aips-banner<?php echo $backfill_running ? '' : ' aips-hidden'; ?>" id="aips-link-backfill-banner">
+	<!-- Scan progress -->
+	<div class="notice notice-info inline aips-banner<?php echo ($backfill_running || $backfill_paused) ? '' : ' aips-hidden'; ?>" id="aips-link-backfill-banner">
 		<div class="aips-banner-inner">
 			<div>
 				<h4 class="aips-banner-title">
-					<span class="spinner is-active" aria-hidden="true"></span>
-					<?php esc_html_e('Building the link index…', 'ai-post-scheduler'); ?>
+					<span class="spinner is-active<?php echo $backfill_paused ? ' aips-hidden' : ''; ?>" id="aips-link-backfill-spinner" aria-hidden="true"></span>
+					<span id="aips-link-backfill-title">
+						<?php echo $backfill_paused ? esc_html__('Link scan paused', 'ai-post-scheduler') : esc_html__('Scanning posts for links…', 'ai-post-scheduler'); ?>
+					</span>
 				</h4>
 				<p class="aips-banner-desc" id="aips-link-backfill-progress">
 					<?php
-					if ($backfill_running) {
+					if ($backfill_running || $backfill_paused) {
 						printf(
 							/* translators: 1: processed posts, 2: total posts */
 							esc_html__('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
@@ -131,6 +134,20 @@ foreach ($post_types as $type_slug => $type_label) {
 					}
 					?>
 				</p>
+			</div>
+			<div class="aips-link-backfill-controls">
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary<?php echo $backfill_paused ? ' aips-hidden' : ''; ?>" id="aips-link-backfill-pause">
+					<span class="dashicons dashicons-controls-pause" aria-hidden="true"></span>
+					<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
+				</button>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-primary<?php echo $backfill_paused ? '' : ' aips-hidden'; ?>" id="aips-link-backfill-resume">
+					<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
+					<?php esc_html_e('Resume', 'ai-post-scheduler'); ?>
+				</button>
+				<button type="button" class="aips-btn aips-btn-sm aips-btn-danger" id="aips-link-backfill-cancel">
+					<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+					<?php esc_html_e('Cancel', 'ai-post-scheduler'); ?>
+				</button>
 			</div>
 		</div>
 	</div>
@@ -145,7 +162,7 @@ foreach ($post_types as $type_slug => $type_label) {
 			'actions'     => array(
 				array(
 					'id'    => 'aips-link-report-rebuild',
-					'label' => $never_indexed ? __('Build Link Index', 'ai-post-scheduler') : __('Rebuild Link Index', 'ai-post-scheduler'),
+					'label' => $never_indexed ? __('Build Link Index', 'ai-post-scheduler') : __('Scan Links', 'ai-post-scheduler'),
 					'icon'  => 'dashicons-update',
 					'class' => $never_indexed ? 'aips-btn aips-btn-primary' : 'aips-btn aips-btn-secondary',
 				),
@@ -222,6 +239,48 @@ foreach ($post_types as $type_slug => $type_label) {
 		}
 	);
 	?>
+
+	<!-- Scan options -->
+	<div class="aips-modal" id="aips-link-scan-modal" role="dialog" aria-modal="true" aria-labelledby="aips-link-scan-modal-title" style="display:none;">
+		<div class="aips-modal-content">
+			<div class="aips-modal-header">
+				<h2 id="aips-link-scan-modal-title"><?php esc_html_e('Scan posts for links', 'ai-post-scheduler'); ?></h2>
+				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">&times;</button>
+			</div>
+			<div class="aips-modal-body">
+				<p class="description"><?php esc_html_e('Saving a post already updates its links automatically, so a full rescan is rarely needed. Scans run in the background (no AI calls) and can be paused or cancelled.', 'ai-post-scheduler'); ?></p>
+				<fieldset class="aips-link-scan-modes">
+					<legend class="screen-reader-text"><?php esc_html_e('What to scan', 'ai-post-scheduler'); ?></legend>
+					<label class="aips-checkbox-label-block">
+						<input type="radio" name="aips_link_scan_mode" value="missing" <?php checked(!$never_indexed); ?>>
+						<strong><?php esc_html_e('New & never-scanned posts', 'ai-post-scheduler'); ?></strong>
+						<span class="description"><?php esc_html_e('Only posts that are not in the link index yet. Fastest.', 'ai-post-scheduler'); ?></span>
+					</label>
+					<label class="aips-checkbox-label-block">
+						<input type="radio" name="aips_link_scan_mode" value="recent">
+						<strong>
+							<?php esc_html_e('Posts updated in the last', 'ai-post-scheduler'); ?>
+							<input type="number" id="aips-link-scan-days" class="small-text" min="1" max="3650" value="30" aria-label="<?php esc_attr_e('Days', 'ai-post-scheduler'); ?>">
+							<?php esc_html_e('days', 'ai-post-scheduler'); ?>
+						</strong>
+						<span class="description"><?php esc_html_e('Catches edits made outside the editor, such as imports or bulk updates.', 'ai-post-scheduler'); ?></span>
+					</label>
+					<label class="aips-checkbox-label-block">
+						<input type="radio" name="aips_link_scan_mode" value="all" <?php checked($never_indexed); ?>>
+						<strong><?php esc_html_e('Full rescan of every published post', 'ai-post-scheduler'); ?></strong>
+						<span class="description"><?php esc_html_e('Needed only after changing permalinks, restoring a backup or changing the indexed post types.', 'ai-post-scheduler'); ?></span>
+					</label>
+				</fieldset>
+			</div>
+			<div class="aips-modal-footer">
+				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+				<button type="button" class="aips-btn aips-btn-primary" id="aips-link-scan-start">
+					<span class="dashicons dashicons-update" aria-hidden="true"></span>
+					<?php esc_html_e('Start Scan', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+	</div>
 
 	<!-- Per-post drill-down -->
 	<div class="aips-modal" id="aips-link-report-modal" role="dialog" aria-modal="true" aria-labelledby="aips-link-report-modal-title" style="display:none;">

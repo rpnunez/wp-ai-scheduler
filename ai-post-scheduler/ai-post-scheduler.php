@@ -767,6 +767,12 @@ final class AI_Post_Scheduler {
             );
         }, 10, 2);
 
+        // Link index scans: each tick indexes one batch and schedules the next,
+        // so scans can be paused, resumed and cancelled between batches.
+        add_action(AIPS_Link_Index_Service::SCAN_TICK_HOOK, function( $job_id ) {
+            AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_scan_tick( $job_id );
+        });
+
         // Async bulk-batch processing: each single event processes one slice of a stored job.
         // Args: job_id, start_index, batch_size, total_quantity, correlation_id.
         add_action('aips_process_bulk_batch', function(
@@ -831,14 +837,6 @@ final class AI_Post_Scheduler {
 
                 return $generator->generate_post( $template, null, $topic );
             }
-        );
-
-        $processor->register(
-            AIPS_Link_Index_Service::BACKFILL_JOB_TYPE,
-            function( $post_id, $job_id, $job ) {
-                return AIPS_Container::get_instance()->make( AIPS_Link_Index_Service::class )->process_backfill_item( $post_id );
-            },
-            array( 'log_item_success' => false )
         );
 
         $processor->register(

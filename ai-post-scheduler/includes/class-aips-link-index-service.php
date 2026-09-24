@@ -36,6 +36,41 @@ class AIPS_Link_Index_Service {
 	const BACKFILL_JOB_OPTION = 'aips_link_index_backfill_job';
 
 	/**
+	 * Single cron event that processes one scan batch and schedules the next.
+	 */
+	const SCAN_TICK_HOOK = 'aips_link_index_scan_tick';
+
+	/**
+	 * Scan only published posts that have never been indexed.
+	 */
+	const MODE_MISSING = 'missing';
+
+	/**
+	 * Scan published posts modified in the last N days.
+	 */
+	const MODE_RECENT = 'recent';
+
+	/**
+	 * Re-scan every published post.
+	 */
+	const MODE_ALL = 'all';
+
+	/**
+	 * Scan paused by the user; resumable.
+	 */
+	const STATUS_PAUSED = 'paused';
+
+	/**
+	 * Scan cancelled by the user.
+	 */
+	const STATUS_CANCELLED = 'cancelled';
+
+	/**
+	 * Seconds of work allowed per batch before deferring the rest to the next tick.
+	 */
+	const TICK_TIME_BUDGET = 20;
+
+	/**
 	 * @var AIPS_Link_Index_Repository
 	 */
 	private $repository;
@@ -61,32 +96,24 @@ class AIPS_Link_Index_Service {
 	private $job_store;
 
 	/**
-	 * @var AIPS_Batch_Queue_Service|null
-	 */
-	private $batch_queue_service;
-
-	/**
 	 * @param AIPS_Link_Index_Repository|null $repository          Link index repository.
 	 * @param AIPS_Link_Extractor|null        $extractor           HTML link extractor.
 	 * @param AIPS_Link_Url_Resolver|null     $resolver            URL resolver.
 	 * @param AIPS_Config|null                $config              Config.
-	 * @param AIPS_Bulk_Batch_Job_Store|null  $job_store           Job store (backfill).
-	 * @param AIPS_Batch_Queue_Service|null   $batch_queue_service Batch dispatcher (backfill).
+	 * @param AIPS_Bulk_Batch_Job_Store|null  $job_store           Job store (scans).
 	 */
 	public function __construct(
 		?AIPS_Link_Index_Repository $repository = null,
 		?AIPS_Link_Extractor $extractor = null,
 		?AIPS_Link_Url_Resolver $resolver = null,
 		?AIPS_Config $config = null,
-		?AIPS_Bulk_Batch_Job_Store $job_store = null,
-		?AIPS_Batch_Queue_Service $batch_queue_service = null
+		?AIPS_Bulk_Batch_Job_Store $job_store = null
 	) {
 		$this->repository          = $repository ?: new AIPS_Link_Index_Repository();
 		$this->extractor           = $extractor ?: new AIPS_Link_Extractor();
 		$this->resolver            = $resolver ?: new AIPS_Link_Url_Resolver();
 		$this->config              = $config ?: AIPS_Config::get_instance();
 		$this->job_store           = $job_store;
-		$this->batch_queue_service = $batch_queue_service;
 	}
 
 	/**
@@ -240,12 +267,14 @@ class AIPS_Link_Index_Service {
 	}
 
 	/**
-	 * IDs of every published post in scope, for the backfill.
+	 * Published in-scope post IDs a scan should visit.
 	 *
+	 * @param string $mode One of the MODE_* constants.
+	 * @param int    $days Look-back window for MODE_RECENT.
 	 * @return int[]
 	 */
-	public function get_backfill_post_ids(): array {
-		$ids = get_posts(array(
+	public function get_scan_post_ids(string $mode = self::MODE_ALL, int $days = 30): array {
+		$query = array(
 			'post_type'              => $this->get_post_types(),
 			'post_status'            => 'publish',
 			'posts_per_page'         => -1,
@@ -256,74 +285,195 @@ class AIPS_Link_Index_Service {
 			'suppress_filters'       => true,
 			'update_post_meta_cache' => false,
 			'update_post_term_cache' => false,
-		));
+		);
 
-		return array_map('intval', (array) $ids);
+		if ($mode === self::MODE_MISSING) {
+			$query['meta_query'] = array(
+				array(
+					'key'     => self::HASH_META_KEY,
+					'compare' => 'NOT EXISTS',
+				),
+			);
+		} elseif ($mode === self::MODE_RECENT) {
+			$query['date_query'] = array(
+				array(
+					'column' => 'post_modified_gmt',
+					'after'  => gmdate('Y-m-d H:i:s', time() - max(1, $days) * DAY_IN_SECONDS),
+				),
+			);
+		}
+
+		return array_map('intval', (array) get_posts($query));
 	}
 
 	/**
-	 * Queue a background job that (re)indexes every published post in scope.
+	 * Start a background link scan.
 	 *
-	 * @return array{job_id:string, total:int}|WP_Error
+	 * Scans run as a chain of single cron events (SCAN_TICK_HOOK): each tick
+	 * indexes one batch, saves its position in the job store and schedules
+	 * the next tick after the configured pause, so a scan can be paused,
+	 * resumed or cancelled at any batch boundary. Only MODE_ALL forces a
+	 * re-parse of unchanged posts; other modes skip content that has not
+	 * changed since it was last indexed.
+	 *
+	 * @param string $mode MODE_MISSING, MODE_RECENT or MODE_ALL.
+	 * @param int    $days Look-back window for MODE_RECENT (1 - 3650).
+	 * @return array{job_id:string, total:int, mode:string}|WP_Error
 	 */
-	public function start_backfill() {
-		$post_ids = $this->get_backfill_post_ids();
+	public function start_backfill(string $mode = self::MODE_MISSING, int $days = 30) {
+		if (!in_array($mode, array(self::MODE_MISSING, self::MODE_RECENT, self::MODE_ALL), true)) {
+			$mode = self::MODE_MISSING;
+		}
+		$days = min(3650, max(1, $days));
+
+		$current = $this->get_backfill_status();
+		if ($current && in_array($current['status'], array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, self::STATUS_PAUSED), true)) {
+			return new WP_Error('aips_link_scan_in_progress', __('A link scan is already running or paused. Resume or cancel it first.', 'ai-post-scheduler'));
+		}
+
+		$post_ids = $this->get_scan_post_ids($mode, $days);
 		if (empty($post_ids)) {
-			return new WP_Error('aips_link_index_nothing_to_index', __('There are no published posts to index.', 'ai-post-scheduler'));
+			$message = ($mode === self::MODE_MISSING)
+				? __('Every published post is already in the link index.', 'ai-post-scheduler')
+				: __('No published posts match this scan.', 'ai-post-scheduler');
+			return new WP_Error('aips_link_index_nothing_to_index', $message);
 		}
 
 		$job_store = $this->get_job_store();
-		$job_id    = $job_store->create(self::BACKFILL_JOB_TYPE, $post_ids, array('history_type' => self::BACKFILL_JOB_TYPE));
+		$job_id    = $job_store->create(
+			self::BACKFILL_JOB_TYPE,
+			$post_ids,
+			array(
+				'mode' => $mode,
+				'days' => $days,
+			)
+		);
 		if (is_wp_error($job_id)) {
 			return $job_id;
 		}
 
-		$dispatch = $this->get_batch_queue_service()->dispatch_generic(
-			AIPS_Bulk_Batch_Processor::HOOK,
-			count($post_ids),
-			time(),
-			array($job_id),
-			(string) AIPS_Correlation_ID::get(),
-			$this->get_backfill_slice_options(count($post_ids))
-		);
-
-		if (is_wp_error($dispatch)) {
-			$job_store->mark_failed($job_id);
-			return $dispatch;
-		}
-
+		$job_store->update_status($job_id, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING);
 		$this->config->set_option(self::BACKFILL_JOB_OPTION, $job_id);
+		$this->schedule_tick($job_id, 0);
 
 		return array(
 			'job_id' => $job_id,
 			'total'  => count($post_ids),
+			'mode'   => $mode,
 		);
 	}
 
 	/**
-	 * Batch slicing for a rebuild: fixed-size batches spaced by the configured
-	 * pause, replacing the shared "at most 10 slices in 10 minutes" default
-	 * (which would put hundreds of posts in one cron request on large sites).
+	 * Cron handler: index the next batch of a running scan.
 	 *
-	 * @param int $post_count Posts in the rebuild.
-	 * @return array{items_per_slice:int, max_slices:int, window_seconds:int}
+	 * @param string $job_id Scan job ID.
+	 * @return void
 	 */
-	public function get_backfill_slice_options(int $post_count): array {
-		$batch_size = min(500, max(10, (int) $this->config->get_option('aips_link_index_batch_size', 50)));
-		$delay      = min(600, max(0, (int) $this->config->get_option('aips_link_index_batch_delay', 20)));
-		$slices     = max(1, (int) ceil(max(1, $post_count) / $batch_size));
+	public function process_scan_tick($job_id): void {
+		$job_id = (string) $job_id;
+		if ($job_id === '' || $job_id !== (string) $this->config->get_option(self::BACKFILL_JOB_OPTION, '')) {
+			return;
+		}
 
-		return array(
-			'items_per_slice' => $batch_size,
-			'max_slices'      => $slices,
-			'window_seconds'  => ($slices - 1) * $delay,
+		$job_store = $this->get_job_store();
+		$job       = $job_store->get($job_id);
+		if (!$job || $job->status !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+			return;
+		}
+
+		$force   = (isset($job->options['mode']) ? $job->options['mode'] : '') === self::MODE_ALL;
+		$offset  = (int) $job->processed;
+		$batch   = array_slice((array) $job->items, $offset, $this->get_batch_size());
+		$started = microtime(true);
+		$done    = 0;
+
+		foreach ($batch as $post_id) {
+			try {
+				$this->index_post((int) $post_id, $force);
+			} catch (Throwable $e) {
+				(new AIPS_Logger())->log(sprintf('Link index scan: post %d failed: %s', (int) $post_id, $e->getMessage()), 'warning');
+			}
+			$done++;
+
+			if ((microtime(true) - $started) > self::TICK_TIME_BUDGET) {
+				break;
+			}
+		}
+
+		$processed = $offset + $done;
+
+		// Re-read the status: the user may have paused or cancelled mid-batch.
+		$latest = $job_store->get($job_id);
+		$status = $latest ? $latest->status : AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING;
+
+		if ($processed >= (int) $job->total) {
+			$job_store->update_status($job_id, AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED, $processed);
+			return;
+		}
+
+		$job_store->update_status($job_id, $status, $processed);
+
+		if ($status === AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+			$this->schedule_tick($job_id, $this->get_batch_delay());
+		}
+	}
+
+	/**
+	 * Pause the running scan after its current batch.
+	 *
+	 * @return bool True when a running scan was paused.
+	 */
+	public function pause_backfill(): bool {
+		return $this->transition(array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING), self::STATUS_PAUSED);
+	}
+
+	/**
+	 * Resume a paused scan from where it stopped.
+	 *
+	 * @return bool True when a paused scan was resumed.
+	 */
+	public function resume_backfill(): bool {
+		if (!$this->transition(array(self::STATUS_PAUSED), AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING)) {
+			return false;
+		}
+
+		$this->schedule_tick((string) $this->config->get_option(self::BACKFILL_JOB_OPTION, ''), 0);
+		return true;
+	}
+
+	/**
+	 * Cancel the running or paused scan. Posts already scanned stay indexed.
+	 *
+	 * @return bool True when a scan was cancelled.
+	 */
+	public function cancel_backfill(): bool {
+		return $this->transition(
+			array(AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, self::STATUS_PAUSED),
+			self::STATUS_CANCELLED
 		);
 	}
 
 	/**
-	 * Progress of the most recent backfill job.
+	 * Re-queue a running scan whose next tick went missing (e.g. cron events
+	 * were flushed). Safe to call on every status poll.
 	 *
-	 * @return array{job_id:string, status:string, processed:int, total:int}|null Null when no backfill has run.
+	 * @return void
+	 */
+	public function ensure_scan_scheduled(): void {
+		$status = $this->get_backfill_status();
+		if (!$status || $status['status'] !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+			return;
+		}
+
+		if (!wp_next_scheduled(self::SCAN_TICK_HOOK, array($status['job_id']))) {
+			$this->schedule_tick($status['job_id'], 0);
+		}
+	}
+
+	/**
+	 * Progress of the most recent scan.
+	 *
+	 * @return array{job_id:string, status:string, processed:int, total:int, mode:string, days:int}|null Null when no scan has run.
 	 */
 	public function get_backfill_status(): ?array {
 		$job_id = (string) $this->config->get_option(self::BACKFILL_JOB_OPTION, '');
@@ -341,22 +491,67 @@ class AIPS_Link_Index_Service {
 			'status'    => (string) $job->status,
 			'processed' => (int) $job->processed,
 			'total'     => (int) $job->total,
+			'mode'      => isset($job->options['mode']) ? (string) $job->options['mode'] : self::MODE_ALL,
+			'days'      => isset($job->options['days']) ? (int) $job->options['days'] : 0,
 		);
 	}
 
 	/**
-	 * Bulk batch strategy for BACKFILL_JOB_TYPE.
+	 * Posts indexed per scan batch (setting, 10 - 500).
 	 *
-	 * Returns the post ID for every handled item (indexed, unchanged or
-	 * removed) so skips never fail the job; only a missing post is an error.
-	 *
-	 * @param mixed $post_id Item from the job (a post ID).
-	 * @return int|WP_Error
+	 * @return int
 	 */
-	public function process_backfill_item($post_id) {
-		$result = $this->index_post((int) $post_id, true);
+	private function get_batch_size(): int {
+		return min(500, max(10, (int) $this->config->get_option('aips_link_index_batch_size', 50)));
+	}
 
-		return is_wp_error($result) ? $result : (int) $post_id;
+	/**
+	 * Seconds to wait between scan batches (setting, 0 - 600).
+	 *
+	 * @return int
+	 */
+	private function get_batch_delay(): int {
+		return min(600, max(0, (int) $this->config->get_option('aips_link_index_batch_delay', 20)));
+	}
+
+	/**
+	 * Schedule the next scan tick.
+	 *
+	 * @param string $job_id Scan job ID.
+	 * @param int    $delay  Seconds from now.
+	 * @return void
+	 */
+	private function schedule_tick(string $job_id, int $delay): void {
+		if ($job_id === '') {
+			return;
+		}
+
+		$args = array($job_id);
+		if (!wp_next_scheduled(self::SCAN_TICK_HOOK, $args)) {
+			wp_schedule_single_event(time() + max(0, $delay), self::SCAN_TICK_HOOK, $args);
+		}
+	}
+
+	/**
+	 * Move the current scan between statuses.
+	 *
+	 * @param string[] $from Allowed current statuses.
+	 * @param string   $to   New status.
+	 * @return bool
+	 */
+	private function transition(array $from, string $to): bool {
+		$status = $this->get_backfill_status();
+		if (!$status || !in_array($status['status'], $from, true)) {
+			return false;
+		}
+
+		$this->get_job_store()->update_status($status['job_id'], $to);
+
+		if ($to !== AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING) {
+			wp_clear_scheduled_hook(self::SCAN_TICK_HOOK, array($status['job_id']));
+		}
+
+		return true;
 	}
 
 	/**
@@ -368,14 +563,5 @@ class AIPS_Link_Index_Service {
 		}
 		return $this->job_store;
 	}
-
-	/**
-	 * @return AIPS_Batch_Queue_Service
-	 */
-	private function get_batch_queue_service(): AIPS_Batch_Queue_Service {
-		if ($this->batch_queue_service === null) {
-			$this->batch_queue_service = new AIPS_Batch_Queue_Service();
-		}
-		return $this->batch_queue_service;
-	}
 }
+

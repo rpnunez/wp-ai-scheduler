@@ -121,78 +121,96 @@ class Test_AIPS_Link_Index_Service extends WP_UnitTestCase {
 
 		$this->assertSame( 'removed', $this->service->index_post( $post, true )['status'] );
 		$this->assertSame( 'indexed', $this->service->index_post( $page, true )['status'] );
-		$this->assertEqualsCanonicalizing( array( $page ), $this->service->get_backfill_post_ids() );
+		$this->assertEqualsCanonicalizing( array( $page ), $this->service->get_scan_post_ids() );
 	}
 
-	public function test_backfill_item_returns_post_id_and_errors_only_for_missing_posts() {
-		$source = self::factory()->post->create( array( 'post_content' => '<p>Text</p>' ) );
-		$draft  = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-
-		$this->assertSame( $source, $this->service->process_backfill_item( $source ) );
-		$this->assertSame( $draft, $this->service->process_backfill_item( (string) $draft ) );
-		$this->assertWPError( $this->service->process_backfill_item( 999999 ) );
+	private function run_ticks( AIPS_Link_Index_Service $service, string $job_id, int $max = 20 ): void {
+		for ( $i = 0; $i < $max; $i++ ) {
+			$status = $service->get_backfill_status();
+			if ( ! $status || $status['status'] !== 'processing' ) {
+				return;
+			}
+			wp_clear_scheduled_hook( AIPS_Link_Index_Service::SCAN_TICK_HOOK, array( $job_id ) );
+			$service->process_scan_tick( $job_id );
+		}
 	}
 
-	public function test_backfill_strategy_is_registered_by_boot_cron() {
+	public function test_scan_modes_select_posts() {
+		$old     = self::factory()->post->create( array( 'post_content' => '<p>old</p>' ) );
+		$missing = self::factory()->post->create( array( 'post_content' => '<p>new</p>' ) );
+		delete_post_meta( $missing, AIPS_Link_Index_Service::HASH_META_KEY );
+
+		global $wpdb;
+		$wpdb->update( $wpdb->posts, array( 'post_modified_gmt' => gmdate( 'Y-m-d H:i:s', time() - 90 * DAY_IN_SECONDS ) ), array( 'ID' => $old ) );
+		clean_post_cache( $old );
+
+		$this->assertContains( $missing, $this->service->get_scan_post_ids( AIPS_Link_Index_Service::MODE_MISSING ) );
+		$this->assertNotContains( $old, $this->service->get_scan_post_ids( AIPS_Link_Index_Service::MODE_MISSING ) );
+		$this->assertNotContains( $old, $this->service->get_scan_post_ids( AIPS_Link_Index_Service::MODE_RECENT, 30 ) );
+		$this->assertContains( $old, $this->service->get_scan_post_ids( AIPS_Link_Index_Service::MODE_RECENT, 120 ) );
+		$this->assertContains( $old, $this->service->get_scan_post_ids( AIPS_Link_Index_Service::MODE_ALL ) );
+	}
+
+	public function test_scan_runs_in_ticks_and_completes() {
+		update_option( 'aips_link_index_batch_size', 10 );
+		$target = self::factory()->post->create();
+		$ids    = self::factory()->post->create_many( 12, array( 'post_content' => $this->content_linking_to( $target ) ) );
+		$this->repo->delete_all();
+
+		$result = $this->service->start_backfill( AIPS_Link_Index_Service::MODE_ALL );
+		$this->assertSame( 13, $result['total'] );
+		$this->assertNotFalse( wp_next_scheduled( AIPS_Link_Index_Service::SCAN_TICK_HOOK, array( $result['job_id'] ) ) );
+
+		wp_clear_scheduled_hook( AIPS_Link_Index_Service::SCAN_TICK_HOOK, array( $result['job_id'] ) );
+		$this->service->process_scan_tick( $result['job_id'] );
+		$this->assertSame( 10, $this->service->get_backfill_status()['processed'] );
+		$this->assertNotFalse( wp_next_scheduled( AIPS_Link_Index_Service::SCAN_TICK_HOOK, array( $result['job_id'] ) ) );
+
+		$this->run_ticks( $this->service, $result['job_id'] );
+		$this->assertSame( 'completed', $this->service->get_backfill_status()['status'] );
+		$this->assertCount( 12, $this->repo->get_source_ids_linking_to( $target ) );
+		delete_option( 'aips_link_index_batch_size' );
+	}
+
+	public function test_pause_resume_and_cancel() {
+		update_option( 'aips_link_index_batch_size', 10 );
+		self::factory()->post->create_many( 25 );
+
+		$job = $this->service->start_backfill( AIPS_Link_Index_Service::MODE_ALL )['job_id'];
+		$this->assertWPError( $this->service->start_backfill( AIPS_Link_Index_Service::MODE_ALL ), 'A second scan cannot start while one runs.' );
+
+		$this->assertTrue( $this->service->pause_backfill() );
+		$this->assertFalse( wp_next_scheduled( AIPS_Link_Index_Service::SCAN_TICK_HOOK, array( $job ) ) );
+		$this->service->process_scan_tick( $job );
+		$this->assertSame( 0, $this->service->get_backfill_status()['processed'], 'A paused scan does no work.' );
+
+		$this->assertTrue( $this->service->resume_backfill() );
+		wp_clear_scheduled_hook( AIPS_Link_Index_Service::SCAN_TICK_HOOK, array( $job ) );
+		$this->service->process_scan_tick( $job );
+		$this->assertSame( 10, $this->service->get_backfill_status()['processed'], 'Resume continues from the saved position.' );
+
+		$this->assertTrue( $this->service->cancel_backfill() );
+		$this->assertSame( 'cancelled', $this->service->get_backfill_status()['status'] );
+		$this->assertFalse( $this->service->resume_backfill() );
+
+		$never_scanned = self::factory()->post->create();
+		delete_post_meta( $never_scanned, AIPS_Link_Index_Service::HASH_META_KEY );
+		$this->assertSame( 1, $this->service->start_backfill( AIPS_Link_Index_Service::MODE_MISSING )['total'], 'A new scan can start after cancelling.' );
+		delete_option( 'aips_link_index_batch_size' );
+	}
+
+	public function test_missing_mode_reports_nothing_to_do() {
+		self::factory()->post->create();
+
+		$this->assertWPError( $this->service->start_backfill( AIPS_Link_Index_Service::MODE_MISSING ) );
+	}
+
+	public function test_scan_tick_hook_is_registered_by_boot_cron() {
 		$plugin = AI_Post_Scheduler::get_instance();
 		$method = ( new ReflectionClass( $plugin ) )->getMethod( 'boot_cron' );
 		$method->setAccessible( true );
 		$method->invoke( $plugin );
 
-		$this->assertTrue( AIPS_Bulk_Batch_Processor::instance()->has_strategy( AIPS_Link_Index_Service::BACKFILL_JOB_TYPE ) );
-	}
-
-	public function test_start_backfill_creates_and_dispatches_job() {
-		$ids = self::factory()->post->create_many( 3 );
-
-		$job_store = $this->getMockBuilder( AIPS_Bulk_Batch_Job_Store::class )
-			->onlyMethods( array( 'create', 'get', 'mark_failed' ) )
-			->getMock();
-		$job_store->expects( $this->once() )
-			->method( 'create' )
-			->with( AIPS_Link_Index_Service::BACKFILL_JOB_TYPE, $this->callback( function ( $items ) use ( $ids ) {
-				return count( array_intersect( $ids, $items ) ) === 3;
-			} ) )
-			->willReturn( 'job-123' );
-		$job_store->method( 'get' )->willReturn( (object) array( 'status' => 'processing', 'processed' => 1, 'total' => 3 ) );
-
-		$dispatcher = $this->getMockBuilder( AIPS_Batch_Queue_Service::class )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'dispatch_generic' ) )
-			->getMock();
-		$dispatcher->expects( $this->once() )
-			->method( 'dispatch_generic' )
-			->with( AIPS_Bulk_Batch_Processor::HOOK, $this->greaterThanOrEqual( 3 ), $this->anything(), array( 'job-123' ) )
-			->willReturn( array( 'batches' => 1 ) );
-
-		$service = new AIPS_Link_Index_Service( $this->repo, null, null, null, $job_store, $dispatcher );
-		$result  = $service->start_backfill();
-
-		$this->assertSame( 'job-123', $result['job_id'] );
-		$this->assertSame(
-			array( 'job_id' => 'job-123', 'status' => 'processing', 'processed' => 1, 'total' => 3 ),
-			$service->get_backfill_status()
-		);
-	}
-
-	public function test_start_backfill_marks_job_failed_when_dispatch_fails() {
-		self::factory()->post->create();
-
-		$job_store = $this->getMockBuilder( AIPS_Bulk_Batch_Job_Store::class )
-			->onlyMethods( array( 'create', 'mark_failed' ) )
-			->getMock();
-		$job_store->method( 'create' )->willReturn( 'job-9' );
-		$job_store->expects( $this->once() )->method( 'mark_failed' )->with( 'job-9' );
-
-		$dispatcher = $this->getMockBuilder( AIPS_Batch_Queue_Service::class )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'dispatch_generic' ) )
-			->getMock();
-		$dispatcher->method( 'dispatch_generic' )->willReturn( new WP_Error( 'boom', 'failed' ) );
-
-		$service = new AIPS_Link_Index_Service( $this->repo, null, null, null, $job_store, $dispatcher );
-
-		$this->assertWPError( $service->start_backfill() );
-		$this->assertNull( $service->get_backfill_status() );
+		$this->assertNotFalse( has_action( AIPS_Link_Index_Service::SCAN_TICK_HOOK ) );
 	}
 }
