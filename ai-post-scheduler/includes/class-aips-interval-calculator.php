@@ -283,9 +283,11 @@ class AIPS_Interval_Calculator {
             return (int) AIPS_DateTime::fromTimestamp($base_time)->modify('+1 day')->timestamp();
         }
         
-        // Calculate next occurrence of the day while preserving time
+        // Calculate next occurrence of the day while preserving time. A bare
+        // "next Monday" resets the time to midnight, so a weekday schedule
+        // would lose its time of day after its first run.
         $dt = AIPS_DateTime::fromTimestamp($base_time);
-        $next_dt = $dt->modify("next $day");
+        $next_dt = $dt->modify("next $day " . $dt->format('H:i:s'));
         
         return (int) $next_dt->timestamp();
     }

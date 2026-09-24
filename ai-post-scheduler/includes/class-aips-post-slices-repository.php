@@ -131,12 +131,15 @@ class AIPS_Post_Slices_Repository {
 			$insert_data,
 			array('%s', '%s', '%d', '%d', '%d', '%d')
 		);
+		// Read insert_id before cache invalidation: invalidation can write
+		// to other tables (cache, cache index), which overwrites it.
+		$insert_id = $result ? (int) $this->wpdb->insert_id : 0;
 
 		if ($result) {
 			$this->invalidate_cache_domain( 'post_slice', array(), 'post_slice_created' );
 		}
 
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 
 	/**

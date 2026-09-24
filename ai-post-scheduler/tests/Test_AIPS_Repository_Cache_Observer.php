@@ -33,7 +33,13 @@ class AIPS_Test_Repository_Cache_Observer_Failing_Logger implements AIPS_Logger_
 
 class Test_AIPS_Repository_Cache_Observer extends WP_UnitTestCase {
 
+	public function setUp(): void {
+		parent::setUp();
+		add_filter('aips_repository_cache_log_enabled', '__return_true');
+	}
+
 	public function tearDown(): void {
+		remove_all_filters('aips_repository_cache_log_enabled');
 		if (class_exists('AIPS_Correlation_ID')) {
 			AIPS_Correlation_ID::reset();
 		}

@@ -321,6 +321,8 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 
 	public $posts = 'wp_posts';
 
+	public $options = 'wp_options';
+
 	public $results_to_return = array();
 
 	public $rows_to_return = array();
@@ -363,6 +365,12 @@ class AIPS_Test_Campaigns_Repository_WPDB_Stub {
 	}
 
 	public function get_results($query, $output = OBJECT) {
+		// WP core's option loading (wp_load_alloptions) also runs through
+		// $wpdb->get_results(); it must not be answered with campaign fixture rows.
+		if (false !== strpos($query, $this->options)) {
+			return array();
+		}
+
 		$this->last_get_results_query = preg_replace('/\s+/', ' ', trim($query));
 
 		return $this->results_to_return;
