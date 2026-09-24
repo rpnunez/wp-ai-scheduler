@@ -101,39 +101,17 @@ class AIPS_Log_Cleaner {
 	/**
 	 * Prune any database log rows older than cutoff timestamp in chunked batches.
 	 *
+	 * AIPS_Logger only writes to files under uploads/aips-logs/; there is no
+	 * `aips_logs` database table in AIPS_DB_Manager::get_schema(), so this is
+	 * currently always a no-op. Kept as an explicit extension point (and to
+	 * preserve the db_rows_deleted/deleted_db_rows keys in prune_logs()'s
+	 * return shape) for if/when a DB-backed log store is introduced, at which
+	 * point the deletion belongs in that table's repository class, not here.
+	 *
 	 * @param int $cutoff
 	 * @return int Number of rows deleted.
 	 */
 	private static function prune_db_log_records( int $cutoff ): int {
-		global $wpdb;
-
-		$total_deleted = 0;
-		$table_name    = $wpdb->prefix . 'aips_logs';
-
-		// Check if wp_aips_logs exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) );
-		if ( $table_exists === $table_name ) {
-			while ( true ) {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-				$deleted = $wpdb->query(
-					$wpdb->prepare(
-						"DELETE FROM `{$table_name}` WHERE `created_at` < %d LIMIT 1000",
-						$cutoff
-					)
-				);
-
-				if ( ! $deleted || $deleted <= 0 ) {
-					break;
-				}
-
-				$total_deleted += (int) $deleted;
-				if ( $deleted < 1000 ) {
-					break;
-				}
-			}
-		}
-
-		return $total_deleted;
+		return 0;
 	}
 }

@@ -116,7 +116,7 @@ class Test_AIPS_Advanced_Performance extends WP_UnitTestCase {
 
 		// If Action Scheduler is not installed, it falls back to wp_next_scheduled.
 		if ( ! function_exists( 'as_schedule_single_action' ) ) {
-			$this->assertNotFalse( wp_next_scheduled( $hook, array( $args ) ) );
+			$this->assertNotFalse( wp_next_scheduled( $hook, $args ) );
 			wp_unschedule_hook( $hook );
 		}
 	}
@@ -170,7 +170,8 @@ class Test_AIPS_Advanced_Performance extends WP_UnitTestCase {
 		AIPS_Config::get_instance()->flush_option_cache();
 
 		$cache = AIPS_Cache_Factory::instance();
-		$cache->flush_group( 'prompt_cache' );
+		$hash  = md5( serialize( AIPS_Site_Context::get() ) );
+		$cache->delete( 'site_context_' . $hash, 'prompt_cache' );
 
 		$builder = new AIPS_Prompt_Builder();
 		$context = $builder->build_site_context_block();
@@ -178,7 +179,6 @@ class Test_AIPS_Advanced_Performance extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Performance AI Testing', $context );
 
 		// Verify cached copy exists.
-		$hash   = md5( serialize( AIPS_Site_Context::get() ) );
 		$cached = $cache->get( 'site_context_' . $hash, 'prompt_cache' );
 		$this->assertSame( $context, $cached );
 	}

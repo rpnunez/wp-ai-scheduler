@@ -70,7 +70,7 @@ class AIPS_System_Status_Controller {
 	 * @return void
 	 */
 	private function verify_request($action) {
-		if ( ! check_ajax_referer($action, 'nonce', false) && ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+		if ( ! check_ajax_referer($action, 'nonce', false) ) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 		if (!current_user_can('manage_options')) {
@@ -265,12 +265,7 @@ class AIPS_System_Status_Controller {
 	public function ajax_prune_logs_now() {
 		$this->verify_request('aips_prune_logs_now');
 
-		$retention_days = null;
-		if ( isset( $_POST['retention_days'] ) ) {
-			$retention_days = absint( $_POST['retention_days'] );
-		} elseif ( isset( $_POST['days'] ) ) {
-			$retention_days = absint( $_POST['days'] );
-		}
+		$retention_days = isset( $_POST['retention_days'] ) ? absint( $_POST['retention_days'] ) : null;
 
 		$result = AIPS_Log_Cleaner::prune_logs($retention_days);
 

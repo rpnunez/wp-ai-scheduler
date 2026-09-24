@@ -553,11 +553,11 @@
 					action: 'aips_test_cache_connection',
 					nonce: (window.aipsAjax && aipsAjax.nonce) ? aipsAjax.nonce : '',
 					driver: driver,
-					host: $('#aips_cache_redis_host').val() || '',
-					port: $('#aips_cache_redis_port').val() || '',
-					password: $('#aips_cache_redis_password').val() || '',
-					database: $('#aips_cache_redis_database').val() || '0',
-					servers: $('#aips_cache_memcached_servers').val() || ''
+					redis_host: $('#aips_cache_redis_host').val() || '',
+					redis_port: $('#aips_cache_redis_port').val() || '',
+					redis_password: $('#aips_cache_redis_password').val() || '',
+					redis_database: $('#aips_cache_redis_database').val() || '0',
+					memcached_servers: $('#aips_cache_memcached_servers').val() || ''
 				}
 			}).done(function(res) {
 				if (res && res.success && res.data) {
@@ -593,8 +593,7 @@
 				dataType: 'json',
 				data: {
 					action: 'aips_prune_logs_now',
-					nonce: (window.aipsAjax && aipsAjax.nonce) ? aipsAjax.nonce : '',
-					days: days,
+					nonce: (window.aipsAjax && aipsAjax.noncePruneLogsNow) ? aipsAjax.noncePruneLogsNow : '',
 					retention_days: days
 				}
 			}).done(function(res) {

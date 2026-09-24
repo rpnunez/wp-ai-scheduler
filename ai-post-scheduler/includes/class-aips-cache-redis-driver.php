@@ -189,7 +189,11 @@ class AIPS_Cache_Redis_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monitorab
 			}
 
 			if ( $this->database > 0 ) {
-				$client->select( $this->database );
+				$select_ok = $client->select( $this->database );
+				if ( ! $select_ok ) {
+					$this->connected = false;
+					return false;
+				}
 			}
 
 			$this->redis     = $client;

@@ -1428,7 +1428,7 @@ class AIPS_Settings_UI {
                 <?php esc_html_e('Prune Logs Now', 'ai-post-scheduler'); ?>
             </button>
             <span id="aips_prune_logs_status" style="margin-left: 8px; vertical-align: middle;"></span>
-            <p class="description"><?php esc_html_e('Automatically cleans up system log entries (wp_aips_logs table and uploads/aips-logs/*.log files) older than the retention threshold. Generation history is never deleted.', 'ai-post-scheduler'); ?></p>
+            <p class="description"><?php esc_html_e('Automatically cleans up system log files (uploads/aips-logs/*.log) older than the retention threshold. Generation history is never deleted.', 'ai-post-scheduler'); ?></p>
         </div>
         <?php
     }

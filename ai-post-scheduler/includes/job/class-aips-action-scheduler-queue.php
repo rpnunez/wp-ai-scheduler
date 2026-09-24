@@ -53,7 +53,7 @@ class AIPS_Action_Scheduler_Queue {
 		}
 
 		// Fallback to WP-Cron when Action Scheduler is not installed.
-		$result = wp_schedule_single_event( $timestamp, $hook, array( $args ) );
+		$result = wp_schedule_single_event( $timestamp, $hook, $args );
 		return false !== $result ? $timestamp : false;
 	}
 
@@ -74,7 +74,7 @@ class AIPS_Action_Scheduler_Queue {
 			}
 		}
 
-		return (bool) wp_next_scheduled( $hook, array( $args ) ) || (bool) wp_next_scheduled( $hook, $args );
+		return (bool) wp_next_scheduled( $hook, $args );
 	}
 
 	/**

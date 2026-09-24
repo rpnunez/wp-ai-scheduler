@@ -44,6 +44,22 @@ class AIPS_Cache_Memcached_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monit
 	protected $prefix = 'aips:';
 
 	/**
+	 * Current flush generation counter.
+	 *
+	 * Memcached has no server-side key-pattern deletion, so flush() cannot
+	 * scan-and-delete only this plugin's keys the way the Redis driver does.
+	 * Instead, mirror AIPS_Cache_Wp_Object_Cache_Driver's approach: a
+	 * generation suffix is baked into every formatted key, and flush() bumps
+	 * the generation instead of calling Memcached::flush() (which would wipe
+	 * every key on every connected server, including unrelated plugins' and
+	 * WordPress core's cached data on a shared pool).
+	 *
+	 * @var int
+	 */
+	protected $generation = 0;
+
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array $config Optional connection configuration parameters.
@@ -153,6 +169,10 @@ class AIPS_Cache_Memcached_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monit
 
 			$this->memcached = $client;
 			$this->connected = true;
+
+			$stored           = $client->get( $this->generation_meta_key() );
+			$this->generation = ( \Memcached::RES_SUCCESS === $client->getResultCode() && is_int( $stored ) ) ? $stored : 0;
+
 			return true;
 		} catch ( \Throwable $e ) {
 			$this->connected = false;
@@ -169,7 +189,20 @@ class AIPS_Cache_Memcached_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monit
 	 * @return string
 	 */
 	protected function format_key( string $key, string $group ): string {
-		return $this->prefix . $group . ':' . $key;
+		$group_key = $this->generation > 0 ? $group . '_g' . $this->generation : $group;
+		return $this->prefix . $group_key . ':' . $key;
+	}
+
+	/**
+	 * Memcached key used to persist the flush generation counter.
+	 *
+	 * Deliberately outside any group's key namespace so it is never affected
+	 * by a generation bump.
+	 *
+	 * @return string
+	 */
+	protected function generation_meta_key(): string {
+		return $this->prefix . '__flush_meta__';
 	}
 
 	/**
@@ -379,7 +412,20 @@ class AIPS_Cache_Memcached_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monit
 			}
 
 			$res = $this->memcached->deleteMulti( $full_keys );
-			return ! empty( $res );
+			if ( ! is_array( $res ) ) {
+				return false;
+			}
+
+			// deleteMulti() returns a per-key result map (true, or a Memcached::RES_*
+			// code on failure). A key that was already gone (RES_NOTFOUND) still
+			// counts as deleted; anything else is a real failure.
+			foreach ( $res as $result ) {
+				if ( true !== $result && \Memcached::RES_NOTFOUND !== $result ) {
+					return false;
+				}
+			}
+
+			return true;
 		} catch ( \Throwable $e ) {
 			return false;
 		}
@@ -394,7 +440,8 @@ class AIPS_Cache_Memcached_Driver implements AIPS_Cache_Driver, AIPS_Cache_Monit
 		}
 
 		try {
-			return (bool) $this->memcached->flush();
+			$this->generation++;
+			return (bool) $this->memcached->set( $this->generation_meta_key(), $this->generation, 0 );
 		} catch ( \Throwable $e ) {
 			return false;
 		}

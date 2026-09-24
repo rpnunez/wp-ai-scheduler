@@ -86,7 +86,16 @@ class AIPS_Settings_AJAX {
 		}
 
 		AIPS_Config::get_instance()->flush_option_cache();
-		AIPS_Cache_Factory::instance()->flush_group('prompt_cache');
+
+		if (class_exists('AIPS_Cache_Monitor_Service')) {
+			$container = AIPS_Container::get_instance();
+			$monitor_service = $container->has(AIPS_Cache_Monitor_Service::class)
+				? $container->make(AIPS_Cache_Monitor_Service::class)
+				: null;
+			if ($monitor_service) {
+				$monitor_service->flush_group('prompt_cache');
+			}
+		}
 
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
