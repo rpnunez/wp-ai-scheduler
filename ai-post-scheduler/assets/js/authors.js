@@ -241,10 +241,10 @@
 			$('#author_id').val('');
 
 			// Reset auto-approval fields
-			$('#topic_auto_approval_mode').val('manual');
-			$('#topic_auto_approval_min_score').val('70');
+			$('#topic_auto_approval_mode').val('inherit');
+			$('#topic_auto_approval_min_score').val('65');
 			$('#topic_auto_approval_max_similarity').val('0.80');
-			$('#topic_auto_approval_fallback').val('pending');
+			$('#topic_auto_approval_fallback').val('smart_split');
 			this.toggleAutoApprovalFields();
 
 			// Show form and hide loader
@@ -272,10 +272,10 @@
 		 * Show or hide the Topic Auto-Approval fields based on the selected mode.
 		 */
 		toggleAutoApprovalFields: function () {
-			const mode = $('#topic_auto_approval_mode').val() || 'manual';
+			const mode = $('#topic_auto_approval_mode').val() || 'inherit';
 			$('#aips-auto-approval-score-group').toggle(mode === 'score');
 			$('#aips-auto-approval-similarity-group').toggle(mode === 'similarity');
-			$('#aips-auto-approval-fallback-group').toggle(mode !== 'manual');
+			$('#aips-auto-approval-fallback-group').toggle(mode !== 'manual' && mode !== 'inherit');
 		},
 
 		/**
@@ -929,14 +929,17 @@
 
 					response.data.suggestions.forEach((item) => {
 						const topicId = parseInt(item.topic_id, 10);
-						const rawScore = typeof item.similarity_score === 'number' ? item.similarity_score : parseFloat(item.similarity_score);
-						const score = Number.isFinite(rawScore) ? Math.round(rawScore * 100) : 0;
+						const score = typeof item.percentage === 'number'
+							? item.percentage
+							: (typeof item.similarity_pct === 'number'
+								? item.similarity_pct
+								: (Number.isFinite(parseFloat(item.similarity_score)) ? Math.round(parseFloat(item.similarity_score) * 100) : 0));
 
 						if (!topicId || score <= 0) {
 							return;
 						}
 
-						const badgeClass = this.getSimilarityBadgeClass(score);
+						const badgeClass = item.badge_class || this.getSimilarityBadgeClass(score);
 						const label = AIPS.Utilities.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
 						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
 

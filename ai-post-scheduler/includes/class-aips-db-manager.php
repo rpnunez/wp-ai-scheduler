@@ -515,7 +515,7 @@ class AIPS_DB_Manager {
             object_post_type varchar(50) DEFAULT '',
             object_id bigint(20) NOT NULL,
             content_hash varchar(64) DEFAULT '',
-            embedding longtext NOT NULL,
+            embedding mediumblob NOT NULL,
             dimensions int(11) DEFAULT 0,
             model varchar(100) DEFAULT '',
             indexed_at bigint(20) unsigned NOT NULL DEFAULT 0,

@@ -2,7 +2,6 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Description: Schedule AI-generated posts using advanced features & scheduling options.
  * Version: 3.7.3
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
@@ -499,7 +498,6 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Config::class)
             );
         });
-
         // Register AIPS_Post_Insights_Repository
         $container->singleton(AIPS_Post_Insights_Repository::class, function( $container ) {
             return new AIPS_Post_Insights_Repository();
@@ -639,6 +637,11 @@ final class AI_Post_Scheduler {
             }
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->on_post_save($post_id, $post);
         }, 10, 2);
+
+        // Process pending background indexing queue (single event / cron worker)
+        add_action('aips_process_pending_indexer_queue', function () {
+            AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
+        });
 
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(

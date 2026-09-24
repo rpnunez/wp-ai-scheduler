@@ -93,6 +93,19 @@ if (!defined('ABSPATH')) {
                 <div class="aips-refresh-system-results" style="display:none;"></div>
 
                 <div class="aips-status-op-result" style="display:none;"></div>
+
+                <?php $cache_subsystems = AIPS_Cache_Policy::get_subsystems(); ?>
+                <div class="aips-cache-rebuild-controls">
+                    <label for="aips-cache-subsystem"><strong><?php esc_html_e('Rebuild caches:', 'ai-post-scheduler'); ?></strong></label>
+                    <select id="aips-cache-subsystem">
+                        <option value="all"><?php esc_html_e('All subsystems', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($cache_subsystems as $key => $info) : ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($info['label']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-rebuild-cache-btn"><?php esc_html_e('Rebuild Caches', 'ai-post-scheduler'); ?></button>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-status-op" data-op="aips_status_clear_embeddings_cache"><?php esc_html_e('Clear Embeddings Cache', 'ai-post-scheduler'); ?></button>
+                </div>
             </div>
 
             <!-- Diagnostics Grid -->

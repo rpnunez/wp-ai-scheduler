@@ -208,6 +208,7 @@
 				'aips_status_clear_partial_generations': l10n.nonceClearPartialGenerations || '',
 				'aips_status_cleanup_stale_jobs_cache': l10n.nonceCleanupStaleJobsCache || '',
 				'aips_status_cache_maintenance': l10n.nonceCacheMaintenance || '',
+				'aips_status_clear_embeddings_cache': l10n.nonceClearEmbeddingsCache || '',
 				'aips_status_cleanup_notifications': l10n.nonceCleanupNotifications || '',
 				'aips_status_reset_resilience': l10n.nonceResetResilience || '',
 				'aips_status_repair_datetime': l10n.nonceRepairDatetime || ''
