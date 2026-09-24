@@ -617,22 +617,16 @@ class AIPS_Schedule_Processor {
         // not delay the others' timestamps.
         foreach ($due_schedules as $schedule) {
             $schedule_id = (int) $schedule->schedule_id;
+            $offset     += $stagger_seconds;
+            $fire_at     = AIPS_DateTime::now()->addSeconds($offset)->timestamp();
 
-            if (wp_next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
-                continue;
+            $queued = $this->queue_single_due_schedule($schedule_id, $fire_at);
+            if ($queued) {
+                $this->logger->log(
+                    sprintf('Queued due schedule %d for execution in %d seconds.', $schedule_id, $offset),
+                    'info'
+                );
             }
-
-            $offset += $stagger_seconds;
-            wp_schedule_single_event(
-                AIPS_DateTime::now()->addSeconds($offset)->timestamp(),
-                self::QUEUED_DUE_SCHEDULE_HOOK,
-                array($schedule_id)
-            );
-
-            $this->logger->log(
-                sprintf('Queued due schedule %d as a single cron event in %d seconds.', $schedule_id, $offset),
-                'info'
-            );
         }
 
         $this->execute_schedule_with_lock($first_schedule);
@@ -1045,10 +1039,7 @@ class AIPS_Schedule_Processor {
             $run_state['resume_at']       = $resume_at;
             $this->repository->update_run_state($schedule_id, $run_state);
             $this->repository->update($schedule_id, array('next_run' => $resume_at));
-
-            if (!wp_next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
-                wp_schedule_single_event($resume_at, self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id));
-            }
+            $this->queue_single_due_schedule($schedule_id, $resume_at);
         } else {
             $resume_at = $claimed;
             $this->repository->update_run_state($schedule_id, $run_state);
@@ -1089,6 +1080,32 @@ class AIPS_Schedule_Processor {
                 )
             );
         }
+    }
+
+    /**
+     * Queue a single due schedule using either Action Scheduler or standard WP-Cron.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @param int $fire_at     Unix timestamp when the job should run.
+     * @return bool True if queued, false if already scheduled or failed.
+     */
+    private function queue_single_due_schedule( int $schedule_id, int $fire_at ): bool {
+        $queue_driver = (string) AIPS_Config::get_instance()->get_option( 'aips_queue_driver', 'auto' );
+        $use_as       = ( 'action_scheduler' === $queue_driver || ( 'auto' === $queue_driver && AIPS_Action_Scheduler_Queue::is_available() ) );
+
+        if ( $use_as && AIPS_Action_Scheduler_Queue::is_available() ) {
+            return (bool) AIPS_Action_Scheduler_Queue::schedule_single_action(
+                $fire_at,
+                self::QUEUED_DUE_SCHEDULE_HOOK,
+                array( $schedule_id )
+            );
+        }
+
+        if ( ! wp_next_scheduled( self::QUEUED_DUE_SCHEDULE_HOOK, array( $schedule_id ) ) ) {
+            return (bool) wp_schedule_single_event( $fire_at, self::QUEUED_DUE_SCHEDULE_HOOK, array( $schedule_id ) );
+        }
+
+        return false;
     }
 
     /**

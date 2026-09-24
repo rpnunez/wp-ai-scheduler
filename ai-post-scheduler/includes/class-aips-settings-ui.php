@@ -1284,6 +1284,9 @@ class AIPS_Settings_UI {
             'array'           => __('Array (in-memory, request-scoped) (default)', 'ai-post-scheduler'),
             'wp_object_cache' => __('WP Object Cache (uses wp_cache_* functions)', 'ai-post-scheduler'),
             'db'              => __('Database (persistent, uses plugin DB table)', 'ai-post-scheduler'),
+            'redis'           => sprintf(__('Redis (%s)', 'ai-post-scheduler'), class_exists('Redis') ? __('PHP ext loaded', 'ai-post-scheduler') : __('PHP ext missing', 'ai-post-scheduler')),
+            'relay'           => sprintf(__('Relay (Redis with in-memory caching) (%s)', 'ai-post-scheduler'), class_exists('Relay\Relay') ? __('PHP ext loaded', 'ai-post-scheduler') : __('PHP ext missing', 'ai-post-scheduler')),
+            'memcached'       => sprintf(__('Memcached (%s)', 'ai-post-scheduler'), class_exists('Memcached') ? __('PHP ext loaded', 'ai-post-scheduler') : __('PHP ext missing', 'ai-post-scheduler')),
         );
         ?>
         <div class="aips-cache-system-fields">
@@ -1292,7 +1295,140 @@ class AIPS_Settings_UI {
                     <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
                 <?php endforeach; ?>
             </select>
-            <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. WP Object Cache is recommended when your site has a persistent object cache backend. Database provides persistent plugin-managed storage.', 'ai-post-scheduler'); ?></p>
+            <p class="description"><?php esc_html_e('Select which cache backend to use. Array is the safe default and requires no configuration. WP Object Cache is recommended when your site has a persistent object cache backend. Database provides persistent plugin-managed storage. Redis, Relay, and Memcached provide ultra-fast direct cache drivers with atomic tags and pipelining.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Redis and Relay configuration fields.
+     *
+     * @return void
+     */
+    public function cache_redis_fields_callback() {
+        $config   = AIPS_Config::get_instance();
+        $host     = $config->get_option('aips_cache_redis_host', '127.0.0.1');
+        $port     = $config->get_option('aips_cache_redis_port', 6379);
+        $password = $config->get_option('aips_cache_redis_password', '');
+        $database = $config->get_option('aips_cache_redis_database', 0);
+        ?>
+        <div class="aips-cache-system-fields aips-cache-redis-fields" style="display: none;">
+            <p>
+                <label for="aips_cache_redis_host"><strong><?php esc_html_e('Host:', 'ai-post-scheduler'); ?></strong></label><br>
+                <input type="text" name="aips_cache_redis_host" id="aips_cache_redis_host" value="<?php echo esc_attr($host); ?>" class="regular-text" placeholder="127.0.0.1">
+            </p>
+            <p>
+                <label for="aips_cache_redis_port"><strong><?php esc_html_e('Port:', 'ai-post-scheduler'); ?></strong></label><br>
+                <input type="number" name="aips_cache_redis_port" id="aips_cache_redis_port" value="<?php echo esc_attr($port); ?>" min="1" max="65535" class="small-text">
+            </p>
+            <p>
+                <label for="aips_cache_redis_password"><strong><?php esc_html_e('Password (optional):', 'ai-post-scheduler'); ?></strong></label><br>
+                <input type="password" name="aips_cache_redis_password" id="aips_cache_redis_password" value="<?php echo esc_attr($password); ?>" class="regular-text" autocomplete="new-password">
+            </p>
+            <p>
+                <label for="aips_cache_redis_database"><strong><?php esc_html_e('Database Index:', 'ai-post-scheduler'); ?></strong></label><br>
+                <input type="number" name="aips_cache_redis_database" id="aips_cache_redis_database" value="<?php echo esc_attr($database); ?>" min="0" max="15" class="small-text">
+            </p>
+            <p class="description"><?php esc_html_e('Connection parameters for Redis or Relay. Constants (AIPS_REDIS_HOST, AIPS_REDIS_PORT, AIPS_REDIS_PASSWORD, AIPS_REDIS_DATABASE) in wp-config.php override these settings.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Memcached server endpoints field.
+     *
+     * @return void
+     */
+    public function cache_memcached_fields_callback() {
+        $config  = AIPS_Config::get_instance();
+        $servers = $config->get_option('aips_cache_memcached_servers', '127.0.0.1:11211');
+        ?>
+        <div class="aips-cache-system-fields aips-cache-memcached-fields" style="display: none;">
+            <p>
+                <label for="aips_cache_memcached_servers"><strong><?php esc_html_e('Servers (one per line or comma-separated, e.g. 127.0.0.1:11211 or host:port:weight):', 'ai-post-scheduler'); ?></strong></label><br>
+                <textarea name="aips_cache_memcached_servers" id="aips_cache_memcached_servers" rows="3" class="large-text code"><?php echo esc_textarea($servers); ?></textarea>
+            </p>
+            <p class="description"><?php esc_html_e('List of Memcached daemon endpoints. Constant AIPS_MEMCACHED_SERVERS in wp-config.php overrides this setting.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Test Cache Connection button.
+     *
+     * @return void
+     */
+    public function cache_test_connection_field_callback() {
+        ?>
+        <div class="aips-cache-system-fields aips-cache-test-connection-wrapper">
+            <button type="button" id="aips_test_cache_connection" class="button button-secondary">
+                <span class="dashicons dashicons-networking" style="vertical-align: middle; margin-right: 4px;"></span>
+                <?php esc_html_e('Test Cache Connection', 'ai-post-scheduler'); ?>
+            </button>
+            <span id="aips_cache_connection_status" style="margin-left: 10px; vertical-align: middle; font-weight: 600;"></span>
+            <p class="description"><?php esc_html_e('Attempts a live ping, write, read, and delete on the selected cache driver to verify latency and permissions.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Queue Execution Driver selector.
+     *
+     * @return void
+     */
+    public function queue_driver_field_callback() {
+        $value        = AIPS_Config::get_instance()->get_option('aips_queue_driver', 'auto');
+        $as_installed = function_exists('as_schedule_single_action');
+        $options      = array(
+            'auto'             => sprintf(__('Auto-detect (Prefers Action Scheduler if available) [%s]', 'ai-post-scheduler'), $as_installed ? __('Action Scheduler detected', 'ai-post-scheduler') : __('WP-Cron fallback', 'ai-post-scheduler')),
+            'action_scheduler' => sprintf(__('Action Scheduler (Async background queue) [%s]', 'ai-post-scheduler'), $as_installed ? __('Available', 'ai-post-scheduler') : __('Not installed', 'ai-post-scheduler')),
+            'wp_cron'          => __('Standard WP-Cron', 'ai-post-scheduler'),
+        );
+        ?>
+        <div class="aips-queue-driver-field">
+            <select name="aips_queue_driver" id="aips_queue_driver">
+                <?php foreach ($options as $key => $label) : ?>
+                    <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <p class="description"><?php esc_html_e('Action Scheduler provides superior reliability, concurrency control, and auditability for generation batches without blocking HTTP requests.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Prompt Caching toggle.
+     *
+     * @return void
+     */
+    public function enable_prompt_caching_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_prompt_caching', true);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_enable_prompt_caching" value="1" <?php checked( (bool) $value ); ?>>
+            <?php esc_html_e('Cache static prompt prefixes and site guidelines', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Places system prompts and static site context first to maximize server-side prompt cache hits with OpenAI/Anthropic and caches prompt sections locally across batch runs.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the System Log Retention field.
+     *
+     * @return void
+     */
+    public function log_retention_days_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_log_retention_days', 30);
+        ?>
+        <div class="aips-log-retention-field">
+            <input type="number" name="aips_log_retention_days" id="aips_log_retention_days" value="<?php echo esc_attr($value); ?>" min="1" max="365" class="small-text">
+            <span><?php esc_html_e('Days', 'ai-post-scheduler'); ?></span>
+            <button type="button" id="aips_prune_logs_btn" class="button button-secondary" style="margin-left: 12px;">
+                <span class="dashicons dashicons-trash" style="vertical-align: middle;"></span>
+                <?php esc_html_e('Prune Logs Now', 'ai-post-scheduler'); ?>
+            </button>
+            <span id="aips_prune_logs_status" style="margin-left: 8px; vertical-align: middle;"></span>
+            <p class="description"><?php esc_html_e('Automatically cleans up system log files (uploads/aips-logs/*.log) older than the retention threshold. Generation history is never deleted.', 'ai-post-scheduler'); ?></p>
         </div>
         <?php
     }
@@ -1334,8 +1470,8 @@ class AIPS_Settings_UI {
      * @return string Sanitized driver name, or 'array' as safe fallback.
      */
     public function sanitize_cache_driver( $value ) {
-        $allowed = array('array', 'db', 'wp_object_cache');
-        $legacy  = array('session', 'redis');
+        $allowed = array('array', 'db', 'wp_object_cache', 'redis', 'relay', 'memcached');
+        $legacy  = array('session');
         $value   = sanitize_text_field( (string) $value );
 
         if (in_array($value, $legacy, true)) {
@@ -1343,6 +1479,18 @@ class AIPS_Settings_UI {
         }
 
         return in_array($value, $allowed, true) ? $value : 'array';
+    }
+
+    /**
+     * Sanitize and validate the selected queue driver value.
+     *
+     * @param mixed $value Raw input value.
+     * @return string Sanitized queue driver name ('auto', 'action_scheduler', or 'wp_cron').
+     */
+    public function sanitize_queue_driver( $value ) {
+        $allowed = array('auto', 'action_scheduler', 'wp_cron');
+        $value   = sanitize_key( (string) $value );
+        return in_array($value, $allowed, true) ? $value : 'auto';
     }
 
     /**

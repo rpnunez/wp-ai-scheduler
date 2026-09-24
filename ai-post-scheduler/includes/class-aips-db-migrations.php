@@ -1436,4 +1436,3 @@ class AIPS_DB_Migrations {
 		);
 	}
 }
-

@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'AIPS_Action_Scheduler_Queue' => $baseDir . '/includes/job/class-aips-action-scheduler-queue.php',
     'AIPS_AI_Assistance_Controller' => $baseDir . '/includes/class-aips-ai-assistance-controller.php',
     'AIPS_AI_Assistance_Repository' => $baseDir . '/includes/class-aips-ai-assistance-repository.php',
     'AIPS_AI_Assistance_Service' => $baseDir . '/includes/class-aips-ai-assistance-service.php',
@@ -61,11 +62,14 @@ return array(
     'AIPS_Cache_Factory' => $baseDir . '/includes/class-aips-cache-factory.php',
     'AIPS_Cache_Index' => $baseDir . '/includes/class-aips-cache-index.php',
     'AIPS_Cache_Invalidation_Bus' => $baseDir . '/includes/class-aips-cache-invalidation-bus.php',
+    'AIPS_Cache_Memcached_Driver' => $baseDir . '/includes/class-aips-cache-memcached-driver.php',
     'AIPS_Cache_Monitor_Controller' => $baseDir . '/includes/class-aips-cache-monitor-controller.php',
     'AIPS_Cache_Monitor_Repository' => $baseDir . '/includes/class-aips-cache-monitor-repository.php',
     'AIPS_Cache_Monitor_Service' => $baseDir . '/includes/class-aips-cache-monitor-service.php',
     'AIPS_Cache_Monitorable_Driver' => $baseDir . '/includes/interface-aips-cache-monitorable-driver.php',
     'AIPS_Cache_Policy' => $baseDir . '/includes/class-aips-cache-policy.php',
+    'AIPS_Cache_Redis_Driver' => $baseDir . '/includes/class-aips-cache-redis-driver.php',
+    'AIPS_Cache_Relay_Driver' => $baseDir . '/includes/class-aips-cache-relay-driver.php',
     'AIPS_Cache_Wp_Object_Cache_Driver' => $baseDir . '/includes/class-aips-cache-wp-object-cache-driver.php',
     'AIPS_Cacheable_Repository' => $baseDir . '/includes/trait-aips-cacheable-repository.php',
     'AIPS_Calendar_Controller' => $baseDir . '/includes/class-aips-calendar-controller.php',
@@ -151,6 +155,7 @@ return array(
     'AIPS_Job_Scheduler' => $baseDir . '/includes/job/class-aips-job-scheduler.php',
     'AIPS_Logger' => $baseDir . '/includes/class-aips-logger.php',
     'AIPS_Logger_Interface' => $baseDir . '/includes/interface-aips-logger-interface.php',
+    'AIPS_Log_Cleaner' => $baseDir . '/includes/class-aips-log-cleaner.php',
     'AIPS_Markdown_Parser' => $baseDir . '/includes/class-aips-markdown-parser.php',
     'AIPS_Meow_AI_Provider' => $baseDir . '/includes/providers/class-aips-meow-ai-provider.php',
     'AIPS_Metrics_Repository' => $baseDir . '/includes/class-aips-metrics-repository.php',
@@ -1244,6 +1249,7 @@ return array(
     'Test_AIPS_Admin_Bar_Cache' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Cache.php',
     'Test_AIPS_Admin_Flow_Controller' => $baseDir . '/tests/Test_AIPS_Admin_Flow_Controller.php',
     'Test_AIPS_Admin_Menu' => $baseDir . '/tests/Test_AIPS_Admin_Menu.php',
+    'Test_AIPS_Advanced_Performance' => $baseDir . '/tests/Test_AIPS_Advanced_Performance.php',
     'Test_AIPS_Ajax_Registry_Response' => $baseDir . '/tests/Test_AIPS_Ajax_Registry_Response.php',
     'Test_AIPS_Author_Post_Generator_Batching' => $baseDir . '/tests/Test_AIPS_Author_Post_Generator_Batching.php',
     'Test_AIPS_Author_Post_Generator_Expansion' => $baseDir . '/tests/Test_AIPS_Author_Post_Generator_Expansion.php',
