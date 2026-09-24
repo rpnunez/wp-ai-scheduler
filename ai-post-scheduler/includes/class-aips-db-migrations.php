@@ -200,6 +200,14 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.6.7', '<' ) ) {
 			$this->migrate_to_3_6_7();
 		}
+
+		// migrate_to_3_7_8() drops log-table indexes made redundant by the
+		// history_type_timestamp compound index, which install_tables() adds
+		// above. It must run after the Layer-1 schema apply so the covering
+		// index always exists before its prefixes are removed.
+		if ( version_compare( $from_version, '3.7.8', '<' ) ) {
+			$this->migrate_to_3_7_8();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1202,6 +1210,45 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 3.7.8.
+	 *
+	 * Drops the `history_id` and `history_id_type` indexes on aips_history_log.
+	 * Both are left-prefixes of the `history_type_timestamp`
+	 * (history_id, history_type_id, timestamp) index added in 3.7.8, so
+	 * they only add write overhead to the plugin's most write-heavy table.
+	 * dbDelta never drops indexes, so the removal must happen here.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_8() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_history_log';
+
+		$covering = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SHOW INDEX FROM `{$table}` WHERE Key_name = 'history_type_timestamp'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+		if ( empty( $covering ) ) {
+			// Never remove the prefixes unless the covering index is present.
+			return;
+		}
+
+		foreach ( array( 'history_id', 'history_id_type' ) as $index_name ) {
+			$exists = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				$wpdb->prepare(
+					"SHOW INDEX FROM `{$table}` WHERE Key_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$index_name
+				)
+			);
+			if ( ! empty( $exists ) ) {
+				$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.8: Dropped redundant aips_history_log indexes covered by history_type_timestamp.', 'info' );
 	}
 
 	/**

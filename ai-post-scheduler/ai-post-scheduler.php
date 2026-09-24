@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.7
+ * Version: 3.7.8
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.7');
+    define('AIPS_VERSION', '3.7.8');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -318,6 +318,9 @@ final class AI_Post_Scheduler {
         foreach (array_keys(self::get_cron_events()) as $hook) {
             wp_clear_scheduled_hook($hook);
         }
+        // Single events carry per-schedule args, which wp_clear_scheduled_hook()
+        // only matches exactly; wp_unschedule_hook() removes every instance.
+        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
         flush_rewrite_rules();
     }
 
@@ -774,6 +777,12 @@ final class AI_Post_Scheduler {
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
+        });
+        // Single due-schedule events: staggered due schedules and yielded
+        // batches resuming after their cooldown. Runs through the same
+        // claim-first lock as the main tick, never the manual-run path.
+        add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
+            AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
         });
         add_filter('cron_schedules', function($schedules) {
             return AIPS_Scheduler::instance()->add_cron_intervals($schedules);

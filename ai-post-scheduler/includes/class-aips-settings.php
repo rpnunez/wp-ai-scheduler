@@ -150,6 +150,18 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_rate_limit_period'],
 			),
+			'aips_generation_delay_seconds' => array(
+				'sanitize_callback' => static function ($value) {
+					return min(30, absint($value));
+				},
+				'default'           => $defaults['aips_generation_delay_seconds'],
+			),
+			'aips_batch_resume_cooldown_minutes' => array(
+				'sanitize_callback' => static function ($value) {
+					return min(1440, max(1, absint($value)));
+				},
+				'default'           => $defaults['aips_batch_resume_cooldown_minutes'],
+			),
 			'aips_enable_circuit_breaker' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_circuit_breaker'],
@@ -1294,6 +1306,22 @@ class AIPS_Settings {
             'aips_rate_limit_period',
             __('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
             array($this->ui, 'rate_limit_period_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_generation_delay_seconds',
+            __('Delay Between Generations (Seconds)', 'ai-post-scheduler'),
+            array($this->ui, 'generation_delay_seconds_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_batch_resume_cooldown_minutes',
+            __('Batch Resume Cooldown (Minutes)', 'ai-post-scheduler'),
+            array($this->ui, 'batch_resume_cooldown_minutes_field_callback'),
             'aips-settings',
             'aips_resilience_section'
         );

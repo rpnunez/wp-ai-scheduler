@@ -142,6 +142,8 @@ class AIPS_DB_Manager {
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
+            KEY template_status (template_id, status),
+            KEY post_status (post_id, status),
             KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
@@ -154,9 +156,8 @@ class AIPS_DB_Manager {
             timestamp bigint(20) unsigned NOT NULL DEFAULT 0,
             details longtext,
             PRIMARY KEY  (id),
-            KEY history_id (history_id),
             KEY history_type_id (history_type_id),
-            KEY history_id_type (history_id, history_type_id),
+            KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
             KEY event_type_timestamp (event_type, timestamp)
         ) $charset_collate;";

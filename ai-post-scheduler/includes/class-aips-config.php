@@ -298,6 +298,9 @@ class AIPS_Config {
             'aips_deduplication_mode'                  => 'warn',
             'aips_deduplication_threshold'             => 0.85,
             'aips_generation_inject_related_context'   => true,
+            // Server load & generation pacing
+            'aips_generation_delay_seconds'            => 2,
+            'aips_batch_resume_cooldown_minutes'       => 5,
         );
     }
     
@@ -712,6 +715,26 @@ class AIPS_Config {
             'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
             'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
+    }
+
+    /**
+     * Get generation delay in seconds between batch post generations.
+     *
+     * @return int Delay in seconds.
+     */
+    public function get_generation_delay_seconds(): int {
+        return min(30, max(0, (int) $this->get_option('aips_generation_delay_seconds', 2)));
+    }
+
+    /**
+     * Get the cooldown before an automated batch that yielded to avoid a
+     * script timeout resumes its remaining posts.
+     *
+     * @return int Cooldown in seconds (minimum one minute).
+     */
+    public function get_batch_resume_cooldown_seconds(): int {
+        $minutes = min(1440, max(1, (int) $this->get_option('aips_batch_resume_cooldown_minutes', 5)));
+        return $minutes * MINUTE_IN_SECONDS;
     }
     
     // ========================================
