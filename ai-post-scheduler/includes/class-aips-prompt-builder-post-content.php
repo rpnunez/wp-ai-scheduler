@@ -124,6 +124,7 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+		$processed_prompt = $this->inject_monetization_directives($processed_prompt, $topic);
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
@@ -166,6 +167,7 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		$processed_prompt = $this->inject_related_context($processed_prompt, $topic);
+		$processed_prompt = $this->inject_monetization_directives($processed_prompt, $topic);
 
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
 	}
@@ -200,5 +202,33 @@ class AIPS_Prompt_Builder_Post_Content {
 		}
 
 		return $prompt . "\n\n" . $rel_context;
+	}
+
+	/**
+	 * Inject high-RPM commercial intent structure directives if applicable.
+	 *
+	 * @param string      $prompt Current assembled prompt.
+	 * @param string|null $topic  Target topic.
+	 * @return string
+	 */
+	private function inject_monetization_directives($prompt, $topic) {
+		if (empty($topic) || !AIPS_Config::get_instance()->get_option('aips_monetization_enabled', true)) {
+			return $prompt;
+		}
+
+		$container = AIPS_Container::get_instance();
+		if (!$container->has(AIPS_Monetization_AI_Service::class)) {
+			return $prompt;
+		}
+
+		$ai_service = $container->make(AIPS_Monetization_AI_Service::class);
+		$analysis   = $ai_service->analyze_commercial_intent($topic);
+		$directives = $ai_service->get_prompt_structure_enhancements($analysis['intent']);
+
+		if (!empty($directives)) {
+			$prompt .= "\n\nContent Structure & Viewability Optimization Directives:\n" . $directives;
+		}
+
+		return $prompt;
 	}
 }

@@ -398,7 +398,6 @@ class AIPS_Ajax_Registry {
 		'aips_indexer_run_cannibalization_audit'=> 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_save_settings'           => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_search_posts'            => 'AIPS_Content_Indexer_Controller',
-		'aips_indexer_fetch_meow_environments' => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_get_post_clusters'       => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_save_pillar'             => 'AIPS_Content_Indexer_Controller',
 		'aips_indexer_rename_post_cluster'     => 'AIPS_Content_Indexer_Controller',
@@ -410,6 +409,23 @@ class AIPS_Ajax_Registry {
 		'aips_get_post_ai_insights'            => 'AIPS_Post_Insights_Controller',
 		'aips_reindex_single_post'             => 'AIPS_Post_Insights_Controller',
 		'aips_toggle_single_pillar'            => 'AIPS_Post_Insights_Controller',
+
+		// Monetization Controller
+		'aips_get_ad_slots'                    => 'AIPS_Monetization_Controller',
+		'aips_save_ad_slot'                    => 'AIPS_Monetization_Controller',
+		'aips_delete_ad_slot'                  => 'AIPS_Monetization_Controller',
+		'aips_toggle_ad_slot'                  => 'AIPS_Monetization_Controller',
+		'aips_get_sponsor_campaigns'           => 'AIPS_Monetization_Controller',
+		'aips_save_sponsor_campaign'           => 'AIPS_Monetization_Controller',
+		'aips_delete_sponsor_campaign'         => 'AIPS_Monetization_Controller',
+		'aips_toggle_sponsor_campaign'         => 'AIPS_Monetization_Controller',
+		'aips_get_monetization_analytics'      => 'AIPS_Monetization_Controller',
+		'aips_save_monetization_engine_settings'=> 'AIPS_Monetization_Controller',
+		'aips_get_referral_programs'           => 'AIPS_Monetization_Controller',
+		'aips_save_referral_program'           => 'AIPS_Monetization_Controller',
+		'aips_delete_referral_program'         => 'AIPS_Monetization_Controller',
+		'aips_toggle_referral_program'         => 'AIPS_Monetization_Controller',
+		'aips_save_affiliate_network_profiles' => 'AIPS_Monetization_Controller',
 	);
 
 	/**

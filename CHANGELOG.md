@@ -1,3 +1,38 @@
+## [3.7.8] - 2026-09-24
+
+### Added
+- **Monetization Hub & In-Content Ad Placement Engine**: Complete revenue infrastructure under **AI Post Scheduler → Monetization** with 5 tabs:
+  - **Ad Slots & Display Units**: Dynamic in-article ad slot configuration supporting custom HTML/JS, shortcodes, and auto-insertion by paragraph offset, 50% depth mid-content, or post conclusion.
+  - **Direct Sponsor Campaigns & FTC Disclosures**: Direct sponsor and advertiser deals management with automated keyword/category matching, custom call-to-action badges, and automated FTC compliance notices.
+  - **Affiliate Links Inserter**: Embedded management of affiliate merchants, keyword triggers, and contextual AI callout placement.
+  - **Referrals & Affiliate Networks**: Partner program manager, network profiles, and coupon/promo code ribbons.
+  - **Revenue & Performance Analytics**: Real-time aggregated viewable impressions, ad clicks, CTR calculations, and Chart.js daily telemetry visualization.
+- **Smart Ad Refresh Engine**:
+  - Compliance-first auto-refresh conforming to AdSense, Mediavine, and Raptive policies.
+  - IntersectionObserver monitoring triggers refreshes only when ad slots are >50% visible in the active viewport AND user activity has been observed within the past 30 seconds.
+  - Session refresh cap and pause when browser tab is inactive.
+- **High-RPM Sticky Bottom Anchors**:
+  - Dedicated `sticky_bottom_anchor` position type formatted for mobile and desktop screens.
+  - Configurable display triggers: `scroll_depth`, `immediate`, and `smart_scroll`.
+  - User-dismissible controls with session persistence.
+- **Three-Tier Ad-Block Recovery Suite**:
+  - Non-intrusive client-side bait element detection (`#aips-adblock-bait`).
+  - Tier 1: Silent Fallback to house/direct sponsor campaigns without breaking layout or aesthetics.
+  - Tier 2: Polite Soft Notice toast banner with customizable messaging requesting whitelist/support.
+  - Tier 3: Content Dimmer below paragraph 3 politely prompting reader support.
+- **Affiliate Link Cloaking & 307 Temporary Redirect Engine**:
+  - Dedicated URL cloaking service using clean rewrite rules (`/{prefix}/{slug}/`, default `/go/`).
+  - Strict HTTP 307 temporary redirects with `X-Robots-Tag: noindex, nofollow, noarchive` headers.
+  - Automated link rewriting for contextual affiliate links with outbound conversion tracking.
+- **Automated In-Content Promo Ribbon Delivery Engine**:
+  - Contextual auto-injection of discount callout ribbons into AI-generated posts based on matched category, tag, or content keywords.
+  - Interactive 1-click "Copy Code" button with visual feedback and clipboard fallback.
+  - Native shortcode `[aips_referral id="..."]` and Gutenberg block `aips/referral-card`.
+- **Gutenberg Ad Unit Block (`aips/ad-unit`)**: Native editor block allowing manual placement of pre-configured ad slots or custom embed snippets anywhere in article drafts, with server-side render callbacks.
+- **Post Editor Monetization Sidebar**: Real-time commercial intent analysis (Transactional, Commercial Investigation, Informational) with projected RPM tiering, sponsor campaign overriding, and per-post ad suppression controls.
+- **AI Directives for Commercial Revenue**: Context-aware prompt injection that instructs AI content generation engines to craft high-converting recommendation sections and seamless sponsor brand integration without sounding promotional.
+- **Database Schema Migrations**: Added `wp_aips_ad_slots`, `wp_aips_sponsor_campaigns`, `wp_aips_referral_programs`, and `wp_aips_monetization_events` tables with proper indexes and upgrade routines.
+
 ## [3.7.7] - 2026-09-24
 
 ### Added
