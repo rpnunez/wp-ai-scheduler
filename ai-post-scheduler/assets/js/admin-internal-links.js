@@ -25,6 +25,7 @@
 
 		/** Active status filter */
 		currentStatus: '',
+		currentOrigin: '',
 
 		/** Active search string */
 		currentSearch: '',
@@ -64,6 +65,7 @@
 
 			// Status filter
 			$(document).on('change', '#aips-il-status-filter', this.onStatusFilterChange.bind(this));
+			$(document).on('change', '#aips-il-origin-filter', this.onOriginFilterChange.bind(this));
 
 			// Search
 			$(document).on('input', '#aips-il-search', this.onSearchInput.bind(this));
@@ -136,6 +138,17 @@
 		 */
 		onStatusFilterChange: function (e) {
 			this.currentStatus = $(e.currentTarget).val();
+			this.currentPage   = 1;
+			this.loadSuggestions();
+		},
+
+		/**
+		 * Reload the suggestions table when the direction filter changes.
+		 *
+		 * @param {Event} e Change event from `#aips-il-origin-filter`.
+		 */
+		onOriginFilterChange: function (e) {
+			this.currentOrigin = $(e.currentTarget).val();
 			this.currentPage   = 1;
 			this.loadSuggestions();
 		},
@@ -451,6 +464,7 @@
 				per_page: self.perPage,
 				status:   self.currentStatus,
 				search:   self.currentSearch,
+				origin:   self.currentOrigin,
 			}, function (response) {
 				if (!response.success) {
 					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
@@ -510,6 +524,10 @@
 					title: targetTitle,
 				})
 				: AIPS.Templates.escape(targetTitle);
+
+			if (item.origin === 'inbound') {
+				target += ' ' + AIPS.Templates.renderRaw('aips-tmpl-il-origin-badge', {});
+			}
 
 			var actions = '';
 
@@ -861,6 +879,7 @@
 				accepted: aipsInternalLinksL10n.accepted,
 				rejected: aipsInternalLinksL10n.rejected,
 				inserted: aipsInternalLinksL10n.inserted,
+				reverted: aipsInternalLinksL10n.reverted,
 			};
 			return map[status] || status;
 		},

@@ -97,7 +97,7 @@ class AIPS_Internal_Links_Repository {
 	 * @param string $search   Optional. Search term applied to source/target post titles.
 	 * @return object[] Array of row objects with extra post title columns.
 	 */
-	public function get_paginated($per_page = 20, $page = 1, $status = '', $search = '') {
+	public function get_paginated($per_page = 20, $page = 1, $status = '', $search = '', $origin = '') {
 		$per_page = max(1, absint($per_page));
 		$offset   = ($page - 1) * $per_page;
 
@@ -107,6 +107,11 @@ class AIPS_Internal_Links_Repository {
 		if ($status && in_array($status, self::VALID_STATUSES, true)) {
 			$where_clauses[] = 'il.status = %s';
 			$params[]        = $status;
+		}
+
+		if ($origin !== '') {
+			$where_clauses[] = 'il.origin = %s';
+			$params[]        = sanitize_key($origin);
 		}
 
 		if (!empty($search)) {
@@ -145,13 +150,18 @@ class AIPS_Internal_Links_Repository {
 	 * @param string $search Optional. Search term.
 	 * @return int Total count.
 	 */
-	public function get_paginated_count($status = '', $search = '') {
+	public function get_paginated_count($status = '', $search = '', $origin = '') {
 		$where_clauses = array('1=1');
 		$params        = array();
 
 		if ($status && in_array($status, self::VALID_STATUSES, true)) {
 			$where_clauses[] = 'il.status = %s';
 			$params[]        = $status;
+		}
+
+		if ($origin !== '') {
+			$where_clauses[] = 'il.origin = %s';
+			$params[]        = sanitize_key($origin);
 		}
 
 		if (!empty($search)) {

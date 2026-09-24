@@ -137,9 +137,11 @@ class AIPS_Internal_Links_Controller {
 		$per_page = max(1, min(100, absint(isset($_POST['per_page']) ? wp_unslash($_POST['per_page']) : 20)));
 		$status   = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
 		$search   = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+		$origin   = isset($_POST['origin']) ? sanitize_key(wp_unslash($_POST['origin'])) : '';
+		$origin   = in_array($origin, array('outbound', 'inbound'), true) ? $origin : '';
 
-		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search);
-		$total = $this->links_repo->get_paginated_count($status, $search);
+		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search, $origin);
+		$total = $this->links_repo->get_paginated_count($status, $search, $origin);
 
 		// Enrich items with edit URLs
 		foreach ($items as $item) {

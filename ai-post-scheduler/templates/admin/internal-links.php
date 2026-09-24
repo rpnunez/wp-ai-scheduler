@@ -96,6 +96,13 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 							<option value="accepted"><?php esc_html_e('Accepted', 'ai-post-scheduler'); ?></option>
 							<option value="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></option>
 							<option value="inserted"><?php esc_html_e('Inserted', 'ai-post-scheduler'); ?></option>
+							<option value="reverted"><?php esc_html_e('Undone', 'ai-post-scheduler'); ?></option>
+						</select>
+						<label class="screen-reader-text" for="aips-il-origin-filter"><?php esc_html_e('Filter by direction:', 'ai-post-scheduler'); ?></label>
+						<select id="aips-il-origin-filter" class="aips-form-select">
+							<option value=""><?php esc_html_e('All Directions', 'ai-post-scheduler'); ?></option>
+							<option value="outbound"><?php esc_html_e('Outbound (from a post)', 'ai-post-scheduler'); ?></option>
+							<option value="inbound"><?php esc_html_e('Inbound (to an orphan)', 'ai-post-scheduler'); ?></option>
 						</select>
 					</div>
 					<div class="aips-filter-right">
@@ -289,6 +296,11 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 	<td><span class="aips-badge {{statusClass}}">{{statusLabel}}</span></td>
 	<td class="cell-actions">{{actions}}</td>
 </tr>
+</script>
+
+<!-- Inbound suggestion badge -->
+<script type="text/html" id="aips-tmpl-il-origin-badge">
+<span class="aips-badge aips-badge-info" title="<?php esc_attr_e('Suggested from the Link Report to give this post inbound links', 'ai-post-scheduler'); ?>"><?php esc_html_e('Inbound', 'ai-post-scheduler'); ?></span>
 </script>
 
 <!-- Single pagination button -->

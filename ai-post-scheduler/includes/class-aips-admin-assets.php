@@ -1920,6 +1920,7 @@ class AIPS_Admin_Assets {
                 'rejected'                 => __('Rejected', 'ai-post-scheduler'),
                 'pending'                  => __('Pending', 'ai-post-scheduler'),
                 'inserted'                 => __('Inserted', 'ai-post-scheduler'),
+                'reverted'                 => __('Undone', 'ai-post-scheduler'),
                 // Insert Link modal strings
                 'insertLink'               => __('Insert Link', 'ai-post-scheduler'),
                 'loadingFailed'            => __('Failed to load post data. Please try again.', 'ai-post-scheduler'),
