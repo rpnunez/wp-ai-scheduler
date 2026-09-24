@@ -13,6 +13,7 @@ class Test_AIPS_Template_Repository_Post_Type extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Cache_Factory::reset();
 		$this->repo = new AIPS_Template_Repository();
 
 		register_post_type('aips_test_cpt', array(
@@ -23,6 +24,7 @@ class Test_AIPS_Template_Repository_Post_Type extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		unregister_post_type('aips_test_cpt');
+		AIPS_Cache_Factory::reset();
 		parent::tearDown();
 	}
 

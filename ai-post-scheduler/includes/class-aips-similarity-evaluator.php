@@ -552,12 +552,19 @@ class AIPS_Similarity_Evaluator {
 			$meta = array();
 		}
 
-		// Step 2: Extract author policy configuration with defensive defaults
-		$mode           = !empty($author->auto_approval_mode) ? (string) $author->auto_approval_mode : 'none';
-		$min_score      = isset($author->auto_approval_min_score) ? (int) $author->auto_approval_min_score : 70;
-		$min_relevance  = isset($author->auto_approval_min_relevance) ? (float) $author->auto_approval_min_relevance : 0.70;
-		$max_similarity = isset($author->auto_approval_max_similarity) ? (float) $author->auto_approval_max_similarity : 0.85;
-		$fallback       = !empty($author->auto_approval_fallback) ? (string) $author->auto_approval_fallback : 'pending';
+		// Step 2: Extract author policy configuration with defensive defaults.
+		// Property names match the aips_authors columns / AIPS_Authors_Controller
+		// (topic_auto_approval_*), not the unprefixed auto_approval_* names this
+		// used to read — those never existed on a real author object, so this
+		// always fell through to the 'none' branch regardless of the author's
+		// configured mode.
+		$mode           = !empty($author->topic_auto_approval_mode) ? (string) $author->topic_auto_approval_mode : 'none';
+		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
+		// No dedicated relevance column; similarity/embeddings mode derives it from
+		// the score field, the same way AIPS_Author_Topics_Generator::apply_auto_approval_rules() does.
+		$min_relevance  = isset($author->topic_auto_approval_min_score) ? max(0.01, min(1.0, (float) $author->topic_auto_approval_min_score / 100)) : 0.70;
+		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.85;
+		$fallback       = !empty($author->topic_auto_approval_fallback) ? (string) $author->topic_auto_approval_fallback : 'pending';
 
 		$qualifies        = false;
 		$is_dup_rejection = false;

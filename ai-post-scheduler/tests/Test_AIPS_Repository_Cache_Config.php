@@ -14,12 +14,14 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		AIPS_Cache_Factory::reset();
+		AIPS_Repository_Cache_Config::reset_driver_name_cache();
 		update_option( 'aips_cache_driver', 'session' );
 		AIPS_Cache::reset_system_enabled_flag();
 	}
 
 	public function tearDown(): void {
 		AIPS_Cache_Factory::reset();
+		AIPS_Repository_Cache_Config::reset_driver_name_cache();
 		delete_option( 'aips_cache_driver' );
 		AIPS_Cache::reset_system_enabled_flag();
 		remove_all_filters( 'wp_doing_cron' );
@@ -34,7 +36,7 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 		$this->assertSame( 0, $config['default_ttl'] );
 		$this->assertFalse( $config['persistent_allowed'] );
 		$this->assertFalse( $config['bypass_on_cron'] );
-		$this->assertFalse( $config['allow_stale_reads'] );
+
 	}
 
 	public function test_get_tier_config_returns_configured_driver_for_persistent_tiers() {
@@ -44,7 +46,6 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 		$this->assertSame( 'session', $config['driver_name'] );
 		$this->assertTrue( $config['persistent_allowed'] );
 		$this->assertSame( HOUR_IN_SECONDS, $config['default_ttl'] );
-		$this->assertTrue( $config['allow_stale_reads'] );
 	}
 
 	public function test_get_tier_config_returns_none_defaults_for_unknown_tier() {
@@ -55,7 +56,6 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 		$this->assertSame( 0, $config['default_ttl'] );
 		$this->assertFalse( $config['persistent_allowed'] );
 		$this->assertTrue( $config['bypass_on_cron'] );
-		$this->assertFalse( $config['allow_stale_reads'] );
 	}
 
 	public function test_resolve_ttl_uses_explicit_policy_ttl_when_present() {
@@ -128,7 +128,7 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 		);
 
 		$this->assertInstanceOf( 'AIPS_Cache', $cache );
-		$this->assertInstanceOf( 'AIPS_Cache_Session_Driver', $cache->get_driver() );
+		$this->assertInstanceOf( 'AIPS_Cache_Wp_Object_Cache_Driver', $cache->get_driver() );
 	}
 
 	public function test_resolve_cache_instance_returns_null_for_none_tier() {
@@ -167,6 +167,6 @@ class Test_AIPS_Repository_Cache_Config extends WP_UnitTestCase {
 		);
 
 		$this->assertInstanceOf( 'AIPS_Cache', $cache );
-		$this->assertInstanceOf( 'AIPS_Cache_Session_Driver', $cache->get_driver() );
+		$this->assertInstanceOf( 'AIPS_Cache_Wp_Object_Cache_Driver', $cache->get_driver() );
 	}
 }

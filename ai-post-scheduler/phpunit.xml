@@ -15,6 +15,16 @@
     </testsuites>
 
     <!--
+        Flushes AIPS_Config's in-memory option cache after every test so a
+        value cached by one test class can't leak into later tests running
+        in the same PHPUnit process (WP_UnitTestCase only rolls back the DB,
+        not PHP-level singleton caches).
+    -->
+    <listeners>
+        <listener class="AIPS_Test_State_Reset_Listener" file="tests/class-aips-test-state-reset-listener.php"/>
+    </listeners>
+
+    <!--
         Coverage configuration is intentionally NOT declared here. When a
         <coverage> block is present, PHPUnit 9 boots its coverage driver on
         every run and warns unless Xdebug is in `coverage` mode (or PCOV is

@@ -126,7 +126,10 @@ class AIPS_Author_Topics_Generator {
 		$this->embeddings_repo = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->rate_limiter = $rate_limiter ?: ($container->has(AIPS_Embeddings_Rate_Limiter::class) ? $container->make(AIPS_Embeddings_Rate_Limiter::class) : new AIPS_Embeddings_Rate_Limiter());
 		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service($this->ai_service, $this->logger, null, $this->rate_limiter, $this->embeddings_repo));
-		$this->deduplication_service = $deduplication_service ?: ($container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service($this->embeddings_repo, null, $this->embeddings_service, null, $this->logger));
+		// When a caller explicitly injects its own embeddings_service (e.g. tests), the
+		// container's shared AIPS_Deduplication_Service singleton (built with the
+		// production embeddings_service) must not silently override it.
+		$this->deduplication_service = $deduplication_service ?: ($embeddings_service === null && $container->has(AIPS_Deduplication_Service::class) ? $container->make(AIPS_Deduplication_Service::class) : new AIPS_Deduplication_Service($this->embeddings_repo, null, $this->embeddings_service, null, $this->logger));
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator(null, $this->embeddings_repo, $this->embeddings_service));
 		$this->indexer_service = $indexer_service ?: ($container->has(AIPS_Content_Indexer_Service::class) ? $container->make(AIPS_Content_Indexer_Service::class) : null);
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
@@ -179,8 +182,15 @@ class AIPS_Author_Topics_Generator {
 			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
 		}
 		
-		// Flag semantically similar candidates and apply auto-approval rules via Similarity Evaluator
-		$topics = $this->similarity_evaluator->evaluate_generated_author_topics($topics, $author, $apply_auto_approval);
+		// Flag semantically similar candidates against existing posts/topics (sets
+		// metadata['potential_duplicate'] / ['duplicate_similarity'], which
+		// apply_auto_approval_rules() below reads), then apply auto-approval rules.
+		// This used to call AIPS_Similarity_Evaluator::evaluate_generated_author_topics(),
+		// a method that doesn't exist, fataling on every real topic-generation run.
+		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
+		if ($apply_auto_approval) {
+			$topics = $this->apply_auto_approval_rules($author, $topics);
+		}
 		
 		// Save topics to database
 		$saved_topics = array();
