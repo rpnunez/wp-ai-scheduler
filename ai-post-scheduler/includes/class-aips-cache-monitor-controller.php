@@ -59,6 +59,7 @@ class AIPS_Cache_Monitor_Controller {
 		add_action('wp_ajax_aips_cache_monitor_operations',       array($this, 'ajax_operations'));
 		add_action('wp_ajax_aips_cache_monitor_events',           array($this, 'ajax_events'));
 		add_action('wp_ajax_aips_cache_monitor_maintenance',      array($this, 'ajax_maintenance'));
+		add_action('wp_ajax_aips_test_cache_connection',          array($this, 'ajax_test_connection'));
 	}
 
 	// -----------------------------------------------------------------------
@@ -436,5 +437,80 @@ class AIPS_Cache_Monitor_Controller {
 		}
 
 		return $filters;
+	}
+
+	/**
+	 * Test connection for Redis, Relay, or Memcached cache drivers.
+	 *
+	 * @return void
+	 */
+	public function ajax_test_connection(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized user capability.', 'ai-post-scheduler' ) ), 403 );
+		}
+
+		if ( ! check_ajax_referer( 'aips_cache_settings', 'nonce', false ) && ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid nonce.', 'ai-post-scheduler' ) ), 403 );
+		}
+
+		$driver = isset( $_POST['driver'] ) ? sanitize_key( $_POST['driver'] ) : 'redis';
+		$config = array();
+
+		if ( isset( $_POST['redis_host'] ) ) {
+			$config['host'] = sanitize_text_field( wp_unslash( $_POST['redis_host'] ) );
+		}
+		if ( isset( $_POST['redis_port'] ) ) {
+			$config['port'] = absint( $_POST['redis_port'] );
+		}
+		if ( isset( $_POST['redis_password'] ) ) {
+			$config['password'] = sanitize_text_field( wp_unslash( $_POST['redis_password'] ) );
+		}
+		if ( isset( $_POST['redis_database'] ) ) {
+			$config['database'] = absint( $_POST['redis_database'] );
+		}
+		if ( isset( $_POST['memcached_servers'] ) ) {
+			$config['servers'] = sanitize_text_field( wp_unslash( $_POST['memcached_servers'] ) );
+		}
+
+		$instance = null;
+		switch ( $driver ) {
+			case 'relay':
+				if ( ! class_exists( 'Relay\Relay' ) ) {
+					wp_send_json_error( array(
+						'message' => __( 'The Relay PHP extension (\Relay\Relay) is not installed on this server.', 'ai-post-scheduler' ),
+					) );
+					return;
+				}
+				$instance = new AIPS_Cache_Relay_Driver( $config );
+				break;
+
+			case 'memcached':
+				if ( ! class_exists( 'Memcached' ) ) {
+					wp_send_json_error( array(
+						'message' => __( 'The PHP Memcached extension is not installed on this server.', 'ai-post-scheduler' ),
+					) );
+					return;
+				}
+				$instance = new AIPS_Cache_Memcached_Driver( $config );
+				break;
+
+			case 'redis':
+			default:
+				if ( ! class_exists( 'Redis' ) ) {
+					wp_send_json_error( array(
+						'message' => __( 'The PHP Redis extension (phpredis) is not installed on this server.', 'ai-post-scheduler' ),
+					) );
+					return;
+				}
+				$instance = new AIPS_Cache_Redis_Driver( $config );
+				break;
+		}
+
+		$test_result = $instance->test_connection();
+		if ( ! empty( $test_result['success'] ) ) {
+			wp_send_json_success( $test_result );
+		} else {
+			wp_send_json_error( $test_result );
+		}
 	}
 }

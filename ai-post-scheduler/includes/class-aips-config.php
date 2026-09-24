@@ -197,9 +197,14 @@ class AIPS_Config {
             'aips_site_excluded_topics' => '',
             // Cache framework settings.
             'aips_enable_cache_system'  => true,
-            'aips_cache_driver'         => 'array',
-            'aips_cache_db_prefix'      => '',
-            'aips_cache_default_ttl'    => 3600,
+            'aips_cache_driver'              => 'array',
+            'aips_cache_db_prefix'           => '',
+            'aips_cache_default_ttl'         => 3600,
+            'aips_cache_redis_host'          => '127.0.0.1',
+            'aips_cache_redis_port'          => 6379,
+            'aips_cache_redis_password'      => '',
+            'aips_cache_redis_database'      => 0,
+            'aips_cache_memcached_servers'   => '127.0.0.1:11211',
             // Research
             'aips_research_niches' => array(),
             // Telemetry
@@ -238,6 +243,9 @@ class AIPS_Config {
             // Server load & generation pacing
             'aips_generation_delay_seconds'            => 2,
             'aips_batch_resume_cooldown_minutes'       => 5,
+            'aips_queue_driver'                        => 'auto',
+            'aips_enable_prompt_caching'               => true,
+            'aips_log_retention_days'                  => 30,
         );
     }
     

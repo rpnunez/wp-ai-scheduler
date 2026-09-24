@@ -124,6 +124,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
+            'aips_daily_log_cleanup' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'System Log Cleanup', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -895,6 +899,9 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // System log retention daily cleanup cron handler.
+        add_action('aips_daily_log_cleanup', array('AIPS_Log_Cleaner', 'prune_logs'));
 
         // Post-save affiliate link injection — fires after every generated post.
         add_action('aips_post_generated', function($post_id) {

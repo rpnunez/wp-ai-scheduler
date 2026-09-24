@@ -83,6 +83,9 @@ class AIPS_Settings_AJAX {
 			AIPS_Ajax_Response::invalid_request(__('No valid settings were provided.', 'ai-post-scheduler'));
 		}
 
+		AIPS_Config::get_instance()->flush_option_cache();
+		AIPS_Cache_Factory::instance()->flush_group('prompt_cache');
+
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Settings saved successfully.', 'ai-post-scheduler'),
 			'updated' => array_values($updated),

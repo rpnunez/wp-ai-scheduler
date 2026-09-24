@@ -106,6 +106,60 @@ class AIPS_Cache_Factory {
 		}
 
 		switch ( $driver_name ) {
+			case 'redis':
+				if ( ! class_exists( 'Redis' ) ) {
+					self::schedule_admin_notice(
+						__( 'AI Post Scheduler: The PHP Redis extension is not installed. Falling back to WP Object Cache.', 'ai-post-scheduler' )
+					);
+					return new AIPS_Cache_Wp_Object_Cache_Driver();
+				}
+				$driver = new AIPS_Cache_Redis_Driver();
+				if ( ! $driver->is_available() ) {
+					self::schedule_admin_notice(
+						__( 'AI Post Scheduler: Could not connect to the Redis server. Falling back to WP Object Cache.', 'ai-post-scheduler' )
+					);
+					return new AIPS_Cache_Wp_Object_Cache_Driver();
+				}
+				return $driver;
+
+			case 'relay':
+				if ( ! class_exists( 'Relay\Relay' ) ) {
+					self::schedule_admin_notice(
+						__( 'AI Post Scheduler: The PHP Relay extension is not installed. Falling back to Redis or WP Object Cache.', 'ai-post-scheduler' )
+					);
+					if ( class_exists( 'Redis' ) ) {
+						$driver = new AIPS_Cache_Redis_Driver();
+						if ( $driver->is_available() ) {
+							return $driver;
+						}
+					}
+					return new AIPS_Cache_Wp_Object_Cache_Driver();
+				}
+				$driver = new AIPS_Cache_Relay_Driver();
+				if ( ! $driver->is_available() ) {
+					self::schedule_admin_notice(
+						__( 'AI Post Scheduler: Could not connect to the Relay Redis instance. Falling back to WP Object Cache.', 'ai-post-scheduler' )
+					);
+					return new AIPS_Cache_Wp_Object_Cache_Driver();
+				}
+				return $driver;
+
+			case 'memcached':
+				if ( ! class_exists( 'Memcached' ) ) {
+					self::schedule_admin_notice(
+						__( 'AI Post Scheduler: The PHP Memcached extension is not installed. Falling back to WP Object Cache.', 'ai-post-scheduler' )
+					);
+					return new AIPS_Cache_Wp_Object_Cache_Driver();
+				}
+				$driver = new AIPS_Cache_Memcached_Driver();
+				if ( ! $driver->is_available() ) {
+					self::schedule_admin_notice(
+						__( 'AI Post Scheduler: Could not connect to the Memcached server. Falling back to WP Object Cache.', 'ai-post-scheduler' )
+					);
+					return new AIPS_Cache_Wp_Object_Cache_Driver();
+				}
+				return $driver;
+
 			case 'db':
 				$prefix = (string) get_option( 'aips_cache_db_prefix', '' );
 				if (!empty($namespace)) {
@@ -205,9 +259,11 @@ class AIPS_Cache_Factory {
 			case 'db':
 			case 'wp_object_cache':
 			case 'array':
+			case 'redis':
+			case 'relay':
+			case 'memcached':
 				return (string) $driver_name;
 
-			case 'redis':
 			case 'session':
 				return 'wp_object_cache';
 

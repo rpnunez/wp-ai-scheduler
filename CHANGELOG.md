@@ -13,6 +13,19 @@
   - Staggered cron schedule execution to prevent concurrent batch stampedes.
   - Inter-generation delay pacing (`aips_generation_delay_seconds`) to smooth AI API consumption and server load.
   - Fallback recurrence resolution when resuming yielded batches with past or missing claim timestamps.
+- **Advanced High-Performance Cache Drivers (Redis, Relay, Memcached):**
+  - Direct Redis driver (`AIPS_Cache_Redis_Driver`) with multi-key pipelining (`MGET`/`MSET`), non-blocking `UNLINK`, and key prefix namespaces.
+  - Relay driver (`AIPS_Cache_Relay_Driver`) utilizing the Relay C extension for client-side in-memory caching with Redis server synchronization.
+  - Direct Memcached driver (`AIPS_Cache_Memcached_Driver`) with binary protocol and multi-key atomic operations (`getMulti`/`setMulti`/`deleteMulti`).
+  - Interactive "Test Cache Connection" tool in Settings > Cache with real-time ping, read/write, and latency diagnostics (`aips_test_cache_connection`).
+- **Action Scheduler Queue & Batch Offloading:**
+  - Action Scheduler queue adapter (`AIPS_Action_Scheduler_Queue`) for concurrent, non-blocking background queue execution.
+  - Configurable Queue Execution Driver (`aips_queue_driver`: Auto, Action Scheduler, WP-Cron) offloading due schedules and pre-timeout yields to Action Scheduler when available.
+- **Prompt Prefix Caching & LLM Token Cost Reduction:**
+  - Dynamic prompt ordering placing static instructions and site context first for OpenAI / Anthropic server-side prompt cache hits.
+  - Request-spanning prompt cache in `AIPS_Cache` (`prompt_cache` group) avoiding redundant assembly of site context and brand guidelines.
+- **Automated System Log Retention & Pruning:**
+  - Automated daily cron (`aips_daily_log_cleanup`) and on-demand tool (`aips_prune_logs_now`) safely pruning debug log records (`wp_aips_logs`) and disk files in `uploads/aips-logs/` older than `aips_log_retention_days` (default: 30 days) in 1,000-row chunks, keeping generation analytics history untouched.
 
 ## [3.6.6] - 2026-09-04
 
