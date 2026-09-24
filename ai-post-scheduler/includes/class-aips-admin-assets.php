@@ -185,6 +185,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_content_indexer_assets();
 			$this->enqueue_link_report_assets();
 			$this->enqueue_link_rules_assets();
+			$this->enqueue_redirects_assets();
 		}
 
         if (self::PAGE_HISTORY === $page || $this->hook_contains($hook, self::PAGE_HISTORY)) {
@@ -2109,6 +2110,46 @@ class AIPS_Admin_Assets {
                 'fixUnlinked'           => __('Link removed', 'ai-post-scheduler'),
                 /* translators: 1: processed posts, 2: total posts */
                 'progress'            => __('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
+     * Enqueue assets for the Redirects tab of the Content hub.
+     *
+     * @return void
+     */
+    private function enqueue_redirects_assets() {
+        wp_enqueue_script(
+            'aips-redirects-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-redirects.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-redirects-script',
+            'aipsRedirectsL10n',
+            array(
+                'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+                'error'               => __('The redirects request failed. Please try again.', 'ai-post-scheduler'),
+                'noRedirects'         => __('No redirects yet.', 'ai-post-scheduler'),
+                /* translators: 1: current page, 2: total pages, 3: total redirects */
+                'pageInfo'            => __('Page %1$d of %2$d (%3$d redirects)', 'ai-post-scheduler'),
+                'originConsolidation' => __('(consolidation)', 'ai-post-scheduler'),
+                'gone'                => __('410 Gone', 'ai-post-scheduler'),
+                'active'              => __('Active', 'ai-post-scheduler'),
+                'disabled'            => __('Disabled', 'ai-post-scheduler'),
+                'enable'              => __('Enable', 'ai-post-scheduler'),
+                'disable'             => __('Disable', 'ai-post-scheduler'),
+                'cancel'              => __('Cancel', 'ai-post-scheduler'),
+                'deleteRedirect'      => __('Delete redirect', 'ai-post-scheduler'),
+                'confirmDeleteTitle'  => __('Delete redirect', 'ai-post-scheduler'),
+                'confirmDelete'       => __('Delete this redirect? It is also removed from the plugin serving it, and visitors to the old URL will get a 404.', 'ai-post-scheduler'),
+                'confirmMoveTitle'    => __('Move existing redirects', 'ai-post-scheduler'),
+                'confirmMove'         => __('Move every AI Post Scheduler redirect to the selected provider? Each one is removed from the plugin that serves it now and re-created in the new one.', 'ai-post-scheduler'),
+                'moveRedirects'       => __('Move redirects', 'ai-post-scheduler'),
             )
         );
     }

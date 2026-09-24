@@ -10,6 +10,7 @@
  * Tab 4: Content Indexer     - @see templates/admin/content-indexer.php
  * Tab 5: Link Report         - @see templates/admin/link-report.php
  * Tab 6: Link Rules          - @see templates/admin/link-rules.php
+ * Tab 7: Redirects           - @see templates/admin/redirects.php
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -29,6 +30,7 @@ $valid_tabs = array(
 	'aips-content-indexer',
 	'aips-link-report',
 	'aips-link-rules',
+	'aips-redirects',
 	'aips-content-clusters',
 	'aips-content-cannibalization',
 );
@@ -39,6 +41,8 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 	$active_tab = 'aips-link-report';
 } elseif ('link-rules' === $active_tab || 'rules' === $active_tab) {
 	$active_tab = 'aips-link-rules';
+} elseif ('redirects' === $active_tab) {
+	$active_tab = 'aips-redirects';
 } elseif ('partial-generations' === $active_tab || 'partial' === $active_tab) {
 	$active_tab = 'aips-partial-generations';
 } elseif ('pending-review' === $active_tab || 'pending' === $active_tab) {
@@ -93,6 +97,13 @@ $rail_items = array(
 		'icon'        => 'dashicons-tag',
 		'description' => __('Always link a keyword to a post', 'ai-post-scheduler'),
 		'active'      => ($active_tab === 'aips-link-rules'),
+	),
+	array(
+		'key'         => 'aips-redirects',
+		'label'       => __('Redirects', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-randomize',
+		'description' => __('Redirects created by AI Post Scheduler', 'ai-post-scheduler'),
+		'active'      => ($active_tab === 'aips-redirects'),
 	),
 	array(
 		'key'         => 'aips-content-clusters',
@@ -195,6 +206,17 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 						extract($link_rules_controller->get_view_data());
 						include AIPS_PLUGIN_DIR . 'templates/admin/link-rules.php';
 					}, __('Link Rules', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Redirects -->
+				<div id="aips-redirects-tab" class="aips-tab-content<?php echo $active_tab === 'aips-redirects' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-redirects' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-redirects' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$redirects_controller = new AIPS_Redirects_Controller();
+						extract($redirects_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/redirects.php';
+					}, __('Redirects', 'ai-post-scheduler'), true);
 					?>
 				</div>
 

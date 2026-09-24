@@ -1,3 +1,17 @@
+## [3.7.7] - 2026-09-24
+
+### Added
+- **Redirects:** a lightweight redirect manager, found in the new **Content → Redirects** tab.
+  - AIPS keeps its own record of every redirect it creates in the new `aips_redirects` table (schema 3.7.7). Each record holds the source path, target, 301/302/307/308/410, origin, hits, and which plugin serves the redirect, with that plugin's ID.
+  - Redirects are handed to **Redirection**, **Yoast SEO Premium** or **Rank Math** when one is active. "Automatic" picks the first available, or you can choose one. Otherwise AIPS serves them itself: a `template_redirect` lookup against a cached hash index keeps the query string and counts hits.
+  - If a provider refuses a redirect, AIPS serves it and shows why.
+  - **Save and Move Existing Redirects** moves every AIPS redirect to another provider, for example after installing or removing a redirect plugin.
+  - You can also add a redirect by hand (search for a post or paste a URL), disable, re-enable or delete redirects, and search or filter them.
+  - Guards: loops, the home page, WordPress system paths, and sources on other sites are all rejected.
+  - Tested against Redirection 5.10.1 and Rank Math 1.0.279. The Yoast SEO Premium adapter uses Yoast's documented redirect manager API but hasn't been tested.
+  - New classes: `AIPS_Redirects_Service`, `AIPS_Redirects_Repository`, `AIPS_Redirects_Controller`, and the provider interface `AIPS_Redirect_Provider`.
+  - New hooks: `aips_redirect_providers`, `aips_redirection_group_id` and `aips_redirect_created`.
+
 ## [3.7.6] - 2026-09-24
 
 ### Added

@@ -330,6 +330,10 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_link_rules_max_per_post'),
 				'default'           => $defaults['aips_link_rules_max_per_post'],
 			),
+			'aips_redirect_provider' => array(
+				'sanitize_callback' => 'sanitize_key',
+				'default'           => $defaults['aips_redirect_provider'],
+			),
 			'aips_publish_linking_mode' => array(
 				'sanitize_callback' => array($ui, 'sanitize_publish_linking_mode'),
 				'default'           => $defaults['aips_publish_linking_mode'],

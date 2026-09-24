@@ -39,6 +39,7 @@ class AIPS_DB_Manager {
         'aips_content_audits',
         'aips_link_index',
         'aips_link_clicks',
+        'aips_redirects',
     );
 
     public function __construct() {
@@ -106,6 +107,7 @@ class AIPS_DB_Manager {
         $table_content_audits       = $tables['aips_content_audits'];
         $table_link_index           = $tables['aips_link_index'];
         $table_link_clicks          = $tables['aips_link_clicks'];
+        $table_redirects            = $tables['aips_redirects'];
 
         $sql = array();
 
@@ -607,6 +609,31 @@ class AIPS_DB_Manager {
             KEY day_start (day_start)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_redirects (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_path varchar(500) NOT NULL,
+            source_hash char(32) NOT NULL,
+            target_url text NOT NULL,
+            target_post_id bigint(20) NOT NULL DEFAULT 0,
+            status_code smallint(3) NOT NULL DEFAULT 301,
+            provider varchar(20) NOT NULL DEFAULT 'aips',
+            provider_ref varchar(191) NOT NULL DEFAULT '',
+            provider_error varchar(255) NOT NULL DEFAULT '',
+            origin varchar(30) NOT NULL DEFAULT 'manual',
+            origin_ref bigint(20) NOT NULL DEFAULT 0,
+            enabled tinyint(1) NOT NULL DEFAULT 1,
+            hits bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_hit_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_hash (source_hash),
+            KEY provider (provider),
+            KEY origin (origin, origin_ref),
+            KEY target_post_id (target_post_id)
+        ) $charset_collate;";
+
         $sql[] = "CREATE TABLE $table_affiliate_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             tag varchar(255) NOT NULL,
@@ -938,6 +965,11 @@ class AIPS_DB_Manager {
             ),
             'aips_link_clicks' => array(
                 array( 'day_start', false ),
+            ),
+            'aips_redirects' => array(
+                array( 'last_hit_at', false ),
+                array( 'created_at', false ),
+                array( 'updated_at', false ),
             ),
             'aips_cache' => array(
                 array( 'expires_at', false ),

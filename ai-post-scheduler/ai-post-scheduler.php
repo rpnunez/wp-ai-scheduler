@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.6
+ * Version: 3.7.7
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.6');
+    define('AIPS_VERSION', '3.7.7');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -463,6 +463,10 @@ final class AI_Post_Scheduler {
 
         $container->singleton(AIPS_Link_Rules_Service::class, function( $container ) {
             return new AIPS_Link_Rules_Service();
+        });
+
+        $container->singleton(AIPS_Redirects_Service::class, function( $container ) {
+            return new AIPS_Redirects_Service();
         });
 
         $container->singleton(AIPS_Publish_Linking_Service::class, function( $container ) {
@@ -1114,6 +1118,12 @@ final class AI_Post_Scheduler {
         add_filter('the_content', function ($content) {
             return AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)->filter_content($content);
         }, 9);
+
+        // Redirects AIPS serves itself (when no redirect plugin handles them).
+        // Runs early so it wins over canonical redirects and 404 handling.
+        add_action('template_redirect', function () {
+            AIPS_Container::get_instance()->make(AIPS_Redirects_Service::class)->maybe_redirect();
+        }, 1);
 
         // Internal link click tracking (opt-in): tags content links and
         // registers the aips/v1/link-click beacon endpoint.

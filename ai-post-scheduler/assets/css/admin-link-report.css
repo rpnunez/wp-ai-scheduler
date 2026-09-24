@@ -229,3 +229,36 @@
 .aips-link-clicks-off ~ .aips-modal .aips-link-clicks-col {
 	display: none;
 }
+
+/* Redirects tab */
+.aips-redirects-providers {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 8px;
+	margin: 0 0 12px;
+	padding: 0;
+	list-style: none;
+}
+
+.aips-redirects-providers li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	padding: 8px 10px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.aips-redirects-provider-form,
+.aips-redirects-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.aips-redirects-toolbar {
+	padding: 12px 16px;
+}

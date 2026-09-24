@@ -2,7 +2,7 @@
 
 This tracker follows [`content-intelligence-plan.md`](./content-intelligence-plan.md).
 - **Branch:** `feat/content-intelligence-linking`, PR [#2128](https://github.com/rpnunez/wp-ai-scheduler/pull/2128), into `refactor/admin-ia`
-- **Plugin version:** 3.7.6
+- **Plugin version:** 3.7.7
 - **Last updated:** 2026-09-24
 
 **Status key:**
@@ -26,7 +26,7 @@ Verification: every ✅ item was smoke-tested against the Docker MariaDB 10.6 te
 | Wave 4: slices 10, 12 | ✅ 2 / 2 |
 | Then: slice 13, then slice 14 | ✅ 13, 🟡 14 |
 | Tier 2: items 6–10 | ✅ 3, 🟡 1 (item 6), ⬜ 1 (item 9) |
-| Tier 3: items 11–15 | ✅ item 13 (T3-1). ⬜ Items 11, 14, 12 and 15. Next: T3-2 |
+| Tier 3: items 11–15 | ✅ item 13 (T3-1). ✅ Redirects module (T3-6). ⬜ Item 12's consolidation flow (T3-7) is next. ⬜ Item 11 (silos) is waiting on D16. ⏸ Items 14 and 15 are on hold |
 
 ---
 
@@ -96,18 +96,18 @@ Verification: every ✅ item was smoke-tested against the Docker MariaDB 10.6 te
 
 ## Tier 3: features nobody else has together
 
-Order: 13 → 11 → 14 → 12 → 15. The slices are defined in the plan, section 2.
+Order (updated 2026-09-24): 13 → 12 → 11. Items 14 and 15 are on hold. The slices are defined in the plan, section 2.
 
 | Slice | Feature (#) | Status | Notes |
 |---|---|---|---|
 | T3-1 | Linking at generation time, both directions (13) | ✅ | `class-aips-publish-linking-service.php` and `AIPS_Autolink_Run_Service::run_now()`. Triggered by `aips_post_generated` and by `transition_post_status` → publish, when the post has the `_aips_generated_post` meta. A background `aips_publish_linking` event runs about two minutes later. Modes: off, review (default) or apply. Outbound suggestions are optional. Each publish is recorded as a "New post: …" run, so it can be undone. Links are inserted as the post author or an administrator (kses-safe). The setting is under Settings → Internal Linking → Internal Link Automation. |
-| T3-2 | Silo model (11) | ⬜ | The member ↔ pillar link matrix and a gap score, from the link index and clusters. |
+| T3-2 | Silo model (11) | ⬜ | The member ↔ pillar link matrix and a gap score, from the link index and clusters. Waiting on D16. |
 | T3-3 | Silo UI and Fix silo (11) | ⬜ | Content hub "Silos" rail item. |
-| T3-4 | Abilities API (14) | ⬜ | `wp_register_ability` when it's available. |
-| T3-5 | MCP bridge link tools (14) | ⬜ | `mcp-bridge.php`, the schema and the docs. |
-| T3-6 | Redirects store (12) | ⬜ | Blocked by D13. |
-| T3-7 | Consolidation flow (12) | ⬜ | Depends on T3-6. |
-| T3-8 | Cross-site linking (15) | ⬜ | Blocked by D12. |
+| T3-4 | Abilities API (14) | ⏸ | On hold (2026-09-24). |
+| T3-5 | MCP bridge link tools (14) | ⏸ | On hold (2026-09-24). |
+| T3-6 | Redirects module (12) | ✅ | `class-aips-redirects-service.php`, `class-aips-redirects-repository.php`, `class-aips-redirects-controller.php`, `interface-aips-redirect-provider.php`, the providers `class-aips-redirect-provider-{native,redirection,yoast,rankmath}.php`, `templates/admin/redirects.php` and `admin-redirects.js`. Table `aips_redirects` (schema 3.7.7). Tested against the real Redirection 5.10.1 and Rank Math 1.0.279 plugins: create, move between providers, disable, delete and 410. The built-in handler keeps the query string, counts hits and handles 410. ⚠️ The Yoast SEO Premium adapter is untested (paid plugin). |
+| T3-7 | Consolidation flow (12) | ⬜ | Next. Uses T3-6 redirects with `origin = consolidation`. |
+| T3-8 | Cross-site linking (15) | ⏸ | On hold (2026-09-24). |
 
 ---
 
@@ -126,8 +126,10 @@ Order: 13 → 11 → 14 → 12 → 15. The slices are defined in the plan, secti
 | D9 | Undo retention | 🟡 No expiry yet. |
 | D10 | Undo after edits | ✅ Treated as a conflict and skipped. |
 | D11 | Default rel/target | ✅ None. |
-| D12 | Cross-site model | ⬜ Open |
-| D13 | Redirect storage | ⬜ Open |
+| D12 | Cross-site model | ⏸ On hold |
+| D13 | Redirect storage | ✅ Use the installed redirect plugin (Redirection, Yoast SEO Premium or Rank Math), with AIPS's own table as the fallback. AIPS tracks every redirect it creates and can move them between providers. |
+| D15 | Abilities / MCP (item 14) | ⏸ On hold |
+| D16 | Silo "Fix silo" direction | ⬜ Open |
 | D14 | Publish-linking default | ✅ `review` (only suggestions). Easy to change in Settings. |
 
 ---
@@ -164,6 +166,7 @@ Order: 13 → 11 → 14 → 12 → 15. The slices are defined in the plan, secti
 |---|---|
 | 3.7.5 | Added the `aips_link_index` table, and suggestion and undo columns on `aips_internal_links` |
 | 3.7.6 | Added the `aips_link_clicks` table (daily click counts) |
+| 3.7.7 | Added the `aips_redirects` table (redirects created by AIPS) |
 
 ## Remaining verification
 

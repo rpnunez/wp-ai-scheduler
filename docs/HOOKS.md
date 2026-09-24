@@ -485,6 +485,27 @@ Fires after a newly published AIPS post has been linked into the site.
     *   `array $run`: Inbound run summary (`job_id`, `applied`, `review`, `skipped`).
     *   `int $outbound`: The number of outbound suggestions queued for review.
 
+#### `aips_redirect_providers`
+Filters the redirect providers AIPS can use (3.7.7). The order matters for "Automatic": the first available provider wins. The built-in provider is always added last if it's missing.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `AIPS_Redirect_Provider[] $providers`: The Redirection, Yoast SEO Premium, Rank Math and built-in providers.
+
+#### `aips_redirection_group_id`
+Filters the Redirection plugin group that AIPS adds redirects to.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $group_id`: Defaults to `0`, which means the first group of Redirection's WordPress module.
+
+#### `aips_redirect_created`
+Fires after AIPS creates a redirect.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `object $redirect`: The stored `aips_redirects` row (`source_path`, `target_url`, `status_code`, `provider`, `provider_ref`, `origin`, ...).
+
 #### `aips_inbound_anchor_phrases`
 Filters the phrases used to place inbound links to a post (most specific first). Defaults to the post's top Google Search Console queries (when connected), the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
 

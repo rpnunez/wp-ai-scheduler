@@ -318,6 +318,13 @@ class AIPS_Ajax_Registry {
 		'aips_gsc_sync'       => 'AIPS_GSC_Controller',
 		'aips_gsc_disconnect' => 'AIPS_GSC_Controller',
 
+		// Redirects Controller
+		'aips_redirects_list'         => 'AIPS_Redirects_Controller',
+		'aips_redirects_create'       => 'AIPS_Redirects_Controller',
+		'aips_redirects_toggle'       => 'AIPS_Redirects_Controller',
+		'aips_redirects_delete'       => 'AIPS_Redirects_Controller',
+		'aips_redirects_set_provider' => 'AIPS_Redirects_Controller',
+
 		// Keyword Link Rules Controller
 		'aips_link_rules_list'   => 'AIPS_Link_Rules_Controller',
 		'aips_link_rules_save'   => 'AIPS_Link_Rules_Controller',
