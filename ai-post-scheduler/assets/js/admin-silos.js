@@ -91,7 +91,7 @@
 					pillar_url: silo.pillar_url,
 					health: silo.health,
 					health_class: silo.health >= 90 ? 'is-good' : (silo.health >= 60 ? 'is-fair' : 'is-poor'),
-					health_label: l10n.health.replace('%d', silo.health),
+					health_label: l10n.health.replace('%d', silo.health).replace('%%', '%'),
 					up_label: l10n.upLabel.replace('%1$d', silo.links_up).replace('%2$d', silo.total),
 					down_label: l10n.downLabel
 						.replace('%1$d', silo.down_text + silo.down_guide)
@@ -149,6 +149,7 @@
 						.replace('%1$d', suggested.inbound)
 						.replace('%2$d', suggested.words)
 						.replace('%3$d', suggested.topic)
+						.replace('%%', '%')
 				}));
 
 				var $select = $row.find('.aips-silo-pick');
