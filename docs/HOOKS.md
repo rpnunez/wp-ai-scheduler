@@ -438,6 +438,21 @@ Filters the Gutenberg blocks whose content never receives inserted internal link
 *   **Arguments:**
     *   `string[] $blocks`: Block names, e.g. `core/heading`, `core/code`, `core/html`, `core/buttons`, `core/navigation`.
 
+#### `aips_link_click_is_bot`
+Filters whether an internal link click comes from a bot and should not be counted (click tracking, 3.7.6).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `bool $is_bot`: Whether the user agent matched the built-in bot pattern (or was empty).
+    *   `string $user_agent`: The visitor's user agent.
+
+#### `aips_link_click_report_days`
+Filters how many days of internal link clicks the Link Report shows (default 30).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `int $days`: Report window in days.
+
 #### `aips_inbound_anchor_phrases`
 Filters the phrases used to place inbound links to a post (most specific first). Defaults to the Yoast / Rank Math focus keyword(s), the full title when it has 2–8 words, and 2–4 word runs of the title that do not start or end with a stop word.
 

@@ -318,6 +318,14 @@ class AIPS_Settings {
 				'sanitize_callback' => array($ui, 'sanitize_link_rules_max_per_post'),
 				'default'           => $defaults['aips_link_rules_max_per_post'],
 			),
+			'aips_link_click_tracking_enabled' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_link_click_tracking_enabled'],
+			),
+			'aips_link_click_retention_days' => array(
+				'sanitize_callback' => array($ui, 'sanitize_link_click_retention_days'),
+				'default'           => $defaults['aips_link_click_retention_days'],
+			),
 			'aips_autolink_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_autolink_enabled'],
@@ -935,6 +943,24 @@ class AIPS_Settings {
             array($this->ui, 'link_rules_field_callback'),
             'aips-settings',
             'aips_link_rules_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Internal Linking tab: Link Click Tracking card
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_link_clicks_section',
+            __('Link Click Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'link_rules_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_link_click_tracking',
+            __('Link Click Tracking', 'ai-post-scheduler'),
+            array($this->ui, 'link_click_tracking_field_callback'),
+            'aips-settings',
+            'aips_link_clicks_section'
         );
 
         // -----------------------------------------------------------------------

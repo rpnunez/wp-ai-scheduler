@@ -223,3 +223,9 @@
 		align-items: stretch;
 	}
 }
+
+/* Click tracking columns are hidden while tracking is off. */
+.aips-link-clicks-off .aips-link-clicks-col,
+.aips-link-clicks-off ~ .aips-modal .aips-link-clicks-col {
+	display: none;
+}

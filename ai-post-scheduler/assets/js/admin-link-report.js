@@ -197,6 +197,7 @@
 					outbound: row.outbound,
 					external: row.external,
 					broken: row.broken,
+					clicks: row.clicks,
 					edit_url: row.edit_url,
 					view_url: row.view_url,
 					orphan_class: row.is_orphan ? '' : 'aips-hidden',
@@ -292,12 +293,13 @@
 					url: link.url,
 					destination: link.target_title || link.url,
 					type_label: typeLabel,
-					type_class: typeClass
+					type_class: typeClass,
+					clicks: link.type === 'internal' && !link.is_broken ? link.clicks : '—'
 				});
 			});
 
-			$('#aips-link-report-inbound').html(inbound || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 2, message: l10n.noInbound }));
-			$('#aips-link-report-outbound').html(outbound || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 3, message: l10n.noOutbound }));
+			$('#aips-link-report-inbound').html(inbound || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 3, message: l10n.noInbound }));
+			$('#aips-link-report-outbound').html(outbound || AIPS.Templates.render('aips-tmpl-link-report-empty-row', { colspan: 4, message: l10n.noOutbound }));
 			$('#aips-link-report-inbound-count').text(data.inbound.length);
 			$('#aips-link-report-outbound-count').text(data.outbound.length);
 		},

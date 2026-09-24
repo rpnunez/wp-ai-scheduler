@@ -18,6 +18,7 @@
  * @var bool       $enabled      Whether automatic link indexing is enabled.
  * @var array|null $backfill     Most recent rebuild job status.
  * @var array      $autolink     Auto-link state (enabled, current run, history, pending_review, review_url).
+ * @var array      $clicks       Click tracking state (enabled, days, total, top).
  */
 
 if (!defined('ABSPATH')) {
@@ -34,7 +35,7 @@ foreach ($post_types as $type_slug => $type_label) {
 }
 ?>
 
-<div class="aips-link-report-tab" id="aips-link-report" data-backfill-running="<?php echo $backfill_running ? '1' : '0'; ?>" data-backfill-paused="<?php echo $backfill_paused ? '1' : '0'; ?>">
+<div class="aips-link-report-tab<?php echo empty($clicks['enabled']) ? ' aips-link-clicks-off' : ''; ?>" id="aips-link-report" data-backfill-running="<?php echo $backfill_running ? '1' : '0'; ?>" data-backfill-paused="<?php echo $backfill_paused ? '1' : '0'; ?>">
 
 	<?php if (!$enabled) : ?>
 	<div class="notice notice-warning inline aips-banner">
@@ -112,6 +113,24 @@ foreach ($post_types as $type_slug => $type_label) {
 			</div>
 			<p class="aips-stat-subtext"><?php esc_html_e('Links to pages on this site that no longer exist', 'ai-post-scheduler'); ?></p>
 		</div>
+
+		<?php if (!empty($clicks['enabled'])) : ?>
+		<div class="aips-stat-card">
+			<div class="aips-stat-header">
+				<span class="aips-stat-label"><?php esc_html_e('Internal Link Clicks', 'ai-post-scheduler'); ?></span>
+				<span class="dashicons dashicons-chart-bar aips-stat-icon" aria-hidden="true"></span>
+			</div>
+			<div class="aips-stat-value-wrap">
+				<span class="aips-stat-value aips-text-info"><?php echo esc_html(number_format_i18n((int) $clicks['total'])); ?></span>
+			</div>
+			<p class="aips-stat-subtext">
+				<?php
+				/* translators: %d: number of days */
+				echo esc_html(sprintf(_n('Clicks on links between your posts, last %d day', 'Clicks on links between your posts, last %d days', (int) $clicks['days'], 'ai-post-scheduler'), (int) $clicks['days']));
+				?>
+			</p>
+		</div>
+		<?php endif; ?>
 	</div>
 
 	<!-- Scan progress -->
@@ -249,7 +268,7 @@ foreach ($post_types as $type_slug => $type_label) {
 			),
 			'body_class'  => 'no-padding',
 		),
-		function () use ($type_filter_options, $never_indexed) {
+		function () use ($type_filter_options, $never_indexed, $clicks) {
 			AIPS_Admin_UI_Primitives::render_action_toolbar(array(
 				'class'   => 'aips-link-report-toolbar',
 				'search'  => array(
@@ -285,6 +304,12 @@ foreach ($post_types as $type_slug => $type_label) {
 						<th scope="col"><button type="button" class="aips-sort-link" data-orderby="outbound"><?php esc_html_e('Outbound', 'ai-post-scheduler'); ?></button></th>
 						<th scope="col"><button type="button" class="aips-sort-link" data-orderby="external"><?php esc_html_e('External', 'ai-post-scheduler'); ?></button></th>
 						<th scope="col"><?php esc_html_e('Broken', 'ai-post-scheduler'); ?></th>
+						<th scope="col" class="aips-link-clicks-col">
+							<?php
+							/* translators: %d: number of days */
+							echo esc_html(sprintf(__('Clicks (%dd)', 'ai-post-scheduler'), (int) $clicks['days']));
+							?>
+						</th>
 						<th scope="col" class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 					</tr>
 				</thead>
@@ -319,6 +344,55 @@ foreach ($post_types as $type_slug => $type_label) {
 		}
 	);
 	?>
+
+	<?php if (!empty($clicks['enabled'])) : ?>
+	<!-- Most-clicked internal links -->
+	<?php
+	AIPS_Admin_UI_Primitives::render_card(
+		array(
+			'id'          => 'aips-link-clicks-panel',
+			'title'       => __('Most-Clicked Internal Links', 'ai-post-scheduler'),
+			'icon'        => 'dashicons-chart-bar',
+			'description' => sprintf(
+				/* translators: %d: number of days */
+				__('Which links between your posts visitors actually follow (last %d days). Links nobody clicks may need better placement or anchor text.', 'ai-post-scheduler'),
+				(int) $clicks['days']
+			),
+			'body_class'  => 'no-padding',
+		),
+		function () use ($clicks) {
+			if (empty($clicks['top'])) {
+				AIPS_Admin_UI_Primitives::render_empty_state(array(
+					'icon'    => 'dashicons-chart-bar',
+					'title'   => __('No clicks recorded yet', 'ai-post-scheduler'),
+					'message' => __('Clicks by visitors appear here within minutes. Your own clicks while logged in as an editor are not counted.', 'ai-post-scheduler'),
+				));
+				return;
+			}
+			?>
+			<table class="aips-table widefat striped" id="aips-link-clicks-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e('From', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('To', 'ai-post-scheduler'); ?></th>
+						<th scope="col"><?php esc_html_e('Clicks', 'ai-post-scheduler'); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ($clicks['top'] as $link) : ?>
+					<tr>
+						<td><a href="<?php echo esc_url($link['source_edit']); ?>"><?php echo esc_html($link['source_title']); ?></a></td>
+						<td><a href="<?php echo esc_url($link['target_edit']); ?>"><?php echo esc_html($link['target_title']); ?></a></td>
+						<td><?php echo esc_html(number_format_i18n((int) $link['clicks'])); ?></td>
+					</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+			<?php
+		}
+	);
+	?>
+	<?php endif; ?>
 
 	<!-- Broken internal links -->
 	<?php
@@ -529,6 +603,7 @@ foreach ($post_types as $type_slug => $type_label) {
 						<tr>
 							<th scope="col"><?php esc_html_e('Source Post', 'ai-post-scheduler'); ?></th>
 							<th scope="col"><?php esc_html_e('Anchor Text', 'ai-post-scheduler'); ?></th>
+							<th scope="col" class="aips-link-clicks-col"><?php esc_html_e('Clicks', 'ai-post-scheduler'); ?></th>
 						</tr>
 					</thead>
 					<tbody id="aips-link-report-inbound"></tbody>
@@ -541,6 +616,7 @@ foreach ($post_types as $type_slug => $type_label) {
 							<th scope="col"><?php esc_html_e('Anchor Text', 'ai-post-scheduler'); ?></th>
 							<th scope="col"><?php esc_html_e('Destination', 'ai-post-scheduler'); ?></th>
 							<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+							<th scope="col" class="aips-link-clicks-col"><?php esc_html_e('Clicks', 'ai-post-scheduler'); ?></th>
 						</tr>
 					</thead>
 					<tbody id="aips-link-report-outbound"></tbody>
@@ -565,6 +641,7 @@ foreach ($post_types as $type_slug => $type_label) {
 			<td>{{outbound}}</td>
 			<td>{{external}}</td>
 			<td>{{broken}}</td>
+			<td class="aips-link-clicks-col">{{clicks}}</td>
 			<td class="column-actions">
 				<button type="button" class="aips-btn aips-btn-sm {{suggest_class}} aips-link-report-suggest" data-post-id="{{id}}" data-title="{{title}}"><?php esc_html_e('Suggest Links', 'ai-post-scheduler'); ?></button>
 				<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-link-report-details" data-post-id="{{id}}"><?php esc_html_e('View Links', 'ai-post-scheduler'); ?></button>
@@ -577,6 +654,7 @@ foreach ($post_types as $type_slug => $type_label) {
 		<tr>
 			<td><a href="{{source_edit}}">{{source_title}}</a></td>
 			<td>{{anchor}}</td>
+			<td class="aips-link-clicks-col">{{clicks}}</td>
 		</tr>
 	</script>
 
@@ -585,6 +663,7 @@ foreach ($post_types as $type_slug => $type_label) {
 			<td>{{anchor}}</td>
 			<td><a href="{{url}}" target="_blank" rel="noopener">{{destination}}</a></td>
 			<td><span class="aips-badge {{type_class}}">{{type_label}}</span></td>
+			<td class="aips-link-clicks-col">{{clicks}}</td>
 		</tr>
 	</script>
 

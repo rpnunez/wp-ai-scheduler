@@ -98,7 +98,39 @@ class AIPS_Link_Report_Controller {
 			'enabled'      => $this->service->is_enabled(),
 			'backfill'     => $this->service->get_backfill_status(),
 			'autolink'     => $this->get_autolink_payload(),
+			'clicks'       => $this->get_clicks_payload(),
 		);
+	}
+
+	/**
+	 * Click tracking state for the Link Report: enabled flag, report window,
+	 * total clicks and the most-clicked links.
+	 *
+	 * @return array{enabled:bool, days:int, total:int, top:array[]}
+	 */
+	private function get_clicks_payload(): array {
+		$tracking = $this->get_click_tracking();
+
+		if (!$tracking->is_enabled()) {
+			return array('enabled' => false, 'days' => $tracking->get_report_days(), 'total' => 0, 'top' => array());
+		}
+
+		return array(
+			'enabled' => true,
+			'days'    => $tracking->get_report_days(),
+			'total'   => $tracking->get_total(),
+			'top'     => $tracking->get_top_links(10),
+		);
+	}
+
+	/**
+	 * @return AIPS_Link_Click_Tracking_Service
+	 */
+	private function get_click_tracking(): AIPS_Link_Click_Tracking_Service {
+		$container = AIPS_Container::get_instance();
+		return $container->has(AIPS_Link_Click_Tracking_Service::class)
+			? $container->make(AIPS_Link_Click_Tracking_Service::class)
+			: new AIPS_Link_Click_Tracking_Service();
 	}
 
 	/**
@@ -145,6 +177,8 @@ class AIPS_Link_Report_Controller {
 		$rows    = array();
 		$page    = $this->repository->get_report_page($args);
 		$pending = (new AIPS_Internal_Links_Repository())->count_pending_by_targets(wp_list_pluck($page, 'ID'), AIPS_Inbound_Links_Service::ORIGIN);
+		$tracking = $this->get_click_tracking();
+		$clicks   = $tracking->is_enabled() ? $tracking->get_inbound_clicks(wp_list_pluck($page, 'ID')) : array();
 
 		foreach ($page as $row) {
 			$type_object = get_post_type_object($row->post_type);
@@ -157,6 +191,7 @@ class AIPS_Link_Report_Controller {
 				'outbound'   => (int) $row->outbound,
 				'external'   => (int) $row->external,
 				'broken'     => (int) $row->broken,
+				'clicks'     => isset($clicks[(int) $row->ID]) ? $clicks[(int) $row->ID] : 0,
 				'is_orphan'  => ((int) $row->inbound === 0),
 				'suggestions' => isset($pending[(int) $row->ID]) ? $pending[(int) $row->ID] : 0,
 				'can_suggest' => AIPS_Inbound_Links_Service::should_suggest((int) $row->inbound),
@@ -189,6 +224,10 @@ class AIPS_Link_Report_Controller {
 			AIPS_Ajax_Response::error(__('Post not found.', 'ai-post-scheduler'), 'not_found');
 		}
 
+		$tracking      = $this->get_click_tracking();
+		$clicks_out    = $tracking->is_enabled() ? $tracking->get_clicks_by_target($post_id) : array();
+		$clicks_in     = $tracking->is_enabled() ? $tracking->get_clicks_by_source($post_id) : array();
+
 		$outbound = array();
 		foreach ($this->repository->get_outbound($post_id) as $link) {
 			$target_id  = (int) $link->target_post_id;
@@ -200,6 +239,7 @@ class AIPS_Link_Report_Controller {
 				'is_nofollow'  => !empty($link->is_nofollow),
 				'target_title' => $target_id ? get_the_title($target_id) : '',
 				'target_edit'  => $target_id ? (string) get_edit_post_link($target_id, 'raw') : '',
+				'clicks'       => ($target_id && isset($clicks_out[$target_id])) ? $clicks_out[$target_id] : 0,
 			);
 		}
 
@@ -210,6 +250,7 @@ class AIPS_Link_Report_Controller {
 				'anchor'       => (string) $link->anchor_text,
 				'source_title' => get_the_title($source_id),
 				'source_edit'  => (string) get_edit_post_link($source_id, 'raw'),
+				'clicks'       => isset($clicks_in[$source_id]) ? $clicks_in[$source_id] : 0,
 			);
 		}
 

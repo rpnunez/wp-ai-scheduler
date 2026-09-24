@@ -38,6 +38,7 @@ class AIPS_DB_Manager {
         'aips_integration_field_mappings',
         'aips_content_audits',
         'aips_link_index',
+        'aips_link_clicks',
     );
 
     public function __construct() {
@@ -104,6 +105,7 @@ class AIPS_DB_Manager {
         $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
         $table_content_audits       = $tables['aips_content_audits'];
         $table_link_index           = $tables['aips_link_index'];
+        $table_link_clicks          = $tables['aips_link_clicks'];
 
         $sql = array();
 
@@ -593,6 +595,18 @@ class AIPS_DB_Manager {
             KEY link_type (link_type)
         ) $charset_collate;";
 
+        $sql[] = "CREATE TABLE $table_link_clicks (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_post_id bigint(20) NOT NULL,
+            target_post_id bigint(20) NOT NULL,
+            day_start bigint(20) unsigned NOT NULL DEFAULT 0,
+            clicks int(11) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            UNIQUE KEY link_day (source_post_id, target_post_id, day_start),
+            KEY target_day (target_post_id, day_start),
+            KEY day_start (day_start)
+        ) $charset_collate;";
+
         $sql[] = "CREATE TABLE $table_affiliate_links (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             tag varchar(255) NOT NULL,
@@ -921,6 +935,9 @@ class AIPS_DB_Manager {
             ),
             'aips_link_index' => array(
                 array( 'created_at', false ),
+            ),
+            'aips_link_clicks' => array(
+                array( 'day_start', false ),
             ),
             'aips_cache' => array(
                 array( 'expires_at', false ),

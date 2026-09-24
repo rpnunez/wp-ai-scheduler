@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.5
+ * Version: 3.7.6
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.5');
+    define('AIPS_VERSION', '3.7.6');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -465,6 +465,14 @@ final class AI_Post_Scheduler {
             return new AIPS_Link_Rules_Service();
         });
 
+        $container->singleton(AIPS_Link_Clicks_Repository::class, function( $container ) {
+            return new AIPS_Link_Clicks_Repository();
+        });
+
+        $container->singleton(AIPS_Link_Click_Tracking_Service::class, function( $container ) {
+            return new AIPS_Link_Click_Tracking_Service(null, $container->make(AIPS_Link_Clicks_Repository::class));
+        });
+
         $container->singleton(AIPS_Autolink_Run_Service::class, function( $container ) {
             return new AIPS_Autolink_Run_Service(
                 $container->make(AIPS_Inbound_Links_Service::class),
@@ -679,6 +687,7 @@ final class AI_Post_Scheduler {
 
         add_action('before_delete_post', function ($post_id) {
             AIPS_Container::get_instance()->make(AIPS_Link_Index_Service::class)->on_before_delete_post($post_id);
+            AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->on_before_delete_post($post_id);
         });
 
         // Process pending background indexing queue (single event / cron worker)
@@ -1068,6 +1077,10 @@ final class AI_Post_Scheduler {
         add_filter('the_content', function ($content) {
             return AIPS_Container::get_instance()->make(AIPS_Link_Rules_Service::class)->filter_content($content);
         }, 9);
+
+        // Internal link click tracking (opt-in): tags content links and
+        // registers the aips/v1/link-click beacon endpoint.
+        AIPS_Container::get_instance()->make(AIPS_Link_Click_Tracking_Service::class)->register_frontend();
     }
 }
 

@@ -842,6 +842,16 @@ class AIPS_Settings_UI {
     }
 
     /**
+     * Sanitize the link click retention period (30–730 days).
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public function sanitize_link_click_retention_days($value) {
+        return min(730, max(30, absint($value)));
+    }
+
+    /**
      * Sanitize the rel attribute applied to auto-inserted links.
      *
      * @param mixed $value Raw value.
@@ -1637,6 +1647,30 @@ class AIPS_Settings_UI {
 				);
 				?>
 			</p>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Render the link click tracking toggle and retention (Internal Linking tab).
+	 *
+	 * @return void
+	 */
+	public function link_click_tracking_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$enabled   = (bool) $config->get_option('aips_link_click_tracking_enabled', false);
+		$retention = (int) $config->get_option('aips_link_click_retention_days', 365);
+		?>
+		<fieldset>
+			<label for="aips_link_click_tracking_enabled">
+				<input type="checkbox" name="aips_link_click_tracking_enabled" id="aips_link_click_tracking_enabled" value="1" <?php checked($enabled); ?>>
+				<strong><?php esc_html_e('Count clicks on internal links in post content', 'ai-post-scheduler'); ?></strong>
+			</label>
+			<p>
+				<label for="aips_link_click_retention_days"><?php esc_html_e('Keep click counts for (days):', 'ai-post-scheduler'); ?></label>
+				<input type="number" min="30" max="730" step="1" name="aips_link_click_retention_days" id="aips_link_click_retention_days" value="<?php echo esc_attr((string) $retention); ?>" class="small-text">
+			</p>
+			<p class="description"><?php esc_html_e('Adds a small script to single posts that reports which internal link was clicked. Only a daily count per link is stored: no IP addresses, cookies or visitor IDs. Clicks by logged-in editors and known bots are ignored. Results appear in Content → Link Report.', 'ai-post-scheduler'); ?></p>
 		</fieldset>
 		<?php
 	}
