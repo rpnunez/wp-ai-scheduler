@@ -227,29 +227,96 @@ class AIPS_Schedule_Processor {
             'info'
         );
 
+        $context_data = $this->prepare_batch_slice_context($schedule_id, $start_index, $total_quantity);
+        if (!$context_data) {
+            return;
+        }
+
+        list($schedule, $current_run_state, $context, $history, $schedule_obj) = $context_data;
+
+        $config = AIPS_Config::get_instance();
+        if ($config->is_scheduled_ai_generation_prevented()) {
+            $this->handle_batch_slice_prevention($schedule_obj, $history, $start_index, $total_quantity, $current_run_state);
+            return;
+        }
+
+        $this->repository->update_run_state($schedule_id, array(
+            'status'         => 'batch_processing',
+            'total'          => $total_quantity,
+            'completed'      => max(0, $start_index),
+            'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
+            'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+            'timestamp'      => AIPS_DateTime::now()->toIso8601(),
+        ));
+
+        $generation_result = $this->execute_batch_slice_generation($schedule_id, $start_index, $batch_size, $total_quantity, $context);
+        list($successful_post_ids, $errors) = $generation_result;
+
+        $completed_in_slice = count($successful_post_ids);
+        $total_completed    = $start_index + $completed_in_slice;
+        $all_done           = empty($errors) && ($total_completed >= $total_quantity);
+
+        $finalized = $this->finalize_batch_slice(
+            $start_index,
+            $schedule_id,
+            $schedule,
+            $schedule_obj,
+            $current_run_state,
+            $total_completed,
+            $total_quantity,
+            $errors,
+            $all_done,
+            $successful_post_ids
+        );
+        if (!$finalized) {
+            return;
+        }
+
+        $this->record_batch_slice_history(
+            $history,
+            $schedule_id,
+            $start_index,
+            $batch_size,
+            $total_quantity,
+            $completed_in_slice,
+            $total_completed,
+            $errors,
+            $successful_post_ids
+        );
+    }
+
+    /**
+     * Prepares context and dependencies for the batch slice.
+     *
+     * @param int $schedule_id
+     * @param int $start_index
+     * @param int $total_quantity
+     * @return array{0: object, 1: array, 2: AIPS_Template_Context, 3: ?AIPS_History_Container, 4: object}|null Returns array containing schedule, state, context, history, and schedule_obj on success, null if skipped.
+     */
+    private function prepare_batch_slice_context(int $schedule_id, int $start_index, int $total_quantity): ?array {
         $schedule = $this->repository->get_by_id($schedule_id);
 
         if (!$schedule) {
             $this->logger->log('Batch slice: schedule ' . $schedule_id . ' not found — skipping.', 'error');
-            return;
+            return null;
         }
 
         $current_run_state = $this->get_decoded_run_state($schedule);
         if ($this->should_skip_batch_slice($schedule_id, $current_run_state)) {
-            return;
+            return null;
         }
 
         // Guard: respect deactivation that may have happened after the batch was dispatched.
         if (isset($schedule->is_active) && !(bool) $schedule->is_active) {
             $this->logger->log('Batch slice: schedule ' . $schedule_id . ' is inactive — skipping.', 'info');
-            return;
+            return null;
         }
 
         $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
 
         if (!$actual_template_model) {
             $this->logger->log('Batch slice: template not found for schedule ' . $schedule_id . ' — skipping.', 'error');
-            return;
+            return null;
         }
 
         // Select article structure (honours rotation_pattern set on the schedule).
@@ -273,55 +340,73 @@ class AIPS_Schedule_Processor {
         // Load (or create) the schedule's persistent lifecycle history container.
         $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
 
+        return array($schedule, $current_run_state, $context, $history, $schedule_obj);
+    }
+
+    /**
+     * Handles early termination due to AI generation prevention settings.
+     *
+     * @param object                      $schedule_obj
+     * @param AIPS_History_Container|null $history
+     * @param int                         $start_index
+     * @param int                         $total_quantity
+     * @param array                       $current_run_state
+     */
+    private function handle_batch_slice_prevention(
+        object $schedule_obj,
+        ?AIPS_History_Container $history,
+        int $start_index,
+        int $total_quantity,
+        array $current_run_state
+    ): void {
         $config = AIPS_Config::get_instance();
+        $setting_label = $config->get_scheduled_ai_generation_prevention_label();
 
-        if ($config->is_scheduled_ai_generation_prevented()) {
-            $setting_label = $config->get_scheduled_ai_generation_prevention_label();
+        $this->result_handler->handle_execution_terminated_by_setting(
+            $schedule_obj,
+            $history,
+            false,
+            $setting_label,
+            array(
+                'message_override' => sprintf(
+                    /* translators: 1: 1-based slice start position, 2: total posts, 3: setting label */
+                    __('Batch slice starting at post %1$d of %2$d was terminated early due to %3$s being enabled.', 'ai-post-scheduler'),
+                    $start_index + 1,
+                    $total_quantity,
+                    $setting_label
+                ),
+                'event_type'       => AIPS_History_Event_Type::BATCH_SLICE_TERMINATED,
+                'total'            => $total_quantity,
+                'completed'        => max(0, $start_index),
+                'run_state'        => array(
+                    'completed'      => max(0, $start_index),
+                    'total'          => $total_quantity,
+                    'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
+                    'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
+                    'resumable'      => true,
+                    'resume_index'   => max(0, $start_index),
+                ),
+            )
+        );
+    }
 
-            $this->result_handler->handle_execution_terminated_by_setting(
-                $schedule_obj,
-                $history,
-                false,
-                $setting_label,
-                array(
-                    'message_override' => sprintf(
-                        /* translators: 1: 1-based slice start position, 2: total posts, 3: setting label */
-                        __('Batch slice starting at post %1$d of %2$d was terminated early due to %3$s being enabled.', 'ai-post-scheduler'),
-                        $start_index + 1,
-                        $total_quantity,
-                        $setting_label
-                    ),
-                    'event_type'       => AIPS_History_Event_Type::BATCH_SLICE_TERMINATED,
-                    'total'            => $total_quantity,
-                    'completed'        => max(0, $start_index),
-                    'run_state'        => array(
-                        'completed'      => max(0, $start_index),
-                        'total'          => $total_quantity,
-                        'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
-                        'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
-                        // Resume cursor. A large batch stopped part-way through is
-                        // resumable: the remaining slices are re-dispatched from
-                        // resume_index once the blocking setting is turned off. A run
-                        // blocked before it ever dispatched is not marked resumable —
-                        // that is a skipped occurrence, not an interrupted batch.
-                        'resumable'      => true,
-                        'resume_index'   => max(0, $start_index),
-                    ),
-                )
-            );
-
-            return;
-        }
-
-        $this->repository->update_run_state($schedule_id, array(
-            'status'         => 'batch_processing',
-            'total'          => $total_quantity,
-            'completed'      => max(0, $start_index),
-            'dispatched_at'  => isset($current_run_state['dispatched_at']) ? (int) $current_run_state['dispatched_at'] : AIPS_DateTime::now()->timestamp(),
-            'correlation_id' => isset($current_run_state['correlation_id']) ? (string) $current_run_state['correlation_id'] : (string) AIPS_Correlation_ID::get(),
-            'timestamp'      => AIPS_DateTime::now()->toIso8601(),
-        ));
-
+    /**
+     * Executes the generation loop for the current slice.
+     *
+     * @param int                   $schedule_id
+     * @param int                   $start_index
+     * @param int                   $batch_size
+     * @param int                   $total_quantity
+     * @param AIPS_Template_Context $context
+     * @return array Array containing [successful_post_ids, errors].
+     */
+    private function execute_batch_slice_generation(
+        int $schedule_id,
+        int $start_index,
+        int $batch_size,
+        int $total_quantity,
+        AIPS_Template_Context $context
+    ): array {
         $successful_post_ids = array();
         $errors              = array();
         $delay               = AIPS_Config::get_instance()->get_generation_delay_seconds();
@@ -354,8 +439,6 @@ class AIPS_Schedule_Processor {
 
             $successful_post_ids[] = $result;
 
-            // Persist incremental progress so a crash mid-slice is visible.
-            // At this point count($successful_post_ids) >= 1, so last_index is always >= 0.
             $completed_so_far = $start_index + count($successful_post_ids);
             $this->repository->update_batch_progress(
                 $schedule_id,
@@ -366,11 +449,36 @@ class AIPS_Schedule_Processor {
             );
         }
 
-        $completed_in_slice = count($successful_post_ids);
-        $total_completed    = $start_index + $completed_in_slice;
-        $all_done           = empty($errors) && ($total_completed >= $total_quantity);
+        return array($successful_post_ids, $errors);
+    }
 
-        // Update run_state to reflect this slice's outcome.
+    /**
+     * Finalizes the batch slice, updating schedule state.
+     *
+     * @param int    $start_index
+     * @param int    $schedule_id
+     * @param object $schedule
+     * @param object $schedule_obj
+     * @param array  $current_run_state
+     * @param int    $total_completed
+     * @param int    $total_quantity
+     * @param array  $errors
+     * @param bool   $all_done
+     * @param array  $successful_post_ids
+     * @return bool False if finalization was skipped/aborted due to terminal state, true otherwise.
+     */
+    private function finalize_batch_slice(
+        int $start_index,
+        int $schedule_id,
+        object $schedule,
+        object $schedule_obj,
+        array $current_run_state,
+        int $total_completed,
+        int $total_quantity,
+        array $errors,
+        bool $all_done,
+        array $successful_post_ids
+    ): bool {
         if (!empty($errors)) {
             $this->repository->update_run_state($schedule_id, array(
                 'status'        => $total_completed > 0 ? 'partial' : 'failed',
@@ -407,7 +515,7 @@ class AIPS_Schedule_Processor {
                     ),
                     'warning'
                 );
-                return;
+                return false;
             }
 
             $this->repository->clear_batch_progress($schedule_id);
@@ -420,7 +528,6 @@ class AIPS_Schedule_Processor {
                 'timestamp'      => AIPS_DateTime::now()->toIso8601(),
             ));
 
-            // Clean up one-time schedules now that all posts have been generated.
             if (isset($schedule->frequency) && $schedule->frequency === 'once') {
                 $this->repository->delete($schedule_id);
                 $this->logger->log('Batch-queued one-time schedule completed and deleted: ' . $schedule_id, 'info');
@@ -441,59 +548,86 @@ class AIPS_Schedule_Processor {
             do_action('aips_schedule_execution_completed', $schedule_id, $successful_post_ids, $schedule_obj);
         }
 
-        // History logging.
-        if ($history) {
-            if (!empty($errors)) {
-                $history->record(
-                    'warning',
-                    sprintf(
-                        /* translators: 1: 1-based slice start position, 2: total posts, 3: error message */
-                        __('Batch slice starting at post %1$d/%2$d failed: %3$s', 'ai-post-scheduler'),
-                        $start_index + 1,
-                        $total_quantity,
-                        $errors[0]->get_error_message()
-                    ),
-                    array(
-                        'event_type'   => 'batch_slice_failed',
-                        'event_status' => 'failed',
-                    ),
-                    null,
-                    array(
-                        'schedule_id'  => $schedule_id,
-                        'start_index'  => $start_index,
-                        'batch_size'   => $batch_size,
-                        'completed'    => $completed_in_slice,
-                        'total'        => $total_quantity,
-                    )
-                );
-            } else {
-                $history->record(
-                    'activity',
-                    sprintf(
-                        /* translators: 1: 1-based slice start, 2: 1-based slice end, 3: overall total */
-                        __('Batch slice completed: posts %1$d–%2$d of %3$d generated.', 'ai-post-scheduler'),
-                        $start_index + 1,
-                        $total_completed,
-                        $total_quantity
-                    ),
-                    array(
-                        'event_type'   => 'batch_slice_completed',
-                        'event_status' => 'success',
-                    ),
-                    null,
-                    array(
-                        'schedule_id'  => $schedule_id,
-                        'start_index'  => $start_index,
-                        'batch_size'   => $batch_size,
-                        'completed'    => $total_completed,
-                        'total'        => $total_quantity,
-                        'post_ids'     => $successful_post_ids,
-                    )
-                );
-            }
-        }
+        return true;
     }
 
+    /**
+     * Records history for the batch slice execution.
+     *
+     * @param AIPS_History_Container|null $history
+     * @param int                         $schedule_id
+     * @param int                         $start_index
+     * @param int                         $batch_size
+     * @param int                         $total_quantity
+     * @param int                         $completed_in_slice
+     * @param int                         $total_completed
+     * @param array                       $errors
+     * @param array                       $successful_post_ids
+     */
+    private function record_batch_slice_history(
+        ?AIPS_History_Container $history,
+        int $schedule_id,
+        int $start_index,
+        int $batch_size,
+        int $total_quantity,
+        int $completed_in_slice,
+        int $total_completed,
+        array $errors,
+        array $successful_post_ids
+    ): void {
+        if (!$history) {
+            return;
+        }
+
+        if (!empty($errors)) {
+            $history->record(
+                'warning',
+                sprintf(
+                    /* translators: 1: 1-based slice start position, 2: total posts, 3: error message */
+                    __('Batch slice starting at post %1$d/%2$d failed: %3$s', 'ai-post-scheduler'),
+                    $start_index + 1,
+                    $total_quantity,
+                    $errors[0]->get_error_message()
+                ),
+                array(
+                    'event_type'   => 'batch_slice_failed',
+                    'event_status' => 'failed',
+                ),
+                null,
+                array(
+                    'schedule_id'  => $schedule_id,
+                    'start_index'  => $start_index,
+                    'batch_size'   => $batch_size,
+                    'completed'    => $completed_in_slice,
+                    'total'        => $total_quantity,
+                )
+            );
+        } else {
+            $history->record(
+                'activity',
+                sprintf(
+                    /* translators: 1: 1-based slice start, 2: 1-based slice end, 3: overall total */
+                    __('Batch slice completed: posts %1$d–%2$d of %3$d generated.', 'ai-post-scheduler'),
+                    $start_index + 1,
+                    $total_completed,
+                    $total_quantity
+                ),
+                array(
+                    'event_type'   => 'batch_slice_completed',
+                    'event_status' => 'success',
+                ),
+                null,
+                array(
+                    'schedule_id'  => $schedule_id,
+                    'start_index'  => $start_index,
+                    'batch_size'   => $batch_size,
+                    'completed'    => $total_completed,
+                    'total'        => $total_quantity,
+                    'post_ids'     => $successful_post_ids,
+                )
+            );
+        }
+    }
 
     /**
      * Determine whether a new batch queue dispatch should be skipped.
