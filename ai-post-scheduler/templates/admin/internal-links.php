@@ -108,7 +108,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					<div class="aips-filter-right">
 						<label class="screen-reader-text" for="aips-il-search"><?php esc_html_e('Search posts:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="aips-il-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search by post title…', 'ai-post-scheduler'); ?>">
-						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost aips-hidden" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
+						<button type="button" id="aips-il-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 					</div>
 				</div>
 
@@ -135,14 +135,14 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					</table>
 
 					<!-- Pagination -->
-					<div class="aips-panel-toolbar aips-il-pagination-toolbar aips-hidden" id="aips-il-pagination">
+					<div class="aips-panel-toolbar aips-il-pagination-toolbar" id="aips-il-pagination" style="display:none;">
 						<div class="aips-pagination" id="aips-il-page-controls"></div>
 					</div>
 				</div><!-- /.aips-panel-body -->
 			</div><!-- /#suggestions-tab -->
 
 			<!-- Generate for Post Tab -->
-			<div id="generate-tab" class="aips-tab-content aips-hidden" role="tabpanel" aria-hidden="true">
+			<div id="generate-tab" class="aips-tab-content" role="tabpanel" aria-hidden="true" style="display:none;">
 				<div class="aips-panel-body">
 					<h3 class="aips-panel-title"><?php esc_html_e('Generate Suggestions for a Post', 'ai-post-scheduler'); ?></h3>
 					<p class="description"><?php esc_html_e('Enter a post ID to generate internal link suggestions for it. The post will be indexed if it has not been indexed yet.', 'ai-post-scheduler'); ?></p>
@@ -178,7 +178,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 						</tbody>
 					</table>
 
-					<div id="aips-gen-feedback" class="aips-notice aips-hidden"></div>
+					<div id="aips-gen-feedback" class="aips-notice" style="display:none;"></div>
 
 					<div class="aips-btn-group aips-mt-4">
 						<button type="button" id="aips-generate-for-post-btn" class="aips-btn aips-btn-primary">
@@ -195,8 +195,8 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 		</div><!-- /.aips-panel-with-tabs -->
 
 <!-- Insert Link Modal -->
-<div id="aips-insert-modal" class="aips-modal-backdrop aips-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">
-	<div class="aips-modal aips-modal-lg">
+<div id="aips-insert-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-insert-modal-title">
+	<div class="aips-modal-content aips-modal-large" style="max-width:860px;width:94%;">
 		<div class="aips-modal-header">
 			<h2 class="aips-modal-title" id="aips-insert-modal-title"><?php esc_html_e('Insert Link', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
@@ -216,7 +216,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 			</div>
 
 			<!-- AI Insertion Locations Section (hidden until Insert is clicked) -->
-			<div id="aips-insert-locations-section" class="aips-modal-section aips-hidden">
+			<div id="aips-insert-locations-section" class="aips-modal-section" style="display:none;">
 				<h3 class="aips-modal-section-title">
 					<?php esc_html_e('Insertion Locations', 'ai-post-scheduler'); ?>
 					<span id="aips-insert-locations-spinner" class="spinner"></span>
@@ -239,7 +239,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 			</div>
 
 		</div><!-- /.aips-modal-body -->
-		<div class="aips-modal-footer">
+		<div class="aips-modal-footer" style="display:flex;justify-content:space-between;align-items:center;">
 			<span id="aips-pending-count" class="aips-text-muted"></span>
 			<div class="aips-btn-group">
 				<button type="button" class="aips-btn aips-btn-secondary aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
@@ -341,7 +341,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 			<span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span> {{insertBtn}}
 		</button>
 	</div>
-	<div class="aips-il-inline-locations aips-hidden">
+	<div class="aips-il-inline-locations" style="display:none;">
 		<div class="aips-il-inline-header">
 			<h4 class="aips-il-inline-title">{{insertionLocationsLabel}}</h4>
 			<div class="aips-il-inline-status">
@@ -411,12 +411,12 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 
 <!-- Preview insertion: green-highlighted link with inline hover actions -->
 <script type="text/html" id="aips-tmpl-il-preview-insertion">
-<span class="aips-il-preview-insertion" data-suggestion-id="{{suggestionId}}" data-match="{{matchEsc}}">{{before}}<mark class="aips-il-preview-link">{{anchor}}</mark>{{after}}<span class="aips-il-preview-actions aips-hidden"> <button type="button" class="aips-il-preview-edit-btn aips-btn aips-btn-xs aips-btn-secondary" data-suggestion-id="{{suggestionId}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-il-preview-undo-btn aips-btn aips-btn-xs aips-btn-ghost aips-btn-danger" data-suggestion-id="{{suggestionId}}"><span class="dashicons dashicons-undo" aria-hidden="true"></span><span class="screen-reader-text">{{undoLabel}}</span></button></span></span>
+<span class="aips-il-preview-insertion" data-suggestion-id="{{suggestionId}}" data-match="{{matchEsc}}">{{before}}<mark class="aips-il-preview-link">{{anchor}}</mark>{{after}}<span class="aips-il-preview-actions" style="display:none;"> <button type="button" class="aips-il-preview-edit-btn aips-btn aips-btn-xs aips-btn-secondary" data-suggestion-id="{{suggestionId}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-il-preview-undo-btn aips-btn aips-btn-xs aips-btn-ghost aips-btn-danger" data-suggestion-id="{{suggestionId}}"><span class="dashicons dashicons-undo" aria-hidden="true"></span><span class="screen-reader-text">{{undoLabel}}</span></button></span></span>
 </script>
 
 <!-- Edit Anchor Text Modal -->
-<div id="aips-anchor-modal" class="aips-modal-backdrop aips-hidden" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
-	<div class="aips-modal">
+<div id="aips-anchor-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-anchor-modal-title">
+	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2 class="aips-modal-title" id="aips-anchor-modal-title"><?php esc_html_e('Edit Anchor Text', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
