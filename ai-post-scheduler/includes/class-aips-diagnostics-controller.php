@@ -117,8 +117,11 @@ class AIPS_Diagnostics_Controller {
 		}
 
 		if ('telemetry' === $tab) {
-			// Use the runtime guard which prevents re-entrant option lookups.
-			return (bool) (class_exists('AIPS_Telemetry') && AIPS_Telemetry::is_enabled());
+			// Tab is available if telemetry is enabled OR if existing telemetry rows exist to inspect/prune.
+			if (class_exists('AIPS_Telemetry') && AIPS_Telemetry::is_enabled()) {
+				return true;
+			}
+			return (bool) (class_exists('AIPS_Telemetry_Repository') && AIPS_Telemetry_Repository::instance()->count() > 0);
 		}
 
 		if ('cache-monitor' === $tab) {

@@ -124,6 +124,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
+            'aips_database_prune_cleanup' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -424,6 +428,15 @@ final class AI_Post_Scheduler {
 
         $container->singleton(AIPS_Telemetry_Repository::class, function( $container ) {
             return AIPS_Telemetry_Repository::instance();
+        });
+
+        // Register AIPS_DB_Prune_Repository and AIPS_DB_Prune_Service
+        $container->singleton(AIPS_DB_Prune_Repository::class, function( $container ) {
+            return AIPS_DB_Prune_Repository::instance();
+        });
+
+        $container->singleton(AIPS_DB_Prune_Service::class, function( $container ) {
+            return AIPS_DB_Prune_Service::instance();
         });
 
         // Register AIPS_Template_Repository
@@ -855,6 +868,16 @@ final class AI_Post_Scheduler {
             $result      = $service->run_maintenance();
             ( new AIPS_Logger() )->log(
                 sprintf( 'Cache Monitor maintenance complete: %s', wp_json_encode( $result ) ),
+                'info'
+            );
+        });
+
+        // Database retention & prune maintenance.
+        add_action('aips_database_prune_cleanup', function() {
+            $service = AIPS_Container::get_instance()->make(AIPS_DB_Prune_Service::class);
+            $result  = $service->run_automated_prune();
+            ( new AIPS_Logger() )->log(
+                sprintf( 'Database prune cleanup complete: %s', wp_json_encode( $result ) ),
                 'info'
             );
         });

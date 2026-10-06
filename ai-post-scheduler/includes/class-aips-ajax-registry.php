@@ -267,6 +267,12 @@ class AIPS_Ajax_Registry {
 		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
 		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
 		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_purge_telemetry'    => 'AIPS_System_Status_Controller',
+		'aips_status_prune_history_logs' => 'AIPS_System_Status_Controller',
+		'aips_status_clean_orphaned_embeddings' => 'AIPS_System_Status_Controller',
+		'aips_status_optimize_table'     => 'AIPS_System_Status_Controller',
+		'aips_status_get_tables'         => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',

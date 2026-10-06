@@ -26,6 +26,15 @@
 
 ## [Unreleased]
 
+### Added
+- **Database Retention & Telemetry Optimization:**
+  - Strict telemetry disabling: when telemetry collection is toggled off, events are never recorded, buffered in memory, flushed on shutdown, or inserted into MySQL.
+  - Dedicated "Database & Retention" settings section to configure automated pruning intervals and retention age thresholds for telemetry events, generation history logs, orphaned embeddings, and expired topics.
+  - Automated WP-Cron background cleanup runner (`aips_database_prune_cleanup`) that executes chunked retention purges and conditionally defragments tables.
+  - "Database Storage & Table Status" matrix on the System Status diagnostics page displaying real-time records, data size, index size, storage engine, and overhead per plugin table.
+  - Manual maintenance controls on System Status: batched "Prune Old" with automatic defragmentation, "Purge All" (instant table truncation to 0 MB), "Clean Orphans" for post embeddings, and table optimization.
+  - Reusable destructive confirmation modal `AIPS.Utilities.confirmWithWord(options)` requiring users to type a confirmation word (e.g. "PURGE") before executing irreversible operations.
+
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.

@@ -123,6 +123,8 @@ class ComposerStaticInit9926cc10ea87c9a5c11fa104275346d1
         'AIPS_DB_Migrations' => __DIR__ . '/../..' . '/includes/class-aips-db-migrations.php',
         'AIPS_Dashboard_Controller' => __DIR__ . '/../..' . '/includes/class-aips-dashboard-controller.php',
         'AIPS_Dashboard_Repository' => __DIR__ . '/../..' . '/includes/class-aips-dashboard-repository.php',
+        'AIPS_DB_Prune_Repository' => __DIR__ . '/../..' . '/includes/class-aips-db-prune-repository.php',
+        'AIPS_DB_Prune_Service' => __DIR__ . '/../..' . '/includes/class-aips-db-prune-service.php',
         'AIPS_Data_Management_Export' => __DIR__ . '/../..' . '/includes/class-aips-data-management-export.php',
         'AIPS_Data_Management_Export_JSON' => __DIR__ . '/../..' . '/includes/class-aips-data-management-export-json.php',
         'AIPS_Data_Management_Export_MySQL' => __DIR__ . '/../..' . '/includes/class-aips-data-management-export-mysql.php',

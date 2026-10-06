@@ -61,10 +61,15 @@ class AIPS_Telemetry_Repository {
 	/**
 	 * Insert a new telemetry row.
 	 *
-	 * @param array $data Associative array of column => value pairs.
+	 * @param array $data  Associative array of column => value pairs.
+	 * @param bool  $force Optional. If true, bypasses the is_enabled check (useful in unit tests).
 	 * @return int|false Inserted row ID, or false on failure.
 	 */
-	public function insert(array $data) {
+	public function insert(array $data, $force = false) {
+		if (!$force && class_exists('AIPS_Telemetry') && !AIPS_Telemetry::is_enabled()) {
+			return false;
+		}
+
 		$column_formats = array(
 			'type'              => '%s',
 			'page'              => '%s',
@@ -352,5 +357,61 @@ class AIPS_Telemetry_Repository {
 			return null;
 		}
 		return json_decode($json, true);
+	}
+
+	/**
+	 * Prune telemetry rows older than a given timestamp in batches.
+	 *
+	 * Uses chunked DELETE statements to avoid long database table locks.
+	 *
+	 * @param int $cutoff_timestamp Unix timestamp threshold.
+	 * @param int $batch_size       Maximum rows to delete per iteration.
+	 * @return int Total rows deleted.
+	 */
+	public function prune_older_than($cutoff_timestamp, $batch_size = 1000) {
+		$total_deleted    = 0;
+		$cutoff_timestamp = (int) $cutoff_timestamp;
+		$batch_size       = max(1, min(5000, (int) $batch_size));
+
+		do {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"DELETE FROM {$this->table} WHERE inserted_at < %d LIMIT %d",
+					$cutoff_timestamp,
+					$batch_size
+				)
+			);
+
+			if (false === $deleted || 0 === (int) $deleted) {
+				break;
+			}
+
+			$total_deleted += (int) $deleted;
+		} while ((int) $deleted === $batch_size);
+
+		return $total_deleted;
+	}
+
+	/**
+	 * Truncate the telemetry table to immediately reset auto-increment and reclaim disk space.
+	 *
+	 * @return bool True on success, false on failure.
+	 */
+	public function truncate() {
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$result = $this->wpdb->query("TRUNCATE TABLE {$this->table}");
+		return false !== $result;
+	}
+
+	/**
+	 * Run OPTIMIZE TABLE on the telemetry table to reclaim unused InnoDB tablespace.
+	 *
+	 * @return bool True on success, false on failure.
+	 */
+	public function optimize() {
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$result = $this->wpdb->query("OPTIMIZE TABLE {$this->table}");
+		return false !== $result;
 	}
 }

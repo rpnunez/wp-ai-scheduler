@@ -204,6 +204,15 @@ class AIPS_Config {
             'aips_research_niches' => array(),
             // Telemetry
             'aips_enable_telemetry' => false,
+            // Database & Retention
+            'aips_auto_prune_enabled'                  => false,
+            'aips_telemetry_retention_value'           => 30,
+            'aips_telemetry_retention_unit'            => 'days',
+            'aips_telemetry_prune_interval'            => 'daily',
+            'aips_history_log_retention_value'         => 60,
+            'aips_history_log_retention_unit'          => 'days',
+            'aips_clean_orphaned_embeddings'           => true,
+            'aips_clean_expired_topics'                => true,
             // Cache Monitor
             'aips_cache_monitor_enabled'               => false,
             'aips_cache_monitor_index_enabled'         => true,

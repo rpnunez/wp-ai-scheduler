@@ -167,7 +167,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_settings_assets();
 		}
 
-		if ((self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) && AIPS_Config::get_instance()->get_option('aips_enable_telemetry')) {
+		if (self::PAGE_TELEMETRY === $page || $this->hook_contains($hook, self::PAGE_TELEMETRY) || $this->is_diagnostics_tab($page, 'telemetry')) {
 			$this->enqueue_telemetry_assets();
 		}
 
@@ -1670,7 +1670,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-system-status',
                 AIPS_PLUGIN_URL . 'assets/js/admin-system-status.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -1687,6 +1687,19 @@ class AIPS_Admin_Assets {
                 'nonceCleanupNotifications'             => wp_create_nonce('aips_status_cleanup_notifications'),
                 'nonceResetResilience'                  => wp_create_nonce('aips_status_reset_resilience'),
                 'nonceRepairDatetime'                   => wp_create_nonce('aips_status_repair_datetime'),
+                'noncePruneTelemetry'                   => wp_create_nonce('aips_status_prune_telemetry'),
+                'noncePurgeTelemetry'                   => wp_create_nonce('aips_status_purge_telemetry'),
+                'noncePruneHistoryLogs'                 => wp_create_nonce('aips_status_prune_history_logs'),
+                'nonceCleanEmbeddings'                  => wp_create_nonce('aips_status_clean_orphaned_embeddings'),
+                'nonceOptimizeTable'                    => wp_create_nonce('aips_status_optimize_table'),
+                'nonceGetTables'                        => wp_create_nonce('aips_status_get_tables'),
+                'confirmPruneTelemetry'                 => __('Prune telemetry records older than configured retention period? Batched deletion will defragment table if needed.', 'ai-post-scheduler'),
+                'confirmPurgeTelemetryTitle'            => __('Purge All Telemetry Data', 'ai-post-scheduler'),
+                'confirmPurgeTelemetry'                 => __('Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
+                'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
+                'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
+                'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),
                 'refreshDone'                           => __('System refresh complete.', 'ai-post-scheduler'),
                 'refreshPartial'                        => __('System refresh finished with some failures.', 'ai-post-scheduler'),

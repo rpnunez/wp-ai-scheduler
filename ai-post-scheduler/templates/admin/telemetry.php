@@ -23,6 +23,15 @@ if (!defined('ABSPATH')) {
 		</div>
 <?php endif; ?>
 
+		<?php if (!AIPS_Telemetry::is_enabled()) : ?>
+			<div class="notice notice-info inline aips-telemetry-disabled-banner" style="margin-bottom: 20px; padding: 12px 16px; border-left: 4px solid #72aee6; background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+				<p style="margin: 0;">
+					<strong><?php esc_html_e('Telemetry collection is currently disabled.', 'ai-post-scheduler'); ?></strong>
+					<?php esc_html_e('You are viewing existing historical records. New request events are not being recorded. You can manage retention or purge data from the System Status page or Settings.', 'ai-post-scheduler'); ?>
+				</p>
+			</div>
+		<?php endif; ?>
+
 		<div class="aips-telemetry-dashboard-grid" id="aips-telemetry-panel">
 			<div class="aips-telemetry-dashboard-main">
 				<div class="aips-content-panel aips-telemetry-records-panel">

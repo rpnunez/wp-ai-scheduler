@@ -48,13 +48,19 @@ class AIPS_System_Diagnostics_Service {
 	 */
 	private $date_time_db_repair;
 
+	/**
+	 * @var AIPS_DB_Prune_Service
+	 */
+	private $db_prune_service;
+
 	public function __construct(
 		$history_repository = null,
 		$bulk_batch_job_store = null,
 		$resilience_service = null,
 		$cache_monitor_service = null,
 		$notifications_repository = null,
-		$date_time_db_repair = null
+		$date_time_db_repair = null,
+		$db_prune_service = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -83,6 +89,10 @@ class AIPS_System_Diagnostics_Service {
 			: AIPS_Notifications_Repository::instance());
 
 		$this->date_time_db_repair = $date_time_db_repair ?: new AIPS_Date_Time_DB_Repair();
+
+		$this->db_prune_service = $db_prune_service ?: ($container->has(AIPS_DB_Prune_Service::class)
+			? $container->make(AIPS_DB_Prune_Service::class)
+			: AIPS_DB_Prune_Service::instance());
 	}
 
 	/**
@@ -189,6 +199,27 @@ class AIPS_System_Diagnostics_Service {
 				'aips_rebuild_caches',
 				array($this, 'rebuild_caches')
 			),
+			'prune_telemetry' => $this->build_refresh_task_definition(
+				__('Telemetry prune', 'ai-post-scheduler'),
+				__('Prune Old Telemetry', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_prune_telemetry',
+				array($this, 'prune_telemetry')
+			),
+			'prune_history_logs' => $this->build_refresh_task_definition(
+				__('History log prune', 'ai-post-scheduler'),
+				__('Prune History Logs', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_prune_history_logs',
+				array($this, 'prune_history_logs')
+			),
+			'clean_orphaned_embeddings' => $this->build_refresh_task_definition(
+				__('Orphaned embeddings cleanup', 'ai-post-scheduler'),
+				__('Clean Orphaned Embeddings', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_clean_orphaned_embeddings',
+				array($this, 'clean_orphaned_embeddings')
+			),
 		);
 	}
 
@@ -213,6 +244,9 @@ class AIPS_System_Diagnostics_Service {
 			'cleanup_repair' => array(
 				'label' => __('Cleanup & repair', 'ai-post-scheduler'),
 				'steps' => array(
+					'prune_telemetry',
+					'prune_history_logs',
+					'clean_orphaned_embeddings',
 					'cache_maintenance',
 					'cleanup_notifications',
 					'notifications_hygiene',
@@ -652,5 +686,102 @@ class AIPS_System_Diagnostics_Service {
 				count($sequence)
 			),
 		);
+	}
+
+	/**
+	 * Prune old telemetry records based on configured retention.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_telemetry() {
+		$result    = $this->db_prune_service->prune_telemetry();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('Telemetry prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+		);
+	}
+
+	/**
+	 * Purge all telemetry records and truncate the table.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function purge_all_telemetry() {
+		return $this->db_prune_service->purge_all_telemetry();
+	}
+
+	/**
+	 * Prune old generation event logs.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prune_history_logs() {
+		$result    = $this->db_prune_service->prune_history_logs();
+		$deleted   = isset($result['deleted']) ? (int) $result['deleted'] : 0;
+		$optimized = !empty($result['optimized']);
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('History log prune complete: %1$d records deleted.%2$s', 'ai-post-scheduler'),
+				$deleted,
+				$optimized ? __(' Table optimized.', 'ai-post-scheduler') : ''
+			),
+			'deleted'   => $deleted,
+			'optimized' => $optimized,
+		);
+	}
+
+	/**
+	 * Clean orphaned embeddings associated with deleted posts.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function clean_orphaned_embeddings() {
+		$deleted = $this->db_prune_service->clean_orphaned_embeddings();
+
+		return array(
+			'success' => true,
+			'message' => sprintf(
+				__('Cleaned %d orphaned post embeddings.', 'ai-post-scheduler'),
+				$deleted
+			),
+			'deleted' => $deleted,
+		);
+	}
+
+	/**
+	 * Optimize a specific plugin table.
+	 *
+	 * @param string $table_name Table name.
+	 * @return array<string, mixed>
+	 */
+	public function optimize_table($table_name) {
+		$success = $this->db_prune_service->optimize_table($table_name);
+
+		return array(
+			'success' => $success,
+			'message' => $success
+				? sprintf(__('Table %s optimized successfully.', 'ai-post-scheduler'), esc_html($table_name))
+				: sprintf(__('Failed to optimize table %s.', 'ai-post-scheduler'), esc_html($table_name)),
+		);
+	}
+
+	/**
+	 * Retrieve table disk usage status for all plugin tables.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function get_tables_status() {
+		return $this->db_prune_service->get_table_status_summary();
 	}
 }
