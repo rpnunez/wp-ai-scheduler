@@ -70,7 +70,7 @@ class AIPS_Cache_Monitor_Controller {
 	 *
 	 * @return void
 	 */
-	public function render_page( bool $embedded = false ): void {
+	public function render_page(): void {
 		if (!current_user_can('manage_options')) {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
 		}
@@ -84,7 +84,7 @@ class AIPS_Cache_Monitor_Controller {
 		$nonce        = wp_create_nonce('aips_cache_monitor');
 		$dev_mode     = (bool) AIPS_Config::get_instance()->get_option('aips_developer_mode', false);
 		$monitor_enabled = (bool) AIPS_Config::get_instance()->get_option('aips_cache_monitor_enabled', true);
-		$tab_query_key = $embedded ? 'cache_tab' : 'tab';
+		$tab_query_key = 'cache_tab';
 		$active_tab   = isset($_GET[ $tab_query_key ]) ? sanitize_key(wp_unslash($_GET[ $tab_query_key ])) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$tags_data    = 'tags' === $active_tab ? $service->list_tags() : array();
 		$domains_data = 'domains' === $active_tab ? $service->list_domains() : array();

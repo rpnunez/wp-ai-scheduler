@@ -40,6 +40,20 @@ class AIPS_Relationships_Repository {
 	}
 
 	/**
+	 * Check if the relationships table exists in the database.
+	 *
+	 * @return bool
+	 */
+	public function table_exists(): bool {
+		static $exists = null;
+		if ($exists === null) {
+			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
+			$exists = ($found === $this->table);
+		}
+		return (bool) $exists;
+	}
+
+	/**
 	 * Upsert a relationship record.
 	 *
 	 * @param string $source_type   Source entity type ('post', 'topic').
@@ -51,6 +65,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function upsert($source_type, $source_id, $target_type, $target_id, $similarity, $relation_type = 'related_post') {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		$source_type   = sanitize_key($source_type);
 		$source_id     = absint($source_id);
 		$target_type   = sanitize_key($target_type);
@@ -110,6 +128,10 @@ class AIPS_Relationships_Repository {
 	 * @return void
 	 */
 	public function sync_for_source($source_type, $source_id, array $targets, $relation_type = 'related_post') {
+		if (!$this->table_exists()) {
+			return;
+		}
+
 		$source_type   = sanitize_key($source_type);
 		$source_id     = absint($source_id);
 		$relation_type = sanitize_key($relation_type);
@@ -158,20 +180,29 @@ class AIPS_Relationships_Repository {
 	 * @return object[] Array of relationship rows.
 	 */
 	public function get_related($source_type, $source_id, $limit = 5, $min_similarity = 0.60, $relation_type = 'related_post') {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$source_type    = sanitize_key($source_type);
 		$source_id      = absint($source_id);
 		$limit          = absint($limit);
 		$min_similarity = (float) $min_similarity;
 		$relation_type  = sanitize_key($relation_type);
+		$topics_table   = $this->wpdb->prefix . 'aips_author_topics';
 
-		return $this->wpdb->get_results(
+		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT r.*, p.post_title, p.post_status, p.post_type
+				"SELECT r.*, 
+					COALESCE(p.post_title, t.topic_title) as post_title,
+					p.post_status, 
+					COALESCE(p.post_type, 'topic') as post_type
 				FROM {$this->table} r
 				LEFT JOIN {$this->wpdb->posts} p ON r.target_id = p.ID AND r.target_type = 'post'
+				LEFT JOIN {$topics_table} t ON r.target_id = t.id AND r.target_type = 'topic'
 				WHERE r.source_type = %s
 				AND r.source_id = %d
-				AND r.relation_type = %s
+				AND (r.relation_type = %s OR r.relation_type = 'similar')
 				AND r.similarity >= %f
 				AND (r.target_type != 'post' OR (p.ID IS NOT NULL AND p.post_status = 'publish'))
 				ORDER BY r.similarity DESC
@@ -195,12 +226,16 @@ class AIPS_Relationships_Repository {
 	 * @return array{nodes: array, edges: array} Graph payload.
 	 */
 	public function get_graph_data($source_type, $source_id, $limit = 15, $min_similarity = 0.50) {
+		if (!$this->table_exists()) {
+			return array('nodes' => array(), 'edges' => array());
+		}
+
 		$source_type    = sanitize_key($source_type);
 		$source_id      = absint($source_id);
 		$limit          = absint($limit);
 		$min_similarity = (float) $min_similarity;
 
-		$neighbors = $this->get_related($source_type, $source_id, $limit, $min_similarity, 'related_post');
+		$neighbors = (array) $this->get_related($source_type, $source_id, $limit, $min_similarity, 'related_post');
 
 		$nodes = array();
 		$edges = array();
@@ -214,19 +249,31 @@ class AIPS_Relationships_Repository {
 				$central_title = $post->post_title;
 				$central_type  = $post->post_type;
 			}
+		} elseif ('topic' === $source_type) {
+			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+			$top = $this->wpdb->get_row($this->wpdb->prepare("SELECT topic_title FROM {$topics_table} WHERE id = %d", $source_id));
+			if ($top && !empty($top->topic_title)) {
+				$central_title = $top->topic_title;
+				$central_type  = 'topic';
+			}
 		}
 
 		$nodes[] = array(
-			'id'        => "{$source_type}_{$source_id}",
-			'label'     => $central_title,
-			'type'      => $central_type,
-			'is_center' => true,
-			'raw_id'    => $source_id,
-			'url'       => 'post' === $source_type ? get_edit_post_link($source_id, '') : '',
+			'id'          => "{$source_type}_{$source_id}",
+			'label'       => $central_title,
+			'type'        => $central_type,
+			'entity_type' => $source_type,
+			'is_center'   => true,
+			'raw_id'      => $source_id,
+			'url'         => 'post' === $source_type ? get_edit_post_link($source_id, '') : admin_url('admin.php?page=aips-authors'),
 		);
 
 		$neighbor_ids = array();
 		foreach ($neighbors as $n) {
+			if (!is_object($n) || !isset($n->target_id)) {
+				continue;
+			}
+
 			$n_id   = (int) $n->target_id;
 			$n_type = $n->target_type;
 			$n_key  = "{$n_type}_{$n_id}";
@@ -234,28 +281,29 @@ class AIPS_Relationships_Repository {
 			$neighbor_ids[] = $n_id;
 
 			$nodes[] = array(
-				'id'         => $n_key,
-				'label'      => !empty($n->post_title) ? $n->post_title : "{$n_type} #{$n_id}",
-				'type'       => !empty($n->post_type) ? $n->post_type : $n_type,
-				'is_center'  => false,
-				'raw_id'     => $n_id,
-				'similarity' => (float) $n->similarity,
-				'url'        => 'post' === $n_type ? get_edit_post_link($n_id, '') : '',
-				'view_url'   => 'post' === $n_type ? get_permalink($n_id) : '',
+				'id'          => $n_key,
+				'label'       => !empty($n->post_title) ? $n->post_title : "{$n_type} #{$n_id}",
+				'type'        => !empty($n->post_type) ? $n->post_type : $n_type,
+				'entity_type' => $n_type,
+				'is_center'   => false,
+				'raw_id'      => $n_id,
+				'similarity'  => (float) $n->similarity,
+				'url'         => 'post' === $n_type ? get_edit_post_link($n_id, '') : admin_url('admin.php?page=aips-authors'),
+				'view_url'    => 'post' === $n_type ? get_permalink($n_id) : '',
 			);
 
 			$edges[] = array(
-				'source'     => "{$source_type}_{$source_id}",
-				'target'     => $n_key,
-				'weight'     => (float) $n->similarity,
-				'label'      => round(((float) $n->similarity) * 100, 1) . '%',
+				'source' => "{$source_type}_{$source_id}",
+				'target' => $n_key,
+				'weight' => (float) $n->similarity,
+				'label'  => round(((float) $n->similarity) * 100, 1) . '%',
 			);
 		}
 
 		// Also fetch secondary interconnections between neighbors to form a rich cluster graph
 		if (count($neighbor_ids) > 1) {
 			$placeholders = implode(',', array_fill(0, count($neighbor_ids), '%d'));
-			$inter_rows   = $this->wpdb->get_results(
+			$inter_rows   = (array) $this->wpdb->get_results(
 				$this->wpdb->prepare(
 					"SELECT source_id, target_id, similarity
 					FROM {$this->table}
@@ -274,6 +322,9 @@ class AIPS_Relationships_Repository {
 			}
 
 			foreach ($inter_rows as $row) {
+				if (!is_object($row) || !isset($row->source_id) || !isset($row->target_id)) {
+					continue;
+				}
 				$src = "post_{$row->source_id}";
 				$tgt = "post_{$row->target_id}";
 				if ($src !== $tgt && !isset($seen_edges["{$src}->{$tgt}"]) && !isset($seen_edges["{$tgt}->{$src}"])) {
@@ -297,19 +348,63 @@ class AIPS_Relationships_Repository {
 	/**
 	 * Get duplicate/cannibalization clusters across the site.
 	 *
-	 * @param float $min_similarity High similarity threshold (e.g. 0.85).
-	 * @param int   $limit          Max pairs to return.
+	 * @param float  $min_similarity High similarity threshold (e.g. 0.85).
+	 * @param int    $limit          Max pairs to return.
+	 * @param string $entity_type    Entity filter ('all', 'posts', 'topics'). Default 'all'.
 	 * @return array Cluster pairings.
 	 */
-	public function get_top_duplicate_pairs($min_similarity = 0.85, $limit = 50) {
+	public function get_top_duplicate_pairs($min_similarity = 0.85, $limit = 50, $entity_type = 'all') {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
 		$min_similarity = (float) $min_similarity;
 		$limit          = absint($limit);
+		$entity_type    = sanitize_key($entity_type);
+		$topics_table   = $this->wpdb->prefix . 'aips_author_topics';
+
+		if ($entity_type === 'all') {
+			$post_rows  = $this->get_top_duplicate_pairs($min_similarity, $limit, 'posts');
+			$topic_rows = $this->get_top_duplicate_pairs($min_similarity, $limit, 'topics');
+			$combined   = array_merge($post_rows, $topic_rows);
+			usort($combined, function($a, $b) {
+				$sim_a = (float) $a->similarity;
+				$sim_b = (float) $b->similarity;
+				return ($sim_b <=> $sim_a);
+			});
+			return array_slice($combined, 0, $limit);
+		}
+
+		if ($entity_type === 'topics') {
+			$rows = $this->wpdb->get_results(
+				$this->wpdb->prepare(
+					"SELECT r.source_id, r.target_id, r.similarity,
+						t.topic_title as source_title, 'topic' as source_post_type, t.generated_at as source_date,
+						COALESCE(p.post_title, t2.topic_title) as target_title,
+						COALESCE(p.post_type, 'topic') as target_post_type,
+						COALESCE(p.post_date, t2.generated_at) as target_date,
+						CASE WHEN r.target_type = 'post' THEN 'cannibalization' ELSE 'topic_duplicate' END as audit_type
+					FROM {$this->table} r
+					INNER JOIN {$topics_table} t ON r.source_id = t.id AND r.source_type = 'topic'
+					LEFT JOIN {$this->wpdb->posts} p ON r.target_id = p.ID AND r.target_type = 'post'
+					LEFT JOIN {$topics_table} t2 ON r.target_id = t2.id AND r.target_type = 'topic'
+					WHERE r.similarity >= %f
+					  AND (r.relation_type = 'similar' OR r.relation_type = 'related_post')
+					ORDER BY r.similarity DESC
+					LIMIT %d",
+					$min_similarity,
+					$limit
+				)
+			);
+			return (array) $rows;
+		}
 
 		$rows = $this->wpdb->get_results(
 			$this->wpdb->prepare(
 				"SELECT r.source_id, r.target_id, r.similarity,
 					p1.post_title as source_title, p1.post_type as source_post_type, p1.post_date as source_date,
-					p2.post_title as target_title, p2.post_type as target_post_type, p2.post_date as target_date
+					p2.post_title as target_title, p2.post_type as target_post_type, p2.post_date as target_date,
+					'post_duplicate' as audit_type
 				FROM {$this->table} r
 				INNER JOIN {$this->wpdb->posts} p1 ON r.source_id = p1.ID
 				INNER JOIN {$this->wpdb->posts} p2 ON r.target_id = p2.ID
@@ -338,6 +433,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function delete_for_source($source_type, $source_id, $relation_type = '') {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		$where = array(
 			'source_type' => sanitize_key($source_type),
 			'source_id'   => absint($source_id),
@@ -352,6 +451,7 @@ class AIPS_Relationships_Repository {
 		return $this->wpdb->delete($this->table, $where, $formats);
 	}
 
+
 	/**
 	 * Delete all relationships referencing an object (as either source or target).
 	 *
@@ -360,6 +460,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function delete_for_object($type, $id) {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		$type = sanitize_key($type);
 		$id   = absint($id);
 
@@ -383,6 +487,10 @@ class AIPS_Relationships_Repository {
 	 * @return int|false
 	 */
 	public function clear_all($relation_type = '') {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
 		if (!empty($relation_type)) {
 			return $this->wpdb->delete(
 				$this->table,
@@ -401,6 +509,10 @@ class AIPS_Relationships_Repository {
 	 * @return int
 	 */
 	public function count($relation_type = '') {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
 		if (!empty($relation_type)) {
 			return (int) $this->wpdb->get_var(
 				$this->wpdb->prepare(
@@ -411,5 +523,30 @@ class AIPS_Relationships_Repository {
 		}
 
 		return (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table}");
+	}
+
+	/**
+	 * Count incoming internal links to a post across published content.
+	 *
+	 * @param int    $post_id     Target post ID.
+	 * @param string $search_term Search string (permalink path or URL).
+	 * @return int Number of referencing published posts.
+	 */
+	public function count_incoming_internal_links($post_id, $search_term) {
+		$post_id = absint($post_id);
+		if (empty($search_term)) {
+			return 0;
+		}
+
+		$count = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT COUNT(ID) FROM {$this->wpdb->posts}
+			WHERE post_status = 'publish'
+			AND ID != %d
+			AND post_content LIKE %s",
+			$post_id,
+			'%' . $this->wpdb->esc_like($search_term) . '%'
+		));
+
+		return (int) $count;
 	}
 }

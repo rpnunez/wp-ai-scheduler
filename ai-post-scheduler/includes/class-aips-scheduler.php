@@ -460,6 +460,18 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
     }
 
     /**
+     * Run one due schedule queued as a single cron event.
+     *
+     * Called by WordPress cron on the aips_process_single_due_schedule hook.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return void
+     */
+    public function process_queued_due_schedule($schedule_id) {
+        $this->processor->process_queued_due_schedule((int) $schedule_id);
+    }
+
+    /**
      * Process scheduled posts that are due.
      *
      * Called by WordPress cron on the aips_generate_scheduled_posts hook.

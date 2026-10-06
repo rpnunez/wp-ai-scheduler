@@ -448,4 +448,24 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}aips_templates WHERE id = %d", $template_id ) );
 	}
+
+	/**
+	 * Test that aips_link_index exists with the columns and indexes the Link Index repository relies on.
+	 */
+	public function test_link_index_table_columns_and_indexes() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_link_index';
+
+		$this->assertContains( 'aips_link_index', AIPS_DB_Manager::get_table_names() );
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
+		foreach ( array( 'source_post_id', 'target_post_id', 'target_url', 'url_hash', 'anchor_text', 'link_type', 'rel', 'is_nofollow', 'inserted_by_aips', 'position', 'created_at' ) as $column ) {
+			$this->assertContains( $column, $columns, "Column {$column} should exist" );
+		}
+
+		$index_names = array_unique( wp_list_pluck( $wpdb->get_results( "SHOW INDEX FROM {$table_name}" ), 'Key_name' ) );
+		foreach ( array( 'source_post_id', 'target_link', 'url_hash', 'link_type' ) as $index ) {
+			$this->assertContains( $index, $index_names, "Index {$index} should exist" );
+		}
+	}
 }

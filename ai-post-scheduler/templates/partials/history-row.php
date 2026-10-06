@@ -14,6 +14,18 @@ $row_classes = array('aips-history-row', 'aips-view-history-logs');
 if ($is_child_row) {
     $row_classes[] = 'aips-history-group-child';
 }
+
+$is_stalled = false;
+$elapsed_label = '';
+if (isset($item->status) && $item->status === 'processing' && !empty($item->created_at)) {
+    $now_ts = AIPS_DateTime::now()->timestamp();
+    $created_ts = (int) $item->created_at;
+    $elapsed_seconds = max(0, $now_ts - $created_ts);
+    if ($elapsed_seconds >= 900) {
+        $is_stalled = true;
+    }
+    $elapsed_label = sprintf(__('Started %s ago', 'ai-post-scheduler'), human_time_diff($created_ts, $now_ts));
+}
 ?>
 <tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
     <th scope="row" class="check-column">
@@ -79,6 +91,12 @@ if ($is_child_row) {
             <span class="dashicons dashicons-<?php echo esc_attr($icon); ?>"></span>
             <?php echo esc_html(ucfirst($item->status)); ?>
         </span>
+        <?php if ($is_stalled): ?>
+            <span class="aips-badge aips-badge-warning aips-stalled-badge" title="<?php esc_attr_e('This run has been processing for over 15 minutes and appears stalled.', 'ai-post-scheduler'); ?>">
+                <span class="dashicons dashicons-warning" aria-hidden="true"></span>
+                <?php esc_html_e('Stalled', 'ai-post-scheduler'); ?>
+            </span>
+        <?php endif; ?>
         <?php if ($item->error_count > 0 || $item->warning_count > 0): ?>
             <span class="aips-history-issue-counts">
                 <?php if ($item->error_count > 0): ?><span class="aips-history-count-error"><?php echo esc_html(sprintf(_n('%d error', '%d errors', $item->error_count, 'ai-post-scheduler'), $item->error_count)); ?></span><?php endif; ?>
@@ -89,7 +107,11 @@ if ($is_child_row) {
     <td class="column-type">
         <strong><?php echo !empty($item->creation_method) ? esc_html(AIPS_History::get_creation_method_label($item->creation_method)) : '&mdash;'; ?></strong>
         <span class="aips-history-activity-meta">
-            <?php if (!empty($item->duration_label)): ?><span><?php echo esc_html($item->duration_label); ?></span><?php endif; ?>
+            <?php if (!empty($item->duration_label)): ?>
+                <span><?php echo esc_html($item->duration_label); ?></span>
+            <?php elseif (!empty($elapsed_label)): ?>
+                <span class="<?php echo $is_stalled ? 'aips-text-warning' : ''; ?>"><?php echo esc_html($elapsed_label); ?></span>
+            <?php endif; ?>
             <?php if ($item->ai_call_count > 0): ?><span><?php echo esc_html(sprintf(_n('%d AI call', '%d AI calls', $item->ai_call_count, 'ai-post-scheduler'), $item->ai_call_count)); ?></span><?php endif; ?>
         </span>
     </td>

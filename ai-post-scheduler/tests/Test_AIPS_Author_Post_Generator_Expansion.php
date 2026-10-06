@@ -50,6 +50,7 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 					'is_active' => 1
 				);
 			}
+			public function update_post_generation_last_run($author_id, $timestamp) {}
 		};
 
 		$topics_repository = new class {
@@ -188,6 +189,7 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 					'is_active' => 1
 				);
 			}
+			public function update_post_generation_last_run($author_id, $timestamp) {}
 		};
 
 		$topics_repository = new class {

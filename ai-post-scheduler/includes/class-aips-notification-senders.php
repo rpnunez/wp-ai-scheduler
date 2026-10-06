@@ -823,4 +823,42 @@ class AIPS_Notification_Senders {
 			)
 		);
 	}
+	/**
+	 * Send a posts-consolidated notification.
+	 *
+	 * @param array $payload Consolidation payload: consolidation_id, keep_id,
+	 *                       retire_id, keep_title, retire_title, retire_url,
+	 *                       links_repointed, redirect_provider, content_mode.
+	 * @return void
+	 */
+	public function post_consolidated( array $payload ) {
+		$keep_title   = !empty($payload['keep_title'])   ? sanitize_text_field($payload['keep_title'])   : __('(untitled)', 'ai-post-scheduler');
+		$retire_title = !empty($payload['retire_title']) ? sanitize_text_field($payload['retire_title']) : __('(untitled)', 'ai-post-scheduler');
+		$links        = isset($payload['links_repointed']) ? (int) $payload['links_repointed'] : 0;
+		$provider     = !empty($payload['redirect_provider']) ? sanitize_text_field($payload['redirect_provider']) : '';
+
+		$message = sprintf(
+			/* translators: 1: retired post title, 2: kept post title, 3: number of links re-pointed */
+			__('"%1$s" was moved to draft and consolidated into "%2$s". %3$d internal link(s) were re-pointed.', 'ai-post-scheduler'),
+			$retire_title,
+			$keep_title,
+			$links
+		);
+		if ($provider !== '') {
+			/* translators: %s: redirect provider name */
+			$message .= ' ' . sprintf(__('Its old URL redirects to the kept post (served by %s).', 'ai-post-scheduler'), $provider);
+		}
+
+		call_user_func(
+			$this->dispatcher,
+			'post_consolidated',
+			array(
+				'title'   => sprintf(__('Posts consolidated: %s', 'ai-post-scheduler'), $keep_title),
+				'message' => $message,
+				'url'     => admin_url('admin.php?page=aips-generated-posts&tab=cannibalization'),
+				'level'   => 'info',
+				'meta'    => $payload,
+			)
+		);
+	}
 }

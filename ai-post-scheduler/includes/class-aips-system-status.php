@@ -6,13 +6,12 @@ if (!defined('ABSPATH')) {
 class AIPS_System_Status {
 
 
-    public function render_page($embedded = false) {
+    public function render_page() {
         $system_info = $this->get_system_info();
         $refresh_task_groups = $this->get_refresh_task_groups();
         if ( isset( $system_info['database'] ) ) {
             $system_info['database'] = $this->condense_database_checks( $system_info['database'] );
         }
-        $embedded = (bool) $embedded;
 
         $active_ai_provider          = AIPS_AI_Provider_Factory::create();
         $ai_provider_label           = $active_ai_provider->get_label();

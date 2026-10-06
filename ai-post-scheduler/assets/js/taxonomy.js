@@ -23,7 +23,9 @@
 		 */
 		init: function() {
 			this.bindEvents();
-			this.loadTaxonomyItems('categories');
+			var initialTab = $('.aips-topics-tabs .aips-tab-link.active').data('tab') || 'categories';
+			this.currentTab = initialTab;
+			this.loadTaxonomyItems(initialTab);
 		},
 
 		/**
@@ -37,6 +39,7 @@
 			$(document).on('click', '.aips-remove-post', this.removeSelectedPost.bind(this));
 			$(document).on('click', '.aips-search-result', this.selectSearchResult.bind(this));
 			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
+			$(document).on('click', '.aips-switch-to-taxonomy-tab', this.onSwitchToTabClick.bind(this));
 			$(document).on('click', '.aips-select-all-taxonomy', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-taxonomy-checkbox', this.syncSelectAllState.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
@@ -208,9 +211,8 @@
 			}
 
 			var submitBtn = $('#generate-taxonomy-submit-btn');
-			submitBtn.prop('disabled', true).text(aipsTaxonomyL10n.generating);
 
-			$.ajax({
+			var req = $.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
@@ -229,11 +231,10 @@
 					} else {
 						alert(response.data.message || aipsTaxonomyL10n.generationFailed);
 					}
-				}.bind(this),
-				complete: function() {
-					submitBtn.prop('disabled', false).text(aipsTaxonomyL10n.generate);
-				}
+				}.bind(this)
 			});
+
+			AIPS.Utilities.withLock(submitBtn, req, { loadingText: aipsTaxonomyL10n.generating, timeout: 120000 });
 		},
 
 		/**
@@ -312,7 +313,13 @@
 			}.bind(this));
 
 			if (!rowsHtml) {
-				rowsHtml = '<tr><td colspan="5" style="text-align: center;">No items found.</td></tr>';
+				var emptyMsg = 'No items found.';
+				if (this.currentTab === 'categories' && parseInt($('#tags-count').text(), 10) > 0) {
+					emptyMsg = 'No categories found. <a href="#" class="aips-switch-to-taxonomy-tab" data-target-tab="tags" style="font-weight:600; text-decoration:underline;">Switch to Tags (' + esc($('#tags-count').text()) + ')</a> to view generated tag suggestions.';
+				} else if (this.currentTab === 'tags' && parseInt($('#categories-count').text(), 10) > 0) {
+					emptyMsg = 'No tags found. <a href="#" class="aips-switch-to-taxonomy-tab" data-target-tab="categories" style="font-weight:600; text-decoration:underline;">Switch to Categories (' + esc($('#categories-count').text()) + ')</a> to view generated category suggestions.';
+				}
+				rowsHtml = '<tr><td colspan="5" style="text-align: center; padding: 24px;">' + emptyMsg + '</td></tr>';
 			}
 
 			var tableHtml = AIPS.Templates.renderRaw('aips-tmpl-taxonomy-table', {
@@ -326,6 +333,19 @@
 
 			$('#aips-taxonomy-content').html(tableHtml);
 			this.updateVisibleResultCount();
+		},
+
+		/**
+		 * Handle click on inline switch-tab link.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		onSwitchToTabClick: function(e) {
+			e.preventDefault();
+			var targetTab = $(e.currentTarget).data('target-tab');
+			if (targetTab) {
+				$('.aips-topics-tabs .aips-tab-link[data-tab="' + targetTab + '"]').trigger('click');
+			}
 		},
 
 		/**
@@ -413,29 +433,41 @@
 			var ajaxAction = action === 'generate_terms' ? 'aips_bulk_create_taxonomy_terms' : 'aips_bulk_' + action + '_taxonomy';
 			var actionLabel = action === 'generate_terms' ? 'generate terms for' : action;
 			var confirmMsg = aipsTaxonomyL10n.confirmBulkAction.replace('%s', actionLabel).replace('%d', itemIds.length);
+			var isDestructive = (action === 'delete');
+			var confirmBtnClass = isDestructive ? 'aips-btn aips-btn-danger-solid' : 'aips-btn aips-btn-primary';
+			var self = this;
 
-			if (!confirm(confirmMsg)) {
-				return;
-			}
-
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: ajaxAction,
-					nonce: aipsTaxonomyL10n.nonce,
-					item_ids: itemIds
-				},
-				success: function(response) {
-					if (response.success) {
-						alert(response.data.message);
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.actionFailed);
+			AIPS.Utilities.confirm(
+				confirmMsg,
+				'Confirm Bulk Action',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: isDestructive ? (aipsTaxonomyL10n.confirmDeleteButton || 'Delete') : 'Continue',
+						className: confirmBtnClass,
+						action: function () {
+							$.ajax({
+								url: ajaxurl,
+								method: 'POST',
+								data: {
+									action: ajaxAction,
+									nonce: aipsTaxonomyL10n.nonce,
+									item_ids: itemIds
+								},
+								success: function(response) {
+									if (response.success) {
+										AIPS.Utilities.showToast(response.data.message, 'success');
+										self.updateStats(response.data.stats || null);
+										self.loadTaxonomyItems(self.currentTab);
+									} else {
+										AIPS.Utilities.showToast(response.data.message || aipsTaxonomyL10n.actionFailed, 'error');
+									}
+								}
+							});
+						}
 					}
-				}.bind(this)
-			});
+				]
+			);
 		},
 
 		/**
@@ -445,8 +477,9 @@
 		 */
 		approveTaxonomy: function(e) {
 			e.preventDefault();
-			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_approve_taxonomy');
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
+			this.updateItemStatus(itemId, 'aips_approve_taxonomy', $btn);
 		},
 
 		/**
@@ -456,8 +489,9 @@
 		 */
 		rejectTaxonomy: function(e) {
 			e.preventDefault();
-			var itemId = $(e.currentTarget).data('id');
-			this.updateItemStatus(itemId, 'aips_reject_taxonomy');
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
+			this.updateItemStatus(itemId, 'aips_reject_taxonomy', $btn);
 		},
 
 		/**
@@ -468,29 +502,43 @@
 		deleteTaxonomy: function(e) {
 			e.preventDefault();
 
-			if (!confirm(aipsTaxonomyL10n.confirmDelete)) {
-				return;
-			}
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
+			var self = this;
 
-			var itemId = $(e.currentTarget).data('id');
+			AIPS.Utilities.confirm(
+				aipsTaxonomyL10n.confirmDelete,
+				'Delete Taxonomy Item',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Delete',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							var req = $.ajax({
+								url: ajaxurl,
+								method: 'POST',
+								data: {
+									action: 'aips_delete_taxonomy',
+									nonce: aipsTaxonomyL10n.nonce,
+									item_id: itemId
+								},
+								success: function(response) {
+									if (response.success) {
+										AIPS.Utilities.showToast(response.data.message, 'success');
+										self.updateStats(response.data.stats || null);
+										self.loadTaxonomyItems(self.currentTab);
+									} else {
+										AIPS.Utilities.showToast(response.data.message || aipsTaxonomyL10n.deleteFailed, 'error');
+									}
+								}
+							});
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: 'aips_delete_taxonomy',
-					nonce: aipsTaxonomyL10n.nonce,
-					item_id: itemId
-				},
-				success: function(response) {
-					if (response.success) {
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.deleteFailed);
+							AIPS.Utilities.withLock($btn, req);
+						}
 					}
-				}.bind(this)
-			});
+				]
+			);
 		},
 
 		/**
@@ -501,30 +549,43 @@
 		createTerm: function(e) {
 			e.preventDefault();
 
-			if (!confirm(aipsTaxonomyL10n.confirmCreateTerm)) {
-				return;
-			}
+			var $btn = $(e.currentTarget);
+			var itemId = $btn.data('id');
+			var self = this;
 
-			var itemId = $(e.currentTarget).data('id');
+			AIPS.Utilities.confirm(
+				aipsTaxonomyL10n.confirmCreateTerm,
+				'Create Term',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Create Term',
+						className: 'aips-btn aips-btn-primary',
+						action: function () {
+							var req = $.ajax({
+								url: ajaxurl,
+								method: 'POST',
+								data: {
+									action: 'aips_create_taxonomy_term',
+									nonce: aipsTaxonomyL10n.nonce,
+									item_id: itemId
+								},
+								success: function(response) {
+									if (response.success) {
+										AIPS.Utilities.showToast(response.data.message, 'success');
+										self.updateStats(response.data.stats || null);
+										self.loadTaxonomyItems(self.currentTab);
+									} else {
+										AIPS.Utilities.showToast(response.data.message || aipsTaxonomyL10n.termCreationFailed, 'error');
+									}
+								}
+							});
 
-			$.ajax({
-				url: ajaxurl,
-				method: 'POST',
-				data: {
-					action: 'aips_create_taxonomy_term',
-					nonce: aipsTaxonomyL10n.nonce,
-					item_id: itemId
-				},
-				success: function(response) {
-					if (response.success) {
-						alert(response.data.message);
-						this.updateStats(response.data.stats || null);
-						this.loadTaxonomyItems(this.currentTab);
-					} else {
-						alert(response.data.message || aipsTaxonomyL10n.termCreationFailed);
+							AIPS.Utilities.withLock($btn, req);
+						}
 					}
-				}.bind(this)
-			});
+				]
+			);
 		},
 
 		/**
@@ -532,9 +593,10 @@
 		 *
 		 * @param {number} itemId Taxonomy item ID.
 		 * @param {string} action AJAX action name.
+		 * @param {jQuery} [$btn] Optional button element.
 		 */
-		updateItemStatus: function(itemId, action) {
-			$.ajax({
+		updateItemStatus: function(itemId, action, $btn) {
+			var req = $.ajax({
 				url: ajaxurl,
 				method: 'POST',
 				data: {
@@ -551,6 +613,10 @@
 					}
 				}.bind(this)
 			});
+
+			if ($btn && $btn.length) {
+				AIPS.Utilities.withLock($btn, req);
+			}
 		},
 
 		/**

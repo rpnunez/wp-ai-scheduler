@@ -2,6 +2,8 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
+
+$page_context = AIPS_Admin_Page_Context::resolve('ai-post-scheduler');
 ?>
 <div class="wrap aips-wrap">
 	<?php if (empty($ai_provider_available)): ?>
@@ -16,8 +18,11 @@ if (!defined('ABSPATH')) {
 		<!-- Page Header -->
 		<div class="aips-page-header">
 			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Analytics Dashboard', 'ai-post-scheduler'); ?></h1>
+				<div class="aips-page-header-info">
+					<h1 class="aips-page-title">
+						<span class="dashicons dashicons-chart-pie aips-page-title-icon" aria-hidden="true"></span>
+						<span><?php esc_html_e('Analytics Dashboard', 'ai-post-scheduler'); ?></span>
+					</h1>
 					<p class="aips-page-description"><?php esc_html_e('Observe your AI content generation pipelines, success rates, and upcoming schedules.', 'ai-post-scheduler'); ?></p>
 				</div>
 				
@@ -101,7 +106,7 @@ if (!defined('ABSPATH')) {
 					<span class="aips-stat-label"><?php esc_html_e('AI Requests & Calls', 'ai-post-scheduler'); ?></span>
 					<strong class="aips-stat-value"><?php echo esc_html($ai_calls_in_period); ?></strong>
 					<span class="aips-stat-sub-meta">
-						<?php echo sprintf(__('Error Rate: %s%% (%d errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
+						<?php echo sprintf(__('Error Rate: %s%% (%d AI call errors)', 'ai-post-scheduler'), esc_html($ai_error_rate_in_period), esc_html($ai_errors_in_period)); ?>
 					</span>
 				</div>
 			</div>
@@ -478,6 +483,8 @@ if (!defined('ABSPATH')) {
 										'template_schedule' => __('Template', 'ai-post-scheduler'),
 										'author_topic_gen'  => __('Topic Gen', 'ai-post-scheduler'),
 										'author_post_gen'   => __('Post Gen', 'ai-post-scheduler'),
+										'blueprint'         => __('Blueprint', 'ai-post-scheduler'),
+										'author_workflow'   => __('Blueprint', 'ai-post-scheduler'),
 									);
 									$type_label = isset($type_labels[$type_key]) ? $type_labels[$type_key] : esc_html__('Schedule', 'ai-post-scheduler');
 									?>

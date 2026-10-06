@@ -200,6 +200,13 @@ class AIPS_Notification_Registry {
 				'level'         => 'info',
 				'dedupe_window' => 300,
 			),
+			'post_consolidated' => array(
+				'label'         => __('Posts Consolidated', 'ai-post-scheduler'),
+				'description'   => __('Two overlapping posts were consolidated: one was moved to draft, redirected and its links re-pointed to the post that was kept.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'info',
+				'dedupe_window' => 0,
+			),
 		);
 	}
 

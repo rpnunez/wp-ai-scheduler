@@ -30,6 +30,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-filter-bar">
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
+						<input type="hidden" name="tab" value="aips-generated-posts">
 						<div class="aips-filter-left">
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>

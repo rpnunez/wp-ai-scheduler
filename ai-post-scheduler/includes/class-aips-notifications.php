@@ -435,6 +435,16 @@ class AIPS_Notifications {
 		$this->senders->research_topics_ready($payload);
 	}
 
+	/**
+	 * Send a posts-consolidated notification.
+	 *
+	 * @param array $payload Consolidation payload (see AIPS_Consolidation_Service).
+	 * @return void
+	 */
+	public function post_consolidated(array $payload) {
+		$this->senders->post_consolidated($payload);
+	}
+
 
 	/**
 	 * Persist a DB notification via the repository.

@@ -71,6 +71,26 @@ class AIPS_Schedule_Processor {
     private $batch_queue_service;
 
     /**
+     * Single cron event that runs one due schedule outside the main tick.
+     *
+     * Used both for due schedules staggered out of process_due_schedules()
+     * and for resuming a batch that yielded before a script timeout.
+     * Args: array( schedule_id ).
+     */
+    const QUEUED_DUE_SCHEDULE_HOOK = 'aips_process_single_due_schedule';
+
+    /**
+     * run_state status for an automated batch that stopped early to avoid a
+     * script timeout and is waiting for its resume cooldown.
+     */
+    const RUN_STATE_YIELDED = 'yielded';
+
+    /**
+     * Minimum seconds that must remain before another post is started.
+     */
+    const MIN_TIME_BUDGET_MARGIN = 15;
+
+    /**
      * Constructor.
      *
      * @param AIPS_Schedule_Repository_Interface|null $repository
@@ -304,8 +324,18 @@ class AIPS_Schedule_Processor {
 
         $successful_post_ids = array();
         $errors              = array();
+        $delay               = AIPS_Config::get_instance()->get_generation_delay_seconds();
 
         for ($i = 0; $i < $batch_size; $i++) {
+            if ($i > 0) {
+                AIPS_Cache::reset_request_cache();
+                // Slices are sized by count, not time, and cannot yield, so
+                // never let the pacing pause itself push a slice past the limit.
+                if ($delay > 0 && !$this->is_time_exhausted($delay + self::MIN_TIME_BUDGET_MARGIN)) {
+                    sleep($delay);
+                }
+            }
+
             $result = $this->generator->generate_post($context);
 
             if (is_wp_error($result)) {
@@ -569,9 +599,89 @@ class AIPS_Schedule_Processor {
             return;
         }
 
+        // Run only the first due schedule in this tick and stagger the rest
+        // into their own single cron events so one request never generates
+        // for every due schedule back to back.
+        //
+        // next_run is deliberately left untouched when queuing: each queued
+        // event re-reads the schedule and goes through the same claim-first
+        // CAS in execute_schedule_with_lock(), so whichever worker reaches a
+        // schedule first (the queued event or a later tick) runs it exactly
+        // once, and the next occurrence is still calculated from the
+        // schedule's own time slot.
+        $first_schedule  = array_shift($due_schedules);
+        $stagger_seconds = max(0, (int) apply_filters('aips_due_schedule_stagger_seconds', 30));
+        $offset          = 0;
+
+        // Queue before running the first schedule so a long first run does
+        // not delay the others' timestamps.
         foreach ($due_schedules as $schedule) {
-            $this->execute_schedule_with_lock($schedule);
+            $schedule_id = (int) $schedule->schedule_id;
+
+            if (wp_next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
+                continue;
+            }
+
+            $offset += $stagger_seconds;
+            wp_schedule_single_event(
+                AIPS_DateTime::now()->addSeconds($offset)->timestamp(),
+                self::QUEUED_DUE_SCHEDULE_HOOK,
+                array($schedule_id)
+            );
+
+            $this->logger->log(
+                sprintf('Queued due schedule %d as a single cron event in %d seconds.', $schedule_id, $offset),
+                'info'
+            );
         }
+
+        $this->execute_schedule_with_lock($first_schedule);
+    }
+
+    /**
+     * Run one schedule queued by process_due_schedules() or by a yielded batch.
+     *
+     * Re-reads the schedule so a run that another worker already claimed (its
+     * next_run is now in the future) is skipped rather than repeated.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return void
+     */
+    public function process_queued_due_schedule($schedule_id) {
+        $schedule = $this->repository->get_due_schedule_by_id((int) $schedule_id);
+
+        if (!$schedule) {
+            $this->logger->log(
+                sprintf('Queued schedule %d is no longer due (already claimed, rescheduled, or inactive); skipping.', (int) $schedule_id),
+                'info'
+            );
+            return;
+        }
+
+        $this->execute_schedule_with_lock($schedule);
+    }
+
+    /**
+     * Check if the PHP execution time is close to exhaustion.
+     *
+     * @param int $safety_margin_seconds Minimum seconds remaining required to continue.
+     * @return bool True if execution time is nearly exhausted.
+     */
+    private function is_time_exhausted(int $safety_margin_seconds = self::MIN_TIME_BUDGET_MARGIN): bool {
+        $max_execution_time = (int) ini_get('max_execution_time');
+        if ($max_execution_time <= 0) {
+            return false;
+        }
+
+        $start_time = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : 0;
+        if ($start_time <= 0) {
+            return false;
+        }
+
+        $elapsed   = microtime(true) - $start_time;
+        $remaining = $max_execution_time - $elapsed;
+
+        return $remaining < $safety_margin_seconds;
     }
 
     /**
@@ -646,8 +756,19 @@ class AIPS_Schedule_Processor {
         $this->runner->run(
             function() use ($schedule) {
                 $original_next_run = $schedule->next_run;
+                $run_state         = $this->get_decoded_run_state($schedule);
 
-				if ($schedule->frequency === 'once') {
+				if (
+					isset($run_state['status'], $run_state['resume_next_run'])
+					&& self::RUN_STATE_YIELDED === $run_state['status']
+					&& (int) $run_state['resume_next_run'] > (int) $original_next_run
+				) {
+					// Resuming a batch that yielded before a timeout: next_run was
+					// pulled forward to the cooldown time, so restore the occurrence
+					// the original run had claimed instead of calculating a new one
+					// from the cooldown time (which would shift the schedule's phase).
+					$new_next_run = (int) $run_state['resume_next_run'];
+				} elseif ($schedule->frequency === 'once') {
 					// For one-time schedules, "claim" it by pushing next_run forward.
 					// If the process crashes it will be retried in 1 hour.
 					// On success it will be deleted by handle_post_execution_cleanup().
@@ -696,6 +817,7 @@ class AIPS_Schedule_Processor {
                 // writing a history entry and run_state update — on every cron
                 // tick for as long as the setting stays enabled. The claim's
                 // one-hour push forward is the retry backoff.
+                $schedule->claimed_next_run = (int) $new_next_run;
                 $this->execute_schedule_logic($schedule, false, null, true, null);
             },
             'schedule_execution',
@@ -843,6 +965,15 @@ class AIPS_Schedule_Processor {
         // the total so the batch finishes at the right size.
         list($overall_result, $batch_finished) = $this->execute_batch_progress($schedule, $context, $post_quantity, $is_manual);
 
+        // An automated batch that yielded before a script timeout is neither a
+        // success nor a failure: its cursor is saved in batch_progress and it
+        // resumes after the cooldown. Skip cleanup (which would delete or fail
+        // a one-time schedule) and the failure handler (which would notify).
+        if (!$is_manual && is_wp_error($overall_result) && 'batch_interrupted_timeout' === $overall_result->get_error_code()) {
+            $this->defer_yielded_batch($schedule, $overall_result, $history);
+            return $overall_result;
+        }
+
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {
             $this->result_handler->handle_post_execution_cleanup($schedule, $overall_result);
@@ -872,6 +1003,92 @@ class AIPS_Schedule_Processor {
         }
 
         return $overall_result;
+    }
+
+    /**
+     * Park an automated batch that yielded before a script timeout until its
+     * resume cooldown has passed.
+     *
+     * next_run is pulled forward to the cooldown time and a queued event is
+     * scheduled for it; the occurrence the run originally claimed is kept in
+     * run_state.resume_next_run so the resumed run claims back to it. When the
+     * schedule's next regular occurrence arrives before the cooldown would,
+     * nothing is moved and that run resumes from batch_progress instead.
+     *
+     * @param object   $schedule Schedule object (merged with template).
+     * @param WP_Error $result   The batch_interrupted_timeout result.
+     * @param mixed    $history  Schedule history container, or null.
+     * @return void
+     */
+    private function defer_yielded_batch($schedule, $result, $history) {
+        $schedule_id = (int) $schedule->schedule_id;
+        $data        = (array) $result->get_error_data();
+        $now         = AIPS_DateTime::now()->timestamp();
+        $resume_at   = $now + AIPS_Config::get_instance()->get_batch_resume_cooldown_seconds();
+        $claimed     = isset($schedule->claimed_next_run) ? (int) $schedule->claimed_next_run : 0;
+
+        if ($claimed <= $now) {
+            $claimed = !empty($schedule->frequency) && $schedule->frequency !== 'once'
+                ? $this->interval_calculator->calculate_next_run($schedule->frequency, $now)
+                : $resume_at + HOUR_IN_SECONDS;
+        }
+
+        $run_state = array(
+            'status'    => self::RUN_STATE_YIELDED,
+            'completed' => isset($data['completed']) ? (int) $data['completed'] : 0,
+            'total'     => isset($data['total']) ? (int) $data['total'] : 0,
+            'timestamp' => AIPS_DateTime::now()->toIso8601(),
+        );
+
+        if ($claimed > $resume_at) {
+            $run_state['resume_next_run'] = $claimed;
+            $run_state['resume_at']       = $resume_at;
+            $this->repository->update_run_state($schedule_id, $run_state);
+            $this->repository->update($schedule_id, array('next_run' => $resume_at));
+
+            if (!wp_next_scheduled(self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id))) {
+                wp_schedule_single_event($resume_at, self::QUEUED_DUE_SCHEDULE_HOOK, array($schedule_id));
+            }
+        } else {
+            $resume_at = $claimed;
+            $this->repository->update_run_state($schedule_id, $run_state);
+        }
+
+        $this->logger->log(
+            sprintf(
+                'Schedule %d yielded after %d of %d posts to avoid a script timeout; resuming at %d.',
+                $schedule_id,
+                $run_state['completed'],
+                $run_state['total'],
+                $resume_at
+            ),
+            'info'
+        );
+
+        if ($history) {
+            $history->record(
+                'activity',
+                sprintf(
+                    /* translators: 1: schedule name, 2: completed count, 3: total requested */
+                    __('Schedule "%1$s" paused after %2$d of %3$d posts to avoid a script timeout; the remaining posts will resume after the cooldown.', 'ai-post-scheduler'),
+                    $schedule->name,
+                    $run_state['completed'],
+                    $run_state['total']
+                ),
+                array(
+                    'event_type'   => 'schedule_batch_yielded',
+                    'event_status' => 'partial',
+                ),
+                null,
+                array(
+                    'schedule_id' => $schedule_id,
+                    'template_id' => $schedule->template_id,
+                    'completed'   => $run_state['completed'],
+                    'total'       => $run_state['total'],
+                    'resume_at'   => $resume_at,
+                )
+            );
+        }
     }
 
     /**
@@ -1137,7 +1354,39 @@ class AIPS_Schedule_Processor {
             }
         }
 
+        // Manual runs are interactive (AJAX), so they are never paced.
+        $delay                  = $is_manual ? 0 : AIPS_Config::get_instance()->get_generation_delay_seconds();
+        $interrupted_by_timeout = false;
+        $loop_started_at        = microtime(true);
+
         for ($i = $start_index; $i < $post_quantity; $i++) {
+            if ($i > $start_index) {
+                AIPS_Cache::reset_request_cache();
+
+                // Require room for another post: 1.5x the average generation
+                // time so far plus the pacing pause, never below the floor.
+                $generated_so_far = $i - $start_index;
+                $avg_post_seconds = (microtime(true) - $loop_started_at) / $generated_so_far;
+                $needed_seconds   = max(self::MIN_TIME_BUDGET_MARGIN, (int) ceil($avg_post_seconds * 1.5) + $delay);
+
+                if ($this->is_time_exhausted($needed_seconds)) {
+                    $this->logger->log(
+                        sprintf(
+                            'Batch time budget near limit: yielding schedule %d at post %d of %d to prevent execution timeout.',
+                            (int) $schedule->schedule_id,
+                            $i,
+                            $post_quantity
+                        ),
+                        'info'
+                    );
+                    $interrupted_by_timeout = true;
+                    break;
+                }
+                if ($delay > 0) {
+                    sleep($delay);
+                }
+            }
+
             $result = $this->generator->generate_post($context);
             if (is_wp_error($result)) {
                 $errors[] = $result;
@@ -1179,7 +1428,7 @@ class AIPS_Schedule_Processor {
 
         // Determine whether the full batch finished without any errors.
         $total_completed = $prior_completed + count($successful_post_ids);
-        $batch_finished  = empty($errors) && $total_completed >= $post_quantity;
+        $batch_finished  = empty($errors) && !$interrupted_by_timeout && $total_completed >= $post_quantity;
 
         if (!$is_manual) {
             if ($batch_finished) {
@@ -1193,6 +1442,7 @@ class AIPS_Schedule_Processor {
                     'timestamp' => AIPS_DateTime::now()->toIso8601(),
                 ));
             }
+            // A timeout yield's run_state is written by defer_yielded_batch().
         }
 
         // ── Build the overall result ─────────────────────────────────────────
@@ -1200,7 +1450,7 @@ class AIPS_Schedule_Processor {
         // incomplete — NOT as a success.  This prevents one-time schedules from
         // being deleted and recurring schedules from being logged as successful
         // when only a subset of the requested posts were produced.
-        $manual_success = $is_manual && !empty($successful_post_ids) && empty($errors);
+        $manual_success = $is_manual && !empty($successful_post_ids) && empty($errors) && !$interrupted_by_timeout;
         $overall_result = null;
 
         if ($batch_finished || $manual_success) {
@@ -1228,6 +1478,28 @@ class AIPS_Schedule_Processor {
                 // Nothing generated — return the original error verbatim.
                 $overall_result = $errors[0];
             }
+        } elseif ($interrupted_by_timeout && !empty($successful_post_ids)) {
+            $message = $is_manual
+                ? sprintf(
+                    /* translators: 1: completed count, 2: total requested */
+                    __('%1$d of %2$d posts generated before the request neared its time limit. Run the schedule again to generate the remaining posts.', 'ai-post-scheduler'),
+                    $total_completed,
+                    $post_quantity
+                )
+                : sprintf(
+                    /* translators: 1: completed count, 2: total requested */
+                    __('%1$d of %2$d posts generated; paused to avoid a script timeout. The remaining posts will resume after the cooldown.', 'ai-post-scheduler'),
+                    $total_completed,
+                    $post_quantity
+                );
+            $overall_result = new WP_Error(
+                'batch_interrupted_timeout',
+                $message,
+                array(
+                    'completed' => $total_completed,
+                    'total'     => $post_quantity,
+                )
+            );
         } else {
             $overall_result = new WP_Error('no_posts_generated', __('No posts were generated.', 'ai-post-scheduler'));
         }

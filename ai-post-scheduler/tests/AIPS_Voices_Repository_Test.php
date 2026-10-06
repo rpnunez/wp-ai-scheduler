@@ -82,6 +82,10 @@ class Mock_WPDB_Stateful_Voices {
         return null;
     }
 
+    public function get_var($query, $x = 0, $y = 0) {
+        return null;
+    }
+
     public function get_results($query, $output = OBJECT) {
         $table_name = null;
         foreach (array_keys($this->data) as $t) {

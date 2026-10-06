@@ -91,6 +91,45 @@ class AIPS_Cache_Wp_Object_Cache_Driver implements AIPS_Cache_Driver, AIPS_Cache
 	/**
 	 * {@inheritdoc}
 	 */
+	public function get_multiple( array $keys, $group = 'default' ) {
+		$results = array();
+		if ( empty( $keys ) ) {
+			return $results;
+		}
+
+		$resolved_group = $this->resolve_group( $group );
+
+		if ( function_exists( 'wp_cache_get_multiple' ) ) {
+			$raw_results = wp_cache_get_multiple( $keys, $resolved_group );
+			if ( is_array( $raw_results ) ) {
+				foreach ( $keys as $key ) {
+					$key_str = (string) $key;
+					if ( ! array_key_exists( $key, $raw_results ) || false === $raw_results[ $key ] ) {
+						// wp_cache_get_multiple() reports misses as false and has
+						// no $found flag, so a stored false is indistinguishable
+						// from a miss. Resolve it through get(), which does use
+						// $found, to keep get() and get_multiple() consistent.
+						$results[ $key_str ] = false === ( $raw_results[ $key ] ?? null )
+							? $this->get( $key, $group )
+							: null;
+						continue;
+					}
+					$results[ $key_str ] = $raw_results[ $key ];
+				}
+				return $results;
+			}
+		}
+
+		foreach ( $keys as $key ) {
+			$results[ (string) $key ] = $this->get( $key, $group );
+		}
+
+		return $results;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
 	public function set( $key, $value, $ttl = 0, $group = 'default' ) {
 		return wp_cache_set( $key, $value, $this->resolve_group( $group ), (int) $ttl );
 	}

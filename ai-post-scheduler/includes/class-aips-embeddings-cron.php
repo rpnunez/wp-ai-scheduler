@@ -38,11 +38,6 @@ class AIPS_Embeddings_Cron {
 	}
 
 	/**
-	 * @var AIPS_Topic_Expansion_Service Topic expansion service
-	 */
-	private $expansion_service;
-
-	/**
 	 * @var AIPS_Logger_Interface Logger instance
 	 */
 	private $logger;
@@ -60,17 +55,15 @@ class AIPS_Embeddings_Cron {
 	/**
 	 * Initialize the cron handler.
 	 *
-	 * @param AIPS_Topic_Expansion_Service|null $expansion_service Topic expansion service.
-	 * @param AIPS_Logger_Interface|null          $logger            Logger instance.
-	 * @param AIPS_History_Service_Interface|null $history_service   History service.
-	 * @param AIPS_Job_Scheduler|null             $job_scheduler     Job scheduler service.
+	 * @param AIPS_Logger_Interface|null          $logger          Logger instance.
+	 * @param AIPS_History_Service_Interface|null $history_service History service.
+	 * @param AIPS_Job_Scheduler|null             $job_scheduler   Job scheduler service.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
+	public function __construct(?AIPS_Logger_Interface $logger = null, ?AIPS_History_Service_Interface $history_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
 		$container = AIPS_Container::get_instance();
-		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
-		$this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
+		$this->logger          = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
 		$this->history_service = $history_service ?: ($container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service());
-		$this->job_scheduler = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->job_scheduler   = $job_scheduler ?: new AIPS_Job_Scheduler();
 	}
 
 	/**
@@ -89,6 +82,12 @@ class AIPS_Embeddings_Cron {
 
 		if (!$author_id) {
 			$this->logger->log('Embeddings cron: Invalid author_id', 'error');
+			return;
+		}
+
+		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
+			$this->logger->log('Embeddings cron: Vector embeddings system is disabled in settings. Skipping author embeddings batch.', 'info');
+			delete_transient("aips_embeddings_progress_{$author_id}");
 			return;
 		}
 
@@ -125,8 +124,12 @@ class AIPS_Embeddings_Cron {
 			)
 		);
 
+		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
+			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
+			: new AIPS_Similarity_Evaluator();
+
 		// Process the batch
-		$result = $this->expansion_service->process_approved_embeddings_batch(
+		$result = $similarity_evaluator->process_approved_embeddings_batch(
 			$author_id,
 			$batch_size,
 			$last_processed_id

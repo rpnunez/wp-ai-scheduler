@@ -25,6 +25,7 @@
 
 		/** Active status filter */
 		currentStatus: '',
+		currentOrigin: '',
 
 		/** Active search string */
 		currentSearch: '',
@@ -52,7 +53,28 @@
 		 */
 		init: function () {
 			this.bindEvents();
+			this.applyUrlFilters();
 			this.loadSuggestions();
+		},
+
+		/**
+		 * Pre-select filters passed in the URL (e.g. the Link Report's
+		 * "Review suggestions" link: &origin=inbound&status=pending).
+		 */
+		applyUrlFilters: function () {
+			var params = new URLSearchParams(window.location.search);
+			var status = params.get('status') || '';
+			var origin = params.get('origin') || '';
+
+			if (status && $('#aips-il-status-filter option[value="' + status + '"]').length) {
+				this.currentStatus = status;
+				$('#aips-il-status-filter').val(status);
+			}
+
+			if (origin && $('#aips-il-origin-filter option[value="' + origin + '"]').length) {
+				this.currentOrigin = origin;
+				$('#aips-il-origin-filter').val(origin);
+			}
 		},
 
 		/**
@@ -64,6 +86,7 @@
 
 			// Status filter
 			$(document).on('change', '#aips-il-status-filter', this.onStatusFilterChange.bind(this));
+			$(document).on('change', '#aips-il-origin-filter', this.onOriginFilterChange.bind(this));
 
 			// Search
 			$(document).on('input', '#aips-il-search', this.onSearchInput.bind(this));
@@ -141,6 +164,17 @@
 		},
 
 		/**
+		 * Reload the suggestions table when the direction filter changes.
+		 *
+		 * @param {Event} e Change event from `#aips-il-origin-filter`.
+		 */
+		onOriginFilterChange: function (e) {
+			this.currentOrigin = $(e.currentTarget).val();
+			this.currentPage   = 1;
+			this.loadSuggestions();
+		},
+
+		/**
 		 * Debounced live search: reload suggestions 400 ms after the user stops typing.
 		 *
 		 * @param {Event} e Input event from `#aips-il-search`.
@@ -183,10 +217,21 @@
 		 * @param {Event} e Click event from `#aips-clear-index-btn`.
 		 */
 		onClearIndexClick: function (e) {
-			if (!window.confirm(aipsInternalLinksL10n.confirmClearIndex)) {
-				return;
-			}
-			this.clearIndex();
+			var self = this;
+			AIPS.Utilities.confirm(
+				aipsInternalLinksL10n.confirmClearIndex || 'Clear internal links index?',
+				'Clear Index',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Clear Index',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							self.clearIndex();
+						}
+					}
+				]
+			);
 		},
 
 		/**
@@ -233,11 +278,25 @@
 		 * @param {Event} e Click event from an `.aips-il-delete-btn` element.
 		 */
 		onDeleteClick: function (e) {
-			if (!window.confirm(aipsInternalLinksL10n.confirmDelete)) {
-				return;
-			}
 			var $btn = $(e.currentTarget);
-			this.deleteSuggestion($btn.data('id'), $btn.closest('tr'));
+			var id = $btn.data('id');
+			var $row = $btn.closest('tr');
+			var self = this;
+
+			AIPS.Utilities.confirm(
+				aipsInternalLinksL10n.confirmDelete || 'Delete this suggestion?',
+				'Delete Suggestion',
+				[
+					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+					{
+						label: 'Delete',
+						className: 'aips-btn aips-btn-danger-solid',
+						action: function () {
+							self.deleteSuggestion(id, $row);
+						}
+					}
+				]
+			);
 		},
 
 		/**
@@ -426,6 +485,7 @@
 				per_page: self.perPage,
 				status:   self.currentStatus,
 				search:   self.currentSearch,
+				origin:   self.currentOrigin,
 			}, function (response) {
 				if (!response.success) {
 					$tbody.html(AIPS.Templates.render('aips-tmpl-il-tbody-message', {
@@ -485,6 +545,10 @@
 					title: targetTitle,
 				})
 				: AIPS.Templates.escape(targetTitle);
+
+			if (item.origin === 'inbound') {
+				target += ' ' + AIPS.Templates.renderRaw('aips-tmpl-il-origin-badge', {});
+			}
 
 			var actions = '';
 
@@ -584,30 +648,22 @@
 			var self = this;
 			var $btn = $('#aips-start-indexing-btn');
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.loading);
-
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_start_indexing',
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
-					label: self.originalIndexText,
-				}));
-
 				if (response.success) {
 					AIPS.Utilities.showToast(response.data.message, 'success');
 					setTimeout(function () { self.refreshStatus(); }, 2000);
 				} else {
 					AIPS.Utilities.showToast(
-					(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
-					'error'
+						(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
+						'error'
 					);
 				}
-			}).fail(function () {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-start-indexing', {
-					label: self.originalIndexText,
-				}));
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.loading, timeout: 180000 });
 		},
 
 		/**
@@ -615,8 +671,9 @@
 		 */
 		clearIndex: function () {
 			var self = this;
+			var $btn = $('#aips-clear-index-btn');
 
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_clear_index',
 				nonce:  aipsInternalLinksL10n.nonce,
 			}, function (response) {
@@ -626,11 +683,15 @@
 					self.refreshStatus();
 				} else {
 					AIPS.Utilities.showToast(
-					(response.data && response.data.message) || 'Error.',
-					'error'
+						(response.data && response.data.message) || 'Error.',
+						'error'
 					);
 				}
 			});
+
+			if ($btn.length) {
+				AIPS.Utilities.withLock($btn, req);
+			}
 		},
 
 		/**
@@ -649,35 +710,29 @@
 				return;
 			}
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.generating);
 			$feedback.hide();
 
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:          'aips_internal_links_generate_suggestions',
 				nonce:           aipsInternalLinksL10n.nonce,
 				post_id:         postId,
 				max_suggestions: maxSugg || 5,
 				threshold:       threshold || 0.70,
 			}, function (response) {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
-					label: self.originalGenerateText,
-				}));
-
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
 					self.loadSuggestions();
 				} else {
 					self.showGenerateFeedback(
-					(response.data && response.data.message) || 'Error.',
-					'error'
+						(response.data && response.data.message) || 'Error.',
+						'error'
 					);
 				}
 			}).fail(function () {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-generate', {
-					label: self.originalGenerateText,
-				}));
 				self.showGenerateFeedback(aipsInternalLinksL10n.requestFailed, 'error');
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.generating, timeout: 120000 });
 		},
 
 		/**
@@ -694,33 +749,26 @@
 				return;
 			}
 
-			$btn.prop('disabled', true).text(aipsInternalLinksL10n.reindexing);
 			$feedback.hide();
 
-			$.post(aipsAjax.ajaxUrl, {
+			var req = $.post(aipsAjax.ajaxUrl, {
 				action:  'aips_internal_links_reindex_post',
 				nonce:   aipsInternalLinksL10n.nonce,
 				post_id: postId,
 			}, function (response) {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
-					label: self.originalReindexText,
-				}));
-
 				if (response.success) {
 					self.showGenerateFeedback(response.data.message, 'success');
 					self.loadSuggestions();
 					self.refreshStatus();
 				} else {
 					self.showGenerateFeedback(
-					(response.data && response.data.message) || 'Error.',
-					'error'
+						(response.data && response.data.message) || 'Error.',
+						'error'
 					);
 				}
-			}).fail(function () {
-				$btn.prop('disabled', false).html(AIPS.Templates.render('aips-tmpl-il-btn-reindex', {
-					label: self.originalReindexText,
-				}));
 			});
+
+			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.reindexing, timeout: 120000 });
 		},
 
 		/**
@@ -852,6 +900,7 @@
 				accepted: aipsInternalLinksL10n.accepted,
 				rejected: aipsInternalLinksL10n.rejected,
 				inserted: aipsInternalLinksL10n.inserted,
+				reverted: aipsInternalLinksL10n.reverted,
 			};
 			return map[status] || status;
 		},

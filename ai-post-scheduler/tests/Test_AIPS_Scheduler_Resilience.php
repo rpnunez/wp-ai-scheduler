@@ -20,6 +20,10 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
 
     /**
      * Test that an exception in one schedule does not block subsequent schedules.
+     *
+     * process() runs the first due schedule inline and queues the rest as
+     * single cron events (AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK),
+     * so the second schedule runs when its queued event fires.
      */
     public function test_scheduler_resilience_to_exceptions() {
         // 1. Create a dummy template
@@ -35,7 +39,7 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         $schedule1_id = $this->schedule_repo->create(array(
             'template_id' => $template_id,
             'frequency' => 'daily',
-            'next_run' => date('Y-m-d H:i:s', strtotime('-1 hour')), // Overdue
+            'next_run' => AIPS_DateTime::now()->timestamp() - 2 * HOUR_IN_SECONDS, // Overdue, runs first
             'is_active' => 1,
             'topic' => 'Topic 1'
         ));
@@ -43,7 +47,7 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         $schedule2_id = $this->schedule_repo->create(array(
             'template_id' => $template_id,
             'frequency' => 'daily',
-            'next_run' => date('Y-m-d H:i:s', strtotime('-1 hour')), // Overdue
+            'next_run' => AIPS_DateTime::now()->timestamp() - HOUR_IN_SECONDS, // Overdue, queued
             'is_active' => 1,
             'topic' => 'Topic 2'
         ));
@@ -91,8 +95,8 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         // If the crash in Topic 1 stops execution, this expectation will fail (called once)
         $mock_generator->expects($this->exactly(2))
             ->method('generate_post')
-            ->will($this->returnCallback(function($template, $voice, $topic) {
-                if ($topic === 'Topic 1') {
+            ->will($this->returnCallback(function($context) {
+                if ($context->get_topic() === 'Topic 1') {
                     throw new Exception('Simulated crash!');
                 }
                 return 123; // Success for Topic 2
@@ -105,7 +109,15 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
             $this->markTestSkipped('set_generator method not implemented yet.');
         }
 
-        // 5. Run the scheduler
+        // 5. Run the scheduler: Topic 1 crashes inline, Topic 2 is queued.
+        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
         $this->scheduler->process();
+
+        $queued = wp_next_scheduled(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, array((int) $schedule2_id));
+        $this->assertNotFalse($queued, 'The second due schedule should be queued, not dropped.');
+
+        // 6. Fire the queued event: the crash must not have blocked it.
+        $this->scheduler->process_queued_due_schedule((int) $schedule2_id);
+        wp_unschedule_hook(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK);
     }
 }

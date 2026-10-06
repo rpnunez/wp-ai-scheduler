@@ -10,18 +10,6 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 ?>
-<?php if (empty($embedded)) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Telemetry', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Inspect request-level telemetry, filter records, and compare request trends at a glance.', 'ai-post-scheduler'); ?></p>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 
 		<?php if (!AIPS_Telemetry::is_enabled()) : ?>
 			<div class="notice notice-info inline aips-telemetry-disabled-banner" style="margin-bottom: 20px; padding: 12px 16px; border-left: 4px solid #72aee6; background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -204,10 +192,6 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 		</div>
-<?php if (empty($embedded)) : ?>
-	</div>
-</div>
-<?php endif; ?>
 
 <script type="text/html" id="aips-tmpl-telemetry-message-row">
 	<tr>
