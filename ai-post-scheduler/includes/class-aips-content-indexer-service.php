@@ -763,6 +763,13 @@ class AIPS_Content_Indexer_Service {
 		if (empty($object_type) || 'topic' === $object_type) {
 			delete_option('aips_pending_topic_index_queue');
 		}
+
+		if (empty($object_type)) {
+			if (function_exists('as_unschedule_all_actions')) {
+				as_unschedule_all_actions('aips_process_pending_indexer_queue', array(), 'aips-indexer');
+			}
+			wp_clear_scheduled_hook('aips_process_pending_indexer_queue');
+		}
 	}
 
 	/**
@@ -841,11 +848,9 @@ class AIPS_Content_Indexer_Service {
 			update_option('aips_pending_index_queue', array_values(array_unique($queue)), false);
 		}
 
-		// Schedule debounced single event worker if not already queued
-		if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
-			$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
-			wp_schedule_single_event(time() + $debounce, 'aips_process_pending_indexer_queue');
-		}
+		// Schedule debounced worker if not already queued
+		$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
+		$this->schedule_queue_worker(time() + $debounce);
 	}
 
 	/**
@@ -866,10 +871,41 @@ class AIPS_Content_Indexer_Service {
 			update_option('aips_pending_topic_index_queue', array_values(array_unique($queue)), false);
 		}
 
-		// Schedule debounced single event worker if not already queued
-		if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
-			$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
-			wp_schedule_single_event(time() + $debounce, 'aips_process_pending_indexer_queue');
+		// Schedule debounced worker if not already queued
+		$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
+		$this->schedule_queue_worker(time() + $debounce);
+	}
+
+	/**
+	 * Check if the background indexer queue worker is already scheduled.
+	 *
+	 * Checks Action Scheduler if available, falling back to WP-Cron.
+	 *
+	 * @return bool
+	 */
+	public function is_queue_worker_scheduled(): bool {
+		if (function_exists('as_has_scheduled_action') && as_has_scheduled_action('aips_process_pending_indexer_queue', array(), 'aips-indexer')) {
+			return true;
+		}
+
+		return (bool) wp_next_scheduled('aips_process_pending_indexer_queue');
+	}
+
+	/**
+	 * Schedule background indexer queue worker via Action Scheduler (if available) or WP-Cron.
+	 *
+	 * @param int $timestamp Unix timestamp to run.
+	 * @return void
+	 */
+	public function schedule_queue_worker(int $timestamp): void {
+		if ($this->is_queue_worker_scheduled()) {
+			return;
+		}
+
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action($timestamp, 'aips_process_pending_indexer_queue', array(), 'aips-indexer');
+		} else {
+			wp_schedule_single_event($timestamp, 'aips_process_pending_indexer_queue');
 		}
 	}
 
@@ -890,9 +926,7 @@ class AIPS_Content_Indexer_Service {
 
 		// If currently in cooldown, reschedule worker for cooldown expiry and yield
 		if ($cooldown['is_paused']) {
-			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
-				wp_schedule_single_event($cooldown['paused_until'] + 5, 'aips_process_pending_indexer_queue');
-			}
+			$this->schedule_queue_worker($cooldown['paused_until'] + 5);
 			return array('status' => 'cooldown_active', 'paused_until' => $cooldown['paused_until']);
 		}
 
@@ -901,9 +935,7 @@ class AIPS_Content_Indexer_Service {
 		if ($quota_pause && $rate_limiter->is_approaching_quota(0.90)) {
 			$stats = $rate_limiter->get_usage_stats();
 			$delay = max(3600, (int) $stats['daily_reset_in'] + 60);
-			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
-				wp_schedule_single_event(time() + $delay, 'aips_process_pending_indexer_queue');
-			}
+			$this->schedule_queue_worker(time() + $delay);
 			$this->logger->info('Embeddings queue auto-paused: approaching API quota limit.');
 			return array('status' => 'quota_paused', 'reschedule_in' => $delay);
 		}
@@ -980,9 +1012,7 @@ class AIPS_Content_Indexer_Service {
 		$cooldown = $rate_limiter->get_cooldown_status();
 		if ($total_remaining > 0) {
 			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + 5);
-			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
-				wp_schedule_single_event($next_time, 'aips_process_pending_indexer_queue');
-			}
+			$this->schedule_queue_worker($next_time);
 		}
 
 		if ((bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true)) {

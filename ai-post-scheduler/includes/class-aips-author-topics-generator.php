@@ -252,9 +252,7 @@ class AIPS_Author_Topics_Generator {
 				foreach ($saved_topics as $saved_topic) {
 					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
 					if ($t_status !== 'rejected' && !empty($saved_topic['id'])) {
-						if (method_exists($this->indexer_service, 'enqueue_topic_for_indexing')) {
-							$this->indexer_service->enqueue_topic_for_indexing((int) $saved_topic['id']);
-						}
+						$this->indexer_service->enqueue_topic_for_indexing((int) $saved_topic['id']);
 					}
 				}
 			}

@@ -309,4 +309,17 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertFalse( get_option( 'aips_pending_index_queue' ) );
 		$this->assertFalse( get_option( 'aips_pending_topic_index_queue' ) );
 	}
+
+	/**
+	 * Test schedule_queue_worker schedules background event.
+	 */
+	public function test_schedule_queue_worker() {
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+		$this->assertFalse( $this->indexer_service->is_queue_worker_scheduled() );
+
+		$this->indexer_service->schedule_queue_worker( time() + 30 );
+		$this->assertTrue( $this->indexer_service->is_queue_worker_scheduled() );
+
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+	}
 }
