@@ -249,11 +249,15 @@ class AIPS_Author_Topics_Generator {
 			$config = AIPS_Config::get_instance();
 			$sync_topics = (bool) $config->get_option('aips_indexer_topics_continuous_sync', true);
 			if ($sync_topics && $this->embeddings_service->is_enabled() && $this->indexer_service) {
+				$topic_ids_to_queue = array();
 				foreach ($saved_topics as $saved_topic) {
 					$t_status = isset($saved_topic['status']) ? $saved_topic['status'] : 'pending';
 					if ($t_status !== 'rejected' && !empty($saved_topic['id'])) {
-						$this->indexer_service->enqueue_topic_for_indexing((int) $saved_topic['id']);
+						$topic_ids_to_queue[] = (int) $saved_topic['id'];
 					}
+				}
+				if (!empty($topic_ids_to_queue)) {
+					$this->indexer_service->enqueue_topics_for_indexing($topic_ids_to_queue);
 				}
 			}
 		} else {

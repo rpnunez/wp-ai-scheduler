@@ -831,21 +831,70 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Buffer a published post ID into the debounced background indexing queue.
+	 * Buffer multiple WordPress post IDs into the debounced background indexing queue in a single operation.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 * @return void
+	 */
+	public function enqueue_posts_for_indexing(array $post_ids): void {
+		$clean_ids = array();
+		foreach ($post_ids as $id) {
+			$id = absint($id);
+			if ($id > 0) {
+				$clean_ids[] = $id;
+			}
+		}
+
+		if (empty($clean_ids)) {
+			return;
+		}
+
+		$queue  = (array) get_option('aips_pending_index_queue', array());
+		$merged = array_values(array_unique(array_merge($queue, $clean_ids)));
+
+		if ($merged !== $queue) {
+			update_option('aips_pending_index_queue', $merged, false);
+		}
+
+		// Schedule debounced worker if not already queued
+		$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
+		$this->schedule_queue_worker(time() + $debounce);
+	}
+
+	/**
+	 * Buffer a WordPress post ID into the debounced background indexing queue.
 	 *
 	 * @param int $post_id WordPress post ID.
 	 * @return void
 	 */
 	public function enqueue_post_for_indexing(int $post_id): void {
-		$post_id = absint($post_id);
-		if ($post_id <= 0) {
+		$this->enqueue_posts_for_indexing(array($post_id));
+	}
+
+	/**
+	 * Buffer multiple Author Topic IDs into the debounced background indexing queue in a single operation.
+	 *
+	 * @param array $topic_ids Array of Author Topic IDs.
+	 * @return void
+	 */
+	public function enqueue_topics_for_indexing(array $topic_ids): void {
+		$clean_ids = array();
+		foreach ($topic_ids as $id) {
+			$id = absint($id);
+			if ($id > 0) {
+				$clean_ids[] = $id;
+			}
+		}
+
+		if (empty($clean_ids)) {
 			return;
 		}
 
-		$queue = (array) get_option('aips_pending_index_queue', array());
-		if (!in_array($post_id, $queue, true)) {
-			$queue[] = $post_id;
-			update_option('aips_pending_index_queue', array_values(array_unique($queue)), false);
+		$queue  = (array) get_option('aips_pending_topic_index_queue', array());
+		$merged = array_values(array_unique(array_merge($queue, $clean_ids)));
+
+		if ($merged !== $queue) {
+			update_option('aips_pending_topic_index_queue', $merged, false);
 		}
 
 		// Schedule debounced worker if not already queued
@@ -860,20 +909,7 @@ class AIPS_Content_Indexer_Service {
 	 * @return void
 	 */
 	public function enqueue_topic_for_indexing(int $topic_id): void {
-		$topic_id = absint($topic_id);
-		if ($topic_id <= 0) {
-			return;
-		}
-
-		$queue = (array) get_option('aips_pending_topic_index_queue', array());
-		if (!in_array($topic_id, $queue, true)) {
-			$queue[] = $topic_id;
-			update_option('aips_pending_topic_index_queue', array_values(array_unique($queue)), false);
-		}
-
-		// Schedule debounced worker if not already queued
-		$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
-		$this->schedule_queue_worker(time() + $debounce);
+		$this->enqueue_topics_for_indexing(array($topic_id));
 	}
 
 	/**
@@ -955,7 +991,7 @@ class AIPS_Content_Indexer_Service {
 		$failed      = 0;
 		$broke_early = false;
 
-		foreach ($post_slice as $post_id) {
+		foreach ($post_slice as $idx => $post_id) {
 			$post = get_post($post_id);
 			if (!$post || 'publish' !== $post->post_status || !$this->is_post_in_scope($post)) {
 				continue;
@@ -969,6 +1005,8 @@ class AIPS_Content_Indexer_Service {
 
 				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
 					$broke_early = true;
+					$unprocessed_post_slice = array_slice($post_slice, $idx);
+					$post_rem = array_merge($unprocessed_post_slice, $post_rem);
 					break;
 				}
 			} else {
@@ -986,7 +1024,7 @@ class AIPS_Content_Indexer_Service {
 				$topic_slice = array_slice($topic_queue, 0, $remaining_capacity);
 				$topic_rem   = array_slice($topic_queue, count($topic_slice));
 
-				foreach ($topic_slice as $topic_id) {
+				foreach ($topic_slice as $idx => $topic_id) {
 					$result = $this->index_topic((int) $topic_id);
 
 					if (is_wp_error($result)) {
@@ -994,6 +1032,8 @@ class AIPS_Content_Indexer_Service {
 						$rate_limiter->record_failure($result);
 
 						if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+							$unprocessed_topic_slice = array_slice($topic_slice, $idx);
+							$topic_rem = array_merge($unprocessed_topic_slice, $topic_rem);
 							break;
 						}
 					} else {
