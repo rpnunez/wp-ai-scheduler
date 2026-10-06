@@ -481,6 +481,7 @@ class AIPS_Admin_Assets {
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            'noncePruneLogsNow' => wp_create_nonce('aips_prune_logs_now'),
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
         ));
 

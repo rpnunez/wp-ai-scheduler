@@ -16,11 +16,13 @@ public function test_sanitize_cache_driver_keeps_supported_drivers() {
 $this->assertSame( 'array', $this->settings_ui->sanitize_cache_driver( 'array' ) );
 $this->assertSame( 'db', $this->settings_ui->sanitize_cache_driver( 'db' ) );
 $this->assertSame( 'wp_object_cache', $this->settings_ui->sanitize_cache_driver( 'wp_object_cache' ) );
+$this->assertSame( 'redis', $this->settings_ui->sanitize_cache_driver( 'redis' ) );
+$this->assertSame( 'relay', $this->settings_ui->sanitize_cache_driver( 'relay' ) );
+$this->assertSame( 'memcached', $this->settings_ui->sanitize_cache_driver( 'memcached' ) );
 }
 
 public function test_sanitize_cache_driver_maps_legacy_drivers_to_wp_object_cache() {
 $this->assertSame( 'wp_object_cache', $this->settings_ui->sanitize_cache_driver( 'session' ) );
-$this->assertSame( 'wp_object_cache', $this->settings_ui->sanitize_cache_driver( 'redis' ) );
 }
 
 public function test_sanitize_cache_driver_falls_back_to_array_for_invalid_value() {

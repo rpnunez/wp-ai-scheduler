@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.8
+ * Version: 3.7.9
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.8');
+    define('AIPS_VERSION', '3.7.9');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -122,6 +122,10 @@ final class AI_Post_Scheduler {
             'aips_cache_monitor_maintenance' => array(
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
+            ),
+            'aips_daily_log_cleanup' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'System Log Cleanup', 'ai-post-scheduler' ),
             ),
         );
     }
@@ -1042,6 +1046,9 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // System log retention daily cleanup cron handler.
+        add_action('aips_daily_log_cleanup', array('AIPS_Log_Cleaner', 'prune_logs'));
 
         // Post-save affiliate link injection — fires after every generated post.
         add_action('aips_post_generated', function($post_id) {

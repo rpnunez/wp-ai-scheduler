@@ -60,6 +60,7 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_cleanup_notifications', array($this, 'ajax_cleanup_notifications'));
 		add_action('wp_ajax_aips_status_reset_resilience', array($this, 'ajax_reset_resilience'));
 		add_action('wp_ajax_aips_status_repair_datetime', array($this, 'ajax_repair_datetime'));
+		add_action('wp_ajax_aips_prune_logs_now', array($this, 'ajax_prune_logs_now'));
 	}
 
 	/**
@@ -259,6 +260,26 @@ class AIPS_System_Status_Controller {
 		$this->verify_request('aips_status_repair_datetime');
 
 		AIPS_Ajax_Response::success($this->diagnostics_service->repair_datetime());
+	}
+
+	public function ajax_prune_logs_now() {
+		$this->verify_request('aips_prune_logs_now');
+
+		$retention_days = isset( $_POST['retention_days'] ) ? absint( $_POST['retention_days'] ) : null;
+
+		$result = AIPS_Log_Cleaner::prune_logs($retention_days);
+
+		AIPS_Ajax_Response::success(
+			array(
+				'message' => sprintf(
+					/* translators: 1: files count, 2: rows count */
+					__('Successfully pruned %1$d log file(s) and %2$d database row(s).', 'ai-post-scheduler'),
+					$result['files_deleted'],
+					$result['db_rows_deleted']
+				),
+				'data'    => $result,
+			)
+		);
 	}
 
 }

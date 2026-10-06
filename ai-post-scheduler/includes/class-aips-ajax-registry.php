@@ -267,6 +267,7 @@ class AIPS_Ajax_Registry {
 		'aips_status_cleanup_notifications' => 'AIPS_System_Status_Controller',
 		'aips_status_reset_resilience'   => 'AIPS_System_Status_Controller',
 		'aips_status_repair_datetime'    => 'AIPS_System_Status_Controller',
+		'aips_prune_logs_now'            => 'AIPS_System_Status_Controller',
 
 		// Internal Links Controller
 		'aips_internal_links_get_suggestions'        => 'AIPS_Internal_Links_Controller',
@@ -362,6 +363,7 @@ class AIPS_Ajax_Registry {
 		'aips_cache_monitor_operations'        => 'AIPS_Cache_Monitor_Controller',
 		'aips_cache_monitor_events'            => 'AIPS_Cache_Monitor_Controller',
 		'aips_cache_monitor_maintenance'       => 'AIPS_Cache_Monitor_Controller',
+		'aips_test_cache_connection'           => 'AIPS_Cache_Monitor_Controller',
 
 		// Stress Test Controller
 		'aips_stress_test_run'                 => 'AIPS_Stress_Test_Controller',
