@@ -756,6 +756,13 @@ class AIPS_Content_Indexer_Service {
 		$this->embeddings_repo->clear_all($object_type);
 		$this->relationships_repo->clear_all();
 		$this->embeddings_service->clear_cache();
+
+		if (empty($object_type) || 'post' === $object_type) {
+			delete_option('aips_pending_index_queue');
+		}
+		if (empty($object_type) || 'topic' === $object_type) {
+			delete_option('aips_pending_topic_index_queue');
+		}
 	}
 
 	/**
@@ -842,7 +849,32 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Process pending post IDs in the background indexing queue in slices.
+	 * Buffer an Author Topic ID into the debounced background indexing queue.
+	 *
+	 * @param int $topic_id Author Topic ID.
+	 * @return void
+	 */
+	public function enqueue_topic_for_indexing(int $topic_id): void {
+		$topic_id = absint($topic_id);
+		if ($topic_id <= 0) {
+			return;
+		}
+
+		$queue = (array) get_option('aips_pending_topic_index_queue', array());
+		if (!in_array($topic_id, $queue, true)) {
+			$queue[] = $topic_id;
+			update_option('aips_pending_topic_index_queue', array_values(array_unique($queue)), false);
+		}
+
+		// Schedule debounced single event worker if not already queued
+		if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
+			$debounce = max(5, (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15));
+			wp_schedule_single_event(time() + $debounce, 'aips_process_pending_indexer_queue');
+		}
+	}
+
+	/**
+	 * Process pending post and topic IDs in the background indexing queue in slices.
 	 *
 	 * Respects quota auto-pause, cooldown status, post types, scope, and rate limits.
 	 *
@@ -876,19 +908,22 @@ class AIPS_Content_Indexer_Service {
 			return array('status' => 'quota_paused', 'reschedule_in' => $delay);
 		}
 
-		$queue = (array) get_option('aips_pending_index_queue', array());
-		if (empty($queue)) {
+		$post_queue  = (array) get_option('aips_pending_index_queue', array());
+		$topic_queue = (array) get_option('aips_pending_topic_index_queue', array());
+
+		if (empty($post_queue) && empty($topic_queue)) {
 			return array('status' => 'empty', 'processed' => 0);
 		}
 
 		$batch_size = max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
-		$slice      = array_slice($queue, 0, $batch_size);
-		$remaining  = array_slice($queue, $batch_size);
+		$post_slice = array_slice($post_queue, 0, $batch_size);
+		$post_rem   = array_slice($post_queue, count($post_slice));
 
-		$success = 0;
-		$failed  = 0;
+		$success     = 0;
+		$failed      = 0;
+		$broke_early = false;
 
-		foreach ($slice as $post_id) {
+		foreach ($post_slice as $post_id) {
 			$post = get_post($post_id);
 			if (!$post || 'publish' !== $post->post_status || !$this->is_post_in_scope($post)) {
 				continue;
@@ -901,7 +936,7 @@ class AIPS_Content_Indexer_Service {
 				$rate_limiter->record_failure($result);
 
 				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
-					// Break slice early on rate limit / exhaustion
+					$broke_early = true;
 					break;
 				}
 			} else {
@@ -910,12 +945,40 @@ class AIPS_Content_Indexer_Service {
 			}
 		}
 
-		// Update pending queue
-		update_option('aips_pending_index_queue', array_values($remaining), false);
+		update_option('aips_pending_index_queue', array_values($post_rem), false);
+
+		$topic_rem = $topic_queue;
+		if (!$broke_early && !empty($topic_queue)) {
+			$remaining_capacity = max(0, $batch_size - count($post_slice));
+			if ($remaining_capacity > 0) {
+				$topic_slice = array_slice($topic_queue, 0, $remaining_capacity);
+				$topic_rem   = array_slice($topic_queue, count($topic_slice));
+
+				foreach ($topic_slice as $topic_id) {
+					$result = $this->index_topic((int) $topic_id);
+
+					if (is_wp_error($result)) {
+						$failed++;
+						$rate_limiter->record_failure($result);
+
+						if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
+							break;
+						}
+					} else {
+						$rate_limiter->record_success();
+						$success++;
+					}
+				}
+
+				update_option('aips_pending_topic_index_queue', array_values($topic_rem), false);
+			}
+		}
+
+		$total_remaining = count($post_rem) + count($topic_rem);
 
 		// If more items remain and not in cooldown, schedule next batch
 		$cooldown = $rate_limiter->get_cooldown_status();
-		if (!empty($remaining)) {
+		if ($total_remaining > 0) {
 			$next_time = $cooldown['is_paused'] ? ($cooldown['paused_until'] + 5) : (AIPS_DateTime::now()->timestamp() + 5);
 			if (!wp_next_scheduled('aips_process_pending_indexer_queue')) {
 				wp_schedule_single_event($next_time, 'aips_process_pending_indexer_queue');
@@ -924,7 +987,7 @@ class AIPS_Content_Indexer_Service {
 
 		if ((bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true)) {
 			$this->logger->info(
-				sprintf('Processed background indexing queue slice: %d succeeded, %d failed, %d remaining.', $success, $failed, count($remaining))
+				sprintf('Processed background indexing queue slice: %d succeeded, %d failed, %d remaining.', $success, $failed, $total_remaining)
 			);
 		}
 
@@ -932,7 +995,7 @@ class AIPS_Content_Indexer_Service {
 			'status'    => 'processed',
 			'success'   => $success,
 			'failed'    => $failed,
-			'remaining' => count($remaining),
+			'remaining' => $total_remaining,
 		);
 	}
 

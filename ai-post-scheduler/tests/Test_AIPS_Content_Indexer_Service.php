@@ -50,6 +50,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_embeddings' );
 		$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . 'aips_relationships' );
+		delete_option( 'aips_pending_index_queue' );
+		delete_option( 'aips_pending_topic_index_queue' );
 		parent::tearDown();
 	}
 
@@ -277,5 +279,34 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'indexed', $status );
 		$this->assertArrayHasKey( 'percent', $status );
 		$this->assertGreaterThanOrEqual( 2, $status['total_posts'] );
+	}
+
+	/**
+	 * Test enqueue_topic_for_indexing buffers and deduplicates topic IDs in the topic queue.
+	 */
+	public function test_enqueue_topic_for_indexing() {
+		$this->indexer_service->enqueue_topic_for_indexing( 101 );
+		$this->indexer_service->enqueue_topic_for_indexing( 102 );
+		$this->indexer_service->enqueue_topic_for_indexing( 101 ); // Duplicate
+
+		$queue = get_option( 'aips_pending_topic_index_queue' );
+		$this->assertIsArray( $queue );
+		$this->assertEquals( array( 101, 102 ), $queue );
+	}
+
+	/**
+	 * Test clear_index clears pending queues.
+	 */
+	public function test_clear_index_clears_queues() {
+		$this->indexer_service->enqueue_post_for_indexing( 201 );
+		$this->indexer_service->enqueue_topic_for_indexing( 301 );
+
+		$this->assertNotEmpty( get_option( 'aips_pending_index_queue' ) );
+		$this->assertNotEmpty( get_option( 'aips_pending_topic_index_queue' ) );
+
+		$this->indexer_service->clear_index();
+
+		$this->assertFalse( get_option( 'aips_pending_index_queue' ) );
+		$this->assertFalse( get_option( 'aips_pending_topic_index_queue' ) );
 	}
 }
