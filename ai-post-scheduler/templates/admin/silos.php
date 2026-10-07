@@ -22,12 +22,15 @@ if (!defined('ABSPATH')) {
 <div class="aips-silos-tab aips-link-report-tab" id="aips-silos" data-review-url="<?php echo esc_url($review_url); ?>" data-report-url="<?php echo esc_url($report_url); ?>">
 
 	<?php
+	AIPS_Admin_UI_Primitives::render_tab_intro(array(
+		'icon'        => 'dashicons-index-card',
+		'title'       => __('Silos', 'ai-post-scheduler'),
+		'description' => __('A silo is a topic cluster with a pillar you confirmed. Each article should link up to the pillar, and the pillar should reach every article. Fix silo adds the missing article → pillar links in the articles\' text (inserted when Bulk Auto-Linking is on, otherwise sent to review; undo from the Link Report). The pillar reaches its articles through its own links plus an "In this guide" list shown when it is displayed; its text is never edited.', 'ai-post-scheduler'),
+	));
+
 	AIPS_Admin_UI_Primitives::render_card(
 		array(
 			'id'          => 'aips-silos-panel',
-			'title'       => __('Silos', 'ai-post-scheduler'),
-			'icon'        => 'dashicons-index-card',
-			'description' => __('A silo is a topic cluster with a pillar you confirmed. Each article should link up to the pillar, and the pillar should reach every article. Fix silo adds the missing article → pillar links in the articles\' text (inserted when Bulk Auto-Linking is on, otherwise sent to review; undo from the Link Report). The pillar reaches its articles through its own links plus an "In this guide" list shown when it is displayed; its text is never edited.', 'ai-post-scheduler'),
 		),
 		function () use ($guide_enabled, $settings_url) {
 			?>

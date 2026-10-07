@@ -145,6 +145,24 @@ class AIPS_Admin_UI_Primitives {
 	}
 
 	/**
+	 * Render a standardized Tab Intro Section (icon + title + help text).
+	 *
+	 * Gives every tab on a rail-layout page (e.g. the Content hub) the same
+	 * "what does this tab do" introduction, visually separated from the
+	 * content panel rendered below it.
+	 *
+	 * @param array<string, mixed> $args Intro configuration:
+	 *  - 'icon': (string) Dashicon slug, normally the tab's rail icon.
+	 *  - 'title': (string) Tab title.
+	 *  - 'description': (string) Short help text explaining the tab's purpose.
+	 *  - 'actions': (array) Optional inline action buttons (same shape as render_card() actions).
+	 * @return void
+	 */
+	public static function render_tab_intro($args = array()) {
+		self::include_partial('admin-tab-intro.php', (array) $args);
+	}
+
+	/**
 	 * Render a Content Card / Panel.
 	 *
 	 * @param array<string, mixed> $args Card configuration:

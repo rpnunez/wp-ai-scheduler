@@ -209,6 +209,53 @@
     flex-shrink: 0;
 }
 
+/* Tab Intro Section - icon + title + help text, raised above a tab's content panel */
+.aips-tab-intro {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--aips-space-4);
+    padding: 0 var(--aips-space-1) var(--aips-space-4);
+    margin-bottom: var(--aips-space-1);
+}
+
+.aips-tab-intro-content {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--aips-space-3);
+}
+
+.aips-tab-intro-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--aips-primary);
+}
+
+.aips-tab-intro-title {
+    font-size: var(--aips-text-lg);
+    font-weight: var(--aips-font-semibold);
+    color: var(--aips-gray-900);
+    margin: 0 0 2px;
+}
+
+.aips-tab-intro-description {
+    font-size: var(--aips-text-sm);
+    color: var(--aips-gray-500);
+    line-height: var(--aips-leading-normal);
+    margin: 0;
+    max-width: 68ch;
+}
+
+.aips-tab-intro-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-2);
+    flex-shrink: 0;
+}
+
 /* Content Panel */
 .aips-content-panel {
     background: var(--aips-white);

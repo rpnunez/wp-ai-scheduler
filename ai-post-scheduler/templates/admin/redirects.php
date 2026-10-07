@@ -20,6 +20,12 @@ if (!defined('ABSPATH')) {
 <div class="aips-redirects-tab aips-link-report-tab" id="aips-redirects">
 
 	<?php
+	AIPS_Admin_UI_Primitives::render_tab_intro(array(
+		'icon'        => 'dashicons-randomize',
+		'title'       => __('Redirects', 'ai-post-scheduler'),
+		'description' => __('Redirects created by AI Post Scheduler, served by your redirect plugin or built in.', 'ai-post-scheduler'),
+	));
+
 	AIPS_Admin_UI_Primitives::render_card(
 		array(
 			'id'          => 'aips-redirects-provider-panel',
