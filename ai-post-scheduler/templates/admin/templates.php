@@ -9,15 +9,73 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-        <?php if (!empty($templates)): ?>
+        <?php if (!empty($templates)):
+            $history_service = new AIPS_History();
+            $templates_class = new AIPS_Templates();
+            $campaigns_repo = AIPS_Campaigns_Repository::instance();
+            $campaign_options = $campaigns_repo->get_campaign_filter_options();
+            $campaign_map = array();
+            foreach ($campaign_options as $campaign_option) {
+                $campaign_map[(int) $campaign_option->id] = $campaign_option;
+            }
+            $category_name_map = array();
+            if (!empty($categories) && is_array($categories)) {
+                foreach ($categories as $category) {
+                    $category_name_map[(int) $category->term_id] = $category->name;
+                }
+            }
+
+            // Pre-fetch stats to avoid N+1 queries
+            $all_generated_counts = $history_service->get_all_template_stats();
+            $all_pending_stats = $templates_class->get_all_pending_stats();
+        ?>
         <!-- Content Panel with Filter Bar -->
         <div class="aips-content-panel">
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
+                <div class="aips-filter-left">
+                    <?php if (!empty($campaign_options)): ?>
+                    <label class="screen-reader-text" for="aips-template-filter-campaign"><?php esc_html_e('Filter by Campaign:', 'ai-post-scheduler'); ?></label>
+                    <select id="aips-template-filter-campaign" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Campaigns', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($campaign_options as $co): ?>
+                        <option value="<?php echo esc_attr($co->id); ?>"><?php echo esc_html($co->name); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+                    <?php if (!empty($categories)): ?>
+                    <label class="screen-reader-text" for="aips-template-filter-category"><?php esc_html_e('Filter by Category:', 'ai-post-scheduler'); ?></label>
+                    <select id="aips-template-filter-category" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Categories', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($categories as $cat): ?>
+                        <option value="<?php echo esc_attr($cat->term_id); ?>"><?php echo esc_html($cat->name); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+                    <label class="screen-reader-text" for="aips-template-filter-status"><?php esc_html_e('Filter by Status:', 'ai-post-scheduler'); ?></label>
+                    <select id="aips-template-filter-status" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
+                        <option value="active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></option>
+                        <option value="inactive"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></option>
+                    </select>
+                </div>
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
                     <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display: none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
+                </div>
+            </div>
+
+            <!-- Toolbar (Bulk Actions) -->
+            <div class="aips-panel-toolbar">
+                <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+                    <select id="aips-template-bulk-action" class="aips-form-select">
+                        <option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
+                        <option value="activate"><?php esc_html_e('Activate', 'ai-post-scheduler'); ?></option>
+                        <option value="deactivate"><?php esc_html_e('Deactivate', 'ai-post-scheduler'); ?></option>
+                        <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                    </select>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-template-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -26,6 +84,7 @@ if (!defined('ABSPATH')) {
                 <table class="aips-table">
                     <thead>
                         <tr>
+                            <th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-templates-cb-all"></th>
                             <th class="column-name"><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?></th>
                             <th class="column-category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
                             <th class="column-stats"><?php esc_html_e('Statistics', 'ai-post-scheduler'); ?></th>
@@ -35,28 +94,12 @@ if (!defined('ABSPATH')) {
                     </thead>
                     <tbody>
                         <?php
-                        $history_service = new AIPS_History();
-                        $templates_class = new AIPS_Templates();
-                        $campaigns_repo = AIPS_Campaigns_Repository::instance();
-                        $campaign_options = $campaigns_repo->get_campaign_filter_options();
-                        $campaign_map = array();
-                        foreach ($campaign_options as $campaign_option) {
-                            $campaign_map[(int) $campaign_option->id] = $campaign_option;
-                        }
-                        $category_name_map = array();
-                        foreach ($categories as $category) {
-                            $category_name_map[(int) $category->term_id] = $category->name;
-                        }
-
-                        // Pre-fetch stats to avoid N+1 queries
-                        $all_generated_counts = $history_service->get_all_template_stats();
-                        $all_pending_stats = $templates_class->get_all_pending_stats();
-
                         foreach ($templates as $template):
                             $generated_count = isset($all_generated_counts[$template->id]) ? $all_generated_counts[$template->id] : 0;
                             $pending_stats = isset($all_pending_stats[$template->id]) ? $all_pending_stats[$template->id] : array('today' => 0, 'week' => 0, 'month' => 0);
                         ?>
                         <tr data-template-id="<?php echo esc_attr($template->id); ?>">
+                            <th scope="row" class="check-column"><input type="checkbox" class="aips-template-cb" value="<?php echo esc_attr($template->id); ?>"></th>
                             <td class="column-name">
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
                                 <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
