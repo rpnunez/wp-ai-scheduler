@@ -92,6 +92,18 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Get a single embedding record by source/object type and ID.
+	 * Alias for get_by_object().
+	 *
+	 * @param string $source_type Entity type ('post', 'topic', etc.).
+	 * @param int    $source_id   Source ID.
+	 * @return object|null Row object or null if not found.
+	 */
+	public function get_by_source($source_type, $source_id) {
+		return $this->get_by_object($source_type, $source_id);
+	}
+
+	/**
 	 * Convenience helper to get embedding for a WordPress post.
 	 *
 	 * @param int $post_id WordPress post ID.
@@ -99,6 +111,16 @@ class AIPS_Embeddings_Repository {
 	 */
 	public function get_by_post_id($post_id) {
 		return $this->get_by_object('post', $post_id);
+	}
+
+	/**
+	 * Convenience helper to get embedding for an Author Topic.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return object|null Row object or null if not found.
+	 */
+	public function get_by_topic_id($topic_id) {
+		return $this->get_by_object('topic', $topic_id);
 	}
 
 	/**
@@ -425,6 +447,16 @@ class AIPS_Embeddings_Repository {
 	 */
 	public function delete_by_post_id($post_id) {
 		return $this->delete('post', $post_id);
+	}
+
+	/**
+	 * Delete embedding for a topic ID.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return int|false
+	 */
+	public function delete_by_topic_id($topic_id) {
+		return $this->delete('topic', $topic_id);
 	}
 
 	/**
