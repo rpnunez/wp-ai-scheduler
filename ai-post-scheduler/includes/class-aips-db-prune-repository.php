@@ -230,35 +230,63 @@ class AIPS_DB_Prune_Repository {
 	}
 
 	/**
-	 * Purge embedding vectors whose associated posts no longer exist.
+	 * Purge embedding vectors whose associated posts no longer exist, and clean related graph entries.
 	 *
 	 * @param int $batch_size Maximum rows to delete per iteration.
 	 * @return int Total orphaned rows deleted.
 	 */
 	public function clean_orphaned_embeddings($batch_size = 1000) {
 		$table_embeddings = $this->wpdb->prefix . 'aips_embeddings';
-		$table_posts      = $this->wpdb->posts;
-		$batch_size       = max(1, min(5000, (int) $batch_size));
-		$total_deleted    = 0;
+		// Check if embeddings table exists.
+		if ($this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $table_embeddings)) !== $table_embeddings) {
+			return 0;
+		}
+
+		$table_relationships = $this->wpdb->prefix . 'aips_relationships';
+		$has_relationships   = ($this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $table_relationships)) === $table_relationships);
+		$table_posts         = $this->wpdb->posts;
+		$batch_size          = max(1, min(5000, (int) $batch_size));
+		$total_deleted       = 0;
 
 		do {
-			// Find up to $batch_size orphaned IDs first to keep the delete query fast and indexed.
+			// Find up to $batch_size orphaned rows first to obtain both embedding ID and post object_id.
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$orphaned_ids = $this->wpdb->get_col(
+			$orphaned_rows = $this->wpdb->get_results(
 				$this->wpdb->prepare(
-					"SELECT e.id FROM `{$table_embeddings}` e
+					"SELECT e.id, e.object_id FROM `{$table_embeddings}` e
 					 LEFT JOIN `{$table_posts}` p ON e.object_id = p.ID
 					 WHERE e.object_type = 'post' AND p.ID IS NULL
 					 LIMIT %d",
 					$batch_size
-				)
+				),
+				ARRAY_A
 			);
 
-			if (empty($orphaned_ids)) {
+			if (empty($orphaned_rows)) {
 				break;
 			}
 
-			$ids_in = implode(',', array_map('intval', $orphaned_ids));
+			$orphaned_ids = array();
+			$post_ids     = array();
+			foreach ($orphaned_rows as $row) {
+				$orphaned_ids[] = (int) $row['id'];
+				if (!empty($row['object_id'])) {
+					$post_ids[] = (int) $row['object_id'];
+				}
+			}
+
+			// Cascade cleanup: remove orphaned post entries from relationships table if present.
+			if ($has_relationships && !empty($post_ids)) {
+				$post_ids_in = implode(',', array_unique($post_ids));
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$this->wpdb->query(
+					"DELETE FROM `{$table_relationships}`
+					 WHERE (source_type = 'post' AND source_id IN ({$post_ids_in}))
+					    OR (target_type = 'post' AND target_id IN ({$post_ids_in}))"
+				);
+			}
+
+			$ids_in = implode(',', $orphaned_ids);
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$deleted = $this->wpdb->query("DELETE FROM `{$table_embeddings}` WHERE id IN ({$ids_in})");
 
@@ -267,40 +295,59 @@ class AIPS_DB_Prune_Repository {
 			}
 
 			$total_deleted += (int) $deleted;
-		} while (count($orphaned_ids) === $batch_size);
+		} while (count($orphaned_rows) === $batch_size);
 
 		return $total_deleted;
 	}
 
 	/**
-	 * Purge rejected or expired author topics older than the cutoff timestamp.
+	 * Purge rejected or expired author topics older than the cutoff timestamp,
+	 * cascading deletions to dependent author topic logs.
 	 *
 	 * @param int $cutoff_timestamp Unix timestamp threshold.
 	 * @param int $batch_size       Maximum rows to delete per iteration.
 	 * @return int Total rows deleted.
 	 */
 	public function clean_expired_topics($cutoff_timestamp, $batch_size = 1000) {
-		$table            = $this->wpdb->prefix . 'aips_author_topics';
+		$table_topics     = $this->wpdb->prefix . 'aips_author_topics';
+		$table_topic_logs = $this->wpdb->prefix . 'aips_author_topic_logs';
 		$cutoff_timestamp = (int) $cutoff_timestamp;
 		$batch_size       = max(1, min(5000, (int) $batch_size));
 		$total_deleted    = 0;
 
 		do {
+			// Fetch up to $batch_size expired topic IDs to delete.
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$deleted = $this->wpdb->query(
+			$topic_ids = $this->wpdb->get_col(
 				$this->wpdb->prepare(
-					"DELETE FROM `{$table}` WHERE status IN ('rejected', 'expired') AND generated_at < %d LIMIT %d",
+					"SELECT id FROM `{$table_topics}`
+					 WHERE status IN ('rejected', 'expired') AND generated_at < %d
+					 LIMIT %d",
 					$cutoff_timestamp,
 					$batch_size
 				)
 			);
+
+			if (empty($topic_ids)) {
+				break;
+			}
+
+			$ids_in = implode(',', array_map('intval', $topic_ids));
+
+			// Cascade cleanup: delete dependent logs in author topic logs first.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$this->wpdb->query("DELETE FROM `{$table_topic_logs}` WHERE author_topic_id IN ({$ids_in})");
+
+			// Delete the parent topic rows.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted = $this->wpdb->query("DELETE FROM `{$table_topics}` WHERE id IN ({$ids_in})");
 
 			if (false === $deleted || 0 === (int) $deleted) {
 				break;
 			}
 
 			$total_deleted += (int) $deleted;
-		} while ((int) $deleted === $batch_size);
+		} while (count($topic_ids) === $batch_size);
 
 		return $total_deleted;
 	}

@@ -124,7 +124,7 @@ final class AI_Post_Scheduler {
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
             'aips_database_prune_cleanup' => array(
-                'schedule' => 'daily',
+                'schedule' => sanitize_key((string) get_option('aips_telemetry_prune_interval', 'daily')),
                 'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
             ),
         );

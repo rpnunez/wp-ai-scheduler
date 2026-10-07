@@ -65,13 +65,13 @@ class AIPS_Settings {
 			2
 		);
 
-		 = function() {
+		$sync_prune_cron = function() {
 			self::sync_prune_cron_schedule();
 		};
-		add_action('update_option_aips_auto_prune_enabled', );
-		add_action('add_option_aips_auto_prune_enabled', );
-		add_action('update_option_aips_telemetry_prune_interval', );
-		add_action('add_option_aips_telemetry_prune_interval', );
+		add_action('update_option_aips_auto_prune_enabled', $sync_prune_cron);
+		add_action('add_option_aips_auto_prune_enabled', $sync_prune_cron);
+		add_action('update_option_aips_telemetry_prune_interval', $sync_prune_cron);
+		add_action('add_option_aips_telemetry_prune_interval', $sync_prune_cron);
 	}
 
 	/**
@@ -80,20 +80,21 @@ class AIPS_Settings {
 	 * @return void
 	 */
 	public static function sync_prune_cron_schedule() {
-		      = 'aips_database_prune_cleanup';
-		 = wp_next_scheduled();
-		if () {
-			wp_unschedule_event(, );
+		$hook      = 'aips_database_prune_cleanup';
+		$timestamp = wp_next_scheduled($hook);
+		if ($timestamp) {
+			wp_unschedule_event($timestamp, $hook);
 		}
 
-		 = (bool) get_option('aips_auto_prune_enabled', false);
-		if () {
-			 = sanitize_key((string) get_option('aips_telemetry_prune_interval', 'daily'));
-			if (!in_array(, array('daily', 'twicedaily', 'weekly'), true)) {
-				 = 'daily';
+		$enabled = (bool) get_option('aips_auto_prune_enabled', false);
+		if ($enabled) {
+			$interval = sanitize_key((string) get_option('aips_telemetry_prune_interval', 'daily'));
+			if (!in_array($interval, array('daily', 'twicedaily', 'weekly'), true)) {
+				$interval = 'daily';
 			}
-			wp_schedule_event(AIPS_DateTime::now()->timestamp(), , );
+			wp_schedule_event(AIPS_DateTime::now()->timestamp(), $interval, $hook);
 		}
+	}
 
 	/**
 	 * Queue a batch-resume sweep when AI generation is re-enabled.
@@ -569,87 +570,37 @@ class AIPS_Settings {
 			),
 			'aips_auto_prune_enabled' => array(
 				'sanitize_callback' => 'absint',
-				'default'           => ['aips_auto_prune_enabled'],
+				'default'           => $defaults['aips_auto_prune_enabled'],
 			),
 			'aips_telemetry_retention_value' => array(
 				'sanitize_callback' => 'absint',
-				'default'           => ['aips_telemetry_retention_value'],
+				'default'           => $defaults['aips_telemetry_retention_value'],
 			),
 			'aips_telemetry_retention_unit' => array(
-				'sanitize_callback' => array(, 'sanitize_retention_unit'),
-				'default'           => ['aips_telemetry_retention_unit'],
+				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
+				'default'           => $defaults['aips_telemetry_retention_unit'],
 			),
 			'aips_telemetry_prune_interval' => array(
-				'sanitize_callback' => array(, 'sanitize_prune_interval'),
-				'default'           => ['aips_telemetry_prune_interval'],
+				'sanitize_callback' => array($ui, 'sanitize_prune_interval'),
+				'default'           => $defaults['aips_telemetry_prune_interval'],
 			),
 			'aips_history_log_retention_value' => array(
 				'sanitize_callback' => 'absint',
-				'default'           => ['aips_history_log_retention_value'],
+				'default'           => $defaults['aips_history_log_retention_value'],
 			),
 			'aips_history_log_retention_unit' => array(
-				'sanitize_callback' => array(, 'sanitize_retention_unit'),
-				'default'           => ['aips_history_log_retention_unit'],
+				'sanitize_callback' => array($ui, 'sanitize_retention_unit'),
+				'default'           => $defaults['aips_history_log_retention_unit'],
 			),
 			'aips_clean_orphaned_embeddings' => array(
 				'sanitize_callback' => 'absint',
-				'default'           => ['aips_clean_orphaned_embeddings'],
+				'default'           => $defaults['aips_clean_orphaned_embeddings'],
 			),
 			'aips_clean_expired_topics' => array(
 				'sanitize_callback' => 'absint',
-				'default'           => ['aips_clean_expired_topics'],
+				'default'           => $defaults['aips_clean_expired_topics'],
 			),
 		);
-
-        // -----------------------------------------------------------------------
-        // Database & Data Retention section
-        // -----------------------------------------------------------------------
-        add_settings_section(
-            'aips_database_retention_section',
-            __('Database & Data Retention', 'ai-post-scheduler'),
-            array(->ui, 'database_retention_section_callback'),
-            'aips-settings'
-        );
-
-        add_settings_field(
-            'aips_auto_prune_enabled',
-            __('Automatic Database Pruning', 'ai-post-scheduler'),
-            array(->ui, 'auto_prune_enabled_field_callback'),
-            'aips-settings',
-            'aips_database_retention_section'
-        );
-
-        add_settings_field(
-            'aips_telemetry_retention',
-            __('Telemetry Data Retention', 'ai-post-scheduler'),
-            array(->ui, 'telemetry_retention_field_callback'),
-            'aips-settings',
-            'aips_database_retention_section'
-        );
-
-        add_settings_field(
-            'aips_telemetry_prune_interval',
-            __('Prune Schedule Frequency', 'ai-post-scheduler'),
-            array(->ui, 'prune_interval_field_callback'),
-            'aips-settings',
-            'aips_database_retention_section'
-        );
-
-        add_settings_field(
-            'aips_history_log_retention',
-            __('Generation History Log Retention', 'ai-post-scheduler'),
-            array(->ui, 'history_log_retention_field_callback'),
-            'aips-settings',
-            'aips_database_retention_section'
-        );
-
-        add_settings_field(
-            'aips_clean_orphaned_data',
-            __('Orphaned Records Cleanup', 'ai-post-scheduler'),
-            array(->ui, 'clean_orphaned_data_field_callback'),
-            'aips-settings',
-            'aips_database_retention_section'
-        );
 
 		foreach (self::get_content_strategy_options() as $option_key => $meta) {
 			$settings[$option_key] = array(
@@ -1579,6 +1530,56 @@ class AIPS_Settings {
             array($this->ui, 'cache_db_prefix_field_callback'),
             'aips-settings',
             'aips_cache_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Database & Data Retention section
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_database_retention_section',
+            __('Database & Data Retention', 'ai-post-scheduler'),
+            array($this->ui, 'database_retention_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_auto_prune_enabled',
+            __('Automatic Database Pruning', 'ai-post-scheduler'),
+            array($this->ui, 'auto_prune_enabled_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
+        );
+
+        add_settings_field(
+            'aips_telemetry_retention',
+            __('Telemetry Data Retention', 'ai-post-scheduler'),
+            array($this->ui, 'telemetry_retention_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
+        );
+
+        add_settings_field(
+            'aips_telemetry_prune_interval',
+            __('Prune Schedule Frequency', 'ai-post-scheduler'),
+            array($this->ui, 'prune_interval_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
+        );
+
+        add_settings_field(
+            'aips_history_log_retention',
+            __('Generation History Log Retention', 'ai-post-scheduler'),
+            array($this->ui, 'history_log_retention_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
+        );
+
+        add_settings_field(
+            'aips_clean_orphaned_data',
+            __('Orphaned Records Cleanup', 'ai-post-scheduler'),
+            array($this->ui, 'clean_orphaned_data_field_callback'),
+            'aips-settings',
+            'aips_database_retention_section'
         );
 
 

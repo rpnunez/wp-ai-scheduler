@@ -46,9 +46,9 @@ class AIPS_DB_Prune_Service {
 	 * @param AIPS_Config|null               $config               Optional config instance.
 	 */
 	public function __construct(
-		?AIPS_DB_Prune_Repository $prune_repository = null,
-		?AIPS_Telemetry_Repository $telemetry_repository = null,
-		?AIPS_Config $config = null
+		$prune_repository = null,
+		$telemetry_repository = null,
+		$config = null
 	) {
 		$this->prune_repository     = $prune_repository ?: AIPS_DB_Prune_Repository::instance();
 		$this->telemetry_repository = $telemetry_repository ?: AIPS_Telemetry_Repository::instance();
