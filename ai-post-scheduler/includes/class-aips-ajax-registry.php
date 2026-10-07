@@ -302,16 +302,18 @@ class AIPS_Ajax_Registry {
 		'aips_link_report_revert_suggestion'  => 'AIPS_Link_Report_Controller',
 		'aips_link_report_dismiss_suggestion' => 'AIPS_Link_Report_Controller',
 		'aips_link_report_get_post_panel'     => 'AIPS_Link_Report_Controller',
-		'aips_link_report_get_broken'         => 'AIPS_Link_Report_Controller',
-		'aips_link_report_fix_broken'         => 'AIPS_Link_Report_Controller',
-		'aips_link_report_undo_broken_fix'    => 'AIPS_Link_Report_Controller',
-		'aips_link_report_search_posts'       => 'AIPS_Link_Report_Controller',
 		'aips_autolink_start'                 => 'AIPS_Link_Report_Controller',
 		'aips_autolink_status'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_pause'                 => 'AIPS_Link_Report_Controller',
 		'aips_autolink_resume'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_cancel'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_undo_run'              => 'AIPS_Link_Report_Controller',
+
+		// Broken Links Controller
+		'aips_broken_links_get'          => 'AIPS_Broken_Links_Controller',
+		'aips_broken_links_fix'          => 'AIPS_Broken_Links_Controller',
+		'aips_broken_links_undo_fix'     => 'AIPS_Broken_Links_Controller',
+		'aips_broken_links_search_posts' => 'AIPS_Broken_Links_Controller',
 
 		// Google Search Console Controller
 		'aips_gsc_test'       => 'AIPS_GSC_Controller',
