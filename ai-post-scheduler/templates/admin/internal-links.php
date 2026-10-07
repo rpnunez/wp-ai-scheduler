@@ -43,6 +43,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 				<div class="aips-progress-bar">
 					<div id="aips-index-progress-bar" class="aips-progress-fill" data-progress="<?php echo esc_attr((string) $percent); ?>" style="width:<?php echo esc_attr((string) $percent); ?>%;"></div>
 				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Posts analyzed and embedded', 'ai-post-scheduler'); ?></p>
 			</div>
 
 			<div class="aips-stat-card">
@@ -53,6 +54,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 				<div class="aips-stat-value-wrap">
 					<span class="aips-stat-value aips-text-warning" id="aips-stat-pending"><?php echo esc_html((string) $count_pending); ?></span>
 				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Suggestions awaiting review', 'ai-post-scheduler'); ?></p>
 			</div>
 
 			<div class="aips-stat-card">
@@ -63,6 +65,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 				<div class="aips-stat-value-wrap">
 					<span class="aips-stat-value aips-text-success" id="aips-stat-accepted"><?php echo esc_html((string) $count_accepted); ?></span>
 				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Links approved or inserted', 'ai-post-scheduler'); ?></p>
 			</div>
 
 			<div class="aips-stat-card">
@@ -73,6 +76,7 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 				<div class="aips-stat-value-wrap">
 					<span class="aips-stat-value aips-text-danger" id="aips-stat-rejected"><?php echo esc_html((string) $count_rejected); ?></span>
 				</div>
+				<p class="aips-stat-subtext"><?php esc_html_e('Dismissed link suggestions', 'ai-post-scheduler'); ?></p>
 			</div>
 
 		</div><!-- /.aips-stats-grid -->

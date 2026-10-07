@@ -98,7 +98,7 @@ class AIPS_Admin_Menu {
         );
 
         // 6. History
-        add_submenu_page(
+        $history_hook = add_submenu_page(
             'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
@@ -106,6 +106,9 @@ class AIPS_Admin_Menu {
             'aips-history',
             array($this, 'render_history_page')
         );
+        if ($history_hook) {
+            add_action("load-{$history_hook}", array($this, 'setup_history_screen_options'));
+        }
 
         // 7. Settings
         add_submenu_page(
@@ -402,6 +405,71 @@ class AIPS_Admin_Menu {
                 'option'  => 'aips_author_topics_per_page',
                 'default' => 20,
             ));
+        } elseif ('internal-links' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'source'     => __('Source Post', 'ai-post-scheduler'),
+                'target'     => __('Target Post', 'ai-post-scheduler'),
+                'similarity' => __('Similarity', 'ai-post-scheduler'),
+                'anchor'     => __('Anchor Text', 'ai-post-scheduler'),
+                'status'     => __('Status', 'ai-post-scheduler'),
+                'actions'    => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Internal links per page', 'ai-post-scheduler'),
+                'option'  => 'aips_internal_links_per_page',
+                'default' => 20,
+            ));
+        } elseif ('sources' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'label'        => __('Label', 'ai-post-scheduler'),
+                'url'          => __('URL', 'ai-post-scheduler'),
+                'groups'       => __('Groups', 'ai-post-scheduler'),
+                'fetch_status' => __('Content', 'ai-post-scheduler'),
+                'status'       => __('Status', 'ai-post-scheduler'),
+                'actions'      => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Sources per page', 'ai-post-scheduler'),
+                'option'  => 'aips_sources_per_page',
+                'default' => 20,
+            ));
+        } elseif ('campaigns' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'name'            => __('Campaign', 'ai-post-scheduler'),
+                'templates'       => __('Templates', 'ai-post-scheduler'),
+                'schedules'       => __('Schedules', 'ai-post-scheduler'),
+                'generated_posts' => __('Generated Posts', 'ai-post-scheduler'),
+                'last_run'        => __('Last Run', 'ai-post-scheduler'),
+                'next_run'        => __('Next Run', 'ai-post-scheduler'),
+                'status'          => __('State', 'ai-post-scheduler'),
+                'actions'         => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Campaigns per page', 'ai-post-scheduler'),
+                'option'  => 'aips_campaigns_per_page',
+                'default' => 20,
+            ));
+        } elseif ('taxonomy' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'name'    => __('Term Name', 'ai-post-scheduler'),
+                'slug'    => __('Slug', 'ai-post-scheduler'),
+                'posts'   => __('Posts', 'ai-post-scheduler'),
+                'status'  => __('Status', 'ai-post-scheduler'),
+                'actions' => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Terms per page', 'ai-post-scheduler'),
+                'option'  => 'aips_taxonomy_per_page',
+                'default' => 20,
+            ));
+        } elseif ('monetization' === $tab) {
+            AIPS_List_Table::register_screen_options($screen->id, array(
+                'name'        => __('Rule Name', 'ai-post-scheduler'),
+                'keyword'     => __('Keyword / Trigger', 'ai-post-scheduler'),
+                'destination' => __('Target URL', 'ai-post-scheduler'),
+                'status'      => __('Status', 'ai-post-scheduler'),
+                'actions'     => __('Actions', 'ai-post-scheduler'),
+            ), array(
+                'label'   => __('Rules per page', 'ai-post-scheduler'),
+                'option'  => 'aips_monetization_per_page',
+                'default' => 20,
+            ));
         } else {
             $table = new AIPS_Schedules_List_Table();
             AIPS_List_Table::register_screen_options($screen->id, $table->get_columns(), array(
@@ -410,6 +478,30 @@ class AIPS_Admin_Menu {
                 'default' => 20,
             ));
         }
+    }
+
+    /**
+     * Setup screen options for the History page.
+     *
+     * @return void
+     */
+    public function setup_history_screen_options() {
+        $screen = get_current_screen();
+        if (!$screen) {
+            return;
+        }
+
+        AIPS_List_Table::register_screen_options($screen->id, array(
+            'title'   => __('Generated Item / Title', 'ai-post-scheduler'),
+            'type'    => __('Type', 'ai-post-scheduler'),
+            'date'    => __('Date', 'ai-post-scheduler'),
+            'status'  => __('Status', 'ai-post-scheduler'),
+            'actions' => __('Actions', 'ai-post-scheduler'),
+        ), array(
+            'label'   => __('History items per page', 'ai-post-scheduler'),
+            'option'  => 'aips_history_per_page',
+            'default' => 50,
+        ));
     }
 
     /**

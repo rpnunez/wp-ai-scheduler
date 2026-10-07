@@ -836,9 +836,9 @@
 .aips-content-cannibalization-tab .aips-stats-grid,
 .aips-link-report-tab .aips-stats-grid {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: 12px;
-	margin-bottom: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 16px;
+	margin-bottom: 20px;
 }
 
 @media (max-width: 1024px) {
@@ -846,7 +846,7 @@
 	.aips-content-clusters-tab .aips-stats-grid,
 	.aips-content-cannibalization-tab .aips-stats-grid,
 	.aips-link-report-tab .aips-stats-grid {
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	}
 }
 
@@ -866,12 +866,12 @@
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	background: var(--aips-white, #ffffff);
-	border: 1px solid var(--aips-gray-200, #e2e8f0);
+	background: #ffffff;
+	border: 1px solid #dcdcde;
 	border-radius: 6px;
-	padding: 10px 14px;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-	min-height: 74px;
+	padding: 14px 16px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	min-height: 86px;
 	box-sizing: border-box;
 }
 

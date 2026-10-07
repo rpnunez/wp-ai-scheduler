@@ -98,12 +98,26 @@ if (!defined('ABSPATH')) {
 					</form>
 				</div>
 
+				<?php if (!empty($posts_data)): ?>
+				<!-- Bulk Actions Toolbar -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+						<select id="aips-generated-bulk-action" class="aips-form-select">
+							<option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
+							<option value="trash"><?php esc_html_e('Move to Trash', 'ai-post-scheduler'); ?></option>
+						</select>
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-generated-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+					</div>
+				</div>
+				<?php endif; ?>
+
 				<!-- Generated posts table -->
 				<div class="aips-panel-body no-padding">
 					<?php if (!empty($posts_data)): ?>
 					<table class="aips-table">
 						<thead>
 							<tr>
+								<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-generated-cb-all"></th>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
@@ -115,6 +129,7 @@ if (!defined('ABSPATH')) {
 						<tbody>
 							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
+								<th scope="row" class="check-column"><input type="checkbox" class="aips-generated-cb" value="<?php echo esc_attr($post_data['id']); ?>"></th>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>

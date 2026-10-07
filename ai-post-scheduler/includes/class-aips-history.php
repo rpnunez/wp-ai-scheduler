@@ -323,13 +323,216 @@ class AIPS_History {
         $detail_id_prefix = 'aips-log-detail-' . $container_id . '-' . (int) (microtime(true) * 1000000) . '-' . mt_rand(1000, 9999);
         $display_logs = $this->build_history_display_logs($logs, $detail_id_prefix);
         $filter_counts = $this->build_history_filter_counts($display_logs);
+        $timeline_data = $this->build_history_timeline_data($container, $history_item, $display_logs);
 
         return array(
             'container' => $container,
             'logs' => $logs,
             'display_logs' => $display_logs,
             'filter_counts' => $filter_counts,
+            'timeline_data' => $timeline_data,
         );
+    }
+
+    /**
+     * Build rich milestone and chronological data for the History modal Timeline tab.
+     *
+     * @param array<string,mixed> $container Prepared container payload.
+     * @param object $history_item History container database object.
+     * @param array<int,array<string,mixed>> $display_logs Prepared display logs.
+     * @return array<string,mixed>
+     */
+    private function build_history_timeline_data($container, $history_item, $display_logs) {
+        $post_id = !empty($history_item->post_id) ? (int) $history_item->post_id : (!empty($container['post_id']) ? (int) $container['post_id'] : 0);
+        $post = $post_id ? get_post($post_id) : null;
+
+        $post_type = '';
+        if ($post) {
+            $post_type = $post->post_type;
+        } elseif (!empty($history_item->post_type)) {
+            $post_type = $history_item->post_type;
+        } elseif (!empty($container['post_type'])) {
+            $post_type = $container['post_type'];
+        }
+        $post_type_label = self::humanize_post_type_label($post_type);
+
+        // Title
+        $generated_title = '';
+        if ($post && !empty($post->post_title)) {
+            $generated_title = $post->post_title;
+        } elseif (!empty($history_item->generated_title)) {
+            $generated_title = $history_item->generated_title;
+        } elseif (!empty($container['generated_title'])) {
+            $generated_title = $container['generated_title'];
+        }
+
+        // Excerpt snippet (up to 30 chars)
+        $excerpt_raw = '';
+        if ($post && !empty($post->post_excerpt)) {
+            $excerpt_raw = $post->post_excerpt;
+        }
+        if (empty($excerpt_raw) && $post && !empty($post->post_content)) {
+            $excerpt_raw = wp_strip_all_tags($post->post_content);
+        }
+        $excerpt_clean = trim(preg_replace('/\s+/', ' ', (string) $excerpt_raw));
+        $excerpt_30 = mb_substr($excerpt_clean, 0, 30);
+        if (mb_strlen($excerpt_clean) > 30) {
+            $excerpt_30 .= '…';
+        }
+
+        // Featured image
+        $thumb_id = $post ? get_post_thumbnail_id($post->ID) : 0;
+        $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
+        $thumb_edit_url = $thumb_id ? admin_url('post.php?post=' . $thumb_id . '&action=edit') : '';
+
+        // Content
+        $has_content = false;
+        if ($post && !empty(trim($post->post_content))) {
+            $has_content = true;
+        }
+
+        // Custom fields
+        $custom_fields = array();
+        if ($post) {
+            $all_meta = get_post_meta($post->ID);
+            if (is_array($all_meta)) {
+                foreach ($all_meta as $meta_key => $meta_vals) {
+                    if (strpos($meta_key, '_aips_') === 0 || strpos($meta_key, 'aips_') === 0) {
+                        if (in_array($meta_key, array('_aips_generated_post', '_aips_generation_incomplete', '_aips_generation_component_statuses', '_aips_had_partial_generation'), true)) {
+                            continue;
+                        }
+                    } elseif (strpos($meta_key, '_') === 0) {
+                        continue;
+                    }
+                    $custom_fields[] = array(
+                        'name' => $meta_key,
+                        'label' => ucwords(str_replace(array('_', '-'), ' ', $meta_key)),
+                        'success' => !empty($meta_vals[0]),
+                    );
+                }
+            }
+        }
+
+        // Errors & Warnings
+        $error_text = !empty($container['root_issue']) ? $container['root_issue'] : (!empty($history_item->error_message) ? $history_item->error_message : '');
+        $warning_text = '';
+
+        // Format chronological events
+        $formatted_events = array();
+        foreach ($display_logs as $log) {
+            $raw_type = !empty($log['log_type']) ? $log['log_type'] : (!empty($log['type_label']) ? $log['type_label'] : '');
+            $type_label = $this->humanize_timeline_event_label($raw_type);
+
+            $ts = isset($log['timestamp']) ? $log['timestamp'] : null;
+            $human_time = '';
+            if ($ts) {
+                if (is_numeric($ts)) {
+                    $human_time = wp_date(get_option('date_format') . ' ' . get_option('time_format'), (int) $ts);
+                } else {
+                    $parsed = strtotime((string) $ts);
+                    $human_time = $parsed ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $parsed) : (string) $ts;
+                }
+            }
+
+            $message = '';
+            if (!empty($log['sections'][0]['message_html'])) {
+                $message = $log['sections'][0]['message_html'];
+            } elseif (!empty($log['sections'][0]['label'])) {
+                $message = $log['sections'][0]['label'];
+            }
+
+            if (empty($warning_text) && in_array('warning', (array) ($log['type_ids'] ?? array()), true)) {
+                $warning_text = wp_strip_all_tags($message);
+            }
+
+            $formatted_events[] = array(
+                'title' => $type_label,
+                'time' => $human_time,
+                'message' => $message,
+                'type_class' => isset($log['type_class']) ? $log['type_class'] : 'neutral',
+            );
+        }
+
+        return array(
+            'post_type_label' => $post_type_label,
+            'attempt_text' => sprintf(__('Attempting to create a %s', 'ai-post-scheduler'), $post_type_label),
+            'post_title' => $generated_title,
+            'post_excerpt' => $excerpt_30,
+            'has_image' => !empty($thumb_url),
+            'image_url' => $thumb_url,
+            'image_edit_url' => $thumb_edit_url,
+            'has_content' => $has_content,
+            'custom_fields' => $custom_fields,
+            'error_text' => $error_text,
+            'warning_text' => $warning_text,
+            'events' => $formatted_events,
+        );
+    }
+
+    /**
+     * Map raw log type keys to user-facing Title Cased labels for the Timeline.
+     *
+     * @param string $raw_type Raw log type string.
+     * @return string
+     */
+    private function humanize_timeline_event_label($raw_type) {
+        $map = array(
+            'metric_generation_result' => __('Generation Metric', 'ai-post-scheduler'),
+            'log' => __('Activity Log', 'ai-post-scheduler'),
+            'info' => __('Information', 'ai-post-scheduler'),
+            'error' => __('Error', 'ai-post-scheduler'),
+            'warning' => __('Warning', 'ai-post-scheduler'),
+            'session_metadata' => __('Session Metadata', 'ai-post-scheduler'),
+            'post_content' => __('Post Content', 'ai-post-scheduler'),
+            'post_title' => __('Post Title', 'ai-post-scheduler'),
+            'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
+            'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+            'metadata' => __('Metadata', 'ai-post-scheduler'),
+            'ai_request' => __('AI Request', 'ai-post-scheduler'),
+            'ai_response' => __('AI Response', 'ai-post-scheduler'),
+        );
+        $key = strtolower(trim((string) $raw_type));
+        if (isset($map[$key])) {
+            return $map[$key];
+        }
+        return ucwords(str_replace(array('_', '-'), ' ', (string) $raw_type));
+    }
+
+    /**
+     * Humanize a technical post type slug into a user-friendly label.
+     *
+     * @param string $post_type Post type slug.
+     * @return string
+     */
+    public static function humanize_post_type_label($post_type) {
+        if (empty($post_type)) {
+            return __('Post', 'ai-post-scheduler');
+        }
+        if ($post_type === 'aips_stress_cpt') {
+            return __('Stress Test', 'ai-post-scheduler');
+        }
+        $obj = get_post_type_object($post_type);
+        if ($obj && !empty($obj->labels->singular_name)) {
+            return $obj->labels->singular_name;
+        }
+        return ucwords(str_replace(array('_', '-'), ' ', (string) $post_type));
+    }
+
+    /**
+     * Get items per page for History from user meta Screen Options, falling back to 50.
+     *
+     * @param int $default Default fallback.
+     * @return int
+     */
+    public function get_per_page($default = 50) {
+        $user_id = get_current_user_id();
+        if ($user_id) {
+            $user_option = get_user_meta($user_id, 'aips_history_per_page', true);
+            if (!empty($user_option) && (int) $user_option > 0) {
+                return (int) $user_option;
+            }
+        }
+        return $default;
     }
 
     /**
@@ -1364,6 +1567,7 @@ class AIPS_History {
         $container = $modal_view['container'];
         $display_logs = $modal_view['display_logs'];
         $filter_counts = $modal_view['filter_counts'];
+        $timeline_data = isset($modal_view['timeline_data']) ? $modal_view['timeline_data'] : array();
 
         // Render the modal HTML
         ob_start();

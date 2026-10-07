@@ -359,7 +359,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_history($args = array()) {
         $defaults = array(
-            'per_page' => 20,
+            'per_page' => 50,
             'page' => 1,
             'status' => '',
             'search' => '',
