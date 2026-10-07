@@ -246,11 +246,29 @@ class AIPS_DB_Prune_Service {
 	}
 
 	/**
-	 * Execute all automated pruning tasks if automatic database pruning is enabled.
+	 * Option storing which automated-prune task should run first next time,
+	 * so a single cron tick that runs out of time doesn't always starve the
+	 * same tasks at the end of the sequence.
+	 */
+	const ROTATION_OPTION = 'aips_prune_rotation_index';
+
+	/**
+	 * Fraction of the PHP execution time limit this run is allowed to spend
+	 * before stopping early and deferring remaining tasks to the next tick.
+	 */
+	const TIME_BUDGET_RATIO = 0.7;
+
+	/**
+	 * Execute automated pruning tasks if automatic database pruning is enabled.
 	 *
-	 * Called via the aips_database_prune_cleanup WP-Cron hook.
+	 * Called via the aips_database_prune_cleanup WP-Cron hook. Tasks run in a
+	 * rotating order (persisted in ROTATION_OPTION) and the run stops early if
+	 * it approaches the PHP execution time limit, so a single slow tick can't
+	 * perpetually starve whichever task happens to run last — any task skipped
+	 * this tick runs first on the next one.
 	 *
-	 * @return array<string, mixed> Prune run results.
+	 * @return array<string, mixed> Prune run results, plus 'skipped' listing any
+	 *                              tasks deferred to the next run due to the time budget.
 	 */
 	public function run_automated_prune() {
 		if (!(bool) $this->config->get_option('aips_auto_prune_enabled')) {
@@ -260,18 +278,57 @@ class AIPS_DB_Prune_Service {
 			);
 		}
 
-		$results = array(
-			'telemetry'    => $this->prune_telemetry(),
-			'history_logs' => $this->prune_history_logs(),
+		$tasks = array(
+			'telemetry'    => array($this, 'prune_telemetry'),
+			'history_logs' => array($this, 'prune_history_logs'),
 		);
 
 		if ((bool) $this->config->get_option('aips_clean_orphaned_embeddings', true)) {
-			$results['orphaned_embeddings'] = $this->clean_orphaned_embeddings();
+			$tasks['orphaned_embeddings'] = array($this, 'clean_orphaned_embeddings');
 		}
 
 		if ((bool) $this->config->get_option('aips_clean_expired_topics', true)) {
-			$results['expired_topics'] = $this->clean_expired_topics();
+			$tasks['expired_topics'] = array($this, 'clean_expired_topics');
 		}
+
+		$task_keys = array_keys($tasks);
+		$start_at  = (int) get_option(self::ROTATION_OPTION, 0) % count($task_keys);
+		// Rotate so the task that was due to run first this time is first in order.
+		$ordered_keys = array_merge(array_slice($task_keys, $start_at), array_slice($task_keys, 0, $start_at));
+
+		$time_limit = (int) ini_get('max_execution_time');
+		$budget     = $time_limit > 0 ? $time_limit * self::TIME_BUDGET_RATIO : 20.0;
+		$started_at = microtime(true);
+
+		$results       = array();
+		$skipped_tasks = array();
+
+		foreach ($ordered_keys as $i => $key) {
+			if ($i > 0 && (microtime(true) - $started_at) >= $budget) {
+				$skipped_tasks = array_slice($ordered_keys, $i);
+				break;
+			}
+
+			$results[$key] = call_user_func($tasks[$key]);
+		}
+
+		if (!empty($skipped_tasks)) {
+			// Resume with the first skipped task next tick instead of restarting from the top.
+			update_option(self::ROTATION_OPTION, array_search($skipped_tasks[0], $task_keys, true), false);
+			(new AIPS_Logger())->log(
+				sprintf(
+					'run_automated_prune: stopped early after %.1fs (budget %.1fs), deferring to next run: %s',
+					microtime(true) - $started_at,
+					$budget,
+					implode(', ', $skipped_tasks)
+				),
+				'warning'
+			);
+		} else {
+			update_option(self::ROTATION_OPTION, 0, false);
+		}
+
+		$results['skipped'] = $skipped_tasks;
 
 		return $results;
 	}

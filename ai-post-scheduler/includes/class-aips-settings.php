@@ -86,9 +86,9 @@ class AIPS_Settings {
 			wp_unschedule_event($timestamp, $hook);
 		}
 
-		$enabled = (bool) get_option('aips_auto_prune_enabled', false);
+		$enabled = (bool) AIPS_Config::get_instance()->get_option('aips_auto_prune_enabled');
 		if ($enabled) {
-			$interval = sanitize_key((string) get_option('aips_telemetry_prune_interval', 'daily'));
+			$interval = sanitize_key((string) AIPS_Config::get_instance()->get_option('aips_telemetry_prune_interval', 'daily'));
 			if (!in_array($interval, array('daily', 'twicedaily', 'weekly'), true)) {
 				$interval = 'daily';
 			}

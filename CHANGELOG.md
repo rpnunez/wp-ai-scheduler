@@ -160,6 +160,12 @@
   - Removed a generic-nonce fallback on the System Status AJAX controller that would have accepted the plugin-wide `aips_ajax_nonce` for destructive maintenance actions (prune, purge, optimize) instead of requiring their own scoped nonces.
   - Escaped the `message` parameter in `AIPS.Utilities.confirmWithWord()` to prevent a future caller from introducing a DOM XSS via unescaped HTML interpolation.
   - Fixed a PHP syntax error in the system diagnostics service's refresh-task definitions that would fatal the plugin on load.
+  - "Refresh System" no longer bundles telemetry/history-log pruning and orphaned-embeddings cleanup into its default-selected, unconfirmed bulk action; these destructive tasks are now opt-in, visually flagged, and gated behind an extra confirmation.
+  - Automated background pruning (`run_automated_prune()`) now rotates its task order and stops within a time budget instead of chaining all four cleanup tasks unconditionally, so a slow run defers remaining tasks to the next tick rather than letting them starve indefinitely.
+  - Cascading-delete transactions in the prune repository now check whether `START TRANSACTION` actually succeeded before issuing `COMMIT`/`ROLLBACK`, and no longer abort a batch loop early just because a concurrent cleanup already removed the rows it was about to delete.
+  - The automated database-prune cron is no longer scheduled on plugin activation when automatic pruning is disabled, and the "Database & Retention" settings now read through `AIPS_Config` instead of raw `get_option()` calls.
+  - The System Status table-size matrix now recomputes its grand-totals row immediately after a prune/purge/optimize action instead of only on a full manual refresh.
+  - `AIPS.Utilities.confirmWithWord()`'s dialog markup is now always rendered through `AIPS.Templates` (a new `AIPS.Templates.register()` API backs this) instead of a hand-maintained string-concatenation fallback.
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 

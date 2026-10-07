@@ -37,10 +37,17 @@ if (!defined('ABSPATH')) {
                                     <span class="aips-status-op-group-label"><?php echo esc_html($task_group['label']); ?></span>
                                     <div class="aips-checkbox-group aips-refresh-task-list">
                                         <?php foreach ($task_group['tasks'] as $task) : ?>
-                                            <?php $task_input_id = 'aips-refresh-task-' . $task['step']; ?>
+                                            <?php
+                                            $task_input_id = 'aips-refresh-task-' . $task['step'];
+                                            $is_destructive = !empty($task['destructive']);
+                                            $checkbox_class = $is_destructive ? 'aips-refresh-task aips-refresh-task-destructive' : 'aips-refresh-task';
+                                            ?>
                                             <label class="aips-checkbox-label" for="<?php echo esc_attr($task_input_id); ?>">
-                                                <input type="checkbox" id="<?php echo esc_attr($task_input_id); ?>" class="aips-refresh-task" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" checked>
+                                                <input type="checkbox" id="<?php echo esc_attr($task_input_id); ?>" class="<?php echo esc_attr($checkbox_class); ?>" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" <?php echo $is_destructive ? '' : 'checked'; ?>>
                                                 <span><?php echo esc_html($task['label']); ?></span>
+                                                <?php if ($is_destructive) : ?>
+                                                    <span class="aips-badge aips-badge-error" title="<?php esc_attr_e('This permanently deletes data and is not selected by default.', 'ai-post-scheduler'); ?>"><?php esc_html_e('Deletes data', 'ai-post-scheduler'); ?></span>
+                                                <?php endif; ?>
                                             </label>
                                         <?php endforeach; ?>
                                     </div>
@@ -328,7 +335,7 @@ if (!defined('ABSPATH')) {
                                         $tot_overhead += isset($table['overhead']) ? (int) $table['overhead'] : 0;
                                         $short         = isset($table['short_name']) ? $table['short_name'] : '';
                                         ?>
-                                        <tr id="aips-tbl-row-<?php echo esc_attr($short); ?>" data-table="<?php echo esc_attr($short); ?>">
+                                        <tr id="aips-tbl-row-<?php echo esc_attr($short); ?>" data-table="<?php echo esc_attr($short); ?>" data-records="<?php echo esc_attr((int) $table['records']); ?>" data-data-size="<?php echo esc_attr((int) $table['data_size']); ?>" data-index-size="<?php echo esc_attr((int) $table['index_size']); ?>" data-overhead="<?php echo esc_attr((int) $table['overhead']); ?>">
                                             <td>
                                                 <strong><code><?php echo esc_html($table['table']); ?></code></strong>
                                                 <?php if ('aips_telemetry' === $short && !AIPS_Telemetry::is_enabled()) : ?>

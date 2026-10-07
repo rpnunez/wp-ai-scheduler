@@ -442,9 +442,17 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_enqueue_script(
+			'aips-templates-script',
+			AIPS_PLUGIN_URL . 'assets/js/templates.js',
+			array('jquery'),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
 			'aips-utilities-script',
 			AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-			array('jquery', 'aips-datetime-script'),
+			array('jquery', 'aips-datetime-script', 'aips-templates-script'),
 			AIPS_VERSION,
 			true
 		);
@@ -461,14 +469,6 @@ class AIPS_Admin_Assets {
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
         ));
-
-        wp_enqueue_script(
-            'aips-templates-script',
-            AIPS_PLUGIN_URL . 'assets/js/templates.js',
-            array('jquery'),
-            AIPS_VERSION,
-            true
-        );
 
         wp_enqueue_script(
             'aips-admin-script',
@@ -535,9 +535,17 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-utilities-script',
             AIPS_PLUGIN_URL . 'assets/js/utilities.js',
-            array('jquery', 'aips-datetime-script'),
+            array('jquery', 'aips-datetime-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -1769,6 +1777,7 @@ class AIPS_Admin_Assets {
                 'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
                 'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
                 'confirmOptimizeTable'                  => __('Run OPTIMIZE TABLE on this table? This can briefly lock the table on large sites.', 'ai-post-scheduler'),
+                'confirmRefreshSystemDestructive'       => __('This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?', 'ai-post-scheduler'),
                 'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
                 'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),

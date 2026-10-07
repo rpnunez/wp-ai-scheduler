@@ -378,6 +378,35 @@
 				return;
 			}
 
+			var hasDestructive = $('.aips-refresh-task-destructive:checked').length > 0;
+
+			if (hasDestructive) {
+				var confirmMsg = l10n.confirmRefreshSystemDestructive || 'This includes one or more tasks that permanently delete data (e.g. telemetry/history pruning, orphaned embeddings cleanup). Continue?';
+				AIPS.Utilities.confirm(confirmMsg, 'Refresh System', [
+					{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+					{ label: 'Yes, continue', className: 'aips-btn aips-btn-danger-solid', action: function() {
+						self.runRefreshSystem($btn, $spinner, $results, selectedTasks);
+					}}
+				]);
+				return;
+			}
+
+			this.runRefreshSystem($btn, $spinner, $results, selectedTasks);
+		},
+
+		/**
+		 * Post the selected "Refresh System" tasks and render the results.
+		 *
+		 * @param {jQuery} $btn          The Refresh System button.
+		 * @param {jQuery} $spinner      Its sibling spinner element.
+		 * @param {jQuery} $results      Results container.
+		 * @param {Array}  selectedTasks Selected task step keys.
+		 * @return {void}
+		 */
+		runRefreshSystem: function($btn, $spinner, $results, selectedTasks) {
+			var self = this;
+			var l10n = window.aipsSystemStatusL10n || {};
+
 			$spinner.addClass('is-active');
 			$results.hide().empty();
 
@@ -735,15 +764,67 @@
 			} else {
 				$ohCell.text(ohText);
 			}
+
+			// Keep raw byte/record counts on the row in sync so recomputeTotals()
+			// can sum them without a full server round trip.
+			$row.attr({
+				'data-records':    t.records,
+				'data-data-size':  t.data_size,
+				'data-index-size': t.index_size,
+				'data-overhead':   t.overhead
+			});
+		},
+
+		/**
+		 * Format a byte count the same way PHP's size_format(x, 2) does, for
+		 * client-side totals recomputation.
+		 *
+		 * @param {number} bytes Byte count.
+		 * @return {string}
+		 */
+		formatBytes: function(bytes) {
+			bytes = Number(bytes) || 0;
+			var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+			var i = 0;
+			while (bytes >= 1024 && i < units.length - 1) {
+				bytes /= 1024;
+				i++;
+			}
+			return bytes.toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
+		},
+
+		/**
+		 * Recompute the grand-totals row by summing the data-* byte/record
+		 * counts kept on every table row, so totals stay accurate after a
+		 * single-row patch without re-fetching the full table listing.
+		 *
+		 * @return {void}
+		 */
+		recomputeTotals: function() {
+			var totals = { records: 0, dataSize: 0, indexSize: 0, overhead: 0 };
+
+			$('[id^="aips-tbl-row-"]').each(function() {
+				var $row = $(this);
+				totals.records   += parseInt($row.attr('data-records'), 10) || 0;
+				totals.dataSize   += parseInt($row.attr('data-data-size'), 10) || 0;
+				totals.indexSize  += parseInt($row.attr('data-index-size'), 10) || 0;
+				totals.overhead   += parseInt($row.attr('data-overhead'), 10) || 0;
+			});
+
+			if (!$('#aips-tot-records').length) {
+				return;
+			}
+
+			$('#aips-tot-records').text(totals.records.toLocaleString());
+			$('#aips-tot-data').text(this.formatBytes(totals.dataSize));
+			$('#aips-tot-index').text(this.formatBytes(totals.indexSize));
+			$('#aips-tot-overhead').text(this.formatBytes(totals.overhead));
 		},
 
 		/**
 		 * Patch the DOM rows for tables included in a mutating action's AJAX
-		 * response, avoiding a full extra `aips_status_get_tables` round trip.
-		 *
-		 * Note: the grand-totals row at the top of the matrix is not recomputed
-		 * here (that requires scanning every table) and will lag until the next
-		 * explicit "Refresh Tables" click or page load.
+		 * response, avoiding a full extra `aips_status_get_tables` round trip,
+		 * then recompute the grand-totals row from all rows' current data.
 		 *
 		 * @param {Array|undefined} tables Table status records from the response, if any.
 		 * @return {boolean} True if at least one row was patched from the response.
@@ -756,6 +837,7 @@
 			tables.forEach(function(t) {
 				self.updateTableRow(t);
 			});
+			self.recomputeTotals();
 			return true;
 		},
 

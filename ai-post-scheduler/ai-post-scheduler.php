@@ -86,7 +86,7 @@ final class AI_Post_Scheduler {
      * @return array<string,array<string,string>>
      */
     public static function get_cron_events() {
-        return array(
+        $events = array(
             'aips_generate_scheduled_posts' => array(
                 'schedule' => 'hourly',
                 'label'   => __( 'Post Generation', 'ai-post-scheduler' ),
@@ -123,11 +123,20 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
-            'aips_database_prune_cleanup' => array(
-                'schedule' => sanitize_key((string) get_option('aips_telemetry_prune_interval', 'daily')),
-                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
-            ),
         );
+
+        // Only include the prune cleanup cron while the feature is actually
+        // enabled, so every consumer of get_cron_events() (activation,
+        // reschedule_missed_cron, diagnostics) naturally skips scheduling a
+        // cron that would otherwise just no-op every time it fires.
+        if ( (bool) AIPS_Config::get_instance()->get_option( 'aips_auto_prune_enabled' ) ) {
+            $events['aips_database_prune_cleanup'] = array(
+                'schedule' => sanitize_key( (string) AIPS_Config::get_instance()->get_option( 'aips_telemetry_prune_interval', 'daily' ) ),
+                'label'   => __( 'Database Prune & Retention Cleanup', 'ai-post-scheduler' ),
+            );
+        }
+
+        return $events;
     }
 
     /**

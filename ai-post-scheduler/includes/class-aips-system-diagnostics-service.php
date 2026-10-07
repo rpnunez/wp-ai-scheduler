@@ -103,15 +103,20 @@ class AIPS_System_Diagnostics_Service {
 	 * @param string   $group        Task group key.
 	 * @param string   $action       AJAX action.
 	 * @param callable $callback     Task callback.
+	 * @param bool     $destructive  Optional. Whether this task permanently deletes data.
+	 *                               Destructive tasks are excluded from "Refresh System"'s
+	 *                               default task-selection and must be explicitly opted
+	 *                               into with an extra confirmation. Default false.
 	 * @return array<string, mixed>
 	 */
-	private function build_refresh_task_definition($label, $button_label, $group, $action, $callback) {
+	private function build_refresh_task_definition($label, $button_label, $group, $action, $callback, $destructive = false) {
 		return array(
 			'label'        => $label,
 			'button_label' => $button_label,
 			'group'        => $group,
 			'action'       => $action,
 			'callback'     => $callback,
+			'destructive'  => $destructive,
 		);
 	}
 
@@ -204,21 +209,24 @@ class AIPS_System_Diagnostics_Service {
 				__('Prune Old Telemetry', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_prune_telemetry',
-				array($this, 'prune_telemetry')
+				array($this, 'prune_telemetry'),
+				true
 			),
 			'prune_history_logs' => $this->build_refresh_task_definition(
 				__('History log prune', 'ai-post-scheduler'),
 				__('Prune History Logs', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_prune_history_logs',
-				array($this, 'prune_history_logs')
+				array($this, 'prune_history_logs'),
+				true
 			),
 			'clean_orphaned_embeddings' => $this->build_refresh_task_definition(
 				__('Orphaned embeddings cleanup', 'ai-post-scheduler'),
 				__('Clean Orphaned Embeddings', 'ai-post-scheduler'),
 				'cleanup_repair',
 				'aips_status_clean_orphaned_embeddings',
-				array($this, 'clean_orphaned_embeddings')
+				array($this, 'clean_orphaned_embeddings'),
+				true
 			),
 			'clear_embeddings_cache' => $this->build_refresh_task_definition(
 				__('Embeddings vector cache cleanup', 'ai-post-scheduler'),
@@ -275,9 +283,10 @@ class AIPS_System_Diagnostics_Service {
 				}
 
 				$tasks[] = array(
-					'step'   => $step,
-					'label'  => $definitions[$step]['button_label'],
-					'action' => $definitions[$step]['action'],
+					'step'        => $step,
+					'label'       => $definitions[$step]['button_label'],
+					'action'      => $definitions[$step]['action'],
+					'destructive' => !empty($definitions[$step]['destructive']),
 				);
 			}
 
@@ -303,7 +312,11 @@ class AIPS_System_Diagnostics_Service {
 		$definitions = $this->get_refresh_task_definitions();
 
 		if (null === $selected_tasks) {
-			$selected_tasks = array_keys($definitions);
+			// Destructive tasks (permanent data deletion) are never bundled into the
+			// implicit "run everything" default — they must be explicitly selected.
+			$selected_tasks = array_keys(array_filter($definitions, function ($definition) {
+				return empty($definition['destructive']);
+			}));
 		}
 
 		if (!is_array($selected_tasks)) {

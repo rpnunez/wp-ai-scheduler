@@ -25,6 +25,28 @@
         '\t': '&#9;'
     };
 
+    // Built-in fallback markup for AIPS.Utilities.confirmWithWord(), registered into
+    // AIPS.Templates on first use for any admin page that doesn't render its own
+    // #aips-tmpl-confirm-word-dialog tag. Kept as a single AIPS.Templates-rendered
+    // string (never hand-concatenated) so there is one source of truth for this markup.
+    var CONFIRM_WORD_DIALOG_TEMPLATE =
+        '<div class="aips-confirm-dialog">' +
+        '  <div class="aips-confirm-header"><h3 id="{{headingId}}" class="aips-confirm-heading">{{heading}}</h3></div>' +
+        '  <div class="aips-confirm-body">' +
+        '    <p class="aips-confirm-message">{{message}}</p>' +
+        '    <div style="margin-top:14px; padding:10px 12px; background:#f9f9f9; border:1px solid #e2e4e7; border-radius:4px;">' +
+        '      <label for="{{inputId}}" style="display:block; font-weight:600; font-size:13px; margin-bottom:6px;">' +
+        '        Please type <code style="color:#d63638; font-weight:bold; font-size:14px;">{{requiredWord}}</code> to confirm:' +
+        '      </label>' +
+        '      <input type="text" id="{{inputId}}" class="aips-form-input aips-confirm-word-input" style="width:100%; font-size:14px; text-transform:uppercase;" autocomplete="off" placeholder="{{requiredWord}}">' +
+        '    </div>' +
+        '  </div>' +
+        '  <div class="aips-confirm-footer">' +
+        '    <button type="button" class="aips-btn aips-btn-secondary aips-word-cancel-btn">{{cancelLabel}}</button>' +
+        '    <button type="button" class="{{confirmClass}} aips-word-confirm-btn" disabled>{{confirmLabel}}</button>' +
+        '  </div>' +
+        '</div>';
+
     window.AIPS.Utilities = {
 
         /**
@@ -447,39 +469,24 @@
                     .addClass('aips-confirm-overlay')
                     .attr({ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': headingId });
 
-                var html = '';
-                if (window.AIPS && AIPS.Templates && typeof AIPS.Templates.renderRaw === 'function' && $('#aips-tmpl-confirm-word-dialog').length) {
-                    html = AIPS.Templates.renderRaw('aips-tmpl-confirm-word-dialog', {
-                        headingId:    headingId,
-                        heading:      AIPS.Templates.escape(heading),
-                        message:      AIPS.Templates.escape(message),
-                        inputId:      inputId,
-                        requiredWord: AIPS.Templates.escape(requiredWord),
-                        confirmLabel: AIPS.Templates.escape(confirmLabel),
-                        cancelLabel:  AIPS.Templates.escape(cancelLabel),
-                        confirmClass: confirmClass
-                    });
-                } else {
-                    // Fallback markup for when #aips-tmpl-confirm-word-dialog isn't on the page.
-                    // Keep this in sync with that template (see templates/admin/system-status.php)
-                    // — same structure and same escaping rules for every interpolated value.
-                    html = '<div class="aips-confirm-dialog">' +
-                           '  <div class="aips-confirm-header"><h3 id="' + headingId + '" class="aips-confirm-heading">' + $('<div>').text(heading).html() + '</h3></div>' +
-                           '  <div class="aips-confirm-body">' +
-                           '    <p class="aips-confirm-message">' + $('<div>').text(message).html() + '</p>' +
-                           '    <div style="margin-top:14px; padding:10px 12px; background:#f9f9f9; border:1px solid #e2e4e7; border-radius:4px;">' +
-                           '      <label for="' + inputId + '" style="display:block; font-weight:600; font-size:13px; margin-bottom:6px;">' +
-                           '        Please type <code style="color:#d63638; font-weight:bold; font-size:14px;">' + $('<div>').text(requiredWord).html() + '</code> to confirm:' +
-                           '      </label>' +
-                           '      <input type="text" id="' + inputId + '" class="aips-form-input aips-confirm-word-input" style="width:100%; font-size:14px; text-transform:uppercase;" autocomplete="off" placeholder="' + $('<div>').text(requiredWord).html() + '">' +
-                           '    </div>' +
-                           '  </div>' +
-                           '  <div class="aips-confirm-footer">' +
-                           '    <button type="button" class="aips-btn aips-btn-secondary aips-word-cancel-btn">' + $('<div>').text(cancelLabel).html() + '</button>' +
-                           '    <button type="button" class="' + confirmClass + ' aips-word-confirm-btn" disabled>' + $('<div>').text(confirmLabel).html() + '</button>' +
-                           '  </div>' +
-                           '</div>';
+                // Ensure a template is available under this ID even on pages that
+                // don't render #aips-tmpl-confirm-word-dialog themselves (this is a
+                // shared utility, not tied to one admin page) — register the
+                // built-in markup once rather than hand-concatenating HTML here.
+                if (!AIPS.Templates.has('aips-tmpl-confirm-word-dialog')) {
+                    AIPS.Templates.register('aips-tmpl-confirm-word-dialog', CONFIRM_WORD_DIALOG_TEMPLATE);
                 }
+
+                var html = AIPS.Templates.renderRaw('aips-tmpl-confirm-word-dialog', {
+                    headingId:    headingId,
+                    heading:      AIPS.Templates.escape(heading),
+                    message:      AIPS.Templates.escape(message),
+                    inputId:      inputId,
+                    requiredWord: AIPS.Templates.escape(requiredWord),
+                    confirmLabel: AIPS.Templates.escape(confirmLabel),
+                    cancelLabel:  AIPS.Templates.escape(cancelLabel),
+                    confirmClass: confirmClass
+                });
 
                 $overlay.html(html);
                 $('body').append($overlay);

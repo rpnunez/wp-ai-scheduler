@@ -54,6 +54,13 @@ class AIPS_DB_Prune_Repository {
 	const TABLES_STATUS_CACHE_KEY = 'aips_db_prune_tables_status';
 
 	/**
+	 * Safety cap on batch-loop iterations for cascading-delete methods, so a
+	 * pathological condition (e.g. rows that consistently fail to delete
+	 * without the query returning false) can't spin the loop forever.
+	 */
+	const MAX_BATCH_ITERATIONS = 10000;
+
+	/**
 	 * Retrieve disk space, row count, and overhead statistics for all plugin tables.
 	 *
 	 * Cached for a few seconds since this reads information_schema and is polled
@@ -304,6 +311,46 @@ class AIPS_DB_Prune_Repository {
 	}
 
 	/**
+	 * Start a transaction, returning whether it actually started.
+	 *
+	 * Callers must only COMMIT/ROLLBACK when this returns true — issuing
+	 * either against a transaction that never started would silently apply
+	 * to whatever (unrelated) scope the connection happens to be in.
+	 *
+	 * @return bool
+	 */
+	private function start_transaction() {
+		return $this->wpdb->query('START TRANSACTION') !== false;
+	}
+
+	/**
+	 * Roll back a transaction only if it was actually started, logging the failure.
+	 *
+	 * @param bool   $started_transaction Result of start_transaction().
+	 * @param string $message             Log message describing the failed operation.
+	 * @param array  $context             Additional context to attach to the log entry.
+	 * @return void
+	 */
+	private function rollback_transaction($started_transaction, $message, array $context = array()) {
+		if ($started_transaction) {
+			$this->wpdb->query('ROLLBACK');
+		}
+		$this->log_db_error($message, $context);
+	}
+
+	/**
+	 * Commit a transaction only if it was actually started.
+	 *
+	 * @param bool $started_transaction Result of start_transaction().
+	 * @return void
+	 */
+	private function commit_transaction($started_transaction) {
+		if ($started_transaction) {
+			$this->wpdb->query('COMMIT');
+		}
+	}
+
+	/**
 	 * Prune old generation event logs from aips_history_log.
 	 *
 	 * @param int $cutoff_timestamp Unix timestamp threshold.
@@ -365,6 +412,7 @@ class AIPS_DB_Prune_Repository {
 		$table_posts         = $this->wpdb->posts;
 		$batch_size          = max(1, min(5000, (int) $batch_size));
 		$total_deleted       = 0;
+		$iterations          = 0;
 
 		do {
 			// Find up to $batch_size orphaned rows first to obtain both embedding ID and post object_id.
@@ -393,7 +441,7 @@ class AIPS_DB_Prune_Repository {
 				}
 			}
 
-			$this->wpdb->query('START TRANSACTION');
+			$started_transaction = $this->start_transaction();
 
 			// Cascade cleanup: remove orphaned post entries from relationships table if present.
 			$relationships_failed = false;
@@ -408,14 +456,13 @@ class AIPS_DB_Prune_Repository {
 
 				if (false === $relationships_result) {
 					$relationships_failed = true;
-					$this->log_db_error('clean_orphaned_embeddings: failed to delete orphaned relationships', array(
-						'table' => $table_relationships,
-					));
 				}
 			}
 
 			if ($relationships_failed) {
-				$this->wpdb->query('ROLLBACK');
+				$this->rollback_transaction($started_transaction, 'clean_orphaned_embeddings: failed to delete orphaned relationships', array(
+					'table' => $table_relationships,
+				));
 				break;
 			}
 
@@ -424,21 +471,22 @@ class AIPS_DB_Prune_Repository {
 			$deleted = $this->wpdb->query("DELETE FROM `{$table_embeddings}` WHERE id IN ({$ids_in})");
 
 			if (false === $deleted) {
-				$this->log_db_error('clean_orphaned_embeddings: failed to delete orphaned embeddings', array(
+				$this->rollback_transaction($started_transaction, 'clean_orphaned_embeddings: failed to delete orphaned embeddings', array(
 					'table' => $table_embeddings,
 				));
-				$this->wpdb->query('ROLLBACK');
 				break;
 			}
 
-			$this->wpdb->query('COMMIT');
-
-			if (0 === (int) $deleted) {
-				break;
-			}
+			$this->commit_transaction($started_transaction);
 
 			$total_deleted += (int) $deleted;
-		} while (count($orphaned_rows) === $batch_size);
+
+			// Note: a 0-row delete here (e.g. a concurrent process already removed
+			// these specific rows) does NOT mean no orphans remain overall, so the
+			// loop continues based on whether the SELECT found a full batch, not
+			// on the delete count — otherwise concurrent cleanup runs could starve
+			// each other and leave stragglers un-pruned for an extra cycle.
+		} while (count($orphaned_rows) === $batch_size && ++$iterations < self::MAX_BATCH_ITERATIONS);
 
 		if ($total_deleted > 0) {
 			self::invalidate_tables_status_cache();
@@ -461,6 +509,7 @@ class AIPS_DB_Prune_Repository {
 		$cutoff_timestamp = (int) $cutoff_timestamp;
 		$batch_size       = max(1, min(5000, (int) $batch_size));
 		$total_deleted    = 0;
+		$iterations       = 0;
 
 		do {
 			// Fetch up to $batch_size expired topic IDs to delete.
@@ -481,17 +530,16 @@ class AIPS_DB_Prune_Repository {
 
 			$ids_in = implode(',', array_map('intval', $topic_ids));
 
-			$this->wpdb->query('START TRANSACTION');
+			$started_transaction = $this->start_transaction();
 
 			// Cascade cleanup: delete dependent logs in author topic logs first.
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$logs_result = $this->wpdb->query("DELETE FROM `{$table_topic_logs}` WHERE author_topic_id IN ({$ids_in})");
 
 			if (false === $logs_result) {
-				$this->log_db_error('clean_expired_topics: failed to delete dependent author topic logs', array(
+				$this->rollback_transaction($started_transaction, 'clean_expired_topics: failed to delete dependent author topic logs', array(
 					'table' => $table_topic_logs,
 				));
-				$this->wpdb->query('ROLLBACK');
 				break;
 			}
 
@@ -500,21 +548,20 @@ class AIPS_DB_Prune_Repository {
 			$deleted = $this->wpdb->query("DELETE FROM `{$table_topics}` WHERE id IN ({$ids_in})");
 
 			if (false === $deleted) {
-				$this->log_db_error('clean_expired_topics: failed to delete expired topics', array(
+				$this->rollback_transaction($started_transaction, 'clean_expired_topics: failed to delete expired topics', array(
 					'table' => $table_topics,
 				));
-				$this->wpdb->query('ROLLBACK');
 				break;
 			}
 
-			$this->wpdb->query('COMMIT');
-
-			if (0 === (int) $deleted) {
-				break;
-			}
+			$this->commit_transaction($started_transaction);
 
 			$total_deleted += (int) $deleted;
-		} while (count($topic_ids) === $batch_size);
+
+			// See clean_orphaned_embeddings() for why a 0-row delete doesn't break
+			// the loop here: it only means a concurrent process won the race on
+			// this specific batch, not that no more expired topics remain.
+		} while (count($topic_ids) === $batch_size && ++$iterations < self::MAX_BATCH_ITERATIONS);
 
 		if ($total_deleted > 0) {
 			self::invalidate_tables_status_cache();
