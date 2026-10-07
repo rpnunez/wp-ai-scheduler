@@ -1613,6 +1613,15 @@
     padding: var(--aips-space-6) var(--aips-space-8);
 }
 
+#aips-history-logs-modal .aips-modal-body,
+#aips-history-logs-modal .aips-modal-content-body,
+#aips-history-modal .aips-modal-body,
+#aips-history-modal .aips-modal-content-body,
+.aips-history-drawer-panel .aips-modal-body,
+.aips-history-log-renderer {
+    white-space: normal !important;
+}
+
 #aips-history-modal .aips-modal-body {
     padding: 0 var(--aips-space-8) var(--aips-space-8);
 }
@@ -2503,10 +2512,14 @@ button.aips-btn-secondary:active {
 
 .aips-modal-content-body {
     font-size: 13px;
-    line-height: 1.8;
+    line-height: 1.5;
     color: var(--aips-gray-800, #1e293b);
-    white-space: pre-wrap;
     word-break: break-word;
+}
+
+.aips-content-preview-box .aips-modal-content-body {
+    white-space: pre-wrap;
+    line-height: 1.8;
 }
 
 .aips-post-success-summary {
@@ -3893,38 +3906,47 @@ input[type="submit"].is-busy,
     border-radius: 12px;
     background: #fff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    white-space: normal !important;
 }
 
 .aips-history-summary-main {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.aips-history-summary-line+.aips-history-summary-line {
-    margin-top: 10px;
+.aips-history-summary-line {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0;
 }
 
 .aips-history-summary-line-label {
-    display: inline-block;
-    min-width: 120px;
-    margin-right: 10px;
+    flex-shrink: 0;
+    width: 130px;
+    min-width: 130px;
     color: #646970;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    vertical-align: top;
+    text-align: left;
 }
 
 .aips-history-summary-line-value {
     color: #1d2327;
     font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.5;
+    flex: 1;
+    text-align: left;
 }
 
 .aips-history-summary-meta {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
-    align-content: start;
     padding-left: 18px;
     border-left: 1px solid #eceff1;
 }

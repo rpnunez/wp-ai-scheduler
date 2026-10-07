@@ -36,16 +36,16 @@ $type_labels = array(
 );
 ?>
 
-<div class="aips-history-log-renderer aips-json-viewer-enabled">
-	<div class="aips-history-modal-toolbar">
+<div class="aips-history-log-renderer aips-json-viewer-enabled" style="white-space: normal;">
+	<div class="aips-history-modal-toolbar" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin: 12px 0 14px; padding: 14px 18px; border: 1px solid #dcdcde; border-radius: 10px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
 		<div class="aips-history-modal-heading">
-			<h4 class="aips-history-modal-title"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></h4>
-			<p class="aips-history-modal-subtitle"><?php esc_html_e('Human-readable context first, then the full technical log trail below.', 'ai-post-scheduler'); ?></p>
+			<h4 class="aips-history-modal-title" style="margin: 0 0 3px; font-size: 16px; font-weight: 600; line-height: 1.25;"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></h4>
+			<p class="aips-history-modal-subtitle" style="margin: 0; color: #646970; font-size: 12.5px; line-height: 1.4;"><?php esc_html_e('Human-readable context first, then the full technical log trail below.', 'ai-post-scheduler'); ?></p>
 		</div>
 		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic" data-diagnostic="<?php echo esc_attr($container['diagnostic_text']); ?>"><?php esc_html_e('Copy diagnostic', 'ai-post-scheduler'); ?></button>
 	</div>
 
-	<nav class="aips-history-detail-tabs" role="tablist" aria-label="<?php esc_attr_e('History detail sections', 'ai-post-scheduler'); ?>">
+	<nav class="aips-history-detail-tabs" role="tablist" aria-label="<?php esc_attr_e('History detail sections', 'ai-post-scheduler'); ?>" style="display: flex; gap: 4px; border-bottom: 1px solid #dcdcde; margin: 0 0 14px;">
 		<button type="button" class="aips-history-detail-tab is-active" role="tab" aria-selected="true" data-tab="overview"><?php esc_html_e('Overview', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="timeline"><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls"><?php echo esc_html(sprintf(__('AI Calls (%d)', 'ai-post-scheduler'), count($ai_logs))); ?></button>
@@ -53,22 +53,19 @@ $type_labels = array(
 	</nav>
 
 	<section class="aips-history-detail-panel is-active" data-panel="overview" role="tabpanel">
-		<div class="aips-history-modal-summary">
-			<div class="aips-history-summary-panel">
-				<div class="aips-history-summary-main">
+		<div class="aips-history-modal-summary" style="margin-bottom: 14px;">
+			<div class="aips-history-summary-panel" style="display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; padding: 14px 18px; border: 1px solid #dcdcde; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.03); white-space: normal;">
+				<div class="aips-history-summary-main" style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
 					<?php foreach ($container['summary_lines'] as $summary_line): ?>
-						<div class="aips-history-summary-line">
-							<span class="aips-history-summary-line-label"><?php echo esc_html($summary_line['label']); ?></span>
-							<span class="aips-history-summary-line-value"><?php echo esc_html($summary_line['value']); ?></span>
-						</div>
+						<div class="aips-history-summary-line" style="display: flex; align-items: baseline; gap: 10px; margin: 0;"><span class="aips-history-summary-line-label" style="width: 130px; min-width: 130px; flex-shrink: 0; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #646970; text-align: left;"><?php echo esc_html($summary_line['label']); ?></span><span class="aips-history-summary-line-value" style="color: #1d2327; font-size: 13px; line-height: 1.4; flex: 1; text-align: left;"><?php echo esc_html($summary_line['value']); ?></span></div>
 					<?php endforeach; ?>
 				</div>
 				<?php if (!empty($container['summary_meta'])): ?>
-					<div class="aips-history-summary-meta">
+					<div class="aips-history-summary-meta" style="display: flex; flex-direction: column; gap: 10px; padding-left: 18px; border-left: 1px solid #eceff1;">
 						<?php foreach ($container['summary_meta'] as $summary_meta_item): ?>
 							<div class="aips-history-summary-meta-item">
-								<div class="aips-history-summary-label"><?php echo esc_html($summary_meta_item['label']); ?></div>
-								<div class="aips-history-summary-value"><?php echo esc_html($summary_meta_item['value']); ?></div>
+								<div class="aips-history-summary-label" style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: #646970; margin-bottom: 2px; text-align: left;"><?php echo esc_html($summary_meta_item['label']); ?></div>
+								<div class="aips-history-summary-value" style="color: #1d2327; font-size: 13px; text-align: left;"><?php echo esc_html($summary_meta_item['value']); ?></div>
 							</div>
 						<?php endforeach; ?>
 					</div>
@@ -77,11 +74,11 @@ $type_labels = array(
 		</div>
 
 		<?php if (!empty($container['detail_cards'])): ?>
-			<div class="aips-history-summary-grid">
+			<div class="aips-history-summary-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
 				<?php foreach ($container['detail_cards'] as $detail_card): ?>
-					<div class="aips-history-summary-item<?php echo !empty($detail_card['class']) ? ' ' . esc_attr($detail_card['class']) : ''; ?>">
-						<div class="aips-history-summary-label"><?php echo esc_html($detail_card['label']); ?></div>
-						<div class="aips-history-summary-value"><?php echo esc_html($detail_card['value']); ?></div>
+					<div class="aips-history-summary-item<?php echo !empty($detail_card['class']) ? ' ' . esc_attr($detail_card['class']) : ''; ?>" style="padding: 12px 14px; border: 1px solid #dcdcde; border-radius: 10px; background: #fff;">
+						<div class="aips-history-summary-label" style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: #646970; margin-bottom: 4px;"><?php echo esc_html($detail_card['label']); ?></div>
+						<div class="aips-history-summary-value" style="color: #1d2327; font-size: 13px; font-weight: 600;"><?php echo esc_html($detail_card['value']); ?></div>
 					</div>
 				<?php endforeach; ?>
 			</div>

@@ -253,7 +253,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
         </div>
-        <div class="aips-modal-body aips-modal-content-body">
+        <div class="aips-modal-body aips-modal-content-body" style="white-space: normal;">
             <p><?php esc_html_e('Preparing plain-language summary and technical logs...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>
