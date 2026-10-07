@@ -75,8 +75,7 @@ class AIPS_System_Status_Controller {
 	 * @return void
 	 */
 	private function verify_request($action) {
-		$valid = check_ajax_referer($action, 'nonce', false) || check_ajax_referer('aips_ajax_nonce', 'nonce', false);
-		if (!$valid) {
+		if (!check_ajax_referer($action, 'nonce', false)) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 		if (!current_user_can('manage_options')) {

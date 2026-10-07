@@ -1768,6 +1768,7 @@ class AIPS_Admin_Assets {
                 'confirmPurgeTelemetry'                 => __('Are you sure you want to PURGE ALL telemetry records? This will truncate the table and instantly reclaim all disk space (reset to 0 bytes). This action cannot be undone.', 'ai-post-scheduler'),
                 'confirmPruneHistoryLogs'               => __('Prune generation logs older than configured retention period?', 'ai-post-scheduler'),
                 'confirmCleanEmbeddings'                => __('Clean orphaned embeddings for posts that no longer exist?', 'ai-post-scheduler'),
+                'confirmOptimizeTable'                  => __('Run OPTIMIZE TABLE on this table? This can briefly lock the table on large sites.', 'ai-post-scheduler'),
                 'tableOptimized'                        => __('Table optimized successfully.', 'ai-post-scheduler'),
                 'tablesRefreshed'                       => __('Table sizes refreshed.', 'ai-post-scheduler'),
                 'refreshRunning'                        => __('Refreshing system…', 'ai-post-scheduler'),

@@ -452,7 +452,7 @@
                     html = AIPS.Templates.renderRaw('aips-tmpl-confirm-word-dialog', {
                         headingId:    headingId,
                         heading:      AIPS.Templates.escape(heading),
-                        message:      message,
+                        message:      AIPS.Templates.escape(message),
                         inputId:      inputId,
                         requiredWord: AIPS.Templates.escape(requiredWord),
                         confirmLabel: AIPS.Templates.escape(confirmLabel),
@@ -460,10 +460,13 @@
                         confirmClass: confirmClass
                     });
                 } else {
+                    // Fallback markup for when #aips-tmpl-confirm-word-dialog isn't on the page.
+                    // Keep this in sync with that template (see templates/admin/system-status.php)
+                    // — same structure and same escaping rules for every interpolated value.
                     html = '<div class="aips-confirm-dialog">' +
                            '  <div class="aips-confirm-header"><h3 id="' + headingId + '" class="aips-confirm-heading">' + $('<div>').text(heading).html() + '</h3></div>' +
                            '  <div class="aips-confirm-body">' +
-                           '    <p class="aips-confirm-message">' + message + '</p>' +
+                           '    <p class="aips-confirm-message">' + $('<div>').text(message).html() + '</p>' +
                            '    <div style="margin-top:14px; padding:10px 12px; background:#f9f9f9; border:1px solid #e2e4e7; border-radius:4px;">' +
                            '      <label for="' + inputId + '" style="display:block; font-weight:600; font-size:13px; margin-bottom:6px;">' +
                            '        Please type <code style="color:#d63638; font-weight:bold; font-size:14px;">' + $('<div>').text(requiredWord).html() + '</code> to confirm:' +

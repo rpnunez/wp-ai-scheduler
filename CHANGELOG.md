@@ -154,6 +154,13 @@
   - Manual maintenance controls on System Status: batched "Prune Old" with automatic defragmentation, "Purge All" (instant table truncation to 0 MB), "Clean Orphans" for post embeddings, and table optimization.
   - Reusable destructive confirmation modal `AIPS.Utilities.confirmWithWord(options)` requiring users to type a confirmation word (e.g. "PURGE") before executing irreversible operations.
 
+### Fixed
+- **Database Retention & Telemetry Optimization — review follow-ups:**
+  - Added a dedicated `timestamp` index to `aips_history_log` so retention pruning no longer does a full table scan on each batch.
+  - Removed a generic-nonce fallback on the System Status AJAX controller that would have accepted the plugin-wide `aips_ajax_nonce` for destructive maintenance actions (prune, purge, optimize) instead of requiring their own scoped nonces.
+  - Escaped the `message` parameter in `AIPS.Utilities.confirmWithWord()` to prevent a future caller from introducing a DOM XSS via unescaped HTML interpolation.
+  - Fixed a PHP syntax error in the system diagnostics service's refresh-task definitions that would fatal the plugin on load.
+
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
 - **Performance:** Fixed N+1 queries in Generated Posts controller by batching `get_post()` calls using `_prime_post_caches()`.

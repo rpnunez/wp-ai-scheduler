@@ -161,6 +161,7 @@ class AIPS_DB_Prune_Service {
 			'message' => $success
 				? __('All telemetry records permanently purged and table reset.', 'ai-post-scheduler')
 				: __('Failed to truncate telemetry table.', 'ai-post-scheduler'),
+			'tables'  => array_filter(array($this->get_table_status('aips_telemetry'))),
 		);
 	}
 
@@ -229,6 +230,19 @@ class AIPS_DB_Prune_Service {
 	 */
 	public function get_table_status_summary() {
 		return $this->prune_repository->get_tables_status();
+	}
+
+	/**
+	 * Retrieve fresh disk space, row count, and overhead statistics for a single plugin table.
+	 *
+	 * Used to report updated status for just the table(s) a mutating action
+	 * touched, instead of re-fetching the full table listing.
+	 *
+	 * @param string $table_name Full or short table name.
+	 * @return array<string, mixed>|null Table status record, or null if invalid.
+	 */
+	public function get_table_status($table_name) {
+		return $this->prune_repository->get_table_status($table_name);
 	}
 
 	/**

@@ -219,6 +219,7 @@ class AIPS_System_Diagnostics_Service {
 				'cleanup_repair',
 				'aips_status_clean_orphaned_embeddings',
 				array($this, 'clean_orphaned_embeddings')
+			),
 			'clear_embeddings_cache' => $this->build_refresh_task_definition(
 				__('Embeddings vector cache cleanup', 'ai-post-scheduler'),
 				__('Clear Embeddings Cache', 'ai-post-scheduler'),
@@ -758,6 +759,7 @@ class AIPS_System_Diagnostics_Service {
 			),
 			'deleted'   => $deleted,
 			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_telemetry'))),
 		);
 	}
 
@@ -789,6 +791,7 @@ class AIPS_System_Diagnostics_Service {
 			),
 			'deleted'   => $deleted,
 			'optimized' => $optimized,
+			'tables'    => array_filter(array($this->db_prune_service->get_table_status('aips_history_log'))),
 		);
 	}
 
@@ -807,6 +810,10 @@ class AIPS_System_Diagnostics_Service {
 				$deleted
 			),
 			'deleted' => $deleted,
+			'tables'  => array_filter(array(
+				$this->db_prune_service->get_table_status('aips_embeddings'),
+				$this->db_prune_service->get_table_status('aips_relationships'),
+			)),
 		);
 	}
 
@@ -824,6 +831,7 @@ class AIPS_System_Diagnostics_Service {
 			'message' => $success
 				? sprintf(__('Table %s optimized successfully.', 'ai-post-scheduler'), esc_html($table_name))
 				: sprintf(__('Failed to optimize table %s.', 'ai-post-scheduler'), esc_html($table_name)),
+			'tables'  => array_filter(array($this->db_prune_service->get_table_status($table_name))),
 		);
 	}
 

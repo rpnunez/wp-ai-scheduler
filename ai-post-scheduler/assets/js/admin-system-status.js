@@ -478,7 +478,9 @@
 							if (AIPS.Utilities && AIPS.Utilities.showToast) {
 								AIPS.Utilities.showToast(msg, 'success');
 							}
-							self.refreshTables(false);
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
 						} else {
 							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Prune failed.');
 							if (AIPS.Utilities && AIPS.Utilities.showToast) {
@@ -535,7 +537,9 @@
 						if (AIPS.Utilities && AIPS.Utilities.showToast) {
 							AIPS.Utilities.showToast(msg, 'success');
 						}
-						self.refreshTables(false);
+						if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+							self.refreshTables(false);
+						}
 					} else {
 						var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Purge failed.');
 						if (AIPS.Utilities && AIPS.Utilities.showToast) {
@@ -582,7 +586,9 @@
 							if (AIPS.Utilities && AIPS.Utilities.showToast) {
 								AIPS.Utilities.showToast(msg, 'success');
 							}
-							self.refreshTables(false);
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
 						} else {
 							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Prune failed.');
 							if (AIPS.Utilities && AIPS.Utilities.showToast) {
@@ -630,7 +636,9 @@
 							if (AIPS.Utilities && AIPS.Utilities.showToast) {
 								AIPS.Utilities.showToast(msg, 'success');
 							}
-							self.refreshTables(false);
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
 						} else {
 							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Cleanup failed.');
 							if (AIPS.Utilities && AIPS.Utilities.showToast) {
@@ -665,35 +673,90 @@
 				return;
 			}
 
-			$btn.prop('disabled', true);
-			if (AIPS.Utilities && AIPS.Utilities.showToast) {
-				AIPS.Utilities.showToast('Optimizing table ' + tableName + '…', 'info');
+			var confirmMsg = l10n.confirmOptimizeTable || ('Run OPTIMIZE TABLE on ' + tableName + '? This can briefly lock the table on large sites.');
+			AIPS.Utilities.confirm(confirmMsg, 'Optimize Table', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+				{ label: 'Yes, optimize', className: 'aips-btn aips-btn-primary', action: function() {
+					$btn.prop('disabled', true);
+					if (AIPS.Utilities && AIPS.Utilities.showToast) {
+						AIPS.Utilities.showToast('Optimizing table ' + tableName + '…', 'info');
+					}
+
+					$.post(ajaxurl, {
+						action: 'aips_status_optimize_table',
+						nonce:  l10n.nonceOptimizeTable || (window.aipsAjax && aipsAjax.nonce) || '',
+						table:  tableName
+					}, function(response) {
+						if (response && response.success) {
+							var msg = (response.data && response.data.message) ? response.data.message : (l10n.tableOptimized || 'Table optimized successfully.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(msg, 'success');
+							}
+							if (!self.patchTablesFromResponse(response.data && response.data.tables)) {
+								self.refreshTables(false);
+							}
+						} else {
+							var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Optimization failed.');
+							if (AIPS.Utilities && AIPS.Utilities.showToast) {
+								AIPS.Utilities.showToast(err, 'error');
+							}
+						}
+						$btn.prop('disabled', false);
+					}).fail(function() {
+						if (AIPS.Utilities && AIPS.Utilities.showToast) {
+							AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
+						}
+						$btn.prop('disabled', false);
+					});
+				}}
+			]);
+		},
+
+		/**
+		 * Patch a single table-status row's cells in the DOM.
+		 *
+		 * @param {Object} t Table status record (short_name, formatted_* fields, overhead).
+		 * @return {void}
+		 */
+		updateTableRow: function(t) {
+			var short = t.short_name || '';
+			var $row = $('#aips-tbl-row-' + short);
+			if (!$row.length) {
+				return;
 			}
 
-			$.post(ajaxurl, {
-				action: 'aips_status_optimize_table',
-				nonce:  l10n.nonceOptimizeTable || (window.aipsAjax && aipsAjax.nonce) || '',
-				table:  tableName
-			}, function(response) {
-				if (response && response.success) {
-					var msg = (response.data && response.data.message) ? response.data.message : (l10n.tableOptimized || 'Table optimized successfully.');
-					if (AIPS.Utilities && AIPS.Utilities.showToast) {
-						AIPS.Utilities.showToast(msg, 'success');
-					}
-					self.refreshTables(false);
-				} else {
-					var err = (response && response.data && response.data.message) ? response.data.message : (l10n.requestFailed || 'Optimization failed.');
-					if (AIPS.Utilities && AIPS.Utilities.showToast) {
-						AIPS.Utilities.showToast(err, 'error');
-					}
-				}
-				$btn.prop('disabled', false);
-			}).fail(function() {
-				if (AIPS.Utilities && AIPS.Utilities.showToast) {
-					AIPS.Utilities.showToast(l10n.requestFailed || 'Request failed.', 'error');
-				}
-				$btn.prop('disabled', false);
+			$row.find('.aips-cell-records').text(t.formatted_records || String(t.records));
+			$row.find('.aips-cell-data').text(t.formatted_data_size || String(t.data_size));
+			$row.find('.aips-cell-index').text(t.formatted_index_size || String(t.index_size));
+			var $ohCell = $row.find('.aips-cell-overhead');
+			var ohText = t.formatted_overhead || String(t.overhead);
+			if (t.overhead > 1048576) {
+				$ohCell.empty().append($('<span>').css({ color: '#d63638', fontWeight: '600' }).text(ohText));
+			} else {
+				$ohCell.text(ohText);
+			}
+		},
+
+		/**
+		 * Patch the DOM rows for tables included in a mutating action's AJAX
+		 * response, avoiding a full extra `aips_status_get_tables` round trip.
+		 *
+		 * Note: the grand-totals row at the top of the matrix is not recomputed
+		 * here (that requires scanning every table) and will lag until the next
+		 * explicit "Refresh Tables" click or page load.
+		 *
+		 * @param {Array|undefined} tables Table status records from the response, if any.
+		 * @return {boolean} True if at least one row was patched from the response.
+		 */
+		patchTablesFromResponse: function(tables) {
+			if (!Array.isArray(tables) || !tables.length) {
+				return false;
+			}
+			var self = this;
+			tables.forEach(function(t) {
+				self.updateTableRow(t);
 			});
+			return true;
 		},
 
 		/**
@@ -703,6 +766,7 @@
 		 * @return {void}
 		 */
 		refreshTables: function(showToastNotice) {
+			var self = this;
 			var l10n = window.aipsSystemStatusL10n || {};
 			var $btn = $('.aips-refresh-tables-btn');
 
@@ -717,20 +781,7 @@
 					var totals = response.data.totals || {};
 
 					tables.forEach(function(t) {
-						var short = t.short_name || '';
-						var $row = $('#aips-tbl-row-' + short);
-						if ($row.length) {
-							$row.find('.aips-cell-records').text(t.formatted_records || String(t.records));
-							$row.find('.aips-cell-data').text(t.formatted_data_size || String(t.data_size));
-							$row.find('.aips-cell-index').text(t.formatted_index_size || String(t.index_size));
-							var $ohCell = $row.find('.aips-cell-overhead');
-							var ohText = t.formatted_overhead || String(t.overhead);
-							if (t.overhead > 1048576) {
-								$ohCell.html('<span style="color:#d63638; font-weight:600;">' + $('<span>').text(ohText).html() + '</span>');
-							} else {
-								$ohCell.text(ohText);
-							}
-						}
+						self.updateTableRow(t);
 					});
 
 					if (totals.formatted_records) {

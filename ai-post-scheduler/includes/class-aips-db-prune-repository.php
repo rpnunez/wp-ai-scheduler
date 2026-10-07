@@ -49,11 +49,29 @@ class AIPS_DB_Prune_Repository {
 	}
 
 	/**
+	 * Transient key used to briefly cache the full table-status listing.
+	 */
+	const TABLES_STATUS_CACHE_KEY = 'aips_db_prune_tables_status';
+
+	/**
 	 * Retrieve disk space, row count, and overhead statistics for all plugin tables.
 	 *
+	 * Cached for a few seconds since this reads information_schema and is polled
+	 * from the System Status page alongside destructive maintenance actions.
+	 *
+	 * @param bool $use_cache Whether to use/populate the short-lived cache. Pass
+	 *                        false to force a fresh read (e.g. right after a
+	 *                        mutating action so the UI reflects the new state).
 	 * @return array<int, array<string, mixed>> Table status records.
 	 */
-	public function get_tables_status() {
+	public function get_tables_status($use_cache = true) {
+		if ($use_cache) {
+			$cached = get_transient(self::TABLES_STATUS_CACHE_KEY);
+			if (is_array($cached)) {
+				return $cached;
+			}
+		}
+
 		$prefix_escaped = $this->wpdb->esc_like($this->wpdb->prefix . 'aips_') . '%';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -106,33 +124,98 @@ class AIPS_DB_Prune_Repository {
 			return $results;
 		}
 
-		$wp_prefix = $this->wpdb->prefix;
 		foreach ($rows as $row) {
-			$full_name  = (string) $row['table_name'];
-			$short_name = str_starts_with($full_name, $wp_prefix) ? substr($full_name, strlen($wp_prefix)) : $full_name;
-			$data_len   = isset($row['data_length']) ? (int) $row['data_length'] : 0;
-			$idx_len    = isset($row['index_length']) ? (int) $row['index_length'] : 0;
-			$overhead   = isset($row['data_free']) ? (int) $row['data_free'] : 0;
-			$records    = isset($row['table_rows']) ? (int) $row['table_rows'] : 0;
+			$results[] = $this->format_table_status_row($row);
+		}
 
-			$results[] = array(
-				'table'                => $full_name,
-				'short_name'           => $short_name,
-				'records'              => $records,
-				'data_size'            => $data_len,
-				'index_size'           => $idx_len,
-				'total_size'           => $data_len + $idx_len,
-				'overhead'             => $overhead,
-				'type'                 => !empty($row['engine']) ? (string) $row['engine'] : 'InnoDB',
-				'formatted_records'    => number_format_i18n($records),
-				'formatted_data_size'  => size_format($data_len, 2),
-				'formatted_index_size' => size_format($idx_len, 2),
-				'formatted_total_size' => size_format($data_len + $idx_len, 2),
-				'formatted_overhead'   => size_format($overhead, 2),
-			);
+		if ($use_cache) {
+			set_transient(self::TABLES_STATUS_CACHE_KEY, $results, 5);
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Retrieve disk space, row count, and overhead statistics for a single whitelisted plugin table.
+	 *
+	 * Always reads fresh (bypasses the listing cache) so callers can report
+	 * up-to-date status immediately after a mutating operation.
+	 *
+	 * @param string $table_name Full or short table name.
+	 * @return array<string, mixed>|null Table status record, or null if the table is not a valid plugin table.
+	 */
+	public function get_table_status($table_name) {
+		$valid_table = $this->validate_plugin_table($table_name);
+		if (!$valid_table) {
+			return null;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$row = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT TABLE_NAME AS `table_name`,
+				        TABLE_ROWS AS `table_rows`,
+				        DATA_LENGTH AS `data_length`,
+				        INDEX_LENGTH AS `index_length`,
+				        DATA_FREE AS `data_free`,
+				        ENGINE AS `engine`
+				 FROM information_schema.TABLES
+				 WHERE TABLE_SCHEMA = DATABASE()
+				   AND TABLE_NAME = %s",
+				$valid_table
+			),
+			ARRAY_A
+		);
+
+		if (!is_array($row)) {
+			return null;
+		}
+
+		return $this->format_table_status_row($row);
+	}
+
+	/**
+	 * Shape a raw information_schema/SHOW TABLE STATUS row into the public table-status format.
+	 *
+	 * @param array<string, mixed> $row Raw row with table_name/table_rows/data_length/index_length/data_free/engine keys.
+	 * @return array<string, mixed>
+	 */
+	private function format_table_status_row(array $row) {
+		$wp_prefix  = $this->wpdb->prefix;
+		$full_name  = (string) $row['table_name'];
+		$short_name = str_starts_with($full_name, $wp_prefix) ? substr($full_name, strlen($wp_prefix)) : $full_name;
+		$data_len   = isset($row['data_length']) ? (int) $row['data_length'] : 0;
+		$idx_len    = isset($row['index_length']) ? (int) $row['index_length'] : 0;
+		$overhead   = isset($row['data_free']) ? (int) $row['data_free'] : 0;
+		$records    = isset($row['table_rows']) ? (int) $row['table_rows'] : 0;
+
+		return array(
+			'table'                => $full_name,
+			'short_name'           => $short_name,
+			'records'              => $records,
+			'data_size'            => $data_len,
+			'index_size'           => $idx_len,
+			'total_size'           => $data_len + $idx_len,
+			'overhead'             => $overhead,
+			'type'                 => !empty($row['engine']) ? (string) $row['engine'] : 'InnoDB',
+			'formatted_records'    => number_format_i18n($records),
+			'formatted_data_size'  => size_format($data_len, 2),
+			'formatted_index_size' => size_format($idx_len, 2),
+			'formatted_total_size' => size_format($data_len + $idx_len, 2),
+			'formatted_overhead'   => size_format($overhead, 2),
+		);
+	}
+
+	/**
+	 * Clear the short-lived table-status listing cache.
+	 *
+	 * Called after any operation that changes row counts or table size so the
+	 * next status read (cached or not) reflects current state.
+	 *
+	 * @return void
+	 */
+	public static function invalidate_tables_status_cache() {
+		delete_transient(self::TABLES_STATUS_CACHE_KEY);
 	}
 
 	/**
@@ -174,6 +257,12 @@ class AIPS_DB_Prune_Repository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$result = $this->wpdb->query("OPTIMIZE TABLE `{$escaped_table}`");
 
+		if (false === $result) {
+			$this->log_db_error('optimize_table: OPTIMIZE TABLE failed', array('table' => $valid_table));
+		}
+
+		self::invalidate_tables_status_cache();
+
 		return false !== $result;
 	}
 
@@ -193,7 +282,25 @@ class AIPS_DB_Prune_Repository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$result = $this->wpdb->query("TRUNCATE TABLE `{$escaped_table}`");
 
+		if (false === $result) {
+			$this->log_db_error('truncate_table: TRUNCATE TABLE failed', array('table' => $valid_table));
+		}
+
+		self::invalidate_tables_status_cache();
+
 		return false !== $result;
+	}
+
+	/**
+	 * Log a database operation failure, including the last wpdb error.
+	 *
+	 * @param string $message Log message describing the failed operation.
+	 * @param array  $context Additional context to attach to the log entry.
+	 * @return void
+	 */
+	private function log_db_error($message, array $context = array()) {
+		$context['db_error'] = $this->wpdb->last_error;
+		(new AIPS_Logger())->error($message, $context);
 	}
 
 	/**
@@ -219,12 +326,23 @@ class AIPS_DB_Prune_Repository {
 				)
 			);
 
-			if (false === $deleted || 0 === (int) $deleted) {
+			if (false === $deleted) {
+				$this->log_db_error('prune_history_logs: failed to delete history log batch', array(
+					'table' => $table,
+				));
+				break;
+			}
+
+			if (0 === (int) $deleted) {
 				break;
 			}
 
 			$total_deleted += (int) $deleted;
 		} while ((int) $deleted === $batch_size);
+
+		if ($total_deleted > 0) {
+			self::invalidate_tables_status_cache();
+		}
 
 		return $total_deleted;
 	}
@@ -275,27 +393,56 @@ class AIPS_DB_Prune_Repository {
 				}
 			}
 
+			$this->wpdb->query('START TRANSACTION');
+
 			// Cascade cleanup: remove orphaned post entries from relationships table if present.
+			$relationships_failed = false;
 			if ($has_relationships && !empty($post_ids)) {
 				$post_ids_in = implode(',', array_unique($post_ids));
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$this->wpdb->query(
+				$relationships_result = $this->wpdb->query(
 					"DELETE FROM `{$table_relationships}`
 					 WHERE (source_type = 'post' AND source_id IN ({$post_ids_in}))
 					    OR (target_type = 'post' AND target_id IN ({$post_ids_in}))"
 				);
+
+				if (false === $relationships_result) {
+					$relationships_failed = true;
+					$this->log_db_error('clean_orphaned_embeddings: failed to delete orphaned relationships', array(
+						'table' => $table_relationships,
+					));
+				}
+			}
+
+			if ($relationships_failed) {
+				$this->wpdb->query('ROLLBACK');
+				break;
 			}
 
 			$ids_in = implode(',', $orphaned_ids);
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$deleted = $this->wpdb->query("DELETE FROM `{$table_embeddings}` WHERE id IN ({$ids_in})");
 
-			if (false === $deleted || 0 === (int) $deleted) {
+			if (false === $deleted) {
+				$this->log_db_error('clean_orphaned_embeddings: failed to delete orphaned embeddings', array(
+					'table' => $table_embeddings,
+				));
+				$this->wpdb->query('ROLLBACK');
+				break;
+			}
+
+			$this->wpdb->query('COMMIT');
+
+			if (0 === (int) $deleted) {
 				break;
 			}
 
 			$total_deleted += (int) $deleted;
 		} while (count($orphaned_rows) === $batch_size);
+
+		if ($total_deleted > 0) {
+			self::invalidate_tables_status_cache();
+		}
 
 		return $total_deleted;
 	}
@@ -334,20 +481,44 @@ class AIPS_DB_Prune_Repository {
 
 			$ids_in = implode(',', array_map('intval', $topic_ids));
 
+			$this->wpdb->query('START TRANSACTION');
+
 			// Cascade cleanup: delete dependent logs in author topic logs first.
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$this->wpdb->query("DELETE FROM `{$table_topic_logs}` WHERE author_topic_id IN ({$ids_in})");
+			$logs_result = $this->wpdb->query("DELETE FROM `{$table_topic_logs}` WHERE author_topic_id IN ({$ids_in})");
+
+			if (false === $logs_result) {
+				$this->log_db_error('clean_expired_topics: failed to delete dependent author topic logs', array(
+					'table' => $table_topic_logs,
+				));
+				$this->wpdb->query('ROLLBACK');
+				break;
+			}
 
 			// Delete the parent topic rows.
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$deleted = $this->wpdb->query("DELETE FROM `{$table_topics}` WHERE id IN ({$ids_in})");
 
-			if (false === $deleted || 0 === (int) $deleted) {
+			if (false === $deleted) {
+				$this->log_db_error('clean_expired_topics: failed to delete expired topics', array(
+					'table' => $table_topics,
+				));
+				$this->wpdb->query('ROLLBACK');
+				break;
+			}
+
+			$this->wpdb->query('COMMIT');
+
+			if (0 === (int) $deleted) {
 				break;
 			}
 
 			$total_deleted += (int) $deleted;
 		} while (count($topic_ids) === $batch_size);
+
+		if ($total_deleted > 0) {
+			self::invalidate_tables_status_cache();
+		}
 
 		return $total_deleted;
 	}

@@ -383,12 +383,24 @@ class AIPS_Telemetry_Repository {
 				)
 			);
 
-			if (false === $deleted || 0 === (int) $deleted) {
+			if (false === $deleted) {
+				(new AIPS_Logger())->error('prune_older_than: failed to delete telemetry batch', array(
+					'table'    => $this->table,
+					'db_error' => $this->wpdb->last_error,
+				));
+				break;
+			}
+
+			if (0 === (int) $deleted) {
 				break;
 			}
 
 			$total_deleted += (int) $deleted;
 		} while ((int) $deleted === $batch_size);
+
+		if ($total_deleted > 0 && class_exists('AIPS_DB_Prune_Repository')) {
+			AIPS_DB_Prune_Repository::invalidate_tables_status_cache();
+		}
 
 		return $total_deleted;
 	}
@@ -401,6 +413,18 @@ class AIPS_Telemetry_Repository {
 	public function truncate() {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$result = $this->wpdb->query("TRUNCATE TABLE {$this->table}");
+
+		if (false === $result) {
+			(new AIPS_Logger())->error('truncate: TRUNCATE TABLE failed', array(
+				'table'    => $this->table,
+				'db_error' => $this->wpdb->last_error,
+			));
+		}
+
+		if (class_exists('AIPS_DB_Prune_Repository')) {
+			AIPS_DB_Prune_Repository::invalidate_tables_status_cache();
+		}
+
 		return false !== $result;
 	}
 
@@ -412,6 +436,18 @@ class AIPS_Telemetry_Repository {
 	public function optimize() {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$result = $this->wpdb->query("OPTIMIZE TABLE {$this->table}");
+
+		if (false === $result) {
+			(new AIPS_Logger())->error('optimize: OPTIMIZE TABLE failed', array(
+				'table'    => $this->table,
+				'db_error' => $this->wpdb->last_error,
+			));
+		}
+
+		if (class_exists('AIPS_DB_Prune_Repository')) {
+			AIPS_DB_Prune_Repository::invalidate_tables_status_cache();
+		}
+
 		return false !== $result;
 	}
 }
