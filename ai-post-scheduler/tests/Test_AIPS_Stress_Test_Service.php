@@ -245,6 +245,21 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_page_cta', true));
     }
 
+    public function test_meta_fields_single_generates_private_stub_post() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        $result = $service->run('meta_fields_single');
+
+        $this->assertSame('passed', $result['status'], isset($result['error']) ? (string) $result['error'] : '');
+        $this->assertNotEmpty($result['artifacts']['post_ids']);
+        $post_id = $result['artifacts']['post_ids'][0];
+
+        $this->assertSame('post', get_post_type($post_id));
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
+        $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_summary', true));
+    }
+
     public function test_stress_test_cases_create_private_data_and_never_publish() {
         $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
 
@@ -265,6 +280,25 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $author_post_id = $author_result['plugin_value']['post_id'];
         $this->assertSame('private', get_post_status($author_post_id));
         $this->assertNotSame('publish', get_post_status($author_post_id));
+
+        // Verify filter cannot override post_status to publish.
+        $override_callback = function ($tpl) {
+            $tpl->post_status = 'publish';
+            return $tpl;
+        };
+        add_filter('aips_stress_test_template', $override_callback);
+
+        $filter_result = $service->run('save_post');
+        remove_filter('aips_stress_test_template', $override_callback);
+
+        $this->assertSame('passed', $filter_result['status']);
+        $filter_post_id = $filter_result['plugin_value']['post_id'];
+        $this->assertSame('private', get_post_status($filter_post_id));
+        $this->assertNotSame('publish', get_post_status($filter_post_id));
+
+        // Verify cleanup properly deletes the private fixtures.
+        $cleanup_result = $service->cleanup_test_data();
+        $this->assertGreaterThanOrEqual(4, $cleanup_result['posts']);
     }
 
     public function test_save_run_to_history_and_diff() {

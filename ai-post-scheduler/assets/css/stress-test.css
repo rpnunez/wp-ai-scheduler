@@ -275,8 +275,6 @@
  * Case table
  * -------------------------------------------------------------------- */
 
-.aips-stress-table .aips-stress-col-check  { width: 36px; text-align: center; }
-.aips-stress-table .aips-stress-col-check input[type="checkbox"] { margin: 2px 0 0; cursor: pointer; }
 .aips-stress-table .aips-stress-col-status { width: 40px; }
 .aips-stress-table .aips-stress-col-result { width: 30%; }
 .aips-stress-table .aips-stress-col-time   { width: 90px; text-align: right; }
@@ -288,7 +286,9 @@
 	gap: 4px;
 }
 
-#aips-stress-stop-all[hidden] {
+/* The toolbar buttons are shown/hidden purely via the `hidden` attribute. */
+#aips-stress-stop-all[hidden],
+#aips-stress-run-selected[hidden] {
 	display: none !important;
 }
 

@@ -58,7 +58,7 @@ foreach ($cases as $case) {
 						<span class="dashicons dashicons-controls-play"></span>
 						<span class="aips-stress-run-label"><?php esc_html_e('Run Selected', 'ai-post-scheduler'); ?></span>
 					</button>
-					<button type="button" class="aips-btn aips-btn-danger" id="aips-stress-stop-all" style="display:none;" hidden>
+					<button type="button" class="aips-btn aips-btn-danger" id="aips-stress-stop-all" title="<?php esc_attr_e('Stops the queue immediately. A case already running on the server may still finish and create private test data, which Delete Data removes.', 'ai-post-scheduler'); ?>" hidden>
 						<span class="dashicons dashicons-controls-pause"></span>
 						<?php esc_html_e('Stop All Tests', 'ai-post-scheduler'); ?>
 					</button>
@@ -152,7 +152,7 @@ foreach ($cases as $case) {
 			<table class="aips-table aips-stress-table">
 				<thead>
 					<tr>
-						<th class="aips-stress-col-checkbox aips-stress-col-check">
+						<th class="aips-stress-col-checkbox">
 							<input type="checkbox" id="aips-stress-toggle-all" class="aips-stress-toggle-all" checked aria-label="<?php esc_attr_e('Select all cases', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Toggle All', 'ai-post-scheduler'); ?>" />
 						</th>
 						<th class="aips-stress-col-status"><span class="screen-reader-text"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></span></th>
@@ -165,8 +165,8 @@ foreach ($cases as $case) {
 				<tbody>
 					<?php foreach ($cases as $case) : ?>
 						<tr class="aips-stress-row" data-case="<?php echo esc_attr($case['id']); ?>" data-status="idle">
-							<td class="aips-stress-col-checkbox aips-stress-col-check">
-								<input type="checkbox" class="aips-stress-case-checkbox aips-stress-case-select" value="<?php echo esc_attr($case['id']); ?>" aria-label="<?php echo esc_attr(sprintf(__('Select %s', 'ai-post-scheduler'), $case['label'])); ?>" checked />
+							<td class="aips-stress-col-checkbox">
+								<input type="checkbox" class="aips-stress-case-checkbox" value="<?php echo esc_attr($case['id']); ?>" aria-label="<?php echo esc_attr(sprintf(/* translators: %s: test case label */ __('Select %s', 'ai-post-scheduler'), $case['label'])); ?>" checked />
 							</td>
 							<td class="aips-stress-col-status">
 								<span class="aips-stress-indicator" aria-hidden="true"></span>

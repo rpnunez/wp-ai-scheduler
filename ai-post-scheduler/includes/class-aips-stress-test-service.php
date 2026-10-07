@@ -863,11 +863,7 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $attachment_id->get_error_message(), 'summary' => $attachment_id->get_error_message(), 'ai_value' => $raw);
         }
 
-        wp_update_post(array(
-            'ID'          => $attachment_id,
-            'post_status' => 'private',
-        ));
-
+        $this->enforce_private_status($attachment_id);
         update_post_meta($attachment_id, self::TEST_ATTACHMENT_META, 1);
 
         $url = wp_get_attachment_url($attachment_id);
@@ -876,7 +872,7 @@ class AIPS_Stress_Test_Service {
             'status'       => 'passed',
             'summary'      => sprintf(
                 /* translators: %d: attachment ID */
-                __('Image uploaded as attachment #%d (private).', 'ai-post-scheduler'),
+                __('Image uploaded as attachment #%d.', 'ai-post-scheduler'),
                 $attachment_id
             ),
             'ai_value'     => $raw,
@@ -1127,11 +1123,6 @@ class AIPS_Stress_Test_Service {
         }
         wp_set_post_tags($post_id, $tags, false);
 
-        wp_update_post(array(
-            'ID'          => $post_id,
-            'post_status' => 'private',
-        ));
-
         $saved_cats = wp_get_post_categories($post_id, array('fields' => 'names'));
         $saved_tags = wp_get_post_tags($post_id, array('fields' => 'names'));
 
@@ -1147,6 +1138,7 @@ class AIPS_Stress_Test_Service {
             'ai_value'     => $this->last_ai_response_text(),
             'plugin_value' => array(
                 'post_id'    => (int) $post_id,
+                'status'     => get_post_status($post_id),
                 'categories' => $saved_cats,
                 'tags'       => $saved_tags,
             ),
@@ -1188,11 +1180,15 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
         }
 
-        wp_update_post(array(
-            'ID'          => $post_id,
-            'post_status' => 'private',
-        ));
+        $this->enforce_private_status($post_id);
         update_post_meta($post_id, self::TEST_POST_META, 1);
+
+        $thumb_id = get_post_thumbnail_id($post_id);
+        if ($thumb_id) {
+            $this->enforce_private_status($thumb_id);
+            update_post_meta($thumb_id, self::TEST_ATTACHMENT_META, 1);
+        }
+
         $post = get_post($post_id);
 
         return array(
@@ -1638,6 +1634,7 @@ class AIPS_Stress_Test_Service {
         $result['plugin_value'] = array(
             'post_id'   => (int) $post_id,
             'post_type' => $post ? $post->post_type : self::TEST_POST_TYPE,
+            'status'    => $post ? $post->post_status : 'private',
             'fields'    => isset($result['plugin_value']) ? $result['plugin_value'] : array(),
         );
         $result['summary'] = sprintf(
@@ -1731,11 +1728,7 @@ class AIPS_Stress_Test_Service {
             return $post_id;
         }
 
-        wp_update_post(array(
-            'ID'          => $post_id,
-            'post_status' => 'private',
-        ));
-
+        $this->enforce_private_status($post_id);
         update_post_meta($post_id, self::TEST_POST_META, 1);
 
         return $post_id;
@@ -1970,14 +1963,44 @@ class AIPS_Stress_Test_Service {
         $post_id = $this->get_generator()->generate_post($this->build_context($index, $post_type));
 
         if (!is_wp_error($post_id)) {
-            wp_update_post(array(
-                'ID'          => $post_id,
-                'post_status' => 'private',
-            ));
+            $this->enforce_private_status($post_id);
             update_post_meta($post_id, self::TEST_POST_META, 1);
+
+            $thumb_id = get_post_thumbnail_id($post_id);
+            if ($thumb_id) {
+                $this->enforce_private_status($thumb_id);
+                update_post_meta($thumb_id, self::TEST_ATTACHMENT_META, 1);
+            }
         }
 
         return $post_id;
+    }
+
+    /**
+     * Enforce private post status on a post or attachment fixture.
+     *
+     * @param int|WP_Error $post_id Post ID or WP_Error.
+     * @return void
+     */
+    private function enforce_private_status($post_id) {
+        if (!$post_id || is_wp_error($post_id)) {
+            return;
+        }
+
+        $post_id = (int) $post_id;
+        if (get_post_status($post_id) !== 'private') {
+            $updated = wp_update_post(array(
+                'ID'          => $post_id,
+                'post_status' => 'private',
+            ), true);
+
+            if (is_wp_error($updated)) {
+                $this->logger->log(
+                    sprintf('Failed to set private status on stress test fixture #%d: %s', $post_id, $updated->get_error_message()),
+                    'warning'
+                );
+            }
+        }
     }
 
     /**
