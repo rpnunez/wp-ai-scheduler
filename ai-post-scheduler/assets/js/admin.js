@@ -20,20 +20,29 @@
     ];
 
     /**
-     * Decode HTML entities (e.g. "&quot;") in a string that was escaped server-side.
+     * Decode the fixed set of HTML entities produced by WordPress's esc_html()
+     * (&amp; &lt; &gt; &quot; &#039;) back into literal characters.
      *
-     * History log messages are run through esc_html() before being sent over
+     * History log messages are escaped with esc_html() before being sent over
      * AJAX; inserting them with jQuery's .text() displays the raw "&quot;"
-     * markup instead of the intended character, so callers decode first and
-     * then insert as text (never as HTML) to stay safe.
+     * markup instead of the intended character. This decodes via a plain
+     * string replace (never innerHTML/DOM parsing) so the result stays safe
+     * to insert as text. &amp; is decoded last so a literal "&amp;lt;" in the
+     * source doesn't get mistaken for an encoded "<".
      *
-     * @param {string} html - Entity-escaped string.
+     * @param {string} str - Entity-escaped string.
      * @return {string} Decoded plain text.
      */
-    function decodeHtmlEntities(html) {
-        var $textarea = document.createElement('textarea');
-        $textarea.innerHTML = html === null || html === undefined ? '' : String(html);
-        return $textarea.value;
+    function decodeHtmlEntities(str) {
+        if (str === null || str === undefined) {
+            return '';
+        }
+        return String(str)
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#0?39;/g, '\'')
+            .replace(/&amp;/g, '&');
     }
 
     Object.assign(AIPS, {

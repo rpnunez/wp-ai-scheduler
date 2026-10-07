@@ -44,6 +44,7 @@ final class AIPS_History_Event_View {
 		}
 
 		$input   = isset($details['input']) && is_array($details['input']) ? $details['input'] : array();
+		$output  = isset($details['output']) && is_array($details['output']) ? $details['output'] : array();
 		$context = isset($details['context']) && is_array($details['context']) ? $details['context'] : array();
 
 		// Prefer indexed columns; fall back to the serialized input block.
@@ -85,28 +86,32 @@ final class AIPS_History_Event_View {
 			'context'           => $context,
 			// Posts referenced by this event (e.g. generated via a schedule run),
 			// resolved so consumers can render clickable titles + publish status
-			// without re-querying the context blob themselves.
-			'posts'             => self::resolve_context_posts($context),
+			// without re-querying the context/output blobs themselves.
+			'posts'             => self::resolve_context_posts($context, $output),
 		);
 	}
 
 	/**
-	 * Resolve the post(s) referenced by a log entry's context into a display-ready list.
+	 * Resolve the post(s) referenced by a log entry into a display-ready list.
 	 *
-	 * `context.post_id` may be a single post ID or an array of post IDs
-	 * (bulk/batch generation records one event covering several posts).
-	 * Posts that no longer exist (deleted since the event was recorded) are
-	 * silently skipped.
+	 * `post_id` may live under `details.context` (schedule-run events) or
+	 * `details.output` (author topic/post generation events), and may be a
+	 * single post ID or an array of post IDs (bulk/batch generation records
+	 * one event covering several posts). Posts that no longer exist (deleted
+	 * since the event was recorded) are silently skipped.
 	 *
 	 * @param array $context Decoded `details.context` block from the log row.
-	 * @return array List of {id, title, status, status_label, edit_url, view_url, date_display}.
+	 * @param array $output  Decoded `details.output` block from the log row.
+	 * @return array List of {id, title, status, status_label, edit_url, date_display}.
 	 */
-	private static function resolve_context_posts($context) {
-		if (empty($context['post_id'])) {
+	private static function resolve_context_posts($context, $output = array()) {
+		$post_id_source = !empty($context['post_id']) ? $context['post_id'] : (!empty($output['post_id']) ? $output['post_id'] : null);
+
+		if (empty($post_id_source)) {
 			return array();
 		}
 
-		$ids = is_array($context['post_id']) ? $context['post_id'] : array($context['post_id']);
+		$ids = is_array($post_id_source) ? $post_id_source : array($post_id_source);
 		$posts = array();
 
 		foreach ($ids as $post_id) {
@@ -128,8 +133,10 @@ final class AIPS_History_Event_View {
 				'title'        => esc_html($title !== '' ? $title : __('(no title)', 'ai-post-scheduler')),
 				'status'       => esc_attr($post->post_status),
 				'status_label' => esc_html(self::post_status_label($post->post_status)),
-				'edit_url'     => esc_url((string) get_edit_post_link($post_id, 'raw')),
-				'view_url'     => esc_url((string) get_permalink($post_id)),
+				// esc_url_raw(), not esc_url(): this URL is consumed by JS and set
+				// as a DOM attribute directly, not printed into server-rendered
+				// HTML, so it must not get the &amp;/&#038; "display" encoding.
+				'edit_url'     => esc_url_raw((string) get_edit_post_link($post_id, 'raw')),
 				'date_display' => $post_timestamp ? esc_html(AIPS_DateTime::fromTimestamp((int) $post_timestamp)->toDisplay()) : '',
 			);
 		}
