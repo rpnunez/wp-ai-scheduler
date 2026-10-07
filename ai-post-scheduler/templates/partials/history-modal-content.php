@@ -37,6 +37,14 @@ $type_labels = array(
 ?>
 
 <div class="aips-history-log-renderer aips-json-viewer-enabled">
+	<div class="aips-history-modal-toolbar">
+		<div class="aips-history-modal-heading">
+			<h4 class="aips-history-modal-title"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></h4>
+			<p class="aips-history-modal-subtitle"><?php esc_html_e('Human-readable context first, then the full technical log trail below.', 'ai-post-scheduler'); ?></p>
+		</div>
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic" data-diagnostic="<?php echo esc_attr($container['diagnostic_text']); ?>"><?php esc_html_e('Copy diagnostic', 'ai-post-scheduler'); ?></button>
+	</div>
+
 	<nav class="aips-history-detail-tabs" role="tablist" aria-label="<?php esc_attr_e('History detail sections', 'ai-post-scheduler'); ?>">
 		<button type="button" class="aips-history-detail-tab is-active" role="tab" aria-selected="true" data-tab="overview"><?php esc_html_e('Overview', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="timeline"><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></button>
@@ -45,10 +53,6 @@ $type_labels = array(
 	</nav>
 
 	<section class="aips-history-detail-panel is-active" data-panel="overview" role="tabpanel">
-		<div class="aips-history-overview-header" style="margin-bottom: 16px;">
-			<span class="aips-badge <?php echo esc_attr($container['status_class']); ?> aips-history-status-chip"><?php echo esc_html(strtoupper($container['status'])); ?></span>
-		</div>
-
 		<div class="aips-history-modal-summary">
 			<div class="aips-history-summary-panel">
 				<div class="aips-history-summary-main">
@@ -88,14 +92,6 @@ $type_labels = array(
 		<?php if (!empty($container['suggested_action'])): ?>
 			<div class="aips-history-diagnostic-callout"><strong><?php esc_html_e('Suggested next action', 'ai-post-scheduler'); ?></strong><p><?php echo esc_html($container['suggested_action']); ?></p></div>
 		<?php endif; ?>
-
-		<div class="aips-history-modal-toolbar" style="margin-top: 24px;">
-			<div class="aips-history-modal-heading">
-				<h4 class="aips-history-modal-title"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></h4>
-				<p class="aips-history-modal-subtitle"><?php esc_html_e('Human-readable context first, then the full technical log trail below.', 'ai-post-scheduler'); ?></p>
-			</div>
-			<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic" data-diagnostic="<?php echo esc_attr($container['diagnostic_text']); ?>"><?php esc_html_e('Copy diagnostic', 'ai-post-scheduler'); ?></button>
-		</div>
 	</section>
 
 	<section class="aips-history-detail-panel" data-panel="timeline" role="tabpanel" hidden>

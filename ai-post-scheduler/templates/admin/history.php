@@ -249,6 +249,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                 <div id="aips-history-logs-modal-actions" class="aips-history-modal-header-links"></div>
             </div>
             <div class="aips-history-modal-header-side">
+                <div id="aips-history-logs-modal-status"></div>
                 <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
         </div>

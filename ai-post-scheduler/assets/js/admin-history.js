@@ -390,7 +390,7 @@
 					self.updateModalHeader($modal, response.data.container || {}, {
 						titleSelector: '#aips-history-modal-title',
 						actionsSelector: '#aips-history-modal-actions',
-						statusSelector: '',
+						statusSelector: '#aips-history-modal-status',
 						defaultTitle: l10n.historyDetailsTitle || 'History Details'
 					});
 					$modal.find('#aips-history-modal-content').html(response.data.modal_html || '');
@@ -418,7 +418,7 @@
 			this.resetModalHeader($modal, {
 				titleSelector: '#aips-history-modal-title',
 				actionsSelector: '#aips-history-modal-actions',
-				statusSelector: '',
+				statusSelector: '#aips-history-modal-status',
 				defaultTitle: l10n.historyDetailsTitle || 'History Details'
 			});
 			$modal.find('#aips-history-modal-content').html(loadingHtml);
@@ -796,7 +796,7 @@
 			AIPS.HistoryModalShared.resetModalHeader($modal, {
 				titleSelector: '#aips-history-logs-modal-title',
 				actionsSelector: '#aips-history-logs-modal-actions',
-				statusSelector: '',
+				statusSelector: '#aips-history-logs-modal-status',
 				defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
 			});
 			$content.html(T.render('aips-tmpl-history-loading-msg', {
@@ -828,7 +828,7 @@
 					AIPS.HistoryModalShared.updateModalHeader($modal, container, {
 						titleSelector: '#aips-history-logs-modal-title',
 						actionsSelector: '#aips-history-logs-modal-actions',
-						statusSelector: '',
+						statusSelector: '#aips-history-logs-modal-status',
 						defaultTitle: aipsHistoryL10n.historyDetailsTitle || 'History Details'
 					});
 					$content.html(modalHtml);
