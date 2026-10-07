@@ -14,8 +14,9 @@
  * That pairing is the point of the page: a case can pass at the transport level
  * and still be wrong after normalization, and the two columns make that visible.
  *
- * Cases that create posts mark them with the _aips_stress_test meta key so they
- * can be listed and removed afterwards; nothing here writes to a published post.
+ * Cases that create posts mark them with the _aips_stress_test meta key and set
+ * their post status to private so they can be listed and removed afterwards;
+ * nothing here writes to a published post.
  *
  * @package AI_Post_Scheduler
  * @since 3.2.0
@@ -282,21 +283,21 @@ class AIPS_Stress_Test_Service {
                 array(
                     'id'          => 'save_post',
                     'label'       => __('Generate & Save a Post', 'ai-post-scheduler'),
-                    'description' => __('Runs the full pipeline and saves one draft post.', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline and saves one private post.', 'ai-post-scheduler'),
                     'group'       => 'pipeline',
                     'creates'     => true,
                 ),
                 array(
                     'id'          => 'save_page',
                     'label'       => __('Generate & Save a Page', 'ai-post-scheduler'),
-                    'description' => __('Runs the full pipeline to generate and save one draft WordPress Page.', 'ai-post-scheduler'),
+                    'description' => __('Runs the full pipeline to generate and save one private WordPress Page.', 'ai-post-scheduler'),
                     'group'       => 'pipeline',
                     'creates'     => true,
                 ),
                 array(
                     'id'          => 'post_with_taxonomies',
                     'label'       => __('Generate Post with Categories & Tags', 'ai-post-scheduler'),
-                    'description' => __('Generates a draft post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
+                    'description' => __('Generates a private post and auto-extracts/assigns WordPress category and tag taxonomy terms.', 'ai-post-scheduler'),
                     'group'       => 'pipeline',
                     'creates'     => true,
                 ),
@@ -324,7 +325,7 @@ class AIPS_Stress_Test_Service {
                 array(
                     'id'          => 'meta_fields_single',
                     'label'       => __('Meta Field: Single Field', 'ai-post-scheduler'),
-                    'description' => __('Generates one native WordPress custom-field value through the Integration engine and writes it to a draft post, then reads it back.', 'ai-post-scheduler'),
+                    'description' => __('Generates one native WordPress custom-field value through the Integration engine and writes it to a private post, then reads it back.', 'ai-post-scheduler'),
                     'group'       => 'integrations',
                     'creates'     => true,
                 ),
@@ -862,6 +863,11 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $attachment_id->get_error_message(), 'summary' => $attachment_id->get_error_message(), 'ai_value' => $raw);
         }
 
+        wp_update_post(array(
+            'ID'          => $attachment_id,
+            'post_status' => 'private',
+        ));
+
         update_post_meta($attachment_id, self::TEST_ATTACHMENT_META, 1);
 
         $url = wp_get_attachment_url($attachment_id);
@@ -870,13 +876,14 @@ class AIPS_Stress_Test_Service {
             'status'       => 'passed',
             'summary'      => sprintf(
                 /* translators: %d: attachment ID */
-                __('Image uploaded as attachment #%d.', 'ai-post-scheduler'),
+                __('Image uploaded as attachment #%d (private).', 'ai-post-scheduler'),
                 $attachment_id
             ),
             'ai_value'     => $raw,
             'plugin_value' => array(
                 'attachment_id' => (int) $attachment_id,
                 'url'           => $url,
+                'status'        => get_post_status($attachment_id),
             ),
             'artifacts'    => array(
                 'attachment_ids' => array((int) $attachment_id),
@@ -989,7 +996,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Full pipeline through to a saved draft post.
+     * Full pipeline through to a saved private post.
      *
      * @return array<string, mixed>
      */
@@ -1006,7 +1013,7 @@ class AIPS_Stress_Test_Service {
             'status'       => 'passed',
             'summary'      => sprintf(
                 /* translators: %d: post ID */
-                __('Draft post #%d created.', 'ai-post-scheduler'),
+                __('Private post #%d created.', 'ai-post-scheduler'),
                 $post_id
             ),
             'ai_value'     => $this->first_ai_response_text(),
@@ -1024,7 +1031,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Full pipeline through to a saved draft Page.
+     * Full pipeline through to a saved private Page.
      *
      * @return array<string, mixed>
      */
@@ -1057,7 +1064,7 @@ class AIPS_Stress_Test_Service {
             'status'       => 'passed',
             'summary'      => sprintf(
                 /* translators: %d: page ID */
-                __('Draft Page #%d created.', 'ai-post-scheduler'),
+                __('Private Page #%d created.', 'ai-post-scheduler'),
                 $post_id
             ),
             'ai_value'     => $this->first_ai_response_text(),
@@ -1120,6 +1127,11 @@ class AIPS_Stress_Test_Service {
         }
         wp_set_post_tags($post_id, $tags, false);
 
+        wp_update_post(array(
+            'ID'          => $post_id,
+            'post_status' => 'private',
+        ));
+
         $saved_cats = wp_get_post_categories($post_id, array('fields' => 'names'));
         $saved_tags = wp_get_post_tags($post_id, array('fields' => 'names'));
 
@@ -1158,6 +1170,7 @@ class AIPS_Stress_Test_Service {
             'voice_tone'    => 'Authoritative yet engaging',
             'voice_id'      => null,
             'author_id'     => get_current_user_id() ?: 1,
+            'post_status'   => 'private',
         );
 
         $topic_obj = (object) array(
@@ -1175,6 +1188,10 @@ class AIPS_Stress_Test_Service {
             return array('status' => 'failed', 'error' => $post_id->get_error_message(), 'summary' => $post_id->get_error_message());
         }
 
+        wp_update_post(array(
+            'ID'          => $post_id,
+            'post_status' => 'private',
+        ));
         update_post_meta($post_id, self::TEST_POST_META, 1);
         $post = get_post($post_id);
 
@@ -1192,6 +1209,7 @@ class AIPS_Stress_Test_Service {
                 'author_name'  => $author_persona->name,
                 'title'        => $post ? $post->post_title : '',
                 'excerpt'      => $post ? $post->post_excerpt : '',
+                'status'       => $post ? $post->post_status : '',
                 'content_len'  => $post ? mb_strlen($post->post_content) : 0,
             ),
             'artifacts'    => array(
@@ -1693,7 +1711,7 @@ class AIPS_Stress_Test_Service {
     }
 
     /**
-     * Create a lightweight draft post (no AI) to serve as a write target for
+     * Create a lightweight private post (no AI) to serve as a write target for
      * the integration cases, seeded with the sample article so field prompts
      * have real context to summarize.
      *
@@ -1703,7 +1721,7 @@ class AIPS_Stress_Test_Service {
     private function create_stub_post($post_type = 'post') {
         $post_id = wp_insert_post(array(
             'post_type'    => $post_type,
-            'post_status'  => 'draft',
+            'post_status'  => 'private',
             'post_title'   => __('AIPS Stress Test — Custom Fields', 'ai-post-scheduler'),
             'post_content' => $this->sample_article(),
             'post_author'  => get_current_user_id(),
@@ -1712,6 +1730,11 @@ class AIPS_Stress_Test_Service {
         if (is_wp_error($post_id)) {
             return $post_id;
         }
+
+        wp_update_post(array(
+            'ID'          => $post_id,
+            'post_status' => 'private',
+        ));
 
         update_post_meta($post_id, self::TEST_POST_META, 1);
 
@@ -1910,7 +1933,7 @@ class AIPS_Stress_Test_Service {
             'title_prompt'            => __('Write a clear, specific title. No colons, no clickbait.', 'ai-post-scheduler'),
             'image_prompt'            => '',
             'generate_featured_image' => false,
-            'post_status'             => 'draft',
+            'post_status'             => 'private',
             'post_type'               => $post_type,
             'post_category'           => '',
             'post_tags'               => '',
@@ -1930,6 +1953,9 @@ class AIPS_Stress_Test_Service {
          */
         $template = apply_filters('aips_stress_test_template', $template, $topic);
 
+        // Always force post_status to 'private' so stress test data is never published.
+        $template->post_status = 'private';
+
         return new AIPS_Template_Context($template, null, $topic, 'manual');
     }
 
@@ -1944,6 +1970,10 @@ class AIPS_Stress_Test_Service {
         $post_id = $this->get_generator()->generate_post($this->build_context($index, $post_type));
 
         if (!is_wp_error($post_id)) {
+            wp_update_post(array(
+                'ID'          => $post_id,
+                'post_status' => 'private',
+            ));
             update_post_meta($post_id, self::TEST_POST_META, 1);
         }
 
