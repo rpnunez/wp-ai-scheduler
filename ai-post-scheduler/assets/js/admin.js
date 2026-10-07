@@ -19,6 +19,23 @@
         { step: 1, selector: '#sw_schedule_template', messageKey: 'scheduleTemplateRequired' }
     ];
 
+    /**
+     * Decode HTML entities (e.g. "&quot;") in a string that was escaped server-side.
+     *
+     * History log messages are run through esc_html() before being sent over
+     * AJAX; inserting them with jQuery's .text() displays the raw "&quot;"
+     * markup instead of the intended character, so callers decode first and
+     * then insert as text (never as HTML) to stay safe.
+     *
+     * @param {string} html - Entity-escaped string.
+     * @return {string} Decoded plain text.
+     */
+    function decodeHtmlEntities(html) {
+        var $textarea = document.createElement('textarea');
+        $textarea.innerHTML = html === null || html === undefined ? '' : String(html);
+        return $textarea.value;
+    }
+
     Object.assign(AIPS, {
         generatedPostPreviewMap: {},
 
@@ -3542,7 +3559,7 @@
             var $empty   = $modal.find('#aips-schedule-history-empty');
             var $list    = $modal.find('#aips-schedule-history-list');
 
-            $title.text('Recent History: ' + name);
+            $title.text(name + ' ' + (aipsScheduleL10n.recentHistoryTitle || 'Recent History'));
             $loading.show();
             $empty.hide();
             $list.hide().empty();
@@ -3603,11 +3620,20 @@
                         var $icon    = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
                                            .append($('<span>', { 'class': 'dashicons ' + info.icon }));
                         var $content = $('<div>', { 'class': 'aips-timeline-content' });
-                        var $msg     = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
-                        var $time    = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
-                                           .text(entry.timestamp);
+                        var $msg     = $('<p>', { 'class': 'aips-timeline-message' })
+                                           .text(decodeHtmlEntities(entry.message || entry.log_type));
+                        var $time    = $('<time>', {
+                            'class': 'aips-timeline-timestamp',
+                            'datetime': entry.timestamp_iso || ''
+                        }).text(entry.timestamp_display || entry.timestamp || '');
 
                         $content.append($msg).append($time);
+
+                        var posts = Array.isArray(entry.posts) ? entry.posts : [];
+                        if (posts.length) {
+                            $content.append(AIPS.buildHistoryPostsList(posts));
+                        }
+
                         $item.append($icon).append($content);
                         $list.append($item);
                     });
@@ -3620,6 +3646,76 @@
                     $modal.hide();
                 }
             });
+        },
+
+        /**
+         * Build the "posts generated" block for a schedule history entry.
+         *
+         * Renders each post as a clickable title (opens the editor) with a
+         * publish-status badge and generation date. When more than one post
+         * was generated, only the first is shown by default with a toggle to
+         * expand the rest.
+         *
+         * @param {Array} posts - Post summaries from the AJAX response: {id, title, status, status_label, edit_url, date_display}.
+         * @return {jQuery} Wrapper element containing the posts list.
+         */
+        buildHistoryPostsList: function(posts) {
+            var $wrap = $('<div>', { 'class': 'aips-timeline-posts' });
+            var $list = $('<ul>', { 'class': 'aips-timeline-posts-list' });
+
+            posts.forEach(function(post, index) {
+                var $post  = $('<li>', { 'class': 'aips-timeline-post-item' });
+                var title  = post.title || ('#' + post.id);
+                var statusCls = post.status === 'publish' ? 'aips-badge-success'
+                    : (post.status === 'draft' ? 'aips-badge-neutral' : 'aips-badge-info');
+
+                if (post.edit_url) {
+                    $post.append($('<a>', {
+                        href: post.edit_url,
+                        target: '_blank',
+                        rel: 'noopener noreferrer',
+                        'class': 'aips-timeline-post-title'
+                    }).text(title));
+                } else {
+                    $post.append($('<span>', { 'class': 'aips-timeline-post-title' }).text(title));
+                }
+
+                if (post.status_label) {
+                    $post.append($('<span>', { 'class': 'aips-badge ' + statusCls }).text(post.status_label));
+                }
+
+                if (post.date_display) {
+                    $post.append($('<span>', { 'class': 'aips-timeline-post-date' }).text(post.date_display));
+                }
+
+                if (index > 0) {
+                    $post.hide();
+                }
+
+                $list.append($post);
+            });
+
+            $wrap.append($list);
+
+            if (posts.length > 1) {
+                var moreLabel = (aipsScheduleL10n.andNMorePosts || 'and %d more').replace('%d', posts.length - 1);
+                var lessLabel = aipsScheduleL10n.showLess || 'Show less';
+                var $toggle = $('<button>', {
+                    type: 'button',
+                    'class': 'aips-timeline-posts-toggle aips-link-button'
+                }).text(moreLabel);
+
+                $toggle.on('click', function() {
+                    var $rest = $list.find('li').slice(1);
+                    var expanded = $rest.is(':visible');
+                    $rest.toggle(!expanded);
+                    $toggle.text(expanded ? moreLabel : lessLabel);
+                });
+
+                $wrap.append($toggle);
+            }
+
+            return $wrap;
         },
 
         /**

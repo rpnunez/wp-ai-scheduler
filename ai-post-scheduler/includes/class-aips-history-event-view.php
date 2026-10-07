@@ -64,20 +64,92 @@ final class AIPS_History_Event_View {
 		$canonical_type   = $raw_type !== '' ? AIPS_History_Event_Type::canonicalize($raw_type) : '';
 		$canonical_status = $raw_status !== '' ? AIPS_History_Event_Status::canonicalize($raw_status) : '';
 
+		$timestamp = isset($log->timestamp) ? absint($log->timestamp) : 0;
+
 		return array(
-			'id'               => isset($log->id) ? absint($log->id) : 0,
-			'timestamp'        => isset($log->timestamp) ? esc_html($log->timestamp) : '',
-			'log_type'         => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
-			'history_type_id'  => isset($log->history_type_id) ? absint($log->history_type_id) : 0,
-			'message'          => isset($details['message']) ? esc_html($details['message']) : '',
+			'id'                => isset($log->id) ? absint($log->id) : 0,
+			// Raw Unix timestamp, kept for consumers that need to sort/compare.
+			'timestamp'         => $timestamp,
+			// Human-readable ("2 hours ago" / absolute) and ISO-8601 (for <time datetime>) variants.
+			'timestamp_display' => $timestamp ? esc_html(AIPS_DateTime::formatRelativeOrAbsolute($timestamp)) : '',
+			'timestamp_iso'     => $timestamp ? esc_attr(AIPS_DateTime::fromTimestamp($timestamp)->toIso8601()) : '',
+			'log_type'          => isset($details['log_subtype']) ? esc_html($details['log_subtype']) : '',
+			'history_type_id'   => isset($log->history_type_id) ? absint($log->history_type_id) : 0,
+			'message'           => isset($details['message']) ? esc_html($details['message']) : '',
 			// Canonical values are what consumers should key on.
-			'event_type'       => esc_html($canonical_type),
-			'event_status'     => esc_html($canonical_status),
+			'event_type'        => esc_html($canonical_type),
+			'event_status'      => esc_html($canonical_status),
 			// Raw stored values preserved for debugging / migration verification.
-			'event_type_raw'   => esc_html($raw_type),
-			'event_status_raw' => esc_html($raw_status),
-			'context'          => $context,
+			'event_type_raw'    => esc_html($raw_type),
+			'event_status_raw'  => esc_html($raw_status),
+			'context'           => $context,
+			// Posts referenced by this event (e.g. generated via a schedule run),
+			// resolved so consumers can render clickable titles + publish status
+			// without re-querying the context blob themselves.
+			'posts'             => self::resolve_context_posts($context),
 		);
+	}
+
+	/**
+	 * Resolve the post(s) referenced by a log entry's context into a display-ready list.
+	 *
+	 * `context.post_id` may be a single post ID or an array of post IDs
+	 * (bulk/batch generation records one event covering several posts).
+	 * Posts that no longer exist (deleted since the event was recorded) are
+	 * silently skipped.
+	 *
+	 * @param array $context Decoded `details.context` block from the log row.
+	 * @return array List of {id, title, status, status_label, edit_url, view_url, date_display}.
+	 */
+	private static function resolve_context_posts($context) {
+		if (empty($context['post_id'])) {
+			return array();
+		}
+
+		$ids = is_array($context['post_id']) ? $context['post_id'] : array($context['post_id']);
+		$posts = array();
+
+		foreach ($ids as $post_id) {
+			$post_id = absint($post_id);
+			if (!$post_id) {
+				continue;
+			}
+
+			$post = get_post($post_id);
+			if (!$post) {
+				continue;
+			}
+
+			$title = get_the_title($post);
+			$post_timestamp = get_post_time('U', true, $post);
+
+			$posts[] = array(
+				'id'           => $post_id,
+				'title'        => esc_html($title !== '' ? $title : __('(no title)', 'ai-post-scheduler')),
+				'status'       => esc_attr($post->post_status),
+				'status_label' => esc_html(self::post_status_label($post->post_status)),
+				'edit_url'     => esc_url((string) get_edit_post_link($post_id, 'raw')),
+				'view_url'     => esc_url((string) get_permalink($post_id)),
+				'date_display' => $post_timestamp ? esc_html(AIPS_DateTime::fromTimestamp((int) $post_timestamp)->toDisplay()) : '',
+			);
+		}
+
+		return $posts;
+	}
+
+	/**
+	 * Human-readable label for a post status (falls back to a titlecased slug
+	 * for custom statuses without a registered status object).
+	 *
+	 * @param string $status Post status slug.
+	 * @return string
+	 */
+	private static function post_status_label($status) {
+		$status_object = get_post_status_object($status);
+		if ($status_object && !empty($status_object->label)) {
+			return $status_object->label;
+		}
+		return ucfirst(str_replace(array('-', '_'), ' ', $status));
 	}
 
 	/**
