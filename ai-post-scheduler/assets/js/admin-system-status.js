@@ -246,10 +246,12 @@
 		 */
 		rebuildCaches: function(e) {
 			e.preventDefault();
+			var self = this;
 			var l10n = window.aipsSystemStatusL10n || {};
 			var $btn = $(e.currentTarget);
 			var $spinner = $btn.siblings('.spinner');
 			var $result = $('.aips-status-op-result');
+			var $cacheResults = $('.aips-cache-rebuild-results');
 			var selectedSubsystems = this.getSelectedCacheSubsystems();
 
 			if (!selectedSubsystems.length) {
@@ -275,7 +277,12 @@
 				function(response) {
 					if (response && response.success) {
 						var msg = (response.data && response.data.message) ? response.data.message : (l10n.rebuildDone || 'Caches rebuilt successfully.');
-						$result.text(msg).show();
+						var steps = response.data && Array.isArray(response.data.steps) ? response.data.steps : [];
+						if (steps.length) {
+							self.renderRefreshResults($cacheResults, steps);
+						} else {
+							$result.text(msg).show();
+						}
 						if (AIPS.Utilities && AIPS.Utilities.showToast) {
 							AIPS.Utilities.showToast(msg, 'success');
 						}

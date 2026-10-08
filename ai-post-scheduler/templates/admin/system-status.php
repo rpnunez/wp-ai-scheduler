@@ -99,6 +99,8 @@ if (!defined('ABSPATH')) {
 
                 <div class="aips-refresh-system-results" style="display:none;"></div>
 
+                <div class="aips-cache-rebuild-results" style="display:none;"></div>
+
                 <div class="aips-status-op-result" style="display:none;"></div>
 
                 <?php $cache_subsystems = AIPS_Cache_Policy::get_subsystems(); ?>

@@ -66,6 +66,7 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_clean_orphaned_embeddings', array($this, 'ajax_clean_orphaned_embeddings'));
 		add_action('wp_ajax_aips_status_optimize_table', array($this, 'ajax_optimize_table'));
 		add_action('wp_ajax_aips_status_get_tables', array($this, 'ajax_get_tables'));
+		add_action('wp_ajax_aips_status_clean_stress_test_data', array($this, 'ajax_clean_stress_test_data'));
 	}
 
 	/**
@@ -343,5 +344,12 @@ class AIPS_System_Status_Controller {
 				'formatted_overhead' => size_format($tot_overhead, 2),
 			),
 		));
+	}
+
+	public function ajax_clean_stress_test_data() {
+		$this->verify_request('aips_status_clean_stress_test_data');
+
+		$result = $this->diagnostics_service->clean_stress_test_data();
+		AIPS_Ajax_Response::success($result);
 	}
 }

@@ -274,7 +274,8 @@ class AIPS_Admin_Assets {
 		);
 
 		wp_localize_script('aips-admin-stress-test', 'aipsStressTest', array(
-			'nonce' => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonce'                    => wp_create_nonce(AIPS_Stress_Test_Controller::NONCE_ACTION),
+			'nonceCleanStressTestData' => wp_create_nonce('aips_status_clean_stress_test_data'),
 			'i18n'  => array(
 				'running'               => __('Running…', 'ai-post-scheduler'),
 				'notRun'                => __('Not run', 'ai-post-scheduler'),

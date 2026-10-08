@@ -932,13 +932,16 @@
 				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
-					action: 'aips_stress_test_cleanup',
-					nonce: settings.nonce
+					action: 'aips_status_clean_stress_test_data',
+					nonce: settings.nonceCleanStressTestData
 				}
 			}).done(function (response) {
 				if (response && response.success) {
 					AIPS.Utilities.showToast(response.data.message, 'success');
-					self.setTestDataCount(0);
+					var remaining = response.data.test_data
+						? ((response.data.test_data.posts || 0) + (response.data.test_data.attachments || 0))
+						: 0;
+					self.setTestDataCount(remaining);
 					return;
 				}
 

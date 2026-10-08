@@ -53,6 +53,11 @@ class AIPS_System_Diagnostics_Service {
 	 */
 	private $db_prune_service;
 
+	/**
+	 * @var AIPS_Stress_Test_Service
+	 */
+	private $stress_test_service;
+
 	public function __construct(
 		$history_repository = null,
 		$bulk_batch_job_store = null,
@@ -60,7 +65,8 @@ class AIPS_System_Diagnostics_Service {
 		$cache_monitor_service = null,
 		$notifications_repository = null,
 		$date_time_db_repair = null,
-		$db_prune_service = null
+		$db_prune_service = null,
+		$stress_test_service = null
 	) {
 		$container = AIPS_Container::get_instance();
 
@@ -93,6 +99,10 @@ class AIPS_System_Diagnostics_Service {
 		$this->db_prune_service = $db_prune_service ?: ($container->has(AIPS_DB_Prune_Service::class)
 			? $container->make(AIPS_DB_Prune_Service::class)
 			: AIPS_DB_Prune_Service::instance());
+
+		$this->stress_test_service = $stress_test_service ?: ($container->has(AIPS_Stress_Test_Service::class)
+			? $container->make(AIPS_Stress_Test_Service::class)
+			: new AIPS_Stress_Test_Service());
 	}
 
 	/**
@@ -235,6 +245,14 @@ class AIPS_System_Diagnostics_Service {
 				'aips_status_clear_embeddings_cache',
 				array($this, 'clear_embeddings_cache')
 			),
+			'clean_stress_test_data' => $this->build_refresh_task_definition(
+				__('Stress test data cleanup', 'ai-post-scheduler'),
+				__('Clean Stress Test Data', 'ai-post-scheduler'),
+				'cleanup_repair',
+				'aips_status_clean_stress_test_data',
+				array($this, 'clean_stress_test_data'),
+				true
+			),
 		);
 	}
 
@@ -269,6 +287,7 @@ class AIPS_System_Diagnostics_Service {
 					'reset_resilience',
 					'repair_datetime',
 					'rebuild_caches',
+					'clean_stress_test_data',
 				),
 			),
 		);
@@ -458,49 +477,71 @@ class AIPS_System_Diagnostics_Service {
 	public function rebuild_caches($subsystem = 'all') {
 		$subsystems         = AIPS_Cache_Policy::get_subsystems();
 		$allowed_subsystems = array_keys($subsystems);
+		$is_array_input     = is_array($subsystem);
 
-		if (is_array($subsystem)) {
+		if ($is_array_input) {
 			$selected = array_values(array_intersect($subsystem, $allowed_subsystems));
 			if (empty($selected)) {
 				$selected = $allowed_subsystems;
 			}
+		} elseif ('all' === $subsystem || !in_array($subsystem, $allowed_subsystems, true)) {
+			$subsystem = 'all';
+			$selected  = $allowed_subsystems;
+		} else {
+			$selected = array($subsystem);
+		}
 
-			$affected = array();
-			$labels   = array();
-			foreach ($selected as $sub) {
-				$affected = array_merge($affected, AIPS_Cache_Invalidation_Bus::rebuild($sub));
-				$labels[] = isset($subsystems[$sub]['label']) ? (string) $subsystems[$sub]['label'] : $sub;
+		$affected = array();
+		$labels   = array();
+		$steps    = array();
+
+		foreach ($selected as $sub) {
+			$label           = isset($subsystems[$sub]['label']) ? (string) $subsystems[$sub]['label'] : $sub;
+			$labels[]        = $label;
+			$step_success    = true;
+			$step_message    = '';
+
+			try {
+				$sub_affected = AIPS_Cache_Invalidation_Bus::rebuild($sub);
+				$affected     = array_merge($affected, $sub_affected);
+				$step_message = !empty($sub_affected)
+					? sprintf(__('Affected caches: %s', 'ai-post-scheduler'), implode(', ', $sub_affected))
+					: __('No caches needed rebuilding.', 'ai-post-scheduler');
+			} catch (Throwable $e) {
+				$step_success = false;
+				$step_message = $e->getMessage();
 			}
-			$affected         = array_values(array_unique($affected));
-			$subsystem_label  = implode(', ', $labels);
-			$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
 
-			AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystems' => $selected, 'affected_caches' => $affected));
-
-			return array(
-				'success'    => true,
-				'message'    => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
-				'subsystems' => $selected,
-				'affected'   => $affected,
+			$steps[] = array(
+				'step'    => $sub,
+				'label'   => $label,
+				'success' => $step_success,
+				'message' => $step_message,
 			);
 		}
 
-		if ('all' !== $subsystem && !in_array($subsystem, $allowed_subsystems, true)) {
-			$subsystem = 'all';
+		$affected         = array_values(array_unique($affected));
+		$subsystem_label  = ($is_array_input || 'all' !== $subsystem)
+			? implode(', ', $labels)
+			: __('All subsystems', 'ai-post-scheduler');
+		$affected_display = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
+
+		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystems' => $selected, 'affected_caches' => $affected));
+
+		$result = array(
+			'success' => true,
+			'message' => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
+			'affected' => $affected,
+			'steps'   => $steps,
+		);
+
+		if ($is_array_input) {
+			$result['subsystems'] = $selected;
+		} else {
+			$result['subsystem'] = $subsystem;
 		}
 
-		$affected          = AIPS_Cache_Invalidation_Bus::rebuild($subsystem);
-		$subsystem_label   = ('all' === $subsystem) ? __('All subsystems', 'ai-post-scheduler') : (isset($subsystems[$subsystem]['label']) ? (string) $subsystems[$subsystem]['label'] : $subsystem);
-		$affected_display  = !empty($affected) ? implode(', ', $affected) : __('none', 'ai-post-scheduler');
-
-		AIPS_Logger::instance()->log('Cache rebuild requested from admin tool.', 'info', array('subsystem' => $subsystem, 'affected_caches' => $affected));
-
-		return array(
-			'success'   => true,
-			'message'   => sprintf(__('Rebuilt caches for %1$s. Affected caches: %2$s', 'ai-post-scheduler'), $subsystem_label, $affected_display),
-			'subsystem' => $subsystem,
-			'affected'  => $affected,
-		);
+		return $result;
 	}
 
 	/**
@@ -855,5 +896,34 @@ class AIPS_System_Diagnostics_Service {
 	 */
 	public function get_tables_status() {
 		return $this->db_prune_service->get_table_status_summary();
+	}
+
+	/**
+	 * Permanently delete every post/attachment generated by the Stress Test
+	 * page, plus any embeddings left orphaned once those posts are gone.
+	 *
+	 * This is the single deletion path shared by the "Clean Stress Test Data"
+	 * System Maintenance task and the Stress Test page's own "Delete Data"
+	 * button, so there is only one place that knows how to clean up stress
+	 * test data.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function clean_stress_test_data() {
+		$deleted            = $this->stress_test_service->cleanup_test_data();
+		$embeddings_cleaned = $this->db_prune_service->clean_orphaned_embeddings();
+		$remaining          = $this->stress_test_service->count_test_data();
+
+		return array(
+			'success'   => true,
+			'message'   => sprintf(
+				__('Removed %1$d posts, %2$d attachments, and %3$d orphaned embeddings.', 'ai-post-scheduler'),
+				$deleted['posts'],
+				$deleted['attachments'],
+				$embeddings_cleaned
+			),
+			'deleted'   => $deleted,
+			'test_data' => $remaining,
+		);
 	}
 }
