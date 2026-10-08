@@ -245,12 +245,32 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	}
 
 	/**
+	 * Record what triggered an author topic generation history container.
+	 *
+	 * @param object $history         History container.
+	 * @param object $author          Author object.
+	 * @param string $creation_method Creation method ('scheduled' or 'manual').
+	 * @return void
+	 */
+	private function record_topic_generation_trigger($history, $author, $creation_method) {
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'       => __('Author topic generation', 'ai-post-scheduler'),
+				'author_id'   => (int) $author->id,
+				'author_name' => isset($author->name) ? (string) $author->name : '',
+			),
+			$creation_method
+		);
+	}
+
+	/**
 	 * Generate topics for a specific author.
 	 *
 	 * @param object $author Author object from database.
 	 * @return bool True on success, false on failure.
 	 */
-	public function generate_topics_for_author($author) {
+	public function generate_topics_for_author($author, $creation_method = 'scheduled') {
 		$this->logger->log("Generating topics for author: {$author->name} (ID: {$author->id})", 'info');
 		
 		// Generate topics using the generator
@@ -263,6 +283,7 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 			$fail_history = $this->history_service->create('author_topic_generation', array(
 				'author_id' => $author->id,
 			));
+			$this->record_topic_generation_trigger($fail_history, $author, $creation_method);
 			$fail_history->record(
 				'activity',
 				sprintf(
@@ -298,6 +319,7 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 		$success_history = $this->history_service->create('author_topic_generation', array(
 			'author_id' => $author->id,
 		));
+		$this->record_topic_generation_trigger($success_history, $author, $creation_method);
 		$success_history->record(
 			'activity',
 			sprintf(

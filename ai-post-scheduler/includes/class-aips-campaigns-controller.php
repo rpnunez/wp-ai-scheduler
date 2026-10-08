@@ -303,6 +303,15 @@ class AIPS_Campaigns_Controller {
 			return;
 		}
 
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'       => __('Campaign lifecycle change', 'ai-post-scheduler'),
+				'campaign_id' => absint($campaign_id),
+			),
+			'campaign_lifecycle'
+		);
+
 		$user = wp_get_current_user();
 		$user_label = ($user && $user->ID) ? $user->user_login : __('Unknown user', 'ai-post-scheduler');
 

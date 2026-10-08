@@ -398,6 +398,29 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	}
 	
 	/**
+	 * Record what triggered a topic_post_generation history container.
+	 *
+	 * @param object $history         History container.
+	 * @param object $topic           Topic object.
+	 * @param object $author          Author object.
+	 * @param string $creation_method Creation method ('manual' or 'scheduled').
+	 * @return void
+	 */
+	private function record_topic_post_trigger($history, $topic, $author, $creation_method) {
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'       => __('Author post generation', 'ai-post-scheduler'),
+				'author_id'   => (int) $author->id,
+				'author_name' => isset($author->name) ? (string) $author->name : '',
+				'topic_id'    => (int) $topic->id,
+				'topic'       => isset($topic->topic_title) ? (string) $topic->topic_title : '',
+			),
+			$creation_method
+		);
+	}
+
+	/**
 	 * Generate a post from a specific topic.
 	 *
 	 * @param object $topic Topic object from database.
@@ -446,6 +469,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'topic_id' => $topic->id,
 					'author_id' => $author->id,
 				));
+				$this->record_topic_post_trigger($history, $topic, $author, $creation_method);
 				
 				$history->record(
 					'activity',
@@ -494,6 +518,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				'topic_id' => $topic->id,
 				'author_id' => $author->id,
 			));
+			$this->record_topic_post_trigger($history, $topic, $author, $creation_method);
 			
 			$history->record(
 				'activity',
@@ -554,7 +579,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				'topic_id' => $topic->id,
 				'author_id' => $author->id,
 			));
-			
+			$this->record_topic_post_trigger($history, $topic, $author, $creation_method);
+
 			$history->record(
 				'activity',
 				sprintf(

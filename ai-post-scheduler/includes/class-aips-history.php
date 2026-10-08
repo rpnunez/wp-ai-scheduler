@@ -592,9 +592,18 @@ class AIPS_History {
         }
 
         if ($method === '' || $method_label === '') {
-            $described    = AIPS_Generation_Trigger::describe_method(isset($container['creation_method']) ? $container['creation_method'] : '');
-            $method       = $described['method'];
-            $method_label = $described['label'];
+            // Older runs: only trust a creation_method we can classify. An
+            // unclassifiable one is left blank so the Overview hides the card
+            // rather than claiming "Automatic" for, say, a user-driven action.
+            $creation_method = isset($container['creation_method']) ? $container['creation_method'] : '';
+            if (AIPS_Generation_Trigger::classify_creation_method($creation_method) !== AIPS_Generation_Trigger::METHOD_UNKNOWN) {
+                $described    = AIPS_Generation_Trigger::describe_method($creation_method);
+                $method       = $described['method'];
+                $method_label = $described['label'];
+            } else {
+                $method       = '';
+                $method_label = '';
+            }
         }
 
         if ($source === null) {
@@ -1789,8 +1798,11 @@ class AIPS_History {
         }
         
         $generator = new AIPS_Generator();
-        $result = $generator->generate_post($template);
-        
+        $result = $generator->generate_post($template, null, null, array(
+            'creation_method' => 'retry',
+            'trigger_context' => array('detail' => sprintf(__('Retry of History #%d', 'ai-post-scheduler'), (int) $history_item->id)),
+        ));
+
         if (is_wp_error($result) && !is_int($result)) {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         }

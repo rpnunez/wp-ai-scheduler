@@ -463,7 +463,10 @@ class AIPS_Schedule_Controller {
         $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
 
         for ($i = 0; $i < $quantity; $i++) {
-            $result = $generator->generate_post($template, $voice, $topic);
+            $result = $generator->generate_post($template, $voice, $topic, array(
+                'creation_method' => 'manual',
+                'trigger_context' => array('detail' => __('Run now from Schedules', 'ai-post-scheduler')),
+            ));
 
             if ($result instanceof WP_Error) {
                 $errors[] = $result->get_error_message();

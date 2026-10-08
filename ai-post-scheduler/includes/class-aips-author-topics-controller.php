@@ -443,6 +443,16 @@ class AIPS_Author_Topics_Controller {
 			'trigger' => 'ajax_generate_post_from_topic'
 		));
 
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'    => __('Manual post generation from topic', 'ai-post-scheduler'),
+				'topic_id' => (int) $topic_id,
+				'topic'    => (string) $topic->topic_title,
+			),
+			'manual'
+		);
+
 		$history->record_user_action(
 			'manual_topic_generation',
 			sprintf(__('User manually triggered post generation from topic: %s', 'ai-post-scheduler'), $topic->topic_title),
@@ -710,6 +720,16 @@ class AIPS_Author_Topics_Controller {
 			'post_id' => $post_id,
 			'topic_id' => $topic_id
 		));
+
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'    => __('Manual post regeneration', 'ai-post-scheduler'),
+				'post_id'  => (int) $post_id,
+				'topic_id' => (int) $topic_id,
+			),
+			'manual_regeneration'
+		);
 
 		$history->record_user_action(
 			'regenerate_post',
