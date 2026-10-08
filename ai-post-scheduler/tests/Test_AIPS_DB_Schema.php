@@ -468,4 +468,25 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 			$this->assertContains( $index, $index_names, "Index {$index} should exist" );
 		}
 	}
+
+	/**
+	 * Test that AIPS_DB_Schema returns an array of valid CREATE TABLE SQL statements.
+	 */
+	public function test_get_schema_returns_tables_array() {
+		$schema = (new AIPS_DB_Schema())->get_schema();
+		$this->assertIsArray($schema);
+		$this->assertNotEmpty($schema);
+		$this->assertCount(34, $schema);
+		$this->assertStringStartsWith("CREATE TABLE", trim($schema[0]));
+	}
+
+	/**
+	 * Test that AIPS_DB_Manager::get_schema delegates to AIPS_DB_Schema correctly.
+	 */
+	public function test_db_manager_delegates_to_schema_provider() {
+		$db_manager = new AIPS_DB_Manager();
+		$schema = $db_manager->get_schema();
+		$this->assertIsArray($schema);
+		$this->assertCount(34, $schema);
+	}
 }

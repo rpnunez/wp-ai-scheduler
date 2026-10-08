@@ -1460,3 +1460,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+## 2026-10-08 - [Extract AIPS_DB_Schema Provider]
+**Context:** `AIPS_DB_Manager::get_schema()` was a 751-line God Method containing large raw SQL DDL CREATE TABLE concatenations for 34 database tables, violating Single Responsibility and Separation of Concerns.
+**Decision:** Extracted all SQL CREATE TABLE DDL definitions into a dedicated `AIPS_DB_Schema` class in `includes/class-aips-db-schema.php`. Refactored `AIPS_DB_Manager::get_schema()` to delegate schema generation to `AIPS_DB_Schema` while preserving 100% backward compatibility.
+**Consequence:** `AIPS_DB_Manager` is significantly reduced in size and complexity, delegating schema definitions to a clean single-responsibility class. Increased file count by 1 (`includes/class-aips-db-schema.php`).
+**Tests:** Added `tests/Test_AIPS_DB_Schema.php` with unit tests verifying table DDL generation and delegation from `AIPS_DB_Manager`. All tests pass.
