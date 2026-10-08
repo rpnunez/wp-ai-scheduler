@@ -153,8 +153,6 @@
     font-weight: 600;
 }
 
-.aips-planner-schedule-grid { grid-template-columns: 1fr; } /* was 3 */
-
 .aips-planner-actions {
     margin-top: 20px;
 }
@@ -174,13 +172,6 @@
     margin: 4px 0 0 0;
     color: var(--aips-gray-500);
     font-size: var(--aips-text-sm);
-}
-
-.aips-planner-generate-actions {
-    margin-top: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .aips-planner-layout {

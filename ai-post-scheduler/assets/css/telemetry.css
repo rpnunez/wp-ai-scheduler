@@ -134,10 +134,6 @@
 	flex-wrap: wrap;
 }
 
-	.aips-telemetry-range-summary {
-	display: none;
-}
-
 .aips-telemetry-table-toolbar,
 .aips-telemetry-pagination {
 	gap: 16px;
@@ -373,16 +369,14 @@
 	min-width: 0;
 }
 
-.aips-telemetry-payload-section-copy h4,
-.aips-telemetry-raw-payload-copy h4 {
+.aips-telemetry-payload-section-copy h4 {
 	margin: 0 0 12px;
 	font-size: 13px;
 	font-weight: 700;
 	color: #1d2327;
 }
 
-.aips-telemetry-payload-section-copy p,
-.aips-telemetry-raw-payload-copy p {
+.aips-telemetry-payload-section-copy p {
 	margin: 0;
 	color: #646970;
 	font-size: 13px;
@@ -420,13 +414,6 @@
 .aips-telemetry-payload-table tbody tr:nth-child(even) td,
 .aips-telemetry-payload-table tbody tr:nth-child(even) th {
 	background: #fdfdfd;
-}
-
-.aips-telemetry-payload-item-title th {
-	background: #dfe8f2;
-	font-size: 12px;
-	text-transform: uppercase;
-	letter-spacing: 0.02em;
 }
 
 .aips-telemetry-payload-table--depth-1,
