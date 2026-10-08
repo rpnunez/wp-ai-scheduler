@@ -331,6 +331,33 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The indexing status total must honor the indexing scope, not count every published post.
+	 */
+	public function test_get_indexing_status_total_honors_scope() {
+		$aips_post = wp_insert_post( array(
+			'post_title'  => 'AIPS generated',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+		update_post_meta( $aips_post, '_aips_generated_post', 1 );
+		wp_insert_post( array(
+			'post_title'  => 'Manually written',
+			'post_status' => 'publish',
+			'post_type'   => 'post',
+		) );
+
+		$service = new AIPS_Internal_Links_Service( $this->embeddings_repo, $this->links_repo );
+
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'aips_only' );
+		$status = $service->get_indexing_status();
+		$this->assertSame( 1, $status['total_posts'] );
+
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$status = $service->get_indexing_status();
+		$this->assertSame( 2, $status['total_posts'] );
+	}
+
+	/**
 	 * generate_suggestions_for_post delegates to Similarity Evaluator and creates pending suggestions.
 	 */
 	public function test_generate_suggestions_for_post_uses_similarity_evaluator() {

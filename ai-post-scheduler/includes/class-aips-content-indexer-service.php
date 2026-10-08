@@ -928,6 +928,23 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
+	 * Get the state of the background indexer queue.
+	 *
+	 * @return array{is_running: bool, pending_count: int, pending_posts: int, pending_topics: int}
+	 */
+	public function get_queue_status(): array {
+		$pending_posts  = count((array) get_option('aips_pending_index_queue', array()));
+		$pending_topics = count((array) get_option('aips_pending_topic_index_queue', array()));
+
+		return array(
+			'is_running'     => $this->is_queue_worker_scheduled(),
+			'pending_count'  => $pending_posts + $pending_topics,
+			'pending_posts'  => $pending_posts,
+			'pending_topics' => $pending_topics,
+		);
+	}
+
+	/**
 	 * Schedule background indexer queue worker via Action Scheduler (if available) or WP-Cron.
 	 *
 	 * @param int $timestamp Unix timestamp to run.
