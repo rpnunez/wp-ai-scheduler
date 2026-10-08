@@ -1460,3 +1460,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+## 2026-10-08 - [Refactor generate_post_from_context God Method]
+- **Context:** `AIPS_Generator::generate_post_from_context()` was a 267-line God method mixing history initialization, content generation, link injection, WP post persistence, featured image handling, status downgrades, metrics recording, and hook dispatching.
+- **Decision:** Extracted history initialization, affiliate link injection, post creation/failure handling, featured image status finalizing, and completion recording into 5 distinct private helper methods (`init_generation_history`, `inject_affiliate_links_if_enabled`, `create_post_from_generation_data`, `finalize_post_featured_image_and_status`, `record_generation_completion`).
+- **Consequence:** `generate_post_from_context()` is now a concise orchestrator method under 50 lines. No external API changes; 100% backward compatible.
+- **Tests:** Ran full PHPUnit test suite for Generator to ensure zero regressions.
