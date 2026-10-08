@@ -166,6 +166,7 @@
   - The automated database-prune cron is no longer scheduled on plugin activation when automatic pruning is disabled, and the "Database & Retention" settings now read through `AIPS_Config` instead of raw `get_option()` calls.
   - The System Status table-size matrix now recomputes its grand-totals row immediately after a prune/purge/optimize action instead of only on a full manual refresh.
   - `AIPS.Utilities.confirmWithWord()`'s dialog markup is now always rendered through `AIPS.Templates` (a new `AIPS.Templates.register()` API backs this) instead of a hand-maintained string-concatenation fallback.
+  - The "Database & Data Retention" settings section (automatic pruning toggle, telemetry/history-log retention windows, prune schedule, orphan-cleanup toggles) was registered with the Settings API but never rendered anywhere — it's now exposed as its own card on the Settings page's Performance tab.
 
 - **Accessibility:** Added missing `aria-label` attributes to checkboxes in the Planner and Research admin templates to improve screen reader accessibility.
 
