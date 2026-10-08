@@ -521,17 +521,6 @@
 		/** @type {string} Date range filter end (YYYY-MM-DD format) */
 		dateTo: '',
 
-		/** @type {boolean} Whether auto-refresh via heartbeat is currently enabled */
-		autoRefreshEnabled: false,
-
-		/** @type {number} Current heartbeat polling interval in seconds */
-		heartbeatIntervalSeconds: 5,
-
-		/** @type {number|null} Default WordPress heartbeat interval to restore on disable */
-		defaultHeartbeatInterval: null,
-
-		/** @type {boolean} Flag to prevent concurrent auto-refresh AJAX requests */
-		isAutoRefreshing: false,
 
 		/* ========================================================================
 		 * Initialization & Event Binding
@@ -636,7 +625,6 @@
 			// Search: live client-side row filter + server reload on Enter
 			$(document).on('input', '#aips-history-search-input', this.onSearchInput.bind(this));
 			$(document).on('keydown', '#aips-history-search-input', this.onSearchKeydown.bind(this));
-			$(document).on('click', '#aips-history-search-clear', this.clearSearch.bind(this));
 			$(document).on('click', '.aips-clear-history-search-btn', this.clearSearch.bind(this));
 			$(document).on('click', '#aips-history-more-filters', this.toggleMoreFilters.bind(this));
 			$(document).on('click', '.aips-history-quick-date', this.applyQuickDate.bind(this));
@@ -647,17 +635,6 @@
 			/* --- Export Event --- */
 			// Export CSV
 			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
-
-			/* --- Auto Refresh / Heartbeat Events --- */
-			// Auto refresh controls
-			$(document).on('change', '#aips-history-auto-refresh', this.toggleAutoRefresh.bind(this));
-			$(document).on('change', '#aips-history-heartbeat-interval', this.changeHeartbeatInterval.bind(this));
-
-			// Heartbeat tick (namespaced for cleanup)
-			$(document).on('heartbeat-tick.aipsHistory', this.onHeartbeatTick.bind(this));
-
-			// Page exit cleanup (namespaced)
-			$(window).on('beforeunload.aipsHistory pagehide.aipsHistory', this.onPageExit.bind(this));
 		},
 
 
@@ -890,190 +867,6 @@
 			return $('#aips-history-logs-modal').length > 0
 				|| $('#aips-history-search-input').length > 0
 				|| $('#aips-history-tbody').length > 0;
-		},
-
-		/* ========================================================================
-		 * Auto Refresh & Heartbeat
-		 * ======================================================================== */
-
-		/**
-		 * Initialize heartbeat auto-refresh controls and defaults.
-		 *
-		 * Checks for WordPress Heartbeat API availability and configures UI accordingly.
-		 * Disables controls if Heartbeat is unavailable.
-		 */
-		initHeartbeatAutoRefresh: function () {
-			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
-				// Disable auto-refresh controls and show unavailability message
-				$('#aips-history-auto-refresh')
-					.prop('disabled', true)
-					.attr('title', heartbeatUnavailableText);
-				$('#aips-history-heartbeat-interval')
-					.prop('disabled', true)
-					.attr('title', heartbeatUnavailableText);
-				$('#aips-history-auto-refresh-help').text(heartbeatUnavailableText);
-				return;
-			}
-
-			// Store default heartbeat interval for restoration on disable
-			this.defaultHeartbeatInterval = wp.heartbeat.interval();
-
-			// Clear help text (no errors)
-			$('#aips-history-auto-refresh-help').empty();
-
-			// Read initial interval from DOM
-			this.heartbeatIntervalSeconds = parseInt(
-				$('#aips-history-heartbeat-interval').val() || String(this.MIN_HEARTBEAT_INTERVAL),
-				10
-			);
-		},
-
-		/**
-		 * Enable or disable auto-refresh polling on heartbeat.
-		 *
-		 * @param {Event} e Change event from #aips-history-auto-refresh checkbox.
-		 */
-		toggleAutoRefresh: function (e) {
-			var enabled = $(e.currentTarget).is(':checked');
-			var $intervalSelect = $('#aips-history-heartbeat-interval');
-
-			// Update state
-			this.autoRefreshEnabled = enabled;
-			$intervalSelect.prop('disabled', !enabled);
-
-			// If disabling, restore defaults and exit
-			if (!enabled) {
-				this.disableAutoRefresh();
-				return;
-			}
-
-			// Read current interval selection
-			this.heartbeatIntervalSeconds = parseInt(
-				$intervalSelect.val() || String(this.MIN_HEARTBEAT_INTERVAL),
-				10
-			);
-
-			// Apply interval to WordPress Heartbeat API
-			this.applyHeartbeatInterval();
-
-			// Trigger immediate heartbeat connection
-			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
-				wp.heartbeat.connectNow();
-			}
-		},
-
-		/**
-		 * Update heartbeat interval selection while auto-refresh is enabled.
-		 *
-		 * @param {Event} e Change event from #aips-history-heartbeat-interval select.
-		 */
-		changeHeartbeatInterval: function (e) {
-			// Update interval state
-			this.heartbeatIntervalSeconds = parseInt(
-				$(e.currentTarget).val() || String(this.MIN_HEARTBEAT_INTERVAL),
-				10
-			);
-
-			// Only apply if auto-refresh is currently enabled
-			if (!this.autoRefreshEnabled) {
-				return;
-			}
-
-			// Apply new interval to WordPress Heartbeat API
-			this.applyHeartbeatInterval();
-
-			// Trigger immediate reconnection with new interval
-			if (window.wp && wp.heartbeat && typeof wp.heartbeat.connectNow === 'function') {
-				wp.heartbeat.connectNow();
-			}
-		},
-
-		/**
-		 * Apply current heartbeat interval to WordPress Heartbeat API.
-		 *
-		 * Enforces minimum interval of MIN_HEARTBEAT_INTERVAL seconds.
-		 */
-		applyHeartbeatInterval: function () {
-			// Ensure Heartbeat API is available
-			if (!window.wp || !wp.heartbeat || typeof wp.heartbeat.interval !== 'function') {
-				return;
-			}
-
-			// Parse and validate interval
-			var parsedInterval = parseInt(this.heartbeatIntervalSeconds, 10);
-			if (isNaN(parsedInterval)) {
-				parsedInterval = this.MIN_HEARTBEAT_INTERVAL;
-			}
-
-			// Enforce minimum interval (5 seconds for quick refresh)
-			var interval = Math.max(
-				this.MIN_HEARTBEAT_INTERVAL,
-				parsedInterval
-			);
-
-			// Apply to WordPress Heartbeat API
-			wp.heartbeat.interval(interval);
-		},
-
-		/**
-		 * Restore the default heartbeat interval and disable auto-refresh state.
-		 *
-		 * Resets heartbeat to WordPress default and clears auto-refresh flags.
-		 */
-		disableAutoRefresh: function () {
-			// Restore default heartbeat interval if available
-			var defaultInterval = parseInt(this.defaultHeartbeatInterval, 10);
-			if (
-				window.wp
-				&& wp.heartbeat
-				&& typeof wp.heartbeat.interval === 'function'
-				&& this.defaultHeartbeatInterval !== null
-				&& this.defaultHeartbeatInterval !== undefined
-				&& !isNaN(defaultInterval)
-			) {
-				wp.heartbeat.interval(defaultInterval);
-			}
-
-			// Reset state flags
-			this.autoRefreshEnabled = false;
-			this.isAutoRefreshing = false;
-
-			// Update UI
-			$('#aips-history-auto-refresh').prop('checked', false);
-			$('#aips-history-heartbeat-interval').prop('disabled', true);
-		},
-
-		/**
-		 * Cleanup heartbeat state and namespaced listeners when leaving page.
-		 *
-		 * Prevents heartbeat interval changes from persisting across page loads.
-		 */
-		onPageExit: function () {
-			// Restore default heartbeat and clear state
-			this.disableAutoRefresh();
-
-			// Remove namespaced event listeners
-			$(document).off('heartbeat-tick.aipsHistory');
-			$(window).off('.aipsHistory');
-		},
-
-		/**
-		 * Handle heartbeat tick updates for background polling.
-		 *
-		 * Triggered by WordPress Heartbeat API at configured interval.
-		 * Reloads history table in the background without user interaction.
-		 */
-		onHeartbeatTick: function () {
-			// Skip if auto-refresh is disabled or already in progress
-			if (!this.autoRefreshEnabled || this.isAutoRefreshing) {
-				return;
-			}
-
-			// Set flag to prevent concurrent refresh requests
-			this.isAutoRefreshing = true;
-
-			// Reload current page via AJAX
-			this.reload(this.getCurrentPage(), { fromHeartbeat: true });
 		},
 
 		/**
@@ -1449,13 +1242,10 @@
 		 * @param {number} [paged=current URL page] 1-based page number to load.
 		 *                                          Defaults to current `paged` URL query param.
 		 */
-		reload: function (paged, options) {
+		reload: function (paged) {
 			paged = (paged === undefined || paged === null)
 				? this.getCurrentPage()
 				: Math.max(1, parseInt(paged, 10));
-			options = $.extend({
-				fromHeartbeat: false
-			}, options || {});
 
 			var self       = this;
 			var $tbody     = $('#aips-history-tbody');
@@ -1469,12 +1259,10 @@
 					text: aipsHistoryL10n.loading || 'Loading\u2026'
 				}));
 			}
-			if (!options.fromHeartbeat) {
-				$reloadBtn.prop('disabled', true).html(
-					'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
-					+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
-				);
-			}
+			$reloadBtn.prop('disabled', true).html(
+				'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
+				+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
+			);
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -1495,14 +1283,12 @@
 				},
 				success: function (response) {
 					if (!response.success) {
-						if (!options.fromHeartbeat) {
-							AIPS.Utilities.showToast(
-								response.data && response.data.message
-									? response.data.message
-									: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
-								'error'
-							);
-						}
+						AIPS.Utilities.showToast(
+							response.data && response.data.message
+								? response.data.message
+								: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
+							'error'
+						);
 						return;
 					}
 
@@ -1527,8 +1313,6 @@
 					// Refresh stat cards.
 					var stats = response.data.stats;
 					if (stats) {
-						$('#aips-stat-total').text(stats.total);
-						$('#aips-stat-completed').text(stats.completed);
 						$('#aips-stat-failed').text(stats.failed);
 						$('#aips-stat-processing').text(stats.processing);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
@@ -1550,15 +1334,10 @@
 					self.renderFilterChips();
 				},
 				error: function () {
-					if (!options.fromHeartbeat) {
-						AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
-					}
+					AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
 				},
 				complete: function () {
-					if (!options.fromHeartbeat) {
-						$reloadBtn.prop('disabled', false).html(origHtml);
-					}
-					self.isAutoRefreshing = false;
+					$reloadBtn.prop('disabled', false).html(origHtml);
 				}
 			});
 		},
@@ -1754,7 +1533,7 @@
 		 */
 		syncSearchClearButton: function () {
 			var hasValue = ($('#aips-history-search-input').val() || '').trim().length > 0;
-			$('#aips-history-search-clear').toggle(hasValue);
+			$('.aips-clear-history-search-btn').toggle(hasValue);
 		},
 
 		/* ------------------------------------------------------------------ */

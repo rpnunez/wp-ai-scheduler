@@ -1747,7 +1747,7 @@
 		/**
 		 * Open the topic-log modal and start loading logs for the given topic.
 		 *
-		 * Sets a loading message in `#aips-topic-logs-content`, fades the logs
+		 * Sets a loading message in the modal body, fades the logs
 		 * modal in, and delegates to `loadTopicLogs`.
 		 *
 		 * @param {Event} e - Click event from an `.aips-view-topic-log` element.
@@ -1795,7 +1795,7 @@
 		},
 
 		/**
-		 * Build and inject the topic-log HTML table into `#aips-topic-logs-content`.
+		 * Build and inject the topic-log HTML table into `#aips-topic-logs-modal .aips-modal-content-body`.
 		 *
 		 * Renders a WordPress-style table with action badge, user name, date,
 		 * and notes columns. Shows a "no logs found" message when the array is
@@ -1893,7 +1893,7 @@
 		},
 		
 		/**
-		 * Build and inject the topic-post list into `#aips-topic-posts-content`.
+		 * Build and inject the topic-post list into `#aips-topic-posts-modal .aips-modal-content-body`.
 		 *
 		 * Renders each post as a card-style list item with title, excerpt,
 		 * featured image, and action buttons.
