@@ -498,6 +498,15 @@ class AIPS_Content_Indexer_Controller {
 
 		$this->indexer_service->clear_index();
 
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::CONTENT_INDEX_CLEARED,
+			true,
+			__('Content index cleared', 'ai-post-scheduler'),
+			'content_index_operation',
+			array('event' => __('Clear content index', 'ai-post-scheduler')),
+			'manual'
+		);
+
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Index cleared successfully.', 'ai-post-scheduler'),
 		));
@@ -553,6 +562,16 @@ class AIPS_Content_Indexer_Controller {
 		$entity_type = isset($_POST['entity_type']) ? sanitize_key($_POST['entity_type']) : 'all';
 
 		$results = $this->deduplication_service->get_cannibalization_audit_results($threshold, $limit, $entity_type);
+
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::CANNIBALIZATION_AUDIT_RUN,
+			true,
+			sprintf(__('Cannibalization audit found %d clusters', 'ai-post-scheduler'), count($results)),
+			'content_index_operation',
+			array('event' => __('Cannibalization audit', 'ai-post-scheduler'), 'detail' => sprintf(__('Threshold %1$s, entity type %2$s', 'ai-post-scheduler'), $threshold, $entity_type)),
+			'manual',
+			array('threshold' => $threshold, 'limit' => $limit, 'entity_type' => $entity_type, 'clusters' => count($results))
+		);
 
 		AIPS_Ajax_Response::success(array(
 			'clusters'    => $results,

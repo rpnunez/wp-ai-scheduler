@@ -33,7 +33,8 @@ class AIPS_Generation_Trigger {
 	private static function manual_methods() {
 		return array(
 			'manual', 'manual_generation', 'manual_regeneration', 'manual_ui', 'admin', 'preview',
-			'post_review_action', 'campaign_lifecycle', 'bulk_delete', 'bulk_delete_feedback',
+			'post_review_action', 'campaign_lifecycle', 'template_lifecycle', 'author_lifecycle', 'source_lifecycle',
+			'bulk_delete', 'bulk_delete_feedback',
 			'bulk_generate', 'bulk_generate_now', 'bulk_generation', 'bulk_regenerate',
 			'regenerate', 'retry',
 		);
@@ -46,7 +47,7 @@ class AIPS_Generation_Trigger {
 	 */
 	private static function automatic_methods() {
 		return array(
-			'scheduled', 'template_schedule', 'schedule_execution', 'batch_job', 'planner_post',
+			'scheduled', 'cron', 'bulk_batch_slice', 'template_schedule', 'schedule_execution', 'batch_job', 'planner_post',
 			'trending_topic_post', 'author_topic_post', 'author_topic_gen', 'author_post_gen',
 			'author_topic_generation', 'author_post_generation', 'author_embeddings',
 		);
@@ -213,7 +214,16 @@ class AIPS_Generation_Trigger {
 		}
 
 		$method = self::describe_method($creation_method);
-		$text   = self::format_source_message($source);
+
+		// Manual runs: say who started them.
+		if ($method['method'] === self::METHOD_MANUAL && empty($source['user']) && function_exists('wp_get_current_user')) {
+			$user = wp_get_current_user();
+			if ($user && !empty($user->user_login)) {
+				$source['user'] = (string) $user->user_login;
+			}
+		}
+
+		$text = self::format_source_message($source);
 		if ($text === '') {
 			$text = __('No originating schedule, template, or campaign recorded', 'ai-post-scheduler');
 		}
@@ -296,6 +306,10 @@ class AIPS_Generation_Trigger {
 			$parts[] = sprintf(__('Topic "%s"', 'ai-post-scheduler'), $source['topic']);
 		} elseif (!empty($source['topic_id'])) {
 			$parts[] = sprintf(__('Topic (ID %d)', 'ai-post-scheduler'), $source['topic_id']);
+		}
+
+		if (!empty($source['user'])) {
+			$parts[] = sprintf(__('By %s', 'ai-post-scheduler'), $source['user']);
 		}
 
 		return implode(' · ', $parts);

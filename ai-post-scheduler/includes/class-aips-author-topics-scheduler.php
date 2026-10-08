@@ -265,26 +265,24 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 	}
 
 	/**
-	 * Generate topics for a specific author.
+	 * Record the outcome of a topic generation run in its own History container.
 	 *
-	 * @param object $author Author object from database.
-	 * @return bool True on success, false on failure.
+	 * @param object          $author          Author object.
+	 * @param array|WP_Error  $result          Generator result.
+	 * @param string          $creation_method 'scheduled' or 'manual'.
+	 * @return void
 	 */
-	public function generate_topics_for_author($author, $creation_method = 'scheduled') {
-		$this->logger->log("Generating topics for author: {$author->name} (ID: {$author->id})", 'info');
-		
-		// Generate topics using the generator
-		$result = $this->topics_generator->generate_topics($author);
-		
+	private function record_topic_generation_history($author, $result, $creation_method) {
+		$history = $this->history_service->create('author_topic_generation', array(
+			'author_id' => $author->id,
+		));
+		if (!$history) {
+			return;
+		}
+		$this->record_topic_generation_trigger($history, $author, $creation_method);
+
 		if (is_wp_error($result)) {
-			$this->logger->log("Failed to generate topics for author {$author->id}: " . $result->get_error_message(), 'error');
-			
-			// Log using History Container
-			$fail_history = $this->history_service->create('author_topic_generation', array(
-				'author_id' => $author->id,
-			));
-			$this->record_topic_generation_trigger($fail_history, $author, $creation_method);
-			$fail_history->record(
+			$history->record(
 				'activity',
 				sprintf(
 					__('Failed to generate topics for author "%s": %s', 'ai-post-scheduler'),
@@ -304,23 +302,13 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 					'error' => $result->get_error_message(),
 				)
 			);
-			
-			// Still update the schedule to avoid getting stuck
-			$this->update_author_schedule($author);
-			return false;
+			$history->complete_failure($result->get_error_message());
+			return;
 		}
-		
-		// Update the author's next run time
-		$this->update_author_schedule($author);
-		
-		// Log successful topic generation using History Container
+
 		// $result is an array of topic data on success
 		$topic_count = is_array($result) ? count($result) : 0;
-		$success_history = $this->history_service->create('author_topic_generation', array(
-			'author_id' => $author->id,
-		));
-		$this->record_topic_generation_trigger($success_history, $author, $creation_method);
-		$success_history->record(
+		$history->record(
 			'activity',
 			sprintf(
 				__('Generated %d topics for author "%s"', 'ai-post-scheduler'),
@@ -340,6 +328,37 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 				'requested_quantity' => $author->topic_generation_quantity,
 			)
 		);
+		$history->complete_success();
+	}
+
+	/**
+	 * Generate topics for a specific author.
+	 *
+	 * @param object $author          Author object from database.
+	 * @param string $creation_method Creation method recorded in History. Defaults to 'scheduled'.
+	 * @return bool True on success, false on failure.
+	 */
+	public function generate_topics_for_author($author, $creation_method = 'scheduled') {
+		$this->logger->log("Generating topics for author: {$author->name} (ID: {$author->id})", 'info');
+		
+		// Generate topics using the generator
+		$result = $this->topics_generator->generate_topics($author);
+		
+		if (is_wp_error($result)) {
+			$this->logger->log("Failed to generate topics for author {$author->id}: " . $result->get_error_message(), 'error');
+			
+			$this->record_topic_generation_history($author, $result, $creation_method);
+			
+			// Still update the schedule to avoid getting stuck
+			$this->update_author_schedule($author);
+			return false;
+		}
+		
+		// Update the author's next run time
+		$this->update_author_schedule($author);
+		
+		$topic_count = is_array($result) ? count($result) : 0;
+		$this->record_topic_generation_history($author, $result, $creation_method);
 		
 		$this->logger->log("Successfully generated topics for author {$author->id}", 'info');
 
@@ -381,6 +400,9 @@ class AIPS_Author_Topics_Scheduler extends AIPS_Author_Slice_Scheduler_Base {
 		}
 
 		$result = $this->topics_generator->generate_topics($author, $apply_auto_approval);
+
+		// Manual runs get the same History container as cron runs.
+		$this->record_topic_generation_history($author, $result, 'manual');
 
 		// Keep manual "Run Now" behavior aligned with cron runs by advancing
 		// schedule timestamps regardless of success/failure to avoid re-running

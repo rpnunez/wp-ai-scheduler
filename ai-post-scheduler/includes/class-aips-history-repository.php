@@ -328,11 +328,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string[]
      */
     private function get_auxiliary_creation_methods() {
-        return array(
-            'schedule_lifecycle',
-            'template_lifecycle',
-            'campaign_lifecycle',
-            'notification_sent',
+        return array_merge(
+            AIPS_History_Event_Recorder::lifecycle_creation_methods(),
+            array('notification_sent')
         );
     }
 

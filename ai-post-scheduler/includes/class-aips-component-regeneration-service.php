@@ -171,6 +171,7 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
+		$this->record_regeneration_trigger($history_container, $context, __('Title', 'ai-post-scheduler'), $post_id);
 		
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
@@ -220,6 +221,7 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
+		$this->record_regeneration_trigger($history_container, $context, __('Excerpt', 'ai-post-scheduler'), $post_id);
 		
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
@@ -277,6 +279,7 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
+		$this->record_regeneration_trigger($history_container, $context, __('Content', 'ai-post-scheduler'), $post_id);
 		
 		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
@@ -371,6 +374,13 @@ class AIPS_Component_Regeneration_Service {
 			'errors' => array(),
 		);
 
+		// Record the trigger once for the whole run rather than once per component.
+		$trigger_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (!is_wp_error($trigger_container)) {
+			$this->record_regeneration_trigger($trigger_container, $context, __('All components', 'ai-post-scheduler'), $post_id);
+			$context['trigger_recorded'] = true;
+		}
+
 		$title = $this->regenerate_title($context);
 		if (is_wp_error($title)) {
 			$result['errors']['title'] = $title->get_error_message();
@@ -407,7 +417,36 @@ class AIPS_Component_Regeneration_Service {
 
 		return $result;
 	}
-	
+
+	/**
+	 * Record who/what triggered a regeneration on the post's existing History
+	 * container, so the appended entries are not mistaken for the original run.
+	 *
+	 * Skipped when the caller already recorded it for a multi-component run.
+	 *
+	 * @param AIPS_History_Container $history_container Existing container.
+	 * @param array                  $context           Regeneration context ('trigger_recorded', 'trigger_detail').
+	 * @param string                 $component_label   Human-readable component name.
+	 * @param int                    $post_id           Post ID.
+	 * @return void
+	 */
+	private function record_regeneration_trigger($history_container, array $context, $component_label, $post_id) {
+		if (!empty($context['trigger_recorded'])) {
+			return;
+		}
+
+		$source = array(
+			/* translators: %s: component name (Title, Content, ...) */
+			'event'   => sprintf(__('Component regeneration: %s', 'ai-post-scheduler'), $component_label),
+			'post_id' => (int) $post_id,
+		);
+		if (!empty($context['trigger_detail'])) {
+			$source['detail'] = (string) $context['trigger_detail'];
+		}
+
+		AIPS_Generation_Trigger::record($history_container, $source, 'regenerate');
+	}
+
 	/**
 	 * Regenerate featured image
 	 *
@@ -439,6 +478,7 @@ class AIPS_Component_Regeneration_Service {
 		if (is_wp_error($history_container)) {
 			return $history_container;
 		}
+		$this->record_regeneration_trigger($history_container, $context, __('Featured image', 'ai-post-scheduler'), $post_id);
 		
 		$current_content = '';
 		if ($post_id > 0) {

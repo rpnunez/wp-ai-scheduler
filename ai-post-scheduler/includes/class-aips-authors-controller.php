@@ -170,6 +170,7 @@ class AIPS_Authors_Controller {
 			$result = $id !== false;
 		}
 		
+		$this->record_author_event($author_id ? AIPS_History_Event_Type::AUTHOR_UPDATED : AIPS_History_Event_Type::AUTHOR_CREATED, (int) $id, $name, (bool) $result);
 		if ($result) {
 			AIPS_Ajax_Response::success(array(
 				'message' => __('Author saved successfully.', 'ai-post-scheduler'),
@@ -181,7 +182,39 @@ class AIPS_Authors_Controller {
 	}
 	
 	/**
+	 * Record an author create/update/delete in History.
+	 *
+	 * @param string $event_type  AIPS_History_Event_Type author constant.
+	 * @param int    $author_id   Author ID.
+	 * @param string $author_name Author name (may be empty).
+	 * @param bool   $success     Whether the operation succeeded.
+	 * @return void
+	 */
+	private function record_author_event($event_type, $author_id, $author_name, $success) {
+		$verbs = array(
+			AIPS_History_Event_Type::AUTHOR_CREATED => array(__('created', 'ai-post-scheduler'), __('create', 'ai-post-scheduler')),
+			AIPS_History_Event_Type::AUTHOR_UPDATED => array(__('updated', 'ai-post-scheduler'), __('update', 'ai-post-scheduler')),
+			AIPS_History_Event_Type::AUTHOR_DELETED => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
+		);
+		$verb    = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
+		$subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_AUTHOR, $author_id, $author_name);
+		$message = $success
+			? sprintf(__('Author "%1$s" %2$s', 'ai-post-scheduler'), $author_name, $verb[0])
+			: sprintf(__('Failed to %1$s author "%2$s"', 'ai-post-scheduler'), $verb[1], $author_name);
+		$event   = $success
+			? AIPS_History_Event::success($event_type, $message, $subject, array('author_name' => $author_name))
+			: AIPS_History_Event::failure($event_type, $message, $subject, array('author_name' => $author_name));
+
+		AIPS_History_Event_Recorder::instance()->record_lifecycle(
+			$event,
+			'author_lifecycle',
+			array('event' => __('Author change', 'ai-post-scheduler'), 'author_id' => (int) $author_id, 'author_name' => $author_name)
+		);
+	}
+
+	/**
 	 * AJAX handler for deleting an author.
+
 	 */
 	public function ajax_delete_author() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -198,6 +231,8 @@ class AIPS_Authors_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 		
+		$author_for_history = $this->repository->get_by_id($author_id);
+
 		// Delete child records first to avoid orphaned records
 
 		// Get all topic IDs for this author via repository
@@ -214,6 +249,7 @@ class AIPS_Authors_Controller {
 		
 		// Delete author
 		$result = $this->repository->delete($author_id);
+		$this->record_author_event(AIPS_History_Event_Type::AUTHOR_DELETED, $author_id, ($author_for_history && !empty($author_for_history->name)) ? (string) $author_for_history->name : '', (bool) $result);
 		
 		if ($result) {
 			AIPS_Ajax_Response::success(array(), __('Author deleted successfully.', 'ai-post-scheduler'));

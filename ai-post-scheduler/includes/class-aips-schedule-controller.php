@@ -370,8 +370,10 @@ class AIPS_Schedule_Controller {
         }
 
         if ($this->schedule_repository->delete($id)) {
+            $this->record_schedule_event(AIPS_History_Event_Type::SCHEDULE_DELETED, $id, $schedule, true);
             AIPS_Ajax_Response::success(array(), __('Schedule deleted successfully.', 'ai-post-scheduler'));
         } else {
+            $this->record_schedule_event(AIPS_History_Event_Type::SCHEDULE_DELETED, $id, $schedule, false);
             AIPS_Ajax_Response::error(__('Failed to delete schedule.', 'ai-post-scheduler'));
         }
     }
@@ -519,6 +521,65 @@ class AIPS_Schedule_Controller {
         ));
     }
 
+    /**
+     * Record a schedule lifecycle change (delete, circuit reset) in History.
+     *
+     * @param string      $event_type  AIPS_History_Event_Type schedule constant.
+     * @param int         $schedule_id Schedule ID.
+     * @param object|null $schedule    Schedule row, if known (used for the label).
+     * @param bool        $success     Whether the operation succeeded.
+     * @return void
+     */
+    private function record_schedule_event($event_type, $schedule_id, $schedule, $success) {
+        $label = '';
+        if ($schedule) {
+            $label = !empty($schedule->title) ? (string) $schedule->title : '';
+        }
+        $names = array(
+            AIPS_History_Event_Type::SCHEDULE_DELETED       => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
+            AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET => array(__('circuit breaker reset', 'ai-post-scheduler'), __('reset the circuit breaker for', 'ai-post-scheduler')),
+        );
+        $verb    = isset($names[$event_type]) ? $names[$event_type] : array($event_type, $event_type);
+        $display = $label !== '' ? sprintf('"%1$s" (ID %2$d)', $label, $schedule_id) : sprintf('(ID %d)', $schedule_id);
+        $message = $success
+            ? sprintf(__('Schedule %1$s %2$s', 'ai-post-scheduler'), $display, $verb[0])
+            : sprintf(__('Failed to %1$s schedule %2$s', 'ai-post-scheduler'), $verb[1], $display);
+        $subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_SCHEDULE, $schedule_id, $label);
+        $event   = $success
+            ? AIPS_History_Event::success($event_type, $message, $subject)
+            : AIPS_History_Event::failure($event_type, $message, $subject);
+
+        AIPS_History_Event_Recorder::instance()->record_lifecycle(
+            $event,
+            'schedule_lifecycle',
+            array('event' => __('Schedule change', 'ai-post-scheduler'), 'schedule_id' => (int) $schedule_id, 'schedule_name' => $label)
+        );
+    }
+
+    /**
+     * Record a bulk schedule deletion in History.
+     *
+     * @param int[] $ids     Schedule IDs requested.
+     * @param int   $deleted Number actually deleted.
+     * @param bool  $success Whether the operation succeeded.
+     * @return void
+     */
+    private function record_schedule_bulk_delete(array $ids, $deleted, $success) {
+        $message = $success
+            ? sprintf(_n('%d schedule deleted', '%d schedules deleted', $deleted, 'ai-post-scheduler'), $deleted)
+            : __('Failed to delete schedules', 'ai-post-scheduler');
+        $input   = array('schedule_ids' => array_values(array_map('intval', $ids)), 'deleted' => (int) $deleted);
+        $event   = $success
+            ? AIPS_History_Event::success(AIPS_History_Event_Type::SCHEDULE_DELETED, $message, null, array(), $input)
+            : AIPS_History_Event::failure(AIPS_History_Event_Type::SCHEDULE_DELETED, $message, null, array(), $input);
+
+        AIPS_History_Event_Recorder::instance()->record_lifecycle(
+            $event,
+            'schedule_lifecycle',
+            array('event' => __('Bulk schedule delete', 'ai-post-scheduler'), 'detail' => sprintf(__('%d schedules selected', 'ai-post-scheduler'), count($ids)))
+        );
+    }
+
     public function ajax_bulk_delete_schedules() {
         if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
             AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
@@ -541,6 +602,7 @@ class AIPS_Schedule_Controller {
         }
 
         $deleted = $this->schedule_repository->delete_bulk($ids);
+        $this->record_schedule_bulk_delete($ids, ($deleted !== false) ? (int) $deleted : 0, $deleted !== false);
 
         if ($deleted !== false) {
             AIPS_Ajax_Response::success(array(
@@ -1075,6 +1137,10 @@ class AIPS_Schedule_Controller {
             }
         }
 
+        if (!empty($deleted_items)) {
+            $this->record_schedule_bulk_delete(array_column($deleted_items, 'id'), $deleted_count, true);
+        }
+
         if ($deleted_count === 0) {
             AIPS_Ajax_Response::error(array(
                 'message'      => __('No selected schedules could be deleted.', 'ai-post-scheduler'),
@@ -1160,6 +1226,7 @@ class AIPS_Schedule_Controller {
 
         // Reset the circuit state to 'closed' for this schedule.
         $result = $this->schedule_repository->update($id, array('circuit_state' => 'closed'));
+        $this->record_schedule_event(AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET, $id, $this->schedule_repository->get_by_id($id), (bool) $result);
 
         if ($result) {
             AIPS_Ajax_Response::success(array(
