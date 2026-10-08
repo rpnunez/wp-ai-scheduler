@@ -304,6 +304,51 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 		$this->assertSame('author_deleted', $found['logs'][2]['input']['event_type']);
 	}
 
+	// -- End to end: recorded container -> History modal payload ---------------
+
+	public function test_modal_payload_shows_trigger_in_overview_and_first_two_timeline_rows() {
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::SOURCE_FETCHED,
+			true,
+			'Fetched source #3 (1200 characters)',
+			'source_fetch',
+			array('event' => 'Source fetch', 'detail' => 'Source #3'),
+			'scheduled'
+		);
+		$found   = $this->latest_container('source_fetch');
+		$history = new AIPS_History();
+		$item    = (new AIPS_History_Repository())->get_by_id((int) $found['row']->id);
+
+		$payload   = $this->call_private($history, 'prepare_history_modal_view_data', array($item, false));
+		$cards     = array();
+		foreach ($payload['container']['detail_cards'] as $card) {
+			$cards[$card['label']] = $card['value'];
+		}
+
+		$this->assertSame('Automatic (Scheduled run)', $cards['Trigger Type']);
+		$this->assertStringContainsString('Source #3', $cards['Triggered By']);
+
+		$events = $payload['timeline_data']['events'];
+		$this->assertSame('Trigger Source', $events[0]['title']);
+		$this->assertSame('Trigger Method', $events[1]['title']);
+	}
+
+	public function test_modal_payload_hides_trigger_cards_for_unclassifiable_legacy_container() {
+		$repo = new AIPS_History_Repository();
+		$id   = $repo->create(array(
+			'uuid'            => wp_generate_uuid4(),
+			'creation_method' => 'notification_sent',
+			'status'          => 'completed',
+		));
+		$item = $repo->get_by_id((int) $id);
+
+		$payload = $this->call_private(new AIPS_History(), 'prepare_history_modal_view_data', array($item, false));
+		$labels  = array_column($payload['container']['detail_cards'], 'label');
+
+		$this->assertNotContains('Trigger Type', $labels);
+		$this->assertNotContains('Triggered By', $labels);
+	}
+
 	public function test_record_lifecycle_never_throws() {
 		$service = $this->createMock(AIPS_History_Service_Interface::class);
 		$service->method('create')->willThrowException(new RuntimeException('boom'));
