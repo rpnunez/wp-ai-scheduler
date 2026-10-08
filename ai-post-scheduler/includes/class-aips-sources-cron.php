@@ -136,20 +136,17 @@ class AIPS_Sources_Cron {
 			'info'
 		);
 
+		$fetched_ids = array();
+		$failed      = array();
+
 		foreach ( $due_sources as $source ) {
 			$result = $this->fetcher->fetch( $source );
 
-			AIPS_History_Event_Recorder::instance()->record_simple(
-				AIPS_History_Event_Type::SOURCE_FETCHED,
-				! empty( $result['success'] ),
-				! empty( $result['success'] )
-					? sprintf( __( 'Fetched source #%1$d (%2$d characters)', 'ai-post-scheduler' ), (int) $source->id, (int) ( $result['char_count'] ?? 0 ) )
-					: sprintf( __( 'Fetch failed for source #%1$d: %2$s', 'ai-post-scheduler' ), (int) $source->id, (string) ( $result['error'] ?? '' ) ),
-				'source_fetch',
-				array( 'event' => __( 'Source fetch', 'ai-post-scheduler' ), 'detail' => sprintf( __( 'Source #%d', 'ai-post-scheduler' ), (int) $source->id ) ),
-				'scheduled',
-				array( 'source_id' => (int) $source->id )
-			);
+			if ( ! empty( $result['success'] ) ) {
+				$fetched_ids[] = (int) $source->id;
+			} else {
+				$failed[ (int) $source->id ] = (string) ( $result['error'] ?? '' );
+			}
 
 			if ( ! $result['success'] ) {
 				$this->logger->log(
@@ -162,5 +159,22 @@ class AIPS_Sources_Cron {
 				);
 			}
 		}
+
+		// One History container per cron run (not per source) to keep the log small.
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::SOURCE_FETCHED,
+			empty( $failed ),
+			sprintf(
+				/* translators: 1: sources fetched, 2: sources due, 3: sources that failed */
+				__( 'Fetched %1$d of %2$d due sources (%3$d failed)', 'ai-post-scheduler' ),
+				count( $fetched_ids ),
+				count( $due_sources ),
+				count( $failed )
+			),
+			'source_fetch',
+			array( 'event' => __( 'Source fetch', 'ai-post-scheduler' ), 'detail' => __( 'Scheduled run', 'ai-post-scheduler' ) ),
+			'scheduled',
+			array( 'fetched_source_ids' => $fetched_ids, 'failed' => $failed )
+		);
 	}
 }

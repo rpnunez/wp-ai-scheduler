@@ -90,3 +90,14 @@ Implemented on branch `claude/history-modal-trigger-context-b731a0` (PR 2146). N
 - Schedule resume-batch is covered by the existing `manual_schedule_started` entries.
 - Restoring a component revision (`ajax_restore_component_revision`) and capturing manual edits do not write their own trigger entries.
 - Notification rollup cron still has no container.
+
+### Code-review fixes
+
+- `planner_post`, `trending_topic_post` and `author_topic_post` are now classified **manual** (a user starts the bulk job; cron only executes the slices). The notification handler classifies creation methods through `AIPS_Generation_Trigger`, so retry / regenerate / bulk-job runs still raise "manual generation completed" as they did before the new creation methods were introduced. Trending-topic bulk runs, which previously used the unrecognised `cron`, now also raise it.
+- The History modal no longer reports `*_post` creation methods as "Author topic generation"; new creation methods have group labels.
+- Content-indexing trigger entries are only written when verbose indexer history is enabled (two extra log rows per post otherwise). Source fetches from cron are recorded as one container per run.
+- `AIPS_History_Event_Recorder::record_entity_change()` replaces three copy-pasted helpers (authors, templates, schedules).
+- "Regenerate all components" resolves the History container once and reuses it.
+- Scheduled research records runs that saved zero topics; failed saves are recorded as failures.
+- Bulk schedule delete keeps each item's type.
+- `Test_AIPS_History_Lifecycle_Events::test_every_creation_method_literal_in_the_plugin_is_classified_or_allowlisted` fails when a new `creation_method` literal is added without being classified in `AIPS_Generation_Trigger`.

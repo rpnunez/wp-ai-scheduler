@@ -815,8 +815,15 @@ class AIPS_Research_Controller {
             // Save results
             $saved_count = $this->repository->save_research_batch($topics, $niche);
             
+            // Record every niche run, including ones that saved nothing (e.g. all duplicates).
+            $this->record_research_run(
+                __('Scheduled research', 'ai-post-scheduler'),
+                $niche,
+                ($saved_count === false) ? new WP_Error('save_failed', __('Failed to save research results.', 'ai-post-scheduler')) : (int) $saved_count,
+                'scheduled'
+            );
+
             if ($saved_count) {
-                $this->record_research_run(__('Scheduled research', 'ai-post-scheduler'), $niche, (int) $saved_count, 'scheduled');
                 $total_researched += $saved_count;
                 $this->logger->log("Saved {$saved_count} topics for {$niche}", 'info');
                 
@@ -891,7 +898,13 @@ class AIPS_Research_Controller {
 
         // Save to database
         $saved_count = $this->repository->save_research_batch($topics, $niche);
-        $this->record_research_run(__('Topics from content gap', 'ai-post-scheduler'), $niche, (int) $saved_count, 'manual', array('gap_topic' => $gap_topic));
+        $this->record_research_run(
+            __('Topics from content gap', 'ai-post-scheduler'),
+            $niche,
+            ($saved_count === false) ? new WP_Error('save_failed', __('Failed to save research results.', 'ai-post-scheduler')) : (int) $saved_count,
+            'manual',
+            array('gap_topic' => $gap_topic)
+        );
 
         AIPS_Ajax_Response::success(array(
             'message' => sprintf(__('Generated and saved %d topics based on "%s".', 'ai-post-scheduler'), count($topics), $gap_topic),

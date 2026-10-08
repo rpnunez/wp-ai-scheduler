@@ -531,28 +531,23 @@ class AIPS_Schedule_Controller {
      * @return void
      */
     private function record_schedule_event($event_type, $schedule_id, $schedule, $success) {
-        $label = '';
-        if ($schedule) {
-            $label = !empty($schedule->title) ? (string) $schedule->title : '';
-        }
-        $names = array(
+        $label = ($schedule && !empty($schedule->title)) ? (string) $schedule->title : '';
+        $verbs = array(
             AIPS_History_Event_Type::SCHEDULE_DELETED       => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
             AIPS_History_Event_Type::SCHEDULE_CIRCUIT_RESET => array(__('circuit breaker reset', 'ai-post-scheduler'), __('reset the circuit breaker for', 'ai-post-scheduler')),
         );
-        $verb    = isset($names[$event_type]) ? $names[$event_type] : array($event_type, $event_type);
-        $display = $label !== '' ? sprintf('"%1$s" (ID %2$d)', $label, $schedule_id) : sprintf('(ID %d)', $schedule_id);
-        $message = $success
-            ? sprintf(__('Schedule %1$s %2$s', 'ai-post-scheduler'), $display, $verb[0])
-            : sprintf(__('Failed to %1$s schedule %2$s', 'ai-post-scheduler'), $verb[1], $display);
-        $subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_SCHEDULE, $schedule_id, $label);
-        $event   = $success
-            ? AIPS_History_Event::success($event_type, $message, $subject)
-            : AIPS_History_Event::failure($event_type, $message, $subject);
+        $verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
 
-        AIPS_History_Event_Recorder::instance()->record_lifecycle(
-            $event,
+        AIPS_History_Event_Recorder::instance()->record_entity_change(
+            $event_type,
             'schedule_lifecycle',
-            array('event' => __('Schedule change', 'ai-post-scheduler'), 'schedule_id' => (int) $schedule_id, 'schedule_name' => $label)
+            AIPS_History_Subject::TYPE_SCHEDULE,
+            $schedule_id,
+            $label,
+            $success,
+            __('Schedule', 'ai-post-scheduler'),
+            $verb[0],
+            $verb[1]
         );
     }
 
@@ -562,13 +557,17 @@ class AIPS_Schedule_Controller {
      * @param int[] $ids     Schedule IDs requested.
      * @param int   $deleted Number actually deleted.
      * @param bool  $success Whether the operation succeeded.
+     * @param array $items   Optional list of array(id, type) pairs, for mixed schedule types.
      * @return void
      */
-    private function record_schedule_bulk_delete(array $ids, $deleted, $success) {
+    private function record_schedule_bulk_delete(array $ids, $deleted, $success, array $items = array()) {
         $message = $success
             ? sprintf(_n('%d schedule deleted', '%d schedules deleted', $deleted, 'ai-post-scheduler'), $deleted)
             : __('Failed to delete schedules', 'ai-post-scheduler');
         $input   = array('schedule_ids' => array_values(array_map('intval', $ids)), 'deleted' => (int) $deleted);
+        if (!empty($items)) {
+            $input['items'] = array_values($items);
+        }
         $event   = $success
             ? AIPS_History_Event::success(AIPS_History_Event_Type::SCHEDULE_DELETED, $message, null, array(), $input)
             : AIPS_History_Event::failure(AIPS_History_Event_Type::SCHEDULE_DELETED, $message, null, array(), $input);
@@ -1138,7 +1137,7 @@ class AIPS_Schedule_Controller {
         }
 
         if (!empty($deleted_items)) {
-            $this->record_schedule_bulk_delete(array_column($deleted_items, 'id'), $deleted_count, true);
+            $this->record_schedule_bulk_delete(array_column($deleted_items, 'id'), $deleted_count, true, $deleted_items);
         }
 
         if ($deleted_count === 0) {

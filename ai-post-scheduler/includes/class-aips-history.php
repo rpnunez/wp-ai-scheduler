@@ -60,6 +60,14 @@ class AIPS_History {
             'bulk_generate_now'       => __( 'Bulk Generation', 'ai-post-scheduler' ),
             'bulk_generation'         => __( 'Bulk Generation', 'ai-post-scheduler' ),
             'bulk_regenerate'         => __( 'Bulk Regeneration', 'ai-post-scheduler' ),
+            'planner_post'            => __( 'Planner Bulk Generation', 'ai-post-scheduler' ),
+            'trending_topic_post'     => __( 'Trending Topics Bulk Generation', 'ai-post-scheduler' ),
+            'author_topic_post'       => __( 'Author Topics Bulk Generation', 'ai-post-scheduler' ),
+            'retry'                   => __( 'Retry', 'ai-post-scheduler' ),
+            'regenerate'              => __( 'Regeneration', 'ai-post-scheduler' ),
+            'research_run'            => __( 'Research Run', 'ai-post-scheduler' ),
+            'source_fetch'            => __( 'Source Fetch', 'ai-post-scheduler' ),
+            'gsc_sync'                => __( 'Search Console Sync', 'ai-post-scheduler' ),
         );
     }
 
@@ -678,7 +686,7 @@ class AIPS_History {
             $what_happened = __('Research run', 'ai-post-scheduler');
         } elseif (strpos($text, 'embedding') !== false) {
             $what_happened = __('Embeddings processing', 'ai-post-scheduler');
-        } elseif (strpos($text, 'author') !== false && strpos($text, 'topic') !== false) {
+        } elseif (strpos($text, 'author') !== false && strpos($text, 'topic') !== false && strpos((string) $container['creation_method'], '_post') === false) {
             $what_happened = __('Author topic generation', 'ai-post-scheduler');
         } elseif (strpos($text, 'schedule') !== false) {
             $what_happened = __('Scheduled post generation', 'ai-post-scheduler');

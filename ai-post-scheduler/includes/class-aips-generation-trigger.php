@@ -37,6 +37,8 @@ class AIPS_Generation_Trigger {
 			'bulk_delete', 'bulk_delete_feedback',
 			'bulk_generate', 'bulk_generate_now', 'bulk_generation', 'bulk_regenerate',
 			'regenerate', 'retry',
+			// Background bulk jobs: started by a user, executed by cron slices.
+			'planner_post', 'trending_topic_post', 'author_topic_post',
 		);
 	}
 
@@ -47,8 +49,8 @@ class AIPS_Generation_Trigger {
 	 */
 	private static function automatic_methods() {
 		return array(
-			'scheduled', 'cron', 'bulk_batch_slice', 'template_schedule', 'schedule_execution', 'batch_job', 'planner_post',
-			'trending_topic_post', 'author_topic_post', 'author_topic_gen', 'author_post_gen',
+			'scheduled', 'cron', 'bulk_batch_slice', 'template_schedule', 'schedule_execution', 'batch_job',
+			'author_topic_gen', 'author_post_gen',
 			'author_topic_generation', 'author_post_generation', 'author_embeddings',
 		);
 	}

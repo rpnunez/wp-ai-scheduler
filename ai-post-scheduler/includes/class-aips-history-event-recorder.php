@@ -175,6 +175,49 @@ class AIPS_History_Event_Recorder {
 	}
 
 	/**
+	 * Record a create/update/delete-style change to a named entity.
+	 *
+	 * Shared by the author, template and schedule controllers so the wording,
+	 * subject handling and failure handling stay identical.
+	 *
+	 * @param string $event_type      AIPS_History_Event_Type constant.
+	 * @param string $creation_method Container creation_method (e.g. 'author_lifecycle').
+	 * @param string $subject_type    AIPS_History_Subject::TYPE_* constant.
+	 * @param int    $entity_id       Entity ID.
+	 * @param string $name            Entity name/title (may be empty).
+	 * @param bool   $success         Whether the change succeeded.
+	 * @param string $noun            Translated entity noun, e.g. "Author".
+	 * @param string $past_verb       Translated past-tense verb, e.g. "deleted".
+	 * @param string $base_verb       Translated base verb, e.g. "delete".
+	 * @param array  $context         Extra context stored with the event.
+	 * @return AIPS_History_Container|false
+	 */
+	public function record_entity_change($event_type, $creation_method, $subject_type, $entity_id, $name, $success, $noun, $past_verb, $base_verb, array $context = array()) {
+		$display = ((string) $name !== '')
+			? sprintf('"%1$s" (ID %2$d)', $name, (int) $entity_id)
+			: sprintf('(ID %d)', (int) $entity_id);
+		$message = $success
+			/* translators: 1: entity noun, 2: name and ID, 3: past-tense verb */
+			? sprintf(__('%1$s %2$s %3$s', 'ai-post-scheduler'), $noun, $display, $past_verb)
+			/* translators: 1: base verb, 2: entity noun, 3: name and ID */
+			: sprintf(__('Failed to %1$s %2$s %3$s', 'ai-post-scheduler'), $base_verb, strtolower($noun), $display);
+		$subject = AIPS_History_Subject::of($subject_type, (int) $entity_id, (string) $name);
+		$event   = $success
+			? AIPS_History_Event::success($event_type, $message, $subject, $context)
+			: AIPS_History_Event::failure($event_type, $message, $subject, $context);
+
+		return $this->record_lifecycle(
+			$event,
+			$creation_method,
+			array(
+				'event'                   => sprintf(__('%s change', 'ai-post-scheduler'), $noun),
+				$subject_type . '_id'     => (int) $entity_id,
+				$subject_type . '_name'   => (string) $name,
+			)
+		);
+	}
+
+	/**
 	 * Shorthand for record_lifecycle() when an event is just success/failure + message.
 	 *
 	 * @param string                    $event_type      AIPS_History_Event_Type constant.

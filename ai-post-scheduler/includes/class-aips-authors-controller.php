@@ -196,19 +196,18 @@ class AIPS_Authors_Controller {
 			AIPS_History_Event_Type::AUTHOR_UPDATED => array(__('updated', 'ai-post-scheduler'), __('update', 'ai-post-scheduler')),
 			AIPS_History_Event_Type::AUTHOR_DELETED => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
 		);
-		$verb    = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
-		$subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_AUTHOR, $author_id, $author_name);
-		$message = $success
-			? sprintf(__('Author "%1$s" %2$s', 'ai-post-scheduler'), $author_name, $verb[0])
-			: sprintf(__('Failed to %1$s author "%2$s"', 'ai-post-scheduler'), $verb[1], $author_name);
-		$event   = $success
-			? AIPS_History_Event::success($event_type, $message, $subject, array('author_name' => $author_name))
-			: AIPS_History_Event::failure($event_type, $message, $subject, array('author_name' => $author_name));
+		$verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
 
-		AIPS_History_Event_Recorder::instance()->record_lifecycle(
-			$event,
+		AIPS_History_Event_Recorder::instance()->record_entity_change(
+			$event_type,
 			'author_lifecycle',
-			array('event' => __('Author change', 'ai-post-scheduler'), 'author_id' => (int) $author_id, 'author_name' => $author_name)
+			AIPS_History_Subject::TYPE_AUTHOR,
+			$author_id,
+			$author_name,
+			$success,
+			__('Author', 'ai-post-scheduler'),
+			$verb[0],
+			$verb[1]
 		);
 	}
 

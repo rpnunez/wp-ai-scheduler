@@ -107,20 +107,19 @@ class AIPS_Templates_Controller {
             AIPS_History_Event_Type::TEMPLATE_DELETED => array(__('deleted', 'ai-post-scheduler'), __('delete', 'ai-post-scheduler')),
             AIPS_History_Event_Type::TEMPLATE_CLONED  => array(__('cloned', 'ai-post-scheduler'), __('clone', 'ai-post-scheduler')),
         );
-        $verb    = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
-        $subject = AIPS_History_Subject::of(AIPS_History_Subject::TYPE_TEMPLATE, $template_id, $name);
-        $message = $success
-            ? sprintf(__('Template "%1$s" %2$s', 'ai-post-scheduler'), $name, $verb[0])
-            : sprintf(__('Failed to %1$s template "%2$s"', 'ai-post-scheduler'), $verb[1], $name);
-        $context = array_merge(array('template_name' => $name), $extra);
-        $event   = $success
-            ? AIPS_History_Event::success($event_type, $message, $subject, $context)
-            : AIPS_History_Event::failure($event_type, $message, $subject, $context);
+        $verb = isset($verbs[$event_type]) ? $verbs[$event_type] : array($event_type, $event_type);
 
-        AIPS_History_Event_Recorder::instance()->record_lifecycle(
-            $event,
+        AIPS_History_Event_Recorder::instance()->record_entity_change(
+            $event_type,
             'template_lifecycle',
-            array('event' => __('Template change', 'ai-post-scheduler'), 'template_id' => (int) $template_id, 'template_name' => $name)
+            AIPS_History_Subject::TYPE_TEMPLATE,
+            $template_id,
+            $name,
+            $success,
+            __('Template', 'ai-post-scheduler'),
+            $verb[0],
+            $verb[1],
+            array_merge(array('template_name' => $name), $extra)
         );
     }
 

@@ -75,9 +75,9 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 		return array(
 			'cron'                => array('cron', 'scheduled'),
 			'bulk batch slice'    => array('bulk_batch_slice', 'scheduled'),
-			'planner post'        => array('planner_post', 'scheduled'),
-			'trending topic post' => array('trending_topic_post', 'scheduled'),
-			'author topic post'   => array('author_topic_post', 'scheduled'),
+			'planner post'        => array('planner_post', 'manual'),
+			'trending topic post' => array('trending_topic_post', 'manual'),
+			'author topic post'   => array('author_topic_post', 'manual'),
 			'template lifecycle'  => array('template_lifecycle', 'manual'),
 			'author lifecycle'    => array('author_lifecycle', 'manual'),
 			'source lifecycle'    => array('source_lifecycle', 'manual'),
@@ -96,7 +96,7 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 
 		$result = AIPS_Generation_Trigger::describe($context);
 
-		$this->assertSame('scheduled', $result['method']['method']);
+		$this->assertSame('manual', $result['method']['method']);
 		$this->assertStringStartsWith('Bulk job abc (Author topics)', $result['source_message']);
 	}
 
@@ -347,6 +347,106 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 
 		$this->assertNotContains('Trigger Type', $labels);
 		$this->assertNotContains('Triggered By', $labels);
+	}
+
+	// -- Review fixes -----------------------------------------------------------
+
+	/**
+	 * @dataProvider notification_methods
+	 */
+	public function test_notification_handler_treats_bulk_retry_and_regenerate_as_manual($creation_method, $expected) {
+		$handler = (new ReflectionClass('AIPS_Notifications_Event_Handler'))->newInstanceWithoutConstructor();
+		$context = new AIPS_Template_Context((object) array('id' => 1, 'name' => 'T', 'prompt_template' => 'p'), null, null, $creation_method);
+
+		$this->assertSame($expected, $this->call_private($handler, 'extract_creation_method', array($context)));
+	}
+
+	public static function notification_methods() {
+		return array(
+			'manual'              => array('manual', 'manual'),
+			'retry'               => array('retry', 'manual'),
+			'regenerate'          => array('regenerate', 'manual'),
+			'bulk generate'       => array('bulk_generate', 'manual'),
+			'planner post'        => array('planner_post', 'manual'),
+			'author topic post'   => array('author_topic_post', 'manual'),
+			'scheduled'           => array('scheduled', 'scheduled'),
+			'unknown stays blank' => array('something_new', ''),
+		);
+	}
+
+	public function test_modal_summary_does_not_call_post_generation_topic_generation() {
+		$history = new AIPS_History();
+		$base    = array('status' => 'completed', 'template_name' => '');
+
+		$post_run  = $this->call_private($history, 'analyze_history_modal_summary', array($base + array('creation_method' => 'author_topic_post'), array()));
+		$topic_run = $this->call_private($history, 'analyze_history_modal_summary', array($base + array('creation_method' => 'author_topic_generation'), array()));
+
+		$this->assertNotSame('Author topic generation', $post_run['what_happened']);
+		$this->assertSame('Author topic generation', $topic_run['what_happened']);
+	}
+
+	public function test_every_creation_method_literal_in_the_plugin_is_classified_or_allowlisted() {
+		// Container types that intentionally have no manual/automatic signal of their own.
+		$allowlist = array(
+			'content_indexing', 'content_index_operation', 'notification_sent', 'schedule_lifecycle',
+			'post_generation', 'topic_post_generation', 'taxonomy_generation', 'stress_test', 'bulk_schedule',
+			'research_run', 'source_fetch', 'gsc_sync', 'link_index_run',
+		);
+		$files   = glob(dirname(__DIR__) . '/includes/*.php');
+		$files[] = dirname(__DIR__) . '/ai-post-scheduler.php';
+		$found   = array();
+
+		foreach ($files as $file) {
+			$code = file_get_contents($file);
+			if (preg_match_all("/creation_method'?\s*(?:=>|=)\s*'([a-z_]+)'/", $code, $m)) {
+				$found = array_merge($found, $m[1]);
+			}
+			if (preg_match_all("/history_service->create\(\s*'([a-z_]+)'/", $code, $m)) {
+				$found = array_merge($found, $m[1]);
+			}
+		}
+
+		$unclassified = array();
+		foreach (array_unique($found) as $method) {
+			if (AIPS_Generation_Trigger::classify_creation_method($method) === 'unknown' && !in_array($method, $allowlist, true)) {
+				$unclassified[] = $method;
+			}
+		}
+
+		$this->assertSame(array(), array_values($unclassified), 'New creation_method values must be added to AIPS_Generation_Trigger (or the allowlist above).');
+	}
+
+	public function test_entity_change_helper_wording_for_success_and_failure() {
+		$recorder = AIPS_History_Event_Recorder::instance();
+
+		$recorder->record_entity_change(AIPS_History_Event_Type::AUTHOR_DELETED, 'author_lifecycle', AIPS_History_Subject::TYPE_AUTHOR, 7, 'Ada', true, 'Author', 'deleted', 'delete');
+		$found = $this->latest_container('author_lifecycle');
+		$this->assertSame('Author "Ada" (ID 7) deleted', $found['logs'][2]['message']);
+		$this->assertStringContainsString('Author "Ada" (ID 7)', $found['logs'][0]['message']);
+
+		$recorder->record_entity_change(AIPS_History_Event_Type::AUTHOR_DELETED, 'author_lifecycle', AIPS_History_Subject::TYPE_AUTHOR, 7, '', false, 'Author', 'deleted', 'delete');
+		$found = $this->latest_container('author_lifecycle');
+		$this->assertSame('failed', $found['row']->status);
+		$this->assertStringContainsString('Failed to delete author (ID 7)', $found['logs'][2]['message']);
+	}
+
+	public function test_bulk_schedule_delete_keeps_item_types() {
+		$controller = (new ReflectionClass('AIPS_Schedule_Controller'))->newInstanceWithoutConstructor();
+		$items      = array(array('id' => 4, 'type' => 'template'), array('id' => 4, 'type' => 'author_post'));
+
+		$this->call_private($controller, 'record_schedule_bulk_delete', array(array(4, 4), 2, true, $items));
+
+		$found = $this->latest_container('schedule_lifecycle');
+		$this->assertSame($items, $found['logs'][2]['input']['items']);
+	}
+
+	public function test_regeneration_reuses_a_container_passed_in_the_context() {
+		$service   = (new ReflectionClass('AIPS_Component_Regeneration_Service'))->newInstanceWithoutConstructor();
+		$container = (new ReflectionClass('AIPS_History_Container'))->newInstanceWithoutConstructor();
+
+		$resolved = $this->call_private($service, 'resolve_history_container', array(array('history_container' => $container), 1, 2));
+
+		$this->assertSame($container, $resolved);
 	}
 
 	public function test_record_lifecycle_never_throws() {
