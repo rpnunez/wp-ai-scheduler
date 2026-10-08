@@ -865,6 +865,11 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->process($post_id);
         });
 
+        // Scheduled duplicate scan (Settings > Engine > Scheduled Duplicate Scan).
+        add_action(AIPS_Duplicate_Group_Service::CRON_HOOK, function () {
+            (new AIPS_Duplicate_Group_Service())->run_scheduled_scan();
+        });
+
         // Daily Search Console target keyword sync.
         add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
             AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
@@ -1115,6 +1120,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Keep the duplicate scan cron event in line with its setting.
+        (new AIPS_Duplicate_Group_Service())->ensure_schedule();
 
         // Keep the daily Search Console sync scheduled while it is connected.
         AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();

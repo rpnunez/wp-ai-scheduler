@@ -1061,9 +1061,12 @@ class AIPS_Similarity_Evaluator {
 	 * Detect organic Post Clusters using connected community graph traversal.
 	 *
 	 * @param float|null $threshold Similarity threshold (defaults to option value).
+	 * @param int        $min_size  Minimum number of posts for a group to count as a cluster (min 2).
 	 * @return array Detected post clusters with metrics and member posts.
 	 */
-	public function detect_post_clusters(?float $threshold = null): array {
+	public function detect_post_clusters(?float $threshold = null, int $min_size = 2): array {
+		$min_size = max(2, $min_size);
+
 		if ($threshold === null) {
 			$threshold = (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65);
 		}
@@ -1076,7 +1079,7 @@ class AIPS_Similarity_Evaluator {
 		}
 
 		// Cap candidate posts for cluster detection to preserve response time and avoid execution timeouts on large libraries
-		$max_candidates = (int) apply_filters('aips_cluster_detection_max_posts', 250);
+		$max_candidates = $this->get_cluster_max_posts();
 		if (count($candidates) > $max_candidates) {
 			$candidates = array_slice($candidates, -$max_candidates);
 		}
@@ -1122,10 +1125,11 @@ class AIPS_Similarity_Evaluator {
 			$adjacency[$pid] = array();
 		}
 
+		$time_budget = $this->get_cluster_time_budget();
 		$start_time = microtime(true);
 		for ($i = 0; $i < $total; $i++) {
 			// Enforce 8-second time budget guard to guarantee server never hits 30s timeout
-			if (($i % 25 === 0) && (microtime(true) - $start_time > 8.0)) {
+			if (($i % 25 === 0) && (microtime(true) - $start_time > $time_budget)) {
 				break;
 			}
 
@@ -1152,35 +1156,14 @@ class AIPS_Similarity_Evaluator {
 			}
 		}
 
-		// Connected component detection via BFS
-		$visited    = array();
+		// Group posts by linkage. Plain connected components chain A~B and B~C into one
+		// cluster even when A and C are unrelated, so a site where everything is loosely
+		// related collapses into a single giant cluster. The tightness setting requires a
+		// post to be close to a share of the cluster it joins instead.
 		$components = array();
-
-		foreach ($post_ids as $pid) {
-			if (!empty($visited[$pid])) {
-				continue;
-			}
-
-			$component = array();
-			$queue     = array($pid);
-			$visited[$pid] = true;
-
-			while (!empty($queue)) {
-				$curr = array_shift($queue);
-				$component[] = $curr;
-
-				if (!empty($adjacency[$curr])) {
-					foreach ($adjacency[$curr] as $neighbor_id => $sim_val) {
-						if (empty($visited[$neighbor_id])) {
-							$visited[$neighbor_id] = true;
-							$queue[] = $neighbor_id;
-						}
-					}
-				}
-			}
-
-			// Retain components with 2 or more posts as clusters
-			if (count($component) >= 2) {
+		foreach ($this->group_by_linkage($adjacency, $post_ids, $this->get_cluster_link_ratio()) as $component) {
+			// Retain components that reach the minimum cluster size
+			if (count($component) >= $min_size) {
 				$components[] = $component;
 			}
 		}
@@ -1261,6 +1244,7 @@ class AIPS_Similarity_Evaluator {
 					'url'                    => $posts[$cid]['url'],
 					'view_url'               => $posts[$cid]['url'],
 					'edit_url'               => $posts[$cid]['edit_url'],
+					'post_date'              => $this->format_post_date($cid),
 					'is_pillar'              => ($cid === $pillar_id),
 					// How close the post is to the cluster's overall topic (0-1).
 					'topic_score'            => round((float) $this->cosine_similarity($posts[$cid]['embedding'], $centroid), 4),
@@ -1298,9 +1282,11 @@ class AIPS_Similarity_Evaluator {
 	 *
 	 * @param float|null $threshold
 	 * @param string     $sensitivity 'hybrid', 'semantic', or 'links'.
+	 * @param int[]|null $clustered_ids When provided, a post is a semantic island if it is not in this
+	 *                                  list (i.e. not in any displayed cluster) instead of having <= 1 neighbour.
 	 * @return array List of orphan post records with classification tags.
 	 */
-	public function get_orphan_posts(?float $threshold = null, string $sensitivity = 'hybrid'): array {
+	public function get_orphan_posts(?float $threshold = null, string $sensitivity = 'hybrid', ?array $clustered_ids = null): array {
 		if ($threshold === null) {
 			$threshold = (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65);
 		}
@@ -1313,7 +1299,7 @@ class AIPS_Similarity_Evaluator {
 		}
 
 		// Cap candidate posts for orphan analysis to prevent execution timeouts on large sites
-		$max_candidates = (int) apply_filters('aips_cluster_detection_max_posts', 250);
+		$max_candidates = $this->get_cluster_max_posts();
 		if (count($candidates) > $max_candidates) {
 			$candidates = array_slice($candidates, -$max_candidates);
 		}
@@ -1343,6 +1329,8 @@ class AIPS_Similarity_Evaluator {
 					'edit_url'  => get_edit_post_link($pid, ''),
 					'embedding' => $vec,
 					'neighbors' => 0,
+					'best_sim'  => 0.0,
+					'best_id'   => 0,
 				);
 			}
 		}
@@ -1351,9 +1339,10 @@ class AIPS_Similarity_Evaluator {
 		$total    = count($post_ids);
 
 		// Calculate semantic neighbors with time budget guard
+		$time_budget = $this->get_cluster_time_budget();
 		$start_time = microtime(true);
 		for ($i = 0; $i < $total; $i++) {
-			if (($i % 25 === 0) && (microtime(true) - $start_time > 8.0)) {
+			if (($i % 25 === 0) && (microtime(true) - $start_time > $time_budget)) {
 				break;
 			}
 
@@ -1375,6 +1364,14 @@ class AIPS_Similarity_Evaluator {
 						$posts[$id_a]['neighbors']++;
 						$posts[$id_b]['neighbors']++;
 					}
+					if ($sim > $posts[$id_a]['best_sim']) {
+						$posts[$id_a]['best_sim'] = $sim;
+						$posts[$id_a]['best_id']  = $id_b;
+					}
+					if ($sim > $posts[$id_b]['best_sim']) {
+						$posts[$id_b]['best_sim'] = $sim;
+						$posts[$id_b]['best_id']  = $id_a;
+					}
 				}
 			}
 		}
@@ -1385,9 +1382,19 @@ class AIPS_Similarity_Evaluator {
 		$use_link_index = (new AIPS_Link_Index_Service($link_index))->is_built();
 		$link_counts    = $use_link_index ? $link_index->get_counts_for_posts(array_keys($posts)) : array();
 
+		// Map each clustered post to its cluster name so an orphan can show the
+		// cluster its most similar post belongs to.
+		$cluster_names = array();
+		foreach ((array) $this->config->get_option('aips_post_clusters', array()) as $saved_cluster) {
+			foreach ((array) (isset($saved_cluster['member_ids']) ? $saved_cluster['member_ids'] : array()) as $member_id) {
+				$cluster_names[(int) $member_id] = isset($saved_cluster['name']) ? (string) $saved_cluster['name'] : '';
+			}
+		}
+		$clustered_lookup = $clustered_ids !== null ? array_flip(array_map('intval', $clustered_ids)) : null;
+
 		$orphans = array();
 		foreach ($posts as $pid => $pdata) {
-			$is_island = ($pdata['neighbors'] <= 1);
+			$is_island = ($clustered_lookup !== null) ? !isset($clustered_lookup[$pid]) : ($pdata['neighbors'] <= 1);
 			$incoming_links = $use_link_index
 				? (isset($link_counts[$pid]) ? $link_counts[$pid]['inbound'] : 0)
 				: $this->count_incoming_internal_links($pid);
@@ -1423,11 +1430,143 @@ class AIPS_Similarity_Evaluator {
 					'neighbors'      => $pdata['neighbors'],
 					'incoming_links' => $incoming_links,
 					'orphan_type'    => $orphan_type,
+					'post_date'      => $this->format_post_date($pid),
+					'closest_post_id'            => $pdata['best_id'],
+					'closest_cluster_name'       => isset($cluster_names[$pdata['best_id']]) ? $cluster_names[$pdata['best_id']] : '',
+					'closest_cluster_similarity' => round((float) $pdata['best_sim'], 4),
 				);
 			}
 		}
 
 		return $orphans;
+	}
+
+	/**
+	 * Maximum posts compared per cluster scan (Settings > Engine).
+	 *
+	 * @return int
+	 */
+	private function get_cluster_max_posts(): int {
+		$value = (int) $this->config->get_option('aips_cluster_detection_max_posts', 250);
+		return max(50, (int) apply_filters('aips_cluster_detection_max_posts', $value));
+	}
+
+	/**
+	 * Share of cross pairs that must be similar for two groups to merge, from
+	 * Settings > Engine > Cluster tightness.
+	 *
+	 * @return float 0 < ratio <= 1.
+	 */
+	private function get_cluster_link_ratio(): float {
+		switch ((string) $this->config->get_option('aips_cluster_tightness', 'balanced')) {
+			case 'loose':
+				return 0.0001; // Any single link joins two groups (connected components).
+			case 'strict':
+				return 1.0;
+			default:
+				return 0.5;
+		}
+	}
+
+	/**
+	 * Similarity recorded for pillar-to-post links (Settings > Engine).
+	 *
+	 * @return float
+	 */
+	private function get_pillar_spoke_similarity(): float {
+		return max(0.30, min(1.0, (float) $this->config->get_option('aips_pillar_spoke_similarity', 0.75)));
+	}
+
+	/**
+	 * Agglomerative grouping over a similarity adjacency list.
+	 *
+	 * Strongest pairs merge first. Two groups merge only when at least $ratio of
+	 * the possible cross pairs are similar, so one stray link cannot fuse two
+	 * topics. A ratio near 0 reproduces connected components; 1.0 is complete
+	 * linkage.
+	 *
+	 * @param array<int,array<int,float>> $adjacency Post ID => (neighbour ID => similarity).
+	 * @param int[]                       $post_ids  Every post, in a stable order.
+	 * @param float                       $ratio     Required share of cross pairs.
+	 * @return array<int,int[]> Groups of post IDs, singletons included.
+	 */
+	private function group_by_linkage(array $adjacency, array $post_ids, float $ratio): array {
+		$edges = array();
+		foreach ($adjacency as $a => $neighbours) {
+			foreach ($neighbours as $b => $sim) {
+				if ($a < $b) {
+					$edges[] = array($a, $b, $sim);
+				}
+			}
+		}
+		usort($edges, function ($x, $y) {
+			return $y[2] <=> $x[2];
+		});
+
+		$group_of = array();
+		$groups   = array();
+		foreach ($post_ids as $id) {
+			$group_of[$id] = count($groups);
+			$groups[]      = array($id);
+		}
+
+		$rejected = array(); // 'ga:gb' => combined size when last rejected.
+		foreach ($edges as $edge) {
+			$ga = $group_of[$edge[0]];
+			$gb = $group_of[$edge[1]];
+			if ($ga === $gb) {
+				continue;
+			}
+
+			$size = count($groups[$ga]) + count($groups[$gb]);
+			$key  = $ga < $gb ? $ga . ':' . $gb : $gb . ':' . $ga;
+			if (isset($rejected[$key]) && $rejected[$key] === $size) {
+				continue;
+			}
+
+			$needed  = $ratio * count($groups[$ga]) * count($groups[$gb]);
+			$present = 0;
+			foreach ($groups[$ga] as $x) {
+				foreach ($groups[$gb] as $y) {
+					if (isset($adjacency[$x][$y])) {
+						$present++;
+					}
+				}
+			}
+			if ($present < $needed) {
+				$rejected[$key] = $size;
+				continue;
+			}
+
+			foreach ($groups[$gb] as $id) {
+				$group_of[$id] = $ga;
+			}
+			$groups[$ga] = array_merge($groups[$ga], $groups[$gb]);
+			$groups[$gb] = array();
+		}
+
+		return array_values(array_filter($groups));
+	}
+
+	/**
+	 * Seconds a cluster scan may spend comparing posts (Settings > Engine).
+	 *
+	 * @return float
+	 */
+	private function get_cluster_time_budget(): float {
+		$value = (int) $this->config->get_option('aips_cluster_detection_time_budget', 8);
+		return (float) max(2, min(25, $value));
+	}
+
+	/**
+	 * Format a post's publish date for admin tables.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string Localized date, or an empty string when unavailable.
+	 */
+	private function format_post_date(int $post_id): string {
+		$date = get_the_date('', $post_id);
+		return $date ? (string) $date : '';
 	}
 
 	/**
@@ -1472,7 +1611,7 @@ class AIPS_Similarity_Evaluator {
 				$targets[] = array(
 					'target_type' => 'post',
 					'target_id'   => (int) $mid,
-					'similarity'  => 0.75,
+					'similarity'  => $this->get_pillar_spoke_similarity(),
 				);
 			}
 			$this->get_relationships_repository()->sync_for_source('post', $post_id, $targets, 'pillar_spoke');
