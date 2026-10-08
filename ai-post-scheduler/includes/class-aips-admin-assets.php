@@ -1072,6 +1072,11 @@ class AIPS_Admin_Assets {
                 // Schedule error toasts
                 'failedToLoadHistory'            => __('Failed to load history.', 'ai-post-scheduler'),
                 'failedToDeleteSchedules'        => __('Failed to delete schedules.', 'ai-post-scheduler'),
+                // Schedule history modal — generated-posts list
+                'recentHistoryTitle'             => __('Recent History', 'ai-post-scheduler'),
+                /* translators: %d: number of additional posts beyond the first one shown */
+                'andNMorePosts'                  => __('and %d more', 'ai-post-scheduler'),
+                'showLess'                       => __('Show less', 'ai-post-scheduler'),
                 'bulkRunFailed'                  => __('Bulk run failed.', 'ai-post-scheduler'),
                 // Bulk run-now confirm dialog
                 'runSchedulesNow'                => __('Run Schedules Now', 'ai-post-scheduler'),
