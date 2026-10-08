@@ -222,3 +222,32 @@
 		min-width: 150px;
 	}
 }
+
+/* Post Review Table Actions */
+.aips-post-review-table .column-actions {
+	width: 400px;
+}
+
+.aips-action-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.aips-action-buttons .button {
+	margin: 0;
+}
+
+.aips-post-review-table .button-link-delete {
+	color: #b32d2e;
+}
+
+.aips-post-review-table .button-link-delete:hover {
+	color: #ffffff;
+	background: #b32d2e;
+}
+
+.aips-post-review-table tr[data-post-id] {
+	transition: opacity 0.3s ease;
+}
+

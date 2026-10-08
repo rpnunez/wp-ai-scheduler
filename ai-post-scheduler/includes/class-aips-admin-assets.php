@@ -461,6 +461,13 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
         );
 
+        wp_enqueue_style(
+            'aips-history-style',
+            AIPS_PLUGIN_URL . 'assets/css/history.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
         wp_enqueue_script(
             'aips-datetime-script',
             AIPS_PLUGIN_URL . 'assets/js/datetime.js',
@@ -957,6 +964,13 @@ class AIPS_Admin_Assets {
      * @param string $hook The current admin page hook.
      */
     private function enqueue_schedule_assets($hook) {
+        wp_enqueue_style(
+            'aips-schedule-style',
+            AIPS_PLUGIN_URL . 'assets/css/schedule.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
             wp_localize_script('aips-admin-script', 'aipsScheduleL10n', array(
                 // Current WordPress site UTC offset in seconds, used to render/parse the
                 // "Start Time" datetime-local field in site-local time regardless of the
@@ -1322,6 +1336,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the history page.
      */
     private function enqueue_history_assets() {
+        wp_enqueue_style(
+            'aips-history-style',
+            AIPS_PLUGIN_URL . 'assets/css/history.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
             wp_enqueue_script(
                 'aips-admin-view-session',
                 AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
@@ -1703,6 +1724,13 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the main dashboard page.
      */
 	private function enqueue_dashboard_assets() {
+		wp_enqueue_style(
+			'aips-dashboard-style',
+			AIPS_PLUGIN_URL . 'assets/css/dashboard.css',
+			array('aips-admin-style'),
+			AIPS_VERSION
+		);
+
 		wp_enqueue_script(
 			'aips-chartjs',
 			apply_filters(
