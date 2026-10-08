@@ -783,7 +783,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($history) {
             $history->log = $this->wpdb->get_results($this->wpdb->prepare(
-                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC, id ASC",
                 $id
             ));
         }

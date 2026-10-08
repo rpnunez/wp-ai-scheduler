@@ -1052,6 +1052,47 @@ class AIPS_Generator {
     }
 
     /**
+     * Write the "trigger source" and "trigger method" entries to the current
+     * history container so the History modal can show what started the run
+     * and whether it was manual or automatic.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return void
+     */
+    private function record_generation_trigger($context) {
+        if (!$this->current_history) {
+            return;
+        }
+
+        $trigger = AIPS_Generation_Trigger::describe($context);
+        $method  = $trigger['method'];
+
+        $this->current_history->record(
+            'trigger_source',
+            sprintf(
+                /* translators: %s: description of the schedule/template/campaign that started the run */
+                __('Generation started from: %s', 'ai-post-scheduler'),
+                $trigger['source_message']
+            ),
+            $trigger['source'],
+            null,
+            array('component' => 'trigger')
+        );
+
+        $this->current_history->record(
+            'trigger_method',
+            $method['message'],
+            array(
+                'method'          => $method['method'],
+                'method_label'    => $method['label'],
+                'creation_method' => (string) $context->get_creation_method(),
+            ),
+            null,
+            array('component' => 'trigger')
+        );
+    }
+
+    /**
      * Generate a post from a Generation Context.
      *
      * This is the core implementation that works with any context type.
@@ -1100,6 +1141,9 @@ class AIPS_Generator {
             // Fallback if history creation fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
+
+        // Record what triggered this run and how, as the first two history entries.
+        $this->record_generation_trigger($context);
 
         // Open a transcript for this run when conversational generation is enabled
         // and the active provider can replay it.
