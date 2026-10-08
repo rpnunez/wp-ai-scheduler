@@ -777,28 +777,3 @@
 	color: #dc2626;
 	font-weight: 600;
 }
-
-.aips-stress-diff-split {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 12px;
-	margin-top: 8px;
-	font-size: 12px;
-}
-
-.aips-stress-diff-split-box {
-	background: #ffffff;
-	border: 1px solid #cbd5e1;
-	border-radius: 4px;
-	padding: 8px 10px;
-	max-height: 200px;
-	overflow: auto;
-}
-
-.aips-stress-diff-split-box pre {
-	margin: 0;
-	white-space: pre-wrap;
-	word-break: break-word;
-	font-size: 11px;
-}
-

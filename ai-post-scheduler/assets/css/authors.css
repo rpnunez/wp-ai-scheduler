@@ -5,49 +5,6 @@
  * @since 1.8.0
  */
 
-/* Modal Styles */
-.aips-modal {
-	position: fixed;
-	z-index: 9999;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(0,0,0,0.5);
-	display: none;
-}
-
-.aips-modal-content {
-	background-color: #fff;
-	margin: 5% auto;
-	padding: 20px;
-	border: 1px solid #888;
-	width: 80%;
-	max-width: 600px;
-	border-radius: 4px;
-	position: relative;
-	max-height: 80vh;
-	overflow-y: auto;
-}
-
-.aips-modal-content.aips-modal-large {
-	max-width: 900px;
-}
-
-.aips-modal-close {
-	color: #aaa;
-	float: right;
-	font-size: 28px;
-	font-weight: bold;
-	cursor: pointer;
-	line-height: 20px;
-}
-
-.aips-modal-close:hover,
-.aips-modal-close:focus {
-	color: #000;
-}
-
 /* Form Styles */
 .form-group {
 	margin-bottom: 20px;
@@ -172,77 +129,10 @@
 	margin-bottom: 5px;
 }
 
-/* Inline feedback buttons displayed below the topic title */
-.aips-topic-inline-feedback {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	margin-top: 8px;
-}
-
-.aips-topic-inline-feedback .aips-approve-topic,
-.aips-topic-inline-feedback .aips-reject-topic {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	font-size: 12px;
-}
-
-.aips-topic-inline-feedback .aips-topic-feedback-icon {
-	font-size: 14px;
-	width: 14px;
-	height: 14px;
-	line-height: 1;
-}
-
 /* Feedback icon button — icon-only, compact (kept for other uses) */
 .topic-actions .aips-topic-feedback-icon {
 	display: block;
 	line-height: 1;
-}
-
-/* Empty State */
-.aips-empty-state {
-	text-align: center;
-	padding: 60px 20px;
-	color: #666;
-}
-
-.aips-empty-state .dashicons {
-	font-size: 80px;
-	width: 80px;
-	height: 80px;
-	color: #ccc;
-}
-
-.aips-empty-state h3 {
-	margin-top: 20px;
-	font-size: 18px;
-	color: #333;
-}
-
-.aips-empty-state p {
-	font-size: 14px;
-	margin-top: 10px;
-}
-
-/* Status Badges */
-.aips-status {
-	display: inline-block;
-	padding: 3px 8px;
-	border-radius: 3px;
-	font-size: 12px;
-	font-weight: 500;
-}
-
-.aips-status-active {
-	background-color: #d7ffd9;
-	color: #00a32a;
-}
-
-.aips-status-inactive {
-	background-color: #f0f0f1;
-	color: #666;
 }
 
 /* Author Actions */
@@ -284,41 +174,6 @@
 
 .aips-authors-list .column-active {
 	width: 10%;
-}
-
-/* Topic Statistics */
-.column-topics div {
-	font-size: 0.9em;
-}
-
-.column-topics span {
-	display: inline-block;
-	margin: 2px 0;
-}
-
-/* Loading State */
-.aips-loading {
-	text-align: center;
-	padding: 20px;
-	color: #666;
-}
-
-.aips-loading:before {
-	content: "";
-	display: inline-block;
-	width: 20px;
-	height: 20px;
-	border: 2px solid #f3f3f3;
-	border-top: 2px solid #2271b1;
-	border-radius: 50%;
-	animation: spin 1s linear infinite;
-	margin-right: 10px;
-	vertical-align: middle;
-}
-
-@keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
 }
 
 /* Responsive */
