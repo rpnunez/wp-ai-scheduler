@@ -216,6 +216,26 @@ class AIPS_Background_Process_Repository {
 	}
 
 	/**
+	 * Remove a run's AI call budget (it then runs without a limit).
+	 *
+	 * @param int $id Run ID.
+	 * @return bool
+	 */
+	public function clear_ai_budget(int $id): bool {
+		global $wpdb;
+
+		$result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$this->table(),
+			array('ai_calls_budget' => 0, 'updated_at' => time()),
+			array('id' => $id),
+			array('%d', '%d'),
+			array('%d')
+		);
+
+		return $result !== false;
+	}
+
+	/**
 	 * Move a run to a new status, only when it is currently in one of $from.
 	 *
 	 * @param int         $id          Run ID.

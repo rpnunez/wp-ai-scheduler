@@ -236,6 +236,12 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 			return false;
 		}
 
+		// A run paused by its own AI budget would pause again at once: resuming it
+		// is an explicit decision to carry on, so the budget no longer applies.
+		if ($run->status === AIPS_Background_Process_Repository::STATUS_PAUSED && $run->ai_calls_budget > 0 && $run->ai_calls_used >= $run->ai_calls_budget) {
+			$this->repository->clear_ai_budget($run->id);
+		}
+
 		$changed = $this->repository->transition(
 			$run->id,
 			AIPS_Background_Process_Repository::STATUS_RUNNING,
@@ -355,7 +361,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 				$run->id,
 				AIPS_Background_Process_Repository::STATUS_PAUSED,
 				$active,
-				__('AI call budget for this run reached. Resume to continue with a fresh allowance check.', 'ai-post-scheduler')
+				__('AI call budget for this run reached. Resume to carry on without a budget.', 'ai-post-scheduler')
 			);
 			return;
 		}

@@ -202,6 +202,26 @@ class AIPS_Bulk_Batch_Processor {
 			return;
 		}
 
+		// Stopped by an administrator (Diagnostics > Background Processes): do nothing.
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED ) {
+			$this->logger->log(
+				sprintf( 'Bulk batch processor: job %s was stopped; skipping slice at %d.', $job_id, $start_index ),
+				'info'
+			);
+			return;
+		}
+
+		// Paused while this slice was already firing: put it back so it runs after the
+		// job is resumed instead of being lost.
+		if ( $job->status === AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED ) {
+			wp_schedule_single_event(
+				time() + 300,
+				self::HOOK,
+				array( $job_id, $start_index, $batch_size, $total_quantity, $correlation_id )
+			);
+			return;
+		}
+
 		// Look up the registered strategy.
 		$job_type = $job->job_type;
 		if ( ! $this->has_strategy( $job_type ) ) {

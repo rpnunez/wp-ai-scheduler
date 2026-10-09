@@ -51,7 +51,8 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 	 * Build a normalized snapshot, deriving the control flags from the status.
 	 *
 	 * Keys: key, label, description, uses_ai, status, status_label, is_active,
-	 * can_start, can_pause, can_resume, can_cancel, processed, total, failed,
+	 * can_start (pass `can_start` to override, for processes started elsewhere),
+	 * can_pause, can_resume, can_cancel, processed, total, failed,
 	 * percent, ai_calls_used, ai_calls_budget, message, next_run_at, started_at,
 	 * updated_at, run_id, last_status, last_finished_at.
 	 *
@@ -81,7 +82,7 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 			'status'           => $status,
 			'status_label'     => isset($labels[$status]) ? $labels[$status] : $status,
 			'is_active'        => $is_active,
-			'can_start'        => !$is_open,
+			'can_start'        => isset($data['can_start']) ? (bool) $data['can_start'] : !$is_open,
 			'can_pause'        => $is_active,
 			'can_resume'       => $status === 'paused',
 			'can_cancel'       => $is_open,
@@ -104,9 +105,10 @@ abstract class AIPS_Background_Process_Base implements AIPS_Background_Process_I
 	/**
 	 * Default: no estimate.
 	 *
+	 * @param array $options Start options.
 	 * @return array
 	 */
-	public function get_estimate(): array {
+	public function get_estimate(array $options = array()): array {
 		return array();
 	}
 

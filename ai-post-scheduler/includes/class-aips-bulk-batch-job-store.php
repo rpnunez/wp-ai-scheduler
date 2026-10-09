@@ -46,6 +46,8 @@ class AIPS_Bulk_Batch_Job_Store {
 	const STATUS_PROCESSING = 'processing';
 	const STATUS_COMPLETED  = 'completed';
 	const STATUS_FAILED     = 'failed';
+	const STATUS_PAUSED     = 'paused';
+	const STATUS_CANCELLED  = 'cancelled';
 
 	/**
 	 * Number of days after which completed/failed jobs are eligible for cleanup.
@@ -163,6 +165,69 @@ class AIPS_Bulk_Batch_Job_Store {
 		$row->options = json_decode( $row->options_json, true ) ?: array();
 
 		return $row;
+	}
+
+	/**
+	 * Jobs of the given types that are in one of the given statuses, without their item lists.
+	 *
+	 * Item lists can hold thousands of entries; callers that only need progress
+	 * (status pages, Heartbeat) should use this rather than get().
+	 *
+	 * @param string[] $job_types Job types to include.
+	 * @param string[] $statuses  Statuses to include.
+	 * @return object[] Rows with job_id, job_type, status, total, processed, created_at, updated_at and options.
+	 */
+	public function get_jobs_by_status( array $job_types, array $statuses ): array {
+		global $wpdb;
+
+		$job_types = array_values( array_filter( array_map( 'sanitize_key', $job_types ) ) );
+		$statuses  = array_values( array_filter( array_map( 'sanitize_key', $statuses ) ) );
+
+		if ( empty( $job_types ) || empty( $statuses ) ) {
+			return array();
+		}
+
+		$type_placeholders   = implode( ',', array_fill( 0, count( $job_types ), '%s' ) );
+		$status_placeholders = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+
+		$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT job_id, job_type, status, total, processed, options_json, created_at, updated_at FROM {$this->table()} WHERE job_type IN ({$type_placeholders}) AND status IN ({$status_placeholders}) ORDER BY created_at ASC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				...array_merge( $job_types, $statuses )
+			)
+		);
+
+		foreach ( (array) $rows as $row ) {
+			$row->total     = (int) $row->total;
+			$row->processed = (int) $row->processed;
+			$row->options   = json_decode( (string) $row->options_json, true ) ?: array();
+		}
+
+		return (array) $rows;
+	}
+
+	/**
+	 * Replace a job's stored options.
+	 *
+	 * @param string $job_id  UUID of the job.
+	 * @param array  $options Options to store (non-serialisable values are dropped).
+	 * @return bool
+	 */
+	public function update_options( string $job_id, array $options ): bool {
+		global $wpdb;
+
+		$result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$this->table(),
+			array(
+				'options_json' => wp_json_encode( $this->strip_non_serialisable( $options ) ),
+				'updated_at'   => time(),
+			),
+			array( 'job_id' => $job_id ),
+			array( '%s', '%d' ),
+			array( '%s' )
+		);
+
+		return $result !== false;
 	}
 
 	/**
@@ -341,7 +406,7 @@ class AIPS_Bulk_Batch_Job_Store {
 
 		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prepare(
-				"DELETE FROM {$this->table()} WHERE status IN ('completed','failed') AND updated_at < %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM {$this->table()} WHERE status IN ('completed','failed','cancelled') AND updated_at < %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$cutoff
 			)
 		);

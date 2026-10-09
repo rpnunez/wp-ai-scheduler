@@ -344,7 +344,12 @@
 			}
 
 			if (action === 'start') {
-				this.startWithEstimate(key, $btn);
+				// Buttons may carry a start option, e.g. data-aips-bg-mode="all" for "Rebuild all".
+				var extra = {};
+				if ($btn.attr('data-aips-bg-mode')) {
+					extra.mode = $btn.attr('data-aips-bg-mode');
+				}
+				this.startWithEstimate(key, $btn, extra);
 			} else if (action === 'cancel') {
 				this.confirmStop(key, $btn);
 			} else if (action === 'pause' || action === 'resume') {
@@ -377,13 +382,19 @@
 		/**
 		 * Show what a run will cost, then start it once confirmed.
 		 *
-		 * @param {string}      key  Process key.
-		 * @param {jQuery|null} $btn Button to lock while the request runs.
+		 * AI-backed processes also ask for an optional AI call budget: the run
+		 * pauses itself once it has made that many calls.
+		 *
+		 * @param {string}      key   Process key.
+		 * @param {jQuery|null} $btn  Button to lock while the request runs.
+		 * @param {Object}      extra Start options sent with the estimate and the start request (e.g. mode).
 		 */
-		startWithEstimate: function (key, $btn) {
+		startWithEstimate: function (key, $btn, extra) {
 			var self = this;
 
-			var request = this.post('aips_bg_estimate', { process: key }).done(function (response) {
+			extra = extra || {};
+
+			var request = this.post('aips_bg_estimate', $.extend({ process: key }, extra)).done(function (response) {
 				if (!response.success) {
 					self.toast((response.data && response.data.message) || L10n.requestFailed, 'error');
 					return;
@@ -392,21 +403,54 @@
 				var estimate = response.data.estimate || {};
 				var message  = estimate.message || L10n.startFallback || 'Start this process? It runs in the background and can be paused or stopped at any time.';
 
+				var heading = L10n.startHeading || 'Start background process';
+
+				// AI-backed: offer an optional per-run AI call budget.
+				if (response.data.uses_ai && AIPS.Utilities && AIPS.Utilities.showModal) {
+					AIPS.Utilities.showModal({
+						heading: heading,
+						message: message,
+						fields: [
+							{
+								type: 'number',
+								name: 'ai_budget',
+								label: L10n.budgetLabel || 'AI call budget (optional)',
+								value: 0,
+								min: 0,
+								description: L10n.budgetHelp || 'Pause this run after it has made this many AI calls. 0 means no limit.'
+							}
+						],
+						buttons: [
+							{ label: L10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
+							{
+								label: L10n.start || 'Start',
+								className: 'aips-btn aips-btn-primary',
+								submit: true,
+								action: function (formData) {
+									var budget = parseInt(formData && formData.ai_budget, 10);
+									self.control('start', key, $btn, $.extend({}, extra, { ai_budget: budget > 0 ? budget : 0 }));
+								}
+							}
+						]
+					});
+					return;
+				}
+
 				if (!AIPS.Utilities || !AIPS.Utilities.confirm) {
-					self.control('start', key, $btn);
+					self.control('start', key, $btn, extra);
 					return;
 				}
 
 				AIPS.Utilities.confirm(
 					message,
-					L10n.startHeading || 'Start background process',
+					heading,
 					[
 						{ label: L10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
 						{
 							label: L10n.start || 'Start',
 							className: 'aips-btn aips-btn-primary',
 							action: function () {
-								self.control('start', key, $btn);
+								self.control('start', key, $btn, extra);
 							}
 						}
 					]
@@ -452,11 +496,12 @@
 		 * @param {string}      action start, pause, resume or cancel.
 		 * @param {string}      key    Process key.
 		 * @param {jQuery|null} $btn   Button to lock while the request runs.
+		 * @param {Object}      [extra] Start options (ai_budget, mode).
 		 */
-		control: function (action, key, $btn) {
+		control: function (action, key, $btn, extra) {
 			var self = this;
 
-			var request = this.post('aips_bg_' + action, { process: key }).done(function (response) {
+			var request = this.post('aips_bg_' + action, $.extend({ process: key }, extra || {})).done(function (response) {
 				if (response.success) {
 					self.updateOne(response.data.process);
 					self.toast(response.data.message || '', 'success');

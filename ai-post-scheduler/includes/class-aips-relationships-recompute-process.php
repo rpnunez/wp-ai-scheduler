@@ -139,8 +139,8 @@ class AIPS_Relationships_Recompute_Process extends AIPS_Managed_Background_Proce
 	/**
 	 * @inheritDoc
 	 */
-	public function get_estimate(): array {
-		$this->mode = self::MODE_MISSING;
+	public function get_estimate(array $options = array()): array {
+		$this->mode = (isset($options['mode']) && $options['mode'] === self::MODE_ALL) ? self::MODE_ALL : self::MODE_MISSING;
 		$items      = $this->count_remaining();
 		$seconds    = $this->builder->estimate_seconds($items);
 		$minutes    = (int) max(1, ceil($seconds / 60));

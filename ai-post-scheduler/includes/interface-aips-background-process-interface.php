@@ -75,7 +75,8 @@ interface AIPS_Background_Process_Interface {
 	/**
 	 * Estimate the cost of a run started now.
 	 *
+	 * @param array $options The options the run would start with (for example `mode`).
 	 * @return array Keys: items, ai_calls, days, daily_rate, message. Empty when not applicable.
 	 */
-	public function get_estimate(): array;
+	public function get_estimate(array $options = array()): array;
 }
