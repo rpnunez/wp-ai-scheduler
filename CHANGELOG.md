@@ -5,6 +5,14 @@
 ### Added
 - **Settings Integrations Tab & ACF Integration Gate**: Added a dedicated "Integrations" tab to the Settings page. Gated Advanced Custom Fields (ACF) integration behind an explicit toggle (`aips_integration_acf_enabled`), disabled by default. Template editor only detects and displays ACF field groups when ACF is active on the site and enabled in Settings.
 - **Content Generation Global Settings**: Added dedicated "Content Generation" tab in Settings to configure global defaults for enabled post types, default post type, post status, category, author, featured image generation, template post quantities (manual/scheduled), author topic quantities & frequencies, and author post quantities & frequencies. Added Post Type support to Authors, along with dynamic inheritance across Templates, Schedules, and Authors.
+### Fixed
+- **Stress Test Data Privacy:**
+  - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
+  - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.
+- **Stress Test Controls & Execution:**
+  - Added a "Stop All Tests" button alongside "Run Selected" that immediately aborts in-flight requests and stops test queue execution.
+  - Consolidated test case checkbox selection with dynamic selected-count badge and synchronized indeterminate header checkbox state.
+  - Re-synced leftover test data count on test cancellation.
 
 ## [3.7.8] - 2026-09-24
 

@@ -424,6 +424,11 @@ class AIPS_Admin_Page_Context {
 						'icon'        => 'dashicons-hammer',
 						'description' => __('Seeder, test generation & cache debuggers', 'ai-post-scheduler'),
 					),
+					'background-processes' => array(
+						'label'       => __('Background Processes', 'ai-post-scheduler'),
+						'icon'        => 'dashicons-update',
+						'description' => __('Indexing & other long-running jobs', 'ai-post-scheduler'),
+					),
 					'stress-test' => array(
 						'label'       => __('Stress Test', 'ai-post-scheduler'),
 						'icon'        => 'dashicons-superhero',

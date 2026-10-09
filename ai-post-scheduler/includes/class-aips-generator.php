@@ -1025,9 +1025,12 @@ class AIPS_Generator {
      * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
      * @param object|null $voice Optional voice object with overrides (legacy).
      * @param string|null $topic Optional topic to be injected into prompts (legacy).
+     * @param array|null $trigger Optional trigger info for legacy template calls:
+     *                            'creation_method' (e.g. 'bulk_generate', 'retry') and
+     *                            'trigger_context' (e.g. array('detail' => 'Planner bulk job')).
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
-    public function generate_post($template_or_context, $voice = null, $topic = null) {
+    public function generate_post($template_or_context, $voice = null, $topic = null, $trigger = null) {
         // Check if we're using the new context-based approach
         if ($template_or_context instanceof AIPS_Generation_Context) {
             $result = $this->generate_post_from_context($template_or_context);
@@ -1041,7 +1044,16 @@ class AIPS_Generator {
 
         // Legacy template-based approach - convert to context and delegate
         $template = $template_or_context;
-        $context = new AIPS_Template_Context($template, $voice, $topic);
+        $trigger = is_array($trigger) ? $trigger : array();
+        $context = new AIPS_Template_Context(
+            $template,
+            $voice,
+            $topic,
+            !empty($trigger['creation_method']) ? (string) $trigger['creation_method'] : null
+        );
+        if (!empty($trigger['trigger_context']) && is_array($trigger['trigger_context'])) {
+            $context->set_trigger_context($trigger['trigger_context']);
+        }
         $result = $this->generate_post_from_context($context);
 
         if (is_wp_error($result)) {
@@ -1049,6 +1061,29 @@ class AIPS_Generator {
         }
 
         return $result;
+    }
+
+    /**
+     * Write the "trigger source" and "trigger method" entries to the current
+     * history container so the History modal can show what started the run
+     * and whether it was manual or automatic.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return void
+     */
+    private function record_generation_trigger($context) {
+        if (!$this->current_history) {
+            return;
+        }
+
+        $trigger = AIPS_Generation_Trigger::describe($context);
+        $method  = (string) $context->get_creation_method();
+
+        AIPS_Generation_Trigger::record(
+            $this->current_history,
+            $trigger['source'],
+            $method !== '' ? $method : AIPS_Generation_Trigger::METHOD_MANUAL
+        );
     }
 
     /**
@@ -1100,6 +1135,9 @@ class AIPS_Generator {
             // Fallback if history creation fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
+
+        // Record what triggered this run and how, as the first two history entries.
+        $this->record_generation_trigger($context);
 
         // Open a transcript for this run when conversational generation is enabled
         // and the active provider can replay it.

@@ -27,7 +27,7 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
     $elapsed_label = sprintf(__('Started %s ago', 'ai-post-scheduler'), human_time_diff($created_ts, $now_ts));
 }
 ?>
-<tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
+<tr class="<?php echo esc_attr(implode(' ', $row_classes)); ?>" data-id="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>" style="display: none;"<?php endif; ?> tabindex="0" aria-label="<?php echo esc_attr(sprintf(__('Open details for %s', 'ai-post-scheduler'), AIPS_History::get_display_title($item))); ?>">
     <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>">
             <?php esc_html_e('Select Item', 'ai-post-scheduler'); ?>
@@ -35,17 +35,19 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
         <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" class="aips-history-cb" name="history[]" value="<?php echo esc_attr($item->id); ?>" <?php if ($is_child_row): ?>data-group-id="<?php echo esc_attr($group_id); ?>"<?php endif; ?>>
     </th>
     <td class="column-title">
-        <?php if ($is_child_row): ?>
-        <span class="aips-group-child-indent" aria-hidden="true">&rdsh;&nbsp;</span>
-        <?php endif; ?>
-        <?php $display_title = AIPS_History::get_display_title( $item ); ?>
-        <?php if ($item->post_id): ?>
-        <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
+        <div class="aips-history-title-row">
+            <?php if ($is_child_row): ?>
+            <span class="dashicons dashicons-arrow-right-alt2 aips-history-child-arrow" aria-hidden="true"></span>
+            <?php endif; ?>
+            <?php $display_title = AIPS_History::get_display_title( $item ); ?>
+            <?php if ($item->post_id): ?>
+            <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
+                <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
+            </a>
+            <?php else: ?>
             <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
-        </a>
-        <?php else: ?>
-        <strong class="aips-history-title"><?php echo esc_html($display_title); ?></strong>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
         <?php if (!empty($item->template_name)): ?>
         <span class="aips-history-subtitle"><?php echo esc_html($item->template_name); ?></span>
         <?php elseif (!empty($item->template_id)): ?>
@@ -57,9 +59,8 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
     </td>
     <td class="column-post-type">
         <?php if (!empty($item->post_type)): ?>
-        <?php $post_type_obj = get_post_type_object($item->post_type); ?>
         <span class="aips-badge aips-badge-neutral">
-            <?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $item->post_type); ?>
+            <?php echo esc_html(AIPS_History::humanize_post_type_label($item->post_type)); ?>
         </span>
         <?php else: ?>
         <span class="aips-meta-text">&mdash;</span>

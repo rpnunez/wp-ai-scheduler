@@ -91,10 +91,14 @@ if (!defined('ABSPATH')) {
 				<div class="aips-clusters-toolbar-group">
 					<label for="aips-cluster-min-size" class="aips-control-label"><?php esc_html_e('Min Size:', 'ai-post-scheduler'); ?></label>
 					<select id="aips-cluster-min-size" class="aips-form-select aips-cluster-select-size" aria-label="<?php esc_attr_e('Minimum Cluster Size', 'ai-post-scheduler'); ?>">
-						<option value="2">2</option>
-						<option value="3" selected>3</option>
-						<option value="5">5</option>
-						<option value="10">10</option>
+						<?php
+						$min_size_default = isset($cluster_config['min_size']) ? (int) $cluster_config['min_size'] : 3;
+						$min_size_options = array_unique(array(2, 3, 5, 10, $min_size_default));
+						sort($min_size_options);
+						foreach ($min_size_options as $min_size_option) :
+							?>
+							<option value="<?php echo esc_attr((string) $min_size_option); ?>" <?php selected($min_size_default, $min_size_option); ?>><?php echo esc_html((string) $min_size_option); ?></option>
+						<?php endforeach; ?>
 					</select>
 				</div>
 				<button type="button" id="aips-refresh-clusters-btn" class="aips-btn aips-btn-primary">
@@ -105,7 +109,16 @@ if (!defined('ABSPATH')) {
 		</div>
 
 		<div class="aips-panel-body">
-			<!-- Clusters Summary Metrics Row -->
+				<details class="aips-cluster-explainer">
+					<summary><?php esc_html_e('What is a topic cluster?', 'ai-post-scheduler'); ?></summary>
+					<p><?php esc_html_e('A topic cluster is a group of posts about the same subject. Clusters help you build topic hubs: pick a pillar post, then link the other posts in the cluster to it. Posts that do not join any cluster are unclustered, which usually means your coverage of that subject is thin.', 'ai-post-scheduler'); ?></p>
+					<p><?php esc_html_e('To get more, smaller clusters, raise the Cluster Threshold, or set Cluster tightness to Strict under Settings → Engine. Clusters are not duplicates: a cluster can hold dozens of related posts.', 'ai-post-scheduler'); ?></p>
+					<p>
+						<a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts&tab=cannibalization')); ?>" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Looking for duplicate posts? Open Duplicate Review', 'ai-post-scheduler'); ?></a>
+					</p>
+				</details>
+
+				<!-- Clusters Summary Metrics Row -->
 			<div class="aips-stats-grid aips-cluster-metrics-grid">
 				<div class="aips-stat-card">
 					<div class="aips-stat-header">
@@ -136,7 +149,7 @@ if (!defined('ABSPATH')) {
 				</div>
 				<div class="aips-stat-card">
 					<div class="aips-stat-header">
-						<span class="aips-stat-label"><?php esc_html_e('Hybrid Orphans', 'ai-post-scheduler'); ?></span>
+						<span class="aips-stat-label"><?php esc_html_e('Unclustered Posts', 'ai-post-scheduler'); ?></span>
 						<span class="dashicons dashicons-warning aips-stat-icon" aria-hidden="true"></span>
 					</div>
 					<div class="aips-stat-value-wrap">
@@ -144,6 +157,8 @@ if (!defined('ABSPATH')) {
 					</div>
 				</div>
 			</div>
+
+				<p id="aips-unlinked-note" class="description aips-hidden"></p>
 
 			<div id="aips-clusters-loading" class="aips-audit-loading aips-hidden">
 				<span class="spinner is-active"></span>
@@ -163,8 +178,8 @@ if (!defined('ABSPATH')) {
 			<div id="aips-orphans-card" class="aips-content-panel aips-orphans-card aips-hidden">
 				<div class="aips-panel-header aips-orphans-header">
 					<div>
-						<h4 class="aips-orphans-title"><?php esc_html_e('Hybrid Orphan Posts (Isolated Content)', 'ai-post-scheduler'); ?></h4>
-						<p class="description aips-orphans-desc"><?php esc_html_e('Posts with weak or no thematic ties to existing clusters. Consider expanding coverage or writing bridge articles.', 'ai-post-scheduler'); ?></p>
+						<h4 class="aips-orphans-title"><?php esc_html_e('Unclustered Posts (Isolated Content)', 'ai-post-scheduler'); ?></h4>
+						<p class="description aips-orphans-desc"><?php esc_html_e('Posts that did not join any cluster at this threshold. Consider expanding coverage or writing bridge articles.', 'ai-post-scheduler'); ?></p>
 					</div>
 					<span class="aips-badge aips-badge-warning" id="aips-orphans-badge">0 Posts</span>
 				</div>
@@ -175,7 +190,7 @@ if (!defined('ABSPATH')) {
 								<th><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Published Date', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Closest Cluster', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Proximity', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Closest Post Similarity', 'ai-post-scheduler'); ?></th>
 								<th><?php esc_html_e('Action', 'ai-post-scheduler'); ?></th>
 							</tr>
 						</thead>
@@ -241,7 +256,7 @@ if (!defined('ABSPATH')) {
 <!-- Template: Cluster card -->
 <script type="text/html" id="aips-tmpl-indexer-cluster-card">
 	<div class="aips-cluster-card" data-cluster-id="{{id}}">
-		<div class="aips-cluster-card-header" data-toggle-target="#aips-cluster-body-{{id}}">
+		<div class="aips-cluster-card-header {{collapsedClass}}" data-toggle-target="#aips-cluster-body-{{id}}">
 			<div class="aips-cluster-header-left">
 				<span class="dashicons dashicons-arrow-down-alt2 aips-cluster-toggle-icon" aria-hidden="true"></span>
 				<strong class="aips-cluster-title">{{name}}</strong>
@@ -259,7 +274,7 @@ if (!defined('ABSPATH')) {
 				</button>
 			</div>
 		</div>
-		<div class="aips-cluster-card-body" id="aips-cluster-body-{{id}}">
+		<div class="aips-cluster-card-body {{collapsedClass}}" id="aips-cluster-body-{{id}}">
 			<table class="aips-table">
 				<thead>
 					<tr>
@@ -274,6 +289,7 @@ if (!defined('ABSPATH')) {
 					{{postsHtml}}
 				</tbody>
 			</table>
+			{{moreHtml}}
 		</div>
 	</div>
 </script>
@@ -301,6 +317,20 @@ if (!defined('ABSPATH')) {
 			</div>
 		</td>
 	</tr>
+</script>
+
+<!-- Template: Show more posts in a cluster -->
+<script type="text/html" id="aips-tmpl-indexer-cluster-more">
+	<p class="aips-cluster-more">
+		<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-cluster-show-more"><?php esc_html_e('Show', 'ai-post-scheduler'); ?> {{count}} <?php esc_html_e('more posts', 'ai-post-scheduler'); ?></button>
+	</p>
+</script>
+
+<!-- Template: Show more clusters -->
+<script type="text/html" id="aips-tmpl-indexer-clusters-more">
+	<p class="aips-cluster-more aips-clusters-more">
+		<button type="button" class="aips-btn aips-btn-secondary aips-clusters-show-more"><?php esc_html_e('Show', 'ai-post-scheduler'); ?> {{count}} <?php esc_html_e('more clusters', 'ai-post-scheduler'); ?></button>
+	</p>
 </script>
 
 <!-- Template: Orphan post row -->

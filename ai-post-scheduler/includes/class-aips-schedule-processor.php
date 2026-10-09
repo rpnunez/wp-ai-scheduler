@@ -269,6 +269,7 @@ class AIPS_Schedule_Processor {
 
         $topic   = isset($schedule->topic) && $schedule->topic !== '' ? (string) $schedule->topic : null;
         $context = new AIPS_Template_Context($template, null, $topic, 'scheduled');
+        $context->set_trigger_context($this->build_schedule_trigger_context($schedule_obj));
 
         // Load (or create) the schedule's persistent lifecycle history container.
         $history = $this->result_handler->get_or_create_schedule_history($schedule_id);
@@ -843,6 +844,23 @@ class AIPS_Schedule_Processor {
     }
 
     /**
+     * Build the trigger details recorded in History for a schedule-driven run.
+     *
+     * @param object $schedule Schedule object (merged with template).
+     * @return array<string,mixed>
+     */
+    private function build_schedule_trigger_context($schedule) {
+        $schedule_id = isset($schedule->schedule_id) ? (int) $schedule->schedule_id : (isset($schedule->id) ? (int) $schedule->id : 0);
+        $name        = !empty($schedule->title) ? (string) $schedule->title : (!empty($schedule->name) ? (string) $schedule->name : '');
+
+        return array(
+            'schedule_id'   => $schedule_id,
+            'schedule_name' => $name,
+            'frequency'     => isset($schedule->frequency) ? (string) $schedule->frequency : '',
+        );
+    }
+
+    /**
      * Core logic to execute a schedule.
      *
      * @param object   $schedule         Schedule object (merged with template).
@@ -956,6 +974,7 @@ class AIPS_Schedule_Processor {
 
         // Create context with creation_method
         $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+        $context->set_trigger_context($this->build_schedule_trigger_context($schedule));
 
         // ── Resumable batch progress ────────────────────────────────────────
         // Determine where to start the loop.  When a previous automated run

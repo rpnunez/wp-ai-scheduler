@@ -330,8 +330,18 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		$post_ids = array();
 		$last_error = null;
 
+		$trigger_context = array();
+		if ('scheduled' === $creation_method) {
+			$frequency       = !empty($author->post_generation_frequency) ? (string) $author->post_generation_frequency : '';
+			$trigger_context = array(
+				'detail' => $frequency !== ''
+					? sprintf(__('Author post schedule (%s)', 'ai-post-scheduler'), $frequency)
+					: __('Author post schedule', 'ai-post-scheduler'),
+			);
+		}
+
 		foreach ($topics as $topic) {
-			$result = $this->generate_post_from_topic($topic, $author, $creation_method);
+			$result = $this->generate_post_from_topic($topic, $author, $creation_method, $trigger_context);
 
 			if (is_wp_error($result)) {
 				$last_error = $result;
@@ -400,14 +410,40 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	}
 	
 	/**
+	 * Record what triggered a topic_post_generation history container.
+	 *
+	 * @param object $history         History container.
+	 * @param object $topic           Topic object.
+	 * @param object $author          Author object.
+	 * @param string $creation_method Creation method ('manual' or 'scheduled').
+	 * @param array  $trigger_context Optional trigger details.
+	 * @return void
+	 */
+	private function record_topic_post_trigger($history, $topic, $author, $creation_method, $trigger_context = array()) {
+		$source = array(
+			'event'       => __('Author post generation', 'ai-post-scheduler'),
+			'author_id'   => (int) $author->id,
+			'author_name' => isset($author->name) ? (string) $author->name : '',
+			'topic_id'    => (int) $topic->id,
+			'topic'       => isset($topic->topic_title) ? (string) $topic->topic_title : '',
+		);
+		if (!empty($trigger_context['detail'])) {
+			$source['detail'] = (string) $trigger_context['detail'];
+		}
+
+		AIPS_Generation_Trigger::record($history, $source, $creation_method);
+	}
+
+	/**
 	 * Generate a post from a specific topic.
 	 *
 	 * @param object $topic Topic object from database.
 	 * @param object $author Author object from database.
 	 * @param string $creation_method Optional creation method ('manual' or 'scheduled'). Defaults to 'manual'.
+	 * @param array  $trigger_context Optional trigger details (e.g. 'detail') shown in History.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
-	public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
+	public function generate_post_from_topic($topic, $author, $creation_method = 'manual', $trigger_context = array()) {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
 		
 		// Get expanded context from similar approved topics.
@@ -433,7 +469,10 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		
 		// Build a context object for the generator with the creation method
 		$context = new AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
-		
+		if (!empty($trigger_context) && is_array($trigger_context)) {
+			$context->set_trigger_context($trigger_context);
+		}
+
 		// Generate the post using the context
 		// Note: The Generator internally creates its own history container
 		try {
@@ -448,6 +487,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'topic_id' => $topic->id,
 					'author_id' => $author->id,
 				));
+				$this->record_topic_post_trigger($history, $topic, $author, $creation_method, $trigger_context);
 				
 				$history->record(
 					'activity',
@@ -496,6 +536,7 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				'topic_id' => $topic->id,
 				'author_id' => $author->id,
 			));
+			$this->record_topic_post_trigger($history, $topic, $author, $creation_method, $trigger_context);
 			
 			$history->record(
 				'activity',
@@ -556,7 +597,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 				'topic_id' => $topic->id,
 				'author_id' => $author->id,
 			));
-			
+			$this->record_topic_post_trigger($history, $topic, $author, $creation_method, $trigger_context);
+
 			$history->record(
 				'activity',
 				sprintf(
@@ -608,10 +650,12 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 	 * meta so that the bulk-generation progress bar can build increasingly accurate
 	 * time estimates over time.
 	 *
-	 * @param int $topic_id Topic ID.
+	 * @param int    $topic_id        Topic ID.
+	 * @param string $creation_method Creation method recorded in History. Defaults to 'manual'.
+	 * @param array  $trigger_context Optional trigger details (e.g. 'detail') shown in History.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
-	public function generate_now($topic_id) {
+	public function generate_now($topic_id, $creation_method = 'manual', $trigger_context = array()) {
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
@@ -628,8 +672,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 		// duration (including resilience/retry delays) for future estimates.
 		$start_time = microtime(true);
 		
-		// Manual generation
-		$result = $this->generate_post_from_topic($topic, $author, 'manual');
+		// Manual by default; bulk-job callers pass their own method and detail.
+		$result = $this->generate_post_from_topic($topic, $author, $creation_method, $trigger_context);
 		
 		// Store elapsed time in post meta for future progress-bar estimation.
 		if (!is_wp_error($result) && $result > 0) {

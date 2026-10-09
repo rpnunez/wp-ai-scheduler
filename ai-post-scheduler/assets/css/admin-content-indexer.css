@@ -836,9 +836,9 @@
 .aips-content-cannibalization-tab .aips-stats-grid,
 .aips-link-report-tab .aips-stats-grid {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: 12px;
-	margin-bottom: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 16px;
+	margin-bottom: 20px;
 }
 
 @media (max-width: 1024px) {
@@ -846,7 +846,7 @@
 	.aips-content-clusters-tab .aips-stats-grid,
 	.aips-content-cannibalization-tab .aips-stats-grid,
 	.aips-link-report-tab .aips-stats-grid {
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	}
 }
 
@@ -866,12 +866,12 @@
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	background: var(--aips-white, #ffffff);
-	border: 1px solid var(--aips-gray-200, #e2e8f0);
+	background: #ffffff;
+	border: 1px solid #dcdcde;
 	border-radius: 6px;
-	padding: 10px 14px;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-	min-height: 74px;
+	padding: 14px 16px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	min-height: 86px;
 	box-sizing: border-box;
 }
 
@@ -1914,4 +1914,92 @@
 .aips-consolidate-summary ul {
 	margin: 6px 0 0 18px;
 	list-style: disc;
+}
+
+/* ==========================================================================
+   Duplicate Review (Cannibalization Shield) & Topic Clusters helpers
+   ========================================================================== */
+.aips-dup-summary {
+	margin: 0 0 12px;
+	color: var(--aips-gray-600, #475569);
+}
+
+.aips-dup-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.aips-dup-group {
+	border: 1px solid var(--aips-gray-200, #e2e8f0);
+	border-radius: 8px;
+	background: var(--aips-white, #ffffff);
+	overflow: hidden;
+}
+
+.aips-dup-group-header {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 12px 16px;
+	background: var(--aips-gray-50, #fafbfc);
+	border-bottom: 1px solid var(--aips-gray-200, #e2e8f0);
+}
+
+.aips-dup-group-header .aips-dup-dismiss {
+	margin-left: auto;
+}
+
+.aips-dup-group-toggle {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	color: var(--aips-gray-500, #64748b);
+}
+
+.aips-dup-group-toggle .dashicons {
+	transition: transform 0.2s ease;
+}
+
+.aips-dup-group.is-collapsed .aips-dup-group-toggle .dashicons {
+	transform: rotate(-90deg);
+}
+
+.aips-dup-group.is-collapsed .aips-dup-table {
+	display: none;
+}
+
+.aips-dup-group.is-collapsed .aips-dup-group-header {
+	border-bottom: none;
+}
+
+.aips-dup-table tr.is-keep {
+	background: var(--aips-success-light, #f0fdf4);
+}
+
+.aips-dup-table td,
+.aips-dup-table th {
+	vertical-align: middle;
+}
+
+.aips-cluster-explainer {
+	margin: 0 0 16px;
+	padding: 10px 14px;
+	border: 1px solid var(--aips-info-border, #cce5ff);
+	border-left: 4px solid var(--aips-primary, #2271b1);
+	border-radius: 6px;
+	background: var(--aips-info-light, #f0f6fc);
+}
+
+.aips-cluster-explainer summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.aips-cluster-more {
+	margin: 0;
+	padding: 12px 16px;
+	text-align: center;
 }

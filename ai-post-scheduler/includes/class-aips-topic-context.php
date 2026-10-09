@@ -35,6 +35,11 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	private $creation_method;
 
 	/**
+	 * @var array<string,mixed> Details about what triggered this generation.
+	 */
+	private $trigger_context = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object $author            Author object.
@@ -290,6 +295,26 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 */
 	public function get_creation_method() {
 		return $this->creation_method;
+	}
+
+	/**
+	 * Attach details about what triggered this generation.
+	 *
+	 * @param array<string,mixed> $trigger_context Trigger details.
+	 * @return $this
+	 */
+	public function set_trigger_context(array $trigger_context) {
+		$this->trigger_context = $trigger_context;
+		return $this;
+	}
+
+	/**
+	 * Get details about what triggered this generation.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function get_trigger_context() {
+		return $this->trigger_context;
 	}
 
 	/**

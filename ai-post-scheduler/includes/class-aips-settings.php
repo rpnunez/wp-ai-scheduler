@@ -546,6 +546,74 @@ class AIPS_Settings {
 				'sanitize_callback' => 'floatval',
 				'default'           => $defaults['aips_deduplication_threshold'],
 			),
+			'aips_cluster_detection_max_posts' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_detection_max_posts'),
+				'default'           => $defaults['aips_cluster_detection_max_posts'],
+			),
+			'aips_cluster_detection_time_budget' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_detection_time_budget'),
+				'default'           => $defaults['aips_cluster_detection_time_budget'],
+			),
+			'aips_duplicate_review_threshold' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_review_threshold'),
+				'default'           => $defaults['aips_duplicate_review_threshold'],
+			),
+			'aips_duplicate_review_max_group_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_review_max_group_size'),
+				'default'           => $defaults['aips_duplicate_review_max_group_size'],
+			),
+			'aips_duplicate_review_max_pairs' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_review_max_pairs'),
+				'default'           => $defaults['aips_duplicate_review_max_pairs'],
+			),
+			'aips_duplicate_keep_strategy' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_keep_strategy'),
+				'default'           => $defaults['aips_duplicate_keep_strategy'],
+			),
+			'aips_duplicate_excluded_post_types' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_excluded_post_types'),
+				'default'           => $defaults['aips_duplicate_excluded_post_types'],
+			),
+			'aips_duplicate_excluded_categories' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_excluded_categories'),
+				'default'           => $defaults['aips_duplicate_excluded_categories'],
+			),
+			'aips_duplicate_excluded_post_ids' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_excluded_post_ids'),
+				'default'           => $defaults['aips_duplicate_excluded_post_ids'],
+			),
+			'aips_duplicate_exclude_pillars' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_duplicate_exclude_pillars'],
+			),
+			'aips_duplicate_protect_inbound_links' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_protect_inbound_links'),
+				'default'           => $defaults['aips_duplicate_protect_inbound_links'],
+			),
+			'aips_duplicate_default_merge_mode' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_default_merge_mode'),
+				'default'           => $defaults['aips_duplicate_default_merge_mode'],
+			),
+			'aips_duplicate_scan_schedule' => array(
+				'sanitize_callback' => array($ui, 'sanitize_duplicate_scan_schedule'),
+				'default'           => $defaults['aips_duplicate_scan_schedule'],
+			),
+			'aips_cluster_default_min_size' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_default_min_size'),
+				'default'           => $defaults['aips_cluster_default_min_size'],
+			),
+			'aips_cluster_tightness' => array(
+				'sanitize_callback' => array($ui, 'sanitize_cluster_tightness'),
+				'default'           => $defaults['aips_cluster_tightness'],
+			),
+			'aips_pillar_spoke_similarity' => array(
+				'sanitize_callback' => array($ui, 'sanitize_pillar_spoke_similarity'),
+				'default'           => $defaults['aips_pillar_spoke_similarity'],
+			),
+			'aips_audit_result_limit' => array(
+				'sanitize_callback' => array($ui, 'sanitize_audit_result_limit'),
+				'default'           => $defaults['aips_audit_result_limit'],
+			),
 			'aips_indexer_publish_execution_timing' => array(
 				'sanitize_callback' => array($ui, 'sanitize_publish_execution_timing'),
 				'default'           => $defaults['aips_indexer_publish_execution_timing'],
@@ -1126,6 +1194,22 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_cluster_detection_limits',
+            __('Cluster Detection Limits', 'ai-post-scheduler'),
+            array($this->ui, 'cluster_detection_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
+            'aips_cluster_defaults',
+            __('Cluster Defaults', 'ai-post-scheduler'),
+            array($this->ui, 'cluster_defaults_field_callback'),
+            'aips-settings',
+            'aips_ai_scope_section'
+        );
+
+        add_settings_field(
             'aips_enable_post_insights_ui',
             __('Enable AI Insights in WP Post List & Editors', 'ai-post-scheduler'),
             array($this->ui, 'enable_post_insights_ui_field_callback'),
@@ -1213,6 +1297,62 @@ class AIPS_Settings {
             'aips_deduplication_threshold',
             __('Duplicate Similarity Threshold', 'ai-post-scheduler'),
             array($this->ui, 'deduplication_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_review_threshold',
+            __('Duplicate Review Threshold', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_review_threshold_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_review_limits',
+            __('Duplicate Group Limits', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_review_limits_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_keep_strategy',
+            __('Recommended "Keep" Post', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_keep_strategy_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_protection',
+            __('Protect Well-Linked Posts', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_protection_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_exclusions',
+            __('Exclude From Duplicate Review', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_exclusions_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_default_merge_mode',
+            __('Default Merge Handling', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_default_merge_field_callback'),
+            'aips-settings',
+            'aips_ai_deduplication_section'
+        );
+
+        add_settings_field(
+            'aips_duplicate_scan_schedule',
+            __('Scheduled Duplicate Scan', 'ai-post-scheduler'),
+            array($this->ui, 'duplicate_scan_schedule_field_callback'),
             'aips-settings',
             'aips_ai_deduplication_section'
         );

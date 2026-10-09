@@ -92,6 +92,18 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Get a single embedding record by source/object type and ID.
+	 * Alias for get_by_object().
+	 *
+	 * @param string $source_type Entity type ('post', 'topic', etc.).
+	 * @param int    $source_id   Source ID.
+	 * @return object|null Row object or null if not found.
+	 */
+	public function get_by_source($source_type, $source_id) {
+		return $this->get_by_object($source_type, $source_id);
+	}
+
+	/**
 	 * Convenience helper to get embedding for a WordPress post.
 	 *
 	 * @param int $post_id WordPress post ID.
@@ -99,6 +111,16 @@ class AIPS_Embeddings_Repository {
 	 */
 	public function get_by_post_id($post_id) {
 		return $this->get_by_object('post', $post_id);
+	}
+
+	/**
+	 * Convenience helper to get embedding for an Author Topic.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return object|null Row object or null if not found.
+	 */
+	public function get_by_topic_id($topic_id) {
+		return $this->get_by_object('topic', $topic_id);
 	}
 
 	/**
@@ -130,6 +152,79 @@ class AIPS_Embeddings_Repository {
 		}
 
 		return $indexed;
+	}
+
+	/**
+	 * Read one page of post embeddings for similarity scans, in object ID order.
+	 *
+	 * Lets a caller stream the whole candidate set with bounded memory instead of
+	 * loading every vector at once (see AIPS_Relationship_Builder). Returns raw
+	 * stored vectors; nothing is decoded or cached here.
+	 *
+	 * @param string[]|string $post_types  Post types to include.
+	 * @param string          $post_status Post status filter.
+	 * @param int             $after_id    Return rows with object_id greater than this.
+	 * @param int             $limit       Page size.
+	 * @return object[] Rows with object_id and embedding.
+	 */
+	public function get_similarity_candidates_page($post_types = array('post'), $post_status = 'publish', $after_id = 0, $limit = 250) {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
+		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$sql = $this->wpdb->prepare(
+			"SELECT e.object_id, e.embedding
+			FROM {$this->table} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+			WHERE e.object_type = 'post'
+			AND p.post_type IN ($placeholders)
+			AND p.post_status = %s
+			AND e.object_id > %d
+			ORDER BY e.object_id ASC
+			LIMIT %d",
+			...array_merge($post_types, array(sanitize_key($post_status), absint($after_id), max(1, absint($limit))))
+		);
+
+		return (array) $this->wpdb->get_results($sql);
+	}
+
+	/**
+	 * Count the embeddings a similarity scan has to compare against.
+	 *
+	 * @param string[]|string $post_types  Post types to include.
+	 * @param string          $post_status Post status filter.
+	 * @return int
+	 */
+	public function count_similarity_candidates($post_types = array('post'), $post_status = 'publish') {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
+		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$sql = $this->wpdb->prepare(
+			"SELECT COUNT(*)
+			FROM {$this->table} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+			WHERE e.object_type = 'post'
+			AND p.post_type IN ($placeholders)
+			AND p.post_status = %s",
+			...array_merge($post_types, array(sanitize_key($post_status)))
+		);
+
+		return (int) $this->wpdb->get_var($sql);
 	}
 
 	/**
@@ -278,8 +373,12 @@ class AIPS_Embeddings_Repository {
 			if (is_array($decoded)) {
 				$vector = array_map('floatval', array_values($decoded));
 			}
-		} else {
-			// Packed binary float32 (single precision IEEE 754)
+		}
+
+		// Packed binary float32 (single precision IEEE 754). A packed vector can begin with
+		// '[' or '{' by chance (about 1 in 130), so binary is also tried whenever JSON did
+		// not parse, provided the blob is a whole number of floats.
+		if (empty($vector) && strlen($raw) % 4 === 0) {
 			$unpacked = @unpack('f*', $raw);
 			if (is_array($unpacked) && !empty($unpacked)) {
 				$vector = array_values($unpacked);
@@ -425,6 +524,16 @@ class AIPS_Embeddings_Repository {
 	 */
 	public function delete_by_post_id($post_id) {
 		return $this->delete('post', $post_id);
+	}
+
+	/**
+	 * Delete embedding for a topic ID.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return int|false
+	 */
+	public function delete_by_topic_id($topic_id) {
+		return $this->delete('topic', $topic_id);
 	}
 
 	/**
@@ -948,16 +1057,27 @@ class AIPS_Embeddings_Repository {
 	/**
 	 * Get unindexed topic IDs up to a given limit.
 	 *
-	 * @param int $limit Maximum topic IDs to retrieve. Default 50.
+	 * @param int $limit     Maximum topic IDs to retrieve. Default 50.
+	 * @param int $after_id  Cursor: only topics with an ID greater than this. Default 0.
+	 * @param int $author_id Restrict to one author's topics. Default 0 (all authors).
 	 * @return int[] Array of unindexed topic IDs.
 	 */
-	public function get_unindexed_topic_ids(int $limit = 50): array {
+	public function get_unindexed_topic_ids(int $limit = 50, int $after_id = 0, int $author_id = 0): array {
 		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return array();
 		}
 
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		$limit = max(1, min(500, absint($limit)));
+		$limit        = max(1, min(500, absint($limit)));
+		$params       = array(absint($after_id));
+		$author_sql   = '';
+
+		if ($author_id > 0) {
+			$author_sql = 'AND t.author_id = %d';
+			$params[]   = absint($author_id);
+		}
+
+		$params[] = $limit;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$results = $this->wpdb->get_col(
@@ -967,9 +1087,11 @@ class AIPS_Embeddings_Repository {
 				 LEFT JOIN {$this->table} e ON t.id = e.object_id AND e.object_type = 'topic'
 				 WHERE e.id IS NULL 
 				   AND t.status IN ('pending', 'approved', 'used')
+				   AND t.id > %d
+				   {$author_sql}
 				 ORDER BY t.id ASC
 				 LIMIT %d",
-				$limit
+				...$params
 			)
 		);
 
@@ -977,25 +1099,34 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
-	 * Get total count of unindexed topics.
+	 * Get count of unindexed topics.
 	 *
+	 * @param int $author_id Restrict to one author's topics. Default 0 (all authors).
 	 * @return int
 	 */
-	public function get_unindexed_topic_count(): int {
+	public function get_unindexed_topic_count(int $author_id = 0): int {
 		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return 0;
 		}
 
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$author_sql   = '';
+		$params       = array();
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$count = $this->wpdb->get_var(
-			"SELECT COUNT(*) 
+		if ($author_id > 0) {
+			$author_sql = 'AND t.author_id = %d';
+			$params[]   = absint($author_id);
+		}
+
+		$sql = "SELECT COUNT(*) 
 			 FROM {$topics_table} t
 			 LEFT JOIN {$this->table} e ON t.id = e.object_id AND e.object_type = 'topic'
 			 WHERE e.id IS NULL 
-			   AND t.status IN ('pending', 'approved', 'used')"
-		);
+			   AND t.status IN ('pending', 'approved', 'used')
+			   {$author_sql}";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$count = $this->wpdb->get_var(empty($params) ? $sql : $this->wpdb->prepare($sql, ...$params));
 
 		return absint($count);
 	}
