@@ -71,6 +71,20 @@ class AIPS_DB_Manager {
     }
 
     public function get_schema() {
+        return array_merge(
+            $this->get_core_tables_schema(),
+            $this->get_content_tables_schema(),
+            $this->get_link_and_index_tables_schema(),
+            $this->get_system_and_cache_tables_schema()
+        );
+    }
+
+    /**
+     * Retrieves CREATE TABLE SQL statements for core plugin tables.
+     *
+     * @return array Array of SQL CREATE TABLE queries.
+     */
+    private function get_core_tables_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
         $tables = self::get_full_table_names();
@@ -83,36 +97,8 @@ class AIPS_DB_Manager {
         $table_voices = $tables['aips_voices'];
         $table_structures = $tables['aips_article_structures'];
         $table_sections = $tables['aips_prompt_sections'];
-        $table_trending_topics = $tables['aips_trending_topics'];
-        $table_authors = $tables['aips_authors'];
-        $table_post_slices = $tables['aips_post_slices'];
-        $table_author_topics = $tables['aips_author_topics'];
-        $table_author_topic_logs = $tables['aips_author_topic_logs'];
-        $table_topic_feedback = $tables['aips_topic_feedback'];
-        $table_notifications        = $tables['aips_notifications'];
-        $table_sources              = $tables['aips_sources'];
-        $table_source_group_terms   = $tables['aips_source_group_terms'];
-        $table_sources_data         = $tables['aips_sources_data'];
-        $table_taxonomy             = $tables['aips_taxonomy'];
-        $table_embeddings           = $tables['aips_embeddings'];
-        $table_relationships        = $tables['aips_relationships'];
-        $table_internal_links       = $tables['aips_internal_links'];
-        $table_affiliate_links      = $tables['aips_affiliate_links'];
-        $table_cache                = $tables['aips_cache'];
-        $table_telemetry            = $tables['aips_telemetry'];
-        $table_ai_assistance        = $tables['aips_ai_assistance'];
-        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
-        $table_cache_index          = $tables['aips_cache_index'];
-        $table_cache_events         = $tables['aips_cache_events'];
-        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
-        $table_content_audits       = $tables['aips_content_audits'];
-        $table_link_index           = $tables['aips_link_index'];
-        $table_link_clicks          = $tables['aips_link_clicks'];
-        $table_redirects            = $tables['aips_redirects'];
-        $table_background_processes = $tables['aips_background_processes'];
 
         $sql = array();
-
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
@@ -290,6 +276,31 @@ class AIPS_DB_Manager {
             KEY is_active (is_active)
         ) $charset_collate;";
 
+        return $sql;
+    }
+
+    /**
+     * Retrieves CREATE TABLE SQL statements for content and author tables.
+     *
+     * @return array Array of SQL CREATE TABLE queries.
+     */
+    private function get_content_tables_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_trending_topics = $tables['aips_trending_topics'];
+        $table_authors = $tables['aips_authors'];
+        $table_post_slices = $tables['aips_post_slices'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_sources_data         = $tables['aips_sources_data'];
+        $table_taxonomy             = $tables['aips_taxonomy'];
+
+        $sql = array();
         $sql[] = "CREATE TABLE $table_trending_topics (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             niche varchar(255) NOT NULL,
@@ -426,28 +437,6 @@ class AIPS_DB_Manager {
             KEY created_at (created_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_notifications (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            type varchar(100) NOT NULL,
-            title varchar(255) DEFAULT NULL,
-            message text NOT NULL,
-            url varchar(500) DEFAULT NULL,
-            level varchar(20) NOT NULL DEFAULT 'info',
-            meta longtext DEFAULT NULL,
-            dedupe_key varchar(191) DEFAULT NULL,
-            is_read tinyint(1) NOT NULL DEFAULT 0,
-            read_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY type (type),
-            KEY level (level),
-            KEY dedupe_key (dedupe_key),
-            KEY is_read (is_read),
-            KEY created_at (created_at),
-            KEY is_read_created_at (is_read, created_at),
-            KEY dedupe_key_created_at (dedupe_key, created_at)
-        ) $charset_collate;";
-
         $sql[] = "CREATE TABLE $table_sources (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             url varchar(2083) NOT NULL,
@@ -518,6 +507,29 @@ class AIPS_DB_Manager {
             KEY created_at (created_at)
         ) $charset_collate;";
 
+        return $sql;
+    }
+
+    /**
+     * Retrieves CREATE TABLE SQL statements for link, embedding, and audit tables.
+     *
+     * @return array Array of SQL CREATE TABLE queries.
+     */
+    private function get_link_and_index_tables_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_embeddings           = $tables['aips_embeddings'];
+        $table_relationships        = $tables['aips_relationships'];
+        $table_internal_links       = $tables['aips_internal_links'];
+        $table_link_index           = $tables['aips_link_index'];
+        $table_link_clicks          = $tables['aips_link_clicks'];
+        $table_redirects            = $tables['aips_redirects'];
+        $table_affiliate_links      = $tables['aips_affiliate_links'];
+        $table_content_audits       = $tables['aips_content_audits'];
+
+        $sql = array();
         $sql[] = "CREATE TABLE $table_embeddings (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             object_type varchar(32) NOT NULL DEFAULT 'post',
@@ -654,6 +666,73 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY tag (tag),
             KEY enabled (enabled)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_content_audits (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            niche varchar(255) NOT NULL,
+            overall_score int(11) NOT NULL DEFAULT 0,
+            freshness_score int(11) NOT NULL DEFAULT 0,
+            link_score int(11) NOT NULL DEFAULT 0,
+            cannibalization_score int(11) NOT NULL DEFAULT 0,
+            gap_score int(11) NOT NULL DEFAULT 0,
+            total_posts int(11) NOT NULL DEFAULT 0,
+            orphan_count int(11) NOT NULL DEFAULT 0,
+            decay_count int(11) NOT NULL DEFAULT 0,
+            conflict_count int(11) NOT NULL DEFAULT 0,
+            gap_count int(11) NOT NULL DEFAULT 0,
+            audit_report longtext NOT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY niche_idx (niche),
+            KEY overall_score_idx (overall_score),
+            KEY created_at_idx (created_at)
+        ) $charset_collate;";
+        return $sql;
+    }
+
+    /**
+     * Retrieves CREATE TABLE SQL statements for system, cache, and telemetry tables.
+     *
+     * @return array Array of SQL CREATE TABLE queries.
+     */
+    private function get_system_and_cache_tables_schema() {
+        global $wpdb;
+        $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
+
+        $table_notifications        = $tables['aips_notifications'];
+        $table_cache                = $tables['aips_cache'];
+        $table_telemetry            = $tables['aips_telemetry'];
+        $table_ai_assistance        = $tables['aips_ai_assistance'];
+        $table_bulk_batch_jobs      = $tables['aips_bulk_batch_jobs'];
+        $table_cache_index          = $tables['aips_cache_index'];
+        $table_cache_events         = $tables['aips_cache_events'];
+        $table_integration_field_mappings = $tables['aips_integration_field_mappings'];
+        $table_background_processes = $tables['aips_background_processes'];
+
+        $sql = array();
+        $sql[] = "CREATE TABLE $table_notifications (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            type varchar(100) NOT NULL,
+            title varchar(255) DEFAULT NULL,
+            message text NOT NULL,
+            url varchar(500) DEFAULT NULL,
+            level varchar(20) NOT NULL DEFAULT 'info',
+            meta longtext DEFAULT NULL,
+            dedupe_key varchar(191) DEFAULT NULL,
+            is_read tinyint(1) NOT NULL DEFAULT 0,
+            read_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY type (type),
+            KEY level (level),
+            KEY dedupe_key (dedupe_key),
+            KEY is_read (is_read),
+            KEY created_at (created_at),
+            KEY is_read_created_at (is_read, created_at),
+            KEY dedupe_key_created_at (dedupe_key, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_cache (
@@ -820,31 +899,8 @@ class AIPS_DB_Manager {
             KEY integration_id (integration_id)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_content_audits (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            niche varchar(255) NOT NULL,
-            overall_score int(11) NOT NULL DEFAULT 0,
-            freshness_score int(11) NOT NULL DEFAULT 0,
-            link_score int(11) NOT NULL DEFAULT 0,
-            cannibalization_score int(11) NOT NULL DEFAULT 0,
-            gap_score int(11) NOT NULL DEFAULT 0,
-            total_posts int(11) NOT NULL DEFAULT 0,
-            orphan_count int(11) NOT NULL DEFAULT 0,
-            decay_count int(11) NOT NULL DEFAULT 0,
-            conflict_count int(11) NOT NULL DEFAULT 0,
-            gap_count int(11) NOT NULL DEFAULT 0,
-            audit_report longtext NOT NULL,
-            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
-            PRIMARY KEY  (id),
-            KEY niche_idx (niche),
-            KEY overall_score_idx (overall_score),
-            KEY created_at_idx (created_at)
-        ) $charset_collate;";
-
         return $sql;
     }
-
     public static function install_tables() {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $instance = new self();
