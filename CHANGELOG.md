@@ -1,6 +1,10 @@
 ## [Unreleased]
 
+### Added
+- **Diagnostics — Data & Storage overview:** New "Data Storage" section on the System Info tab showing live row counts and storage size (data + index) for every plugin database table, plus a Total Plugin Storage summary, reusing the same table-status data source as the System Health management tools.
+
 ### Fixed
+- **Diagnostics — re-linked table management tools:** The "Database Storage & Table Status" matrix (with its Prune/Purge/Clean Orphans/Optimize buttons, built earlier but accidentally left on an unreachable page) now renders on the System Health & Tools tab, where it's actually visible. Also fixed the per-subsystem Cache Rebuild results container, which had the same problem and never rendered.
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
   - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.
