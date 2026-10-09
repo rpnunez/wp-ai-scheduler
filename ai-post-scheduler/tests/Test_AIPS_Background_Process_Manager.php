@@ -34,6 +34,7 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 		$this->assertContains( 'internal_links_indexing', $keys );
 		$this->assertContains( 'content_indexer_queue', $keys );
 		$this->assertContains( 'link_index_scan', $keys );
+		$this->assertContains( 'relationships_recompute', $keys );
 	}
 
 	public function test_snapshots_share_one_shape() {
