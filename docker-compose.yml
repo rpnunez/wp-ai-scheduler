@@ -1,13 +1,13 @@
 services:
   db:
-    image: mariadb:10.6
+    image: "${DB_IMAGE:-mariadb:10.6}"
     container_name: "${AIPS_DB_CONTAINER:-wp-ai-scheduler-db}"
-    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpress
-      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-wordpress}"
+      MYSQL_USER: "${MYSQL_USER:-wordpress}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:-wordpress}"
     volumes:
       # Use a named Docker volume for database persistence
       - db_data_v2:/var/lib/mysql
@@ -17,16 +17,23 @@ services:
       # Expose MySQL port for external database tools (e.g., MySQL Workbench, TablePlus)
       - "${MYSQL_PORT:-3307}:3306"
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot" ]
+      # Official MariaDB image helper; avoids passing the root password on the command line.
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - wp-network
 
   web:
-    build: .
+    build:
+      context: .
+      args:
+        WP_IMAGE_TAG: "${WP_IMAGE_TAG:-6.7-php8.3-apache}"
+        XDEBUG_VERSION: "${XDEBUG_VERSION:-3.4.0}"
     container_name: "${AIPS_WEB_CONTAINER:-wp-ai-scheduler-web}"
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -36,17 +43,21 @@ services:
     environment:
       # WordPress DB settings used by entrypoint WP-CLI commands
       WORDPRESS_DB_HOST: db:3306
-      WORDPRESS_DB_NAME: wordpress
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: wordpress
-      # mysql root password (used by entrypoint to wait/ping)
-      MYSQL_ROOT_PASSWORD: root
+      WORDPRESS_DB_NAME: "${MYSQL_DATABASE:-wordpress}"
+      WORDPRESS_DB_USER: "${MYSQL_USER:-wordpress}"
+      WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD:-wordpress}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
+
+      # WordPress core source: "image" (bundled with the image, default) or
+      # "trunk" (git clone of WordPress trunk on first boot).
+      WP_CORE_SOURCE: "${WP_CORE_SOURCE:-image}"
+      PHPMYADMIN_PORT: "${PHPMYADMIN_PORT:-8082}"
 
       # Initial WP admin credentials (change as needed)
-      WP_ADMIN_USER: admin
-      WP_ADMIN_PASSWORD: admin
-      WP_ADMIN_EMAIL: admin@example.com
-      WP_SITE_TITLE: "WP AI Scheduler Dev"
+      WP_ADMIN_USER: "${WP_ADMIN_USER:-admin}"
+      WP_ADMIN_PASSWORD: "${WP_ADMIN_PASSWORD:-admin}"
+      WP_ADMIN_EMAIL: "${WP_ADMIN_EMAIL:-admin@example.com}"
+      WP_SITE_TITLE: "${WP_SITE_TITLE:-WP AI Scheduler Dev}"
       WP_SITE_URL: "http://localhost:${WP_PORT:-8080}"
 
       # Enable entrypoint debug output
@@ -98,26 +109,27 @@ services:
       # Allow container to reach host machine (needed for Xdebug)
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 180s
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
+    image: "${PMA_IMAGE:-phpmyadmin/phpmyadmin:latest}"
     container_name: "${AIPS_PMA_CONTAINER:-wp-ai-scheduler-phpmyadmin}"
     restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "${PHPMYADMIN_PORT:-8082}:80"
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
       UPLOAD_LIMIT: 300M
-      PMA_USER: wordpress
-      PMA_PASSWORD: wordpress
+      PMA_USER: "${MYSQL_USER:-wordpress}"
+      PMA_PASSWORD: "${MYSQL_PASSWORD:-wordpress}"
     networks:
       - wp-network
 
