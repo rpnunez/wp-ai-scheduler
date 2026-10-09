@@ -60,6 +60,7 @@ class AIPS_Background_Process_Assets {
 			'hours'          => __('h', 'ai-post-scheduler'),
 			'days'           => __('d', 'ai-post-scheduler'),
 			'noneRunning'    => __('No background processes running', 'ai-post-scheduler'),
+			'playing'        => __('Playing', 'ai-post-scheduler'),
 			'pause'          => __('Pause', 'ai-post-scheduler'),
 			'resume'         => __('Resume', 'ai-post-scheduler'),
 			'stop'           => __('Stop', 'ai-post-scheduler'),

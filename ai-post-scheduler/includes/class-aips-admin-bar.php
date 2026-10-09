@@ -147,37 +147,14 @@ class AIPS_Admin_Bar {
 		// Column-major: items 1-3 fill column 1, 4-6 column 2, 7-9 column 3 (CSS grid, auto-flow: column).
 		foreach ($this->get_quick_links() as $link) {
 			$wp_admin_bar->add_node(array(
-				'id'     => 'aips-toolbar-' . $link['slug'],
+				// "link-" prefix keeps ids from ever colliding with group ids (a collision once removed the grid).
+				'id'     => 'aips-toolbar-link-' . $link['slug'],
 				'parent' => 'aips-toolbar-links',
 				'title'  => '<span class="ab-icon dashicons ' . esc_attr($link['icon']) . '" aria-hidden="true"></span>'
 					. '<span class="aips-link-label">' . esc_html($link['label']) . '</span>',
 				'href'   => $link['href'],
 			));
 		}
-
-		// ---------- Background processes ----------
-		$wp_admin_bar->add_group(array(
-			'id'     => 'aips-toolbar-bg',
-			'parent' => 'aips-toolbar',
-			'meta'   => array('class' => 'aips-toolbar-group-bg'),
-		));
-
-		$wp_admin_bar->add_node(array(
-			'id'     => 'aips-toolbar-bg-status',
-			'parent' => 'aips-toolbar-bg',
-			'title'  => '<span class="aips-bg-heading">' . esc_html__('Background processes', 'ai-post-scheduler') . '</span>'
-				. '<span class="aips-bg-items">' . $this->render_background_items($bg_snapshots) . '</span>',
-			'href'   => false,
-			'meta'   => array('class' => 'aips-toolbar-bg-status ab-empty-item'),
-		));
-
-		$wp_admin_bar->add_node(array(
-			'id'     => 'aips-toolbar-bg-all',
-			'parent' => 'aips-toolbar-bg',
-			'title'  => '<span class="ab-icon dashicons dashicons-update" aria-hidden="true"></span>'
-				. '<span class="aips-link-label">' . esc_html__('All background processes', 'ai-post-scheduler') . '</span>',
-			'href'   => AIPS_Admin_Menu_Helper::get_page_url('background_processes'),
-		));
 
 		// ---------- Notifications group ----------
 		$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
@@ -248,6 +225,30 @@ class AIPS_Admin_Bar {
 				));
 			}
 		}
+
+		// ---------- Background processes (below the notifications) ----------
+		$wp_admin_bar->add_group(array(
+			'id'     => 'aips-toolbar-bg',
+			'parent' => 'aips-toolbar',
+			'meta'   => array('class' => 'aips-toolbar-group-bg'),
+		));
+
+		$wp_admin_bar->add_node(array(
+			'id'     => 'aips-toolbar-bg-status',
+			'parent' => 'aips-toolbar-bg',
+			'title'  => '<span class="aips-bg-heading">' . esc_html__('Background processes', 'ai-post-scheduler') . '</span>'
+				. '<span class="aips-bg-items">' . $this->render_background_items($bg_snapshots) . '</span>',
+			'href'   => false,
+			'meta'   => array('class' => 'aips-toolbar-bg-status ab-empty-item'),
+		));
+
+		$wp_admin_bar->add_node(array(
+			'id'     => 'aips-toolbar-bg-all',
+			'parent' => 'aips-toolbar-bg',
+			'title'  => '<span class="ab-icon dashicons dashicons-update" aria-hidden="true"></span>'
+				. '<span class="aips-link-label">' . esc_html__('All background processes', 'ai-post-scheduler') . '</span>',
+			'href'   => AIPS_Admin_Menu_Helper::get_page_url('background_processes'),
+		));
 	}
 
 	/**
@@ -264,7 +265,7 @@ class AIPS_Admin_Bar {
 			array('slug' => 'schedules',  'label' => __('Schedules', 'ai-post-scheduler'),         'icon' => 'dashicons-calendar-alt',     'href' => call_user_func($url, 'schedule')),
 			array('slug' => 'content',    'label' => __('Content', 'ai-post-scheduler'),           'icon' => 'dashicons-admin-post',       'href' => call_user_func($url, 'content')),
 			array('slug' => 'indexing',   'label' => __('Content Indexing', 'ai-post-scheduler'),  'icon' => 'dashicons-database',         'href' => call_user_func($url, 'content_indexer')),
-			array('slug' => 'links',      'label' => __('Internal Links', 'ai-post-scheduler'),    'icon' => 'dashicons-admin-links',      'href' => call_user_func($url, 'internal_links')),
+			array('slug' => 'internal-links', 'label' => __('Internal Links', 'ai-post-scheduler'),    'icon' => 'dashicons-admin-links',      'href' => call_user_func($url, 'internal_links')),
 			array('slug' => 'history',    'label' => __('History', 'ai-post-scheduler'),           'icon' => 'dashicons-backup',           'href' => call_user_func($url, 'history')),
 			array('slug' => 'diagnostics', 'label' => __('Diagnostics', 'ai-post-scheduler'),      'icon' => 'dashicons-heart',            'href' => call_user_func($url, 'diagnostics')),
 			array('slug' => 'settings',   'label' => __('Settings', 'ai-post-scheduler'),          'icon' => 'dashicons-admin-generic',    'href' => call_user_func($url, 'settings')),
@@ -321,10 +322,22 @@ class AIPS_Admin_Bar {
 				continue;
 			}
 
+			// One play/pause toggle per row (mirrors AIPS.BackgroundProcesses.buildAdminBarItem()).
+			$is_paused    = $snapshot['status'] === 'paused';
+			$can_toggle   = $is_paused || !empty($snapshot['can_pause']);
+			$action       = $is_paused ? 'resume' : 'pause';
+			$action_label = $is_paused ? __('Resume', 'ai-post-scheduler') : __('Pause', 'ai-post-scheduler');
+			$status_text  = $snapshot['status'] === 'running' ? __('Playing', 'ai-post-scheduler') : $snapshot['status_label'];
+
 			$html .= '<span class="aips-bg-item" data-aips-bg-key="' . esc_attr($snapshot['key']) . '">'
-				. '<span class="aips-bg-item-head">'
+				. '<button type="button" class="aips-bg-toggle" data-aips-bg-toggle data-aips-bg-action="' . esc_attr($action) . '"'
+				. ' aria-label="' . esc_attr($action_label) . '" title="' . esc_attr($action_label) . '"' . ($can_toggle ? '' : ' hidden') . '>'
+				. '<span class="dashicons ' . ($is_paused ? 'dashicons-controls-play' : 'dashicons-controls-pause') . '" aria-hidden="true"></span>'
+				. '</button>'
 				. '<span class="aips-bg-item-label">' . esc_html($snapshot['label']) . '</span>'
-				. '<span class="aips-bg-item-status">' . esc_html($snapshot['status_label']) . '</span>'
+				. '<span class="aips-bg-item-meta">'
+				. esc_html(number_format_i18n((int) ($snapshot['processed'] ?? 0)) . ' / ' . number_format_i18n((int) ($snapshot['total'] ?? 0)))
+				. ' · <span class="aips-bg-item-status">' . esc_html($status_text) . '</span>'
 				. '</span>'
 				. '<span class="aips-bg-mini"><span class="aips-bg-mini-fill" style="width:' . esc_attr((string) (int) $snapshot['percent']) . '%"></span></span>'
 				. '</span>';
