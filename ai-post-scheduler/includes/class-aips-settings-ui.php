@@ -2176,6 +2176,70 @@ class AIPS_Settings_UI {
 	}
 
 	/**
+	 * Render the cluster detection safety limits (Card 4).
+	 *
+	 * @return void
+	 */
+	public function cluster_detection_limits_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$max_posts = (int) $config->get_option('aips_cluster_detection_max_posts', 250);
+		$budget    = (int) $config->get_option('aips_cluster_detection_time_budget', 8);
+		?>
+		<label for="aips_cluster_detection_max_posts">
+			<?php esc_html_e('Max posts per scan:', 'ai-post-scheduler'); ?>
+			<input type="number" step="50" min="50" max="5000" name="aips_cluster_detection_max_posts" id="aips_cluster_detection_max_posts" value="<?php echo esc_attr((string) $max_posts); ?>" class="small-text">
+		</label>
+		&nbsp;
+		<label for="aips_cluster_detection_time_budget">
+			<?php esc_html_e('Time budget (seconds):', 'ai-post-scheduler'); ?>
+			<input type="number" step="1" min="2" max="25" name="aips_cluster_detection_time_budget" id="aips_cluster_detection_time_budget" value="<?php echo esc_attr((string) $budget); ?>" class="small-text">
+		</label>
+		<p class="description"><?php esc_html_e('Topic Clusters compares every post with every other post, so the work grows with the square of the post count. Only the newest posts up to the cap are scanned, and a scan stops once the time budget is spent. Raise the cap on fast hosting; lower it if the scan times out. Defaults: 250 posts, 8 seconds.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Topic Cluster defaults (Card 4).
+	 *
+	 * @return void
+	 */
+	public function cluster_defaults_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$min_size  = (int) $config->get_option('aips_cluster_default_min_size', 3);
+		$tightness = (string) $config->get_option('aips_cluster_tightness', 'balanced');
+		$spoke     = (float) $config->get_option('aips_pillar_spoke_similarity', 0.75);
+		$levels    = array(
+			'loose'    => __('Loose (any single link joins posts; few, large clusters)', 'ai-post-scheduler'),
+			'balanced' => __('Balanced (a post must be close to about half the cluster)', 'ai-post-scheduler'),
+			'strict'   => __('Strict (a post must be close to every post in the cluster)', 'ai-post-scheduler'),
+		);
+		?>
+		<p>
+			<label for="aips_cluster_tightness">
+				<?php esc_html_e('Cluster tightness:', 'ai-post-scheduler'); ?>
+				<select name="aips_cluster_tightness" id="aips_cluster_tightness">
+					<?php foreach ($levels as $key => $label) : ?>
+						<option value="<?php echo esc_attr($key); ?>" <?php selected($tightness, $key); ?>><?php echo esc_html($label); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+		</p>
+		<p>
+			<label for="aips_cluster_default_min_size">
+				<?php esc_html_e('Default minimum cluster size:', 'ai-post-scheduler'); ?>
+				<input type="number" step="1" min="2" max="50" name="aips_cluster_default_min_size" id="aips_cluster_default_min_size" value="<?php echo esc_attr((string) $min_size); ?>" class="small-text">
+			</label>
+			&nbsp;
+			<label for="aips_pillar_spoke_similarity">
+				<?php esc_html_e('Pillar link weight:', 'ai-post-scheduler'); ?>
+				<input type="number" step="0.05" min="0.30" max="1" name="aips_pillar_spoke_similarity" id="aips_pillar_spoke_similarity" value="<?php echo esc_attr((string) $spoke); ?>" class="small-text">
+			</label>
+		</p>
+		<p class="description"><?php esc_html_e('Tightness controls how easily posts chain into one cluster. Loose reproduces one giant cluster on a site where everything is related; Balanced is recommended. The minimum size pre-selects the Min Size box on Topic Clusters, and the pillar link weight is the similarity recorded for pillar-to-post links. Defaults: Balanced, 3 posts, 0.75.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
 	 * Render Enable Post Insights UI setting (Card 4).
 	 *
 	 * @return void
@@ -2377,6 +2441,326 @@ class AIPS_Settings_UI {
 		<input type="number" step="0.05" min="0.70" max="0.99" name="aips_deduplication_threshold" id="aips_deduplication_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
 		<p class="description"><?php esc_html_e('Cosine similarity threshold to classify a topic or post as a duplicate candidate. Default: 0.85', 'ai-post-scheduler'); ?></p>
 		<?php
+	}
+
+	/**
+	 * Render the duplicate review similarity threshold (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_review_threshold_field_callback() {
+		$value = (float) AIPS_Config::get_instance()->get_option('aips_duplicate_review_threshold', 0.88);
+		?>
+		<input type="number" step="0.01" min="0.70" max="0.99" name="aips_duplicate_review_threshold" id="aips_duplicate_review_threshold" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+		<p class="description"><?php esc_html_e('Posts in a Duplicate Review group must be at least this similar to every other post in the group. Higher means fewer, more certain duplicates. Default: 0.88', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the duplicate group size and pair limits (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_review_limits_field_callback() {
+		$config    = AIPS_Config::get_instance();
+		$group     = (int) $config->get_option('aips_duplicate_review_max_group_size', 5);
+		$max_pairs = (int) $config->get_option('aips_duplicate_review_max_pairs', 1000);
+		$audit_rows = (int) $config->get_option('aips_audit_result_limit', 50);
+		?>
+		<label for="aips_duplicate_review_max_group_size">
+			<?php esc_html_e('Max posts per group:', 'ai-post-scheduler'); ?>
+			<input type="number" step="1" min="2" max="10" name="aips_duplicate_review_max_group_size" id="aips_duplicate_review_max_group_size" value="<?php echo esc_attr((string) $group); ?>" class="small-text">
+		</label>
+		&nbsp;
+		<label for="aips_duplicate_review_max_pairs">
+			<?php esc_html_e('Max similar pairs to review:', 'ai-post-scheduler'); ?>
+			<input type="number" step="100" min="100" max="5000" name="aips_duplicate_review_max_pairs" id="aips_duplicate_review_max_pairs" value="<?php echo esc_attr((string) $max_pairs); ?>" class="small-text">
+		</label>
+		&nbsp;
+		<label for="aips_audit_result_limit">
+			<?php esc_html_e('Overlap audit rows:', 'ai-post-scheduler'); ?>
+			<input type="number" step="10" min="10" max="500" name="aips_audit_result_limit" id="aips_audit_result_limit" value="<?php echo esc_attr((string) $audit_rows); ?>" class="small-text">
+		</label>
+		<p class="description"><?php esc_html_e('Keeps each review group small enough to decide at a glance, bounds how many similar pairs are loaded, and sets how many rows the overlap audit lists (it uses the Duplicate Similarity Threshold above). Defaults: 5 posts, 1000 pairs, 50 rows.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the keep-post recommendation strategy (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_keep_strategy_field_callback() {
+		$value   = (string) AIPS_Config::get_instance()->get_option('aips_duplicate_keep_strategy', 'balanced');
+		$choices = AIPS_Duplicate_Group_Service::get_keep_strategies();
+		?>
+		<select name="aips_duplicate_keep_strategy" id="aips_duplicate_keep_strategy">
+			<?php foreach ($choices as $key => $label) : ?>
+				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('How Duplicate Review picks the post to recommend keeping. Balanced weighs inbound links, length and age together. You always make the final choice.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the inbound-link protection threshold (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_protection_field_callback() {
+		$value = (int) AIPS_Config::get_instance()->get_option('aips_duplicate_protect_inbound_links', 10);
+		?>
+		<label for="aips_duplicate_protect_inbound_links">
+			<?php esc_html_e('Protect posts with at least', 'ai-post-scheduler'); ?>
+			<input type="number" step="1" min="0" max="1000" name="aips_duplicate_protect_inbound_links" id="aips_duplicate_protect_inbound_links" value="<?php echo esc_attr((string) $value); ?>" class="small-text">
+			<?php esc_html_e('inbound internal links', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('A protected post is always the recommended keeper and cannot be offered for retirement from a Duplicate Review group, so a heavily linked article is never merged away by accident. Set to 0 to turn protection off. Default: 10', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the duplicate review exclusions (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_exclusions_field_callback() {
+		$config     = AIPS_Config::get_instance();
+		$types      = array_map('strval', (array) $config->get_option('aips_duplicate_excluded_post_types', array()));
+		$categories = array_map('intval', (array) $config->get_option('aips_duplicate_excluded_categories', array()));
+		$ids        = (string) $config->get_option('aips_duplicate_excluded_post_ids', '');
+		$pillars    = (bool) $config->get_option('aips_duplicate_exclude_pillars', true);
+		$post_types = get_post_types(array('public' => true), 'objects');
+		$terms      = get_categories(array('hide_empty' => false, 'number' => 200));
+		?>
+		<fieldset>
+			<p><strong><?php esc_html_e('Post types', 'ai-post-scheduler'); ?></strong></p>
+			<p>
+				<?php foreach ($post_types as $slug => $object) : ?>
+					<label class="aips-inline-check">
+						<input type="checkbox" name="aips_duplicate_excluded_post_types[]" value="<?php echo esc_attr($slug); ?>" <?php checked(in_array($slug, $types, true)); ?>>
+						<?php echo esc_html($object->labels->singular_name); ?>
+					</label>&nbsp;
+				<?php endforeach; ?>
+			</p>
+			<?php if (!empty($terms) && !is_wp_error($terms)) : ?>
+				<p><label for="aips_duplicate_excluded_categories"><strong><?php esc_html_e('Categories (Ctrl/Cmd-click to select several)', 'ai-post-scheduler'); ?></strong></label></p>
+				<select name="aips_duplicate_excluded_categories[]" id="aips_duplicate_excluded_categories" multiple size="5">
+					<?php foreach ($terms as $term) : ?>
+						<option value="<?php echo esc_attr((string) $term->term_id); ?>" <?php selected(in_array((int) $term->term_id, $categories, true)); ?>><?php echo esc_html($term->name); ?></option>
+					<?php endforeach; ?>
+				</select>
+			<?php endif; ?>
+			<p><label for="aips_duplicate_excluded_post_ids"><strong><?php esc_html_e('Specific post IDs (comma-separated)', 'ai-post-scheduler'); ?></strong></label></p>
+			<input type="text" name="aips_duplicate_excluded_post_ids" id="aips_duplicate_excluded_post_ids" value="<?php echo esc_attr($ids); ?>" class="regular-text" placeholder="12, 48, 301">
+			<p>
+				<label for="aips_duplicate_exclude_pillars">
+					<input type="checkbox" name="aips_duplicate_exclude_pillars" id="aips_duplicate_exclude_pillars" value="1" <?php checked($pillars, true); ?>>
+					<?php esc_html_e('Never review pillar posts you confirmed on Topic Clusters or Silos', 'ai-post-scheduler'); ?>
+				</label>
+			</p>
+		</fieldset>
+		<p class="description"><?php esc_html_e('Posts matching any of these are left out of Duplicate Review entirely. Useful for deliberate series, product pages and cornerstone content.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the default merge handling select (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_default_merge_field_callback() {
+		$value   = (string) AIPS_Config::get_instance()->get_option('aips_duplicate_default_merge_mode', 'revision');
+		$choices = array(
+			'none'     => __('Do not change the kept post (redirect and retire only)', 'ai-post-scheduler'),
+			'revision' => __('Save the AI-merged draft as a revision of the kept post', 'ai-post-scheduler'),
+			'rewrite'  => __('Rewrite the kept post with the AI-merged draft', 'ai-post-scheduler'),
+		);
+		?>
+		<select name="aips_duplicate_default_merge_mode" id="aips_duplicate_default_merge_mode">
+			<?php foreach ($choices as $key => $label) : ?>
+				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('What the Consolidate dialog pre-selects once a merged draft has been generated. You can change it per consolidation, and consolidating can always be undone.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the scheduled duplicate scan select (Card 6).
+	 *
+	 * @return void
+	 */
+	public function duplicate_scan_schedule_field_callback() {
+		$value   = (string) AIPS_Config::get_instance()->get_option('aips_duplicate_scan_schedule', 'off');
+		$choices = array(
+			'off'    => __('Off (review manually)', 'ai-post-scheduler'),
+			'daily'  => __('Daily', 'ai-post-scheduler'),
+			'weekly' => __('Weekly', 'ai-post-scheduler'),
+		);
+		?>
+		<select name="aips_duplicate_scan_schedule" id="aips_duplicate_scan_schedule">
+			<?php foreach ($choices as $key => $label) : ?>
+				<option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e('Re-scan for duplicates on a schedule and send a "Duplicate Posts Found" notification when new groups appear. Choose its channels under Settings → Notifications.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Clamp a submitted integer into a range.
+	 *
+	 * @param mixed $value   Submitted value.
+	 * @param int   $min     Lowest allowed value.
+	 * @param int   $max     Highest allowed value.
+	 * @param int   $default Value used when the input is empty.
+	 * @return int
+	 */
+	private function clamp_int($value, int $min, int $max, int $default): int {
+		if ($value === '' || $value === null) {
+			return $default;
+		}
+		return max($min, min($max, (int) $value));
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_cluster_detection_max_posts($value) {
+		return $this->clamp_int($value, 50, 5000, 250);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_cluster_detection_time_budget($value) {
+		return $this->clamp_int($value, 2, 25, 8);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return float
+	 */
+	public function sanitize_duplicate_review_threshold($value) {
+		$value = ($value === '' || $value === null) ? 0.88 : (float) $value;
+		return max(0.70, min(0.99, $value));
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_duplicate_review_max_group_size($value) {
+		return $this->clamp_int($value, 2, 10, 5);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_duplicate_review_max_pairs($value) {
+		return $this->clamp_int($value, 100, 5000, 1000);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return string[]
+	 */
+	public function sanitize_duplicate_excluded_post_types($value) {
+		$valid = array_keys(get_post_types(array('public' => true)));
+		return array_values(array_intersect(array_map('sanitize_key', (array) $value), $valid));
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int[]
+	 */
+	public function sanitize_duplicate_excluded_categories($value) {
+		return array_values(array_unique(array_filter(array_map('absint', (array) $value))));
+	}
+
+	/**
+	 * Keep only digits and commas, normalised to "1, 2, 3".
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string
+	 */
+	public function sanitize_duplicate_excluded_post_ids($value) {
+		$ids = array_unique(array_filter(array_map('absint', preg_split('/[^0-9]+/', (string) $value))));
+		return implode(', ', $ids);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_duplicate_protect_inbound_links($value) {
+		return $this->clamp_int($value, 0, 1000, 10);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return string
+	 */
+	public function sanitize_duplicate_default_merge_mode($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('none', 'revision', 'rewrite'), true) ? $value : 'revision';
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return string
+	 */
+	public function sanitize_duplicate_scan_schedule($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('off', 'daily', 'weekly'), true) ? $value : 'off';
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_cluster_default_min_size($value) {
+		return $this->clamp_int($value, 2, 50, 3);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return string
+	 */
+	public function sanitize_cluster_tightness($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('loose', 'balanced', 'strict'), true) ? $value : 'balanced';
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return float
+	 */
+	public function sanitize_pillar_spoke_similarity($value) {
+		$value = ($value === '' || $value === null) ? 0.75 : (float) $value;
+		return max(0.30, min(1.0, $value));
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return int
+	 */
+	public function sanitize_audit_result_limit($value) {
+		return $this->clamp_int($value, 10, 500, 50);
+	}
+
+	/**
+	 * @param mixed $value Submitted value.
+	 * @return string
+	 */
+	public function sanitize_duplicate_keep_strategy($value) {
+		$value = sanitize_key((string) $value);
+		return array_key_exists($value, AIPS_Duplicate_Group_Service::get_keep_strategies()) ? $value : 'balanced';
 	}
 
 	/**

@@ -51,7 +51,7 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 		$post_generator = new class extends AIPS_Author_Post_Generator {
 			public $generated = array();
 
-			public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
+			public function generate_post_from_topic($topic, $author, $creation_method = 'manual', $trigger_context = array()) {
 				$this->generated[] = array(
 					'topic_id' => $topic->id,
 					'creation_method' => $creation_method,
@@ -101,7 +101,7 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 		$post_generator = new class extends AIPS_Author_Post_Generator {
 			public $generated = array();
 
-			public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
+			public function generate_post_from_topic($topic, $author, $creation_method = 'manual', $trigger_context = array()) {
 				$this->generated[] = (int) $topic->id;
 				return 2000 + (int) $topic->id;
 			}
@@ -148,7 +148,7 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 		};
 
 		$post_generator = new class extends AIPS_Author_Post_Generator {
-			public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
+			public function generate_post_from_topic($topic, $author, $creation_method = 'manual', $trigger_context = array()) {
 				return 3000 + (int) $topic->id;
 			}
 		};

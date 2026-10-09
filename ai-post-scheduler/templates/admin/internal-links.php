@@ -26,12 +26,17 @@ $count_pending  = isset($link_counts['pending'])  ? (int) $link_counts['pending'
 $count_accepted = isset($link_counts['accepted']) ? (int) $link_counts['accepted'] : 0;
 $count_rejected = isset($link_counts['rejected']) ? (int) $link_counts['rejected'] : 0;
 $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted'] : 0;
+
+// $bg_snapshot is injected by AIPS_Internal_Links_Controller::render_page().
+$bg_snapshot = isset($bg_snapshot) && is_array($bg_snapshot) ? $bg_snapshot : array();
+$bg_status   = isset($bg_snapshot['status']) ? (string) $bg_snapshot['status'] : 'idle';
+$bg_is_active = !empty($bg_snapshot['is_active']);
 ?>
 
 		<!-- Status Cards -->
 		<div class="aips-stats-grid">
 
-			<div class="aips-stat-card">
+			<div class="aips-stat-card<?php echo $bg_is_active ? ' aips-bg-active' : ''; ?><?php echo 'paused' === $bg_status ? ' aips-bg-paused' : ''; ?>" data-aips-bg-key="internal_links_indexing" data-aips-bg-status="<?php echo esc_attr($bg_status); ?>">
 				<div class="aips-stat-header">
 					<span class="aips-stat-label"><?php esc_html_e('Posts Indexed', 'ai-post-scheduler'); ?></span>
 					<span class="dashicons dashicons-admin-links aips-stat-icon" aria-hidden="true"></span>
@@ -44,6 +49,37 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 					<div id="aips-index-progress-bar" class="aips-progress-fill" data-progress="<?php echo esc_attr((string) $percent); ?>" style="width:<?php echo esc_attr((string) $percent); ?>%;"></div>
 				</div>
 				<p class="aips-stat-subtext"><?php esc_html_e('Posts analyzed and embedded', 'ai-post-scheduler'); ?></p>
+
+				<!-- Background indexing status and controls (kept live by background-processes.js) -->
+				<div class="aips-bg-controls" aria-live="polite">
+					<p class="aips-bg-status-line">
+						<span class="aips-bg-chip" data-aips-bg-field="status_label"><?php echo esc_html(isset($bg_snapshot['status_label']) ? $bg_snapshot['status_label'] : ''); ?></span>
+						<span>
+							<span data-aips-bg-field="processed"><?php echo esc_html(number_format_i18n(isset($bg_snapshot['processed']) ? (int) $bg_snapshot['processed'] : 0)); ?></span>
+							/
+							<span data-aips-bg-field="total"><?php echo esc_html(number_format_i18n(isset($bg_snapshot['total']) ? (int) $bg_snapshot['total'] : 0)); ?></span>
+							<?php esc_html_e('this run', 'ai-post-scheduler'); ?>
+						</span>
+					</p>
+					<p class="aips-bg-status-line">
+						<span data-aips-bg-field="next_run"></span>
+						<span data-aips-bg-field="message"><?php echo esc_html(isset($bg_snapshot['message']) ? $bg_snapshot['message'] : ''); ?></span>
+					</p>
+					<div class="aips-bg-buttons">
+						<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-action="pause" <?php echo empty($bg_snapshot['can_pause']) ? 'hidden' : ''; ?>>
+							<span class="dashicons dashicons-controls-pause" aria-hidden="true"></span>
+							<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
+						</button>
+						<button type="button" class="aips-btn aips-btn-primary aips-btn-sm" data-aips-bg-action="resume" <?php echo empty($bg_snapshot['can_resume']) ? 'hidden' : ''; ?>>
+							<span class="dashicons dashicons-controls-play" aria-hidden="true"></span>
+							<?php esc_html_e('Resume', 'ai-post-scheduler'); ?>
+						</button>
+						<button type="button" class="aips-btn aips-btn-ghost aips-btn-danger aips-btn-sm" data-aips-bg-action="cancel" <?php echo empty($bg_snapshot['can_cancel']) ? 'hidden' : ''; ?>>
+							<span class="dashicons dashicons-no" aria-hidden="true"></span>
+							<?php esc_html_e('Stop', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
+				</div>
 			</div>
 
 			<div class="aips-stat-card">
@@ -121,16 +157,13 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 						<thead>
 							<tr>
 								<th><?php esc_html_e('Source Post', 'ai-post-scheduler'); ?></th>
+								<th class="aips-il-match-col"><span class="screen-reader-text"><?php esc_html_e('Match', 'ai-post-scheduler'); ?></span></th>
 								<th><?php esc_html_e('Target Post', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Similarity', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Anchor Text', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 							</tr>
 						</thead>
 						<tbody id="aips-suggestions-tbody">
 							<tr class="aips-table-loading">
-								<td colspan="6">
+								<td colspan="3">
 									<span class="spinner is-active"></span>
 									<?php esc_html_e('Loading…', 'ai-post-scheduler'); ?>
 								</td>
@@ -262,12 +295,12 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 
 <!-- Loading row for the suggestions table -->
 <script type="text/html" id="aips-tmpl-il-tbody-loading">
-<tr class="aips-table-loading"><td colspan="6"><span class="spinner is-active"></span>{{message}}</td></tr>
+<tr class="aips-table-loading"><td colspan="3"><span class="spinner is-active"></span>{{message}}</td></tr>
 </script>
 
 <!-- Generic message row (empty state / error) -->
 <script type="text/html" id="aips-tmpl-il-tbody-message">
-<tr><td colspan="6" class="aips-table-empty">{{message}}</td></tr>
+<tr><td colspan="3" class="aips-table-empty">{{message}}</td></tr>
 </script>
 
 <!-- Linked post title (source or target column) -->
@@ -277,34 +310,46 @@ $count_inserted = isset($link_counts['inserted']) ? (int) $link_counts['inserted
 
 <!-- Action buttons: pending status -->
 <script type="text/html" id="aips-tmpl-il-actions-pending">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="{{id}}"><span class="dashicons dashicons-yes" aria-hidden="true"></span><span class="screen-reader-text">{{acceptLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="{{id}}"><span class="dashicons dashicons-no" aria-hidden="true"></span><span class="screen-reader-text">{{rejectLabel}}</span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn aips-il-accept-btn" data-id="{{id}}" title="{{acceptTip}}" aria-label="{{acceptLabel}}"><span class="dashicons dashicons-yes" aria-hidden="true"></span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn is-danger aips-il-reject-btn" data-id="{{id}}" title="{{rejectTip}}" aria-label="{{rejectLabel}}"><span class="dashicons dashicons-no" aria-hidden="true"></span></button>
 </script>
 
 <!-- Action button: accepted status — Insert Link -->
 <script type="text/html" id="aips-tmpl-il-actions-accepted">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-insert-btn" data-id="{{id}}" title="{{insertLabel}}"><span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span><span class="screen-reader-text">{{insertLabel}}</span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn aips-il-insert-btn" data-id="{{id}}" title="{{insertTip}}" aria-label="{{insertLabel}}"><span class="dashicons dashicons-admin-links" aria-hidden="true"></span></button>
 </script>
 
 <!-- Action buttons: edit anchor + delete (shown for all statuses) -->
 <script type="text/html" id="aips-tmpl-il-actions-edit-delete">
- <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="{{id}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">{{deleteLabel}}</span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}" title="{{editTip}}" aria-label="{{editLabel}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn is-danger aips-il-delete-btn" data-id="{{id}}" title="{{deleteTip}}" aria-label="{{deleteLabel}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>
 </script>
 
 <!-- Full suggestion table row -->
 <script type="text/html" id="aips-tmpl-il-suggestion-row">
-<tr data-id="{{id}}">
-	<td class="cell-primary">{{source}}</td>
-	<td>{{target}}</td>
-	<td>{{score}}</td>
-	<td class="aips-il-anchor-cell">{{anchor}}</td>
-	<td><span class="aips-badge {{statusClass}}">{{statusLabel}}</span></td>
-	<td class="cell-actions">{{actions}}</td>
+<tr class="aips-il-row aips-il-row-main" data-id="{{id}}">
+	<td class="cell-primary aips-il-source">{{source}}</td>
+	<td class="aips-il-match">{{match}}</td>
+	<td class="aips-il-target">{{target}}</td>
+</tr>
+<tr class="aips-il-row aips-il-row-sub" data-id="{{id}}">
+	<td colspan="3">
+		<div class="aips-il-subrow">
+			<div class="aips-il-anchor-line">
+				{{originChip}}
+				<span class="aips-il-anchor-label">{{anchorLabel}}</span>
+				<span class="aips-il-anchor-cell">{{anchor}}</span>
+				{{statusChip}}
+			</div>
+			<div class="aips-il-actions">{{actions}}</div>
+		</div>
+	</td>
 </tr>
 </script>
 
-<!-- Inbound suggestion badge -->
-<script type="text/html" id="aips-tmpl-il-origin-badge">
-<span class="aips-badge aips-badge-info" title="<?php esc_attr_e('Suggested from the Link Report to give this post inbound links', 'ai-post-scheduler'); ?>"><?php esc_html_e('Inbound', 'ai-post-scheduler'); ?></span>
+<!-- Small status/direction/similarity chip -->
+<script type="text/html" id="aips-tmpl-il-chip">
+<span class="aips-badge {{cls}}" title="{{title}}">{{label}}</span>
 </script>
 
 <!-- Single pagination button -->

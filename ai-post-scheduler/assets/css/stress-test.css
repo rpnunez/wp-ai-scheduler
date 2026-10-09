@@ -280,6 +280,18 @@
 .aips-stress-table .aips-stress-col-time   { width: 90px; text-align: right; }
 .aips-stress-table .aips-stress-col-actions { width: 90px; text-align: right; }
 
+#aips-stress-stop-all {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* The toolbar buttons are shown/hidden purely via the `hidden` attribute. */
+#aips-stress-stop-all[hidden],
+#aips-stress-run-selected[hidden] {
+	display: none !important;
+}
+
 .aips-stress-row {
 	cursor: pointer;
 }

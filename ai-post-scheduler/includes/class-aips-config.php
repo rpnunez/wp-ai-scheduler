@@ -174,6 +174,7 @@ class AIPS_Config {
 				'post_ready_for_review' => 'db',
 				'post_rejected' => 'db',
 				'post_consolidated' => 'both',
+				'duplicate_groups_found' => 'db',
 				'partial_generation_completed' => 'db',
 				'post_generated' => 'both',
             ),
@@ -306,6 +307,25 @@ class AIPS_Config {
             // Deduplication & Cannibalization Shield
             'aips_deduplication_mode'                  => 'warn',
             'aips_deduplication_threshold'             => 0.85,
+            // Duplicate review queue (Cannibalization Shield) & cluster detection limits
+            'aips_cluster_detection_max_posts'         => 250,
+            'aips_cluster_detection_time_budget'       => 8,
+            'aips_duplicate_review_threshold'          => 0.88,
+            'aips_duplicate_review_max_group_size'     => 5,
+            'aips_duplicate_review_max_pairs'          => 1000,
+            'aips_duplicate_keep_strategy'             => 'balanced',
+            'aips_duplicate_excluded_post_types'       => array(),
+            'aips_duplicate_excluded_categories'       => array(),
+            'aips_duplicate_excluded_post_ids'         => '',
+            'aips_duplicate_exclude_pillars'           => true,
+            'aips_duplicate_protect_inbound_links'     => 10,
+            'aips_duplicate_default_merge_mode'        => 'revision',
+            'aips_duplicate_scan_schedule'             => 'off', // 'off', 'daily', 'weekly'
+            'aips_duplicate_dismissed'                 => array(),
+            'aips_cluster_default_min_size'            => 3,
+            'aips_cluster_tightness'                   => 'balanced', // 'loose', 'balanced', 'strict'
+            'aips_pillar_spoke_similarity'             => 0.75,
+            'aips_audit_result_limit'                  => 50,
             'aips_generation_inject_related_context'   => true,
             // Server load & generation pacing
             'aips_generation_delay_seconds'            => 2,

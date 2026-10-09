@@ -1,3 +1,14 @@
+## [Unreleased]
+
+### Fixed
+- **Stress Test Data Privacy:**
+  - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
+  - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.
+- **Stress Test Controls & Execution:**
+  - Added a "Stop All Tests" button alongside "Run Selected" that immediately aborts in-flight requests and stops test queue execution.
+  - Consolidated test case checkbox selection with dynamic selected-count badge and synchronized indeterminate header checkbox state.
+  - Re-synced leftover test data count on test cancellation.
+
 ## [3.7.8] - 2026-09-24
 
 ### Added
