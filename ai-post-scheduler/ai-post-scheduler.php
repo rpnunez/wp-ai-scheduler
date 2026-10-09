@@ -757,6 +757,14 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
         });
 
+        // Background processes: one slice per tick (pause/resume/stop and quota
+        // waits are handled by AIPS_Managed_Background_Process). Registered in every
+        // context, not only wp-cron, so an event fired by WP-CLI or a "run now" tool
+        // is handled rather than consumed with no callback.
+        add_action(AIPS_Managed_Background_Process::TICK_HOOK, function ($process_key) {
+            AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->tick((string) $process_key);
+        }, 10, 1);
+
         // Background processes: answer Heartbeat polls from the admin bar and
         // admin pages. Heartbeat requests are AJAX, so this must live here
         // rather than in boot_admin().
@@ -1064,12 +1072,6 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
-
-        // Background processes: one slice per tick (pause/resume/stop and quota
-        // waits are handled by AIPS_Managed_Background_Process).
-        add_action(AIPS_Managed_Background_Process::TICK_HOOK, function($process_key) {
-            AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->tick((string) $process_key);
-        }, 10, 1);
 
         // Internal Links indexing cron — construct the controller lazily only
         // when the cron hook fires to avoid eager instantiation on every cron boot.

@@ -373,8 +373,12 @@ class AIPS_Embeddings_Repository {
 			if (is_array($decoded)) {
 				$vector = array_map('floatval', array_values($decoded));
 			}
-		} else {
-			// Packed binary float32 (single precision IEEE 754)
+		}
+
+		// Packed binary float32 (single precision IEEE 754). A packed vector can begin with
+		// '[' or '{' by chance (about 1 in 130), so binary is also tried whenever JSON did
+		// not parse, provided the blob is a whole number of floats.
+		if (empty($vector) && strlen($raw) % 4 === 0) {
 			$unpacked = @unpack('f*', $raw);
 			if (is_array($unpacked) && !empty($unpacked)) {
 				$vector = array_values($unpacked);

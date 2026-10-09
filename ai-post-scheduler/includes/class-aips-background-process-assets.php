@@ -71,6 +71,8 @@ class AIPS_Background_Process_Assets {
 			'startFallback'  => __('Start this process? It runs in the background and can be paused or stopped at any time.', 'ai-post-scheduler'),
 			'stopHeading'    => __('Stop process', 'ai-post-scheduler'),
 			'confirmStop'    => __('Stop this process? Work already done is kept, but it will not continue unless you start it again.', 'ai-post-scheduler'),
+			'confirmStopAgain' => __('Click Stop again within 5 seconds to stop this process.', 'ai-post-scheduler'),
+			'startElsewhere'   => __('Open Diagnostics > Background Processes to start this process.', 'ai-post-scheduler'),
 			'requestFailed'  => __('Request failed. Please try again.', 'ai-post-scheduler'),
 		));
 	}

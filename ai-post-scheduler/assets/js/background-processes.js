@@ -38,6 +38,12 @@
 		/** @type {number} Offset between server time and the browser clock, in seconds. */
 		clockOffset: 0,
 
+		/** @type {Object<string,number>} When Stop was last clicked per process (confirmation fallback). */
+		armedStops: {},
+
+		/** @type {number} Milliseconds a second Stop click counts as the confirmation. */
+		STOP_CONFIRM_WINDOW: 5000,
+
 		init: function () {
 			this.setSnapshots(L10n.initial || []);
 			if (L10n.serverTime) {
@@ -436,8 +442,9 @@
 					return;
 				}
 
+				// No dialog on this page: never start without the confirmation and estimate.
 				if (!AIPS.Utilities || !AIPS.Utilities.confirm) {
-					self.control('start', key, $btn, extra);
+					self.toast(L10n.startElsewhere || 'Open Diagnostics > Background Processes to start this process.', 'error');
 					return;
 				}
 
@@ -469,8 +476,19 @@
 		confirmStop: function (key, $btn) {
 			var self = this;
 
+			// No dialog on this page (the admin bar outside the plugin's screens): ask for a
+			// second click instead of stopping on the first.
 			if (!AIPS.Utilities || !AIPS.Utilities.confirm) {
-				this.control('cancel', key, $btn);
+				var now = Date.now();
+
+				if (this.armedStops[key] && (now - this.armedStops[key]) < this.STOP_CONFIRM_WINDOW) {
+					delete this.armedStops[key];
+					this.control('cancel', key, $btn);
+					return;
+				}
+
+				this.armedStops[key] = now;
+				this.toast(L10n.confirmStopAgain || 'Click Stop again within 5 seconds to stop this process.', 'info');
 				return;
 			}
 
@@ -541,9 +559,24 @@
 		 * @param {string} type    success or error.
 		 */
 		toast: function (message, type) {
-			if (message && AIPS.Utilities && AIPS.Utilities.showToast) {
-				AIPS.Utilities.showToast(message, type);
+			if (!message) {
+				return;
 			}
+
+			if (AIPS.Utilities && AIPS.Utilities.showToast) {
+				AIPS.Utilities.showToast(message, type);
+				return;
+			}
+
+			// Pages without the plugin's utilities (admin bar elsewhere): a minimal notice.
+			var $toast = $('<div class="aips-bg-toast" role="status"></div>')
+				.addClass('aips-bg-toast-' + (type || 'info'))
+				.text(message);
+
+			$('body').append($toast);
+			setTimeout(function () {
+				$toast.remove();
+			}, 5000);
 		}
 	};
 

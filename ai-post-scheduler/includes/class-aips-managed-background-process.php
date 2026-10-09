@@ -27,7 +27,16 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	/**
 	 * Seconds a slice may hold the per-process lock before it is considered stale.
 	 */
-	const LOCK_TTL = 120;
+	const LOCK_TTL = 300;
+
+	/**
+	 * Seconds until the watchdog tick fires if a slice never finishes.
+	 *
+	 * WP-Cron removes an event before running it, and the next tick is only scheduled
+	 * once a slice returns. A slice killed by a timeout or out-of-memory fatal never
+	 * gets there, so a tick is scheduled before each slice and replaced when it ends.
+	 */
+	const WATCHDOG_DELAY = 330;
 
 	/**
 	 * @var AIPS_Background_Process_Repository
@@ -322,6 +331,9 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		}
 		set_transient($lock_key, 1, self::LOCK_TTL);
 
+		// Arm the watchdog: replaced by the real next tick when the slice returns.
+		$this->replace_tick(self::WATCHDOG_DELAY);
+
 		try {
 			$this->run_tick($run);
 		} catch (Throwable $e) {
@@ -337,6 +349,13 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 			);
 		} finally {
 			delete_transient($lock_key);
+
+			// A run that is no longer active (finished, failed, paused or stopped) has no
+			// next tick: drop the watchdog. An active run already has its real tick.
+			$latest = $this->repository->get($run->id);
+			if (!$latest || !in_array($latest->status, AIPS_Background_Process_Repository::active_statuses(), true)) {
+				wp_clear_scheduled_hook(self::TICK_HOOK, array($this->get_key()));
+			}
 		}
 	}
 
@@ -351,7 +370,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		$limit = $this->check_limits();
 		if ($limit !== null) {
 			$this->repository->transition($run->id, $limit['status'], $active, $limit['message'], $limit['retry_at']);
-			$this->schedule_tick(max(30, $limit['retry_at'] - time()));
+			$this->replace_tick(max(30, $limit['retry_at'] - time()));
 			return;
 		}
 
@@ -372,7 +391,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		}
 
 		if ($size <= 0) {
-			$this->schedule_tick(60);
+			$this->replace_tick(60);
 			return;
 		}
 
@@ -413,7 +432,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 
 		$delay = $this->get_delay();
 		$this->repository->transition($run->id, AIPS_Background_Process_Repository::STATUS_RUNNING, $active, null, time() + $delay);
-		$this->schedule_tick($delay);
+		$this->replace_tick($delay);
 	}
 
 	/**
@@ -428,6 +447,19 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		if (!wp_next_scheduled(self::TICK_HOOK, $args)) {
 			wp_schedule_single_event(time() + max(0, $delay), self::TICK_HOOK, $args);
 		}
+	}
+
+	/**
+	 * Schedule the next tick, replacing any tick already queued (such as the watchdog).
+	 *
+	 * @param int $delay Seconds from now.
+	 * @return void
+	 */
+	private function replace_tick(int $delay): void {
+		$args = array($this->get_key());
+
+		wp_clear_scheduled_hook(self::TICK_HOOK, $args);
+		wp_schedule_single_event(time() + max(0, $delay), self::TICK_HOOK, $args);
 	}
 
 	/**

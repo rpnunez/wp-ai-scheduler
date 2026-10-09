@@ -247,3 +247,28 @@
 	color: #fff;
 	text-decoration: underline;
 }
+
+/* -------------------------------------------------------
+   Fallback notice (pages without the plugin's toast utility)
+------------------------------------------------------- */
+.aips-bg-toast {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	z-index: 100000;
+	max-width: 360px;
+	padding: 10px 14px;
+	border-radius: 4px;
+	background: #1d2327;
+	color: #fff;
+	font-size: 13px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.aips-bg-toast-error {
+	background: #d63638;
+}
+
+.aips-bg-toast-success {
+	background: #00a32a;
+}
