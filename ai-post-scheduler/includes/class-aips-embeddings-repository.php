@@ -155,6 +155,79 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Read one page of post embeddings for similarity scans, in object ID order.
+	 *
+	 * Lets a caller stream the whole candidate set with bounded memory instead of
+	 * loading every vector at once (see AIPS_Relationship_Builder). Returns raw
+	 * stored vectors; nothing is decoded or cached here.
+	 *
+	 * @param string[]|string $post_types  Post types to include.
+	 * @param string          $post_status Post status filter.
+	 * @param int             $after_id    Return rows with object_id greater than this.
+	 * @param int             $limit       Page size.
+	 * @return object[] Rows with object_id and embedding.
+	 */
+	public function get_similarity_candidates_page($post_types = array('post'), $post_status = 'publish', $after_id = 0, $limit = 250) {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
+		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$sql = $this->wpdb->prepare(
+			"SELECT e.object_id, e.embedding
+			FROM {$this->table} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+			WHERE e.object_type = 'post'
+			AND p.post_type IN ($placeholders)
+			AND p.post_status = %s
+			AND e.object_id > %d
+			ORDER BY e.object_id ASC
+			LIMIT %d",
+			...array_merge($post_types, array(sanitize_key($post_status), absint($after_id), max(1, absint($limit))))
+		);
+
+		return (array) $this->wpdb->get_results($sql);
+	}
+
+	/**
+	 * Count the embeddings a similarity scan has to compare against.
+	 *
+	 * @param string[]|string $post_types  Post types to include.
+	 * @param string          $post_status Post status filter.
+	 * @return int
+	 */
+	public function count_similarity_candidates($post_types = array('post'), $post_status = 'publish') {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
+		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$sql = $this->wpdb->prepare(
+			"SELECT COUNT(*)
+			FROM {$this->table} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+			WHERE e.object_type = 'post'
+			AND p.post_type IN ($placeholders)
+			AND p.post_status = %s",
+			...array_merge($post_types, array(sanitize_key($post_status)))
+		);
+
+		return (int) $this->wpdb->get_var($sql);
+	}
+
+	/**
 	 * Get all embeddings for similarity comparison, optionally filtered by post types and status.
 	 *
 	 * @param string          $object_type Entity type ('post', 'topic').
