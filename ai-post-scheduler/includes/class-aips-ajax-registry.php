@@ -302,10 +302,6 @@ class AIPS_Ajax_Registry {
 		'aips_link_report_revert_suggestion'  => 'AIPS_Link_Report_Controller',
 		'aips_link_report_dismiss_suggestion' => 'AIPS_Link_Report_Controller',
 		'aips_link_report_get_post_panel'     => 'AIPS_Link_Report_Controller',
-		'aips_link_report_get_broken'         => 'AIPS_Link_Report_Controller',
-		'aips_link_report_fix_broken'         => 'AIPS_Link_Report_Controller',
-		'aips_link_report_undo_broken_fix'    => 'AIPS_Link_Report_Controller',
-		'aips_link_report_search_posts'       => 'AIPS_Link_Report_Controller',
 		'aips_autolink_start'                 => 'AIPS_Link_Report_Controller',
 		'aips_autolink_status'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_pause'                 => 'AIPS_Link_Report_Controller',
@@ -313,10 +309,25 @@ class AIPS_Ajax_Registry {
 		'aips_autolink_cancel'                => 'AIPS_Link_Report_Controller',
 		'aips_autolink_undo_run'              => 'AIPS_Link_Report_Controller',
 
+		// Broken Links Controller
+		'aips_broken_links_get'          => 'AIPS_Broken_Links_Controller',
+		'aips_broken_links_fix'          => 'AIPS_Broken_Links_Controller',
+		'aips_broken_links_undo_fix'     => 'AIPS_Broken_Links_Controller',
+		'aips_broken_links_search_posts' => 'AIPS_Broken_Links_Controller',
+
 		// Google Search Console Controller
 		'aips_gsc_test'       => 'AIPS_GSC_Controller',
 		'aips_gsc_sync'       => 'AIPS_GSC_Controller',
 		'aips_gsc_disconnect' => 'AIPS_GSC_Controller',
+
+		// Background Processes Controller
+		'aips_bg_list'      => 'AIPS_Background_Processes_Controller',
+		'aips_bg_estimate'  => 'AIPS_Background_Processes_Controller',
+		'aips_bg_start'     => 'AIPS_Background_Processes_Controller',
+		'aips_bg_pause'     => 'AIPS_Background_Processes_Controller',
+		'aips_bg_resume'    => 'AIPS_Background_Processes_Controller',
+		'aips_bg_cancel'    => 'AIPS_Background_Processes_Controller',
+		'aips_bg_pause_all' => 'AIPS_Background_Processes_Controller',
 
 		// Redirects Controller
 		'aips_redirects_list'         => 'AIPS_Redirects_Controller',
@@ -331,6 +342,9 @@ class AIPS_Ajax_Registry {
 		'aips_consolidation_run'      => 'AIPS_Consolidation_Controller',
 		'aips_consolidation_undo'     => 'AIPS_Consolidation_Controller',
 		'aips_consolidation_history'  => 'AIPS_Consolidation_Controller',
+		'aips_duplicate_groups'       => 'AIPS_Consolidation_Controller',
+		'aips_duplicate_dismiss'      => 'AIPS_Consolidation_Controller',
+		'aips_duplicate_reset_dismissed' => 'AIPS_Consolidation_Controller',
 
 		// Silos (Content hub)
 		'aips_silos_overview'         => 'AIPS_Silos_Controller',

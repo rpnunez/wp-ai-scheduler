@@ -624,6 +624,101 @@ class AIPS_Embeddings_Rate_Limiter {
 	}
 
 	/**
+	 * The part of a limit held back as headroom for other callers.
+	 *
+	 * Never reserves the whole limit: at least one call stays usable.
+	 *
+	 * @param int   $limit Configured limit (> 0).
+	 * @param float $ratio Share of the limit to hold back (0 - 1).
+	 * @return int
+	 */
+	private function reserve_for_limit(int $limit, float $ratio): int {
+		if ($ratio <= 0 || $limit <= 1) {
+			return 0;
+		}
+
+		return min((int) ceil($limit * $ratio), $limit - 1);
+	}
+
+	/**
+	 * How many more embeddings can be generated before the first quota is hit.
+	 *
+	 * @param float $reserve_ratio Share of each limit to keep free for other callers (0 - 1).
+	 * @return int PHP_INT_MAX when rate limiting is off or every limit is 0 (unlimited).
+	 */
+	public function get_remaining_allowance(float $reserve_ratio = 0.0): int {
+		if (!$this->is_enabled()) {
+			return PHP_INT_MAX;
+		}
+
+		$stats     = $this->get_usage_stats();
+		$remaining = PHP_INT_MAX;
+
+		foreach (array('daily', 'weekly', 'monthly') as $period) {
+			$limit = (int) $stats[$period . '_limit'];
+			if ($limit > 0) {
+				$usable    = $limit - $this->reserve_for_limit($limit, $reserve_ratio);
+				$remaining = min($remaining, max(0, $usable - (int) $stats[$period . '_count']));
+			}
+		}
+
+		return $remaining;
+	}
+
+	/**
+	 * Unix timestamp at which generation is allowed again after a quota is hit.
+	 *
+	 * Walks each exceeded sliding window and finds when enough of its oldest
+	 * calls expire to bring the count back under the limit.
+	 *
+	 * @param float $reserve_ratio Share of each limit kept free (see get_remaining_allowance()).
+	 * @return int Timestamp, or 0 when no quota is currently exceeded.
+	 */
+	public function get_next_allowance_timestamp(float $reserve_ratio = 0.0): int {
+		if (!$this->is_enabled()) {
+			return 0;
+		}
+
+		$stats   = $this->get_usage_stats();
+		$history = $this->get_usage_history();
+		$now     = AIPS_DateTime::now()->timestamp();
+		$windows = array(
+			'daily'   => DAY_IN_SECONDS,
+			'weekly'  => 7 * DAY_IN_SECONDS,
+			'monthly' => 30 * DAY_IN_SECONDS,
+		);
+
+		$next = 0;
+
+		foreach ($windows as $period => $length) {
+			$limit = (int) $stats[$period . '_limit'];
+			if ($limit <= 0) {
+				continue;
+			}
+
+			$usable = $limit - $this->reserve_for_limit($limit, $reserve_ratio);
+			$count  = (int) $stats[$period . '_count'];
+
+			if ($count < $usable) {
+				continue;
+			}
+
+			$cutoff    = $now - $length;
+			$in_window = array_values(array_filter($history, function ($ts) use ($cutoff) {
+				return $ts >= $cutoff;
+			}));
+			sort($in_window);
+
+			$index = $count - $usable;
+			if (isset($in_window[$index])) {
+				$next = max($next, $in_window[$index] + $length + 1);
+			}
+		}
+
+		return $next;
+	}
+
+	/**
 	 * Check if current embeddings usage is approaching hard quota limits (>= 90%).
 	 *
 	 * @param float $threshold Ratio threshold (default: 0.90 for 90%).

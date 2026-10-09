@@ -324,6 +324,31 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test get_queue_status reports pending counts and worker state.
+	 */
+	public function test_get_queue_status() {
+		delete_option( 'aips_pending_index_queue' );
+		delete_option( 'aips_pending_topic_index_queue' );
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+
+		$status = $this->indexer_service->get_queue_status();
+		$this->assertSame( 0, $status['pending_count'] );
+		$this->assertFalse( $status['is_running'] );
+
+		update_option( 'aips_pending_index_queue', array( 1, 2, 3 ), false );
+		update_option( 'aips_pending_topic_index_queue', array( 9 ), false );
+		$this->indexer_service->schedule_queue_worker( time() + 30 );
+
+		$status = $this->indexer_service->get_queue_status();
+		$this->assertSame( 4, $status['pending_count'] );
+		$this->assertSame( 3, $status['pending_posts'] );
+		$this->assertSame( 1, $status['pending_topics'] );
+		$this->assertTrue( $status['is_running'] );
+
+		wp_clear_scheduled_hook( 'aips_process_pending_indexer_queue' );
+	}
+
+	/**
 	 * Test enqueue_topics_for_indexing buffers and deduplicates an array of topic IDs.
 	 */
 	public function test_enqueue_topics_for_indexing_batch() {

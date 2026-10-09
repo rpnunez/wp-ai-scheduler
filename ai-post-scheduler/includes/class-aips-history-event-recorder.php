@@ -134,6 +134,153 @@ class AIPS_History_Event_Recorder {
 	}
 
 	/**
+	 * creation_method values used for lifecycle containers (configuration and
+	 * entity changes rather than generation runs). They are hidden from the
+	 * main History list and dashboard generation statistics.
+	 *
+	 * @return string[]
+	 */
+	public static function lifecycle_creation_methods() {
+		return array(
+			'schedule_lifecycle',
+			'template_lifecycle',
+			'campaign_lifecycle',
+			'author_lifecycle',
+			'source_lifecycle',
+		);
+	}
+
+	/**
+	 * Record a one-off lifecycle or operational event in its own container.
+	 *
+	 * Creates the container, writes the Trigger Source / Trigger Method entries
+	 * first, then the event itself, and closes the container. Use this for every
+	 * new "who did what" event so the History modal always shows what triggered it.
+	 *
+	 * @param AIPS_History_Event $event              Event to record.
+	 * @param string             $creation_method    Container creation_method column (e.g. 'author_lifecycle').
+	 * @param array              $source             Trigger source fields (see AIPS_Generation_Trigger::format_source_message()).
+	 * @param array              $container_metadata Extra container metadata.
+	 * @param string             $trigger_method     'manual' or 'scheduled' (anything else shows as Unknown).
+	 * @param bool               $complete           Whether to close the container after recording.
+	 * @return AIPS_History_Container|false The container, or false when it could not be created.
+	 */
+	public function record_lifecycle(AIPS_History_Event $event, $creation_method, array $source = array(), array $container_metadata = array(), $trigger_method = 'manual', $complete = true) {
+		try {
+			return $this->create_and_record_lifecycle($event, $creation_method, $source, $container_metadata, $trigger_method, $complete);
+		} catch (\Throwable $e) {
+			// History is an audit trail: never let it break the action being recorded.
+			return false;
+		}
+	}
+
+	/**
+	 * Record a create/update/delete-style change to a named entity.
+	 *
+	 * Shared by the author, template and schedule controllers so the wording,
+	 * subject handling and failure handling stay identical.
+	 *
+	 * @param string $event_type      AIPS_History_Event_Type constant.
+	 * @param string $creation_method Container creation_method (e.g. 'author_lifecycle').
+	 * @param string $subject_type    AIPS_History_Subject::TYPE_* constant.
+	 * @param int    $entity_id       Entity ID.
+	 * @param string $name            Entity name/title (may be empty).
+	 * @param bool   $success         Whether the change succeeded.
+	 * @param string $noun            Translated entity noun, e.g. "Author".
+	 * @param string $past_verb       Translated past-tense verb, e.g. "deleted".
+	 * @param string $base_verb       Translated base verb, e.g. "delete".
+	 * @param array  $context         Extra context stored with the event.
+	 * @return AIPS_History_Container|false
+	 */
+	public function record_entity_change($event_type, $creation_method, $subject_type, $entity_id, $name, $success, $noun, $past_verb, $base_verb, array $context = array()) {
+		$display = ((string) $name !== '')
+			? sprintf('"%1$s" (ID %2$d)', $name, (int) $entity_id)
+			: sprintf('(ID %d)', (int) $entity_id);
+		$message = $success
+			/* translators: 1: entity noun, 2: name and ID, 3: past-tense verb */
+			? sprintf(__('%1$s %2$s %3$s', 'ai-post-scheduler'), $noun, $display, $past_verb)
+			/* translators: 1: base verb, 2: entity noun, 3: name and ID */
+			: sprintf(__('Failed to %1$s %2$s %3$s', 'ai-post-scheduler'), $base_verb, strtolower($noun), $display);
+		$subject = AIPS_History_Subject::of($subject_type, (int) $entity_id, (string) $name);
+		$event   = $success
+			? AIPS_History_Event::success($event_type, $message, $subject, $context)
+			: AIPS_History_Event::failure($event_type, $message, $subject, $context);
+
+		return $this->record_lifecycle(
+			$event,
+			$creation_method,
+			array(
+				'event'                   => sprintf(__('%s change', 'ai-post-scheduler'), $noun),
+				$subject_type . '_id'     => (int) $entity_id,
+				$subject_type . '_name'   => (string) $name,
+			)
+		);
+	}
+
+	/**
+	 * Shorthand for record_lifecycle() when an event is just success/failure + message.
+	 *
+	 * @param string                    $event_type      AIPS_History_Event_Type constant.
+	 * @param bool                      $success         Whether the operation succeeded.
+	 * @param string                    $message         Human-readable message.
+	 * @param string                    $creation_method Container creation_method column.
+	 * @param array                     $source          Trigger source fields.
+	 * @param string                    $trigger_method  'manual' or 'scheduled'.
+	 * @param array                     $input           Input payload stored with the event.
+	 * @param AIPS_History_Subject|null $subject         Optional subject.
+	 * @return AIPS_History_Container|false
+	 */
+	public function record_simple($event_type, $success, $message, $creation_method, array $source = array(), $trigger_method = 'manual', array $input = array(), ?AIPS_History_Subject $subject = null) {
+		$event = $success
+			? AIPS_History_Event::success($event_type, $message, $subject, array(), $input)
+			: AIPS_History_Event::failure($event_type, $message, $subject, array(), $input);
+
+		return $this->record_lifecycle($event, $creation_method, $source, array(), $trigger_method);
+	}
+
+	/**
+	 * Implementation of record_lifecycle() (kept separate so the public method
+	 * can guarantee it never throws).
+	 *
+	 * @param AIPS_History_Event $event              Event to record.
+	 * @param string             $creation_method    Container creation_method column.
+	 * @param array              $source             Trigger source fields.
+	 * @param array              $container_metadata Extra container metadata.
+	 * @param string             $trigger_method     'manual' or 'scheduled'.
+	 * @param bool               $complete           Whether to close the container.
+	 * @return AIPS_History_Container|false
+	 */
+	private function create_and_record_lifecycle(AIPS_History_Event $event, $creation_method, array $source, array $container_metadata, $trigger_method, $complete) {
+		$is_manual = AIPS_Generation_Trigger::is_manual_creation_method($trigger_method);
+
+		$defaults = array('creation_method' => (string) $creation_method);
+		if ($is_manual) {
+			$defaults['user_id'] = get_current_user_id();
+			$defaults['source']  = 'manual_ui';
+		}
+
+		$metadata  = $this->build_container_metadata($event, array_merge($defaults, $container_metadata));
+		$container = $this->history_service->create($event->type(), $metadata);
+
+		if (!$container) {
+			return false;
+		}
+
+		AIPS_Generation_Trigger::record($container, $source, $trigger_method);
+		$this->record_into($container, $event, 'activity');
+
+		if ($complete) {
+			if ($event->status() === AIPS_History_Event_Status::FAILED) {
+				$container->complete_failure($event->message());
+			} else {
+				$container->complete_success();
+			}
+		}
+
+		return $container;
+	}
+
+	/**
 	 * Build the container metadata for a new container from an event.
 	 *
 	 * @param AIPS_History_Event $event              Event.
