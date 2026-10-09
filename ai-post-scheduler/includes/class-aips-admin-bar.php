@@ -11,7 +11,8 @@ if (!defined('ABSPATH')) {
  *
  * The toolbar node renders:
  *  - An icon with an unread-notification badge.
- *  - Quick links to Templates, Authors, and Schedules.
+ *  - A 3x3 grid of quick links (Templates, Content Indexing, History, ...).
+ *  - A background-processes status block.
  *  - A list of unread system notifications; each can be marked as read.
  *
  * @package AI_Post_Scheduler
@@ -143,37 +144,27 @@ class AIPS_Admin_Bar {
 			'meta'   => array('class' => 'aips-toolbar-group-links'),
 		));
 
-		$quick_links = array(
-			array(
-				'id'    => 'aips-toolbar-templates',
-				'title' => '<span class="dashicons dashicons-media-document"></span> ' . esc_html__('Templates', 'ai-post-scheduler'),
-				'href'  => AIPS_Admin_Menu_Helper::get_page_url('templates'),
-			),
-			array(
-				'id'    => 'aips-toolbar-authors',
-				'title' => '<span class="dashicons dashicons-admin-users"></span> ' . esc_html__('Authors', 'ai-post-scheduler'),
-				'href'  => AIPS_Admin_Menu_Helper::get_page_url('authors'),
-			),
-			array(
-				'id'    => 'aips-toolbar-schedules',
-				'title' => '<span class="dashicons dashicons-calendar-alt"></span> ' . esc_html__('Schedules', 'ai-post-scheduler'),
-				'href'  => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
-			),
-		);
-
-		foreach ($quick_links as $link) {
+		// Column-major: items 1-3 fill column 1, 4-6 column 2, 7-9 column 3 (CSS grid, auto-flow: column).
+		foreach ($this->get_quick_links() as $link) {
 			$wp_admin_bar->add_node(array(
-				'id'     => $link['id'],
+				'id'     => 'aips-toolbar-' . $link['slug'],
 				'parent' => 'aips-toolbar-links',
-				'title'  => $link['title'],
+				'title'  => '<span class="ab-icon dashicons ' . esc_attr($link['icon']) . '" aria-hidden="true"></span>'
+					. '<span class="aips-link-label">' . esc_html($link['label']) . '</span>',
 				'href'   => $link['href'],
 			));
 		}
 
 		// ---------- Background processes ----------
+		$wp_admin_bar->add_group(array(
+			'id'     => 'aips-toolbar-bg',
+			'parent' => 'aips-toolbar',
+			'meta'   => array('class' => 'aips-toolbar-group-bg'),
+		));
+
 		$wp_admin_bar->add_node(array(
 			'id'     => 'aips-toolbar-bg-status',
-			'parent' => 'aips-toolbar',
+			'parent' => 'aips-toolbar-bg',
 			'title'  => '<span class="aips-bg-heading">' . esc_html__('Background processes', 'ai-post-scheduler') . '</span>'
 				. '<span class="aips-bg-items">' . $this->render_background_items($bg_snapshots) . '</span>',
 			'href'   => false,
@@ -182,8 +173,9 @@ class AIPS_Admin_Bar {
 
 		$wp_admin_bar->add_node(array(
 			'id'     => 'aips-toolbar-bg-all',
-			'parent' => 'aips-toolbar',
-			'title'  => '<span class="dashicons dashicons-update"></span> ' . esc_html__('All background processes', 'ai-post-scheduler'),
+			'parent' => 'aips-toolbar-bg',
+			'title'  => '<span class="ab-icon dashicons dashicons-update" aria-hidden="true"></span>'
+				. '<span class="aips-link-label">' . esc_html__('All background processes', 'ai-post-scheduler') . '</span>',
 			'href'   => AIPS_Admin_Menu_Helper::get_page_url('background_processes'),
 		));
 
@@ -239,9 +231,9 @@ class AIPS_Admin_Bar {
 					. '<span class="dashicons dashicons-yes-alt"></span>'
 					. '</button>';
 
-				$level_class = '';
+				$level_class = ' aips-notif-cat-' . $this->get_notification_category($notif->type ?? '');
 				if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
-					$level_class = ' aips-notif-level-' . $notif->level;
+					$level_class .= ' aips-notif-level-' . $notif->level;
 				}
 
 				$wp_admin_bar->add_node(array(
@@ -256,6 +248,50 @@ class AIPS_Admin_Bar {
 				));
 			}
 		}
+	}
+
+	/**
+	 * Quick links shown in the 3x3 grid, in column-major order.
+	 *
+	 * @return array<int, array{slug:string,label:string,icon:string,href:string}>
+	 */
+	private function get_quick_links(): array {
+		$url = array('AIPS_Admin_Menu_Helper', 'get_page_url');
+
+		return array(
+			array('slug' => 'templates',  'label' => __('Templates', 'ai-post-scheduler'),        'icon' => 'dashicons-media-document',   'href' => call_user_func($url, 'templates')),
+			array('slug' => 'authors',    'label' => __('Authors', 'ai-post-scheduler'),           'icon' => 'dashicons-admin-users',      'href' => call_user_func($url, 'authors')),
+			array('slug' => 'schedules',  'label' => __('Schedules', 'ai-post-scheduler'),         'icon' => 'dashicons-calendar-alt',     'href' => call_user_func($url, 'schedule')),
+			array('slug' => 'content',    'label' => __('Content', 'ai-post-scheduler'),           'icon' => 'dashicons-admin-post',       'href' => call_user_func($url, 'content')),
+			array('slug' => 'indexing',   'label' => __('Content Indexing', 'ai-post-scheduler'),  'icon' => 'dashicons-database',         'href' => call_user_func($url, 'content_indexer')),
+			array('slug' => 'links',      'label' => __('Internal Links', 'ai-post-scheduler'),    'icon' => 'dashicons-admin-links',      'href' => call_user_func($url, 'internal_links')),
+			array('slug' => 'history',    'label' => __('History', 'ai-post-scheduler'),           'icon' => 'dashicons-backup',           'href' => call_user_func($url, 'history')),
+			array('slug' => 'diagnostics', 'label' => __('Diagnostics', 'ai-post-scheduler'),      'icon' => 'dashicons-heart',            'href' => call_user_func($url, 'diagnostics')),
+			array('slug' => 'settings',   'label' => __('Settings', 'ai-post-scheduler'),          'icon' => 'dashicons-admin-generic',    'href' => call_user_func($url, 'settings')),
+		);
+	}
+
+	/**
+	 * Map a notification type to a colour category used for the row accent.
+	 *
+	 * @param string $type Notification type slug.
+	 * @return string One of success|review|warning|error|info.
+	 */
+	private function get_notification_category($type): string {
+		$map = array(
+			'success' => array('post_generated', 'template_generated', 'manual_generation_completed'),
+			'review'  => array('post_ready_for_review', 'post_consolidated', 'research_topics_ready', 'author_topics_generated', 'author_suggestions', 'duplicate_groups_found'),
+			'warning' => array('partial_generation_completed', 'quota_alert', 'rate_limit_reached', 'post_rejected'),
+			'error'   => array('generation_failed', 'system_error', 'scheduler_error', 'integration_error', 'circuit_breaker_opened'),
+		);
+
+		foreach ($map as $category => $types) {
+			if (in_array($type, $types, true)) {
+				return $category;
+			}
+		}
+
+		return 'info';
 	}
 
 	/**
