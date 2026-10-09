@@ -552,6 +552,18 @@ class AIPS_Sources_Controller {
 
 		$result = $fetcher->fetch($source);
 
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::SOURCE_FETCHED,
+			!empty($result['success']),
+			!empty($result['success'])
+				? sprintf(__('Fetched source #%1$d (%2$d characters)', 'ai-post-scheduler'), $id, (int) ($result['char_count'] ?? 0))
+				: sprintf(__('Fetch failed for source #%1$d: %2$s', 'ai-post-scheduler'), $id, (string) ($result['error'] ?? '')),
+			'source_fetch',
+			array('event' => __('Source fetch', 'ai-post-scheduler'), 'detail' => sprintf(__('Source #%d', 'ai-post-scheduler'), $id)),
+			'manual',
+			array('source_id' => $id)
+		);
+
 		// Return updated source row + fetch result so the UI can refresh.
 		$updated_source           = $this->repo->get_by_id($id);
 		$updated_source->term_ids = $this->repo->get_source_term_ids($id);

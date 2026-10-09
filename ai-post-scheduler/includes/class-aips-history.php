@@ -60,6 +60,14 @@ class AIPS_History {
             'bulk_generate_now'       => __( 'Bulk Generation', 'ai-post-scheduler' ),
             'bulk_generation'         => __( 'Bulk Generation', 'ai-post-scheduler' ),
             'bulk_regenerate'         => __( 'Bulk Regeneration', 'ai-post-scheduler' ),
+            'planner_post'            => __( 'Planner Bulk Generation', 'ai-post-scheduler' ),
+            'trending_topic_post'     => __( 'Trending Topics Bulk Generation', 'ai-post-scheduler' ),
+            'author_topic_post'       => __( 'Author Topics Bulk Generation', 'ai-post-scheduler' ),
+            'retry'                   => __( 'Retry', 'ai-post-scheduler' ),
+            'regenerate'              => __( 'Regeneration', 'ai-post-scheduler' ),
+            'research_run'            => __( 'Research Run', 'ai-post-scheduler' ),
+            'source_fetch'            => __( 'Source Fetch', 'ai-post-scheduler' ),
+            'gsc_sync'                => __( 'Search Console Sync', 'ai-post-scheduler' ),
         );
     }
 
@@ -317,6 +325,7 @@ class AIPS_History {
     private function prepare_history_modal_view_data($history_item, $format_dates = false) {
         $logs = $this->normalize_history_logs(isset($history_item->log) ? $history_item->log : array());
         $container = $this->build_history_modal_container($history_item, $format_dates);
+        $container['trigger_info'] = $this->extract_history_trigger_info($logs, $history_item, $container);
         $analysis = $this->analyze_history_modal_summary($container, $logs);
         $container = $this->finalize_history_modal_container($container, $analysis);
         $container_id = isset($container['id']) ? (int) $container['id'] : 0;
@@ -483,6 +492,8 @@ class AIPS_History {
             'error' => __('Error', 'ai-post-scheduler'),
             'warning' => __('Warning', 'ai-post-scheduler'),
             'session_metadata' => __('Session Metadata', 'ai-post-scheduler'),
+            'trigger_source' => __('Trigger Source', 'ai-post-scheduler'),
+            'trigger_method' => __('Trigger Method', 'ai-post-scheduler'),
             'post_content' => __('Post Content', 'ai-post-scheduler'),
             'post_title' => __('Post Title', 'ai-post-scheduler'),
             'post_excerpt' => __('Post Excerpt', 'ai-post-scheduler'),
@@ -549,6 +560,7 @@ class AIPS_History {
             'status' => isset($container['status']) ? (string) $container['status'] : '',
             'status_class' => isset($container['status_class']) ? (string) $container['status_class'] : '',
             'header_actions' => $this->build_history_modal_header_actions($container),
+            'trigger_info' => isset($container['trigger_info']) ? $container['trigger_info'] : array(),
             'summary_lines' => $this->build_history_summary_lines($analysis),
             'summary_meta' => $this->build_history_summary_meta($container),
             'detail_cards' => $this->build_history_detail_cards($container),
@@ -556,6 +568,107 @@ class AIPS_History {
             'suggested_action' => $this->build_history_suggested_action($container),
             'diagnostic_text' => $this->build_history_diagnostic_text($container, $analysis),
         );
+    }
+
+    /**
+     * Work out what triggered a run and how, for the Overview tab.
+     *
+     * Prefers the trigger entries written when the run started. Runs recorded
+     * before those entries existed fall back to the container's own columns.
+     *
+     * @param array<int,array<string,mixed>> $logs         Normalized logs.
+     * @param object                         $history_item History container row.
+     * @param array<string,mixed>            $container    Base container metadata.
+     * @return array{source_message:string,method_label:string,method:string,source:array}
+     */
+    private function extract_history_trigger_info($logs, $history_item, $container) {
+        $source        = null;
+        $method_label  = '';
+        $method        = '';
+        $source_msg    = '';
+
+        foreach ($logs as $log) {
+            $details = !empty($log['details']) && is_array($log['details']) ? $log['details'] : array();
+            if ($log['log_type'] === 'trigger_source' && $source === null) {
+                $source     = isset($details['input']) && is_array($details['input']) ? $details['input'] : array();
+                $source_msg = AIPS_Generation_Trigger::format_source_message($source);
+            } elseif ($log['log_type'] === 'trigger_method' && $method === '') {
+                $input        = isset($details['input']) && is_array($details['input']) ? $details['input'] : array();
+                $method       = isset($input['method']) ? (string) $input['method'] : '';
+                $method_label = isset($input['method_label']) ? (string) $input['method_label'] : '';
+            }
+        }
+
+        if ($method === '' || $method_label === '') {
+            // Older runs: only trust a creation_method we can classify. An
+            // unclassifiable one is left blank so the Overview hides the card
+            // rather than claiming "Automatic" for, say, a user-driven action.
+            $creation_method = isset($container['creation_method']) ? $container['creation_method'] : '';
+            if (AIPS_Generation_Trigger::classify_creation_method($creation_method) !== AIPS_Generation_Trigger::METHOD_UNKNOWN) {
+                $described    = AIPS_Generation_Trigger::describe_method($creation_method);
+                $method       = $described['method'];
+                $method_label = $described['label'];
+            } else {
+                $method       = '';
+                $method_label = '';
+            }
+        }
+
+        if ($source === null) {
+            $source     = $this->build_legacy_history_trigger_source($history_item);
+            $source_msg = AIPS_Generation_Trigger::format_source_message($source);
+        }
+
+        return array(
+            'source_message' => $source_msg,
+            'method_label'   => $method_label,
+            'method'         => $method,
+            'source'         => $source,
+        );
+    }
+
+    /**
+     * Best-effort trigger source for runs recorded before trigger entries existed.
+     *
+     * @param object $history_item History container row.
+     * @return array<string,mixed>
+     */
+    private function build_legacy_history_trigger_source($history_item) {
+        $source = array();
+
+        try {
+            if (!empty($history_item->template_id)) {
+                $source['template_id'] = (int) $history_item->template_id;
+                $template = AIPS_Template_Repository::instance()->get_by_id((int) $history_item->template_id);
+                if ($template && !empty($template->name)) {
+                    $source['template_name'] = (string) $template->name;
+                }
+            }
+
+            if (!empty($history_item->campaign_id)) {
+                $source['campaign_id'] = (int) $history_item->campaign_id;
+                $campaign = AIPS_Campaigns_Repository::instance()->get_campaign_by_id((int) $history_item->campaign_id);
+                if ($campaign && !empty($campaign->name)) {
+                    $source['campaign_name'] = (string) $campaign->name;
+                }
+            }
+
+            if (!empty($history_item->author_id)) {
+                $source['author_id'] = (int) $history_item->author_id;
+                $author = AIPS_Authors_Repository::instance()->get_by_id((int) $history_item->author_id);
+                if ($author && !empty($author->name)) {
+                    $source['author_name'] = (string) $author->name;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Names are a nicety; IDs alone are still useful.
+        }
+
+        if (!empty($history_item->topic_id)) {
+            $source['topic_id'] = (int) $history_item->topic_id;
+        }
+
+        return $source;
     }
 
     /**
@@ -573,7 +686,7 @@ class AIPS_History {
             $what_happened = __('Research run', 'ai-post-scheduler');
         } elseif (strpos($text, 'embedding') !== false) {
             $what_happened = __('Embeddings processing', 'ai-post-scheduler');
-        } elseif (strpos($text, 'author') !== false && strpos($text, 'topic') !== false) {
+        } elseif (strpos($text, 'author') !== false && strpos($text, 'topic') !== false && strpos((string) $container['creation_method'], '_post') === false) {
             $what_happened = __('Author topic generation', 'ai-post-scheduler');
         } elseif (strpos($text, 'schedule') !== false) {
             $what_happened = __('Scheduled post generation', 'ai-post-scheduler');
@@ -599,6 +712,9 @@ class AIPS_History {
         $embedding_dims = 0;
 
         foreach ($logs as $log) {
+            if (in_array($log['log_type'], array('trigger_source', 'trigger_method'), true)) {
+                continue;
+            }
             $details = !empty($log['details']) && is_array($log['details']) ? $log['details'] : array();
             $dimensions_found = false;
             $dimensions = $this->find_history_detail_value($details, 'dimensions', $dimensions_found);
@@ -795,6 +911,22 @@ class AIPS_History {
     private function build_history_detail_cards($container) {
         $cards = array();
 
+        if (!empty($container['trigger_info']['source_message'])) {
+            $cards[] = array(
+                'label' => __('Triggered By', 'ai-post-scheduler'),
+                'value' => (string) $container['trigger_info']['source_message'],
+                'class' => '',
+            );
+        }
+
+        if (!empty($container['trigger_info']['method_label'])) {
+            $cards[] = array(
+                'label' => __('Trigger Type', 'ai-post-scheduler'),
+                'value' => (string) $container['trigger_info']['method_label'],
+                'class' => '',
+            );
+        }
+
         if (!empty($container['template_name'])) {
             $cards[] = array(
                 'label' => __('Template', 'ai-post-scheduler'),
@@ -865,6 +997,12 @@ class AIPS_History {
             sprintf(__('What happened: %s', 'ai-post-scheduler'), (string) $analysis['what_happened']),
             sprintf(__('What changed: %s', 'ai-post-scheduler'), (string) $analysis['what_changed']),
         );
+        if (!empty($container['trigger_info']['source_message'])) {
+            $lines[] = sprintf(__('Triggered by: %s', 'ai-post-scheduler'), (string) $container['trigger_info']['source_message']);
+        }
+        if (!empty($container['trigger_info']['method_label'])) {
+            $lines[] = sprintf(__('Trigger type: %s', 'ai-post-scheduler'), (string) $container['trigger_info']['method_label']);
+        }
         if (!empty($container['error_message'])) {
             $lines[] = sprintf(__('Error: %s', 'ai-post-scheduler'), (string) $container['error_message']);
         }
@@ -1668,8 +1806,11 @@ class AIPS_History {
         }
         
         $generator = new AIPS_Generator();
-        $result = $generator->generate_post($template);
-        
+        $result = $generator->generate_post($template, null, null, array(
+            'creation_method' => 'retry',
+            'trigger_context' => array('detail' => sprintf(__('Retry of History #%d', 'ai-post-scheduler'), (int) $history_item->id)),
+        ));
+
         if (is_wp_error($result) && !is_int($result)) {
             AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
         }
