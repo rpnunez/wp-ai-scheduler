@@ -589,7 +589,7 @@ class AIPS_Dashboard_Repository {
 	 * @return array
 	 */
 	private function auxiliary_creation_methods() {
-		return array('schedule_lifecycle', 'template_lifecycle', 'campaign_lifecycle');
+		return AIPS_History_Event_Recorder::lifecycle_creation_methods();
 	}
 
 	/**

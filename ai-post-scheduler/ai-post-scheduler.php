@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.10
+ * Version: 3.7.11
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.10');
+    define('AIPS_VERSION', '3.7.11');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -457,6 +457,11 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
+        // Background process registry/manager (start, pause, resume, stop, Heartbeat snapshots)
+        $container->singleton(AIPS_Background_Process_Manager::class, function( $container ) {
+            return new AIPS_Background_Process_Manager();
+        });
+
         // Register the link index (actual <a href> links in post content)
         $container->singleton(AIPS_Link_Index_Repository::class, function( $container ) {
             return new AIPS_Link_Index_Repository();
@@ -752,6 +757,24 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
         });
 
+        // Background processes: one slice per tick (pause/resume/stop and quota
+        // waits are handled by AIPS_Managed_Background_Process). Registered in every
+        // context, not only wp-cron, so an event fired by WP-CLI or a "run now" tool
+        // is handled rather than consumed with no callback.
+        add_action(AIPS_Managed_Background_Process::TICK_HOOK, function ($process_key) {
+            AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->tick((string) $process_key);
+        }, 10, 1);
+
+        // Background processes: answer Heartbeat polls from the admin bar and
+        // admin pages. Heartbeat requests are AJAX, so this must live here
+        // rather than in boot_admin().
+        add_filter('heartbeat_received', function ($response, $data) {
+            if (empty($data['aips_bg'])) {
+                return $response;
+            }
+            return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->on_heartbeat_received($response, $data);
+        }, 10, 2);
+
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
@@ -865,6 +888,11 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Publish_Linking_Service::class)->process($post_id);
         });
 
+        // Scheduled duplicate scan (Settings > Engine > Scheduled Duplicate Scan).
+        add_action(AIPS_Duplicate_Group_Service::CRON_HOOK, function () {
+            (new AIPS_Duplicate_Group_Service())->run_scheduled_scan();
+        });
+
         // Daily Search Console target keyword sync.
         add_action(AIPS_GSC_Keywords_Service::CRON_HOOK, function () {
             AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->sync();
@@ -910,7 +938,11 @@ final class AI_Post_Scheduler {
         $processor->register(
             'author_topic_post',
             function( $topic_id, $job_id, $job ) {
-                return AIPS_Author_Post_Generator::instance()->generate_now( (int) $topic_id );
+                return AIPS_Author_Post_Generator::instance()->generate_now(
+                    (int) $topic_id,
+                    'author_topic_post',
+                    array( 'detail' => sprintf( __( 'Bulk job %s (Author topics)', 'ai-post-scheduler' ), $job_id ) )
+                );
             }
         );
 
@@ -941,7 +973,10 @@ final class AI_Post_Scheduler {
                 $topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
                 $generator = new AIPS_Generator();
 
-                return $generator->generate_post( $template, null, $topic );
+                return $generator->generate_post( $template, null, $topic, array(
+                    'creation_method' => 'planner_post',
+                    'trigger_context' => array( 'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ) ),
+                ) );
             }
         );
 
@@ -976,7 +1011,10 @@ final class AI_Post_Scheduler {
                     );
                 }
 
-                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'cron' );
+                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'trending_topic_post' );
+                $context->set_trigger_context( array(
+                    'detail' => sprintf( __( 'Bulk job %s (Trending topics)', 'ai-post-scheduler' ), $job_id ),
+                ) );
                 $generator = new AIPS_Generator();
                 $post_id   = $generator->generate_post( $context );
 
@@ -995,6 +1033,7 @@ final class AI_Post_Scheduler {
         add_action('aips_cleanup_bulk_batch_jobs', function() {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
+            $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
@@ -1115,6 +1154,9 @@ final class AI_Post_Scheduler {
 
         // "Internal Links" panel in the Classic and Block editors.
         new AIPS_Internal_Links_Editor_Panel();
+
+        // Keep the duplicate scan cron event in line with its setting.
+        (new AIPS_Duplicate_Group_Service())->ensure_schedule();
 
         // Keep the daily Search Console sync scheduled while it is connected.
         AIPS_Container::get_instance()->make(AIPS_GSC_Keywords_Service::class)->ensure_schedule();

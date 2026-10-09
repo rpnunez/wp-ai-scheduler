@@ -279,6 +279,16 @@ class AIPS_Link_Report_Controller {
 			AIPS_Ajax_Response::error($result->get_error_message(), $result->get_error_code());
 		}
 
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::LINK_INDEX_REBUILT,
+			true,
+			sprintf(__('Link index backfill started for %d posts', 'ai-post-scheduler'), (int) $result['total']),
+			'link_index_run',
+			array('event' => __('Link index backfill', 'ai-post-scheduler'), 'detail' => sprintf(__('Mode "%s"', 'ai-post-scheduler'), $mode)),
+			'manual',
+			array('mode' => $mode, 'days' => $days, 'total' => (int) $result['total'])
+		);
+
 		AIPS_Ajax_Response::success(array(
 			'message'  => sprintf(
 				/* translators: %d: number of posts queued */

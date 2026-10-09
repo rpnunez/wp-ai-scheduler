@@ -223,7 +223,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
 	role="dialog" aria-modal="true">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
-			<h2 class="aips-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title" id="aips-schedule-history-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
