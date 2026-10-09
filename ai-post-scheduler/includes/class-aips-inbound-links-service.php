@@ -424,7 +424,9 @@ class AIPS_Inbound_Links_Service {
 		}
 
 		$title = trim(preg_replace('/\s+/u', ' ', wp_strip_all_tags(html_entity_decode((string) $target->post_title, ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
-		$words = preg_split('/\s+/u', trim(preg_replace('/[^\p{L}\p{N}\'\-\s]+/u', ' ', $title)));
+		// A dot between letters/digits belongs to the word (v0.9.2, 3.5, example.com), so it is
+		// kept; any other punctuation separates words.
+		$words = preg_split('/\s+/u', trim(preg_replace('/(?<![\p{L}\p{N}])\.|\.(?![\p{L}\p{N}])|[^\p{L}\p{N}\'\-\.\s]+/u', ' ', $title)));
 		$words = array_values(array_filter((array) $words, 'strlen'));
 
 		if (count($words) >= 2 && count($words) <= 8) {
