@@ -113,6 +113,13 @@ class AIPS_Relationships_Recompute_Process extends AIPS_Managed_Background_Proce
 	protected function process_slice(int $cursor, int $limit, array $options): array {
 		$only_missing = !(isset($options['mode']) && $options['mode'] === self::MODE_ALL);
 
+		// A pass over a large library can outlast the web server's default limit. Ask for
+		// more time where the host allows it; where it does not, the watchdog tick in
+		// AIPS_Managed_Background_Process recovers the run.
+		if (function_exists('set_time_limit')) {
+			@set_time_limit(120); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,Squiz.PHP.DiscouragedFunctions.Discouraged
+		}
+
 		$ids = $this->relationships_repo->get_source_post_ids(
 			$this->builder->get_post_types(),
 			'publish',

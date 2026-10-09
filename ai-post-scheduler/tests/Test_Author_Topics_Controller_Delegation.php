@@ -243,7 +243,7 @@ public function test_compute_embeddings_for_all_starts_one_run() {
 }
 
 /**
- * Asking again while a run is open, or when nothing is left, succeeds without a second run.
+ * When there is nothing left to embed, the request succeeds without starting a run.
  */
 public function test_compute_embeddings_reports_when_nothing_is_queued() {
 		AIPS_DB_Manager::install_tables();
@@ -263,6 +263,72 @@ public function test_compute_embeddings_reports_when_nothing_is_queued() {
 		$this->assertTrue( $response['success'] );
 		$this->assertEquals( 0, $response['data']['queued_count'] );
 		$this->assertNull( ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY ) );
+}
+
+/**
+ * Ask for embeddings for an author while a run in the given state is open.
+ *
+ * @param int    $run_author Author the open run is scoped to (0 = every author).
+ * @param string $run_status Status of the open run.
+ * @param int    $requested  Author the request is for.
+ * @return array Decoded AJAX response.
+ */
+private function compute_embeddings_with_open_run( $run_author, $run_status, $requested ) {
+		AIPS_DB_Manager::install_tables();
+		$this->reset_embeddings_run();
+		wp_set_current_user( $this->admin_user_id );
+
+		$runs   = new AIPS_Background_Process_Repository();
+		$run_id = $runs->create( AIPS_Author_Embeddings_Process::KEY, 5, array( 'author_id' => $run_author ) );
+		if ( 'running' !== $run_status ) {
+			$runs->transition( $run_id, $run_status, array( 'running' ) );
+		}
+
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'author_id' => $requested,
+		);
+
+		$response = $this->call_ajax( array( new AIPS_Author_Topics_Controller(), 'ajax_compute_topic_embeddings' ) );
+
+		$this->reset_embeddings_run();
+
+		return $response;
+}
+
+/**
+ * The open run already covers the request (same author, or every author): succeed, queue nothing.
+ */
+public function test_compute_embeddings_succeeds_when_an_open_run_already_covers_the_request() {
+		$same_author = $this->compute_embeddings_with_open_run( 3, 'running', 3 );
+		$this->assertTrue( $same_author['success'] );
+		$this->assertEquals( 0, $same_author['data']['queued_count'] );
+
+		$all_authors = $this->compute_embeddings_with_open_run( 0, 'running', 5 );
+		$this->assertTrue( $all_authors['success'], 'A run for every author covers any one author.' );
+		$this->assertEquals( 0, $all_authors['data']['queued_count'] );
+}
+
+/**
+ * A run for a different author does not cover the request, so it is reported as an error rather than a false success.
+ */
+public function test_compute_embeddings_errors_when_the_open_run_is_for_another_author() {
+		$other_author = $this->compute_embeddings_with_open_run( 3, 'running', 5 );
+		$this->assertFalse( $other_author['success'] );
+		$this->assertStringContainsString( 'another author', $other_author['data']['message'] );
+
+		$all_requested = $this->compute_embeddings_with_open_run( 3, 'running', 0 );
+		$this->assertFalse( $all_requested['success'], 'A run for one author does not cover every author.' );
+}
+
+/**
+ * A paused run processes nothing, so asking for embeddings must say so instead of claiming progress.
+ */
+public function test_compute_embeddings_errors_when_the_open_run_is_paused() {
+		$response = $this->compute_embeddings_with_open_run( 3, 'paused', 3 );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'paused', $response['data']['message'] );
 }
 
 // -----------------------------------------------------------------------

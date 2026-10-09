@@ -909,6 +909,19 @@ class AIPS_Author_Topics_Controller {
 			}
 
 			if ('aips_bg_already_open' === $code) {
+				$run        = ( new AIPS_Background_Process_Repository() )->get_open(AIPS_Author_Embeddings_Process::KEY);
+				$run_author = ($run && isset($run->options['author_id'])) ? (int) $run->options['author_id'] : 0;
+
+				// A paused run processes nothing until it is resumed.
+				if ($run && AIPS_Background_Process_Repository::STATUS_PAUSED === $run->status) {
+					AIPS_Ajax_Response::error(__('Topic embeddings are paused. Resume the run from Diagnostics > Background Processes to continue.', 'ai-post-scheduler'));
+				}
+
+				// The open run covers one other author, or a single author while all were asked for.
+				if ($run && 0 !== $run_author && $run_author !== $author_id) {
+					AIPS_Ajax_Response::error(__('Embeddings for another author are already being processed. Wait for that run to finish, or stop it from Diagnostics > Background Processes, then try again.', 'ai-post-scheduler'));
+				}
+
 				AIPS_Ajax_Response::success(array(
 					'message'      => __('Topic embeddings are already being processed. See Diagnostics > Background Processes.', 'ai-post-scheduler'),
 					'queued_count' => 0,

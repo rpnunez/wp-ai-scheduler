@@ -35,6 +35,11 @@ class AIPS_Background_Process_Repository {
 	const CLEANUP_DAYS = 30;
 
 	/**
+	 * Length of the `message` column.
+	 */
+	const MESSAGE_MAX_LENGTH = 500;
+
+	/**
 	 * Statuses in which a run is actively ticking (a cron tick is expected).
 	 *
 	 * @return string[]
@@ -205,7 +210,7 @@ class AIPS_Background_Process_Repository {
 				max(0, $failed_delta),
 				max(0, $cursor_id),
 				max(0, $ai_calls_delta),
-				(string) $message,
+				$this->clip_message((string) $message),
 				$now,
 				$now,
 				$id
@@ -260,7 +265,7 @@ class AIPS_Background_Process_Repository {
 
 		if ($message !== null) {
 			$sets[] = 'message = %s';
-			$args[] = $message;
+			$args[] = $this->clip_message($message);
 		}
 
 		if ($next_run_at !== null) {
@@ -298,6 +303,25 @@ class AIPS_Background_Process_Repository {
 		);
 
 		return (int) $deleted;
+	}
+
+	/**
+	 * Cut a message to the column length. Provider and database errors can be long, and
+	 * an oversize value makes the whole UPDATE fail in strict SQL mode.
+	 *
+	 * @param string $message Message.
+	 * @return string
+	 */
+	private function clip_message(string $message): string {
+		if (function_exists('mb_strlen') && mb_strlen($message) > self::MESSAGE_MAX_LENGTH) {
+			return mb_substr($message, 0, self::MESSAGE_MAX_LENGTH - 1) . '…';
+		}
+
+		if (!function_exists('mb_strlen') && strlen($message) > self::MESSAGE_MAX_LENGTH) {
+			return substr($message, 0, self::MESSAGE_MAX_LENGTH);
+		}
+
+		return $message;
 	}
 
 	/**

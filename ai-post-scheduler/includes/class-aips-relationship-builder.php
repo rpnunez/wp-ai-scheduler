@@ -40,10 +40,15 @@ class AIPS_Relationship_Builder {
 	const RELATION_TYPE = 'related_post';
 
 	/**
-	 * Rough seconds one source costs per stored vector (decode share + dot product
-	 * for 1536 dimensions). Used only to size batches; not a guarantee.
+	 * Rough seconds to read, decode and normalise one stored vector (1536 dimensions).
+	 * Paid once per pass whatever the number of sources.
 	 */
-	const SECONDS_PER_PAIR = 0.00007;
+	const SECONDS_PER_CANDIDATE = 0.0002;
+
+	/**
+	 * Rough seconds for one source/candidate dot product (1536 dimensions).
+	 */
+	const SECONDS_PER_PAIR = 0.00006;
 
 	/**
 	 * @var AIPS_Embeddings_Repository
@@ -120,9 +125,11 @@ class AIPS_Relationship_Builder {
 	 * @return int At least 1.
 	 */
 	public function get_batch_size_for_budget(float $seconds = 12.0, int $max = 50): int {
-		$per_source = max(0.01, $this->count_candidates() * self::SECONDS_PER_PAIR);
+		$candidates = $this->count_candidates();
+		$per_source = max(0.01, $candidates * self::SECONDS_PER_PAIR);
+		$fixed      = $candidates * self::SECONDS_PER_CANDIDATE;
 
-		return max(1, min($max, (int) floor($seconds / $per_source)));
+		return max(1, min($max, (int) floor(max(0.0, $seconds - $fixed) / $per_source)));
 	}
 
 	/**
@@ -132,7 +139,12 @@ class AIPS_Relationship_Builder {
 	 * @return float
 	 */
 	public function estimate_seconds(int $sources): float {
-		return $sources * max(0.01, $this->count_candidates() * self::SECONDS_PER_PAIR);
+		$candidates = $this->count_candidates();
+		$per_source = max(0.01, $candidates * self::SECONDS_PER_PAIR);
+		$per_pass   = $candidates * self::SECONDS_PER_CANDIDATE;
+		$passes     = (int) ceil($sources / max(1, $this->get_batch_size_for_budget()));
+
+		return $sources * $per_source + $passes * $per_pass;
 	}
 
 	/**
@@ -258,10 +270,19 @@ class AIPS_Relationship_Builder {
 			return array();
 		}
 
+		// Legacy JSON vectors start with '[' or '{'. A packed float32 vector can start with
+		// the same byte (about 1 in 130), so JSON is only used when it really parses, and
+		// anything else is read as binary when it is a whole number of floats.
 		$trimmed = ltrim($raw);
 		if ($trimmed !== '' && ($trimmed[0] === '[' || $trimmed[0] === '{')) {
 			$decoded = json_decode($trimmed, true);
-			return is_array($decoded) ? array_map('floatval', array_values($decoded)) : array();
+			if (is_array($decoded)) {
+				return array_map('floatval', array_values($decoded));
+			}
+		}
+
+		if (strlen($raw) % 4 !== 0) {
+			return array();
 		}
 
 		$unpacked = @unpack('f*', $raw);

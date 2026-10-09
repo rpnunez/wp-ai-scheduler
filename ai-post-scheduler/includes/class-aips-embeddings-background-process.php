@@ -22,8 +22,12 @@ abstract class AIPS_Embeddings_Background_Process extends AIPS_Managed_Backgroun
 	 * Share of each quota left free for other callers (new-post indexing, manual
 	 * actions) while a bulk job runs. Applied when the "quota pause" indexer
 	 * setting is on.
+	 *
+	 * The queue worker pauses itself once usage reaches 90% of a quota, so a bulk job
+	 * has to stop earlier than that: at 80%, the 80-90% band stays usable by the queue
+	 * (new posts), and the last 10% by manual actions.
 	 */
-	const QUOTA_RESERVE_RATIO = 0.10;
+	const QUOTA_RESERVE_RATIO = 0.20;
 
 	/**
 	 * @var AIPS_Embeddings_Service
