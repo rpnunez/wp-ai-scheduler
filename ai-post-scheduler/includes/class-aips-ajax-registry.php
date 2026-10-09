@@ -340,6 +340,9 @@ class AIPS_Ajax_Registry {
 		'aips_consolidation_run'      => 'AIPS_Consolidation_Controller',
 		'aips_consolidation_undo'     => 'AIPS_Consolidation_Controller',
 		'aips_consolidation_history'  => 'AIPS_Consolidation_Controller',
+		'aips_duplicate_groups'       => 'AIPS_Consolidation_Controller',
+		'aips_duplicate_dismiss'      => 'AIPS_Consolidation_Controller',
+		'aips_duplicate_reset_dismissed' => 'AIPS_Consolidation_Controller',
 
 		// Silos (Content hub)
 		'aips_silos_overview'         => 'AIPS_Silos_Controller',

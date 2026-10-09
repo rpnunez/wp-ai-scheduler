@@ -4,7 +4,7 @@
  *
  * The "Index Posts" job on the Internal Links page: embeds every unindexed post
  * in the configured indexing scope, one slice per cron tick, within the
- * embeddings rate limits and cooldown.
+ * embeddings rate limits and cooldown (see AIPS_Embeddings_Background_Process).
  *
  * @package AI_Post_Scheduler
  * @since 3.7.11
@@ -14,31 +14,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-class AIPS_Internal_Links_Indexing_Process extends AIPS_Managed_Background_Process {
+class AIPS_Internal_Links_Indexing_Process extends AIPS_Embeddings_Background_Process {
 
 	const KEY = 'internal_links_indexing';
-
-	/**
-	 * Share of each quota left free for other callers (new-post indexing, manual
-	 * actions) while this bulk job runs. Applied when the "quota pause"
-	 * indexer setting is on.
-	 */
-	const QUOTA_RESERVE_RATIO = 0.10;
 
 	/**
 	 * @var AIPS_Internal_Links_Service
 	 */
 	private $service;
-
-	/**
-	 * @var AIPS_Embeddings_Service
-	 */
-	private $embeddings_service;
-
-	/**
-	 * @var AIPS_Config
-	 */
-	private $config;
 
 	/**
 	 * @param AIPS_Background_Process_Repository|null $repository         Run repository.
@@ -52,11 +35,9 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Managed_Background_Proce
 		?AIPS_Embeddings_Service $embeddings_service = null,
 		?AIPS_Config $config = null
 	) {
-		parent::__construct($repository);
+		parent::__construct($repository, $embeddings_service, $config);
 
-		$this->config             = $config ?: AIPS_Config::get_instance();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
-		$this->service            = $service ?: new AIPS_Internal_Links_Service(null, null, $this->embeddings_service);
+		$this->service = $service ?: new AIPS_Internal_Links_Service(null, null, $this->embeddings_service);
 	}
 
 	public function get_key(): string {
@@ -69,10 +50,6 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Managed_Background_Proce
 
 	public function get_description(): string {
 		return __('Generates embeddings for unindexed posts in the indexing scope so internal link suggestions can be found. Uses AI embedding calls and honors the embeddings rate limits.', 'ai-post-scheduler');
-	}
-
-	public function uses_ai(): bool {
-		return true;
 	}
 
 	// -------------------------------------------------------------------------
@@ -94,51 +71,6 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Managed_Background_Proce
 	protected function count_remaining(): int {
 		$status = $this->service->get_indexing_status();
 		return isset($status['unindexed']) ? (int) $status['unindexed'] : 0;
-	}
-
-	protected function get_batch_size(): int {
-		return max(1, min(50, (int) $this->config->get_option('aips_indexer_batch_size', 10)));
-	}
-
-	protected function check_limits(): ?array {
-		$limiter  = $this->embeddings_service->get_rate_limiter();
-		$cooldown = $limiter->get_cooldown_status();
-
-		if ($cooldown['is_paused']) {
-			return array(
-				'status'   => AIPS_Background_Process_Repository::STATUS_COOLDOWN,
-				'retry_at' => (int) $cooldown['paused_until'] + 5,
-				'message'  => (string) $cooldown['reason'],
-			);
-		}
-
-		$ratio = $this->get_reserve_ratio();
-		if ($limiter->get_remaining_allowance($ratio) > 0) {
-			return null;
-		}
-
-		$retry_at = $limiter->get_next_allowance_timestamp($ratio);
-		if ($retry_at <= time()) {
-			$retry_at = time() + HOUR_IN_SECONDS;
-		}
-
-		return array(
-			'status'   => AIPS_Background_Process_Repository::STATUS_WAITING_QUOTA,
-			'retry_at' => $retry_at,
-			'message'  => sprintf(
-				/* translators: %s: how long until indexing resumes, for example "3 hours". */
-				__('Embeddings quota reached. Resumes automatically in about %s.', 'ai-post-scheduler'),
-				human_time_diff(time(), $retry_at)
-			),
-		);
-	}
-
-	protected function get_allowance(): int {
-		return $this->embeddings_service->get_rate_limiter()->get_remaining_allowance($this->get_reserve_ratio());
-	}
-
-	protected function count_ai_calls(): int {
-		return count($this->embeddings_service->get_rate_limiter()->get_usage_history());
 	}
 
 	protected function process_slice(int $cursor, int $limit, array $options): array {
@@ -177,33 +109,16 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Managed_Background_Proce
 	/**
 	 * @inheritDoc
 	 */
-	public function get_estimate(): array {
-		$items   = $this->count_remaining();
-		$limiter = $this->embeddings_service->get_rate_limiter();
-		$stats   = $limiter->get_usage_stats();
-
-		$rates = array();
-		if ($stats['enabled']) {
-			if ($stats['daily_limit'] > 0) {
-				$rates[] = $stats['daily_limit'];
-			}
-			if ($stats['weekly_limit'] > 0) {
-				$rates[] = $stats['weekly_limit'] / 7;
-			}
-			if ($stats['monthly_limit'] > 0) {
-				$rates[] = $stats['monthly_limit'] / 30;
-			}
-		}
-
-		$daily_rate = !empty($rates) ? max(1, (int) floor(min($rates))) : 0;
-		$days       = $daily_rate > 0 ? (int) ceil($items / $daily_rate) : 0;
+	public function get_estimate(array $options = array()): array {
+		$items    = $this->count_remaining();
+		$duration = $this->estimate_duration($items);
 
 		return array(
 			'items'      => $items,
 			'ai_calls'   => $items,
-			'days'       => $days,
-			'daily_rate' => $daily_rate,
-			'message'    => $this->build_estimate_message($items, $daily_rate, $days),
+			'days'       => $duration['days'],
+			'daily_rate' => $duration['daily_rate'],
+			'message'    => $this->build_estimate_message($items, $duration['daily_rate'], $duration['days']),
 		);
 	}
 
@@ -243,12 +158,5 @@ class AIPS_Internal_Links_Indexing_Process extends AIPS_Managed_Background_Proce
 			number_format_i18n($daily_rate),
 			number_format_i18n(max(1, $days))
 		);
-	}
-
-	/**
-	 * @return float Share of each quota held back for other callers.
-	 */
-	private function get_reserve_ratio(): float {
-		return (bool) $this->config->get_option('aips_indexer_quota_pause_enabled', true) ? self::QUOTA_RESERVE_RATIO : 0.0;
 	}
 }

@@ -80,9 +80,15 @@ $bg_status_labels = AIPS_Background_Process_Base::get_status_labels();
 							</td>
 							<td>
 								<div class="aips-bg-actions">
+									<?php $is_recompute = AIPS_Relationships_Recompute_Process::KEY === $snapshot['key']; ?>
 									<button type="button" class="aips-btn aips-btn-primary aips-btn-sm" data-aips-bg-action="start" <?php echo empty($snapshot['can_start']) ? 'hidden' : ''; ?>>
-										<?php esc_html_e('Start', 'ai-post-scheduler'); ?>
+										<?php echo $is_recompute ? esc_html__('Fill missing', 'ai-post-scheduler') : esc_html__('Start', 'ai-post-scheduler'); ?>
 									</button>
+									<?php if ($is_recompute) : ?>
+										<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-action="start" data-aips-bg-mode="all" title="<?php esc_attr_e('Recompute the related posts of every indexed post, replacing the existing lists.', 'ai-post-scheduler'); ?>" <?php echo empty($snapshot['can_start']) ? 'hidden' : ''; ?>>
+											<?php esc_html_e('Rebuild all', 'ai-post-scheduler'); ?>
+										</button>
+									<?php endif; ?>
 									<button type="button" class="aips-btn aips-btn-secondary aips-btn-sm" data-aips-bg-action="pause" <?php echo empty($snapshot['can_pause']) ? 'hidden' : ''; ?>>
 										<?php esc_html_e('Pause', 'ai-post-scheduler'); ?>
 									</button>

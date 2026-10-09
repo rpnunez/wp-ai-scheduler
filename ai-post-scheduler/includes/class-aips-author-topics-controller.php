@@ -893,8 +893,11 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * AJAX handler for computing topic embeddings.
 	 *
-	 * Schedules background jobs instead of computing embeddings inline.
-	 * When author_id === 0, schedules one job per author; otherwise schedules a single job.
+	 * Starts the "Author Topic Embeddings" background process (for one author, or
+	 * every author when author_id is 0) instead of computing inline. The process
+	 * runs under the background process manager, so it respects the embeddings
+	 * rate limits and can be paused or stopped from Diagnostics > Background
+	 * Processes.
 	 */
 	public function ajax_compute_topic_embeddings() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -910,78 +913,44 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 20;
 
-		// Sanitize batch size
-		$batch_size = max(1, min(100, $batch_size));
+		$result = AIPS_Container::get_instance()
+			->make(AIPS_Background_Process_Manager::class)
+			->control(AIPS_Author_Embeddings_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('author_id' => $author_id));
 
-		$queued_count = 0;
+		if (is_wp_error($result)) {
+			$code = $result->get_error_code();
 
-		if ($author_id === 0) {
-			// Schedule one job per author
-			$authors_repo = new AIPS_Authors_Repository();
-			$authors = $authors_repo->get_all();
-
-			foreach ($authors as $author) {
-				$this->schedule_embeddings_job((int) $author->id, $batch_size, 0);
-				$queued_count++;
+			if ('aips_bg_nothing_to_do' === $code) {
+				AIPS_Ajax_Response::success(array(
+					'message'      => __('Every topic already has an embedding.', 'ai-post-scheduler'),
+					'queued_count' => 0,
+				));
 			}
 
-			$message = sprintf(
-				__('Queued embeddings processing for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
-				$queued_count
-			);
-		} else {
-			// Schedule one job for the given author
-			$this->schedule_embeddings_job($author_id, $batch_size, 0);
-			$queued_count = 1;
+			if ('aips_bg_already_open' === $code) {
+				AIPS_Ajax_Response::success(array(
+					'message'      => __('Topic embeddings are already being processed. See Diagnostics > Background Processes.', 'ai-post-scheduler'),
+					'queued_count' => 0,
+				));
+			}
 
-			$message = sprintf(
-				__('Queued embeddings processing for author ID %d. Processing will run in the background.', 'ai-post-scheduler'),
-				$author_id
-			);
+			AIPS_Ajax_Response::error($result->get_error_message());
 		}
 
 		AIPS_Ajax_Response::success(array(
-			'message' => $message,
-			'queued_count' => $queued_count
+			'message'      => sprintf(
+				/* translators: %d: number of topics queued. */
+				_n(
+					'Queued embeddings for %d topic. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
+					'Queued embeddings for %d topics. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
+					(int) $result['total'],
+					'ai-post-scheduler'
+				),
+				(int) $result['total']
+			),
+			'queued_count' => (int) $result['total'],
 		));
-	}
-
-	/**
-	 * Schedule a background embeddings processing job.
-	 *
-	 * @param int $author_id         Author ID.
-	 * @param int $batch_size        Batch size for processing.
-	 * @param int $last_processed_id Last processed topic ID.
-	 * @return void
-	 */
-	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id) {
-		$args = array(
-			'author_id'         => $author_id,
-			'batch_size'        => $batch_size,
-			'last_processed_id' => $last_processed_id,
-		);
-
-		// Schedule to run in a few seconds
-		$timestamp = time() + 5;
-
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
-		} else {
-			$this->job_scheduler->schedule_simple(
-				'aips_process_author_embeddings',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'author_embeddings',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
 	}
 
 	/**
