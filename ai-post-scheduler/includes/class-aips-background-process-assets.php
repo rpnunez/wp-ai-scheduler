@@ -30,7 +30,7 @@ class AIPS_Background_Process_Assets {
 			'aips-background-processes',
 			AIPS_PLUGIN_URL . 'assets/css/background-processes.css',
 			array(),
-			AIPS_VERSION
+			AIPS_Admin_Bar::asset_version('assets/css/background-processes.css')
 		);
 
 		if (wp_script_is('aips-background-processes', 'enqueued')) {
@@ -41,7 +41,7 @@ class AIPS_Background_Process_Assets {
 			'aips-background-processes',
 			AIPS_PLUGIN_URL . 'assets/js/background-processes.js',
 			array('jquery', 'heartbeat'),
-			AIPS_VERSION,
+			AIPS_Admin_Bar::asset_version('assets/js/background-processes.js'),
 			true
 		);
 

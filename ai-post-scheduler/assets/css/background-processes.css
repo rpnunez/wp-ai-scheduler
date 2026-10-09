@@ -288,29 +288,12 @@
 	background: #72aee6;
 }
 
-#wpadminbar .aips-bg-item-next {
-	margin-left: 6px;
-}
-
-#wpadminbar .aips-bg-item-controls {
-	display: flex;
-	gap: 10px;
-	margin-top: 2px;
-}
-
-#wpadminbar .aips-bg-link {
-	padding: 0;
-	border: 0;
-	background: none;
-	color: #72aee6;
-	font-size: 12px;
-	cursor: pointer;
-}
-
-#wpadminbar .aips-bg-link:hover,
-#wpadminbar .aips-bg-link:focus {
-	color: #fff;
-	text-decoration: underline;
+/* The list scrolls on its own so a long process list never pushes the footer off-screen. */
+#wpadminbar .aips-bg-items {
+	display: block;
+	max-height: max(120px, min(240px, calc(100vh - 340px)));
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 /* -------------------------------------------------------

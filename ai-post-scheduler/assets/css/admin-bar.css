@@ -1,5 +1,17 @@
 /**
  * AI Post Scheduler – Admin Toolbar Styles
+ *
+ * Dropdown layout (desktop), two equal halves of an 810px panel:
+ *
+ *   +----------------------+----------------------+
+ *   |                      |  Links (3 x 3 grid)  |
+ *   |    Notifications     +----------------------+
+ *   |   (full height)      |  Background          |
+ *   |                      |  processes           |
+ *   +----------------------+----------------------+
+ *
+ * The PHP node order is links -> notifications -> background; the grid below
+ * only re-places the groups, so mobile simply stacks them in that order.
  */
 
 /* -------------------------------------------------------
@@ -45,26 +57,58 @@
 	--aips-ab-warning: #f0b429;
 	--aips-ab-error: #d63638;
 	--aips-ab-info: #8c8f94;
+	--aips-ab-success-text: #4ab866;
+	--aips-ab-review-text: #72aee6;
+	--aips-ab-warning-text: #f0b429;
+	--aips-ab-error-text: #f86368;
+	--aips-ab-divider: rgba(255, 255, 255, 0.1);
+	--aips-ab-scroll-thumb: rgba(255, 255, 255, 0.22);
 }
 
 /* -------------------------------------------------------
-   Dropdown container
+   Dropdown container: width = previous 540px + half (810px)
 ------------------------------------------------------- */
 #wpadminbar #wp-admin-bar-aips-toolbar > .ab-sub-wrapper {
-	width: 540px;
+	width: 810px;
 	max-width: calc(100vw - 24px);
+	max-height: calc(100vh - 48px);
 	box-sizing: border-box;
+	overflow: hidden;
+}
+
+/*
+ * WordPress shows the dropdown by toggling display:block on hover/focus, so the
+ * grid must only apply in those states or the panel would stay open.
+ */
+#wpadminbar #wp-admin-bar-aips-toolbar.hover > .ab-sub-wrapper,
+#wpadminbar #wp-admin-bar-aips-toolbar:focus-within > .ab-sub-wrapper {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-rows: auto minmax(0, 1fr);
 }
 
 #wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.ab-submenu {
 	display: block;
-	padding: 6px 0;
+	box-sizing: border-box;
+	min-width: 0;
 	margin: 0;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	padding: 0;
 }
 
-#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.ab-submenu:last-child {
-	border-bottom: 0;
+/* Placement: notifications fill the whole left half, links + background stack on the right. */
+#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.aips-toolbar-group-notifications {
+	grid-column: 1;
+	grid-row: 1 / span 2;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul#wp-admin-bar-aips-toolbar-links {
+	grid-column: 2;
+	grid-row: 1;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.aips-toolbar-group-bg {
+	grid-column: 2;
+	grid-row: 2;
 }
 
 /* Reset WordPress' fixed 32px row height for every block we render. */
@@ -75,8 +119,36 @@
 	box-sizing: border-box;
 }
 
+/* Shared slim scrollbar for every scrolling region in the dropdown. */
+#wpadminbar .aips-toolbar-group-notifications,
+#wpadminbar .aips-bg-items {
+	scrollbar-width: thin;
+	scrollbar-color: var(--aips-ab-scroll-thumb, rgba(255, 255, 255, 0.22)) transparent;
+}
+
+#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar,
+#wpadminbar .aips-bg-items::-webkit-scrollbar {
+	width: 6px;
+}
+
+#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar-track,
+#wpadminbar .aips-bg-items::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar-thumb,
+#wpadminbar .aips-bg-items::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.22);
+	border-radius: 3px;
+}
+
+#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar-thumb:hover,
+#wpadminbar .aips-bg-items::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.4);
+}
+
 /* -------------------------------------------------------
-   Quick-links grid (3 columns x 3 rows, filled column by column)
+   Quick-links grid (right half, row 1): 3 columns x 3 rows, filled column by column
 ------------------------------------------------------- */
 #wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul#wp-admin-bar-aips-toolbar-links {
 	display: grid;
@@ -85,6 +157,7 @@
 	grid-auto-flow: column;
 	gap: 2px 4px;
 	padding: 8px;
+	border-bottom: 1px solid var(--aips-ab-divider);
 }
 
 #wpadminbar #wp-admin-bar-aips-toolbar-links > li {
@@ -96,11 +169,12 @@
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	height: 32px;
 	line-height: 32px;
-	padding: 0 8px;
+	padding: 0 6px;
 	border-radius: 3px;
+	font-size: 12px;
 	white-space: nowrap;
 	overflow: hidden;
 }
@@ -115,14 +189,14 @@
 
 /* Dashicons inside the toolbar: force the icon font so glyphs never fall back to a box. */
 #wpadminbar #wp-admin-bar-aips-toolbar .ab-item > .ab-icon.dashicons {
-	flex: 0 0 18px;
+	flex: 0 0 16px;
 	float: none;
-	width: 18px;
-	height: 18px;
+	width: 16px;
+	height: 16px;
 	margin: 0;
 	padding: 0;
 	font-family: dashicons;
-	font-size: 18px;
+	font-size: 16px;
 	font-style: normal;
 	font-weight: 400;
 	line-height: 1;
@@ -143,20 +217,34 @@
 }
 
 /* -------------------------------------------------------
-   Background-processes block
+   Background-processes block (right half, row 2)
 ------------------------------------------------------- */
+#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.aips-toolbar-group-bg {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	padding-bottom: 8px;
+}
+
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-status {
 	display: block;
+	min-height: 0;
 }
 
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-status > .ab-item {
 	display: block;
 	height: auto;
 	line-height: 1.4;
-	padding: 6px 16px;
+	padding: 8px 16px 6px;
 	white-space: normal;
 	overflow: visible;
 	cursor: default;
+}
+
+/* Footer link stays at the bottom of the right half. */
+#wpadminbar #wp-admin-bar-aips-toolbar-bg-all {
+	margin-top: auto;
+	padding-top: 4px;
 }
 
 #wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item {
@@ -164,33 +252,16 @@
 }
 
 /* -------------------------------------------------------
-   Notifications group
+   Notifications (left half, full height)
 ------------------------------------------------------- */
 #wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.aips-toolbar-group-notifications {
-	max-height: 340px;
-	padding: 0; /* rows own their spacing; avoids a gap above/below the list */
+	/* Don't let the list's own height drive the row sizes: it stretches to the
+	   height set by the right half and scrolls inside, with a sensible floor. */
+	contain: size;
+	min-height: min(360px, calc(100vh - 100px));
 	overflow-x: hidden;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
-}
-
-/* Slim, dark scrollbar that blends into the toolbar (WebKit/Blink). */
-#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar {
-	width: 6px;
-}
-
-#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.22);
-	border-radius: 3px;
-}
-
-#wpadminbar .aips-toolbar-group-notifications::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.4);
+	border-inline-end: 1px solid var(--aips-ab-divider);
 }
 
 /* Header row */
@@ -198,7 +269,7 @@
 	display: flex !important;
 	align-items: center;
 	justify-content: space-between;
-	padding: 6px 16px;
+	padding: 8px 16px;
 	cursor: default;
 	pointer-events: none; /* clicks handled by inner buttons */
 	color: rgba(255, 255, 255, 0.7);
@@ -244,7 +315,7 @@
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: 0;
+	inset-inline-start: 0;
 	width: 3px;
 	background: var(--aips-ab-info);
 }
@@ -256,7 +327,8 @@
 	column-gap: 10px;
 	align-items: center;
 	min-height: 52px;
-	padding: 8px 12px 8px 16px;
+	padding-block: 8px;
+	padding-inline: 16px 12px;
 	white-space: normal;
 	border-left: 0;
 	cursor: default;
@@ -371,18 +443,90 @@
 #wpadminbar li.aips-notif-level-warning::before { background: var(--aips-ab-warning); }
 #wpadminbar li.aips-notif-level-error::before   { background: var(--aips-ab-error); }
 
-#wpadminbar li.aips-notif-cat-success .aips-notif-title { color: #4ab866; }
-#wpadminbar li.aips-notif-cat-review .aips-notif-title  { color: #72aee6; }
+#wpadminbar li.aips-notif-cat-success .aips-notif-title { color: var(--aips-ab-success-text); }
+#wpadminbar li.aips-notif-cat-review .aips-notif-title  { color: var(--aips-ab-review-text); }
 #wpadminbar li.aips-notif-cat-warning .aips-notif-title,
-#wpadminbar li.aips-notif-level-warning .aips-notif-title { color: #f0b429; }
+#wpadminbar li.aips-notif-level-warning .aips-notif-title { color: var(--aips-ab-warning-text); }
 #wpadminbar li.aips-notif-cat-error .aips-notif-title,
-#wpadminbar li.aips-notif-level-error .aips-notif-title   { color: #f86368; }
+#wpadminbar li.aips-notif-level-error .aips-notif-title   { color: var(--aips-ab-error-text); }
 
-/* Narrow screens: collapse to one column. */
+/* -------------------------------------------------------
+   Keyboard focus
+------------------------------------------------------- */
+#wpadminbar #wp-admin-bar-aips-toolbar .aips-mark-read:focus-visible,
+#wpadminbar #wp-admin-bar-aips-toolbar .aips-mark-all-read:focus-visible,
+#wpadminbar #wp-admin-bar-aips-toolbar .aips-bg-toggle:focus-visible,
+#wpadminbar #wp-admin-bar-aips-toolbar-links > li > .ab-item:focus-visible,
+#wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item:focus-visible {
+	outline: 2px solid #72aee6;
+	outline-offset: -2px;
+}
+
+/* -------------------------------------------------------
+   Medium screens: stretch the two-column panel to the window
+   (it would otherwise run off the right edge from its anchor).
+------------------------------------------------------- */
+@media screen and (min-width: 783px) and (max-width: 1199px) {
+	#wpadminbar #wp-admin-bar-aips-toolbar > .ab-sub-wrapper {
+		position: fixed;
+		top: 32px;
+		left: 12px;
+		right: 12px;
+		width: auto;
+		max-width: none;
+	}
+}
+
+/* -------------------------------------------------------
+   Mobile: one column, stacked links -> notifications -> background
+------------------------------------------------------- */
 @media screen and (max-width: 782px) {
+	#wpadminbar #wp-admin-bar-aips-toolbar > .ab-sub-wrapper {
+		position: fixed;
+		top: 46px;
+		left: 0;
+		right: 0;
+		width: auto;
+		max-width: none;
+		max-height: calc(100vh - 46px);
+		overflow-y: auto;
+	}
+
+	#wpadminbar #wp-admin-bar-aips-toolbar.hover > .ab-sub-wrapper,
+	#wpadminbar #wp-admin-bar-aips-toolbar:focus-within > .ab-sub-wrapper {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: none;
+	}
+
+	#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.ab-submenu {
+		grid-column: 1;
+		grid-row: auto;
+	}
+
 	#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul#wp-admin-bar-aips-toolbar-links {
-		grid-template-columns: 1fr;
+		order: 1;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		grid-template-rows: none;
 		grid-auto-flow: row;
+	}
+
+	#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.aips-toolbar-group-notifications {
+		order: 2;
+		contain: none;
+		min-height: 0;
+		max-height: 260px;
+		border-inline-end: 0;
+		border-bottom: 1px solid var(--aips-ab-divider);
+	}
+
+	#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper > ul.aips-toolbar-group-bg {
+		order: 3;
+	}
+
+	#wpadminbar #wp-admin-bar-aips-toolbar-links > li > .ab-item,
+	#wpadminbar #wp-admin-bar-aips-toolbar-bg-all > .ab-item {
+		height: 46px;
+		line-height: 46px;
+		font-size: 13px;
 	}
 }
