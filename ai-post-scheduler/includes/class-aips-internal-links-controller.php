@@ -111,6 +111,7 @@ class AIPS_Internal_Links_Controller {
 		$summary       = $this->service->get_dashboard_summary();
 		$links_repo    = $this->links_repo;
 		$service       = $this->service;
+		$bg_snapshot   = $this->get_indexing_process_snapshot();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/internal-links.php';
 	}
@@ -324,10 +325,19 @@ class AIPS_Internal_Links_Controller {
 			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
-		$this->schedule_indexing_batch(0);
+		// The indexing job runs under the background process manager, which
+		// applies the embeddings rate limits and supports pause/resume/stop.
+		$result = AIPS_Container::get_instance()
+			->make(AIPS_Background_Process_Manager::class)
+			->control(AIPS_Internal_Links_Indexing_Process::KEY, AIPS_Background_Process_Manager::ACTION_START);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+		}
 
 		AIPS_Ajax_Response::success(array(
-			'message' => __('Indexing started. Posts will be indexed in the background.', 'ai-post-scheduler'),
+			'message'  => __('Indexing started. Posts will be indexed in the background.', 'ai-post-scheduler'),
+			'snapshot' => $result,
 		));
 	}
 
@@ -719,6 +729,23 @@ class AIPS_Internal_Links_Controller {
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Current state of the background indexing job, for the first paint of the page.
+	 *
+	 * @return array Snapshot, or an empty array when it cannot be read.
+	 */
+	private function get_indexing_process_snapshot() {
+		try {
+			$process = AIPS_Container::get_instance()
+				->make(AIPS_Background_Process_Manager::class)
+				->get(AIPS_Internal_Links_Indexing_Process::KEY);
+
+			return $process ? $process->get_snapshot() : array();
+		} catch (\Throwable $e) {
+			return array();
+		}
+	}
 
 	/**
 	 * Check whether the embeddings service is available.

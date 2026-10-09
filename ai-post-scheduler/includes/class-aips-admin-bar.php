@@ -56,6 +56,8 @@ class AIPS_Admin_Bar {
 			AIPS_VERSION
 		);
 
+		AIPS_Background_Process_Assets::enqueue();
+
 		wp_enqueue_script(
 			'aips-admin-bar',
 			AIPS_PLUGIN_URL . 'assets/js/admin-bar.js',
@@ -114,8 +116,14 @@ class AIPS_Admin_Bar {
 			$badge = '<span class="aips-toolbar-badge">' . esc_html(min($unread_count, 99)) . ($unread_count > 99 ? '+' : '') . '</span>';
 		}
 
+		// Background processes: a pulsing dot while anything runs (see background-processes.js).
+		$bg_snapshots = $this->get_background_snapshots();
+		$bg_active    = AIPS_Background_Process_Manager::filter_active($bg_snapshots);
+
 		$title = '<span class="ab-icon dashicons dashicons-schedule aips-toolbar-icon"></span>'
 			. '<span class="ab-label">' . esc_html__('AI Scheduler', 'ai-post-scheduler') . '</span>'
+			. '<span class="aips-toolbar-bg-dot" aria-hidden="true"></span>'
+			. '<span class="aips-toolbar-bg-count">' . (count($bg_active) > 1 ? esc_html((string) count($bg_active)) : '') . '</span>'
 			. $badge;
 
 		$wp_admin_bar->add_node(array(
@@ -123,7 +131,7 @@ class AIPS_Admin_Bar {
 			'title' => $title,
 			'href'  => AIPS_Admin_Menu_Helper::get_page_url('dashboard'),
 			'meta'  => array(
-				'class' => 'aips-toolbar-root' . ($unread_count > 0 ? ' aips-has-notifications' : ''),
+				'class' => 'aips-toolbar-root' . ($unread_count > 0 ? ' aips-has-notifications' : '') . (!empty($bg_active) ? ' aips-bg-running' : ''),
 				'title' => esc_attr__('AI Post Scheduler', 'ai-post-scheduler'),
 			),
 		));
@@ -161,6 +169,23 @@ class AIPS_Admin_Bar {
 				'href'   => $link['href'],
 			));
 		}
+
+		// ---------- Background processes ----------
+		$wp_admin_bar->add_node(array(
+			'id'     => 'aips-toolbar-bg-status',
+			'parent' => 'aips-toolbar',
+			'title'  => '<span class="aips-bg-heading">' . esc_html__('Background processes', 'ai-post-scheduler') . '</span>'
+				. '<span class="aips-bg-items">' . $this->render_background_items($bg_snapshots) . '</span>',
+			'href'   => false,
+			'meta'   => array('class' => 'aips-toolbar-bg-status ab-empty-item'),
+		));
+
+		$wp_admin_bar->add_node(array(
+			'id'     => 'aips-toolbar-bg-all',
+			'parent' => 'aips-toolbar',
+			'title'  => '<span class="dashicons dashicons-update"></span> ' . esc_html__('All background processes', 'ai-post-scheduler'),
+			'href'   => AIPS_Admin_Menu_Helper::get_page_url('background_processes'),
+		));
 
 		// ---------- Notifications group ----------
 		$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
@@ -231,6 +256,49 @@ class AIPS_Admin_Bar {
 				));
 			}
 		}
+	}
+
+	/**
+	 * Snapshots of every background process, briefly cached. Never breaks the toolbar.
+	 *
+	 * @return array[]
+	 */
+	private function get_background_snapshots(): array {
+		try {
+			return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->get_summary();
+		} catch (\Throwable $e) {
+			return array();
+		}
+	}
+
+	/**
+	 * Server-rendered list of processes that are not idle (script refreshes it live).
+	 *
+	 * @param array[] $snapshots Snapshots.
+	 * @return string Escaped HTML.
+	 */
+	private function render_background_items(array $snapshots): string {
+		$html = '';
+
+		foreach ($snapshots as $snapshot) {
+			if (empty($snapshot['status']) || $snapshot['status'] === 'idle') {
+				continue;
+			}
+
+			$html .= '<span class="aips-bg-item" data-aips-bg-key="' . esc_attr($snapshot['key']) . '">'
+				. '<span class="aips-bg-item-head">'
+				. '<span class="aips-bg-item-label">' . esc_html($snapshot['label']) . '</span>'
+				. '<span class="aips-bg-item-status">' . esc_html($snapshot['status_label']) . '</span>'
+				. '</span>'
+				. '<span class="aips-bg-mini"><span class="aips-bg-mini-fill" style="width:' . esc_attr((string) (int) $snapshot['percent']) . '%"></span></span>'
+				. '</span>';
+		}
+
+		if ($html === '') {
+			$html = '<span class="aips-bg-none">' . esc_html__('No background processes running', 'ai-post-scheduler') . '</span>';
+		}
+
+		return $html;
 	}
 
 	/**

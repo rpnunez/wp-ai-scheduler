@@ -202,6 +202,10 @@ class AIPS_Admin_Assets {
 			$this->enqueue_dev_tools_assets();
 		}
 
+		if ($this->is_diagnostics_tab($page, 'background-processes')) {
+			AIPS_Background_Process_Assets::enqueue();
+		}
+
 		if (self::PAGE_STATUS === $page || $this->hook_contains($hook, self::PAGE_STATUS) || $this->is_diagnostics_tab($page, 'status') || $this->is_diagnostics_tab($page, 'system-info') || $this->is_diagnostics_tab($page, 'health') || $this->is_diagnostics_tab($page, 'operations')) {
 			$this->enqueue_status_1_assets();
 			$this->enqueue_status_2_assets();
@@ -224,6 +228,7 @@ class AIPS_Admin_Assets {
 		}
 
         if (self::PAGE_INTERNAL_LINKS === $page || $this->hook_contains($hook, self::PAGE_INTERNAL_LINKS) || $this->is_automations_tab($page, 'internal-links')) {
+			AIPS_Background_Process_Assets::enqueue();
 			$this->enqueue_internal_links_assets();
 		}
 
@@ -1920,7 +1925,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-internal-links',
                 AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
-                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+                array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-background-processes'),
                 AIPS_VERSION,
                 true
             );
