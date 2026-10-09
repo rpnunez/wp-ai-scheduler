@@ -157,16 +157,13 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 						<thead>
 							<tr>
 								<th><?php esc_html_e('Source Post', 'ai-post-scheduler'); ?></th>
+								<th class="aips-il-match-col"><span class="screen-reader-text"><?php esc_html_e('Match', 'ai-post-scheduler'); ?></span></th>
 								<th><?php esc_html_e('Target Post', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Similarity', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Anchor Text', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-								<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 							</tr>
 						</thead>
 						<tbody id="aips-suggestions-tbody">
 							<tr class="aips-table-loading">
-								<td colspan="6">
+								<td colspan="3">
 									<span class="spinner is-active"></span>
 									<?php esc_html_e('Loading…', 'ai-post-scheduler'); ?>
 								</td>
@@ -298,12 +295,12 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 
 <!-- Loading row for the suggestions table -->
 <script type="text/html" id="aips-tmpl-il-tbody-loading">
-<tr class="aips-table-loading"><td colspan="6"><span class="spinner is-active"></span>{{message}}</td></tr>
+<tr class="aips-table-loading"><td colspan="3"><span class="spinner is-active"></span>{{message}}</td></tr>
 </script>
 
 <!-- Generic message row (empty state / error) -->
 <script type="text/html" id="aips-tmpl-il-tbody-message">
-<tr><td colspan="6" class="aips-table-empty">{{message}}</td></tr>
+<tr><td colspan="3" class="aips-table-empty">{{message}}</td></tr>
 </script>
 
 <!-- Linked post title (source or target column) -->
@@ -313,34 +310,46 @@ $bg_is_active = !empty($bg_snapshot['is_active']);
 
 <!-- Action buttons: pending status -->
 <script type="text/html" id="aips-tmpl-il-actions-pending">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-accept-btn" data-id="{{id}}"><span class="dashicons dashicons-yes" aria-hidden="true"></span><span class="screen-reader-text">{{acceptLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-reject-btn" data-id="{{id}}"><span class="dashicons dashicons-no" aria-hidden="true"></span><span class="screen-reader-text">{{rejectLabel}}</span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn aips-il-accept-btn" data-id="{{id}}" title="{{acceptTip}}" aria-label="{{acceptLabel}}"><span class="dashicons dashicons-yes" aria-hidden="true"></span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn is-danger aips-il-reject-btn" data-id="{{id}}" title="{{rejectTip}}" aria-label="{{rejectLabel}}"><span class="dashicons dashicons-no" aria-hidden="true"></span></button>
 </script>
 
 <!-- Action button: accepted status — Insert Link -->
 <script type="text/html" id="aips-tmpl-il-actions-accepted">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-il-insert-btn" data-id="{{id}}" title="{{insertLabel}}"><span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span><span class="screen-reader-text">{{insertLabel}}</span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn aips-il-insert-btn" data-id="{{id}}" title="{{insertTip}}" aria-label="{{insertLabel}}"><span class="dashicons dashicons-admin-links" aria-hidden="true"></span></button>
 </script>
 
 <!-- Action buttons: edit anchor + delete (shown for all statuses) -->
 <script type="text/html" id="aips-tmpl-il-actions-edit-delete">
- <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">{{editLabel}}</span></button> <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-btn-danger aips-il-delete-btn" data-id="{{id}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">{{deleteLabel}}</span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn aips-il-edit-anchor-btn" data-id="{{id}}" data-anchor="{{anchor}}" title="{{editTip}}" aria-label="{{editLabel}}"><span class="dashicons dashicons-edit" aria-hidden="true"></span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-il-icon-btn is-danger aips-il-delete-btn" data-id="{{id}}" title="{{deleteTip}}" aria-label="{{deleteLabel}}"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>
 </script>
 
 <!-- Full suggestion table row -->
 <script type="text/html" id="aips-tmpl-il-suggestion-row">
-<tr data-id="{{id}}">
-	<td class="cell-primary">{{source}}</td>
-	<td>{{target}}</td>
-	<td>{{score}}</td>
-	<td class="aips-il-anchor-cell">{{anchor}}</td>
-	<td><span class="aips-badge {{statusClass}}">{{statusLabel}}</span></td>
-	<td class="cell-actions">{{actions}}</td>
+<tr class="aips-il-row aips-il-row-main" data-id="{{id}}">
+	<td class="cell-primary aips-il-source">{{source}}</td>
+	<td class="aips-il-match">{{match}}</td>
+	<td class="aips-il-target">{{target}}</td>
+</tr>
+<tr class="aips-il-row aips-il-row-sub" data-id="{{id}}">
+	<td colspan="3">
+		<div class="aips-il-subrow">
+			<div class="aips-il-anchor-line">
+				{{originChip}}
+				<span class="aips-il-anchor-label">{{anchorLabel}}</span>
+				<span class="aips-il-anchor-cell">{{anchor}}</span>
+				{{statusChip}}
+			</div>
+			<div class="aips-il-actions">{{actions}}</div>
+		</div>
+	</td>
 </tr>
 </script>
 
-<!-- Inbound suggestion badge -->
-<script type="text/html" id="aips-tmpl-il-origin-badge">
-<span class="aips-badge aips-badge-info" title="<?php esc_attr_e('Suggested from the Link Report to give this post inbound links', 'ai-post-scheduler'); ?>"><?php esc_html_e('Inbound', 'ai-post-scheduler'); ?></span>
+<!-- Small status/direction/similarity chip -->
+<script type="text/html" id="aips-tmpl-il-chip">
+<span class="aips-badge {{cls}}" title="{{title}}">{{label}}</span>
 </script>
 
 <!-- Single pagination button -->

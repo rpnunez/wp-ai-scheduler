@@ -32,6 +32,19 @@ class Test_AIPS_Link_Insertion_Engine extends WP_UnitTestCase {
 		$this->assertSame( array(), $this->texts( $html, array( 'link' ) ) );
 	}
 
+	public function test_phrase_does_not_match_inside_a_version_number() {
+		$html = '<p>We ship Diagnostic Agent v0.9.2 today. Diagnostic Agent v0 is gone.</p>';
+
+		$this->assertSame( array( 'Diagnostic Agent v0' ), $this->texts( $html, array( 'Diagnostic Agent v0' ) ) );
+		$this->assertSame( array( 'Diagnostic Agent v0.9.2' ), $this->texts( $html, array( 'Diagnostic Agent v0.9.2' ) ) );
+	}
+
+	public function test_phrase_still_matches_at_the_end_of_a_sentence() {
+		$html = '<p>Learn vector search. Then relax.</p>';
+
+		$this->assertSame( array( 'vector search' ), $this->texts( $html, array( 'vector search' ) ) );
+	}
+
 	public function test_skips_existing_links_headings_code_and_attributes() {
 		$html = '<h2>Vector search basics</h2>'
 			. '<p>See <a href="/x/" title="vector search">vector search</a> and <img alt="vector search" src="a.png"> too.</p>'

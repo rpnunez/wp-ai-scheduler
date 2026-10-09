@@ -116,7 +116,7 @@ class AIPS_Link_Insertion_Engine {
 
 		$patterns = array();
 		foreach ($phrases as $phrase) {
-			$patterns[$phrase] = '/(?<![\p{L}\p{N}_])' . preg_quote(html_entity_decode($phrase, ENT_QUOTES | ENT_HTML5, 'UTF-8'), '/') . '(?![\p{L}\p{N}_])/iu';
+			$patterns[$phrase] = '/(?<![\p{L}\p{N}_])' . preg_quote(html_entity_decode($phrase, ENT_QUOTES | ENT_HTML5, 'UTF-8'), '/') . '(?![\p{L}\p{N}_])(?!\.[\p{L}\p{N}])/iu';
 		}
 
 		$found = array();
