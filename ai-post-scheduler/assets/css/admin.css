@@ -138,9 +138,11 @@
 
 /* Main Page Container */
 .aips-page-container {
-    max-width: var(--aips-container-3xl);
-    margin: var(--aips-space-6) auto;
-    padding: 0 var(--aips-space-5);
+    width: 100%;
+    max-width: none;
+    margin: var(--aips-space-6) 0;
+    padding: 0;
+    box-sizing: border-box;
     position: relative;
     z-index: 1;
 }
@@ -1563,8 +1565,8 @@
     }
 
     .aips-page-container {
-        margin: var(--aips-space-4) auto;
-        padding: 0 var(--aips-space-3);
+        margin: var(--aips-space-4) 0;
+        padding: 0;
     }
 
     .aips-page-header {
@@ -1626,7 +1628,8 @@
    ========================================================================== */
 
 .aips-wrap {
-    max-width: var(--aips-container-3xl);
+    width: auto;
+    max-width: none;
     position: relative;
     z-index: 1;
 }
