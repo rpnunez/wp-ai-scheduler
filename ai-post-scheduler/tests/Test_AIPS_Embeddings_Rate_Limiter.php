@@ -110,6 +110,52 @@ class Test_AIPS_Embeddings_Rate_Limiter extends WP_UnitTestCase {
 		$this->assertSame('rate_limit_exceeded', $result->get_error_code());
 	}
 
+	public function test_remaining_allowance_uses_tightest_limit() {
+		$this->assertSame(5, $this->limiter->get_remaining_allowance());
+
+		$this->limiter->record_usage(3);
+		$this->assertSame(2, $this->limiter->get_remaining_allowance());
+	}
+
+	public function test_remaining_allowance_holds_back_reserve() {
+		// 20% of a daily limit of 5 is 1 call held back.
+		$this->limiter->record_usage(3);
+		$this->assertSame(1, $this->limiter->get_remaining_allowance(0.20));
+
+		$this->limiter->record_usage(1);
+		$this->assertSame(0, $this->limiter->get_remaining_allowance(0.20));
+	}
+
+	public function test_remaining_allowance_unlimited_when_disabled_or_zero_limits() {
+		update_option('aips_embeddings_rate_limits_enabled', false);
+		$limiter = new AIPS_Embeddings_Rate_Limiter($this->config);
+		$this->assertSame(PHP_INT_MAX, $limiter->get_remaining_allowance());
+
+		update_option('aips_embeddings_rate_limits_enabled', true);
+		update_option('aips_embeddings_daily_limit', 0);
+		update_option('aips_embeddings_weekly_limit', 0);
+		update_option('aips_embeddings_monthly_limit', 0);
+		$limiter = new AIPS_Embeddings_Rate_Limiter($this->config);
+		$this->assertSame(PHP_INT_MAX, $limiter->get_remaining_allowance());
+	}
+
+	public function test_next_allowance_timestamp_is_zero_when_under_limit() {
+		$this->limiter->record_usage(2);
+		$this->assertSame(0, $this->limiter->get_next_allowance_timestamp());
+	}
+
+	public function test_next_allowance_timestamp_is_when_oldest_daily_call_expires() {
+		$now     = time();
+		$oldest  = $now - (DAY_IN_SECONDS - 600); // expires in about 10 minutes
+		update_option(AIPS_Embeddings_Rate_Limiter::OPTION_NAME, array($oldest, $now - 100, $now - 90, $now - 80, $now - 70), false);
+
+		$limiter = new AIPS_Embeddings_Rate_Limiter($this->config);
+		$this->assertTrue($limiter->get_usage_stats()['is_rate_limited']);
+
+		$next = $limiter->get_next_allowance_timestamp();
+		$this->assertSame($oldest + DAY_IN_SECONDS + 1, $next);
+	}
+
 	public function test_disabled_rate_limiting_allows_any_usage() {
 		update_option('aips_embeddings_rate_limits_enabled', false);
 		$this->assertFalse($this->limiter->is_enabled());

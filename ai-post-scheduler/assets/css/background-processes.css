@@ -1,0 +1,249 @@
+/**
+ * AI Post Scheduler – Background Processes
+ *
+ * Pulsing "work in progress" indicators, progress bars and control buttons
+ * shared by the admin bar, the Internal Links page and the Diagnostics tab.
+ */
+
+/* Controls and fields hidden by script must stay hidden despite button display rules. */
+.aips-bg-controls [hidden],
+.aips-bg-item [hidden],
+.aips-bg-table [hidden] {
+	display: none !important;
+}
+
+/* -------------------------------------------------------
+   Pulse (stat cards and table rows)
+------------------------------------------------------- */
+@keyframes aips-bg-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(34, 113, 177, 0.45);
+	}
+	70% {
+		box-shadow: 0 0 0 10px rgba(34, 113, 177, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(34, 113, 177, 0);
+	}
+}
+
+.aips-stat-card.aips-bg-active {
+	border-color: #2271b1;
+	animation: aips-bg-pulse 2s ease-out infinite;
+}
+
+.aips-stat-card.aips-bg-paused {
+	border-color: #dba617;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.aips-stat-card.aips-bg-active {
+		animation: none;
+		box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.35);
+	}
+}
+
+/* -------------------------------------------------------
+   Stat-card controls
+------------------------------------------------------- */
+.aips-stat-card[data-aips-bg-status="idle"] .aips-bg-controls {
+	display: none;
+}
+
+.aips-bg-controls {
+	margin-top: 10px;
+}
+
+.aips-bg-controls .aips-bg-status-line {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 8px;
+	font-size: 12px;
+	color: #50575e;
+}
+
+.aips-bg-controls .aips-bg-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.aips-bg-chip {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 10px;
+	background: #f0f0f1;
+	color: #50575e;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+[data-aips-bg-status="running"] .aips-bg-chip {
+	background: #e5f1fa;
+	color: #135e96;
+}
+
+[data-aips-bg-status="waiting_quota"] .aips-bg-chip,
+[data-aips-bg-status="cooldown"] .aips-bg-chip,
+[data-aips-bg-status="paused"] .aips-bg-chip {
+	background: #fcf3d7;
+	color: #7a5b00;
+}
+
+/* -------------------------------------------------------
+   Diagnostics tab
+------------------------------------------------------- */
+.aips-bg-table .aips-bg-progress {
+	min-width: 160px;
+}
+
+.aips-bg-table .aips-bg-progress-bar {
+	height: 6px;
+	border-radius: 3px;
+	background: #dcdcde;
+	overflow: hidden;
+	margin-top: 4px;
+}
+
+.aips-bg-table .aips-bg-progress-bar > span {
+	display: block;
+	height: 100%;
+	background: #2271b1;
+	transition: width 0.4s ease;
+}
+
+.aips-bg-table tr.aips-bg-active .aips-bg-progress-bar > span {
+	background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.25) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 75%, transparent 75%);
+	background-size: 16px 16px;
+}
+
+.aips-bg-table .aips-bg-message {
+	display: block;
+	margin-top: 2px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.aips-bg-table .aips-bg-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+/* -------------------------------------------------------
+   Admin bar
+------------------------------------------------------- */
+@keyframes aips-bg-bar-pulse {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+
+#wpadminbar .aips-toolbar-bg-dot {
+	display: none;
+	width: 8px;
+	height: 8px;
+	margin-left: 6px;
+	border-radius: 50%;
+	background: #00a32a;
+	vertical-align: middle;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar.aips-bg-running .aips-toolbar-bg-dot {
+	display: inline-block;
+	animation: aips-bg-bar-pulse 1.4s ease-in-out infinite;
+}
+
+#wpadminbar .aips-toolbar-bg-count:empty {
+	display: none;
+}
+
+#wpadminbar .aips-toolbar-bg-count {
+	margin-left: 3px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#wpadminbar #wp-admin-bar-aips-toolbar.aips-bg-running .aips-toolbar-bg-dot {
+		animation: none;
+	}
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar-bg-status > .ab-item {
+	height: auto;
+	line-height: 1.4;
+	padding: 6px 12px;
+	cursor: default;
+	white-space: normal;
+}
+
+#wpadminbar .aips-bg-heading {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+	color: #f0f0f1;
+}
+
+#wpadminbar .aips-bg-item {
+	display: block;
+	padding: 6px 0;
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#wpadminbar .aips-bg-item-head {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+#wpadminbar .aips-bg-item-status,
+#wpadminbar .aips-bg-item-meta,
+#wpadminbar .aips-bg-none {
+	font-size: 12px;
+	color: #a7aaad;
+}
+
+#wpadminbar .aips-bg-mini {
+	display: block;
+	height: 4px;
+	margin: 4px 0;
+	border-radius: 2px;
+	background: rgba(255, 255, 255, 0.15);
+	overflow: hidden;
+}
+
+#wpadminbar .aips-bg-mini-fill {
+	display: block;
+	height: 100%;
+	background: #72aee6;
+}
+
+#wpadminbar .aips-bg-item-next {
+	margin-left: 6px;
+}
+
+#wpadminbar .aips-bg-item-controls {
+	display: flex;
+	gap: 10px;
+	margin-top: 2px;
+}
+
+#wpadminbar .aips-bg-link {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #72aee6;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+#wpadminbar .aips-bg-link:hover,
+#wpadminbar .aips-bg-link:focus {
+	color: #fff;
+	text-decoration: underline;
+}

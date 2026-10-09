@@ -22,6 +22,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Content_Indexer_Service {
 
 	/**
+	 * Option flag set while an administrator has paused the background queue.
+	 */
+	const QUEUE_PAUSED_OPTION = 'aips_indexer_queue_paused';
+
+	/**
 	 * @var AIPS_Embeddings_Repository
 	 */
 	private $embeddings_repo;
@@ -928,6 +933,57 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
+	 * Whether an administrator has paused the background queue.
+	 *
+	 * @return bool
+	 */
+	public function is_queue_paused(): bool {
+		return (bool) get_option(self::QUEUE_PAUSED_OPTION, false);
+	}
+
+	/**
+	 * Pause or unpause the background queue.
+	 *
+	 * Pausing unschedules the worker; queued items are kept. Unpausing does not
+	 * reschedule it: call schedule_queue_worker() afterwards.
+	 *
+	 * @param bool $paused True to pause.
+	 * @return void
+	 */
+	public function set_queue_paused(bool $paused): void {
+		if ($paused) {
+			update_option(self::QUEUE_PAUSED_OPTION, 1, false);
+			$this->unschedule_queue_worker();
+		} else {
+			delete_option(self::QUEUE_PAUSED_OPTION);
+		}
+	}
+
+	/**
+	 * Remove the scheduled queue worker from Action Scheduler and WP-Cron.
+	 *
+	 * @return void
+	 */
+	public function unschedule_queue_worker(): void {
+		if (function_exists('as_unschedule_all_actions')) {
+			as_unschedule_all_actions('aips_process_pending_indexer_queue', array(), 'aips-indexer');
+		}
+		wp_clear_scheduled_hook('aips_process_pending_indexer_queue');
+	}
+
+	/**
+	 * Drop every queued post and topic (they are re-queued when next saved).
+	 *
+	 * @return void
+	 */
+	public function clear_queue(): void {
+		delete_option('aips_pending_index_queue');
+		delete_option('aips_pending_topic_index_queue');
+		$this->unschedule_queue_worker();
+		delete_option(self::QUEUE_PAUSED_OPTION);
+	}
+
+	/**
 	 * Get the state of the background indexer queue.
 	 *
 	 * @return array{is_running: bool, pending_count: int, pending_posts: int, pending_topics: int}
@@ -951,7 +1007,7 @@ class AIPS_Content_Indexer_Service {
 	 * @return void
 	 */
 	public function schedule_queue_worker(int $timestamp): void {
-		if ($this->is_queue_worker_scheduled()) {
+		if ($this->is_queue_paused() || $this->is_queue_worker_scheduled()) {
 			return;
 		}
 
@@ -972,6 +1028,10 @@ class AIPS_Content_Indexer_Service {
 	public function process_pending_indexer_queue(): array {
 		if (!$this->embeddings_service->is_enabled()) {
 			return array('status' => 'disabled', 'processed' => 0);
+		}
+
+		if ($this->is_queue_paused()) {
+			return array('status' => 'paused', 'processed' => 0);
 		}
 
 		$rate_limiter = $this->embeddings_service->get_rate_limiter();

@@ -450,6 +450,26 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 	}
 
 	/**
+	 * aips_background_processes exists with the columns and indexes the process repository relies on.
+	 */
+	public function test_background_processes_table_columns_and_indexes() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_background_processes';
+
+		$this->assertContains( 'aips_background_processes', AIPS_DB_Manager::get_table_names() );
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table_name}" );
+		foreach ( array( 'process_key', 'status', 'total', 'processed', 'failed', 'cursor_id', 'ai_calls_used', 'ai_calls_budget', 'options_json', 'message', 'next_run_at', 'last_tick_at', 'started_by', 'started_at', 'finished_at', 'updated_at' ) as $column ) {
+			$this->assertContains( $column, $columns, "Column {$column} should exist" );
+		}
+
+		$index_names = array_unique( wp_list_pluck( $wpdb->get_results( "SHOW INDEX FROM {$table_name}" ), 'Key_name' ) );
+		foreach ( array( 'process_status', 'status_updated' ) as $index ) {
+			$this->assertContains( $index, $index_names, "Index {$index} should exist" );
+		}
+	}
+
+	/**
 	 * Test that aips_link_index exists with the columns and indexes the Link Index repository relies on.
 	 */
 	public function test_link_index_table_columns_and_indexes() {
