@@ -288,6 +288,15 @@ class AIPS_Bulk_Batch_Processor {
 			)
 		);
 
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'  => __( 'Bulk batch slice', 'ai-post-scheduler' ),
+				'detail' => sprintf( __( 'Bulk job %1$s (%2$s)', 'ai-post-scheduler' ), $job_id, $job_type ),
+			),
+			'scheduled'
+		);
+
 		$history->record(
 			'activity',
 			sprintf(

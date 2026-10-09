@@ -161,6 +161,19 @@ class AIPS_Content_Indexer_Service {
 			'correlation_id'  => AIPS_Correlation_ID::get(),
 		));
 
+		// Trigger entries add two log rows per indexed post, so (like the other
+		// per-step logging) they are only written when verbose history is enabled.
+		if ($verbose) {
+			AIPS_Generation_Trigger::record(
+				$container,
+				array(
+					'event'   => __('Content indexing', 'ai-post-scheduler'),
+					'post_id' => $post_id,
+				),
+				AIPS_Generation_Trigger::detect_creation_method()
+			);
+		}
+
 		$container->record(
 			'activity',
 			sprintf(__('Started content indexing for post #%d: "%s"', 'ai-post-scheduler'), $post_id, $post->post_title),

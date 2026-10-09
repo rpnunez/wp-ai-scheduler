@@ -938,7 +938,11 @@ final class AI_Post_Scheduler {
         $processor->register(
             'author_topic_post',
             function( $topic_id, $job_id, $job ) {
-                return AIPS_Author_Post_Generator::instance()->generate_now( (int) $topic_id );
+                return AIPS_Author_Post_Generator::instance()->generate_now(
+                    (int) $topic_id,
+                    'author_topic_post',
+                    array( 'detail' => sprintf( __( 'Bulk job %s (Author topics)', 'ai-post-scheduler' ), $job_id ) )
+                );
             }
         );
 
@@ -969,7 +973,10 @@ final class AI_Post_Scheduler {
                 $topic     = is_array( $item ) ? ( $item['topic'] ?? (string) $item ) : (string) $item;
                 $generator = new AIPS_Generator();
 
-                return $generator->generate_post( $template, null, $topic );
+                return $generator->generate_post( $template, null, $topic, array(
+                    'creation_method' => 'planner_post',
+                    'trigger_context' => array( 'detail' => sprintf( __( 'Bulk job %s (Planner)', 'ai-post-scheduler' ), $job_id ) ),
+                ) );
             }
         );
 
@@ -1004,7 +1011,10 @@ final class AI_Post_Scheduler {
                     );
                 }
 
-                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'cron' );
+                $context   = new AIPS_Template_Context( $template, null, (string) $item['topic'], 'trending_topic_post' );
+                $context->set_trigger_context( array(
+                    'detail' => sprintf( __( 'Bulk job %s (Trending topics)', 'ai-post-scheduler' ), $job_id ),
+                ) );
                 $generator = new AIPS_Generator();
                 $post_id   = $generator->generate_post( $context );
 
