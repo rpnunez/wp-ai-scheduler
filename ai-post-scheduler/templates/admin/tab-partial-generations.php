@@ -65,7 +65,7 @@ if (!defined('ABSPATH')) {
 							</select>
 							<?php endif; ?>
 							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-								<span class="dashicons dashicons-filter"></span>
+								<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($author_id) || !empty($template_id) || !empty($post_type_filter)): ?>
@@ -76,7 +76,7 @@ if (!defined('ABSPATH')) {
 							<label class="screen-reader-text" for="aips-partial-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 							<input type="search" id="aips-partial-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
-								<span class="dashicons dashicons-search"></span>
+								<span class="dashicons dashicons-search" aria-hidden="true"></span>
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($search_query)): ?>

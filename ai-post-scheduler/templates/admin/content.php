@@ -22,19 +22,11 @@ if (!defined('ABSPATH')) {
 
 /** @var AIPS_Generated_Posts_Controller $controller */
 
-$active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'aips-generated-posts';
-$valid_tabs = array(
-	'aips-generated-posts',
-	'aips-partial-generations',
-	'aips-pending-review',
-	'aips-content-indexer',
-	'aips-link-report',
-	'aips-link-rules',
-	'aips-redirects',
-	'aips-silos',
-	'aips-content-clusters',
-	'aips-content-cannibalization',
-);
+$content_hub      = AIPS_Admin_Page_Context::get_canonical_hubs()[AIPS_Admin_Page_Context::HUB_CONTENT];
+$content_sections = $content_hub['sections'];
+
+$active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : $content_hub['default_tab'];
+$valid_tabs = array_keys($content_sections);
 
 if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embeddings' === $active_tab) {
 	$active_tab = 'aips-content-indexer';
@@ -55,90 +47,20 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 } elseif ('cannibalization' === $active_tab || 'content-cannibalization' === $active_tab) {
 	$active_tab = 'aips-content-cannibalization';
 } elseif (!in_array($active_tab, $valid_tabs, true)) {
-	$active_tab = 'aips-generated-posts';
+	$active_tab = $content_hub['default_tab'];
 }
 
-$rail_items = array(
-	array(
-		'key'         => 'aips-generated-posts',
-		'label'       => __('Generated Posts', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-post',
-		'description' => __('Published & drafted articles', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-generated-posts'),
-		'active'      => ($active_tab === 'aips-generated-posts'),
-	),
-	array(
-		'key'         => 'aips-partial-generations',
-		'label'       => __('Partial Generations', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-warning',
-		'description' => __('Incomplete runs & recovery', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-partial-generations'),
-		'active'      => ($active_tab === 'aips-partial-generations'),
-	),
-	array(
-		'key'         => 'aips-pending-review',
-		'label'       => __('Pending Review', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-visibility',
-		'description' => __('Drafts awaiting human review', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-pending-review'),
-		'active'      => ($active_tab === 'aips-pending-review'),
-	),
-	array(
-		'key'         => 'aips-content-indexer',
-		'label'       => __('Content Indexer', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-database',
-		'description' => __('Vectors & semantic embeddings', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-indexer'),
-		'active'      => ($active_tab === 'aips-content-indexer'),
-	),
-	array(
-		'key'         => 'aips-link-report',
-		'label'       => __('Link Report', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-admin-links',
-		'description' => __('Internal links, orphans & broken links', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-link-report'),
-		'active'      => ($active_tab === 'aips-link-report'),
-	),
-	array(
-		'key'         => 'aips-link-rules',
-		'label'       => __('Link Rules', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-tag',
-		'description' => __('Always link a keyword to a post', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-link-rules'),
-		'active'      => ($active_tab === 'aips-link-rules'),
-	),
-	array(
-		'key'         => 'aips-redirects',
-		'label'       => __('Redirects', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-randomize',
-		'description' => __('Redirects created by AI Post Scheduler', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-redirects'),
-		'active'      => ($active_tab === 'aips-redirects'),
-	),
-	array(
-		'key'         => 'aips-silos',
-		'label'       => __('Silos', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-index-card',
-		'description' => __('Pillars & their articles', 'ai-post-scheduler'),
-		'active'      => ($active_tab === 'aips-silos'),
-	),
-	array(
-		'key'         => 'aips-content-clusters',
-		'label'       => __('Topic Clusters', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-networking',
-		'description' => __('Topic clusters & gap ideas', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-clusters'),
-		'active'      => ($active_tab === 'aips-content-clusters'),
-	),
-	array(
-		'key'         => 'aips-content-cannibalization',
-		'label'       => __('Cannibalization Shield', 'ai-post-scheduler'),
-		'icon'        => 'dashicons-shield',
-		'description' => __('Semantic duplicate & overlap audit', 'ai-post-scheduler'),
-		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-content-cannibalization'),
-		'active'      => ($active_tab === 'aips-content-cannibalization'),
-	),
-);
+$rail_items = array();
+foreach ($content_sections as $tab_key => $section) {
+	$rail_items[] = array(
+		'key'         => $tab_key,
+		'label'       => $section['label'],
+		'icon'        => $section['icon'],
+		'description' => $section['description'],
+		'url'         => admin_url('admin.php?page=' . $content_hub['slug'] . '&tab=' . $tab_key),
+		'active'      => ($active_tab === $tab_key),
+	);
+}
 
 $summary_items = array();
 if ('aips-generated-posts' === $active_tab && isset($history['total'])) {
@@ -176,6 +98,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 			<main class="aips-rail-main">
 				<!-- Tab 1: Generated Posts -->
 				<div id="aips-generated-posts-tab" class="aips-tab-content<?php echo $active_tab === 'aips-generated-posts' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-generated-posts' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-generated-posts' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-generated-posts']['icon'],
+						'title'       => $content_sections['aips-generated-posts']['label'],
+						'description' => $content_sections['aips-generated-posts']['description'],
+					));
+					?>
 					<div class="aips-content-panel">
 						<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-generated-posts.php'; ?>
 					</div>
@@ -183,6 +112,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 
 				<!-- Tab 2: Partial Generations -->
 				<div id="aips-partial-generations-tab" class="aips-tab-content<?php echo $active_tab === 'aips-partial-generations' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-partial-generations' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-partial-generations' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-partial-generations']['icon'],
+						'title'       => $content_sections['aips-partial-generations']['label'],
+						'description' => $content_sections['aips-partial-generations']['description'],
+					));
+					?>
 					<div class="aips-content-panel">
 						<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-partial-generations.php'; ?>
 					</div>
@@ -190,6 +126,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 
 				<!-- Tab 3: Pending Review -->
 				<div id="aips-pending-review-tab" class="aips-tab-content<?php echo $active_tab === 'aips-pending-review' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-pending-review' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-pending-review' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-pending-review']['icon'],
+						'title'       => $content_sections['aips-pending-review']['label'],
+						'description' => $content_sections['aips-pending-review']['description'],
+					));
+					?>
 					<div class="aips-content-panel">
 						<?php include AIPS_PLUGIN_DIR . 'templates/admin/tab-pending-review.php'; ?>
 					</div>
@@ -198,6 +141,11 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 				<!-- Tab 4: Content Indexer -->
 				<div id="aips-content-indexer-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-indexer' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-indexer' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-indexer' ? '' : 'hidden'; ?>>
 					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-content-indexer']['icon'],
+						'title'       => $content_sections['aips-content-indexer']['label'],
+						'description' => $content_sections['aips-content-indexer']['description'],
+					));
 					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
 						extract($indexer_controller->get_intelligence_hub_view_data());
@@ -209,6 +157,11 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 				<!-- Tab: Link Report -->
 				<div id="aips-link-report-tab" class="aips-tab-content<?php echo $active_tab === 'aips-link-report' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-link-report' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-link-report' ? '' : 'hidden'; ?>>
 					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-link-report']['icon'],
+						'title'       => $content_sections['aips-link-report']['label'],
+						'description' => $content_sections['aips-link-report']['description'],
+					));
 					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$link_report_controller = new AIPS_Link_Report_Controller();
 						extract($link_report_controller->get_view_data());
@@ -253,6 +206,11 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 				<!-- Tab 5: Topic Clusters -->
 				<div id="aips-content-clusters-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-clusters' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-clusters' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-clusters' ? '' : 'hidden'; ?>>
 					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-content-clusters']['icon'],
+						'title'       => $content_sections['aips-content-clusters']['label'],
+						'description' => $content_sections['aips-content-clusters']['description'],
+					));
 					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
 						extract($indexer_controller->get_clusters_view_data());
@@ -264,6 +222,11 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 				<!-- Tab 6: Cannibalization Shield -->
 				<div id="aips-content-cannibalization-tab" class="aips-tab-content<?php echo $active_tab === 'aips-content-cannibalization' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-content-cannibalization' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-content-cannibalization' ? '' : 'hidden'; ?>>
 					<?php
+					AIPS_Admin_UI_Primitives::render_tab_intro(array(
+						'icon'        => $content_sections['aips-content-cannibalization']['icon'],
+						'title'       => $content_sections['aips-content-cannibalization']['label'],
+						'description' => $content_sections['aips-content-cannibalization']['description'],
+					));
 					AIPS_Admin_Menu_Helper::safe_render(function() {
 						$indexer_controller = new AIPS_Content_Indexer_Controller();
 						extract($indexer_controller->get_cannibalization_view_data());

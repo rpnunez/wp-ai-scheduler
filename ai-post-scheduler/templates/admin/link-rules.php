@@ -19,6 +19,18 @@ if (!defined('ABSPATH')) {
 ?>
 <div class="aips-link-rules-tab aips-link-report-tab" id="aips-link-rules">
 
+	<?php
+	AIPS_Admin_UI_Primitives::render_tab_intro(array(
+		'icon'        => 'dashicons-tag',
+		'title'       => __('Keyword Link Rules', 'ai-post-scheduler'),
+		'description' => sprintf(
+			/* translators: %d: maximum rule links per post */
+			__('Link a keyword to a post everywhere it appears in your published content. Rules are added when a post is displayed, never saved into it, so turning a rule off removes its links instantly. Up to %d rule links are added per post, only in body text, never in headings or existing links, and never from a post to itself.', 'ai-post-scheduler'),
+			$max_per_post
+		),
+	));
+	?>
+
 	<?php if (!$enabled) : ?>
 	<div class="notice notice-warning inline aips-banner">
 		<div class="aips-banner-inner">
@@ -40,13 +52,6 @@ if (!defined('ABSPATH')) {
 	AIPS_Admin_UI_Primitives::render_card(
 		array(
 			'id'          => 'aips-link-rules-panel',
-			'title'       => __('Keyword Link Rules', 'ai-post-scheduler'),
-			'icon'        => 'dashicons-admin-links',
-			'description' => sprintf(
-				/* translators: %d: maximum rule links per post */
-				__('Link a keyword to a post everywhere it appears in your published content. Rules are added when a post is displayed, never saved into it, so turning a rule off removes its links instantly. Up to %d rule links are added per post, only in body text, never in headings or existing links, and never from a post to itself.', 'ai-post-scheduler'),
-				$max_per_post
-			),
 			'body_class'  => 'no-padding',
 		),
 		function () {

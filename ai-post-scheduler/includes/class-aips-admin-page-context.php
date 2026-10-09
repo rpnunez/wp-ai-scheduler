@@ -638,7 +638,7 @@ class AIPS_Admin_Page_Context {
 		return array(
 			'title'         => $this->page_title,
 			'context_title' => $this->context_title,
-			'icon'          => $this->hub_icon,
+			'icon'          => !empty($this->section_icon) ? $this->section_icon : $this->hub_icon,
 			'description'   => $this->subtitle,
 			'breadcrumbs'   => $this->breadcrumbs,
 			'summary_items' => $this->summary_items,
