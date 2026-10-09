@@ -2269,11 +2269,51 @@ class AIPS_Admin_Assets {
                 'undo'             => __('Undo', 'ai-post-scheduler'),
                 'cancel'           => __('Cancel', 'ai-post-scheduler'),
                 'noConsolidations' => __('No consolidations yet. Use Consolidate on a post pair in the audit above.', 'ai-post-scheduler'),
+                'defaultMergeMode' => (string) AIPS_Config::get_instance()->get_option('aips_duplicate_default_merge_mode', 'revision'),
                 'contentModes'     => array(
                     'none'     => __('Not merged', 'ai-post-scheduler'),
                     'revision' => __('Saved as revision', 'ai-post-scheduler'),
                     'rewrite'  => __('Rewritten', 'ai-post-scheduler'),
                 ),
+            )
+        );
+
+        wp_enqueue_script(
+            'aips-duplicate-review-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-duplicate-review.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-consolidation-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-duplicate-review-script',
+            'aipsDuplicateReviewL10n',
+            array(
+                'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+                'error'               => __('The duplicate review request failed. Please try again.', 'ai-post-scheduler'),
+                /* translators: %1$d: number of posts in the group */
+                'groupTitle'          => __('%1$d near-duplicate posts', 'ai-post-scheduler'),
+                /* translators: 1: group count, 2: post count */
+                'summary'             => __('%1$d groups (%2$d posts) to review', 'ai-post-scheduler'),
+                /* translators: %1$d: number of pairs */
+                'hidden'              => __('%1$d similar pairs hidden because you marked them not duplicates', 'ai-post-scheduler'),
+                /* translators: %1$d: number of pairs */
+                'excluded'            => __('%1$d pairs skipped by your exclusions', 'ai-post-scheduler'),
+                'truncated'           => __('Only the most similar pairs were loaded. Raise "Max similar pairs to review" in Settings → Engine to see more.', 'ai-post-scheduler'),
+                'emptyTitle'          => __('No duplicate posts to review', 'ai-post-scheduler'),
+                /* translators: %1$d: similarity percentage */
+                'emptyMessage'        => __('No group of posts is at least %1$d% similar. Lower the similarity above to look for looser overlaps, or check that your posts are indexed.', 'ai-post-scheduler'),
+                'keep'                => __('Keep', 'ai-post-scheduler'),
+                'protectedLabel'      => __('Protected', 'ai-post-scheduler'),
+                'untitled'            => __('(untitled)', 'ai-post-scheduler'),
+                'confirmDismissTitle' => __('Not duplicates', 'ai-post-scheduler'),
+                'confirmDismiss'      => __('Mark these posts as not duplicates of each other? The group will stop being listed. You can bring dismissed groups back at any time.', 'ai-post-scheduler'),
+                'dismiss'             => __('Mark not duplicates', 'ai-post-scheduler'),
+                'confirmResetTitle'   => __('Show dismissed groups', 'ai-post-scheduler'),
+                'confirmReset'        => __('List every group you marked as not duplicates again?', 'ai-post-scheduler'),
+                'reset'               => __('Show them', 'ai-post-scheduler'),
+                'cancel'              => __('Cancel', 'ai-post-scheduler'),
             )
         );
     }

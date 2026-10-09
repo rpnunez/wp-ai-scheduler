@@ -412,6 +412,7 @@ class AIPS_Relationships_Repository {
 				AND r.target_type = 'post'
 				AND r.source_id < r.target_id
 				AND r.similarity >= %f
+				AND (r.relation_type = 'similar' OR r.relation_type = 'related_post')
 				AND p1.post_status = 'publish'
 				AND p2.post_status = 'publish'
 				ORDER BY r.similarity DESC

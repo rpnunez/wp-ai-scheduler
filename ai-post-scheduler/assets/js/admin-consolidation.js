@@ -172,7 +172,8 @@
 				$('#aips-consolidate-merge').removeClass('aips-hidden');
 				$('#aips-consolidate-preview').addClass('aips-hidden');
 				self.setMergeAvailable(true);
-				$('input[name="aips-consolidate-mode"][value="revision"]').prop('checked', true);
+				var defaultMode = $.inArray(l10n.defaultMergeMode, ['none', 'revision', 'rewrite']) !== -1 ? l10n.defaultMergeMode : 'revision';
+				$('input[name="aips-consolidate-mode"][value="' + defaultMode + '"]').prop('checked', true);
 				self.renderSummary();
 			}).fail(function() {
 				self.fail();
@@ -220,6 +221,7 @@
 							AIPS.Utilities.showToast(response.data.message, 'success');
 							self.renderHistory(response.data.consolidations);
 							$('.aips-consolidate-open[data-a="' + self.pair.a + '"][data-b="' + self.pair.b + '"]').prop('disabled', true);
+							$(document).trigger('aips:consolidated');
 						}).fail(function() {
 							self.fail();
 						});
