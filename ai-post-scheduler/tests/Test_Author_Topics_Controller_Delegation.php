@@ -176,7 +176,9 @@ private function create_unembedded_topic( $author_id, $title ) {
 private function reset_embeddings_run() {
 		global $wpdb;
 		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_background_processes" );
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_author_topics WHERE topic_title LIKE 'Embedding test %'" );
+		// Start from a clean slate so topics left by other tests cannot change the counts.
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_author_topics" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_embeddings WHERE object_type = 'topic'" );
 		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Author_Embeddings_Process::KEY ) );
 }
 

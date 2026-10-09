@@ -299,7 +299,7 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		$stored = $this->store->get( $job['id'] );
 		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING, $stored->status );
 		$this->assertArrayNotHasKey( AIPS_Bulk_Generation_Process::PAUSED_SLICES_OPTION, $stored->options );
-		$this->assertSame( array( 7 ), array( $stored->options['history_meta']['template_id'] ), 'Original options survive.' );
+		$this->assertSame( 7, $stored->options['history_meta']['template_id'], 'Original options survive.' );
 
 		$this->clear_bulk_events( $job );
 	}
@@ -350,6 +350,78 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		$this->clear_bulk_events( $job );
 	}
 
+	public function test_a_failing_slice_cannot_overwrite_a_pause_or_stop() {
+		$paused = $this->store->create( 'author_topic_post', array( 1, 2 ) );
+		$this->store->update_status( $paused, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
+		$this->store->mark_failed( $paused );
+		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED, $this->store->get( $paused )->status );
+
+		$stopped = $this->store->create( 'author_topic_post', array( 1, 2 ) );
+		$this->store->update_status( $stopped, AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED );
+		$this->store->mark_failed( $stopped );
+		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED, $this->store->get( $stopped )->status );
+
+		$running = $this->store->create( 'author_topic_post', array( 1, 2 ) );
+		$this->store->update_status( $running, AIPS_Bulk_Batch_Job_Store::STATUS_PROCESSING );
+		$this->store->mark_failed( $running );
+		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_FAILED, $this->store->get( $running )->status );
+	}
+
+	public function test_a_job_paused_during_its_last_slice_still_completes() {
+		$paused = $this->store->create( 'author_topic_post', array( 1, 2 ) );
+		$this->store->update_status( $paused, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
+		$this->assertTrue( $this->store->mark_completed( $paused ) );
+		$this->assertSame( AIPS_Bulk_Batch_Job_Store::STATUS_COMPLETED, $this->store->get( $paused )->status );
+
+		$stopped = $this->store->create( 'author_topic_post', array( 1, 2 ) );
+		$this->store->update_status( $stopped, AIPS_Bulk_Batch_Job_Store::STATUS_CANCELLED );
+		$this->assertFalse( $this->store->mark_completed( $stopped ), 'A stopped job stays stopped.' );
+	}
+
+	public function test_processor_does_not_requeue_a_slice_that_pause_already_recorded() {
+		$proc = new AIPS_Bulk_Batch_Processor( $this->store );
+		$proc->register( 'author_topic_post', function () {
+			return 1;
+		} );
+
+		$job = $this->bulk_job();
+		$this->clear_bulk_events( $job );
+
+		$this->store->update_options( $job['id'], array(
+			AIPS_Bulk_Generation_Process::PAUSED_SLICES_OPTION => array(
+				array( 'timestamp' => time() + 600, 'args' => $job['first'] ),
+			),
+		) );
+		$this->store->update_status( $job['id'], AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
+
+		$proc->process( $job['id'], 0, 2, 4, '' );
+		$this->assertFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['first'] ), 'resume() will schedule it; requeuing here would run it twice.' );
+
+		$proc->process( $job['id'], 2, 2, 4, '' );
+		$this->assertNotFalse( wp_next_scheduled( AIPS_Bulk_Batch_Processor::HOOK, $job['second'] ), 'A slice pause() did not capture is still put back.' );
+
+		$this->clear_bulk_events( $job );
+	}
+
+	public function test_cleanup_removes_only_long_abandoned_paused_jobs() {
+		global $wpdb;
+
+		$old    = $this->store->create( 'author_topic_post', array( 1 ) );
+		$recent = $this->store->create( 'author_topic_post', array( 1 ) );
+		$this->store->update_status( $old, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
+		$this->store->update_status( $recent, AIPS_Bulk_Batch_Job_Store::STATUS_PAUSED );
+
+		$wpdb->update(
+			$wpdb->prefix . 'aips_bulk_batch_jobs',
+			array( 'updated_at' => time() - ( ( AIPS_Bulk_Batch_Job_Store::PAUSED_CLEANUP_DAYS + 1 ) * DAY_IN_SECONDS ) ),
+			array( 'job_id' => $old )
+		);
+
+		$this->assertSame( 1, $this->store->cleanup_old_jobs() );
+		$this->assertNull( $this->store->get( $old ) );
+		$this->assertNotNull( $this->store->get( $recent ) );
+	}
+
 	public function test_job_store_lists_jobs_without_items_and_updates_options() {
 		$id = $this->store->create( 'author_topic_post', array( 1, 2, 3 ), array( 'a' => 1 ) );
 
@@ -367,6 +439,51 @@ class Test_AIPS_Background_Process_Adapters extends WP_UnitTestCase {
 		$this->assertSame( array( 1, 2, 3 ), $stored->items, 'Items are untouched.' );
 
 		$this->assertSame( array(), $this->store->get_jobs_by_status( array(), array( 'pending' ) ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Estimate endpoint
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @param callable $callable Controller method.
+	 * @return array Decoded JSON response.
+	 */
+	private function call_ajax( callable $callable ): array {
+		$_REQUEST = array_merge( $_REQUEST, $_POST );
+		ob_start();
+		try {
+			$callable();
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected after wp_send_json_*.
+		}
+		return (array) json_decode( ob_get_clean(), true );
+	}
+
+	public function test_estimate_endpoint_only_offers_a_budget_where_it_is_honored() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$controller = new AIPS_Background_Processes_Controller();
+
+		$supports = array(
+			'internal_links_indexing'  => true,
+			'author_topic_embeddings'  => true,
+			'content_indexer_queue'    => false,
+			'relationships_recompute'  => false,
+		);
+
+		foreach ( $supports as $key => $expected ) {
+			$_POST = array(
+				'nonce'   => wp_create_nonce( AIPS_Background_Processes_Controller::NONCE_ACTION ),
+				'process' => $key,
+			);
+
+			$response = $this->call_ajax( array( $controller, 'ajax_estimate' ) );
+
+			$this->assertTrue( $response['success'], $key );
+			$this->assertSame( $expected, $response['data']['supports_budget'], $key );
+		}
+
+		$_POST = array();
 	}
 
 	// -------------------------------------------------------------------------

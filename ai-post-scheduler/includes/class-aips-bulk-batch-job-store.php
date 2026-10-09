@@ -57,6 +57,13 @@ class AIPS_Bulk_Batch_Job_Store {
 	const CLEANUP_DAYS = 7;
 
 	/**
+	 * Days after which a job left paused is considered abandoned and removed.
+	 *
+	 * @var int
+	 */
+	const PAUSED_CLEANUP_DAYS = 30;
+
+	/**
 	 * Return the full table name (with WP prefix).
 	 *
 	 * @return string
@@ -277,11 +284,28 @@ class AIPS_Bulk_Batch_Job_Store {
 	 * @return bool True on success, false on failure.
 	 */
 	public function mark_failed( string $job_id ): bool {
-		return $this->update_status( $job_id, self::STATUS_FAILED );
+		global $wpdb;
+
+		// A slice that was already running when an administrator paused or stopped the
+		// job may still report failures: that must not turn the pause or stop into
+		// "failed" (a failed job with no queued slices cannot be resumed).
+		$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status NOT IN (%s, %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				self::STATUS_FAILED,
+				time(),
+				$job_id,
+				self::STATUS_PAUSED,
+				self::STATUS_CANCELLED
+			)
+		);
+
+		return $result !== false;
 	}
 
 	/**
-	 * Mark a job as completed, but only if it is still in 'processing' state.
+	 * Mark a job as completed, but only if it is still in 'processing' state (or was
+	 * paused while its last slice was running).
 	 *
 	 * The conditional WHERE clause ensures that a job already marked 'failed'
 	 * by an earlier slice is never overwritten with 'completed'.
@@ -294,11 +318,12 @@ class AIPS_Bulk_Batch_Job_Store {
 
 		$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prepare(
-				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"UPDATE {$this->table()} SET status = %s, updated_at = %d WHERE job_id = %s AND status IN (%s, %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				self::STATUS_COMPLETED,
 				time(),
 				$job_id,
-				self::STATUS_PROCESSING
+				self::STATUS_PROCESSING,
+				self::STATUS_PAUSED
 			)
 		);
 
@@ -408,6 +433,14 @@ class AIPS_Bulk_Batch_Job_Store {
 			$wpdb->prepare(
 				"DELETE FROM {$this->table()} WHERE status IN ('completed','failed','cancelled') AND updated_at < %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$cutoff
+			)
+		);
+
+		$deleted += (int) $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"DELETE FROM {$this->table()} WHERE status = %s AND updated_at < %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				self::STATUS_PAUSED,
+				time() - ( self::PAUSED_CLEANUP_DAYS * DAY_IN_SECONDS )
 			)
 		);
 

@@ -65,8 +65,10 @@ class AIPS_Background_Processes_Controller {
 		$process = $this->get_process_from_request();
 
 		AIPS_Ajax_Response::success(array(
-			'estimate' => $process->get_estimate($this->get_start_options_from_request()),
-			'uses_ai'  => $process->uses_ai(),
+			'estimate'        => $process->get_estimate($this->get_start_options_from_request()),
+			'uses_ai'         => $process->uses_ai(),
+			// Only processes that count their own AI calls can stop at a budget.
+			'supports_budget' => $process instanceof AIPS_Embeddings_Background_Process,
 		));
 	}
 

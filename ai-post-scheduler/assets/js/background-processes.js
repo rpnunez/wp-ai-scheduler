@@ -405,8 +405,8 @@
 
 				var heading = L10n.startHeading || 'Start background process';
 
-				// AI-backed: offer an optional per-run AI call budget.
-				if (response.data.uses_ai && AIPS.Utilities && AIPS.Utilities.showModal) {
+				// Offer an optional per-run AI call budget, but only where the process can honor it.
+				if (response.data.supports_budget && AIPS.Utilities && AIPS.Utilities.showModal) {
 					AIPS.Utilities.showModal({
 						heading: heading,
 						message: message,
