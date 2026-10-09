@@ -915,7 +915,12 @@
 
 				if (response.success) {
 					// Update cell in table
-					$('tr[data-id="' + id + '"] .aips-il-anchor-cell').text(anchorText);
+					var $anchorCell = $('tr[data-id="' + id + '"] .aips-il-anchor-cell');
+					if (anchorText) {
+						$anchorCell.text(anchorText);
+					} else {
+						$anchorCell.html('<em class="aips-text-muted">' + AIPS.Templates.escape(aipsInternalLinksL10n.noAnchor) + '</em>');
+					}
 					// Update data attribute on edit button
 					$('tr[data-id="' + id + '"] .aips-il-edit-anchor-btn').data('anchor', anchorText);
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');

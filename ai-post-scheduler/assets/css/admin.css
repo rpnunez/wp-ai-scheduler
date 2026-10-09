@@ -8408,3 +8408,11 @@ tr.aips-row-details > td {
 	color: var(--aips-danger, #d63638);
 	background: #fcf0f1;
 }
+
+/* Highlight both rows of a suggestion together (a suggestion is two <tr>s). */
+.aips-internal-links-table .aips-il-row-main:hover,
+.aips-internal-links-table .aips-il-row-main:hover + .aips-il-row-sub,
+.aips-internal-links-table .aips-il-row-sub:hover,
+.aips-internal-links-table .aips-il-row-main:has(+ .aips-il-row-sub:hover) {
+	background: var(--aips-gray-50);
+}
