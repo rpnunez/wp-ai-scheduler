@@ -1,0 +1,17 @@
+{
+  "id": "d938ad93630ed19f1653f3f48f37303ab15792ce",
+  "type": "scheduler_datetime_gap",
+  "severity": "low",
+  "status": "open",
+  "path": "ai-post-scheduler/includes/class-aips-author-topics-controller.php",
+  "symbol": "AIPS_Author_Topics_Controller",
+  "anchor": "schedule_embeddings_job:time-base_timestamp",
+  "summary": "Embeddings job dispatch builds its future timestamp with raw time() inside an AJAX controller helper.",
+  "why_it_matters": "Timestamp construction in a controller bypasses AIPS_DateTime and keeps scheduling maths outside the scheduler layer.",
+  "evidence": [
+    "ai-post-scheduler/includes/class-aips-author-topics-controller.php:826"
+  ],
+  "suggested_fix": "Use AIPS_DateTime::now()->advance('+5 seconds')->timestamp() or delegate the dispatch to the job scheduler layer.",
+  "first_seen_run_id": "aips-20260509T202750Z",
+  "last_seen_run_id": "aips-20260906T000000Z"
+}
