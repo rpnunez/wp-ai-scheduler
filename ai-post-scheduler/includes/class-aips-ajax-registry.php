@@ -318,6 +318,15 @@ class AIPS_Ajax_Registry {
 		'aips_gsc_sync'       => 'AIPS_GSC_Controller',
 		'aips_gsc_disconnect' => 'AIPS_GSC_Controller',
 
+		// Background Processes Controller
+		'aips_bg_list'      => 'AIPS_Background_Processes_Controller',
+		'aips_bg_estimate'  => 'AIPS_Background_Processes_Controller',
+		'aips_bg_start'     => 'AIPS_Background_Processes_Controller',
+		'aips_bg_pause'     => 'AIPS_Background_Processes_Controller',
+		'aips_bg_resume'    => 'AIPS_Background_Processes_Controller',
+		'aips_bg_cancel'    => 'AIPS_Background_Processes_Controller',
+		'aips_bg_pause_all' => 'AIPS_Background_Processes_Controller',
+
 		// Redirects Controller
 		'aips_redirects_list'         => 'AIPS_Redirects_Controller',
 		'aips_redirects_create'       => 'AIPS_Redirects_Controller',
