@@ -37,10 +37,17 @@ if (!defined('ABSPATH')) {
                                     <span class="aips-status-op-group-label"><?php echo esc_html($task_group['label']); ?></span>
                                     <div class="aips-checkbox-group aips-refresh-task-list">
                                         <?php foreach ($task_group['tasks'] as $task) : ?>
-                                            <?php $task_input_id = 'aips-refresh-task-' . $task['step']; ?>
+                                            <?php
+                                            $task_input_id = 'aips-refresh-task-' . $task['step'];
+                                            $is_destructive = !empty($task['destructive']);
+                                            $checkbox_class = $is_destructive ? 'aips-refresh-task aips-refresh-task-destructive' : 'aips-refresh-task';
+                                            ?>
                                             <label class="aips-checkbox-label" for="<?php echo esc_attr($task_input_id); ?>">
-                                                <input type="checkbox" id="<?php echo esc_attr($task_input_id); ?>" class="aips-refresh-task" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" checked>
+                                                <input type="checkbox" id="<?php echo esc_attr($task_input_id); ?>" class="<?php echo esc_attr($checkbox_class); ?>" name="aips_refresh_tasks[]" value="<?php echo esc_attr($task['step']); ?>" <?php echo $is_destructive ? '' : 'checked'; ?>>
                                                 <span><?php echo esc_html($task['label']); ?></span>
+                                                <?php if ($is_destructive) : ?>
+                                                    <span class="aips-badge aips-badge-error" title="<?php esc_attr_e('This permanently deletes data and is not selected by default.', 'ai-post-scheduler'); ?>"><?php esc_html_e('Deletes data', 'ai-post-scheduler'); ?></span>
+                                                <?php endif; ?>
                                             </label>
                                         <?php endforeach; ?>
                                     </div>
@@ -91,6 +98,8 @@ if (!defined('ABSPATH')) {
                 </div>
 
                 <div class="aips-refresh-system-results" style="display:none;"></div>
+
+                <div class="aips-cache-rebuild-results" style="display:none;"></div>
 
                 <div class="aips-status-op-result" style="display:none;"></div>
 
@@ -279,6 +288,143 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 
+            <!-- Database Storage & Table Status -->
+            <div class="aips-content-panel aips-db-tables-panel" id="aips-db-tables-panel">
+                <div class="aips-panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>
+                        <span class="dashicons dashicons-database"></span>
+                        <?php esc_html_e('Database Storage & Table Status', 'ai-post-scheduler'); ?>
+                    </h2>
+                    <div>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-refresh-tables-btn">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php esc_html_e('Refresh Sizes', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                </div>
+                <div class="aips-panel-body no-padding">
+                    <div style="padding: 12px 16px 0;">
+                        <p class="description">
+                            <?php esc_html_e('Monitor table disk usage, records, and overhead. Large tables such as telemetry and generation history can be pruned safely to reclaim MySQL disk space.', 'ai-post-scheduler'); ?>
+                        </p>
+                    </div>
+                    <div class="aips-table-wrap" style="overflow-x: auto;">
+                        <table class="aips-table aips-db-status-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th><?php esc_html_e('Table Name', 'ai-post-scheduler'); ?></th>
+                                    <th style="text-align: right;"><?php esc_html_e('Records', 'ai-post-scheduler'); ?></th>
+                                    <th style="text-align: right;"><?php esc_html_e('Data Size', 'ai-post-scheduler'); ?></th>
+                                    <th style="text-align: right;"><?php esc_html_e('Index Size', 'ai-post-scheduler'); ?></th>
+                                    <th style="text-align: center;"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+                                    <th style="text-align: right;"><?php esc_html_e('Overhead', 'ai-post-scheduler'); ?></th>
+                                    <th style="text-align: right;"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody id="aips-db-tables-tbody">
+                                <?php if (!empty($tables_status)) : ?>
+                                    <?php
+                                    $tot_records  = 0;
+                                    $tot_data     = 0;
+                                    $tot_index    = 0;
+                                    $tot_overhead = 0;
+                                    ?>
+                                    <?php foreach ($tables_status as $table) : ?>
+                                        <?php
+                                        $tot_records  += isset($table['records']) ? (int) $table['records'] : 0;
+                                        $tot_data     += isset($table['data_size']) ? (int) $table['data_size'] : 0;
+                                        $tot_index    += isset($table['index_size']) ? (int) $table['index_size'] : 0;
+                                        $tot_overhead += isset($table['overhead']) ? (int) $table['overhead'] : 0;
+                                        $short         = isset($table['short_name']) ? $table['short_name'] : '';
+                                        ?>
+                                        <tr id="aips-tbl-row-<?php echo esc_attr($short); ?>" data-table="<?php echo esc_attr($short); ?>" data-records="<?php echo esc_attr((int) $table['records']); ?>" data-data-size="<?php echo esc_attr((int) $table['data_size']); ?>" data-index-size="<?php echo esc_attr((int) $table['index_size']); ?>" data-overhead="<?php echo esc_attr((int) $table['overhead']); ?>">
+                                            <td>
+                                                <strong><code><?php echo esc_html($table['table']); ?></code></strong>
+                                                <?php if ('aips_telemetry' === $short && !AIPS_Telemetry::is_enabled()) : ?>
+                                                    <span class="aips-badge aips-badge-info" style="margin-left: 6px; font-size: 11px;">
+                                                        <?php esc_html_e('Collection Inactive', 'ai-post-scheduler'); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td style="text-align: right;" class="aips-cell-records">
+                                                <?php echo esc_html(isset($table['formatted_records']) ? $table['formatted_records'] : number_format_i18n($table['records'])); ?>
+                                            </td>
+                                            <td style="text-align: right;" class="aips-cell-data">
+                                                <?php echo esc_html(isset($table['formatted_data_size']) ? $table['formatted_data_size'] : size_format($table['data_size'], 2)); ?>
+                                            </td>
+                                            <td style="text-align: right;" class="aips-cell-index">
+                                                <?php echo esc_html(isset($table['formatted_index_size']) ? $table['formatted_index_size'] : size_format($table['index_size'], 2)); ?>
+                                            </td>
+                                            <td style="text-align: center;" class="aips-cell-type">
+                                                <code><?php echo esc_html(isset($table['type']) ? $table['type'] : 'InnoDB'); ?></code>
+                                            </td>
+                                            <td style="text-align: right;" class="aips-cell-overhead">
+                                                <?php
+                                                $oh_formatted = isset($table['formatted_overhead']) ? $table['formatted_overhead'] : size_format($table['overhead'], 2);
+                                                if (!empty($table['overhead']) && $table['overhead'] > 1048576) {
+                                                    echo '<span style="color:#d63638; font-weight:600;">' . esc_html($oh_formatted) . '</span>';
+                                                } else {
+                                                    echo esc_html($oh_formatted);
+                                                }
+                                                ?>
+                                            </td>
+                                            <td style="text-align: right;" class="aips-cell-actions">
+                                                <div class="aips-btn-group" style="justify-content: flex-end; gap: 4px;">
+                                                    <?php if ('aips_telemetry' === $short) : ?>
+                                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-prune-telemetry-btn" title="<?php esc_attr_e('Prune telemetry records older than configured retention period', 'ai-post-scheduler'); ?>">
+                                                            <span class="dashicons dashicons-clock"></span>
+                                                            <?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>
+                                                        </button>
+                                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-purge-telemetry-btn" title="<?php esc_attr_e('Instantly truncate table and reclaim all disk space', 'ai-post-scheduler'); ?>">
+                                                            <span class="dashicons dashicons-trash"></span>
+                                                            <?php esc_html_e('Purge All', 'ai-post-scheduler'); ?>
+                                                        </button>
+                                                    <?php elseif ('aips_history_log' === $short) : ?>
+                                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-prune-history-logs-btn" title="<?php esc_attr_e('Prune generation logs older than configured retention period', 'ai-post-scheduler'); ?>">
+                                                            <span class="dashicons dashicons-clock"></span>
+                                                            <?php esc_html_e('Prune Old', 'ai-post-scheduler'); ?>
+                                                        </button>
+                                                    <?php elseif ('aips_embeddings' === $short || 'aips_post_embeddings' === $short) : ?>
+                                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clean-orphaned-embeddings-btn" title="<?php esc_attr_e('Delete embeddings for posts that no longer exist', 'ai-post-scheduler'); ?>">
+                                                            <span class="dashicons dashicons-admin-links"></span>
+                                                            <?php esc_html_e('Clean Orphans', 'ai-post-scheduler'); ?>
+                                                        </button>
+                                                    <?php endif; ?>
+
+                                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-optimize-table-btn" data-table="<?php echo esc_attr($short); ?>" title="<?php esc_attr_e('Run OPTIMIZE TABLE to reclaim free space and defragment indexes', 'ai-post-scheduler'); ?>">
+                                                        <span class="dashicons dashicons-performance"></span>
+                                                        <?php esc_html_e('Optimize', 'ai-post-scheduler'); ?>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else : ?>
+                                    <tr>
+                                        <td colspan="7" class="aips-table-empty">
+                                            <?php esc_html_e('No plugin database tables found.', 'ai-post-scheduler'); ?>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                            <?php if (!empty($tables_status)) : ?>
+                                <tfoot>
+                                    <tr style="font-weight: 600; background: #f6f7f7;">
+                                        <td><?php esc_html_e('Total Plugin Storage', 'ai-post-scheduler'); ?></td>
+                                        <td style="text-align: right;" id="aips-tot-records"><?php echo esc_html(number_format_i18n($tot_records)); ?></td>
+                                        <td style="text-align: right;" id="aips-tot-data"><?php echo esc_html(size_format($tot_data, 2)); ?></td>
+                                        <td style="text-align: right;" id="aips-tot-index"><?php echo esc_html(size_format($tot_index, 2)); ?></td>
+                                        <td style="text-align: center;">—</td>
+                                        <td style="text-align: right;" id="aips-tot-overhead"><?php echo esc_html(size_format($tot_overhead, 2)); ?></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            <?php endif; ?>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Database Management -->
             <div class="aips-content-panel">
                 <div class="aips-panel-header">
@@ -321,3 +467,24 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 </div>
+
+<script type="text/html" id="aips-tmpl-confirm-word-dialog">
+	<div class="aips-confirm-dialog">
+		<div class="aips-confirm-header">
+			<h3 id="{{headingId}}" class="aips-confirm-heading">{{heading}}</h3>
+		</div>
+		<div class="aips-confirm-body">
+			<p class="aips-confirm-message">{{message}}</p>
+			<div style="margin-top: 14px; padding: 10px 12px; background: #f9f9f9; border: 1px solid #e2e4e7; border-radius: 4px;">
+				<label for="{{inputId}}" style="display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px;">
+					<?php esc_html_e('Please type', 'ai-post-scheduler'); ?> <code style="color: #d63638; font-weight: bold; font-size: 14px;">{{requiredWord}}</code> <?php esc_html_e('to confirm:', 'ai-post-scheduler'); ?>
+				</label>
+				<input type="text" id="{{inputId}}" class="aips-form-input aips-confirm-word-input" style="width: 100%; font-size: 14px; text-transform: uppercase;" autocomplete="off" placeholder="{{requiredWord}}">
+			</div>
+		</div>
+		<div class="aips-confirm-footer">
+			<button type="button" class="aips-btn aips-btn-secondary aips-word-cancel-btn">{{cancelLabel}}</button>
+			<button type="button" class="{{confirmClass}} aips-word-confirm-btn" disabled>{{confirmLabel}}</button>
+		</div>
+	</div>
+</script>

@@ -180,15 +180,25 @@ class AIPS_Diagnostics_Controller {
 	 * @return bool
 	 */
 	public static function is_tab_available($tab) {
+		static $memo = array();
+
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
 		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes'), true)) {
 			return true;
 		}
 
+		if (isset($memo[$tab])) {
+			return $memo[$tab];
+		}
+
 		if ('telemetry' === $tab) {
-			// Use the runtime guard which prevents re-entrant option lookups.
-			return (bool) (class_exists('AIPS_Telemetry') && AIPS_Telemetry::is_enabled());
+			// Tab is available if telemetry is enabled OR if existing telemetry rows exist to inspect/prune.
+			// Memoized per request since get_tabs() and get_active_tab_key() both call this.
+			if (class_exists('AIPS_Telemetry') && AIPS_Telemetry::is_enabled()) {
+				return $memo[$tab] = true;
+			}
+			return $memo[$tab] = (bool) (class_exists('AIPS_Telemetry_Repository') && AIPS_Telemetry_Repository::instance()->count() > 0);
 		}
 
 		if ('cache-monitor' === $tab) {

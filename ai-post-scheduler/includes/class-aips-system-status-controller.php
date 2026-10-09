@@ -60,6 +60,13 @@ class AIPS_System_Status_Controller {
 		add_action('wp_ajax_aips_status_cleanup_notifications', array($this, 'ajax_cleanup_notifications'));
 		add_action('wp_ajax_aips_status_reset_resilience', array($this, 'ajax_reset_resilience'));
 		add_action('wp_ajax_aips_status_repair_datetime', array($this, 'ajax_repair_datetime'));
+		add_action('wp_ajax_aips_status_prune_telemetry', array($this, 'ajax_prune_telemetry'));
+		add_action('wp_ajax_aips_status_purge_telemetry', array($this, 'ajax_purge_telemetry'));
+		add_action('wp_ajax_aips_status_prune_history_logs', array($this, 'ajax_prune_history_logs'));
+		add_action('wp_ajax_aips_status_clean_orphaned_embeddings', array($this, 'ajax_clean_orphaned_embeddings'));
+		add_action('wp_ajax_aips_status_optimize_table', array($this, 'ajax_optimize_table'));
+		add_action('wp_ajax_aips_status_get_tables', array($this, 'ajax_get_tables'));
+		add_action('wp_ajax_aips_status_clean_stress_test_data', array($this, 'ajax_clean_stress_test_data'));
 	}
 
 	/**
@@ -69,7 +76,7 @@ class AIPS_System_Status_Controller {
 	 * @return void
 	 */
 	private function verify_request($action) {
-		if ( ! check_ajax_referer($action, 'nonce', false) ) {
+		if (!check_ajax_referer($action, 'nonce', false)) {
 			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
 		}
 		if (!current_user_can('manage_options')) {
@@ -261,4 +268,88 @@ class AIPS_System_Status_Controller {
 		AIPS_Ajax_Response::success($this->diagnostics_service->repair_datetime());
 	}
 
+	public function ajax_prune_telemetry() {
+		$this->verify_request('aips_status_prune_telemetry');
+
+		$result = $this->diagnostics_service->prune_telemetry();
+		AIPS_Ajax_Response::success($result);
+	}
+
+	public function ajax_purge_telemetry() {
+		$this->verify_request('aips_status_purge_telemetry');
+
+		$result = $this->diagnostics_service->purge_all_telemetry();
+		if (!empty($result['success'])) {
+			AIPS_Ajax_Response::success($result);
+		} else {
+			AIPS_Ajax_Response::error(isset($result['message']) ? $result['message'] : __('Failed to purge telemetry.', 'ai-post-scheduler'));
+		}
+	}
+
+	public function ajax_prune_history_logs() {
+		$this->verify_request('aips_status_prune_history_logs');
+
+		$result = $this->diagnostics_service->prune_history_logs();
+		AIPS_Ajax_Response::success($result);
+	}
+
+	public function ajax_clean_orphaned_embeddings() {
+		$this->verify_request('aips_status_clean_orphaned_embeddings');
+
+		$result = $this->diagnostics_service->clean_orphaned_embeddings();
+		AIPS_Ajax_Response::success($result);
+	}
+
+	public function ajax_optimize_table() {
+		$this->verify_request('aips_status_optimize_table');
+
+		$table_name = isset($_POST['table']) ? sanitize_text_field(wp_unslash($_POST['table'])) : '';
+		if (empty($table_name)) {
+			AIPS_Ajax_Response::error(__('Missing table name.', 'ai-post-scheduler'));
+		}
+
+		$result = $this->diagnostics_service->optimize_table($table_name);
+		if (!empty($result['success'])) {
+			AIPS_Ajax_Response::success($result);
+		} else {
+			AIPS_Ajax_Response::error($result['message']);
+		}
+	}
+
+	public function ajax_get_tables() {
+		$this->verify_request('aips_status_get_tables');
+
+		$tables       = $this->diagnostics_service->get_tables_status();
+		$tot_records  = 0;
+		$tot_data     = 0;
+		$tot_index    = 0;
+		$tot_overhead = 0;
+		foreach ($tables as $t) {
+			$tot_records  += isset($t['records']) ? (int) $t['records'] : 0;
+			$tot_data     += isset($t['data_size']) ? (int) $t['data_size'] : 0;
+			$tot_index    += isset($t['index_size']) ? (int) $t['index_size'] : 0;
+			$tot_overhead += isset($t['overhead']) ? (int) $t['overhead'] : 0;
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'tables' => $tables,
+			'totals' => array(
+				'records'            => $tot_records,
+				'formatted_records'  => number_format_i18n($tot_records),
+				'data_size'          => $tot_data,
+				'formatted_data'     => size_format($tot_data, 2),
+				'index_size'         => $tot_index,
+				'formatted_index'    => size_format($tot_index, 2),
+				'overhead'           => $tot_overhead,
+				'formatted_overhead' => size_format($tot_overhead, 2),
+			),
+		));
+	}
+
+	public function ajax_clean_stress_test_data() {
+		$this->verify_request('aips_status_clean_stress_test_data');
+
+		$result = $this->diagnostics_service->clean_stress_test_data();
+		AIPS_Ajax_Response::success($result);
+	}
 }

@@ -2862,5 +2862,137 @@ class AIPS_Settings_UI {
 		return in_array($value, array('reject', 'smart_split'), true) ? $value : 'reject';
 	}
 
+	/**
+	 * Render description for the Database & Retention section.
+	 *
+	 * @return void
+	 */
+	public function database_retention_section_callback() {
+		echo '<p>' . esc_html__('Configure automatic database pruning policies to keep high-growth tables (telemetry, execution logs, orphaned embeddings) lean and performant.', 'ai-post-scheduler') . '</p>';
+	}
+
+	/**
+	 * Render the automated pruning master toggle.
+	 *
+	 * @return void
+	 */
+	public function auto_prune_enabled_field_callback() {
+		$value = (bool) AIPS_Config::get_instance()->get_option('aips_auto_prune_enabled');
+		?>
+		<input type="hidden" name="aips_auto_prune_enabled" value="0">
+		<label>
+			<input type="checkbox" name="aips_auto_prune_enabled" value="1" <?php checked($value, true); ?>>
+			<?php esc_html_e('Enable scheduled automatic database pruning', 'ai-post-scheduler'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('When enabled, background cleanups run via WP-Cron according to the schedule configured below.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the telemetry retention period field (number + unit).
+	 *
+	 * @return void
+	 */
+	public function telemetry_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_telemetry_retention_value', 30);
+		$unit   = (string) $config->get_option('aips_telemetry_retention_unit', 'days');
+		?>
+		<div style="display: flex; align-items: center; gap: 8px;">
+			<input type="number" name="aips_telemetry_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="365" style="width: 80px;">
+			<select name="aips_telemetry_retention_unit">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('Telemetry records older than this period will be pruned during scheduled and manual cleanups.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the prune frequency selector.
+	 *
+	 * @return void
+	 */
+	public function prune_interval_field_callback() {
+		$interval = (string) AIPS_Config::get_instance()->get_option('aips_telemetry_prune_interval', 'daily');
+		?>
+		<select name="aips_telemetry_prune_interval">
+			<option value="daily" <?php selected($interval, 'daily'); ?>><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+			<option value="twicedaily" <?php selected($interval, 'twicedaily'); ?>><?php esc_html_e('Twice Daily', 'ai-post-scheduler'); ?></option>
+			<option value="weekly" <?php selected($interval, 'weekly'); ?>><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+		</select>
+		<p class="description"><?php esc_html_e('How often the background cleanup cron job should run when automatic pruning is enabled.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the history log retention field (number + unit).
+	 *
+	 * @return void
+	 */
+	public function history_log_retention_field_callback() {
+		$config = AIPS_Config::get_instance();
+		$value  = (int) $config->get_option('aips_history_log_retention_value', 60);
+		$unit   = (string) $config->get_option('aips_history_log_retention_unit', 'days');
+		?>
+		<div style="display: flex; align-items: center; gap: 8px;">
+			<input type="number" name="aips_history_log_retention_value" value="<?php echo esc_attr((string) $value); ?>" min="1" max="730" style="width: 80px;">
+			<select name="aips_history_log_retention_unit">
+				<option value="days" <?php selected($unit, 'days'); ?>><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+				<option value="weeks" <?php selected($unit, 'weeks'); ?>><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+				<option value="months" <?php selected($unit, 'months'); ?>><?php esc_html_e('Months', 'ai-post-scheduler'); ?></option>
+			</select>
+		</div>
+		<p class="description"><?php esc_html_e('Detailed generation execution events in aips_history_log older than this threshold will be pruned.', 'ai-post-scheduler'); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render checkboxes for cleaning orphaned embeddings and expired topics.
+	 *
+	 * @return void
+	 */
+	public function clean_orphaned_data_field_callback() {
+		$config           = AIPS_Config::get_instance();
+		$clean_embeddings = (bool) $config->get_option('aips_clean_orphaned_embeddings', true);
+		$clean_topics     = (bool) $config->get_option('aips_clean_expired_topics', true);
+		?>
+		<input type="hidden" name="aips_clean_orphaned_embeddings" value="0">
+		<input type="hidden" name="aips_clean_expired_topics" value="0">
+		<label style="display: block; margin-bottom: 6px;">
+			<input type="checkbox" name="aips_clean_orphaned_embeddings" value="1" <?php checked($clean_embeddings, true); ?>>
+			<?php esc_html_e('Purge orphaned embeddings (vectors for posts deleted from WordPress)', 'ai-post-scheduler'); ?>
+		</label>
+		<label style="display: block;">
+			<input type="checkbox" name="aips_clean_expired_topics" value="1" <?php checked($clean_topics, true); ?>>
+			<?php esc_html_e('Purge rejected and expired author topics older than 30 days', 'ai-post-scheduler'); ?>
+		</label>
+		<?php
+	}
+
+	/**
+	 * Sanitize retention unit selection.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return string
+	 */
+	public function sanitize_retention_unit($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('days', 'weeks', 'months'), true) ? $value : 'days';
+	}
+
+	/**
+	 * Sanitize prune interval schedule.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return string
+	 */
+	public function sanitize_prune_interval($value) {
+		$value = sanitize_key((string) $value);
+		return in_array($value, array('daily', 'twicedaily', 'weekly'), true) ? $value : 'daily';
+	}
+
 }
 

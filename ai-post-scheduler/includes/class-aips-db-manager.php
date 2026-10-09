@@ -161,7 +161,8 @@ class AIPS_DB_Manager {
             KEY history_type_id (history_type_id),
             KEY history_type_timestamp (history_id, history_type_id, timestamp),
             KEY event_status (event_status),
-            KEY event_type_timestamp (event_type, timestamp)
+            KEY event_type_timestamp (event_type, timestamp),
+            KEY timestamp (timestamp)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_campaigns (

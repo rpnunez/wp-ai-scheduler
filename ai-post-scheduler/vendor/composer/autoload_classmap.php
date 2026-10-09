@@ -88,6 +88,8 @@ return array(
     'AIPS_DB_Migrations' => $baseDir . '/includes/class-aips-db-migrations.php',
     'AIPS_Dashboard_Controller' => $baseDir . '/includes/class-aips-dashboard-controller.php',
     'AIPS_Dashboard_Repository' => $baseDir . '/includes/class-aips-dashboard-repository.php',
+    'AIPS_DB_Prune_Repository' => $baseDir . '/includes/class-aips-db-prune-repository.php',
+    'AIPS_DB_Prune_Service' => $baseDir . '/includes/class-aips-db-prune-service.php',
     'AIPS_Data_Management_Export' => $baseDir . '/includes/class-aips-data-management-export.php',
     'AIPS_Data_Management_Export_JSON' => $baseDir . '/includes/class-aips-data-management-export-json.php',
     'AIPS_Data_Management_Export_MySQL' => $baseDir . '/includes/class-aips-data-management-export-mysql.php',
