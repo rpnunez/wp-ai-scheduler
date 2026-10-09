@@ -45,6 +45,11 @@ class AIPS_Duplicate_Group_Service {
 	const DISMISSED_LIMIT = 5000;
 
 	/**
+	 * Most similarity rows loaded in one scan, however many are dismissed or excluded.
+	 */
+	const PAIR_FETCH_CEILING = 20000;
+
+	/**
 	 * @var AIPS_Notifications|null Resolved lazily.
 	 */
 	private $notifications;
@@ -112,28 +117,39 @@ class AIPS_Duplicate_Group_Service {
 			$strategy = 'balanced';
 		}
 
-		$rows  = $this->relationships->get_top_duplicate_pairs($threshold, $max_pairs, 'posts');
-		$pairs = array();
-		foreach ((array) $rows as $row) {
-			$pairs[] = array(
-				'a'   => (int) $row->source_id,
-				'b'   => (int) $row->target_id,
-				'sim' => (float) $row->similarity,
-			);
-		}
-
-		$pairs_loaded = count($pairs);
-		$pairs        = $this->remove_excluded_pairs($pairs);
-		$excluded     = $pairs_loaded - count($pairs);
-		$dismissed    = $this->get_dismissed();
-		$visible      = array();
-		foreach ($pairs as $pair) {
-			if (!isset($dismissed[$this->pair_key($pair['a'], $pair['b'])])) {
-				$visible[] = $pair;
+		// Dismissed and excluded pairs are removed after loading, so fetch extra and keep
+		// widening until $max_pairs usable pairs remain (or the table runs out).
+		$dismissed = $this->get_dismissed();
+		$limit     = $max_pairs + count($dismissed);
+		do {
+			$rows  = (array) $this->relationships->get_top_duplicate_pairs($threshold, $limit, 'posts');
+			$pairs = array();
+			foreach ($rows as $row) {
+				$pairs[] = array(
+					'a'   => (int) $row->source_id,
+					'b'   => (int) $row->target_id,
+					'sim' => (float) $row->similarity,
+				);
 			}
-		}
-		$hidden = count($pairs) - count($visible);
-		$pairs  = $visible;
+
+			$pairs_loaded = count($pairs);
+			$allowed      = $this->remove_excluded_pairs($pairs);
+			$excluded     = $pairs_loaded - count($allowed);
+			$visible      = array();
+			foreach ($allowed as $pair) {
+				if (!isset($dismissed[$this->pair_key($pair['a'], $pair['b'])])) {
+					$visible[] = $pair;
+				}
+			}
+			$hidden   = count($allowed) - count($visible);
+			$has_more = $pairs_loaded >= $limit;
+			$widen    = $has_more && count($visible) < $max_pairs && $limit < self::PAIR_FETCH_CEILING;
+			if ($widen) {
+				$limit = min(self::PAIR_FETCH_CEILING, $limit * 2);
+			}
+		} while ($widen);
+
+		$pairs = array_slice($visible, 0, $max_pairs);
 
 		$protect    = max(0, (int) $this->config->get_option('aips_duplicate_protect_inbound_links', 10));
 		$raw_groups = $this->build_groups($pairs, $max_group_size);
@@ -182,7 +198,7 @@ class AIPS_Duplicate_Group_Service {
 				'group_count'      => count($groups),
 				'post_count'       => $post_total,
 				'pairs_considered' => count($pairs),
-				'pairs_truncated'  => $pairs_loaded >= $max_pairs,
+				'pairs_truncated'  => $has_more && count($visible) >= $max_pairs,
 				'pairs_excluded'   => $excluded,
 				'pairs_dismissed'  => $hidden,
 				'dismissed_total'  => count($dismissed),

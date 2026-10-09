@@ -1174,12 +1174,16 @@ class AIPS_Similarity_Evaluator {
 		});
 
 		$saved_clusters = (array) $this->config->get_option('aips_post_clusters', array());
+		$used_saved     = array();
 		$clusters       = array();
 		$color_index    = 0;
 		$palette_count  = count(self::$cluster_palette);
 
 		foreach ($components as $index => $comp_ids) {
 			$cluster_key = 'cluster_' . ($index + 1);
+			// Cluster numbers change from scan to scan (they follow size order), so carry the
+			// saved name and pillar over by shared members instead of by key.
+			$saved = $this->match_saved_cluster($comp_ids, $saved_clusters, $used_saved);
 
 			// Compute centroid vector and cohesion score
 			$dim = count($posts[$comp_ids[0]]['embedding']);
@@ -1210,10 +1214,10 @@ class AIPS_Similarity_Evaluator {
 			// Determine pillar post: saved preference, or highest degree centrality
 			$pillar_id        = 0;
 			$pillar_confirmed = false;
-			if (isset($saved_clusters[$cluster_key]['pillar_id']) && in_array((int) $saved_clusters[$cluster_key]['pillar_id'], $comp_ids, true)) {
-				$pillar_id = (int) $saved_clusters[$cluster_key]['pillar_id'];
+			if (isset($saved['pillar_id']) && in_array((int) $saved['pillar_id'], $comp_ids, true)) {
+				$pillar_id = (int) $saved['pillar_id'];
 				// Chosen by a person (Topic Clusters or Silos), not by degree.
-				$pillar_confirmed = !empty($saved_clusters[$cluster_key]['pillar_confirmed']);
+				$pillar_confirmed = !empty($saved['pillar_confirmed']);
 			} else {
 				// Highest connection degree
 				$best_degree = -1;
@@ -1227,8 +1231,10 @@ class AIPS_Similarity_Evaluator {
 			}
 
 			// Cluster name: saved name or fallback
-			$name = isset($saved_clusters[$cluster_key]['name']) && !empty($saved_clusters[$cluster_key]['name'])
-				? $saved_clusters[$cluster_key]['name']
+			// Auto-generated names are rebuilt each scan; only a name someone typed is kept.
+			$custom_name = !empty($saved['name']) && !preg_match('/^Post Cluster #\d+: /', (string) $saved['name']);
+			$name        = $custom_name
+				? $saved['name']
 				: sprintf(__('Post Cluster #%d: %s', 'ai-post-scheduler'), $index + 1, $posts[$pillar_id]['title']);
 
 			$color = self::$cluster_palette[$color_index % $palette_count];
@@ -1439,6 +1445,41 @@ class AIPS_Similarity_Evaluator {
 		}
 
 		return $orphans;
+	}
+
+	/**
+	 * Find the previously saved cluster that best overlaps a new cluster.
+	 *
+	 * @param int[]                           $member_ids Members of the new cluster.
+	 * @param array<string,array>             $saved      Saved clusters keyed by cluster ID.
+	 * @param array<string,bool>              $used       Saved clusters already claimed (updated).
+	 * @return array Saved cluster record, or an empty array when none overlaps enough.
+	 */
+	private function match_saved_cluster(array $member_ids, array $saved, array &$used): array {
+		$best_key   = '';
+		$best_score = 0.0;
+		$members    = array_flip(array_map('intval', $member_ids));
+
+		foreach ($saved as $key => $record) {
+			if (isset($used[$key]) || empty($record['member_ids'])) {
+				continue;
+			}
+			$old   = array_map('intval', (array) $record['member_ids']);
+			$share = count(array_intersect_key(array_flip($old), $members));
+			$union = count($old) + count($members) - $share;
+			$score = $union > 0 ? $share / $union : 0.0;
+			if ($score > $best_score) {
+				$best_score = $score;
+				$best_key   = $key;
+			}
+		}
+
+		if ($best_key === '' || $best_score < 0.5) {
+			return array();
+		}
+
+		$used[$best_key] = true;
+		return (array) $saved[$best_key];
 	}
 
 	/**

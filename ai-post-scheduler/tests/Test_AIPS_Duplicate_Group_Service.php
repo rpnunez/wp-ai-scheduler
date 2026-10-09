@@ -258,6 +258,37 @@ class Test_AIPS_Duplicate_Group_Service extends WP_UnitTestCase {
 		$config->set_option('aips_post_clusters', array());
 	}
 
+	public function test_pair_fetch_widens_when_exclusions_eat_the_limit() {
+		$excluded = $this->factory->post->create();
+		$other    = $this->factory->post->create();
+		$p        = $this->factory->post->create();
+		$q        = $this->factory->post->create();
+		AIPS_Config::get_instance()->set_option('aips_duplicate_excluded_post_ids', (string) $excluded);
+
+		$rows = array();
+		for ($i = 0; $i < 120; $i++) {
+			$rows[] = (object) array('source_id' => $excluded, 'target_id' => $other, 'similarity' => 0.97);
+		}
+		for ($i = 0; $i < 180; $i++) {
+			$rows[] = (object) array('source_id' => $p, 'target_id' => $q, 'similarity' => 0.93);
+		}
+
+		$limits = array();
+		$this->relationships->method('get_top_duplicate_pairs')->willReturnCallback(function ($threshold, $limit) use ($rows, &$limits) {
+			$limits[] = $limit;
+			return array_slice($rows, 0, $limit);
+		});
+		$this->link_index->method('get_counts_for_posts')->willReturn(array());
+
+		$result = $this->service->get_review_groups(0.9, 5, 100);
+
+		$this->assertSame(array(100, 200, 400), $limits);
+		$this->assertSame(100, $result['stats']['pairs_considered']);
+		$this->assertSame(1, $result['stats']['group_count']);
+
+		AIPS_Config::get_instance()->set_option('aips_duplicate_excluded_post_ids', '');
+	}
+
 	public function test_ensure_schedule_follows_the_setting() {
 		$config = AIPS_Config::get_instance();
 		wp_clear_scheduled_hook(AIPS_Duplicate_Group_Service::CRON_HOOK);

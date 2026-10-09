@@ -186,6 +186,49 @@ class Test_AIPS_Similarity_Evaluator_Clusters extends WP_UnitTestCase {
 		$this->assertSame('unlinked_post', $orphans[0]['orphan_type']);
 	}
 
+	public function test_saved_name_and_pillar_follow_the_members_not_the_cluster_number() {
+		AIPS_Config::get_instance()->set_option('aips_post_clusters', array(
+			'cluster_7' => array(
+				'name'             => 'My Custom Hub',
+				'pillar_id'        => $this->post_ids[1],
+				'pillar_confirmed' => true,
+				'member_ids'       => array($this->post_ids[0], $this->post_ids[1]),
+			),
+		));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9);
+
+		$this->assertSame('My Custom Hub', $clusters['cluster_1']['name']);
+		$this->assertSame($this->post_ids[1], $clusters['cluster_1']['pillar_id']);
+		$this->assertTrue($clusters['cluster_1']['pillar_confirmed']);
+	}
+
+	public function test_generated_cluster_names_are_rebuilt_not_carried_over() {
+		AIPS_Config::get_instance()->set_option('aips_post_clusters', array(
+			'cluster_9' => array(
+				'name'       => 'Post Cluster #9: Stale Title',
+				'member_ids' => array($this->post_ids[0], $this->post_ids[1]),
+			),
+		));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9);
+
+		$this->assertStringStartsWith('Post Cluster #1: ', $clusters['cluster_1']['name']);
+	}
+
+	public function test_saved_cluster_with_little_overlap_is_not_matched() {
+		AIPS_Config::get_instance()->set_option('aips_post_clusters', array(
+			'cluster_1' => array(
+				'name'       => 'Unrelated Hub',
+				'member_ids' => array($this->post_ids[2], 999991, 999992, 999993),
+			),
+		));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9);
+
+		$this->assertNotSame('Unrelated Hub', $clusters['cluster_1']['name']);
+	}
+
 	public function test_set_pillar_post_and_rename_update_saved_cluster() {
 		$this->evaluator->detect_post_clusters(0.9);
 

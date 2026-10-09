@@ -20,7 +20,22 @@
 				return;
 			}
 			this.bindEvents();
-			this.scan();
+
+			// Every Content tab is rendered on one page, so wait until this tab is
+			// actually shown before running the query.
+			var self = this;
+			var panel = $('#aips-dup-review')[0];
+			if ('IntersectionObserver' in window) {
+				var observer = new IntersectionObserver(function(entries) {
+					if (entries.some(function(entry) { return entry.isIntersecting; })) {
+						observer.disconnect();
+						self.scan();
+					}
+				});
+				observer.observe(panel);
+			} else {
+				this.scan();
+			}
 		},
 
 		bindEvents: function() {
