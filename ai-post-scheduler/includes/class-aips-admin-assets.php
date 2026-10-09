@@ -309,6 +309,11 @@ class AIPS_Admin_Assets {
 				'confirmCleanupHeading' => __('Delete test data', 'ai-post-scheduler'),
 				'confirmCleanupAction'  => __('Yes, delete', 'ai-post-scheduler'),
 				'nothingToExport'       => __('Run at least one test case before exporting.', 'ai-post-scheduler'),
+				'stopped'               => __('Stopped', 'ai-post-scheduler'),
+				'runSelected'           => __('Run Selected', 'ai-post-scheduler'),
+				/* translators: %d: number of selected test cases */
+				'runSelectedCount'      => __('Run Selected (%d)', 'ai-post-scheduler'),
+				'selectAtLeastOne'      => __('Please select at least one test case to run.', 'ai-post-scheduler'),
 			),
 		));
 	}
