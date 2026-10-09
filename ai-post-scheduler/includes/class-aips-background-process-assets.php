@@ -66,6 +66,8 @@ class AIPS_Background_Process_Assets {
 			'cancel'         => __('Cancel', 'ai-post-scheduler'),
 			'start'          => __('Start', 'ai-post-scheduler'),
 			'startHeading'   => __('Start background process', 'ai-post-scheduler'),
+			'budgetLabel'    => __('AI call budget (optional)', 'ai-post-scheduler'),
+			'budgetHelp'     => __('Pause this run after it has made this many AI calls. 0 means no limit.', 'ai-post-scheduler'),
 			'startFallback'  => __('Start this process? It runs in the background and can be paused or stopped at any time.', 'ai-post-scheduler'),
 			'stopHeading'    => __('Stop process', 'ai-post-scheduler'),
 			'confirmStop'    => __('Stop this process? Work already done is kept, but it will not continue unless you start it again.', 'ai-post-scheduler'),

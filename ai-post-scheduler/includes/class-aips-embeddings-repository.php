@@ -1053,16 +1053,27 @@ class AIPS_Embeddings_Repository {
 	/**
 	 * Get unindexed topic IDs up to a given limit.
 	 *
-	 * @param int $limit Maximum topic IDs to retrieve. Default 50.
+	 * @param int $limit     Maximum topic IDs to retrieve. Default 50.
+	 * @param int $after_id  Cursor: only topics with an ID greater than this. Default 0.
+	 * @param int $author_id Restrict to one author's topics. Default 0 (all authors).
 	 * @return int[] Array of unindexed topic IDs.
 	 */
-	public function get_unindexed_topic_ids(int $limit = 50): array {
+	public function get_unindexed_topic_ids(int $limit = 50, int $after_id = 0, int $author_id = 0): array {
 		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return array();
 		}
 
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		$limit = max(1, min(500, absint($limit)));
+		$limit        = max(1, min(500, absint($limit)));
+		$params       = array(absint($after_id));
+		$author_sql   = '';
+
+		if ($author_id > 0) {
+			$author_sql = 'AND t.author_id = %d';
+			$params[]   = absint($author_id);
+		}
+
+		$params[] = $limit;
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$results = $this->wpdb->get_col(
@@ -1072,9 +1083,11 @@ class AIPS_Embeddings_Repository {
 				 LEFT JOIN {$this->table} e ON t.id = e.object_id AND e.object_type = 'topic'
 				 WHERE e.id IS NULL 
 				   AND t.status IN ('pending', 'approved', 'used')
+				   AND t.id > %d
+				   {$author_sql}
 				 ORDER BY t.id ASC
 				 LIMIT %d",
-				$limit
+				...$params
 			)
 		);
 
@@ -1082,25 +1095,34 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
-	 * Get total count of unindexed topics.
+	 * Get count of unindexed topics.
 	 *
+	 * @param int $author_id Restrict to one author's topics. Default 0 (all authors).
 	 * @return int
 	 */
-	public function get_unindexed_topic_count(): int {
+	public function get_unindexed_topic_count(int $author_id = 0): int {
 		if (!$this->table_exists() || !$this->topics_table_exists()) {
 			return 0;
 		}
 
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$author_sql   = '';
+		$params       = array();
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$count = $this->wpdb->get_var(
-			"SELECT COUNT(*) 
+		if ($author_id > 0) {
+			$author_sql = 'AND t.author_id = %d';
+			$params[]   = absint($author_id);
+		}
+
+		$sql = "SELECT COUNT(*) 
 			 FROM {$topics_table} t
 			 LEFT JOIN {$this->table} e ON t.id = e.object_id AND e.object_type = 'topic'
 			 WHERE e.id IS NULL 
-			   AND t.status IN ('pending', 'approved', 'used')"
-		);
+			   AND t.status IN ('pending', 'approved', 'used')
+			   {$author_sql}";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$count = $this->wpdb->get_var(empty($params) ? $sql : $this->wpdb->prepare($sql, ...$params));
 
 		return absint($count);
 	}

@@ -65,8 +65,10 @@ class AIPS_Background_Processes_Controller {
 		$process = $this->get_process_from_request();
 
 		AIPS_Ajax_Response::success(array(
-			'estimate' => $process->get_estimate(),
-			'uses_ai'  => $process->uses_ai(),
+			'estimate'        => $process->get_estimate($this->get_start_options_from_request()),
+			'uses_ai'         => $process->uses_ai(),
+			// Only processes that count their own AI calls can stop at a budget.
+			'supports_budget' => $process instanceof AIPS_Embeddings_Background_Process,
 		));
 	}
 
@@ -79,11 +81,7 @@ class AIPS_Background_Processes_Controller {
 		$this->verify_request();
 
 		$process = $this->get_process_from_request();
-		$options = array();
-
-		if (isset($_POST['ai_budget'])) {
-			$options['ai_budget'] = absint(wp_unslash($_POST['ai_budget']));
-		}
+		$options = $this->get_start_options_from_request();
 
 		$this->respond($this->manager->control($process->get_key(), AIPS_Background_Process_Manager::ACTION_START, $options), __('Started. It runs in the background.', 'ai-post-scheduler'));
 	}
@@ -163,6 +161,34 @@ class AIPS_Background_Processes_Controller {
 		}
 
 		AIPS_Ajax_Response::success(array('process' => $result), $message);
+	}
+
+	/**
+	 * Start options a client may send: an AI call budget (0 = none), a run mode
+	 * ('missing' or 'all') and an author scope. Each process ignores the ones it
+	 * does not use.
+	 *
+	 * @return array
+	 */
+	private function get_start_options_from_request(): array {
+		$options = array();
+
+		if (isset($_POST['ai_budget'])) {
+			$options['ai_budget'] = absint(wp_unslash($_POST['ai_budget']));
+		}
+
+		if (isset($_POST['mode'])) {
+			$mode = sanitize_key(wp_unslash($_POST['mode']));
+			if (in_array($mode, array('missing', 'all'), true)) {
+				$options['mode'] = $mode;
+			}
+		}
+
+		if (isset($_POST['author_id'])) {
+			$options['author_id'] = absint(wp_unslash($_POST['author_id']));
+		}
+
+		return $options;
 	}
 
 	/**
