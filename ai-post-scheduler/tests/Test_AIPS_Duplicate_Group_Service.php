@@ -221,6 +221,13 @@ class Test_AIPS_Duplicate_Group_Service extends WP_UnitTestCase {
 		$this->assertCount(1, $this->service->get_review_groups(0.9)['groups']);
 	}
 
+	public function test_dismiss_group_ignores_ids_that_are_not_posts() {
+		$a = $this->factory->post->create();
+
+		$this->assertSame(0, $this->service->dismiss_group(array($a, 999999991, 999999992)));
+		$this->assertSame(array(), get_option(AIPS_Duplicate_Group_Service::DISMISSED_OPTION, array()));
+	}
+
 	public function test_excluded_post_ids_post_types_and_categories_are_skipped() {
 		list($a, $b) = $this->two_published_posts();
 		$config = AIPS_Config::get_instance();

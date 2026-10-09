@@ -428,6 +428,10 @@ class AIPS_Duplicate_Group_Service {
 	 */
 	public function dismiss_group(array $post_ids): int {
 		$post_ids = array_values(array_unique(array_filter(array_map('absint', $post_ids))));
+		// Ignore IDs that are not posts so the remembered list cannot be filled with junk.
+		$post_ids = array_values(array_filter($post_ids, function ($id) {
+			return (bool) get_post($id);
+		}));
 		sort($post_ids);
 
 		$dismissed = $this->get_dismissed();

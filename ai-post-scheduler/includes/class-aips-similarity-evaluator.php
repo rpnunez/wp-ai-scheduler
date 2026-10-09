@@ -1489,7 +1489,7 @@ class AIPS_Similarity_Evaluator {
 	 */
 	private function get_cluster_max_posts(): int {
 		$value = (int) $this->config->get_option('aips_cluster_detection_max_posts', 250);
-		return max(50, (int) apply_filters('aips_cluster_detection_max_posts', $value));
+		return max(2, (int) apply_filters('aips_cluster_detection_max_posts', $value));
 	}
 
 	/**

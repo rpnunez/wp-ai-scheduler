@@ -2279,17 +2279,17 @@ class AIPS_Admin_Assets {
             array(
                 'nonce'               => wp_create_nonce('aips_ajax_nonce'),
                 'error'               => __('The duplicate review request failed. Please try again.', 'ai-post-scheduler'),
-                /* translators: %d: number of posts in the group */
+                /* translators: %1$d: number of posts in the group */
                 'groupTitle'          => __('%1$d near-duplicate posts', 'ai-post-scheduler'),
                 /* translators: 1: group count, 2: post count */
                 'summary'             => __('%1$d groups (%2$d posts) to review', 'ai-post-scheduler'),
-                /* translators: %d: number of pairs */
+                /* translators: %1$d: number of pairs */
                 'hidden'              => __('%1$d similar pairs hidden because you marked them not duplicates', 'ai-post-scheduler'),
-                /* translators: %d: number of pairs */
+                /* translators: %1$d: number of pairs */
                 'excluded'            => __('%1$d pairs skipped by your exclusions', 'ai-post-scheduler'),
                 'truncated'           => __('Only the most similar pairs were loaded. Raise "Max similar pairs to review" in Settings → Engine to see more.', 'ai-post-scheduler'),
                 'emptyTitle'          => __('No duplicate posts to review', 'ai-post-scheduler'),
-                /* translators: %d: similarity percentage */
+                /* translators: %1$d: similarity percentage */
                 'emptyMessage'        => __('No group of posts is at least %1$d% similar. Lower the similarity above to look for looser overlaps, or check that your posts are indexed.', 'ai-post-scheduler'),
                 'keep'                => __('Keep', 'ai-post-scheduler'),
                 'protectedLabel'      => __('Protected', 'ai-post-scheduler'),
