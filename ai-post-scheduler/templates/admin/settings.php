@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
 $active_settings_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'settings-general';
 if ('engine' === $active_settings_tab || 'settings-engine' === $active_settings_tab || 'ai' === $active_settings_tab) {
 	$active_settings_tab = 'settings-ai';
+} elseif ('content-generation' === $active_settings_tab || 'generation' === $active_settings_tab) {
+	$active_settings_tab = 'settings-content-generation';
+} elseif ('integrations' === $active_settings_tab || 'integration' === $active_settings_tab) {
+	$active_settings_tab = 'settings-integrations';
 } elseif ('linking' === $active_settings_tab || 'internal-linking' === $active_settings_tab) {
 	$active_settings_tab = 'settings-linking';
 } elseif ('general' === $active_settings_tab) {
@@ -41,6 +45,14 @@ $settings_rail_items = array(
 		'description' => __('Defaults & post settings', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-general'),
 		'active'      => ($active_settings_tab === 'settings-general'),
+	),
+	array(
+		'key'         => 'settings-content-generation',
+		'label'       => __('Content Generation', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-edit',
+		'description' => __('Global defaults & batch rules', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-content-generation'),
+		'active'      => ($active_settings_tab === 'settings-content-generation'),
 	),
 	array(
 		'key'         => 'settings-ai',
@@ -89,6 +101,14 @@ $settings_rail_items = array(
 		'description' => __('Brand voice & persona', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-content-strategy'),
 		'active'      => ($active_settings_tab === 'settings-content-strategy'),
+	),
+	array(
+		'key'         => 'settings-integrations',
+		'label'       => __('Integrations', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-plugins-checked',
+		'description' => __('Third-party plugin connectors', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-settings&tab=settings-integrations'),
+		'active'      => ($active_settings_tab === 'settings-integrations'),
 	),
 	array(
 		'key'         => 'settings-cache',
@@ -152,6 +172,43 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 										<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
 									</table>
 								</div>
+								<p class="submit">
+									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+								</p>
+							</div>
+
+							<!-- Content Generation Tab -->
+							<div id="settings-content-generation-tab" class="aips-tab-content<?php echo 'settings-content-generation' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-content-generation' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-content-generation' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Configure global defaults for post generation, template batch sizes, and author-based topic and post schedules. Templates, schedules, and authors can override these defaults if desired.', 'ai-post-scheduler'); ?></p>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Post Defaults', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_generation_post_defaults_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Template Post Generation', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_generation_templates_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Author Topic Generation', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_generation_author_topics_section'); ?>
+									</table>
+								</div>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Author Post Generation', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_generation_author_posts_section'); ?>
+									</table>
+								</div>
+
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
@@ -318,6 +375,22 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 										<?php do_settings_fields('aips-settings', 'aips_content_strategy_section'); ?>
 									</table>
 								</div>
+								<p class="submit">
+									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
+								</p>
+							</div>
+
+							<!-- Integrations Tab -->
+							<div id="settings-integrations-tab" class="aips-tab-content<?php echo 'settings-integrations' === $active_settings_tab ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo 'settings-integrations' === $active_settings_tab ? 'false' : 'true'; ?>" <?php echo 'settings-integrations' === $active_settings_tab ? '' : 'hidden'; ?>>
+								<p class="description"><?php esc_html_e('Enable and configure third-party plugin integrations for content generation.', 'ai-post-scheduler'); ?></p>
+
+								<div class="aips-settings-section-card">
+									<h3 class="aips-settings-card-title"><?php esc_html_e('Third-Party Plugin Integrations', 'ai-post-scheduler'); ?></h3>
+									<table class="form-table" role="presentation">
+										<?php do_settings_fields('aips-settings', 'aips_integrations_section'); ?>
+									</table>
+								</div>
+
 								<p class="submit">
 									<input type="submit" class="button button-primary aips-btn aips-btn-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
 								</p>
