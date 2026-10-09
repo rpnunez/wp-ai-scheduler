@@ -132,6 +132,10 @@ The core content-generation flow uses context objects rather than ad hoc paramet
 
 `AIPS_Bulk_Batch_Processor` dispatches `aips_process_bulk_batch` single-event cron slices. Job types (`author_topic_post`, `planner_post`, `trending_topic_post`) are registered as strategies via `$processor->register(type, callable)` in `boot_cron()`. Job state lives in `AIPS_Bulk_Batch_Job_Store`.
 
+### Background processes
+
+Long-running jobs (indexing, scans) are exposed through `AIPS_Background_Process_Interface` and registered in `AIPS_Background_Process_Manager` (filter `aips_background_processes`). Managed jobs extend `AIPS_Managed_Background_Process` (one `aips_bg_process_tick` cron slice at a time, runs stored in `aips_background_processes`, quota/cooldown waits, per-run AI budget); `AIPS_Internal_Links_Indexing_Process` is the reference implementation. Pipelines that schedule themselves get a thin adapter (`AIPS_Content_Indexer_Queue_Process`, `AIPS_Link_Index_Scan_Process`). The UI (admin bar pulse, Internal Links card, Diagnostics → Background Processes) is driven by `assets/js/background-processes.js` over the Heartbeat API; never poll separately. New heavy jobs should register here rather than schedule their own cron chain.
+
 ### JavaScript module pattern
 
 Each JS file in `assets/js/` follows the same structure:

@@ -53,6 +53,13 @@
 		 */
 		init: function () {
 			this.bindEvents();
+
+			// background-processes.js initialises first and fires its first update before
+			// this module is listening, so read the current state directly.
+			if (AIPS.BackgroundProcesses) {
+				this.onBackgroundUpdate(null, [], AIPS.BackgroundProcesses.state);
+			}
+
 			this.applyUrlFilters();
 			this.loadSuggestions();
 		},
@@ -91,6 +98,9 @@
 			// Search
 			$(document).on('input', '#aips-il-search', this.onSearchInput.bind(this));
 			$(document).on('click', '#aips-il-search-clear', this.onSearchClear.bind(this));
+
+			// Background indexing state pushed by background-processes.js (Heartbeat)
+			$(document).on('aips:bg-update', this.onBackgroundUpdate.bind(this));
 
 			// Index management
 			$(document).on('click', '#aips-start-indexing-btn', this.onStartIndexingClick.bind(this));
@@ -209,6 +219,29 @@
 		 */
 		onStartIndexingClick: function (e) {
 			this.startIndexing();
+		},
+
+		/**
+		 * Keep the Index Posts button and the stat cards in step with the
+		 * background indexing job.
+		 *
+		 * @param {Event}  e     The aips:bg-update event.
+		 * @param {Array}  list  Snapshots from the server.
+		 * @param {Object} state Snapshots keyed by process key.
+		 */
+		onBackgroundUpdate: function (e, list, state) {
+			var snap = state && state.internal_links_indexing;
+			if (!snap) {
+				return;
+			}
+
+			$('#aips-start-indexing-btn').prop('disabled', !snap.can_start);
+
+			// Refresh the real indexed/total numbers while the job runs, and once more when it stops.
+			if (snap.is_active || this._indexingWasActive) {
+				this.refreshStatus();
+			}
+			this._indexingWasActive = !!snap.is_active;
 		},
 
 		/**
@@ -647,6 +680,13 @@
 		startIndexing: function () {
 			var self = this;
 			var $btn = $('#aips-start-indexing-btn');
+
+			// Preferred path: show the cost estimate, then start under the background
+			// process manager (rate limits, pause / resume / stop).
+			if (AIPS.BackgroundProcesses) {
+				AIPS.BackgroundProcesses.startWithEstimate('internal_links_indexing', $btn);
+				return;
+			}
 
 			var req = $.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_start_indexing',

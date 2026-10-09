@@ -119,6 +119,12 @@ class AIPS_Diagnostics_Controller {
 			);
 		}
 
+		$tabs['background-processes'] = array(
+			'label'       => __('Background Processes', 'ai-post-scheduler'),
+			'icon'        => 'dashicons-update',
+			'description' => __('Indexing & other long-running jobs', 'ai-post-scheduler'),
+		);
+
 		$tabs['stress-test'] = array(
 			'label'       => __('Stress Test', 'ai-post-scheduler'),
 			'icon'        => 'dashicons-superhero',
@@ -176,7 +182,7 @@ class AIPS_Diagnostics_Controller {
 	public static function is_tab_available($tab) {
 		// Keep in step with get_tabs(): a tab listed there but missing here is
 		// rejected by get_active_tab_key() and silently falls back to the default.
-		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test'), true)) {
+		if (in_array($tab, array('system-info', 'health', 'operations', 'status', 'insights', 'stress-test', 'background-processes'), true)) {
 			return true;
 		}
 
@@ -247,6 +253,11 @@ class AIPS_Diagnostics_Controller {
 					$this->render_cache_monitor_tab();
 				}, __('Cache Monitor', 'ai-post-scheduler'), true);
 				break;
+			case 'background-processes':
+				AIPS_Admin_Menu_Helper::safe_render(function() {
+					$this->render_background_processes_tab();
+				}, __('Background Processes', 'ai-post-scheduler'), true);
+				break;
 			case 'stress-test':
 				AIPS_Admin_Menu_Helper::safe_render(function() {
 					$this->render_stress_test_tab();
@@ -309,6 +320,18 @@ class AIPS_Diagnostics_Controller {
 	private function render_cache_monitor_tab() {
 		$controller = new AIPS_Cache_Monitor_Controller();
 		$controller->render_page();
+	}
+
+	/**
+	 * Render the Background Processes tab.
+	 *
+	 * @return void
+	 */
+	private function render_background_processes_tab() {
+		$bg_processes = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->get_snapshots();
+		$bg_runs      = (new AIPS_Background_Process_Repository())->get_recent(15);
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/background-processes.php';
 	}
 
 	/**

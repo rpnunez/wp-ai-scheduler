@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.10
+ * Version: 3.7.11
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.10');
+    define('AIPS_VERSION', '3.7.11');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -457,6 +457,11 @@ final class AI_Post_Scheduler {
             return new AIPS_Relationships_Repository();
         });
 
+        // Background process registry/manager (start, pause, resume, stop, Heartbeat snapshots)
+        $container->singleton(AIPS_Background_Process_Manager::class, function( $container ) {
+            return new AIPS_Background_Process_Manager();
+        });
+
         // Register the link index (actual <a href> links in post content)
         $container->singleton(AIPS_Link_Index_Repository::class, function( $container ) {
             return new AIPS_Link_Index_Repository();
@@ -752,6 +757,16 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
         });
 
+        // Background processes: answer Heartbeat polls from the admin bar and
+        // admin pages. Heartbeat requests are AJAX, so this must live here
+        // rather than in boot_admin().
+        add_filter('heartbeat_received', function ($response, $data) {
+            if (empty($data['aips_bg'])) {
+                return $response;
+            }
+            return AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->on_heartbeat_received($response, $data);
+        }, 10, 2);
+
         // Related Posts Frontend integration (content filter, shortcode, block)
         new AIPS_Related_Posts_Frontend(
             AIPS_Container::get_instance()->make(AIPS_Related_Posts_Service::class)
@@ -1005,6 +1020,7 @@ final class AI_Post_Scheduler {
         add_action('aips_cleanup_bulk_batch_jobs', function() {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
+            $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),
@@ -1043,6 +1059,12 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
+
+        // Background processes: one slice per tick (pause/resume/stop and quota
+        // waits are handled by AIPS_Managed_Background_Process).
+        add_action(AIPS_Managed_Background_Process::TICK_HOOK, function($process_key) {
+            AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->tick((string) $process_key);
+        }, 10, 1);
 
         // Internal Links indexing cron — construct the controller lazily only
         // when the cron hook fires to avoid eager instantiation on every cron boot.

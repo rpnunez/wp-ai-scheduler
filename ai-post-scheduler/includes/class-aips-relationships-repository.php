@@ -526,6 +526,78 @@ class AIPS_Relationships_Repository {
 	}
 
 	/**
+	 * Post IDs that have an embedding and are due for a relationship recompute.
+	 *
+	 * @param string[]|string $post_types   Post types to include.
+	 * @param string          $post_status  Post status filter.
+	 * @param int             $after_id     Cursor: return IDs greater than this.
+	 * @param int             $limit        Maximum IDs.
+	 * @param bool            $only_missing True to skip posts that already have related-post rows.
+	 * @return int[]
+	 */
+	public function get_source_post_ids($post_types = array('post'), $post_status = 'publish', $after_id = 0, $limit = 20, $only_missing = true) {
+		list($from_sql, $params) = $this->build_source_query($post_types, $post_status, $after_id, $only_missing);
+
+		$sql = $this->wpdb->prepare(
+			"SELECT e.object_id {$from_sql} ORDER BY e.object_id ASC LIMIT %d",
+			...array_merge($params, array(max(1, absint($limit))))
+		);
+
+		return array_map('intval', (array) $this->wpdb->get_col($sql));
+	}
+
+	/**
+	 * Count post IDs that get_source_post_ids() would return from the start.
+	 *
+	 * @param string[]|string $post_types   Post types to include.
+	 * @param string          $post_status  Post status filter.
+	 * @param bool            $only_missing True to skip posts that already have related-post rows.
+	 * @return int
+	 */
+	public function count_source_post_ids($post_types = array('post'), $post_status = 'publish', $only_missing = true) {
+		list($from_sql, $params) = $this->build_source_query($post_types, $post_status, 0, $only_missing);
+
+		return (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) {$from_sql}", ...$params));
+	}
+
+	/**
+	 * Shared FROM/WHERE for the source post queries.
+	 *
+	 * @param string[]|string $post_types   Post types.
+	 * @param string          $post_status  Post status.
+	 * @param int             $after_id     Cursor.
+	 * @param bool            $only_missing Skip posts that already have related-post rows.
+	 * @return array{0:string, 1:array} SQL fragment and its parameters.
+	 */
+	private function build_source_query($post_types, $post_status, $after_id, $only_missing) {
+		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$embeddings   = $this->wpdb->prefix . 'aips_embeddings';
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$join  = '';
+		$where = '';
+		if ($only_missing) {
+			$join  = "LEFT JOIN {$this->table} r ON r.source_type = 'post' AND r.source_id = e.object_id AND r.relation_type = 'related_post'";
+			$where = 'AND r.id IS NULL';
+		}
+
+		$sql = "FROM {$embeddings} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+			{$join}
+			WHERE e.object_type = 'post'
+			AND p.post_type IN ({$placeholders})
+			AND p.post_status = %s
+			AND e.object_id > %d
+			{$where}";
+
+		return array($sql, array_merge($post_types, array(sanitize_key($post_status), absint($after_id))));
+	}
+
+	/**
 	 * Count incoming internal links to a post across published content.
 	 *
 	 * @param int    $post_id     Target post ID.

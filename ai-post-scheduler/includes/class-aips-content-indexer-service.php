@@ -22,6 +22,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Content_Indexer_Service {
 
 	/**
+	 * Option flag set while an administrator has paused the background queue.
+	 */
+	const QUEUE_PAUSED_OPTION = 'aips_indexer_queue_paused';
+
+	/**
 	 * @var AIPS_Embeddings_Repository
 	 */
 	private $embeddings_repo;
@@ -60,6 +65,11 @@ class AIPS_Content_Indexer_Service {
 	 * @var AIPS_Similarity_Evaluator
 	 */
 	private $similarity_evaluator;
+
+	/**
+	 * @var AIPS_Relationship_Builder|null
+	 */
+	private $relationship_builder = null;
 
 	/**
 	 * Initialize the content indexer service.
@@ -520,10 +530,12 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$rate_limit_error = null;
+		$indexed_ids      = array();
 
 		try {
 			foreach ($post_ids as $post_id) {
-				$result = $this->index_post($post_id, true);
+				// Relationships are computed once for the whole batch below, not per post.
+				$result = $this->index_post($post_id, false);
 
 				if (is_wp_error($result)) {
 					$failed++;
@@ -539,10 +551,13 @@ class AIPS_Content_Indexer_Service {
 				} else {
 					$rate_limiter->record_success();
 					$success++;
+					$indexed_ids[] = $post_id;
 				}
 
 				$new_last_id = max($new_last_id, $post_id);
 			}
+
+			$this->recompute_relationships_for_posts($indexed_ids);
 		} finally {
 			if ($generated_correlation) {
 				AIPS_Correlation_ID::reset();
@@ -603,52 +618,39 @@ class AIPS_Content_Indexer_Service {
 	 * @return int Number of relationships saved.
 	 */
 	public function recompute_relationships_for_post($post_id, $top_k = 15, $min_sim = 0.50) {
-		$post_id = absint($post_id);
-		$source  = $this->embeddings_repo->get_by_post_id($post_id);
+		$saved = $this->recompute_relationships_for_posts(array(absint($post_id)), $top_k, $min_sim);
 
-		if (!$source || empty($source->embedding)) {
-			return 0;
+		return isset($saved[absint($post_id)]) ? (int) $saved[absint($post_id)] : 0;
+	}
+
+	/**
+	 * Recompute related-post relationships for several posts in one pass over the
+	 * stored vectors. Prefer this over calling recompute_relationships_for_post()
+	 * in a loop: the cost of reading and decoding every vector is shared by the
+	 * whole batch (see AIPS_Relationship_Builder).
+	 *
+	 * @param int[] $post_ids Source post IDs.
+	 * @param int   $top_k    Number of top neighbors to precompute.
+	 * @param float $min_sim  Minimum similarity threshold.
+	 * @return array<int,int> Source post ID => relationships saved.
+	 */
+	public function recompute_relationships_for_posts(array $post_ids, $top_k = 15, $min_sim = 0.50) {
+		if (empty($post_ids)) {
+			return array();
 		}
 
-		$source_vector = $this->embeddings_repo->decode_embedding($source->embedding);
-		if (empty($source_vector)) {
-			return 0;
+		return $this->get_relationship_builder()->compute_for_posts($post_ids, (int) $top_k, (float) $min_sim);
+	}
+
+	/**
+	 * @return AIPS_Relationship_Builder
+	 */
+	private function get_relationship_builder() {
+		if ($this->relationship_builder === null) {
+			$this->relationship_builder = new AIPS_Relationship_Builder($this->embeddings_repo, $this->relationships_repo, $this->config);
 		}
 
-		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
-		$candidates = $this->embeddings_repo->get_all_for_similarity('post', $post_types, 'publish');
-
-		$candidate_vectors = array();
-		foreach ($candidates as $row) {
-			$cid = (int) $row->object_id;
-			if ($cid === $post_id) {
-				continue;
-			}
-			$vec = $this->embeddings_repo->decode_embedding($row->embedding);
-			if (!empty($vec) && count($vec) === count($source_vector)) {
-				$candidate_vectors[] = array(
-					'id'        => $cid,
-					'embedding' => $vec,
-				);
-			}
-		}
-
-		if (empty($candidate_vectors)) {
-			return 0;
-		}
-
-		$matches = $this->similarity_evaluator->find_top_matches($source_vector, $candidate_vectors, $min_sim, $top_k, 'post');
-		$targets = array();
-		foreach ($matches as $m) {
-			$targets[] = array(
-				'target_type' => 'post',
-				'target_id'   => (int) $m['id'],
-				'similarity'  => (float) $m['similarity'],
-			);
-		}
-
-		$this->relationships_repo->sync_for_source('post', $post_id, $targets, 'related_post');
-		return count($targets);
+		return $this->relationship_builder;
 	}
 
 	/**
@@ -941,13 +943,81 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
+	 * Whether an administrator has paused the background queue.
+	 *
+	 * @return bool
+	 */
+	public function is_queue_paused(): bool {
+		return (bool) get_option(self::QUEUE_PAUSED_OPTION, false);
+	}
+
+	/**
+	 * Pause or unpause the background queue.
+	 *
+	 * Pausing unschedules the worker; queued items are kept. Unpausing does not
+	 * reschedule it: call schedule_queue_worker() afterwards.
+	 *
+	 * @param bool $paused True to pause.
+	 * @return void
+	 */
+	public function set_queue_paused(bool $paused): void {
+		if ($paused) {
+			update_option(self::QUEUE_PAUSED_OPTION, 1, false);
+			$this->unschedule_queue_worker();
+		} else {
+			delete_option(self::QUEUE_PAUSED_OPTION);
+		}
+	}
+
+	/**
+	 * Remove the scheduled queue worker from Action Scheduler and WP-Cron.
+	 *
+	 * @return void
+	 */
+	public function unschedule_queue_worker(): void {
+		if (function_exists('as_unschedule_all_actions')) {
+			as_unschedule_all_actions('aips_process_pending_indexer_queue', array(), 'aips-indexer');
+		}
+		wp_clear_scheduled_hook('aips_process_pending_indexer_queue');
+	}
+
+	/**
+	 * Drop every queued post and topic (they are re-queued when next saved).
+	 *
+	 * @return void
+	 */
+	public function clear_queue(): void {
+		delete_option('aips_pending_index_queue');
+		delete_option('aips_pending_topic_index_queue');
+		$this->unschedule_queue_worker();
+		delete_option(self::QUEUE_PAUSED_OPTION);
+	}
+
+	/**
+	 * Get the state of the background indexer queue.
+	 *
+	 * @return array{is_running: bool, pending_count: int, pending_posts: int, pending_topics: int}
+	 */
+	public function get_queue_status(): array {
+		$pending_posts  = count((array) get_option('aips_pending_index_queue', array()));
+		$pending_topics = count((array) get_option('aips_pending_topic_index_queue', array()));
+
+		return array(
+			'is_running'     => $this->is_queue_worker_scheduled(),
+			'pending_count'  => $pending_posts + $pending_topics,
+			'pending_posts'  => $pending_posts,
+			'pending_topics' => $pending_topics,
+		);
+	}
+
+	/**
 	 * Schedule background indexer queue worker via Action Scheduler (if available) or WP-Cron.
 	 *
 	 * @param int $timestamp Unix timestamp to run.
 	 * @return void
 	 */
 	public function schedule_queue_worker(int $timestamp): void {
-		if ($this->is_queue_worker_scheduled()) {
+		if ($this->is_queue_paused() || $this->is_queue_worker_scheduled()) {
 			return;
 		}
 
@@ -968,6 +1038,10 @@ class AIPS_Content_Indexer_Service {
 	public function process_pending_indexer_queue(): array {
 		if (!$this->embeddings_service->is_enabled()) {
 			return array('status' => 'disabled', 'processed' => 0);
+		}
+
+		if ($this->is_queue_paused()) {
+			return array('status' => 'paused', 'processed' => 0);
 		}
 
 		$rate_limiter = $this->embeddings_service->get_rate_limiter();
@@ -1003,6 +1077,7 @@ class AIPS_Content_Indexer_Service {
 		$success     = 0;
 		$failed      = 0;
 		$broke_early = false;
+		$indexed_ids = array();
 
 		foreach ($post_slice as $idx => $post_id) {
 			$post = get_post($post_id);
@@ -1010,7 +1085,8 @@ class AIPS_Content_Indexer_Service {
 				continue;
 			}
 
-			$result = $this->index_post($post_id, true);
+			// Relationships are computed once for the whole slice below, not per post.
+			$result = $this->index_post($post_id, false);
 
 			if (is_wp_error($result)) {
 				$failed++;
@@ -1025,8 +1101,11 @@ class AIPS_Content_Indexer_Service {
 			} else {
 				$rate_limiter->record_success();
 				$success++;
+				$indexed_ids[] = $post_id;
 			}
 		}
+
+		$this->recompute_relationships_for_posts($indexed_ids);
 
 		update_option('aips_pending_index_queue', array_values($post_rem), false);
 
