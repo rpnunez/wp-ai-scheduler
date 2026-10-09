@@ -32,22 +32,28 @@ Saved multi-agent workflows live in `.claude/workflows/`:
 
 ## Commands
 
-All Composer and PHPUnit commands run from `ai-post-scheduler/`.
+Recommended: run PHPUnit inside the running dev stack (see `TESTING.md`). Start it first with `./start-dev.sh`, and run `make composer-install` once for the dev dependencies.
 
 ```bash
-# Full test suite (Docker-backed; handles DB setup automatically)
-bash scripts/run-wp-tests-docker.sh
+# Tests in the web container, against a separate wp_tests DB
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # single file
+make test                                            # full suite
+make test ARGS="--fresh"                             # recreate wp_tests first
+make test-coverage                                   # HTML in ai-post-scheduler/coverage/ (let it finish)
 
-# Directly (when WP test env is already installed in the shell)
+# Same thing without make
+bash scripts/run-docker-test.sh tests/Test_AIPS_DB_Migrations.php
+
+# CI-parity host runner (needs host PHP + Composer)
+make test-ci            # = bash scripts/run-wp-tests-docker.sh
+
+# Directly (when a WP test env is already installed in the shell); run from ai-post-scheduler/
 cd ai-post-scheduler
 composer test
 composer test:verbose
 composer test:coverage
 
-# Single test file
-cd ai-post-scheduler && vendor/bin/phpunit tests/test-template-processor.php
-
-# Skip DB creation (agent/CI environments without create permissions)
+# Skip DB creation (host/CI environments without create permissions)
 export AIPS_WP_TEST_SKIP_DB_CREATE=true
 cd ai-post-scheduler && composer test
 
@@ -58,17 +64,19 @@ cd ai-post-scheduler && composer lint:repository-boundary
 Docker development environment:
 
 ```bash
-./start-dev.sh          # First-time provisioning
-make up                 # Start services
-make down               # Stop (keeps volumes)
+./start-dev.sh          # First-time provisioning (also: make start-dev). Prompts for GOOGLE_API_KEY;
+                        # --import-sql dump.sql seeds the DB; logs to .artifacts/start-dev-*.log
+make start              # Start existing containers
+make stop               # Stop (keeps containers and data)
+make down               # Remove containers (keeps volumes)
 make shell              # Bash in WordPress container
 make logs               # Follow all container logs
-make test               # Run tests via Docker wrapper
-make test-coverage      # Coverage via Docker wrapper
+make test               # PHPUnit in the web container
+make test-coverage      # Coverage (text + HTML)
 make urls               # Print all service URLs
 ```
 
-Local URLs (Docker): WordPress `http://localhost:8080` · Admin `http://localhost:8080/wp-admin` (admin/admin) · phpMyAdmin `http://localhost:8082`
+Local URLs (Docker, default ports; ports are auto-assigned per checkout and stored in `.env`, run `make urls`): WordPress `http://localhost:8080` · Admin `http://localhost:8080/wp-admin` (admin/admin) · phpMyAdmin `http://localhost:8082`
 
 Performance benchmarks:
 
@@ -167,4 +175,4 @@ Admin pages follow: `div.wrap.aips-wrap` → `div.aips-page-container` → `div.
 
 ## Testing policy
 
-Do not run `composer test` or PHPUnit unless the user explicitly asks or the task requires it. For code changes, prefer static/syntax checks on touched files and note unrun test suites in the response. When tests are needed, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+Do not run PHPUnit unless the user explicitly asks or the task requires it. For code changes, prefer static/syntax checks on touched files and note unrun test suites in the response. When tests are needed, run them in the dev stack with `make test ARGS="tests/Test_X.php"` (see `TESTING.md`); for host-side `composer test`, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.

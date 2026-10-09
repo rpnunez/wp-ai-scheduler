@@ -51,6 +51,7 @@ services:
       # WordPress core source: "image" (bundled with the image, default) or
       # "trunk" (git clone of WordPress trunk on first boot).
       WP_CORE_SOURCE: "${WP_CORE_SOURCE:-image}"
+      WP_TABLE_PREFIX: "${WP_TABLE_PREFIX:-wp_}"
       PHPMYADMIN_PORT: "${PHPMYADMIN_PORT:-8082}"
 
       # Initial WP admin credentials (change as needed)

@@ -11,6 +11,12 @@
 # placeholder, you are prompted for it (saved to the gitignored .env). Without
 # a terminal the script fails fast instead of starting a stack that can't work.
 # Set AIPS_SKIP_API_KEY_CHECK=1 to start without a key anyway.
+#
+# Seeding existing data: --import-sql <file.sql|file.sql.gz> imports a dump into
+# the database, but only when the database has no tables yet (so normal reruns
+# never touch your data). --force-import backs the current database up to
+# .artifacts/ first, then replaces it. AIPS_IMPORT_SQL in .env sets a default
+# dump; the flag overrides it.
 
 set -e
 
@@ -22,6 +28,51 @@ NC='\033[0m' # No Color
 
 AI_PROVIDER_FIXED="WP_AI_CLIENT"
 AI_CONNECTOR_FIXED="ai-provider-for-google"
+
+usage() {
+    cat <<'USAGE'
+Usage: ./start-dev.sh [--import-sql <file.sql|file.sql.gz>] [--force-import]
+
+  --import-sql FILE   Import a SQL dump into the Docker database. Only runs when
+                      the database has no tables; otherwise it is skipped and logged.
+                      Default can be set with AIPS_IMPORT_SQL in .env.
+  --force-import      With --import-sql: back up the current database to .artifacts/
+                      and replace it even if it already has data.
+  -h, --help          Show this help.
+USAGE
+}
+
+IMPORT_SQL=""
+FORCE_IMPORT=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --import-sql)
+            if [ -z "${2:-}" ]; then
+                echo -e "${RED}Error: --import-sql requires a file path.${NC}" >&2
+                exit 1
+            fi
+            IMPORT_SQL="$2"
+            shift 2
+            ;;
+        --import-sql=*)
+            IMPORT_SQL="${1#--import-sql=}"
+            shift
+            ;;
+        --force-import)
+            FORCE_IMPORT=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Error: unknown argument: $1${NC}" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+done
 
 # Check if we're in the correct directory (should have docker-compose.yml)
 if [ ! -f "docker-compose.yml" ]; then
@@ -94,6 +145,11 @@ else
     INSTANCE_ID="$(get_env_var AIPS_INSTANCE_ID)"
 fi
 INSTANCE_ID="${INSTANCE_ID:-default}"
+
+# Default dump from .env when no --import-sql flag was given.
+if [ -z "$IMPORT_SQL" ]; then
+    IMPORT_SQL="$(get_env_var AIPS_IMPORT_SQL)"
+fi
 
 # Unique, human-referenceable log file for this run.
 RUN_ID="$(od -An -N3 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')"
@@ -277,6 +333,31 @@ main() {
     echo "  Prompted for key: ${API_KEY_PROMPTED}"
     echo ""
 
+    # --------------------------------------------------------------
+    # SQL import request: validate up front, before any build/pull
+    # --------------------------------------------------------------
+    IMPORTED_SQL=0
+    if [ -n "$IMPORT_SQL" ]; then
+        # Accept Windows-style paths (C:\... or C:/...) under Git Bash.
+        if command -v cygpath >/dev/null 2>&1 && [[ "$IMPORT_SQL" =~ ^[A-Za-z]: ]]; then
+            IMPORT_SQL="$(cygpath -u "$IMPORT_SQL")"
+        fi
+        if [ ! -f "$IMPORT_SQL" ]; then
+            echo -e "${RED}Error: SQL dump not found: ${IMPORT_SQL}${NC}"
+            exit 1
+        fi
+        case "$IMPORT_SQL" in
+            *.sql|*.sql.gz|*.gz) ;;
+            *) echo -e "${YELLOW}Warning: ${IMPORT_SQL} does not end in .sql or .sql.gz; treating it as plain SQL.${NC}" ;;
+        esac
+        echo "SQL import"
+        echo "  Dump file:        ${IMPORT_SQL}"
+        echo "  Force import:     $([ "$FORCE_IMPORT" = "1" ] && echo yes || echo no)"
+        echo ""
+    elif [ "$FORCE_IMPORT" = "1" ]; then
+        echo -e "${YELLOW}Warning: --force-import has no effect without --import-sql.${NC}"
+    fi
+
     # Read back the effective ports for the summary below (docker compose
     # reads .env on its own for interpolation).
     WP_PORT="$(get_env_var WP_PORT)"
@@ -314,17 +395,104 @@ main() {
     echo -e "${YELLOW}Stopping existing containers...${NC}"
     $DOCKER_COMPOSE down
 
-    echo -e "${GREEN}Starting services (waiting for health checks; first boot installs WordPress and plugins)...${NC}"
     if $DOCKER_COMPOSE up --help 2>/dev/null | grep -q -- '--wait'; then
         UP_ARGS="-d --pull never --wait --wait-timeout 300"
     else
         UP_ARGS="-d --pull never"
     fi
+
+    # --------------------------------------------------------------
+    # Optional SQL import (database only, before WordPress boots)
+    # --------------------------------------------------------------
+    if [ -n "$IMPORT_SQL" ]; then
+        DB_NAME_IMPORT="$(get_env_var MYSQL_DATABASE)"
+        DB_NAME_IMPORT="${DB_NAME_IMPORT:-wordpress}"
+
+        # Run a SQL statement as root inside the db container (statement is
+        # passed as a positional arg, so no quoting issues). Prints rows only.
+        db_sql() {
+            $DOCKER_COMPOSE exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb --skip-ssl -uroot -N -e "$1"' _ "$1" | tr -d '\r'
+        }
+
+        # Stream the dump (decompressed if needed) with MySQL-8-only collations
+        # mapped to ones MariaDB understands.
+        stream_dump() {
+            case "$IMPORT_SQL" in
+                *.gz) gunzip -c "$IMPORT_SQL" ;;
+                *) cat "$IMPORT_SQL" ;;
+            esac | LC_ALL=C sed -e 's/utf8mb4_0900_ai_ci/utf8mb4_unicode_520_ci/g' -e 's/utf8mb4_0900_as_cs/utf8mb4_unicode_520_ci/g'
+        }
+
+        echo -e "${GREEN}Starting the database for import...${NC}"
+        if ! $DOCKER_COMPOSE up $UP_ARGS db; then
+            echo -e "${RED}Database failed to start.${NC}"
+            $DOCKER_COMPOSE logs --tail 50 db
+            exit 1
+        fi
+
+        TABLE_COUNT="$(db_sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME_IMPORT}'")"
+        TABLE_COUNT="${TABLE_COUNT:-0}"
+        DO_IMPORT=0
+        if [ "$TABLE_COUNT" = "0" ]; then
+            echo "Database '${DB_NAME_IMPORT}' is empty; importing."
+            DO_IMPORT=1
+        elif [ "$FORCE_IMPORT" = "1" ]; then
+            BACKUP_FILE=".artifacts/db-backup-${INSTANCE_ID}-${RUN_ID}.sql"
+            echo -e "${YELLOW}Database has ${TABLE_COUNT} tables; --force-import given. Backing up to ${BACKUP_FILE}...${NC}"
+            $DOCKER_COMPOSE exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb-dump --skip-ssl -uroot "$MYSQL_DATABASE"' > "$BACKUP_FILE"
+            echo "Backup written ($(wc -c < "$BACKUP_FILE" | tr -d ' ') bytes). Recreating database '${DB_NAME_IMPORT}'."
+            db_sql "DROP DATABASE \`${DB_NAME_IMPORT}\`; CREATE DATABASE \`${DB_NAME_IMPORT}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            DO_IMPORT=1
+        else
+            echo -e "${YELLOW}Skipping SQL import: database '${DB_NAME_IMPORT}' already has ${TABLE_COUNT} tables. Use --force-import to back it up and replace it.${NC}"
+        fi
+
+        if [ "$DO_IMPORT" = "1" ]; then
+            # Detect the dump's table prefix (from <prefix>postmeta) so wp-config.php matches.
+            DUMP_PREFIX="$(stream_dump | grep -m1 -oE 'CREATE TABLE `[A-Za-z0-9_]+postmeta`' | sed -e 's/^CREATE TABLE `//' -e 's/postmeta`$//' || true)"
+            echo "Importing ${IMPORT_SQL} (this can take a while for large dumps)..."
+            IMPORT_START="$(date +%s)"
+            stream_dump | $DOCKER_COMPOSE exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb --skip-ssl -uroot "$MYSQL_DATABASE"'
+            NEW_COUNT="$(db_sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME_IMPORT}'")"
+            if [ "${NEW_COUNT:-0}" = "0" ]; then
+                echo -e "${RED}Import finished but the database has no tables; the dump may be empty or invalid.${NC}"
+                exit 1
+            fi
+            echo -e "${GREEN}✓ Imported ${NEW_COUNT} tables in $(( $(date +%s) - IMPORT_START ))s.${NC}"
+            if [ -n "$DUMP_PREFIX" ]; then
+                echo "  Table prefix:     ${DUMP_PREFIX}"
+                set_env_var WP_TABLE_PREFIX "${DUMP_PREFIX}"
+            else
+                echo -e "${YELLOW}  Could not detect the table prefix from the dump; leaving WP_TABLE_PREFIX unchanged.${NC}"
+            fi
+            IMPORTED_SQL=1
+        fi
+        echo ""
+    fi
+
+    echo -e "${GREEN}Starting services (waiting for health checks; first boot installs WordPress and plugins)...${NC}"
     if ! $DOCKER_COMPOSE up $UP_ARGS; then
         echo -e "${RED}Services failed to start or become healthy.${NC}"
         $DOCKER_COMPOSE ps
         $DOCKER_COMPOSE logs --tail 50 web db
         exit 1
+    fi
+
+    # After an import, point the site at this instance's local URL. The old URL
+    # is whatever the imported database stores; search-replace is serialization-safe.
+    if [ "$IMPORTED_SQL" = "1" ]; then
+        WP_CLI_WEB="$DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes"
+        NEW_URL="http://localhost:${WP_PORT}"
+        OLD_URL="$($WP_CLI_WEB option get siteurl | tr -d '\r')"
+        if [ -n "$OLD_URL" ] && [ "$OLD_URL" != "$NEW_URL" ]; then
+            echo "Rewriting URLs in the imported database: ${OLD_URL} -> ${NEW_URL}"
+            $WP_CLI_WEB search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
+            $WP_CLI_WEB option update home "$NEW_URL"
+            $WP_CLI_WEB option update siteurl "$NEW_URL"
+        else
+            echo "Imported site URL already matches ${NEW_URL}."
+        fi
+        echo ""
     fi
 
     echo ""
@@ -333,9 +501,13 @@ main() {
     echo "WordPress is available at: http://localhost:${WP_PORT}"
     echo "PHPMyAdmin is available at: http://localhost:${PHPMYADMIN_PORT}"
     echo ""
-    echo "Admin credentials:"
-    echo "  Username: ${WP_ADMIN_USER_SHOWN}"
-    echo "  Password: ${WP_ADMIN_PASSWORD_SHOWN}"
+    if [ "$IMPORTED_SQL" = "1" ]; then
+        echo "Admin credentials: taken from the imported database (not .env)."
+    else
+        echo "Admin credentials:"
+        echo "  Username: ${WP_ADMIN_USER_SHOWN}"
+        echo "  Password: ${WP_ADMIN_PASSWORD_SHOWN}"
+    fi
     echo ""
     echo "To view logs, run: $DOCKER_COMPOSE logs -f"
     echo "To stop the environment, run: $DOCKER_COMPOSE down  (or: make stop / make down)"

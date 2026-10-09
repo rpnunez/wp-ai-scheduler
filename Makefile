@@ -4,7 +4,7 @@
 .PHONY: help up build down stop start start-dev restart reload-php rebuild \
 	logs logs-web logs-db shell wp-shell db-shell status info install clean prune \
 	plugin-activate plugin-deactivate plugin-list \
-	test test-verbose test-coverage composer-install composer-update \
+	test test-verbose test-coverage test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
 	urls sync-wp-core
@@ -12,12 +12,22 @@
 # Default target
 .DEFAULT_GOAL := help
 
-# Colors for output
-BLUE := \033[0;34m
-GREEN := \033[0;32m
-YELLOW := \033[0;33m
-RED := \033[0;31m
-NC := \033[0m # No Color
+# Colors for output. Built with real ESC bytes (not the literal text "\033") so
+# they render under any shell/echo. Set NO_COLOR=1 to disable. Keep these lines
+# free of trailing spaces/comments, which would become part of the value.
+ifdef NO_COLOR
+BLUE :=
+GREEN :=
+YELLOW :=
+RED :=
+NC :=
+else
+BLUE := $(shell printf '\033[0;34m')
+GREEN := $(shell printf '\033[0;32m')
+YELLOW := $(shell printf '\033[0;33m')
+RED := $(shell printf '\033[0;31m')
+NC := $(shell printf '\033[0m')
+endif
 
 # env_get(KEY,DEFAULT): read KEY from .env (last occurrence wins), falling back
 # to DEFAULT. `cut -f2-` keeps values that contain '='; `tr` strips CR from
@@ -56,8 +66,8 @@ help: ## Show this help message
 	@echo "  3. Run '$(GREEN)make logs$(NC)' to view logs"
 	@echo ""
 
-start-dev: ## Provision + build + start the environment (start-dev.sh; logs to .artifacts/)
-	bash ./start-dev.sh
+start-dev: ## Provision + build + start (start-dev.sh; ARGS="--import-sql file.sql")
+	bash ./start-dev.sh $(ARGS)
 
 up: ## Start all services (no provisioning; use start-dev on a fresh checkout)
 	@echo "$(GREEN)Starting Docker services...$(NC)"
@@ -164,17 +174,21 @@ plugin-list: ## List all installed plugins
 	@echo "$(BLUE)Installed Plugins:$(NC)"
 	docker compose exec web wp plugin list --allow-root
 
-test: ## Run plugin tests
+test: ## Run plugin tests in the web container (ARGS="tests/Test_X.php" for one file)
 	@echo "$(BLUE)Running tests...$(NC)"
-	bash ./scripts/run-wp-tests-docker.sh
+	bash ./scripts/run-docker-test.sh $(ARGS)
 
-test-verbose: ## Run plugin tests with verbose output
+test-verbose: ## Run plugin tests in the web container with verbose output
 	@echo "$(BLUE)Running tests (verbose)...$(NC)"
-	cd ai-post-scheduler && composer test:verbose
+	bash ./scripts/run-docker-test.sh --verbose $(ARGS)
 
-test-coverage: ## Run plugin coverage with Docker-backed WordPress test env
-	@echo "$(BLUE)Running coverage...$(NC)"
-	bash ./scripts/run-wp-tests-docker.sh coverage
+test-coverage: ## Run all tests with coverage: text summary + HTML in ai-post-scheduler/coverage/
+	@echo "$(BLUE)Running coverage (HTML report: ai-post-scheduler/coverage/index.html)...$(NC)"
+	bash ./scripts/run-docker-test.sh --coverage-filter includes --coverage-html coverage --coverage-text $(ARGS)
+
+test-ci: ## Run the host-side CI runner (needs host PHP + composer)
+	@echo "$(BLUE)Running CI-style tests on the host...$(NC)"
+	bash ./scripts/run-wp-tests-docker.sh
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"

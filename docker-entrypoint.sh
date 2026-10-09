@@ -27,6 +27,7 @@ set -e
 : "${DEFAULT_AI_CONNECTOR_PLUGIN:=ai-provider-for-google}" # Default AI connector plugin
 : "${ENTRYPOINT_DEBUG:=1}"              # Enable/disable debug output from the entrypoint script
 : "${WP_CORE_SOURCE:=image}"            # WordPress core source: "image" (bundled, pinned) or "trunk" (git clone of WordPress trunk)
+: "${WP_TABLE_PREFIX:=wp_}"             # Database table prefix (set by start-dev.sh when importing a dump)
 : "${PHPMYADMIN_PORT:=8082}"            # Host port for phpMyAdmin (display only)
 
 
@@ -99,7 +100,7 @@ fi
 if [ ! -f /var/www/html/wp-config.php ]; then
   echo "[entrypoint] Creating wp-config.php..."
   # --skip-check avoids connecting to the DB during config creation (we verified it above).
-  wp config create     --path=/var/www/html     --dbname="$WORDPRESS_DB_NAME"     --dbuser="$WORDPRESS_DB_USER"     --dbpass="$WORDPRESS_DB_PASSWORD"     --dbhost="$WORDPRESS_DB_HOST"     --skip-check     --allow-root
+  wp config create     --path=/var/www/html     --dbname="$WORDPRESS_DB_NAME"     --dbuser="$WORDPRESS_DB_USER"     --dbpass="$WORDPRESS_DB_PASSWORD"     --dbhost="$WORDPRESS_DB_HOST"     --dbprefix="$WP_TABLE_PREFIX"     --skip-check     --allow-root
 
   # Enable debug mode
   # --raw --type=constant ensures they are written as PHP booleans (true/false) not strings.
@@ -120,6 +121,12 @@ if [ ! -f /var/www/html/wp-config.php ]; then
   wp db create --path=/var/www/html --allow-root 2>/dev/null || true
 else
   echo "[entrypoint] wp-config.php exists; skipping config creation."
+  # Keep the table prefix in sync (it changes when start-dev.sh imports a dump with a different prefix).
+  CURRENT_PREFIX="$(wp config get table_prefix --path=/var/www/html --allow-root 2>/dev/null || true)"
+  if [ -n "$CURRENT_PREFIX" ] && [ "$CURRENT_PREFIX" != "$WP_TABLE_PREFIX" ]; then
+    echo "[entrypoint] Updating table_prefix: ${CURRENT_PREFIX} -> ${WP_TABLE_PREFIX}"
+    wp config set table_prefix "$WP_TABLE_PREFIX" --type=variable --path=/var/www/html --allow-root
+  fi
 fi
 
 # Step 3: install WordPress (database tables) if not already installed.
