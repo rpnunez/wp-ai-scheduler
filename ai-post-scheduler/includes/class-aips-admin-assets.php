@@ -184,6 +184,7 @@ class AIPS_Admin_Assets {
 			$this->enqueue_generated_posts_assets();
 			$this->enqueue_content_indexer_assets();
 			$this->enqueue_link_report_assets();
+			$this->enqueue_broken_links_assets();
 			$this->enqueue_link_rules_assets();
 			$this->enqueue_redirects_assets();
 			$this->enqueue_consolidation_assets();
@@ -2124,20 +2125,52 @@ class AIPS_Admin_Assets {
                 'statusCompleted'       => __('Completed', 'ai-post-scheduler'),
                 'statusCancelled'       => __('Cancelled', 'ai-post-scheduler'),
                 'statusUndone'          => __('Undone', 'ai-post-scheduler'),
-                'brokenError'           => __('The broken-link request failed. Please try again.', 'ai-post-scheduler'),
-                'noBroken'              => __('No broken internal links. Nice!', 'ai-post-scheduler'),
-                'noAnchorText'          => __('(no anchor text)', 'ai-post-scheduler'),
-                /* translators: %d: number of links to the same URL in the post */
-                'occurrences'           => __('%d links to this URL in the post', 'ai-post-scheduler'),
-                /* translators: 1: post title, 2: match score percent */
-                'suggestionOption'      => __('%1$s (%2$d%% match)', 'ai-post-scheduler'),
-                'choosePost'            => __('Choose another post…', 'ai-post-scheduler'),
-                'removeLink'            => __('Remove link, keep text', 'ai-post-scheduler'),
-                'chooseFirst'           => __('Choose a post or "Remove link" first.', 'ai-post-scheduler'),
-                'fixRepointed'          => __('Re-pointed', 'ai-post-scheduler'),
-                'fixUnlinked'           => __('Link removed', 'ai-post-scheduler'),
                 /* translators: 1: processed posts, 2: total posts */
                 'progress'            => __('%1$d of %2$d posts processed.', 'ai-post-scheduler'),
+            )
+        );
+    }
+
+    /**
+     * Enqueue assets for the Broken Links tab of the Content hub.
+     *
+     * @return void
+     */
+    private function enqueue_broken_links_assets() {
+        wp_enqueue_style(
+            'aips-link-report-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-link-report.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
+        wp_enqueue_script(
+            'aips-broken-links-script',
+            AIPS_PLUGIN_URL . 'assets/js/admin-broken-links.js',
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'aips-broken-links-script',
+            'aipsBrokenLinksL10n',
+            array(
+                'nonce'               => wp_create_nonce('aips_ajax_nonce'),
+                /* translators: 1: current page, 2: total pages, 3: total posts */
+                'pageInfo'            => __('Page %1$d of %2$d (%3$d posts)', 'ai-post-scheduler'),
+                'brokenError'         => __('The broken-link request failed. Please try again.', 'ai-post-scheduler'),
+                'noBroken'            => __('No broken internal links. Nice!', 'ai-post-scheduler'),
+                'noAnchorText'        => __('(no anchor text)', 'ai-post-scheduler'),
+                /* translators: %d: number of links to the same URL in the post */
+                'occurrences'         => __('%d links to this URL in the post', 'ai-post-scheduler'),
+                /* translators: 1: post title, 2: match score percent */
+                'suggestionOption'    => __('%1$s (%2$d%% match)', 'ai-post-scheduler'),
+                'choosePost'          => __('Choose another post…', 'ai-post-scheduler'),
+                'removeLink'          => __('Remove link, keep text', 'ai-post-scheduler'),
+                'chooseFirst'         => __('Choose a post or "Remove link" first.', 'ai-post-scheduler'),
+                'fixRepointed'        => __('Re-pointed', 'ai-post-scheduler'),
+                'fixUnlinked'         => __('Link removed', 'ai-post-scheduler'),
             )
         );
     }
