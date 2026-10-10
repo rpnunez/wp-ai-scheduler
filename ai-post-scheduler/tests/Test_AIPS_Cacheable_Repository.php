@@ -88,6 +88,7 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		update_option( 'aips_enable_cache_system', '1' );
 		AIPS_Cache::reset_system_enabled_flag();
 		remove_all_filters( 'wp_doing_cron' );
+		add_filter( 'aips_repository_cache_log_enabled', '__return_true' );
 	}
 
 	public function tearDown(): void {
@@ -96,6 +97,7 @@ class Test_AIPS_Cacheable_Repository extends WP_UnitTestCase {
 		update_option( 'aips_enable_cache_system', '1' );
 		AIPS_Cache::reset_system_enabled_flag();
 		remove_all_filters( 'wp_doing_cron' );
+		remove_all_filters( 'aips_repository_cache_log_enabled' );
 		parent::tearDown();
 	}
 

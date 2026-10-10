@@ -141,10 +141,10 @@ class AIPS_Metrics_Repository {
 	 *     @type int   $total                       Total generation attempts.
 	 *     @type int   $successful                  Completed (success) count.
 	 *     @type int   $failed                      Failed count.
-	 *     @type int   $partial                     Partial (incomplete) count.
+	 *     @type int   $resolved                    Records that reached a terminal outcome.
 	 *     @type int   $terminated                  Terminated count (blocked before generation).
-	 *     @type float $success_rate                Success rate percentage (0–100) of attempted runs.
-	 *     @type float $failure_rate                Failure rate percentage (0–100) of attempted runs.
+	 *     @type float $success_rate                Success rate percentage (0–100), over resolved records.
+	 *     @type float $failure_rate                Failure rate percentage (0–100).
 	 *     @type int   $avg_duration_seconds        Average generation duration (seconds).
 	 *     @type int   $p50_duration_seconds        Median generation duration (seconds).
 	 *     @type int   $p95_duration_seconds        95th-percentile generation duration (seconds).
@@ -173,20 +173,21 @@ class AIPS_Metrics_Repository {
 
 				$total = $counts['total'];
 
-				// Terminated runs were blocked before any generation was attempted,
-				// so they count toward the window total but not toward the success
-				// and failure rates, which describe attempted runs.
-				$attempted = max( 0, $total - $counts['terminated'] );
+				// Rates are computed over records that reached a terminal
+				// outcome, not over every row in the window: in-flight rows
+				// would otherwise drag the reported rate toward zero.
+				$resolved = AIPS_Outcome_Rate::resolved( $counts['completed'], $counts['failed'], $counts['partial'] );
 
 				return array(
 					'window_days'             => $window_days,
 					'total'                   => $total,
+					'resolved'                => $resolved,
 					'successful'              => $counts['completed'],
 					'failed'                  => $counts['failed'],
 					'partial'                 => $counts['partial'],
 					'terminated'              => $counts['terminated'],
-					'success_rate'            => $attempted > 0 ? round( ( $counts['completed'] / $attempted ) * 100, 1 ) : 0.0,
-					'failure_rate'            => $attempted > 0 ? round( ( $counts['failed'] / $attempted ) * 100, 1 ) : 0.0,
+					'success_rate'            => AIPS_Outcome_Rate::success_rate( $counts['completed'], $counts['failed'], $counts['partial'] ),
+					'failure_rate'            => AIPS_Outcome_Rate::failure_rate( $counts['completed'], $counts['failed'], $counts['partial'] ),
 					'avg_duration_seconds'    => $durations['avg'],
 					'p50_duration_seconds'    => $durations['p50'],
 					'p95_duration_seconds'    => $durations['p95'],
@@ -434,10 +435,10 @@ class AIPS_Metrics_Repository {
 			$this->wpdb->prepare(
 				"SELECT
 					COUNT(*) AS total,
-					SUM(CASE WHEN status = 'completed'  THEN 1 ELSE 0 END) AS completed,
-					SUM(CASE WHEN status = 'failed'     THEN 1 ELSE 0 END) AS failed,
-					SUM(CASE WHEN status = 'partial'    THEN 1 ELSE 0 END) AS partial,
-					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS terminated
+					SUM(CASE WHEN status = 'completed'  THEN 1 ELSE 0 END) AS `completed`,
+					SUM(CASE WHEN status = 'failed'     THEN 1 ELSE 0 END) AS `failed`,
+					SUM(CASE WHEN status = 'partial'    THEN 1 ELSE 0 END) AS `partial`,
+					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS `terminated`
 				FROM {$this->table_history}
 				WHERE created_at >= %d",
 				$cutoff
@@ -652,8 +653,8 @@ class AIPS_Metrics_Repository {
 			$this->wpdb->prepare(
 				"SELECT
 					COUNT(*) AS total,
-					SUM(CASE WHEN status = 'completed'  THEN 1 ELSE 0 END) AS completed,
-					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS terminated
+					SUM(CASE WHEN status = 'completed'  THEN 1 ELSE 0 END) AS `completed`,
+					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS `terminated`
 				FROM {$this->table_history}
 				WHERE creation_method = %s
 				  AND created_at >= %d",

@@ -192,7 +192,9 @@
 				return;
 			}
 
-			$renderer.toggleClass('aips-json-viewer-enabled', $toggle.is(':checked'));
+			var isChecked = $toggle.is(':checked');
+			$renderer.find('.aips-json-viewer-toggle').prop('checked', isChecked);
+			$renderer.toggleClass('aips-json-viewer-enabled', isChecked);
 		},
 
 		/**
@@ -598,11 +600,20 @@
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
 			$(document).on('change', '.aips-history-group-cb', this.onGroupCheckboxChange.bind(this));
 
-			// Group toggle expand/collapse (button is a real <button>, so native Enter/Space works)
-			$(document).on('click', '.aips-history-group-header, .aips-history-group-toggle', this.toggleGroup.bind(this));
+			// Group toggle expand/collapse. Bound to the header row only: the
+			// toggle button lives inside that row, so a two-selector delegated
+			// binding fires once per matching ancestor on the propagation path
+			// — collapsing and instantly re-expanding, which made the chevron
+			// button look inert. toggleGroup already whitelists clicks that
+			// land on the button. (It is a real <button>, so Enter/Space still
+			// produce a click that bubbles to this handler.)
+			$(document).on('click', '.aips-history-group-header', this.toggleGroup.bind(this));
 
 			// Bulk delete
 			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
+
+			// Clear processing runs
+			$(document).on('click', '#aips-clear-processing-btn', this.clearProcessingHistory.bind(this));
 
 			/* --- Row Action Events --- */
 			// Overflow toggle for the action group
@@ -624,9 +635,11 @@
 			// Pagination links
 			$(document).on(
 				'click',
-				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next',
+				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next, .aips-history-page-nav, .aips-history-page-first, .aips-history-page-last',
 				this.loadPage.bind(this)
 			);
+			$(document).on('keydown', '.aips-history-page-input', this.onPageInputKeydown.bind(this));
+			$(document).on('change', '.aips-history-page-input', this.onPageInputChange.bind(this));
 
 			/* --- Filter & Search Events --- */
 			// Filter button and status dropdown
@@ -1291,17 +1304,12 @@
 
 			var self     = this;
 			var $btn     = $(e.currentTarget);
-			var origHtml = $btn.html();
 			var msg      = aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.';
 
 			AIPS.Utilities.confirm(msg, 'Notice', [
-				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$btn.prop('disabled', true).html(
-						'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026')
-					);
-
-					$.ajax({
+					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
 						data: {
@@ -1320,13 +1328,70 @@
 										: (aipsHistoryL10n.errorDeleting || 'Error deleting items.'),
 									'error'
 								);
-								$btn.prop('disabled', false).html(origHtml);
 							}
 						},
 						error: function () {
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
-							$btn.prop('disabled', false).html(origHtml);
 						}
+					});
+
+					AIPS.Utilities.withLock($btn, req, {
+						loadingText: '<span class="dashicons dashicons-update aips-spin"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026'),
+						isHtml: true,
+						timeout: 60000
+					});
+				}}
+			]);
+		},
+
+		/**
+		 * Clear all in-progress / stalled history records via AJAX.
+		 *
+		 * @param {Event} e Click event.
+		 */
+		clearProcessingHistory: function (e) {
+			e.preventDefault();
+
+			var self = this;
+			var $btn = $(e.currentTarget);
+			var processingCount = parseInt($('#aips-stat-processing').text() || '0', 10);
+			var msg = (aipsHistoryL10n.confirmClearProcessing || 'Clear all %d in-progress history entries? Stalled background runs will be removed.').replace('%d', processingCount || '');
+
+			AIPS.Utilities.confirm(msg, 'Clear In-Progress Runs', [
+				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, clear runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					var req = $.ajax({
+						url: aipsAjax.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_clear_history',
+							nonce: aipsAjax.nonce,
+							status: 'processing'
+						},
+						success: function (response) {
+							if (response.success) {
+								AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Cleared in-progress entries.', 'success');
+								$('#aips-stat-processing').text('0');
+								$('#aips-clear-processing-btn').hide();
+								self.reload();
+							} else {
+								AIPS.Utilities.showToast(
+									response.data && response.data.message
+										? response.data.message
+										: (aipsHistoryL10n.errorClearing || 'Error clearing history.'),
+									'error'
+								);
+							}
+						},
+						error: function () {
+							AIPS.Utilities.showToast(aipsHistoryL10n.errorClearing || 'Error clearing history.', 'error');
+						}
+					});
+
+					AIPS.Utilities.withLock($btn, req, {
+						loadingText: '<span class="dashicons dashicons-update aips-spin"></span> ' + (aipsHistoryL10n.clearing || 'Clearing\u2026'),
+						isHtml: true,
+						timeout: 60000
 					});
 				}}
 			]);
@@ -1341,7 +1406,8 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			var id = $(e.currentTarget).data('id');
+			var $singleBtn = $(e.currentTarget);
+			var id = $singleBtn.data('id');
 			if (!id) {
 				return;
 			}
@@ -1350,9 +1416,9 @@
 			var msg  = aipsHistoryL10n.confirmDelete || 'Delete this history container? This cannot be undone.';
 
 			AIPS.Utilities.confirm(msg, 'Notice', [
-				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
 				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
-					$.ajax({
+					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
 						data: {
@@ -1377,6 +1443,8 @@
 							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
 						}
 					});
+
+					AIPS.Utilities.withLock($singleBtn, req, { timeout: 30000 });
 				}}
 			]);
 		},
@@ -1397,15 +1465,10 @@
 			e.preventDefault();
 
 			var self     = this;
-			var id       = $(e.currentTarget).data('id');
 			var $btn     = $(e.currentTarget);
-			var origHtml = $btn.html();
+			var id       = $btn.data('id');
 
-			$btn.prop('disabled', true).html(
-				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026')
-			);
-
-			$.ajax({
+			var req = $.ajax({
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
@@ -1419,13 +1482,17 @@
 						self.reload();
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
-						$btn.prop('disabled', false).html(origHtml);
 					}
 				},
 				error: function () {
 					AIPS.Utilities.showToast(aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.', 'error');
-					$btn.prop('disabled', false).html(origHtml);
 				}
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: '<span class="dashicons dashicons-update aips-spin"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026'),
+				isHtml: true,
+				timeout: 180000
 			});
 		},
 
@@ -1533,6 +1600,12 @@
 						$('#aips-stat-processing').text(stats.processing);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
 						$('#aips-stat-median-duration').text(self.formatDuration(stats.median_duration));
+
+						if (parseInt(stats.processing || 0, 10) > 0) {
+							$('#aips-clear-processing-btn').show();
+						} else {
+							$('#aips-clear-processing-btn').hide();
+						}
 					}
 
 					// Keep the URL in sync.
@@ -1585,6 +1658,23 @@
 				return;
 			}
 			this.reload(parseInt(page, 10));
+		},
+
+		onPageInputKeydown: function (e) {
+			if (e.which === 13) {
+				e.preventDefault();
+				this.onPageInputChange(e);
+			}
+		},
+
+		onPageInputChange: function (e) {
+			var $input = $(e.currentTarget);
+			var page = parseInt($input.val(), 10);
+			var maxPage = parseInt($input.attr('max'), 10) || 1;
+			if (!isNaN(page) && page >= 1) {
+				page = Math.min(page, maxPage);
+				this.reload(page);
+			}
 		},
 
 		/**

@@ -42,6 +42,11 @@ class AIPS_Container {
 	private $singletons = array();
 
 	/**
+	 * @var array<string, bool> Track currently resolving bindings to detect circular dependencies.
+	 */
+	private $resolving = array();
+
+	/**
 	 * Get the global container instance.
 	 *
 	 * @return self
@@ -132,6 +137,11 @@ class AIPS_Container {
 				return $this->singletons[$id];
 			}
 
+			// Circular dependency check
+			if (isset($this->resolving[$id])) {
+				throw new RuntimeException("Circular dependency detected while resolving: {$id}");
+			}
+
 			// Resolve and cache the instance
 			if (AIPS_Telemetry::is_enabled()) {
 				AIPS_Telemetry::instance()->add_event( 'classes', array(
@@ -139,13 +149,24 @@ class AIPS_Container {
 					'class' => $id,
 				) );
 			}
-			$instance = $this->singleton_bindings[$id]($this);
-			$this->singletons[$id] = $instance;
-			return $instance;
+
+			$this->resolving[$id] = true;
+			try {
+				$instance = $this->singleton_bindings[$id]($this);
+				$this->singletons[$id] = $instance;
+				return $instance;
+			} finally {
+				unset($this->resolving[$id]);
+			}
 		}
 
 		// Check if it's a transient binding
 		if (isset($this->bindings[$id])) {
+			// Circular dependency check
+			if (isset($this->resolving[$id])) {
+				throw new RuntimeException("Circular dependency detected while resolving: {$id}");
+			}
+
 			// Always create a new instance for transient bindings
 			if (AIPS_Telemetry::is_enabled()) {
 				AIPS_Telemetry::instance()->add_event( 'classes', array(
@@ -153,7 +174,13 @@ class AIPS_Container {
 					'class' => $id,
 				) );
 			}
-			return $this->bindings[$id]($this);
+
+			$this->resolving[$id] = true;
+			try {
+				return $this->bindings[$id]($this);
+			} finally {
+				unset($this->resolving[$id]);
+			}
 		}
 
 		// Binding not found
@@ -211,6 +238,7 @@ class AIPS_Container {
 		$this->bindings = array();
 		$this->singleton_bindings = array();
 		$this->singletons = array();
+		$this->resolving = array();
 	}
 
 	/**

@@ -26,37 +26,37 @@ $total_count    = isset($post_slice_counts['total']) ? (int) $post_slice_counts[
 $active_count   = isset($post_slice_counts['active']) ? (int) $post_slice_counts['active'] : 0;
 $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_counts['inactive'] : 0;
 ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container aips-post-slices-page">
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Post Slices', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description">
-						<?php esc_html_e('Define reusable editorial styles that rotate into title and content prompts so generated posts vary by angle, framing, examples, and emphasis.', 'ai-post-scheduler'); ?>
-					</p>
-				</div>
-				<div class="aips-page-actions">
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-post-slice-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Post Slice', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-		</div>
 
-		<div class="aips-post-slices-summary" aria-label="<?php esc_attr_e('Post slice counts', 'ai-post-scheduler'); ?>">
-			<div class="aips-post-slices-summary-card">
-				<span class="aips-post-slices-summary-value"><?php echo esc_html($total_count); ?></span>
-				<span class="aips-post-slices-summary-label"><?php esc_html_e('Total Slices', 'ai-post-scheduler'); ?></span>
+		<div class="aips-stats-grid aips-post-slices-summary" aria-label="<?php esc_attr_e('Post slice counts', 'ai-post-scheduler'); ?>">
+			<div class="aips-stat-card">
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Total Slices', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-grid-view aips-stat-icon" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-post-slices-summary-value"><?php echo esc_html($total_count); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('All configured post slices', 'ai-post-scheduler'); ?></div>
 			</div>
-			<div class="aips-post-slices-summary-card is-active">
-				<span class="aips-post-slices-summary-value"><?php echo esc_html($active_count); ?></span>
-				<span class="aips-post-slices-summary-label"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
+			<div class="aips-stat-card is-active">
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-yes-alt aips-stat-icon aips-text-success" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-post-slices-summary-value aips-text-success"><?php echo esc_html($active_count); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('Eligible for slice insertion', 'ai-post-scheduler'); ?></div>
 			</div>
-			<div class="aips-post-slices-summary-card is-inactive">
-				<span class="aips-post-slices-summary-value"><?php echo esc_html($inactive_count); ?></span>
-				<span class="aips-post-slices-summary-label"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
+			<div class="aips-stat-card is-inactive">
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-minus aips-stat-icon aips-text-muted" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-post-slices-summary-value aips-text-muted"><?php echo esc_html($inactive_count); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('Paused or draft slices', 'ai-post-scheduler'); ?></div>
 			</div>
 		</div>
 
@@ -184,8 +184,6 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 				</div>
 			<?php endif; ?>
 		</div>
-	</div>
-</div>
 
 <div id="aips-post-slice-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
@@ -194,7 +192,7 @@ $inactive_count = isset($post_slice_counts['inactive']) ? (int) $post_slice_coun
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-post-slice-form" novalidate>
+			<form id="aips-post-slice-form" data-aips-async="true" novalidate>
 				<input type="hidden" name="slice_id" id="aips-post-slice-id" value="0">
 
 				<div class="aips-form-row">

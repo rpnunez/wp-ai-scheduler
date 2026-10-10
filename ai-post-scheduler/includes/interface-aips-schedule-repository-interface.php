@@ -40,6 +40,15 @@ interface AIPS_Schedule_Repository_Interface {
 	public function get_due_schedules($current_time = null, $limit = 5);
 
 	/**
+	 * Fetch one schedule, merged with its template, only if it is still due.
+	 *
+	 * @param int      $id           Schedule ID.
+	 * @param int|null $current_time Unix timestamp. Defaults to now.
+	 * @return object|null
+	 */
+	public function get_due_schedule_by_id($id, $current_time = null);
+
+	/**
 	 * Create a schedule.
 	 *
 	 * @param array $data Schedule data.

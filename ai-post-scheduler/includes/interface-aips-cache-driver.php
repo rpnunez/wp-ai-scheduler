@@ -27,6 +27,18 @@ interface AIPS_Cache_Driver {
 	public function get( $key, $group = 'default' );
 
 	/**
+	 * Retrieve multiple values from the cache in a single batch operation.
+	 *
+	 * Returns an associative array mapping keys to their cached values.
+	 * Missing or expired keys map to null.
+	 *
+	 * @param array  $keys  Array of cache keys.
+	 * @param string $group Optional cache group/namespace. Default 'default'.
+	 * @return array<string, mixed> Associative array of key => value (or null).
+	 */
+	public function get_multiple( array $keys, $group = 'default' );
+
+	/**
 	 * Store a value in the cache.
 	 *
 	 * @param string $key   Cache key.

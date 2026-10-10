@@ -46,20 +46,27 @@ class AIPS_Related_Posts_Service {
 	const CACHE_GROUP = 'aips_related_posts';
 
 	/**
+	 * @var AIPS_Similarity_Evaluator
+	 */
+	private $similarity_evaluator;
+
+	/**
 	 * Initialize service.
 	 */
 	public function __construct(
 		?AIPS_Relationships_Repository $relationships_repo = null,
 		?AIPS_Embeddings_Repository $embeddings_repo = null,
 		?AIPS_Embeddings_Service $embeddings_service = null,
-		?AIPS_Config $config = null
+		?AIPS_Config $config = null,
+		?AIPS_Similarity_Evaluator $similarity_evaluator = null
 	) {
 		$container = AIPS_Container::get_instance();
 
-		$this->relationships_repo = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
-		$this->embeddings_repo    = $embeddings_repo    ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
-		$this->embeddings_service = $embeddings_service ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
-		$this->config             = $config             ?: AIPS_Config::get_instance();
+		$this->relationships_repo   = $relationships_repo   ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
+		$this->embeddings_repo      = $embeddings_repo      ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->embeddings_service   = $embeddings_service   ?: ($container->has(AIPS_Embeddings_Service::class) ? $container->make(AIPS_Embeddings_Service::class) : new AIPS_Embeddings_Service());
+		$this->config               = $config               ?: AIPS_Config::get_instance();
+		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
 	}
 
 	/**
@@ -151,8 +158,8 @@ class AIPS_Related_Posts_Service {
 		if (count($related_posts) < $parsed_args['count']) {
 			$source_emb = $this->embeddings_repo->get_by_post_id($post_id);
 			if ($source_emb && !empty($source_emb->embedding)) {
-				$source_vec = json_decode($source_emb->embedding, true);
-				if (is_array($source_vec)) {
+				$source_vec = $this->embeddings_repo->decode_embedding($source_emb->embedding);
+				if (!empty($source_vec)) {
 					$all_candidates = $this->embeddings_repo->get_all_for_similarity('post', $parsed_args['post_types'], 'publish');
 					$candidate_vecs = array();
 
@@ -161,8 +168,8 @@ class AIPS_Related_Posts_Service {
 						if ($cid === $post_id || in_array($cid, $found_ids, true)) {
 							continue;
 						}
-						$cvec = json_decode($cand->embedding, true);
-						if (is_array($cvec) && count($cvec) === count($source_vec)) {
+						$cvec = $this->embeddings_repo->decode_embedding($cand->embedding);
+						if (!empty($cvec) && count($cvec) === count($source_vec)) {
 							$candidate_vecs[] = array(
 								'id'        => $cid,
 								'embedding' => $cvec,
@@ -170,10 +177,12 @@ class AIPS_Related_Posts_Service {
 						}
 					}
 
-					$neighbors = $this->embeddings_service->find_nearest_neighbors(
+					$neighbors = $this->similarity_evaluator->find_top_matches(
 						$source_vec,
 						$candidate_vecs,
-						$parsed_args['count'] - count($related_posts)
+						$parsed_args['min_similarity'],
+						$parsed_args['count'] - count($related_posts),
+						'post'
 					);
 
 					$prefetch_nids = array();
@@ -185,10 +194,6 @@ class AIPS_Related_Posts_Service {
 					}
 
 					foreach ($neighbors as $n) {
-						if ($n['similarity'] < $parsed_args['min_similarity']) {
-							continue;
-						}
-
 						$nid  = (int) $n['id'];
 						$post = get_post($nid);
 						if ($post && 'publish' === $post->post_status) {
@@ -207,16 +212,21 @@ class AIPS_Related_Posts_Service {
 			}
 		}
 
-		wp_cache_set($cache_key, $related_posts, self::CACHE_GROUP, HOUR_IN_SECONDS * 12);
+		// Cache final computed related posts
+		if (!empty($related_posts)) {
+			AIPS_Cache::set($cache_key, $related_posts, self::CACHE_GROUP, 12 * HOUR_IN_SECONDS);
+		}
 
 		return $related_posts;
 	}
 
 	/**
-	 * Retrieve related articles for an arbitrary topic/prompt text (used during AI Post Generation).
+	 * Retrieve related posts for an arbitrary topic text string.
 	 *
-	 * @param string $topic_text     Topic title or keyword prompt.
-	 * @param int    $limit          Max related articles to retrieve.
+	 * Generates embedding for topic and finds nearest published posts.
+	 *
+	 * @param string $topic_text     Topic prompt or title.
+	 * @param int    $limit          Max related posts to return.
 	 * @param float  $min_similarity Similarity threshold.
 	 * @return array Array of ['id' => int, 'title' => string, 'url' => string, 'similarity' => float]
 	 */
@@ -236,8 +246,8 @@ class AIPS_Related_Posts_Service {
 
 		$candidate_vecs = array();
 		foreach ($all_candidates as $cand) {
-			$cvec = json_decode($cand->embedding, true);
-			if (is_array($cvec) && count($cvec) === count($embedding)) {
+			$cvec = $this->embeddings_repo->decode_embedding($cand->embedding);
+			if (!empty($cvec) && count($cvec) === count($embedding)) {
 				$candidate_vecs[] = array(
 					'id'        => (int) $cand->object_id,
 					'embedding' => $cvec,
@@ -249,7 +259,7 @@ class AIPS_Related_Posts_Service {
 			return array();
 		}
 
-		$neighbors = $this->embeddings_service->find_nearest_neighbors($embedding, $candidate_vecs, $limit * 2);
+		$neighbors = $this->similarity_evaluator->find_top_matches($embedding, $candidate_vecs, $min_similarity, $limit, 'post');
 		$results   = array();
 
 		$prefetch_topic_ids = array();
@@ -261,10 +271,6 @@ class AIPS_Related_Posts_Service {
 		}
 
 		foreach ($neighbors as $n) {
-			if ($n['similarity'] < $min_similarity) {
-				continue;
-			}
-
 			$post = get_post((int) $n['id']);
 			if ($post && 'publish' === $post->post_status) {
 				$results[] = array(
@@ -287,12 +293,13 @@ class AIPS_Related_Posts_Service {
 	 * Retrieve interactive graph data payload for a post.
 	 *
 	 * @param int   $post_id        Post ID.
-	 * @param int   $limit          Max neighbors.
-	 * @param float $min_similarity Threshold.
+	 * @param int    $limit          Max neighbors.
+	 * @param float  $min_similarity Threshold.
+	 * @param string $source_type    Source entity type ('post' or 'topic'). Default 'post'.
 	 * @return array Graph structure {nodes: array, edges: array}.
 	 */
-	public function get_graph_data_for_post($post_id, $limit = 15, $min_similarity = 0.50) {
-		return $this->relationships_repo->get_graph_data('post', $post_id, $limit, $min_similarity);
+	public function get_graph_data_for_post($post_id, $limit = 15, $min_similarity = 0.50, $source_type = 'post') {
+		return $this->relationships_repo->get_graph_data($source_type, $post_id, $limit, $min_similarity);
 	}
 
 	/**

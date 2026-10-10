@@ -85,6 +85,7 @@ class Test_AIPS_Generate_Now_Timing extends WP_UnitTestCase {
 					'is_active'  => 1,
 				);
 			}
+			public function update_post_generation_last_run($author_id, $timestamp) {}
 		};
 
 		$logs_repo = new class {

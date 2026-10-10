@@ -36,41 +36,28 @@ if (!isset($source_group_name_map) || !is_array($source_group_name_map)) {
 if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 	$source_term_ids_map = array();
 }
-$is_embedded_sources_view = !empty($embedded);
 ?>
-<?php if (!$is_embedded_sources_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Trusted Sources', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Add URLs that the AI should reference and cite when generating post content. Assign Sources to Source Groups to allow Authors and Templates to selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<a class="aips-btn aips-btn-secondary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-source-data')); ?>">
-						<span class="dashicons dashicons-archive"></span>
-						<?php esc_html_e('View Source Data', 'ai-post-scheduler'); ?>
-					</a>
-					<button type="button" class="aips-btn aips-btn-secondary" id="aips-manage-source-groups-btn">
-						<span class="dashicons dashicons-category"></span>
-						<?php esc_html_e('Manage Groups', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-btn">
-						<span class="dashicons dashicons-plus-alt2"></span>
-						<?php esc_html_e('Add Source', 'ai-post-scheduler'); ?>
-					</button>
-				</div>
-			</div>
-<?php endif; ?>
-		</div>
-
 		<div class="aips-content-panel">
 			<?php if (!empty($sources)): ?>
 
 			<div class="aips-filter-bar">
+				<div class="aips-filter-left">
+					<?php if (!empty($source_groups)): ?>
+					<label class="screen-reader-text" for="aips-source-filter-group"><?php esc_html_e('Filter by Group:', 'ai-post-scheduler'); ?></label>
+					<select id="aips-source-filter-group" class="aips-form-select">
+						<option value=""><?php esc_html_e('All Groups', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($source_groups as $group): ?>
+						<option value="<?php echo esc_attr($group->term_id); ?>"><?php echo esc_html($group->name); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<?php endif; ?>
+					<label class="screen-reader-text" for="aips-source-filter-status"><?php esc_html_e('Filter by Status:', 'ai-post-scheduler'); ?></label>
+					<select id="aips-source-filter-status" class="aips-form-select">
+						<option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
+						<option value="active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></option>
+						<option value="inactive"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></option>
+					</select>
+				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-source-search"><?php esc_html_e('Search Sources:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-source-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sources…', 'ai-post-scheduler'); ?>">
@@ -78,10 +65,24 @@ $is_embedded_sources_view = !empty($embedded);
 				</div>
 			</div>
 
+			<!-- Toolbar (Bulk Actions) -->
+			<div class="aips-panel-toolbar">
+				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+					<select id="aips-source-bulk-action" class="aips-form-select">
+						<option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
+						<option value="activate"><?php esc_html_e('Activate', 'ai-post-scheduler'); ?></option>
+						<option value="deactivate"><?php esc_html_e('Deactivate', 'ai-post-scheduler'); ?></option>
+						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+					</select>
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-source-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+
 			<div class="aips-panel-body no-padding">
 				<table class="aips-table aips-sources-table" id="aips-sources-table">
 					<thead>
 						<tr>
+							<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-sources-cb-all"></th>
 							<th class="column-label"><?php esc_html_e('Label', 'ai-post-scheduler'); ?></th>
 							<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
 							<th class="column-groups"><?php esc_html_e('Groups', 'ai-post-scheduler'); ?></th>
@@ -115,6 +116,7 @@ $is_embedded_sources_view = !empty($embedded);
 							data-active="<?php echo esc_attr($source->is_active); ?>"
 							data-fetch-interval="<?php echo esc_attr($fetch_interval); ?>"
 							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
+							<th scope="row" class="check-column"><input type="checkbox" class="aips-source-cb" value="<?php echo esc_attr($source->id); ?>"></th>
 							<td class="column-label cell-primary">
 								<span class="aips-source-label-text"><?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?></span>
 								<?php if ($fetch_interval): ?>
@@ -256,11 +258,6 @@ $is_embedded_sources_view = !empty($embedded);
 			<?php endif; ?>
 		</div>
 
-<?php if (!$is_embedded_sources_view) : ?>
-	</div><!-- .aips-page-container -->
-</div><!-- .wrap -->
-<?php endif; ?>
-
 <!-- Add / Edit Source Modal -->
 <div id="aips-source-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true">
 	<div class="aips-modal-content">
@@ -269,7 +266,7 @@ $is_embedded_sources_view = !empty($embedded);
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-source-form" novalidate>
+			<form id="aips-source-form" data-aips-async="true" novalidate>
 				<input type="hidden" name="source_id" id="aips-source-id" value="0">
 
 				<div class="aips-form-row">

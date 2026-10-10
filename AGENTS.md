@@ -5,7 +5,7 @@
 - Project: WordPress plugin for scheduling and generating AI-written posts through Meow Apps AI Engine.
 - Plugin app root: `ai-post-scheduler/`; run Composer, PHPUnit, and plugin scripts from that directory.
 - Bootstrap/version source: `ai-post-scheduler/ai-post-scheduler.php`.
-- Current plugin version: **3.6.5** (`Version:` header and `AIPS_VERSION`).
+- Current plugin version: **3.7.11** (`Version:` header and `AIPS_VERSION`).
 - Runtime targets: PHP 8.2+ and WordPress 5.8+.
 
 ## Key paths
@@ -49,9 +49,11 @@
 - Handle missing Meow Apps AI Engine dependency gracefully.
 
 ## Testing policy
-- No local unit tests by default: do not run `composer test`, PHPUnit, or test setup commands unless the user explicitly asks or the task requires it.
+- No local unit tests by default: do not run PHPUnit or test setup commands unless the user explicitly asks or the task requires it.
 - Prefer focused static/syntax checks for touched files; note unrun test suites in the final response.
-- When full tests are explicitly needed, run from `ai-post-scheduler/`; use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+- When tests are needed, use the dev stack (details in `TESTING.md`): start it with `./start-dev.sh` (needs a terminal or a real `GOOGLE_API_KEY` in `.env`; otherwise `AIPS_SKIP_API_KEY_CHECK=1 ./start-dev.sh`), install dev dependencies once with `make composer-install`, then run `make test ARGS="tests/Test_X.php"` for one file (preferred) or `make test` for everything. Coverage: `make test-coverage` (HTML in `ai-post-scheduler/coverage/`; let it finish). Add `--fresh` to reset the `wp_tests` database.
+- `make test` runs PHPUnit inside the `web` container against a separate `wp_tests` database; it needs no host PHP. Host-side `composer test` / `make test-ci` are for CI parity only; set `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable there.
+- Each `./start-dev.sh` run logs to `.artifacts/start-dev-*.log` (gitignored); check the newest one when the environment misbehaves. Never print or commit API keys from `.env`.
 
 ## Documentation ownership
 - Keep this file concise (about 40–60 lines) and high-level.

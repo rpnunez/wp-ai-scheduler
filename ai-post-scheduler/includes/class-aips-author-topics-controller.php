@@ -67,9 +67,9 @@ class AIPS_Author_Topics_Controller {
 	private $history_service;
 
 	/**
-	 * @var AIPS_Topic_Expansion_Service Service for topic expansion/similarity
+	 * @var AIPS_Similarity_Evaluator Service for topic expansion and similarity evaluation
 	 */
-	private $expansion_service;
+	private $similarity_evaluator;
 
 	/**
 	 * @var AIPS_History_Repository_Interface Repository for history data
@@ -87,14 +87,26 @@ class AIPS_Author_Topics_Controller {
 	private $job_scheduler;
 
 	/**
+	 * @var AIPS_Embeddings_Repository Embeddings repository
+	 */
+	private $embeddings_repo;
+
+	/**
+	 * @var AIPS_Relationships_Repository Relationships repository
+	 */
+	private $relationships_repo;
+
+	/**
 	 * Initialize the controller.
 	 *
-	 * @param AIPS_Topic_Expansion_Service|null  $expansion_service      Topic expansion service.
+	 * @param AIPS_Similarity_Evaluator|null     $similarity_evaluator   Similarity evaluator.
 	 * @param AIPS_History_Repository_Interface|null $history_repository  History repository.
 	 * @param AIPS_Bulk_Generator_Service|null   $bulk_generator_service Bulk generator service.
 	 * @param AIPS_Job_Scheduler|null            $job_scheduler          Job scheduler service.
+	 * @param AIPS_Embeddings_Repository|null    $embeddings_repo        Embeddings repository.
+	 * @param AIPS_Relationships_Repository|null $relationships_repo     Relationships repository.
 	 */
-	public function __construct($expansion_service = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null) {
+	public function __construct($similarity_evaluator = null, ?AIPS_History_Repository_Interface $history_repository = null, $bulk_generator_service = null, ?AIPS_Job_Scheduler $job_scheduler = null, ?AIPS_Embeddings_Repository $embeddings_repo = null, ?AIPS_Relationships_Repository $relationships_repo = null) {
 		$container = AIPS_Container::get_instance();
 		$this->repository             = new AIPS_Author_Topics_Repository();
 		$this->logs_repository        = new AIPS_Author_Topic_Logs_Repository();
@@ -102,10 +114,12 @@ class AIPS_Author_Topics_Controller {
 		$this->post_generator         = new AIPS_Author_Post_Generator();
 		$this->penalty_service        = new AIPS_Topic_Penalty_Service();
 		$this->history_service        = $container->has(AIPS_History_Service_Interface::class) ? $container->make(AIPS_History_Service_Interface::class) : new AIPS_History_Service();
-		$this->expansion_service      = $expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$this->similarity_evaluator   = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator());
 		$this->history_repository     = $history_repository ?: ($container->has(AIPS_History_Repository_Interface::class) ? $container->make(AIPS_History_Repository_Interface::class) : new AIPS_History_Repository());
 		$this->bulk_generator_service = $bulk_generator_service ?: new AIPS_Bulk_Generator_Service( $this->history_service );
 		$this->job_scheduler          = $job_scheduler ?: new AIPS_Job_Scheduler();
+		$this->embeddings_repo        = $embeddings_repo ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
+		$this->relationships_repo     = $relationships_repo ?: ($container->has(AIPS_Relationships_Repository::class) ? $container->make(AIPS_Relationships_Repository::class) : new AIPS_Relationships_Repository());
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -128,6 +142,7 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_get_generation_queue', array($this, 'ajax_get_generation_queue'));
 		add_action('wp_ajax_aips_bulk_generate_from_queue', array($this, 'ajax_bulk_generate_from_queue'));
 		add_action('wp_ajax_aips_get_bulk_generate_estimate', array($this, 'ajax_get_bulk_generate_estimate'));
+		add_action('wp_ajax_aips_save_author_topic', array($this, 'ajax_save_author_topic'));
 	}
 
 	/**
@@ -220,6 +235,10 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 
 		if ($result) {
+			// Purge topic vector embedding and relationships upon rejection
+			$this->embeddings_repo->delete('topic', $topic_id);
+			$this->relationships_repo->delete_for_object('topic', $topic_id);
+
 			// Get topic details for logging
 			$topic = $this->repository->get_by_id($topic_id);
 
@@ -302,6 +321,68 @@ class AIPS_Author_Topics_Controller {
 	}
 
 	/**
+	 * AJAX handler for creating/saving an author topic (e.g. from Content Auditor).
+	 */
+	public function ajax_save_author_topic() {
+		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
+			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
+		}
+
+		if (!current_user_can('manage_options')) {
+			AIPS_Ajax_Response::permission_denied();
+		}
+
+		$author_id   = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$topic_title = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : (isset($_POST['topic_title']) ? sanitize_text_field(wp_unslash($_POST['topic_title'])) : '');
+		$status      = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : 'approved';
+
+		if (!$author_id || empty($topic_title)) {
+			AIPS_Ajax_Response::error(__('Author ID and topic title are required.', 'ai-post-scheduler'));
+		}
+
+		$allowed_statuses = array('pending', 'approved', 'rejected');
+		if (!in_array($status, $allowed_statuses, true)) {
+			$status = 'approved';
+		}
+
+		$topic_data = array(
+			'author_id'    => $author_id,
+			'topic_title'  => $topic_title,
+			'topic_prompt' => isset($_POST['topic_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['topic_prompt'])) : '',
+			'status'       => $status,
+			'score'        => isset($_POST['score']) ? absint($_POST['score']) : 50,
+			'metadata'     => isset($_POST['metadata']) ? sanitize_text_field(wp_unslash($_POST['metadata'])) : '',
+		);
+
+		$topic_id = $this->repository->create($topic_data);
+
+		if ($topic_id) {
+			$this->logs_repository->log(
+				$topic_id,
+				'created',
+				sprintf(
+					/* translators: %s: topic title */
+					__('Topic "%s" created manually.', 'ai-post-scheduler'),
+					$topic_title
+				),
+				get_current_user_id()
+			);
+
+			AIPS_Ajax_Response::success(
+				array(
+					'topic_id'    => $topic_id,
+					'author_id'   => $author_id,
+					'topic_title' => $topic_title,
+					'status'      => $status,
+				),
+				__('Topic saved successfully.', 'ai-post-scheduler')
+			);
+		} else {
+			AIPS_Ajax_Response::error(__('Failed to save topic.', 'ai-post-scheduler'));
+		}
+	}
+
+	/**
 	 * AJAX handler for deleting a topic.
 	 */
 	public function ajax_delete_topic() {
@@ -322,6 +403,8 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->delete($topic_id);
 
 		if ($result) {
+			$this->embeddings_repo->delete('topic', $topic_id);
+			$this->relationships_repo->delete_for_object('topic', $topic_id);
 			AIPS_Ajax_Response::success(array(), __('Topic deleted successfully.', 'ai-post-scheduler'));
 		} else {
 			AIPS_Ajax_Response::error(__('Failed to delete topic.', 'ai-post-scheduler'));
@@ -359,6 +442,16 @@ class AIPS_Author_Topics_Controller {
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_generate_post_from_topic'
 		));
+
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'    => __('Manual post generation from topic', 'ai-post-scheduler'),
+				'topic_id' => (int) $topic_id,
+				'topic'    => (string) $topic->topic_title,
+			),
+			'manual'
+		);
 
 		$history->record_user_action(
 			'manual_topic_generation',
@@ -443,12 +536,23 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
 		}
 
+		$reason          = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
+		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
+
 		$success_count = 0;
 		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'approved', get_current_user_id());
 			if ($result) {
 				$this->logs_repository->log_approval($topic_id, get_current_user_id());
+
+				// Record feedback and apply reward if feedback context is provided
+				if (!empty($reason) || !empty($reason_category)) {
+					$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+					$this->penalty_service->apply_reward($topic_id, $reason_category);
+				}
+
 				$success_count++;
 			} else {
 				$failed_count++;
@@ -485,12 +589,25 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('No topics selected.', 'ai-post-scheduler'));
 		}
 
+		$reason          = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
+		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
+
 		$success_count = 0;
 		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 			if ($result) {
+				$this->embeddings_repo->delete('topic', $topic_id);
+				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$this->logs_repository->log_rejection($topic_id, get_current_user_id());
+
+				// Record feedback and apply penalty if feedback context is provided
+				if (!empty($reason) || !empty($reason_category)) {
+					$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+					$this->penalty_service->apply_penalty($topic_id, $reason_category);
+				}
+
 				$success_count++;
 			} else {
 				$failed_count++;
@@ -547,6 +664,8 @@ class AIPS_Author_Topics_Controller {
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->delete($topic_id);
 			if ($result) {
+				$this->embeddings_repo->delete('topic', $topic_id);
+				$this->relationships_repo->delete_for_object('topic', $topic_id);
 				$success_count++;
 			} else {
 				$failed_count++;
@@ -601,6 +720,16 @@ class AIPS_Author_Topics_Controller {
 			'post_id' => $post_id,
 			'topic_id' => $topic_id
 		));
+
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'    => __('Manual post regeneration', 'ai-post-scheduler'),
+				'post_id'  => (int) $post_id,
+				'topic_id' => (int) $topic_id,
+			),
+			'manual_regeneration'
+		);
 
 		$history->record_user_action(
 			'regenerate_post',
@@ -705,15 +834,19 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
-		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+		$topic_id  = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 5;
+		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 5;
 
 		if (!$topic_id || !$author_id) {
 			AIPS_Ajax_Response::error(__('Invalid topic or author ID.', 'ai-post-scheduler'));
 		}
 
-		$similar_topics = $this->expansion_service->find_similar_topics($topic_id, $author_id, $limit);
+		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
+			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
+			: new AIPS_Similarity_Evaluator();
+
+		$similar_topics = $similarity_evaluator->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
 		foreach ($similar_topics as &$item) {
@@ -721,7 +854,7 @@ class AIPS_Author_Topics_Controller {
 				$topic = $this->repository->get_by_id($item['id']);
 				if ($topic) {
 					$item['topic_title'] = $topic->topic_title;
-					$item['status'] = $topic->status;
+					$item['status']      = $topic->status;
 				}
 			}
 		}
@@ -742,13 +875,17 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 10;
+		$limit     = isset($_POST['limit']) ? absint($_POST['limit']) : 10;
 
 		if (!$author_id) {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 
-		$suggestions = $this->expansion_service->suggest_related_topics($author_id, $limit);
+		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
+			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
+			: new AIPS_Similarity_Evaluator();
+
+		$suggestions = $similarity_evaluator->suggest_related_topics($author_id, $limit);
 
 		AIPS_Ajax_Response::success(array('suggestions' => $suggestions));
 	}
@@ -756,8 +893,11 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * AJAX handler for computing topic embeddings.
 	 *
-	 * Schedules background jobs instead of computing embeddings inline.
-	 * When author_id === 0, schedules one job per author; otherwise schedules a single job.
+	 * Starts the "Author Topic Embeddings" background process (for one author, or
+	 * every author when author_id is 0) instead of computing inline. The process
+	 * runs under the background process manager, so it respects the embeddings
+	 * rate limits and can be paused or stopped from Diagnostics > Background
+	 * Processes.
 	 */
 	public function ajax_compute_topic_embeddings() {
 		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
@@ -768,79 +908,62 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		if (!AIPS_Config::get_instance()->get_option('aips_embeddings_enabled', true)) {
+			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
+		}
+
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$batch_size = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 20;
 
-		// Sanitize batch size
-		$batch_size = max(1, min(100, $batch_size));
+		$result = AIPS_Container::get_instance()
+			->make(AIPS_Background_Process_Manager::class)
+			->control(AIPS_Author_Embeddings_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('author_id' => $author_id));
 
-		$queued_count = 0;
+		if (is_wp_error($result)) {
+			$code = $result->get_error_code();
 
-		if ($author_id === 0) {
-			// Schedule one job per author
-			$authors_repo = new AIPS_Authors_Repository();
-			$authors = $authors_repo->get_all();
-
-			foreach ($authors as $author) {
-				$this->schedule_embeddings_job((int) $author->id, $batch_size, 0);
-				$queued_count++;
+			if ('aips_bg_nothing_to_do' === $code) {
+				AIPS_Ajax_Response::success(array(
+					'message'      => __('Every topic already has an embedding.', 'ai-post-scheduler'),
+					'queued_count' => 0,
+				));
 			}
 
-			$message = sprintf(
-				__('Queued embeddings processing for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
-				$queued_count
-			);
-		} else {
-			// Schedule one job for the given author
-			$this->schedule_embeddings_job($author_id, $batch_size, 0);
-			$queued_count = 1;
+			if ('aips_bg_already_open' === $code) {
+				$run        = ( new AIPS_Background_Process_Repository() )->get_open(AIPS_Author_Embeddings_Process::KEY);
+				$run_author = ($run && isset($run->options['author_id'])) ? (int) $run->options['author_id'] : 0;
 
-			$message = sprintf(
-				__('Queued embeddings processing for author ID %d. Processing will run in the background.', 'ai-post-scheduler'),
-				$author_id
-			);
+				// A paused run processes nothing until it is resumed.
+				if ($run && AIPS_Background_Process_Repository::STATUS_PAUSED === $run->status) {
+					AIPS_Ajax_Response::error(__('Topic embeddings are paused. Resume the run from Diagnostics > Background Processes to continue.', 'ai-post-scheduler'));
+				}
+
+				// The open run covers one other author, or a single author while all were asked for.
+				if ($run && 0 !== $run_author && $run_author !== $author_id) {
+					AIPS_Ajax_Response::error(__('Embeddings for another author are already being processed. Wait for that run to finish, or stop it from Diagnostics > Background Processes, then try again.', 'ai-post-scheduler'));
+				}
+
+				AIPS_Ajax_Response::success(array(
+					'message'      => __('Topic embeddings are already being processed. See Diagnostics > Background Processes.', 'ai-post-scheduler'),
+					'queued_count' => 0,
+				));
+			}
+
+			AIPS_Ajax_Response::error($result->get_error_message());
 		}
 
 		AIPS_Ajax_Response::success(array(
-			'message' => $message,
-			'queued_count' => $queued_count
+			'message'      => sprintf(
+				/* translators: %d: number of topics queued. */
+				_n(
+					'Queued embeddings for %d topic. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
+					'Queued embeddings for %d topics. Processing runs in the background and can be paused from Diagnostics > Background Processes.',
+					(int) $result['total'],
+					'ai-post-scheduler'
+				),
+				(int) $result['total']
+			),
+			'queued_count' => (int) $result['total'],
 		));
-	}
-
-	/**
-	 * Schedule a background embeddings processing job.
-	 *
-	 * @param int $author_id         Author ID.
-	 * @param int $batch_size        Batch size for processing.
-	 * @param int $last_processed_id Last processed topic ID.
-	 * @return void
-	 */
-	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id) {
-		$args = array(
-			'author_id'         => $author_id,
-			'batch_size'        => $batch_size,
-			'last_processed_id' => $last_processed_id,
-		);
-
-		// Schedule to run in a few seconds
-		$timestamp = time() + 5;
-
-		// Prefer Action Scheduler if available, otherwise use centralized job scheduler
-		if (function_exists('as_schedule_single_action')) {
-			call_user_func('as_schedule_single_action', $timestamp, 'aips_process_author_embeddings', $args, 'aips-embeddings');
-		} else {
-			$this->job_scheduler->schedule_simple(
-				'aips_process_author_embeddings',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'author_embeddings',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
 	}
 
 	/**

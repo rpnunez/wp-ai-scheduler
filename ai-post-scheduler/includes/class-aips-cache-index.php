@@ -46,17 +46,66 @@ class AIPS_Cache_Index {
 	private $table_exists = null;
 
 	/**
+	 * In-memory buffer for writes awaiting flush on shutdown.
+	 *
+	 * @var array<string, array<string, mixed>>
+	 */
+	private $pending_writes = array();
+
+	/**
+	 * In-memory buffer for access timestamps awaiting flush on shutdown.
+	 *
+	 * @var array<string, int>
+	 */
+	private $pending_access = array();
+
+	/**
+	 * In-memory map of key_hash to cache_group for pending access timestamps.
+	 *
+	 * @var array<string, string>
+	 */
+	private $pending_access_groups = array();
+
+	/**
+	 * Whether the shutdown hook has been registered for this request.
+	 *
+	 * @var bool
+	 */
+	private $shutdown_registered = false;
+
+	/**
+	 * Buffered entry count (writes + accesses) that triggers an early flush.
+	 *
+	 * Long-running requests (cron batches) would otherwise accumulate an
+	 * unbounded buffer until shutdown.
+	 */
+	const BUFFER_FLUSH_THRESHOLD = 200;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
 		// Use get_option() directly to avoid routing through AIPS_Config's internal
 		// AIPS_Cache instance. AIPS_Config::get_option() with a non-null default
 		// always calls config_cache->set() after reading from the DB, which would
-		// trigger the index on the config cache (record_set() -> upsert_index_row()),
+		// trigger the index on the config cache (record_set() -> prepare_index_row_data()),
 		// which previously called back into AIPS_Config::get_option() and recursed.
 		$enabled           = get_option( 'aips_cache_monitor_index_enabled', '1' );
 		$this->enabled     = ( $enabled !== '0' && $enabled !== 0 && $enabled !== false );
 		$this->max_entries = (int) get_option( 'aips_cache_monitor_max_index_entries', 10000 );
+	}
+
+	/**
+	 * Register the WordPress shutdown hook to flush buffered telemetry in bulk.
+	 *
+	 * @return void
+	 */
+	private function register_shutdown_hook(): void {
+		if ( $this->shutdown_registered ) {
+			return;
+		}
+		$this->shutdown_registered = true;
+		add_action( 'shutdown', array( $this, 'flush_buffer' ) );
 	}
 
 	// -----------------------------------------------------------------------
@@ -65,6 +114,9 @@ class AIPS_Cache_Index {
 
 	/**
 	 * Record or update a cache write in the index.
+	 *
+	 * Buffers the write in memory and flushes to the database on request shutdown
+	 * to prevent blocking runtime cache execution.
 	 *
 	 * @param string $key      Raw cache key.
 	 * @param mixed  $value    Cached value (used only to determine type/size).
@@ -79,8 +131,10 @@ class AIPS_Cache_Index {
 		}
 
 		try {
-			$this->upsert_index_row( $key, $value, $ttl, $group, $context );
-			$this->enforce_max_entries();
+			$composite = $group . ':' . $key;
+			$this->pending_writes[ $composite ] = $this->prepare_index_row_data( $key, $value, $ttl, $group, $context );
+			$this->register_shutdown_hook();
+			$this->maybe_flush_early();
 		} catch ( Throwable $e ) {
 			// Index errors must never break cache writes.
 		}
@@ -94,18 +148,45 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_delete( string $key, string $group ): void {
+		$composite = $group . ':' . $key;
+		$key_hash  = hash( 'sha256', $composite );
+		unset( $this->pending_writes[ $composite ], $this->pending_access[ $key_hash ], $this->pending_access_groups[ $key_hash ] );
+
 		if (!$this->enabled || !$this->table_ready()) {
 			return;
 		}
 
 		try {
 			global $wpdb;
-			$table    = $wpdb->prefix . 'aips_cache_index';
-			$key_hash = hash( 'sha256', $group . ':' . $key );
+			$table = $wpdb->prefix . 'aips_cache_index';
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->delete( $table, array( 'key_hash' => $key_hash ), array( '%s' ) );
 		} catch ( Throwable $e ) {
 			// Swallow.
+		}
+	}
+
+	/**
+	 * Remove all buffered entries for a specific cache group from memory.
+	 *
+	 * Purges any unwritten sets or pending access timestamps for the group
+	 * so they are not re-inserted on shutdown after a group flush.
+	 *
+	 * @param string $group Cache group.
+	 * @return void
+	 */
+	public function record_delete_group( string $group ): void {
+		$prefix = $group . ':';
+		foreach ( $this->pending_writes as $composite => $row ) {
+			if ( 0 === strpos( $composite, $prefix ) || ( isset( $row['cache_group'] ) && $row['cache_group'] === $group ) ) {
+				unset( $this->pending_writes[ $composite ] );
+			}
+		}
+
+		foreach ( $this->pending_access_groups as $key_hash => $entry_group ) {
+			if ( $entry_group === $group ) {
+				unset( $this->pending_access[ $key_hash ], $this->pending_access_groups[ $key_hash ] );
+			}
 		}
 	}
 
@@ -115,6 +196,10 @@ class AIPS_Cache_Index {
 	 * @return void
 	 */
 	public function record_flush(): void {
+		$this->pending_writes        = array();
+		$this->pending_access        = array();
+		$this->pending_access_groups = array();
+
 		if (!$this->enabled || !$this->table_ready()) {
 			return;
 		}
@@ -132,6 +217,9 @@ class AIPS_Cache_Index {
 	/**
 	 * Update the last_accessed_at timestamp for an index entry on cache read.
 	 *
+	 * Buffers the access timestamp in memory and flushes in bulk on request shutdown
+	 * rather than issuing synchronous SQL updates during runtime reads.
+	 *
 	 * @param string $key   Cache key.
 	 * @param string $group Cache group.
 	 * @return void
@@ -142,14 +230,168 @@ class AIPS_Cache_Index {
 		}
 
 		try {
-			global $wpdb;
-			$table    = $wpdb->prefix . 'aips_cache_index';
-			$key_hash = hash( 'sha256', $group . ':' . $key );
-			$now      = AIPS_DateTime::now()->timestamp();
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->update( $table, array( 'last_accessed_at' => $now ), array( 'key_hash' => $key_hash ), array( '%d' ), array( '%s' ) );
+			$key_hash                                  = hash( 'sha256', $group . ':' . $key );
+			$this->pending_access[ $key_hash ]        = AIPS_DateTime::now()->timestamp();
+			$this->pending_access_groups[ $key_hash ] = $group;
+			$this->register_shutdown_hook();
+			$this->maybe_flush_early();
 		} catch ( Throwable $e ) {
 			// Swallow.
+		}
+	}
+
+	/**
+	 * Flush buffered writes and access timestamps to the database.
+	 *
+	 * Automatically called on WordPress 'shutdown' hook.
+	 *
+	 * @return void
+	 */
+	public function flush_buffer(): void {
+		if (!$this->enabled || !$this->table_ready()) {
+			$this->pending_writes        = array();
+			$this->pending_access        = array();
+			$this->pending_access_groups = array();
+			return;
+		}
+
+		if (!empty($this->pending_writes)) {
+			$this->flush_pending_writes();
+
+			// Trim once per flush rather than once per write: the COUNT(*)
+			// that enforce_max_entries() runs is what the buffer exists to avoid.
+			try {
+				$this->enforce_max_entries();
+			} catch ( Throwable $e ) {
+				// Swallow.
+			}
+		}
+
+		if (!empty($this->pending_access)) {
+			$this->flush_pending_access();
+		}
+	}
+
+	/**
+	 * Flush the buffers before shutdown once they exceed the threshold.
+	 *
+	 * @return void
+	 */
+	private function maybe_flush_early(): void {
+		if (count( $this->pending_writes ) + count( $this->pending_access ) >= self::BUFFER_FLUSH_THRESHOLD) {
+			$this->flush_buffer();
+		}
+	}
+
+	/**
+	 * Flush buffered cache writes to the database in chunks.
+	 *
+	 * @return void
+	 */
+	private function flush_pending_writes(): void {
+		$writes = $this->pending_writes;
+		$this->pending_writes = array();
+
+		if (empty($writes)) {
+			return;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache_index';
+
+		$chunks = array_chunk( $writes, 50, true );
+
+		foreach ($chunks as $chunk) {
+			$values_sql    = array();
+			$prepared_args = array();
+
+			foreach ($chunk as $row) {
+				$values_sql[]    = '(%s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %d, %d, %d, %s, %d)';
+				$prepared_args[] = $row['cache_key'];
+				$prepared_args[] = $row['key_hash'];
+				$prepared_args[] = $row['cache_group'];
+				$prepared_args[] = $row['driver'];
+				$prepared_args[] = $row['tier'];
+				$prepared_args[] = $row['operation_id'];
+				$prepared_args[] = $row['repository_class'];
+				$prepared_args[] = $row['tags'];
+				$prepared_args[] = $row['domain'];
+				$prepared_args[] = $row['ttl'];
+				$prepared_args[] = $row['created_at'];
+				$prepared_args[] = $row['updated_at'];
+				$prepared_args[] = $row['expires_at'];
+				$prepared_args[] = $row['value_size'];
+				$prepared_args[] = $row['value_type'];
+				$prepared_args[] = $row['last_accessed_at'];
+			}
+
+			$values_clause = implode( ', ', $values_sql );
+			$query = "INSERT INTO `{$table}` 
+				(cache_key, key_hash, cache_group, driver, tier, operation_id, repository_class, tags, domain, ttl, created_at, updated_at, expires_at, value_size, value_type, last_accessed_at)
+				VALUES {$values_clause}
+				ON DUPLICATE KEY UPDATE
+				cache_key = VALUES(cache_key),
+				driver = VALUES(driver),
+				tier = VALUES(tier),
+				operation_id = VALUES(operation_id),
+				repository_class = VALUES(repository_class),
+				tags = VALUES(tags),
+				domain = VALUES(domain),
+				ttl = VALUES(ttl),
+				updated_at = VALUES(updated_at),
+				expires_at = VALUES(expires_at),
+				value_size = VALUES(value_size),
+				value_type = VALUES(value_type),
+				last_accessed_at = VALUES(last_accessed_at)";
+
+			try {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
+				$wpdb->query( $wpdb->prepare( $query, $prepared_args ) );
+			} catch ( Throwable $e ) {
+				// Swallow.
+			}
+		}
+	}
+
+	/**
+	 * Flush buffered access timestamps to the database.
+	 *
+	 * @return void
+	 */
+	private function flush_pending_access(): void {
+		$access                      = $this->pending_access;
+		$this->pending_access        = array();
+		$this->pending_access_groups = array();
+
+		if (empty($access)) {
+			return;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'aips_cache_index';
+
+		$by_time = array();
+		foreach ($access as $key_hash => $timestamp) {
+			$by_time[ $timestamp ][] = $key_hash;
+		}
+
+		foreach ($by_time as $timestamp => $hashes) {
+			$chunks = array_chunk( $hashes, 100 );
+			foreach ($chunks as $chunk) {
+				$placeholders = implode( ',', array_fill( 0, count( $chunk ), '%s' ) );
+				$args         = array_merge( array( (int) $timestamp ), $chunk );
+				try {
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+					$wpdb->query(
+						$wpdb->prepare(
+							"UPDATE `{$table}` SET last_accessed_at = %d WHERE key_hash IN ($placeholders)",
+							$args
+						)
+					);
+				} catch ( Throwable $e ) {
+					// Swallow.
+				}
+			}
 		}
 	}
 
@@ -171,6 +413,8 @@ class AIPS_Cache_Index {
 			$deleted = $wpdb->query(
 				$wpdb->prepare( "DELETE FROM `{$table}` WHERE expires_at > 0 AND expires_at < %d", $now )
 			);
+
+			$this->enforce_max_entries();
 
 			return (int) $deleted;
 		} catch ( Throwable $e ) {
@@ -338,19 +582,16 @@ class AIPS_Cache_Index {
 	}
 
 	/**
-	 * Insert or update a single index row.
+	 * Prepare normalized row data for a cache index entry.
 	 *
 	 * @param string $key     Cache key.
 	 * @param mixed  $value   Cached value.
 	 * @param int    $ttl     TTL in seconds.
 	 * @param string $group   Cache group.
 	 * @param array  $context Additional context metadata.
-	 * @return void
+	 * @return array<string, mixed>
 	 */
-	private function upsert_index_row( string $key, $value, int $ttl, string $group, array $context ): void {
-		global $wpdb;
-
-		$table     = $wpdb->prefix . 'aips_cache_index';
+	private function prepare_index_row_data( string $key, $value, int $ttl, string $group, array $context ): array {
 		$composite = $group . ':' . $key;
 		$key_hash  = hash( 'sha256', $composite );
 		$now       = AIPS_DateTime::now()->timestamp();
@@ -368,28 +609,23 @@ class AIPS_Cache_Index {
 		$repo_class = isset( $context['repository_class'] ) ? sanitize_text_field( $context['repository_class'] ) : '';
 		$domain     = isset( $context['domain'] ) ? sanitize_text_field( $context['domain'] ) : '';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$wpdb->replace(
-			$table,
-			array(
-				'cache_key'        => (string) $key,
-				'key_hash'         => $key_hash,
-				'cache_group'      => $group,
-				'driver'           => (string) $driver_name,
-				'tier'             => $tier,
-				'operation_id'     => $op_id,
-				'repository_class' => $repo_class,
-				'tags'             => $tags_raw,
-				'domain'           => $domain,
-				'ttl'              => $ttl,
-				'created_at'       => $now,
-				'updated_at'       => $now,
-				'expires_at'       => $expires,
-				'value_size'       => $value_size,
-				'value_type'       => $value_type,
-				'last_accessed_at' => 0,
-			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%d' )
+		return array(
+			'cache_key'        => (string) $key,
+			'key_hash'         => $key_hash,
+			'cache_group'      => $group,
+			'driver'           => (string) $driver_name,
+			'tier'             => $tier,
+			'operation_id'     => $op_id,
+			'repository_class' => $repo_class,
+			'tags'             => $tags_raw,
+			'domain'           => $domain,
+			'ttl'              => $ttl,
+			'created_at'       => $now,
+			'updated_at'       => $now,
+			'expires_at'       => $expires,
+			'value_size'       => $value_size,
+			'value_type'       => $value_type,
+			'last_accessed_at' => 0,
 		);
 	}
 

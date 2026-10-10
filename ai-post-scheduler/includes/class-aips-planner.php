@@ -187,7 +187,10 @@ class AIPS_Planner {
         $result = $this->bulk_generator_service->run(
             $topics,
             function ( $topic ) use ( $generator, $template ) {
-                return $generator->generate_post($template, null, $topic);
+                return $generator->generate_post($template, null, $topic, array(
+                    'creation_method' => 'bulk_generate',
+                    'trigger_context' => array('detail' => __('Planner bulk generation', 'ai-post-scheduler')),
+                ));
             },
             array(
                 'queue_job_type'  => 'planner_post',

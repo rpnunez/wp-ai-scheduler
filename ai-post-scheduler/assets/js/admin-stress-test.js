@@ -3,7 +3,8 @@
  * Stress Test admin page JS.
  *
  * Responsibilities:
- *  - Run a single case, or every case in sequence via "Run All"
+ *  - Run a single case, or the selected cases in sequence via "Run Selected"
+ *  - Stop the queue at any time via "Stop All Tests"
  *  - Render each result: status indicator, summary line, elapsed time
  *  - Expand a row to reveal the AI request/response and the AI vs plugin values
  *  - Show a pass/fail banner and per-case summary once a full run finishes
@@ -42,8 +43,11 @@
 		/** @type {boolean} Guards against overlapping runs. */
 		running: false,
 
-		/** @type {boolean} Set by Reset/cleanup to stop an in-flight Run All. */
+		/** @type {boolean} Set by Stop/Reset to immediately abort runs. */
 		aborted: false,
+
+		/** @type {jqXHR|null} In-flight AJAX request for instant abort. */
+		activeXhr: null,
 
 		init: function () {
 			if (!$('#aips-stress-test').length && !$('#aips-stress-test-history').length) {
@@ -54,14 +58,21 @@
 			this.loadRunHistory();
 		},
 
+		getAjaxUrl: function () {
+			return (window.aipsAjax && window.aipsAjax.ajaxUrl) ? window.aipsAjax.ajaxUrl : (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
+		},
+
 		bindEvents: function () {
 			$(document)
-				.on('click', '#aips-stress-run-all', this.handleRunAll.bind(this))
+				.on('click', '#aips-stress-run-selected', this.handleRunSelected.bind(this))
+				.on('click', '#aips-stress-stop-all', this.handleStopAll.bind(this))
 				.on('click', '#aips-stress-reset', this.handleReset.bind(this))
 				.on('click', '#aips-stress-export', this.handleExport.bind(this))
 				.on('click', '#aips-stress-cleanup', this.handleCleanup.bind(this))
 				.on('click', '.aips-stress-run-one', this.handleRunOne.bind(this))
 				.on('click', '.aips-stress-row', this.handleRowToggle.bind(this))
+				.on('change', '#aips-stress-toggle-all', this.handleToggleAllCases.bind(this))
+				.on('change', '.aips-stress-case-checkbox', this.handleCaseCheckboxChange.bind(this))
 				// Keyboard parity for the row: the toggle button carries the
 				// aria state, so Enter/Space on it drives the same toggle.
 				.on('keydown', '.aips-stress-toggle', this.handleToggleKeydown.bind(this))
@@ -75,9 +86,75 @@
 		},
 
 		// -------------------------------------------------------------------
+		// Case selection
+		// -------------------------------------------------------------------
+
+		/**
+		 * Toggle all test case checkboxes from the header checkbox.
+		 *
+		 * @param {Event} e
+		 */
+		handleToggleAllCases: function (e) {
+			var isChecked = $(e.currentTarget).is(':checked');
+
+			$(e.currentTarget).prop('indeterminate', false);
+			$('.aips-stress-case-checkbox').prop('checked', isChecked);
+			this.updateRunButtonLabel();
+		},
+
+		/**
+		 * Sync the header checkbox (checked / indeterminate) and the Run
+		 * Selected label when an individual case checkbox changes.
+		 */
+		handleCaseCheckboxChange: function () {
+			var total = $('.aips-stress-case-checkbox').length;
+			var checked = $('.aips-stress-case-checkbox:checked').length;
+
+			$('#aips-stress-toggle-all')
+				.prop('checked', total > 0 && checked === total)
+				.prop('indeterminate', checked > 0 && checked < total);
+
+			this.updateRunButtonLabel();
+		},
+
+		/**
+		 * Update the Run Selected button text with the number of selected
+		 * cases when only a subset is selected.
+		 */
+		updateRunButtonLabel: function () {
+			var total = $('.aips-stress-case-checkbox').length;
+			var checked = $('.aips-stress-case-checkbox:checked').length;
+			var $label = $('#aips-stress-run-selected .aips-stress-run-label');
+
+			if (!$label.length) {
+				return;
+			}
+
+			if (checked > 0 && checked < total) {
+				$label.text(t('runSelectedCount', 'Run Selected (%d)').replace('%d', checked));
+			} else {
+				$label.text(t('runSelected', 'Run Selected'));
+			}
+		},
+
+		// -------------------------------------------------------------------
 		// Running
 		// -------------------------------------------------------------------
 
+		/**
+		 * Swap the toolbar between its idle and running states.
+		 *
+		 * While running, Run Selected and every per-row Run button are
+		 * disabled/hidden and Stop All Tests is shown. Visibility is driven
+		 * solely by the `hidden` attribute (see stress-test.css).
+		 *
+		 * @param {boolean} isRunning
+		 */
+		setRunningUi: function (isRunning) {
+			$('.aips-stress-run-one').prop('disabled', isRunning);
+			$('#aips-stress-run-selected').prop('hidden', isRunning).prop('disabled', isRunning);
+			$('#aips-stress-stop-all').prop('hidden', !isRunning);
+		},
 		/**
 		 * Run one case from its row button.
 		 *
@@ -95,20 +172,23 @@
 			this.running = true;
 			this.aborted = false;
 			$('#aips-stress-summary').attr('hidden', true);
+			this.setRunningUi(true);
 
 			var self = this;
 
 			this.runCase(caseId).always(function () {
 				self.running = false;
+				self.activeXhr = null;
+				self.setRunningUi(false);
 			});
 		},
 
 		/**
-		 * Run every case in order, then show the summary banner.
+		 * Run selected cases in order, then show the summary banner.
 		 *
 		 * @param {Event} e
 		 */
-		handleRunAll: function (e) {
+		handleRunSelected: function (e) {
 			e.preventDefault();
 
 			if (this.running) {
@@ -116,20 +196,23 @@
 			}
 
 			var self = this;
-			var $rows = $('.aips-stress-row');
-			var caseIds = $rows.map(function () {
-				return $(this).data('case');
-			}).get();
-
-			if (!caseIds.length) {
+			var $checked = $('.aips-stress-case-checkbox:checked');
+			if (!$checked.length) {
+				if (AIPS.Utilities && AIPS.Utilities.showToast) {
+					AIPS.Utilities.showToast(t('selectAtLeastOne', 'Please select at least one test case to run.'), 'warning');
+				}
 				return;
 			}
 
+			var caseIds = $checked.map(function () {
+				return $(this).val();
+			}).get();
+
 			this.running = true;
 			this.aborted = false;
-			this.resetRows();
+			this.resetRows(caseIds);
 			$('#aips-stress-summary').attr('hidden', true);
-			$('#aips-stress-run-all').prop('disabled', true);
+			this.setRunningUi(true);
 			this.showProgress(0, caseIds.length);
 
 			var index = 0;
@@ -142,7 +225,8 @@
 			function next() {
 				if (self.aborted || index >= caseIds.length) {
 					self.running = false;
-					$('#aips-stress-run-all').prop('disabled', false);
+					self.activeXhr = null;
+					self.setRunningUi(false);
 					self.hideProgress();
 
 					if (!self.aborted) {
@@ -164,6 +248,69 @@
 		},
 
 		/**
+		 * Immediately stop all running tests.
+		 *
+		 * Aborts the in-flight request and halts the queue on the client. The
+		 * server cannot be interrupted mid-request, so a case that was already
+		 * running may still finish and create (private) test data; the
+		 * "Delete Data" count is therefore re-synced from the server.
+		 *
+		 * @param {Event} [e]
+		 */
+		handleStopAll: function (e) {
+			if (e) {
+				e.preventDefault();
+			}
+
+			this.aborted = true;
+
+			if (this.activeXhr) {
+				try {
+					this.activeXhr.abort();
+				} catch (err) {
+					// Ignore abort error
+				}
+				this.activeXhr = null;
+			}
+
+			this.running = false;
+
+			var self = this;
+			$('.aips-stress-row[data-status="running"]').each(function () {
+				self.setRowState($(this), 'idle', t('stopped', 'Stopped'), '—');
+			});
+
+			this.setRunningUi(false);
+			this.hideProgress();
+			this.refreshTestDataCount();
+		},
+
+		/**
+		 * Re-sync the "Delete Data" badge with the server-side count of
+		 * leftover test posts and attachments.
+		 *
+		 * @returns {void}
+		 */
+		refreshTestDataCount: function () {
+			var self = this;
+
+			$.ajax({
+				url: this.getAjaxUrl(),
+				type: 'POST',
+				data: {
+					action: 'aips_stress_test_status',
+					nonce: settings.nonce
+				}
+			}).done(function (response) {
+				var data = response && response.success && response.data ? response.data.test_data : null;
+
+				if (data) {
+					self.setTestDataCount((parseInt(data.posts, 10) || 0) + (parseInt(data.attachments, 10) || 0));
+				}
+			});
+		},
+
+		/**
 		 * Dispatch a single case and render whatever comes back.
 		 *
 		 * @param {string} caseId
@@ -175,8 +322,8 @@
 
 			this.setRowState($row, 'running', t('running', 'Running…'), '—');
 
-			return $.ajax({
-				url: aipsAjax.ajaxUrl,
+			this.activeXhr = $.ajax({
+				url: this.getAjaxUrl(),
 				type: 'POST',
 				// A full pipeline case can legitimately take minutes; the default
 				// timeout would abort a run that is still healthy.
@@ -187,6 +334,10 @@
 					'case': caseId
 				}
 			}).done(function (response) {
+				if (self.aborted) {
+					return;
+				}
+
 				if (response && response.success && response.data && response.data.result) {
 					self.renderResult(response.data.result);
 					return;
@@ -198,12 +349,21 @@
 
 				self.renderResult(self.errorResult(caseId, message));
 			}).fail(function (xhr, textStatus) {
+				if (self.aborted || textStatus === 'abort') {
+					self.setRowState($row, 'idle', t('stopped', 'Stopped'), '—');
+					return;
+				}
+
 				var message = (textStatus === 'timeout')
 					? t('timedOut', 'The request timed out.')
 					: t('requestFailed', 'Request failed.');
 
 				self.renderResult(self.errorResult(caseId, message));
+			}).always(function () {
+				self.activeXhr = null;
 			});
+
+			return this.activeXhr;
 		},
 
 		/**
@@ -578,7 +738,7 @@
 		 * @param {Event} e
 		 */
 		handleRowToggle: function (e) {
-			if ($(e.target).closest('.aips-stress-run-one').length) {
+			if ($(e.target).closest('.aips-stress-run-one, input, label').length) {
 				return;
 			}
 
@@ -756,26 +916,39 @@
 		 * @param {Event} e
 		 */
 		handleReset: function (e) {
-			e.preventDefault();
+			if (e) {
+				e.preventDefault();
+			}
 
-			this.aborted = true;
+			this.handleStopAll();
 			this.resetRows();
 			$('#aips-stress-summary').attr('hidden', true);
 			this.hideProgress();
 		},
 
-		resetRows: function () {
+		resetRows: function (targetCaseIds) {
 			var self = this;
+			var hasFilter = Array.isArray(targetCaseIds) && targetCaseIds.length > 0;
 
 			$('.aips-stress-row').each(function () {
 				var $row = $(this);
+				if (hasFilter && targetCaseIds.indexOf($row.data('case')) === -1) {
+					return;
+				}
 
 				$row.removeData('result').removeClass('is-expanded');
 				self.setRowState($row, 'idle', t('notRun', 'Not run'), '—');
 				$row.find('.aips-stress-toggle').attr('aria-expanded', 'false');
 			});
 
-			$('.aips-stress-details-row').attr('hidden', true).find('.aips-stress-details').empty();
+			if (hasFilter) {
+				targetCaseIds.forEach(function (caseId) {
+					$('#aips-stress-details-' + caseId).attr('hidden', true).find('.aips-stress-details').empty();
+				});
+			} else {
+				$('.aips-stress-details-row').attr('hidden', true).find('.aips-stress-details').empty();
+			}
+
 			$('#aips-stress-export').prop('disabled', true);
 		},
 
@@ -898,11 +1071,10 @@
 
 		runCleanup: function () {
 			var self = this;
+			var $btn = $('#aips-stress-cleanup');
 
-			$('#aips-stress-cleanup').prop('disabled', true);
-
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
+			var req = $.ajax({
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_cleanup',
@@ -918,8 +1090,11 @@
 				AIPS.Utilities.showToast(t('requestFailed', 'Request failed.'), 'error');
 			}).fail(function () {
 				AIPS.Utilities.showToast(t('requestFailed', 'Request failed.'), 'error');
-			}).always(function () {
-				$('#aips-stress-cleanup').prop('disabled', false);
+			});
+
+			AIPS.Utilities.withLock($btn, req, {
+				loadingText: t('cleaningUp', 'Cleaning up…'),
+				timeout: 60000
 			});
 		},
 
@@ -993,7 +1168,7 @@
 			}
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: this.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_get_history',
@@ -1046,7 +1221,7 @@
 			};
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_save_run',
@@ -1134,7 +1309,7 @@
 			$('#aips-stress-diff-body').html(spinnerHtml);
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_get_run',
@@ -1172,7 +1347,7 @@
 			$('#aips-stress-diff-body').html(spinnerHtml);
 
 			$.ajax({
-				url: aipsAjax.ajaxUrl,
+				url: self.getAjaxUrl(),
 				type: 'POST',
 				data: {
 					action: 'aips_stress_test_diff_runs',

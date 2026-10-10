@@ -83,6 +83,51 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test get_by_source alias.
+	 */
+	public function test_get_by_source() {
+		$vector = array( 0.4, 0.5, 0.6 );
+		$this->repo->upsert(
+			'topic',
+			55,
+			$vector,
+			'test-model',
+			3,
+			md5( 'sample topic' ),
+			''
+		);
+
+		$record = $this->repo->get_by_source( 'topic', 55 );
+		$this->assertNotNull( $record );
+		$this->assertEquals( 'topic', $record->object_type );
+		$this->assertEquals( 55, (int) $record->object_id );
+		$this->assertEquals( 3, (int) $record->dimensions );
+	}
+
+	/**
+	 * Test helper get_by_topic_id and delete_by_topic_id.
+	 */
+	public function test_get_and_delete_by_topic_id() {
+		$vector = array( 0.7, 0.8, 0.9 );
+		$this->repo->upsert(
+			'topic',
+			88,
+			$vector,
+			'test-model',
+			3,
+			'',
+			''
+		);
+
+		$record = $this->repo->get_by_topic_id( 88 );
+		$this->assertNotNull( $record );
+		$this->assertEquals( 88, (int) $record->object_id );
+
+		$this->repo->delete_by_topic_id( 88 );
+		$this->assertNull( $this->repo->get_by_topic_id( 88 ) );
+	}
+
+	/**
 	 * Test delete by object and delete by post id.
 	 */
 	public function test_delete_and_delete_by_post_id() {
@@ -156,4 +201,57 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 		$this->repo->clear_all();
 		$this->assertEquals( 0, $this->repo->get_total_indexed() );
 	}
+
+	/**
+	 * Test encode_embedding and decode_embedding binary float32 roundtrip.
+	 */
+	public function test_encode_decode_roundtrip() {
+		$original = array( 0.12345, -0.67891, 0.0001, 123.456 );
+		$encoded  = $this->repo->encode_embedding( $original );
+		$this->assertIsString( $encoded );
+		$this->assertEquals( count( $original ) * 4, strlen( $encoded ) );
+
+		$decoded = $this->repo->decode_embedding( $encoded );
+		$this->assertCount( count( $original ), $decoded );
+		for ( $i = 0; $i < count( $original ); $i++ ) {
+			$this->assertEqualsWithDelta( $original[ $i ], $decoded[ $i ], 0.00001 );
+		}
+	}
+
+	/**
+	 * Test decode_embedding backward-compatibility with legacy JSON strings.
+	 */
+	public function test_decode_legacy_json_embedding() {
+		$legacy_json = '[0.15, -0.25, 0.99]';
+		$decoded     = $this->repo->decode_embedding( $legacy_json );
+		$this->assertCount( 3, $decoded );
+		$this->assertEqualsWithDelta( 0.15, $decoded[0], 0.00001 );
+		$this->assertEqualsWithDelta( -0.25, $decoded[1], 0.00001 );
+		$this->assertEqualsWithDelta( 0.99, $decoded[2], 0.00001 );
+	}
+
+	/**
+	 * Test decode_embedding with array passthrough and empty/null inputs.
+	 */
+	public function test_decode_array_and_empty() {
+		$arr = array( 0.5, 0.75 );
+		$this->assertEquals( array( 0.5, 0.75 ), $this->repo->decode_embedding( $arr ) );
+		$this->assertEquals( array(), $this->repo->decode_embedding( '' ) );
+		$this->assertEquals( array(), $this->repo->decode_embedding( null ) );
+	}
+
+	/**
+	 * Test format_vector_summary metadata helper.
+	 */
+	public function test_format_vector_summary() {
+		$vector  = array( 0.1, 0.2, 0.3, 0.4, 0.5, 0.6 );
+		$encoded = $this->repo->encode_embedding( $vector );
+		$summary = $this->repo->format_vector_summary( $encoded, 3 );
+
+		$this->assertEquals( 6, $summary['dimensions'] );
+		$this->assertCount( 3, $summary['preview'] );
+		$this->assertEquals( 24, $summary['byte_size'] );
+		$this->assertTrue( $summary['is_binary'] );
+	}
 }
+

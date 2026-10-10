@@ -435,6 +435,26 @@ class AIPS_Notifications {
 		$this->senders->research_topics_ready($payload);
 	}
 
+	/**
+	 * Send a posts-consolidated notification.
+	 *
+	 * @param array $payload Consolidation payload (see AIPS_Consolidation_Service).
+	 * @return void
+	 */
+	public function post_consolidated(array $payload) {
+		$this->senders->post_consolidated($payload);
+	}
+
+	/**
+	 * Notify that a scheduled duplicate scan found new groups to review.
+	 *
+	 * @param array $payload Keys: new_groups, group_count, post_count.
+	 * @return void
+	 */
+	public function duplicate_groups_found(array $payload) {
+		$this->senders->duplicate_groups_found($payload);
+	}
+
 
 	/**
 	 * Persist a DB notification via the repository.

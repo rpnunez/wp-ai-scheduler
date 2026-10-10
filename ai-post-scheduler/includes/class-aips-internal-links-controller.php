@@ -105,13 +105,13 @@ class AIPS_Internal_Links_Controller {
 	/**
 	 * Render the Internal Links admin page.
 	 *
-	 * @param bool $embedded Whether the page is being rendered inside another admin page.
 	 * @return void
 	 */
-	public function render_page($embedded = false) {
+	public function render_page() {
 		$summary       = $this->service->get_dashboard_summary();
 		$links_repo    = $this->links_repo;
 		$service       = $this->service;
+		$bg_snapshot   = $this->get_indexing_process_snapshot();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/internal-links.php';
 	}
@@ -138,9 +138,11 @@ class AIPS_Internal_Links_Controller {
 		$per_page = max(1, min(100, absint(isset($_POST['per_page']) ? wp_unslash($_POST['per_page']) : 20)));
 		$status   = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
 		$search   = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
+		$origin   = isset($_POST['origin']) ? sanitize_key(wp_unslash($_POST['origin'])) : '';
+		$origin   = in_array($origin, array('outbound', 'inbound'), true) ? $origin : '';
 
-		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search);
-		$total = $this->links_repo->get_paginated_count($status, $search);
+		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search, $origin);
+		$total = $this->links_repo->get_paginated_count($status, $search, $origin);
 
 		// Enrich items with edit URLs
 		foreach ($items as $item) {
@@ -174,12 +176,16 @@ class AIPS_Internal_Links_Controller {
 		$post_id_raw = isset($_POST['post_id']) ? wp_unslash($_POST['post_id']) : 0;
 		$post_id     = absint($post_id_raw);
 
-		$max_suggestions_raw = isset($_POST['max_suggestions']) ? wp_unslash($_POST['max_suggestions']) : AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS;
-		$max_suggestions     = is_numeric($max_suggestions_raw) ? (int) $max_suggestions_raw : (int) AIPS_Internal_Links_Service::DEFAULT_MAX_SUGGESTIONS;
+		$evaluator           = $this->service->get_similarity_evaluator();
+		$default_max         = $evaluator->get_default_max_suggestions();
+		$default_threshold   = $evaluator->get_default_threshold('internal_links');
+
+		$max_suggestions_raw = isset($_POST['max_suggestions']) ? wp_unslash($_POST['max_suggestions']) : $default_max;
+		$max_suggestions     = is_numeric($max_suggestions_raw) ? (int) $max_suggestions_raw : (int) $default_max;
 		$max_suggestions     = max(1, min(20, $max_suggestions));
 
-		$threshold_raw = isset($_POST['threshold']) ? wp_unslash($_POST['threshold']) : AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
-		$threshold     = is_numeric($threshold_raw) ? (float) $threshold_raw : (float) AIPS_Internal_Links_Service::DEFAULT_SIMILARITY_THRESHOLD;
+		$threshold_raw = isset($_POST['threshold']) ? wp_unslash($_POST['threshold']) : $default_threshold;
+		$threshold     = is_numeric($threshold_raw) ? (float) $threshold_raw : (float) $default_threshold;
 		$threshold     = max(0, min(1, $threshold));
 		if (!$post_id) {
 			AIPS_Ajax_Response::error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
@@ -319,10 +325,19 @@ class AIPS_Internal_Links_Controller {
 			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
-		$this->schedule_indexing_batch(0);
+		// The indexing job runs under the background process manager, which
+		// applies the embeddings rate limits and supports pause/resume/stop.
+		$result = AIPS_Container::get_instance()
+			->make(AIPS_Background_Process_Manager::class)
+			->control(AIPS_Internal_Links_Indexing_Process::KEY, AIPS_Background_Process_Manager::ACTION_START);
+
+		if (is_wp_error($result)) {
+			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
+		}
 
 		AIPS_Ajax_Response::success(array(
-			'message' => __('Indexing started. Posts will be indexed in the background.', 'ai-post-scheduler'),
+			'message'  => __('Indexing started. Posts will be indexed in the background.', 'ai-post-scheduler'),
+			'snapshot' => $result,
 		));
 	}
 
@@ -714,6 +729,23 @@ class AIPS_Internal_Links_Controller {
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Current state of the background indexing job, for the first paint of the page.
+	 *
+	 * @return array Snapshot, or an empty array when it cannot be read.
+	 */
+	private function get_indexing_process_snapshot() {
+		try {
+			$process = AIPS_Container::get_instance()
+				->make(AIPS_Background_Process_Manager::class)
+				->get(AIPS_Internal_Links_Indexing_Process::KEY);
+
+			return $process ? $process->get_snapshot() : array();
+		} catch (\Throwable $e) {
+			return array();
+		}
+	}
 
 	/**
 	 * Check whether the embeddings service is available.

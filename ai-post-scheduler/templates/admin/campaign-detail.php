@@ -195,7 +195,7 @@ $activity_summary = static function($details) {
 				<?php if (!empty($templates)) : ?>
 					<ul>
 						<?php foreach ($templates as $template) : ?>
-							<li><a href="<?php echo esc_url(add_query_arg(array('page' => 'aips-templates', 'edit' => absint($template->id)), admin_url('admin.php'))); ?>"><?php echo esc_html($template->name); ?></a></li>
+							<li><a href="<?php echo esc_url(add_query_arg(array('page' => 'aips-studio', 'tab' => 'templates', 'edit' => absint($template->id)), admin_url('admin.php'))); ?>"><?php echo esc_html($template->name); ?></a></li>
 						<?php endforeach; ?>
 					</ul>
 				<?php endif; ?>

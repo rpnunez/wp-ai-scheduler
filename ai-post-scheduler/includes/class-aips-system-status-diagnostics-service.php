@@ -58,7 +58,7 @@ class AIPS_System_Status_Diagnostics_Service {
 		}
 
 		$expected_keys = array(
-			'environment', 'plugin', 'database', 'filesystem',
+			'environment', 'plugin', 'database', 'embeddings cache', 'filesystem',
 			'cron', 'scheduler health', 'queue health',
 			'generation metrics', 'resilience', 'notifications', 'logs',
 		);

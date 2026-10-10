@@ -200,6 +200,20 @@ class AIPS_Notification_Registry {
 				'level'         => 'info',
 				'dedupe_window' => 300,
 			),
+			'post_consolidated' => array(
+				'label'         => __('Posts Consolidated', 'ai-post-scheduler'),
+				'description'   => __('Two overlapping posts were consolidated: one was moved to draft, redirected and its links re-pointed to the post that was kept.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'info',
+				'dedupe_window' => 0,
+			),
+			'duplicate_groups_found' => array(
+				'label'         => __('Duplicate Posts Found', 'ai-post-scheduler'),
+				'description'   => __('A scheduled duplicate scan found new groups of near-duplicate posts to review in the Cannibalization Shield.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 0,
+			),
 		);
 	}
 
