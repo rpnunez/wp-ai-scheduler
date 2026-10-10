@@ -18,7 +18,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 	<!-- System Health Panel -->
 	<div class="aips-system-health-panel">
 		<div class="aips-system-health-header">
-			<h2><span class="dashicons dashicons-heart"></span> <?php esc_html_e('System Health & Tools', 'ai-post-scheduler'); ?></h2>
+			<h2><span class="dashicons dashicons-heart" aria-hidden="true"></span> <?php esc_html_e('System Health & Tools', 'ai-post-scheduler'); ?></h2>
 			<p><?php esc_html_e('One-click recovery, cache rebuilding, and database maintenance operations.', 'ai-post-scheduler'); ?></p>
 		</div>
 
@@ -29,14 +29,14 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 				<div class="aips-health-section-header">
 					<div class="aips-health-section-title-wrap">
 						<h3 class="aips-health-section-title">
-							<span class="dashicons dashicons-admin-tools"></span>
+							<span class="dashicons dashicons-admin-tools" aria-hidden="true"></span>
 							<?php esc_html_e('Maintenance & Recovery Tasks', 'ai-post-scheduler'); ?>
 						</h3>
 					</div>
 					<div class="aips-health-section-action">
 						<span class="spinner aips-spinner-inline"></span>
 						<button type="button" class="aips-btn aips-btn-primary aips-refresh-system">
-							<span class="dashicons dashicons-update"></span>
+							<span class="dashicons dashicons-update" aria-hidden="true"></span>
 							<span class="aips-refresh-system-label"><?php esc_html_e('Refresh System', 'ai-post-scheduler'); ?></span>
 						</button>
 					</div>
@@ -68,14 +68,14 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 				<div class="aips-health-section-header">
 					<div class="aips-health-section-title-wrap">
 						<h3 class="aips-health-section-title">
-							<span class="dashicons dashicons-database"></span>
+							<span class="dashicons dashicons-database" aria-hidden="true"></span>
 							<?php esc_html_e('Cache Subsystems', 'ai-post-scheduler'); ?>
 						</h3>
 					</div>
 					<div class="aips-health-section-action">
 						<span class="spinner aips-spinner-inline"></span>
 						<button type="button" class="aips-btn aips-btn-primary aips-rebuild-cache-btn">
-							<span class="dashicons dashicons-update"></span>
+							<span class="dashicons dashicons-update" aria-hidden="true"></span>
 							<span class="aips-rebuild-cache-label"><?php esc_html_e('Rebuild Cache', 'ai-post-scheduler'); ?></span>
 						</button>
 					</div>
@@ -110,7 +110,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 		<div class="aips-content-panel">
 			<div class="aips-panel-header">
 				<h2>
-					<span class="dashicons dashicons-clock"></span>
+					<span class="dashicons dashicons-clock" aria-hidden="true"></span>
 					<?php esc_html_e('Cron Status', 'ai-post-scheduler'); ?>
 				</h2>
 			</div>
@@ -120,7 +120,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 				if ($next_scheduled) : ?>
 					<p class="aips-status-message aips-status-success">
 						<span class="aips-badge aips-badge-success">
-							<span class="dashicons dashicons-yes-alt"></span>
+							<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 							<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
 						</span>
 						<?php
@@ -133,7 +133,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 				<?php else : ?>
 					<p class="aips-status-message aips-status-error">
 						<span class="aips-badge aips-badge-warning">
-							<span class="dashicons dashicons-warning"></span>
+							<span class="dashicons dashicons-warning" aria-hidden="true"></span>
 							<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
 						</span>
 						<?php esc_html_e('Cron job is not scheduled. Try deactivating and reactivating the plugin.', 'ai-post-scheduler'); ?>
@@ -144,7 +144,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 
 				<div class="aips-btn-group aips-action-group">
 					<button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
-						<span class="dashicons dashicons-controls-repeat"></span>
+						<span class="dashicons dashicons-controls-repeat" aria-hidden="true"></span>
 						<?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -157,7 +157,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 		<div class="aips-content-panel">
 			<div class="aips-panel-header">
 				<h2>
-					<span class="dashicons dashicons-admin-plugins"></span>
+					<span class="dashicons dashicons-admin-plugins" aria-hidden="true"></span>
 					<?php esc_html_e('AI Provider Status', 'ai-post-scheduler'); ?>
 				</h2>
 			</div>
@@ -165,7 +165,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 				<?php if (!empty($ai_provider_available)): ?>
 					<p class="aips-status-message aips-status-success">
 						<span class="aips-badge aips-badge-success">
-							<span class="dashicons dashicons-yes-alt"></span>
+							<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
 							<?php esc_html_e('Configured', 'ai-post-scheduler'); ?>
 						</span>
 						<?php
@@ -178,7 +178,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 					</p>
 					<div class="aips-test-connection-wrapper">
 						<button type="button" id="aips-test-connection" class="aips-btn aips-btn-secondary">
-							<span class="dashicons dashicons-update"></span>
+							<span class="dashicons dashicons-update" aria-hidden="true"></span>
 							<?php esc_html_e('Test Connection', 'ai-post-scheduler'); ?>
 						</button>
 						<span class="spinner aips-spinner-inline"></span>
@@ -187,7 +187,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 				<?php else: ?>
 					<p class="aips-status-message aips-status-error">
 						<span class="aips-badge aips-badge-error">
-							<span class="dashicons dashicons-dismiss"></span>
+							<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 							<?php esc_html_e('Not Available', 'ai-post-scheduler'); ?>
 						</span>
 						<?php
@@ -200,7 +200,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 					</p>
 					<p class="aips-ai-engine-download-wrap">
 						<a href="https://wordpress.org/plugins/ai-engine/" target="_blank" rel="noopener" class="aips-btn aips-btn-primary">
-							<span class="dashicons dashicons-download"></span>
+							<span class="dashicons dashicons-download" aria-hidden="true"></span>
 							<?php esc_html_e('Download AI Engine', 'ai-post-scheduler'); ?>
 						</a>
 					</p>
@@ -213,7 +213,7 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 	<div class="aips-content-panel">
 		<div class="aips-panel-header">
 			<h2>
-				<span class="dashicons dashicons-database"></span>
+				<span class="dashicons dashicons-database" aria-hidden="true"></span>
 				<?php esc_html_e('Database Management', 'ai-post-scheduler'); ?>
 			</h2>
 		</div>
@@ -222,22 +222,22 @@ $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider
 
 			<div class="aips-btn-group aips-db-actions">
 				<button type="button" class="aips-btn aips-btn-secondary aips-repair-db">
-					<span class="dashicons dashicons-hammer"></span>
+					<span class="dashicons dashicons-hammer" aria-hidden="true"></span>
 					<?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?>
 				</button>
 
 				<button type="button" class="aips-btn aips-btn-secondary aips-fix-datetime-db">
-					<span class="dashicons dashicons-clock"></span>
+					<span class="dashicons dashicons-clock" aria-hidden="true"></span>
 					<?php esc_html_e('Fix Date/Time Values in DB', 'ai-post-scheduler'); ?>
 				</button>
 
 				<button type="button" class="aips-btn aips-btn-secondary aips-reinstall-db">
-					<span class="dashicons dashicons-update"></span>
+					<span class="dashicons dashicons-update" aria-hidden="true"></span>
 					<?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?>
 				</button>
 
 				<button type="button" class="aips-btn aips-btn-danger aips-wipe-db">
-					<span class="dashicons dashicons-trash"></span>
+					<span class="dashicons dashicons-trash" aria-hidden="true"></span>
 					<?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?>
 				</button>
 			</div>

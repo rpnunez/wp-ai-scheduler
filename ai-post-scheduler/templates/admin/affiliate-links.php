@@ -193,7 +193,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				+ '<span class="screen-reader-text"><?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?></span>'
 				+ '<span class="aips-toggle-slider"></span></label>';
 			var aiIcon = item.use_ai_injection == 1
-				? '<span class="dashicons dashicons-yes-alt aips-text-success" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'
+				? '<span class="dashicons dashicons-yes-alt aips-text-success" aria-hidden="true" title="<?php echo esc_js( __( 'AI injection enabled', 'ai-post-scheduler' ) ); ?>"></span>'
 				: '<span class="aips-text-muted">—</span>';
 			var shortUrl = item.affiliate_url.length > 40 ? item.affiliate_url.substring(0, 40) + '…' : item.affiliate_url;
 			return '<tr data-id="' + item.id + '">'

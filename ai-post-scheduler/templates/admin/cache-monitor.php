@@ -350,7 +350,7 @@ $action_nonce = wp_create_nonce('aips_cache_monitor_action');
 							<table class="aips-table aips-cache-entries-table">
 								<thead>
 									<tr>
-										<th class="check-column"></th>
+										<th class="check-column"><input type="checkbox" class="aips-cache-cb-all" aria-label="<?php esc_attr_e('Select all rows', 'ai-post-scheduler'); ?>"></th>
 										<th data-col="key_hash"><?php esc_html_e('Key Hash', 'ai-post-scheduler'); ?></th>
 										<th data-col="cache_group"><?php esc_html_e('Group', 'ai-post-scheduler'); ?></th>
 										<th data-col="operation_id"><?php esc_html_e('Operation', 'ai-post-scheduler'); ?></th>

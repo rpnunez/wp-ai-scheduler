@@ -107,7 +107,7 @@ if (!defined('ABSPATH')) {
 					<table class="aips-table">
 						<thead>
 							<tr>
-								<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-partial-cb-all"></th>
+								<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-partial-cb-all" aria-label="<?php esc_attr_e('Select all rows', 'ai-post-scheduler'); ?>"></th>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Missing Components', 'ai-post-scheduler'); ?></th>
@@ -122,7 +122,7 @@ if (!defined('ABSPATH')) {
 						<tbody>
 							<?php foreach ($partial_posts_data as $post_data): ?>
 							<tr>
-								<th scope="row" class="check-column"><input type="checkbox" class="aips-partial-cb" value="<?php echo esc_attr($post_data['id']); ?>"></th>
+								<th scope="row" class="check-column"><input type="checkbox" class="aips-partial-cb" value="<?php echo esc_attr($post_data['id']); ?>" aria-label="<?php esc_attr_e('Select row', 'ai-post-scheduler'); ?>"></th>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
