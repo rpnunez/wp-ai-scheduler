@@ -77,7 +77,7 @@
                         return;
                     }
                     if (typeof callback === 'function') {
-                        callback();
+                        callback($newDoc);
                     }
                 } else {
                     location.reload();
