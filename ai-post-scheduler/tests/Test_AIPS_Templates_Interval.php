@@ -16,7 +16,7 @@ class Test_AIPS_Templates_Interval extends WP_UnitTestCase {
 
 		foreach ($frequencies as $frequency) {
 			$template_next = $this->invoke_private_method($templates, 'calculate_next_run', array($frequency, $base_time));
-			$expected_next = strtotime($calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time)));
+			$expected_next = $calculator->calculate_next_occurrence_after($frequency, $base_time, $base_time + 1);
 
 			$this->assertSame($expected_next, $template_next);
 		}

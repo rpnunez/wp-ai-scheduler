@@ -235,20 +235,37 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
             $this->markTestSkipped('WP AI Client test fakes not loaded (run with the full suite).');
         }
 
-        global $aips_wp_ai_client_test_builder;
+        global $aips_wp_ai_client_test_builder, $aips_wp_ai_client_test_configured;
 
         $builder = new AIPS_Test_WP_AI_Client_Builder();
         $builder->image_response = 'data:image/png;base64,' . $this->get_png_base64();
         $aips_wp_ai_client_test_builder = $builder;
+        $aips_wp_ai_client_test_configured = true;
 
-        $ai_service = new AIPS_AI_Service(null, null, null, new AIPS_WP_AI_Client_Provider());
-        $image_service = new AIPS_Image_Service($ai_service);
+        if (function_exists('aips_test_wp_ai_client_connector_configured')) {
+            add_filter('aips_wp_ai_client_has_configured_connector', 'aips_test_wp_ai_client_connector_configured');
+        }
+        if (function_exists('aips_test_wp_ai_client_prompt_builder')) {
+            add_filter('aips_wp_ai_client_prompt_builder', 'aips_test_wp_ai_client_prompt_builder', 10, 2);
+        }
 
-        $attachment_id = $image_service->generate_and_upload_featured_image('A test image', 'Provider Data URI Post');
+        try {
+            $ai_service = new AIPS_AI_Service(null, null, null, new AIPS_WP_AI_Client_Provider());
+            $image_service = new AIPS_Image_Service($ai_service);
 
-        $aips_wp_ai_client_test_builder = null;
+            $attachment_id = $image_service->generate_and_upload_featured_image('A test image', 'Provider Data URI Post');
 
-        $this->assertIsInt($attachment_id);
-        $this->assertEquals('image/png', get_post_mime_type($attachment_id));
+            $this->assertIsInt($attachment_id);
+            $this->assertEquals('image/png', get_post_mime_type($attachment_id));
+        } finally {
+            $aips_wp_ai_client_test_builder = null;
+            $aips_wp_ai_client_test_configured = null;
+            if (function_exists('aips_test_wp_ai_client_connector_configured')) {
+                remove_filter('aips_wp_ai_client_has_configured_connector', 'aips_test_wp_ai_client_connector_configured');
+            }
+            if (function_exists('aips_test_wp_ai_client_prompt_builder')) {
+                remove_filter('aips_wp_ai_client_prompt_builder', 'aips_test_wp_ai_client_prompt_builder', 10);
+            }
+        }
     }
 }

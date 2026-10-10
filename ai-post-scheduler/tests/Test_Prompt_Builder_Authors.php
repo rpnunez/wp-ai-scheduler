@@ -20,11 +20,11 @@ class Test_Prompt_Builder_Authors extends WP_UnitTestCase {
 			2
 		);
 
-		$this->assertStringContainsString( '"details":', $prompt );
-		$this->assertStringContainsString( '"target_audience":', $prompt );
-		$this->assertStringContainsString( '"expertise_level":', $prompt );
-		$this->assertStringContainsString( '"content_goals":', $prompt );
-		$this->assertStringContainsString( '"preferred_content_length":', $prompt );
+		$this->assertStringContainsString( '"details"', $prompt );
+		$this->assertStringContainsString( '"target_audience"', $prompt );
+		$this->assertStringContainsString( '"expertise_level"', $prompt );
+		$this->assertStringContainsString( '"content_goals"', $prompt );
+		$this->assertStringContainsString( '"preferred_content_length"', $prompt );
 	}
 
 	/**

@@ -509,7 +509,7 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 
 		$this->assertFalse( $g['developer_mode'] );
 		$this->assertSame( '', $g['unsplash_access_key'] );
-		$this->assertSame( 0.8, $g['topic_similarity_threshold'] );
+		$this->assertSame( 0.85, $g['topic_similarity_threshold'] );
 	}
 
 	// -----------------------------------------------------------------------

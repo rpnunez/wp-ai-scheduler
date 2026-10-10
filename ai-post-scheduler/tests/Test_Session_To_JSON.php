@@ -172,11 +172,9 @@ class Test_Session_To_JSON extends WP_UnitTestCase {
 		// Remove write permissions to simulate failure
 		chmod($file_path, 0444);
 
-		if (!function_exists('wp_upload_dir')) {
-			require_once __DIR__ . '/bootstrap.php';
-			// Mock wp_upload_dir in bootstrap if needed or skip.
-			// actually we will need to mock wp_upload_dir to return our mock array
-			$this->markTestSkipped('Cannot run this test without wp_upload_dir function mock from WordPress.');
+		if (is_writable($file_path)) {
+			chmod($file_path, 0666);
+			$this->markTestSkipped('Cannot test unwritable files in current environment (process runs as root/superuser).');
 		}
 
 		$result = AIPS_Session_To_JSON::cleanup_old_exports(3600);

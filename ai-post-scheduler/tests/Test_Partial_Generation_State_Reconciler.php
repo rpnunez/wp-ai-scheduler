@@ -110,15 +110,15 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	 * is true and reconcile_generation_status_meta_from_post() is called.
 	 */
 	public function test_proceeds_when_primary_meta_exists() {
-		global $aips_test_meta;
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Meta Exists Post',
 		));
-		$aips_test_meta = array(
-			$post_id => array(
-				AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES => 'some_value',
-			),
-		);
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode(array(
+			'post_title'     => true,
+			'post_excerpt'   => true,
+			'post_content'   => true,
+			'featured_image' => true,
+		)));
 
 		$actions_fired = array();
 		add_action('aips_partial_generation_state_reconciled', function() use (&$actions_fired) {
@@ -138,18 +138,13 @@ class Test_Partial_Generation_State_Reconciler extends WP_UnitTestCase {
 	 * will be repaired with current post-content state.
 	 */
 	public function test_reconciles_when_meta_key_exists_with_empty_value() {
-		global $aips_test_meta;
 		$post_id = $this->factory->post->create(array(
 			'post_title' => 'Meta Exists Empty Value Post',
 		));
 		// metadata_exists returns true because the row exists (even with an empty value).
-		$aips_test_meta = array(
-			$post_id => array(
-				AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES => '',
-				AIPS_Post_Manager::META_GENERATION_INCOMPLETE         => '',
-				AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL        => '',
-			),
-		);
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, '');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, '');
+		update_post_meta($post_id, AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL, '');
 
 		$actions_fired = array();
 		add_action('aips_partial_generation_state_reconciled', function() use (&$actions_fired) {

@@ -87,7 +87,9 @@ class Test_AIPS_Diagnostics_Embedded_Templates extends WP_UnitTestCase {
 	public function test_dev_tools_template_renders_as_partial() {
 		$output = $this->render_template(
 			'dev-tools.php',
-			array()
+			array(
+				'embedded' => true,
+			)
 		);
 
 		$this->assertStringNotContainsString('class="wrap aips-wrap"', $output);

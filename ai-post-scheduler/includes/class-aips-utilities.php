@@ -84,8 +84,8 @@ class AIPS_Utilities {
 		foreach ($post_types as $post_type => $post_type_obj) {
 			$result[$post_type] = array(
 				'label'              => $post_type_obj->labels->singular_name,
-				'supports_category'  => post_type_supports($post_type, 'category'),
-				'supports_post_tag'  => post_type_supports($post_type, 'post_tag'),
+				'supports_category'  => is_object_in_taxonomy($post_type, 'category') || post_type_supports($post_type, 'category'),
+				'supports_post_tag'  => is_object_in_taxonomy($post_type, 'post_tag') || post_type_supports($post_type, 'post_tag'),
 			);
 		}
 

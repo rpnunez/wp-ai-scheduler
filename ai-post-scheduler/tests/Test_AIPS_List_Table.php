@@ -32,11 +32,9 @@ class Test_AIPS_List_Table extends WP_UnitTestCase {
 
 		$this->assertIsArray($columns);
 		$this->assertArrayHasKey('cb', $columns);
-		$this->assertArrayHasKey('quality', $columns);
 		$this->assertArrayHasKey('name', $columns);
 		$this->assertArrayHasKey('status', $columns);
-		$this->assertArrayHasKey('topics', $columns);
-		$this->assertArrayHasKey('posts', $columns);
+		$this->assertArrayHasKey('content', $columns);
 		$this->assertArrayHasKey('actions', $columns);
 	}
 

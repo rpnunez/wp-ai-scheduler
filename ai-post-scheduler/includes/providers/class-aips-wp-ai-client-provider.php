@@ -277,12 +277,6 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 		}
 
 		if (!empty($configured)) {
-			$failover_enabled = (bool) AIPS_Config::get_instance()->get_option('aips_wp_ai_connector_failover');
-
-			if (!$failover_enabled) {
-				return $this->is_connector_cooling_down($configured[0]) ? array() : array($configured[0]);
-			}
-
 			return array_values(array_filter($configured, function($connector_id) {
 				return !$this->is_connector_cooling_down($connector_id);
 			}));

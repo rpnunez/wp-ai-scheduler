@@ -98,10 +98,10 @@ if (isset($item->status) && $item->status === 'processing' && !empty($item->crea
                 <?php esc_html_e('Stalled', 'ai-post-scheduler'); ?>
             </span>
         <?php endif; ?>
-        <?php if ($item->error_count > 0 || $item->warning_count > 0): ?>
+        <?php if (!empty($item->error_count) || !empty($item->warning_count)): ?>
             <span class="aips-history-issue-counts">
-                <?php if ($item->error_count > 0): ?><span class="aips-history-count-error"><?php echo esc_html(sprintf(_n('%d error', '%d errors', $item->error_count, 'ai-post-scheduler'), $item->error_count)); ?></span><?php endif; ?>
-                <?php if ($item->warning_count > 0): ?><span><?php echo esc_html(sprintf(_n('%d warning', '%d warnings', $item->warning_count, 'ai-post-scheduler'), $item->warning_count)); ?></span><?php endif; ?>
+                <?php if (!empty($item->error_count)): ?><span class="aips-history-count-error"><?php echo esc_html(sprintf(_n('%d error', '%d errors', (int) $item->error_count, 'ai-post-scheduler'), (int) $item->error_count)); ?></span><?php endif; ?>
+                <?php if (!empty($item->warning_count)): ?><span><?php echo esc_html(sprintf(_n('%d warning', '%d warnings', (int) $item->warning_count, 'ai-post-scheduler'), (int) $item->warning_count)); ?></span><?php endif; ?>
             </span>
         <?php endif; ?>
     </td>

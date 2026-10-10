@@ -33,6 +33,23 @@ class AIPS_AI_Service implements AIPS_AI_Service_Interface {
 	 */
 	private const SHORT_FORM_MIN_TOKENS = 1200;
 
+	/**
+	 * @var self|null Singleton instance.
+	 */
+	private static $instance = null;
+
+	/**
+	 * Get the shared singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
+
     /**
      * @var AIPS_AI_Provider_Interface Active AI transport provider
      */

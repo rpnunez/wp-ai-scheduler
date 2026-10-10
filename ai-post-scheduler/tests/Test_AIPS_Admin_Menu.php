@@ -332,7 +332,10 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		$this->assertNotEmpty($redirect_target, 'Redirect target URL should not be empty.');
 		$this->assertStringContainsString('page=aips-studio', $redirect_target);
 		$this->assertStringContainsString('tab=voices', $redirect_target);
-		$this->assertStringContainsString('s=seo+keywords', $redirect_target);
+		$this->assertTrue(
+			strpos($redirect_target, 's=seo+keywords') !== false || strpos($redirect_target, 's=seo%20keywords') !== false,
+			'Redirect target URL should preserve search parameter with proper encoding.'
+		);
 		$this->assertStringContainsString('paged=3', $redirect_target);
 		$this->assertStringContainsString('filter_status=active', $redirect_target);
 

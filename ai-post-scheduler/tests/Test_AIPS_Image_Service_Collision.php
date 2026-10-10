@@ -61,15 +61,16 @@ class Test_AIPS_Image_Service_Collision extends WP_UnitTestCase {
      * Mock HTTP response for image download
      */
     public function mock_http_response( $preempt, $args, $url ) {
+        // Return a valid 1x1 GIF image binary to satisfy MIME type validation
         return array(
             'response' => array(
                 'code' => 200,
                 'message' => 'OK',
             ),
             'headers' => array(
-                'content-type' => 'image/jpeg',
+                'content-type' => 'image/gif',
             ),
-            'body' => 'fake_image_binary_data',
+            'body' => base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'),
         );
     }
 }

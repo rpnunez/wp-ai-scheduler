@@ -44,6 +44,30 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 		wp_set_current_user($admin_id);
 	}
 
+	public function tearDown(): void {
+		$_POST = array();
+		$_REQUEST = array();
+		parent::tearDown();
+	}
+
+	private function sync_request_from_post() {
+		$_REQUEST = $_POST;
+	}
+
+	private function run_ajax(callable $callable) {
+		$this->sync_request_from_post();
+		ob_start();
+		try {
+			$callable();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected: wp_send_json_* called.
+		} catch (WPAjaxDieStopException $e) {
+			// Expected: wp_die called.
+		}
+		$output = ob_get_clean();
+		return json_decode($output, true);
+	}
+
 	public function test_ajax_scan_step_success() {
 		$_POST['nonce']  = wp_create_nonce('aips_ajax_nonce');
 		$_POST['limit']  = 50;
@@ -59,13 +83,8 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 			->with(50, 0)
 			->willReturn($mock_fps);
 
-		try {
-			$this->_handleAjax('aips_auditor_scan_step');
-		} catch (WPAjaxDieContinueException $e) {
-			// Expected AJAX exit
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_scan_step'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertTrue($response['success']);
 		$this->assertSame(2, $response['data']['count']);
 		$this->assertSame(25, $response['data']['progress']);
@@ -86,12 +105,8 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 			->method('build_entity_clusters')
 			->willReturn(array('total_posts' => 1));
 
-		try {
-			$this->_handleAjax('aips_auditor_graph_step');
-		} catch (WPAjaxDieContinueException $e) {
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_graph_step'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertTrue($response['success']);
 		$this->assertSame(50, $response['data']['progress']);
 		$this->assertSame('graph_complete', $response['data']['step']);
@@ -106,12 +121,8 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 			->method('analyze_topic_gaps')
 			->willReturn(array('gaps' => array(array('missing_topic' => 'Serverless')), 'gap_count' => 1));
 
-		try {
-			$this->_handleAjax('aips_auditor_analyze_step');
-		} catch (WPAjaxDieContinueException $e) {
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_analyze_step'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertTrue($response['success']);
 		$this->assertSame('gaps', $response['data']['module']);
 		$this->assertSame(75, $response['data']['progress']);
@@ -133,12 +144,8 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 			->method('save')
 			->willReturn(42);
 
-		try {
-			$this->_handleAjax('aips_auditor_synthesize_step');
-		} catch (WPAjaxDieContinueException $e) {
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_synthesize_step'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertTrue($response['success']);
 		$this->assertSame(42, $response['data']['audit_id']);
 		$this->assertSame(100, $response['data']['progress']);
@@ -154,12 +161,8 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 			->with('Cloud Computing')
 			->willReturn(array('id' => 10, 'overall_score' => 92));
 
-		try {
-			$this->_handleAjax('aips_auditor_get_latest');
-		} catch (WPAjaxDieContinueException $e) {
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_get_latest'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertTrue($response['success']);
 		$this->assertSame(10, $response['data']['audit']['id']);
 		$this->assertSame(92, $response['data']['audit']['overall_score']);
@@ -174,24 +177,16 @@ class Test_AIPS_Content_Auditor_Controller extends WP_Ajax_UnitTestCase {
 			->with(15)
 			->willReturn(true);
 
-		try {
-			$this->_handleAjax('aips_auditor_delete_audit');
-		} catch (WPAjaxDieContinueException $e) {
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_delete_audit'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertTrue($response['success']);
 	}
 
 	public function test_ajax_nonce_failure() {
 		$_POST['nonce'] = 'invalid_nonce';
 
-		try {
-			$this->_handleAjax('aips_auditor_scan_step');
-		} catch (WPAjaxDieContinueException $e) {
-		}
+		$response = $this->run_ajax(array($this->controller, 'ajax_scan_step'));
 
-		$response = json_decode($this->_last_response, true);
 		$this->assertFalse($response['success']);
 		$this->assertSame('Invalid nonce.', $response['data']['message']);
 	}

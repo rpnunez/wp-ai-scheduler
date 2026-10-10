@@ -26,10 +26,16 @@ if (is_object($history)) {
         $items       = isset($history['items']) ? $history['items'] : array();
         $total_items = isset($history['total']) ? (int) $history['total'] : 0;
     } elseif (method_exists($history, 'get_history')) {
-        $history     = $history->get_history();
-        $history     = is_array($history) ? $history : array();
-        $items       = isset($history['items']) ? $history['items'] : array();
-        $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+        $history_data = $history->get_history();
+        $history_data = is_array($history_data) ? $history_data : array();
+        $items        = isset($history_data['items']) ? $history_data['items'] : array();
+        $total_items  = isset($history_data['total']) ? (int) $history_data['total'] : 0;
+        if (isset($history_handler) && method_exists($history_handler, 'prepare_items_for_display')) {
+            $history_handler->prepare_items_for_display($items);
+        } elseif (method_exists($history, 'prepare_items_for_display')) {
+            $history->prepare_items_for_display($items);
+        }
+        $history = $history_data;
     } else {
         $history = array();
     }

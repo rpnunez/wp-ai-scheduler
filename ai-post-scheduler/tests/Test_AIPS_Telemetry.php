@@ -33,14 +33,14 @@ class Test_AIPS_Telemetry extends WP_UnitTestCase {
 
 		$this->repo = new AIPS_Telemetry_Repository();
 
-		// Reset the singleton so each test starts with a clean buffer.
-		$ref = new ReflectionProperty('AIPS_Telemetry', 'instance');
-		$ref->setAccessible(true);
-		$ref->setValue(null, null);
-
 		// Enable telemetry for the duration of each test.
 		update_option('aips_enable_telemetry', 1);
 		AIPS_Config::get_instance()->flush_option_cache();
+
+		// Reset the singleton so each test starts with a clean buffer after option initialization.
+		$ref = new ReflectionProperty('AIPS_Telemetry', 'instance');
+		$ref->setAccessible(true);
+		$ref->setValue(null, null);
 	}
 
 	/**
