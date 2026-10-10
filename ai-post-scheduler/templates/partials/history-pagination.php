@@ -15,7 +15,11 @@ $pages = (int) $history['pages'];
 ?>
 <div class="aips-history-pagination tablenav-pages">
     <span class="displaying-num">
-        <?php printf(esc_html__('%d items', 'ai-post-scheduler'), (int) $history['total']); ?>
+        <?php if (isset($history['total_entries'])): ?>
+            <?php printf(esc_html__('%d entries', 'ai-post-scheduler'), (int) $history['total_entries']); ?>
+        <?php else: ?>
+            <?php printf(esc_html__('%d items', 'ai-post-scheduler'), (int) $history['total']); ?>
+        <?php endif; ?>
     </span>
     <?php if ($pages > 1): ?>
     <span class="pagination-links">
