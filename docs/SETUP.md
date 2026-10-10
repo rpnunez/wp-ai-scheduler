@@ -23,7 +23,15 @@ Clone the repo and run from the repo root:
 
 > **Windows users:** Run inside Git Bash, WSL2, or any bash-compatible shell. Native CMD/PowerShell are not supported.
 
-The script verifies Docker is running, stops any existing containers, builds images, and starts all services. First startup takes a few minutes — Docker downloads images, installs WordPress, configures the database, and activates the plugin.
+The script verifies Docker is running, builds the image (retrying transient Docker Hub errors), pulls only images that are not already cached, then starts all services and waits for their health checks. First startup takes a few minutes — Docker downloads images, installs WordPress, configures the database, and activates the plugin.
+
+Things to know:
+
+- **Per-checkout identity.** The first run writes a unique instance id, container names and free host ports into `.env`, so several checkouts or git worktrees can run at once. Use `make urls` to see this instance's URLs and ports.
+- **Google API key.** The stack always uses the WP AI Client with the Google connector. If `GOOGLE_API_KEY` is empty or still the placeholder, the script prompts for it (hidden input) and saves it to your gitignored `.env`. Without a terminal it fails fast; `AIPS_SKIP_API_KEY_CHECK=1` starts anyway.
+- **Run log.** Every run's full output is saved to `.artifacts/start-dev-<instance>-<id>.log` (gitignored).
+- **Existing data.** `./start-dev.sh --import-sql dump.sql` seeds the database; see [Starting with existing data](#starting-with-existing-data-sql-import).
+- **Docker Hub outages.** Build and pulls are retried; cached images are reused. If the build still fails with `auth.docker.io` 5xx errors, retry later.
 
 ### `.gitignore`
 
@@ -67,29 +75,34 @@ Copy `.env.example` to `.env` to customize settings:
 cp .env.example .env
 ```
 
-Common overrides:
+`start-dev.sh` creates `.env` for you on first run. Common overrides:
 
 ```env
 # WordPress admin credentials
 WP_ADMIN_USER=admin
 WP_ADMIN_PASSWORD=your-secure-password
 
-# Port mappings (change if 8080/8082 are in use)
-WP_PORT=8080
-PHPMYADMIN_PORT=8082
-MYSQL_PORT=3307
+# Image tags (defaults shown)
+WP_IMAGE_TAG=7.1-php8.3-apache
+# DB_IMAGE=mariadb:10.6
 ```
+
+Ports are auto-assigned on first run (first free port at or above 8080 / 8082 / 3307 / 9003) and stored as `WP_PORT`, `PHPMYADMIN_PORT`, `MYSQL_PORT`, `XDEBUG_PORT`; edit them if you want specific ones.
+
+The complete variable reference (every variable, its default and what it does) is in the [README](../README.md#environment-variables).
 
 ---
 
 ## Starting the Environment
 
 ```bash
-./start-dev.sh       # First-time setup — builds images and starts all services
-make up              # Subsequent starts — starts existing containers
+./start-dev.sh       # First-time setup / after pulling changes (also: make start-dev)
+make start           # Subsequent starts — starts existing containers
+make stop            # Stop containers (keeps data)
+make down            # Remove containers (keeps data volumes)
 ```
 
-Once running:
+Once running (default ports; run `make urls` for yours):
 
 | Service    | URL                           | Credentials           |
 |------------|-------------------------------|-----------------------|
@@ -97,33 +110,41 @@ Once running:
 | WP Admin   | http://localhost:8080/wp-admin | admin / admin        |
 | phpMyAdmin | http://localhost:8082         | wordpress / wordpress |
 
+Credentials are the `WP_ADMIN_*` and `MYSQL_*` values in `.env`.
+
 ---
 
 ## Daily Commands
 
 ```bash
-make up              # Start all services
-make down            # Stop all services
+make start-dev       # Provision + build + start (logged); ARGS="--import-sql x.sql"
+make start           # Start existing containers
+make stop            # Stop containers (keeps them and all data)
+make down            # Remove containers (keeps data volumes)
 make restart         # Restart all services
+make urls            # URLs, ports and credentials for this instance
 make logs            # Stream all logs
 make logs-web        # Stream WordPress logs
 make logs-db         # Stream database logs
 make shell           # Open a shell in the WordPress container
 make wp-shell        # Open an interactive WP-CLI session
-make db-shell        # Open a MySQL shell
+make db-shell        # Open a MariaDB shell (credentials from .env)
 make status          # Show container status
 make info            # Show WordPress and plugin info
 ```
 
 ### Rebuilding
 
-Plugin source is bind-mounted — changes to `ai-post-scheduler/` are reflected immediately with no rebuild. Only rebuild when `Dockerfile`, `docker-compose.yml`, or image dependencies change:
+Plugin source is bind-mounted — changes to `ai-post-scheduler/` are reflected immediately with no rebuild. Only rebuild when `Dockerfile`, `docker-compose.yml`, or image dependencies change (the simplest way is `./start-dev.sh`, which also retries Docker Hub errors):
 
 ```bash
+./start-dev.sh                        # Rebuild and restart (recommended)
 docker compose up -d --build          # Rebuild and restart
 docker compose build --no-cache       # Force clean rebuild
 docker compose up -d
 ```
+
+Xdebug and PHP ini changes do not need a rebuild: `make xdebug-on` / `make xdebug-off` recreate the web container, and `make reload-php` applies `dev-php.ini` edits.
 
 ---
 
@@ -185,14 +206,25 @@ The `[xdebug]` block was removed from `dev-php.ini` — Xdebug config now comes 
 
 ### Canonical workflow (Docker, recommended)
 
-From the repo root:
+With the dev stack running (`./start-dev.sh`), run the suite inside the `web` container. No host PHP, Composer or svn needed:
 
 ```bash
-bash scripts/run-wp-tests-docker.sh
+make test                                  # whole suite (or: bash scripts/run-docker-test.sh)
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
+make test ARGS="--fresh"                   # recreate the wp_tests database first
+make test-coverage                         # text coverage report (enables Xdebug coverage)
+```
+
+It uses a separate `wp_tests` database, never your development data.
+
+### CI-style runner (host PHP + Composer required)
+
+```bash
+bash scripts/run-wp-tests-docker.sh        # or: make test-ci
 bash scripts/run-wp-tests-docker.sh coverage
 ```
 
-This script starts the Docker database, recreates a disposable test database, installs WordPress core and `wordpress-tests-lib`, exports `WP_TESTS_DIR`/`WP_CORE_DIR`, and runs the suite.
+This script (used by the GitHub Actions workflows) starts the Docker database, recreates a disposable test database, installs WordPress core and `wordpress-tests-lib` on the host, exports `WP_TESTS_DIR`/`WP_CORE_DIR`, and runs the suite with the host's PHP and Composer.
 
 ### Direct execution
 
@@ -247,6 +279,21 @@ make db-shell             # MySQL shell (external: host=localhost port=3307)
 make db-backup            # Saves to backup.sql
 make db-restore           # Restores from backup.sql
 ```
+
+### Starting with existing data (SQL import)
+
+By default every environment starts as an empty WordPress install. To seed it from a dump:
+
+```bash
+./start-dev.sh --import-sql path/to/dump.sql        # also accepts .sql.gz
+make start-dev ARGS="--import-sql path/to/dump.sql"
+```
+
+- The import only runs when the database has **no tables**. On a normal rerun (data present) it is skipped and the log says so.
+- `--force-import` backs the current database up to `.artifacts/db-backup-<instance>-<id>.sql`, then replaces it.
+- Set `AIPS_IMPORT_SQL=path/to/dump.sql` in `.env` for a standing default; the flag overrides it.
+- The dump's table prefix is detected and applied (`WP_TABLE_PREFIX`), MySQL 8 collations are mapped for MariaDB, and URLs are rewritten to `http://localhost:<WP_PORT>` (serialization-safe).
+- Admin credentials come from the imported database, not `.env`.
 
 ---
 
