@@ -475,9 +475,15 @@ class AIPS_Authors_Controller {
 			$this->notifications->author_topics_generated($author->name, count($result), $author_id);
 		}
 
+		$count = is_array($result) ? count($result) : 0;
+		$author_topics_url = AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => $author_id));
+
 		AIPS_Ajax_Response::success(array(
-			'message' => __('Topics generated successfully.', 'ai-post-scheduler'),
-			'topics' => $result
+			'message'           => sprintf(_n('%d topic generated', '%d topics generated', $count, 'ai-post-scheduler'), $count),
+			'topics_count'      => $count,
+			'author_id'         => $author_id,
+			'author_topics_url' => $author_topics_url,
+			'topics'            => $result,
 		));
 	}
 	

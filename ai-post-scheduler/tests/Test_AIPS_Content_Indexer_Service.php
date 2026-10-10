@@ -270,8 +270,10 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	 * Test get_indexing_status returns accurate progress counters.
 	 */
 	public function test_get_indexing_status() {
-		wp_insert_post( array( 'post_title' => 'Post A', 'post_status' => 'publish', 'post_type' => 'post' ) );
-		wp_insert_post( array( 'post_title' => 'Post B', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$post_a = wp_insert_post( array( 'post_title' => 'Post A', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$post_b = wp_insert_post( array( 'post_title' => 'Post B', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		update_post_meta( $post_a, '_aips_generated_post', 1 );
+		update_post_meta( $post_b, '_aips_generated_post', 1 );
 
 		$status = $this->indexer_service->get_indexing_status();
 		$this->assertIsArray( $status );
@@ -352,6 +354,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	 * Test enqueue_topics_for_indexing buffers and deduplicates an array of topic IDs.
 	 */
 	public function test_enqueue_topics_for_indexing_batch() {
+		delete_option( 'aips_pending_topic_index_queue' );
+
 		$this->indexer_service->enqueue_topics_for_indexing( array( 10, 20, 10, 30 ) );
 		$queue = get_option( 'aips_pending_topic_index_queue' );
 		$this->assertEquals( array( 10, 20, 30 ), $queue );
@@ -365,6 +369,8 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 	 * Test enqueue_posts_for_indexing buffers and deduplicates an array of post IDs.
 	 */
 	public function test_enqueue_posts_for_indexing_batch() {
+		delete_option( 'aips_pending_index_queue' );
+
 		$this->indexer_service->enqueue_posts_for_indexing( array( 100, 200, 100, 300 ) );
 		$queue = get_option( 'aips_pending_index_queue' );
 		$this->assertEquals( array( 100, 200, 300 ), $queue );

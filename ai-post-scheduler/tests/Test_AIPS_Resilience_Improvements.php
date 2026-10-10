@@ -21,7 +21,7 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 	 * @return AIPS_Resilience_Service
 	 */
 	private function make_cb_enabled_service( $threshold = 3 ) {
-		$GLOBALS['aips_test_options'] = array(
+		$options = array(
 			'aips_enable_circuit_breaker'    => true,
 			'aips_circuit_breaker_threshold' => $threshold,
 			'aips_circuit_breaker_timeout'   => 300,
@@ -31,6 +31,11 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 			'aips_retry_jitter'              => false,
 			'aips_enable_rate_limiting'      => false,
 		);
+		$GLOBALS['aips_test_options'] = $options;
+		foreach ($options as $key => $val) {
+			update_option($key, $val);
+		}
+		AIPS_Config::get_instance()->flush_option_cache();
 
 		// Delete any persisted circuit-breaker state from previous test.
 		delete_transient( 'aips_circuit_breaker_state' );
@@ -45,7 +50,7 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 	 * @return AIPS_Resilience_Service
 	 */
 	private function make_retry_service( $max_attempts = 3 ) {
-		$GLOBALS['aips_test_options'] = array(
+		$options = array(
 			'aips_enable_circuit_breaker' => false,
 			'aips_enable_retry'           => true,
 			'aips_retry_max_attempts'     => $max_attempts,
@@ -53,6 +58,11 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 			'aips_retry_jitter'           => false,
 			'aips_enable_rate_limiting'   => false,
 		);
+		$GLOBALS['aips_test_options'] = $options;
+		foreach ($options as $key => $val) {
+			update_option($key, $val);
+		}
+		AIPS_Config::get_instance()->flush_option_cache();
 
 		delete_transient( 'aips_circuit_breaker_state' );
 
@@ -359,13 +369,18 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 	// -----------------------------------------------------------------------
 
 	public function test_rate_limit_reached_action_fires_when_limit_exceeded() {
-		$GLOBALS['aips_test_options'] = array(
+		$options = array(
 			'aips_enable_circuit_breaker' => false,
 			'aips_enable_retry'           => false,
 			'aips_enable_rate_limiting'   => true,
 			'aips_rate_limit_requests'    => 2,
 			'aips_rate_limit_period'      => 60,
 		);
+		$GLOBALS['aips_test_options'] = $options;
+		foreach ($options as $key => $val) {
+			update_option($key, $val);
+		}
+		AIPS_Config::get_instance()->flush_option_cache();
 		delete_transient( 'aips_rate_limiter_requests' );
 
 		$service  = new AIPS_Resilience_Service();
@@ -398,7 +413,7 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 	 * @return AIPS_Resilience_Service
 	 */
 	private function make_full_service( $threshold = 10, $max_attempts = 3 ) {
-		$GLOBALS['aips_test_options'] = array(
+		$options = array(
 			'aips_enable_circuit_breaker'    => true,
 			'aips_circuit_breaker_threshold' => $threshold,
 			'aips_circuit_breaker_timeout'   => 300,
@@ -408,6 +423,11 @@ class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 			'aips_retry_jitter'              => false,
 			'aips_enable_rate_limiting'      => false,
 		);
+		$GLOBALS['aips_test_options'] = $options;
+		foreach ($options as $key => $val) {
+			update_option($key, $val);
+		}
+		AIPS_Config::get_instance()->flush_option_cache();
 
 		delete_transient( 'aips_circuit_breaker_state' );
 

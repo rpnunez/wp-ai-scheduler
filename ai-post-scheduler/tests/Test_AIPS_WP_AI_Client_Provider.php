@@ -247,8 +247,9 @@ class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
     }
 
     public function test_is_available_does_not_require_live_text_generation_probe() {
-        global $aips_wp_ai_client_test_builder;
+        global $aips_wp_ai_client_test_builder, $aips_wp_ai_client_test_connectors;
 
+        $aips_wp_ai_client_test_connectors = $this->get_routing_test_connectors();
         $builder = new AIPS_Test_WP_AI_Client_Builder();
         $builder->text_supported = false;
         $aips_wp_ai_client_test_builder = $builder;
@@ -653,13 +654,13 @@ class Test_AIPS_WP_AI_Client_Provider extends WP_UnitTestCase {
     public function test_unavailable_null_is_cached_and_not_re_probed_on_subsequent_calls() {
         global $aips_wp_ai_client_test_builder;
 
-        // First probe: builder creation fails → null stored in WeakMap.
+        // First probe: builder creation fails → null stored in WeakMap for this provider instance.
         $aips_wp_ai_client_test_builder = new WP_Error('no_connector', 'No connector.');
         $provider = new AIPS_WP_AI_Client_Provider();
         $this->assertFalse($provider->supports_text_generation());
 
         // Swap to a working builder. Without the offsetExists fix (i.e. using isset),
-        // the null would not be seen as a cache hit and the provider would re-probe,
+        // the null would not be seen as a cache hit and the same provider would re-probe,
         // find the new builder, and incorrectly return true.
         $aips_wp_ai_client_test_builder = new AIPS_Test_WP_AI_Client_Builder();
         $this->assertFalse($provider->supports_text_generation(), 'Cached null must be honoured; provider must not re-probe.');

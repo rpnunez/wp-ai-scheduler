@@ -190,7 +190,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             
             $log = $this->service->get_call_log();
             $this->assertArrayHasKey('timestamp', $log[0]);
-            $this->assertMatchesRegularExpression('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $log[0]['timestamp']);
+            $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/', $log[0]['timestamp']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }

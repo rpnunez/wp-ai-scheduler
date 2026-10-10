@@ -842,11 +842,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('Invalid topic or author ID.', 'ai-post-scheduler'));
 		}
 
-		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
-			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
-			: new AIPS_Similarity_Evaluator();
-
-		$similar_topics = $similarity_evaluator->find_similar_topics($topic_id, $author_id, $limit);
+		$similar_topics = $this->similarity_evaluator->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
 		foreach ($similar_topics as &$item) {
@@ -881,11 +877,7 @@ class AIPS_Author_Topics_Controller {
 			AIPS_Ajax_Response::error(__('Invalid author ID.', 'ai-post-scheduler'));
 		}
 
-		$similarity_evaluator = AIPS_Container::get_instance()->has(AIPS_Similarity_Evaluator::class)
-			? AIPS_Container::get_instance()->make(AIPS_Similarity_Evaluator::class)
-			: new AIPS_Similarity_Evaluator();
-
-		$suggestions = $similarity_evaluator->suggest_related_topics($author_id, $limit);
+		$suggestions = $this->similarity_evaluator->suggest_related_topics($author_id, $limit);
 
 		AIPS_Ajax_Response::success(array('suggestions' => $suggestions));
 	}

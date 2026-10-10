@@ -34,9 +34,9 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 		$this->assertIsArray($registry);
 	}
 
-	public function test_get_type_registry_has_all_23_types() {
+	public function test_get_type_registry_has_all_24_types() {
 		$registry = AIPS_Notification_Registry::get_type_registry();
-		$this->assertCount(23, $registry);
+		$this->assertCount(24, $registry);
 	}
 
 	public function test_get_type_registry_contains_required_keys() {
@@ -53,6 +53,7 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 			'post_ready_for_review',
 			'post_rejected',
 			'partial_generation_completed',
+			'post_generated',
 			'daily_digest',
 			'weekly_summary',
 			'monthly_report',
@@ -63,6 +64,8 @@ class Test_AIPS_Notification_Registry extends WP_UnitTestCase {
 			'circuit_breaker_opened',
 			'rate_limit_reached',
 			'research_topics_ready',
+			'post_consolidated',
+			'duplicate_groups_found',
 		);
 
 		foreach ($expected_types as $type) {
