@@ -40,3 +40,10 @@
 **PR:** 🎨 Palette: Add aria-label to content indexer drawer close button
 **Learning:** Close buttons (`&times;`) in custom UI elements (like flyout drawers) often lack native `aria-label` attributes.
 **Action:** Always ensure custom close buttons have an explicit localized `aria-label` to remain accessible to screen readers.
+
+## 2026-10-09 - Add aria-label to table checkboxes in admin tables
+**Area:** Templates, Sources, Generated Posts (templates/admin/templates.php, templates/admin/sources.php, templates/admin/tab-generated-posts.php, templates/admin/tab-partial-generations.php)
+**Status:** opened PR
+**PR:** 🎨 Palette: Add aria-label to table checkboxes in admin tables
+**Learning:** Table row selection checkboxes in custom WP admin tables need explicit aria-label attributes.
+**Action:** When adding checkboxes for bulk actions, ensure both the header select-all and individual row checkboxes have an explicit localized aria-label.
