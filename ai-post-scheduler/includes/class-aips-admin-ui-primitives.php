@@ -55,7 +55,7 @@ class AIPS_Admin_UI_Primitives {
 			include $partial;
 		} else {
 			if (class_exists('AIPS_Logger')) {
-				AIPS_Logger::log('UI Primitive partial not found: ' . $partial_name, 'warning');
+				AIPS_Logger::instance()->log('UI Primitive partial not found: ' . $partial_name, 'warning');
 			}
 			echo '<div class="notice notice-error aips-error-fallback"><p>' . sprintf(esc_html__('UI component %s could not be loaded.', 'ai-post-scheduler'), esc_html($partial_name)) . '</p></div>';
 		}
