@@ -300,8 +300,11 @@ class Test_AIPS_Internal_Links extends WP_UnitTestCase {
 
 		$emb_service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'generate_embedding', 'get_active_model' ) )
+			->onlyMethods( array( 'generate_embedding', 'get_active_model', 'is_enabled' ) )
 			->getMock();
+
+		$emb_service->method( 'is_enabled' )
+			->willReturn( true );
 
 		// generate_embedding must be called exactly once despite calling index_post twice.
 		$emb_service->expects( $this->once() )

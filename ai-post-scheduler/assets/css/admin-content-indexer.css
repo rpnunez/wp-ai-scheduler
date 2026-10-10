@@ -366,8 +366,8 @@
 	background: transparent;
 	border: none;
 	color: var(--aips-gray-300, #cbd5e1);
-	width: 32px;
-	height: 32px;
+	width: var(--aips-control-h);
+	height: var(--aips-control-h);
 	display: flex;
 	align-items: center;
 	justify-content: center;

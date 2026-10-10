@@ -155,6 +155,17 @@ class AIPS_Generated_Posts_Controller {
 			'post_type' => $post_type_filter,
 		));
 
+		// If the requested page is past the end (e.g. after bulk actions emptied it), fall back to the last page.
+		if (empty($draft_posts['items']) && $review_page > 1 && !empty($draft_posts['pages'])) {
+			$review_page = (int) $draft_posts['pages'];
+			$draft_posts = $this->post_review_repository->get_draft_posts(array(
+				'page' => $review_page,
+				'search' => $search_query,
+				'template_id' => $template_id,
+				'post_type' => $post_type_filter,
+			));
+		}
+
 		// Pre-format dates for draft posts
 		if (!empty($draft_posts['items'])) {
 			foreach ($draft_posts['items'] as $item) {

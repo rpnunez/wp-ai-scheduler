@@ -214,7 +214,7 @@ class AIPS_Related_Posts_Service {
 
 		// Cache final computed related posts
 		if (!empty($related_posts)) {
-			AIPS_Cache::set($cache_key, $related_posts, self::CACHE_GROUP, 12 * HOUR_IN_SECONDS);
+			AIPS_Cache_Factory::instance()->set($cache_key, $related_posts, 12 * HOUR_IN_SECONDS, self::CACHE_GROUP);
 		}
 
 		return $related_posts;
