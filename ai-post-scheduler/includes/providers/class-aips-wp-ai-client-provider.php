@@ -541,9 +541,10 @@ class AIPS_WP_AI_Client_Provider implements AIPS_AI_Provider_Interface {
 			return $builder;
 		}
 
+        $default_timeout = (float) AIPS_Config::get_instance()->get_option('aips_generation_timeout_seconds', self::REQUEST_TIMEOUT_SECONDS);
         $minimum_timeout = (float) apply_filters(
             'aips_wp_ai_client_request_timeout',
-            self::REQUEST_TIMEOUT_SECONDS
+            $default_timeout
         );
         $minimum_timeout = max(0.0, $minimum_timeout);
 
