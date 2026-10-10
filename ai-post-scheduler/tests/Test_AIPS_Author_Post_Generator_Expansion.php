@@ -113,7 +113,8 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		$this->inject_property($reflection, $post_generator, 'logger', $logger);
 		$this->inject_property($reflection, $post_generator, 'interval_calculator', $interval_calculator);
 		$this->inject_property($reflection, $post_generator, 'history_service', $history_service);
-		$this->inject_property($reflection, $post_generator, 'expansion_service', $expansion_service);
+
+		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $expansion_service);
 
 		// Create author and topic objects
 		$author = $authors_repository->get_by_id(1);
@@ -252,7 +253,8 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 		$this->inject_property($reflection, $post_generator, 'logger', $logger);
 		$this->inject_property($reflection, $post_generator, 'interval_calculator', $interval_calculator);
 		$this->inject_property($reflection, $post_generator, 'history_service', $history_service);
-		$this->inject_property($reflection, $post_generator, 'expansion_service', $expansion_service);
+
+		AIPS_Container::get_instance()->instance(AIPS_Similarity_Evaluator::class, $expansion_service);
 
 		// Create author and topic objects
 		$author = $authors_repository->get_by_id(1);

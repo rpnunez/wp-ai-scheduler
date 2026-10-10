@@ -1148,8 +1148,9 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		if ((bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true)) {
-			$this->logger->info(
-				sprintf('Processed background indexing queue slice: %d succeeded, %d failed, %d remaining.', $success, $failed, $total_remaining)
+			$this->logger->log(
+				sprintf('Processed background indexing queue slice: %d succeeded, %d failed, %d remaining.', $success, $failed, $total_remaining),
+				'info'
 			);
 		}
 

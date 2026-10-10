@@ -12,5 +12,11 @@
  */
 
 class Test_AIPS_Upgrades extends WP_UnitTestCase {
-// Intentionally empty — see Test_AIPS_DB_Migrations.php.
+	/**
+	 * Stub assertion to prevent PHPUnit warning about empty test case.
+	 * Tests were migrated to Test_AIPS_DB_Migrations.
+	 */
+	public function test_stub() {
+		$this->assertTrue(true);
+	}
 }

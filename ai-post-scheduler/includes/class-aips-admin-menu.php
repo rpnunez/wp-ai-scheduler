@@ -153,6 +153,7 @@ class AIPS_Admin_Menu {
             null,
             __('Author Topics', 'ai-post-scheduler'),
             __('Author Topics', 'ai-post-scheduler'),
+            'manage_options',
             'aips-author-topics',
             array($this, 'render_author_topics_page')
         );
