@@ -222,3 +222,37 @@
 		min-width: 150px;
 	}
 }
+
+/* Created column: keep date and AM/PM on one line */
+.aips-post-review-table .aips-col-created {
+	min-width: 200px;
+	white-space: nowrap;
+}
+
+/* View-post arrow next to the title */
+.aips-view-post-link {
+	display: inline-flex;
+	align-items: center;
+	margin-left: 4px;
+	color: #787c82;
+	text-decoration: none;
+	vertical-align: middle;
+}
+
+.aips-view-post-link .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.aips-view-post-link:hover,
+.aips-view-post-link:focus-visible {
+	color: #2271b1;
+}
+
+@media (max-width: 860px) {
+	.aips-post-review-table .aips-col-created {
+		min-width: 0;
+		white-space: normal;
+	}
+}

@@ -1314,6 +1314,7 @@ class AIPS_Admin_Assets {
             wp_localize_script('aips-admin-post-review', 'aipsPostReviewL10n', array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('aips_ajax_nonce'),
+                'reloading' => __('Reloading...', 'ai-post-scheduler'),
                 'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
                 'confirmBulkPublish' => __('Are you sure you want to publish %d selected post(s)?', 'ai-post-scheduler'),
                 'confirmDelete' => __('Are you sure you want to delete this post? This action cannot be undone.', 'ai-post-scheduler'),
