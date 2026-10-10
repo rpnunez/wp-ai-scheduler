@@ -225,8 +225,27 @@ class AIPS_Link_Report_Controller {
 		$clicks_out    = $tracking->is_enabled() ? $tracking->get_clicks_by_target($post_id) : array();
 		$clicks_in     = $tracking->is_enabled() ? $tracking->get_clicks_by_source($post_id) : array();
 
+		$outbound_links = $this->repository->get_outbound($post_id);
+		$inbound_links  = $this->repository->get_inbound($post_id);
+
+		$prefetch_ids = array();
+		foreach ($outbound_links as $link) {
+			if (!empty($link->target_post_id)) {
+				$prefetch_ids[] = (int) $link->target_post_id;
+			}
+		}
+		foreach ($inbound_links as $link) {
+			if (!empty($link->source_post_id)) {
+				$prefetch_ids[] = (int) $link->source_post_id;
+			}
+		}
+
+		if (!empty($prefetch_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($prefetch_ids), false, true);
+		}
+
 		$outbound = array();
-		foreach ($this->repository->get_outbound($post_id) as $link) {
+		foreach ($outbound_links as $link) {
 			$target_id  = (int) $link->target_post_id;
 			$outbound[] = array(
 				'anchor'       => (string) $link->anchor_text,
@@ -241,7 +260,7 @@ class AIPS_Link_Report_Controller {
 		}
 
 		$inbound = array();
-		foreach ($this->repository->get_inbound($post_id) as $link) {
+		foreach ($inbound_links as $link) {
 			$source_id = (int) $link->source_post_id;
 			$inbound[] = array(
 				'anchor'       => (string) $link->anchor_text,
