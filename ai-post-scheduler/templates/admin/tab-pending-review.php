@@ -93,7 +93,7 @@ if (!defined('ABSPATH')) {
 					</div>
 
 					<div class="aips-panel-body no-padding">
-						<table class="aips-table">
+						<table class="aips-table aips-post-review-table">
 							<thead>
 								<tr>
 									<th scope="col" style="width: 30px;">
@@ -102,7 +102,7 @@ if (!defined('ABSPATH')) {
 									</th>
 									<th scope="col"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
-									<th scope="col"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
+									<th scope="col" class="aips-col-created"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 								</tr>
 							</thead>
@@ -120,6 +120,11 @@ if (!defined('ABSPATH')) {
 										<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="cell-primary" target="_blank">
 											<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 										</a>
+										<a href="<?php echo esc_url(get_preview_post_link($item->post_id)); ?>" class="aips-view-post-link" target="_blank" rel="noopener"
+											title="<?php esc_attr_e('View post', 'ai-post-scheduler'); ?>"
+											aria-label="<?php esc_attr_e('View post', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-external" aria-hidden="true"></span>
+										</a>
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
 									</td>
 									<td>
@@ -128,7 +133,7 @@ if (!defined('ABSPATH')) {
 											<?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : ($item->post_type ?: '—')); ?>
 										</span>
 									</td>
-									<td>
+									<td class="aips-col-created">
 										<div class="cell-meta">
 											<?php echo esc_html($item->created_at_formatted); ?>
 										</div>
@@ -239,7 +244,7 @@ if (!defined('ABSPATH')) {
 				
 				<!-- Table footer -->
 				<div class="tablenav">
-					<span class="aips-table-footer-count">
+					<span class="aips-table-footer-count" data-total="<?php echo esc_attr((int) $draft_posts['total']); ?>">
 						<?php printf( esc_html( _n( '%d draft', '%d drafts', $draft_posts['total'], 'ai-post-scheduler' ) ), $draft_posts['total'] ); ?>
 					</span>
 					<?php if ($draft_posts['pages'] > 1): ?>
