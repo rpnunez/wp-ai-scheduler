@@ -178,7 +178,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                                 <tr>
                                     <td id="cb" class="manage-column column-cb check-column">
                                         <label class="screen-reader-text" for="aips-cb-select-all"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
-                                        <input id="aips-cb-select-all" type="checkbox">
+                                        <input id="aips-cb-select-all" type="checkbox" aria-label="<?php esc_attr_e('Select all rows', 'ai-post-scheduler'); ?>">
                                     </td>
                                     <th class="column-title"><?php esc_html_e('Run', 'ai-post-scheduler'); ?></th>
                                     <th class="column-post-type"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>

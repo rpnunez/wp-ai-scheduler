@@ -84,7 +84,7 @@ if (!defined('ABSPATH')) {
                 <table class="aips-table">
                     <thead>
                         <tr>
-                            <th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-templates-cb-all"></th>
+                            <th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-templates-cb-all" aria-label="<?php esc_attr_e('Select all rows', 'ai-post-scheduler'); ?>"></th>
                             <th class="column-name"><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?></th>
                             <th class="column-category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
                             <th class="column-stats"><?php esc_html_e('Statistics', 'ai-post-scheduler'); ?></th>
@@ -99,7 +99,7 @@ if (!defined('ABSPATH')) {
                             $pending_stats = isset($all_pending_stats[$template->id]) ? $all_pending_stats[$template->id] : array('today' => 0, 'week' => 0, 'month' => 0);
                         ?>
                         <tr data-template-id="<?php echo esc_attr($template->id); ?>">
-                            <th scope="row" class="check-column"><input type="checkbox" class="aips-template-cb" value="<?php echo esc_attr($template->id); ?>"></th>
+                            <th scope="row" class="check-column"><input type="checkbox" class="aips-template-cb" value="<?php echo esc_attr($template->id); ?>" aria-label="<?php esc_attr_e('Select row', 'ai-post-scheduler'); ?>"></th>
                             <td class="column-name">
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
                                 <?php if (!empty($template->campaign_id) && isset($campaign_map[(int) $template->campaign_id])) : ?>
