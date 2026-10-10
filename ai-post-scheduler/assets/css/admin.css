@@ -83,6 +83,7 @@
     --aips-control-h-sm: 30px;
     --aips-control-h-xs: 24px;
     --aips-control-h-lg: 44px;
+    --aips-toolbar-control-h: var(--aips-control-h); /* controls inside toolbars / filter bars */
     --aips-control-px: 14px;
     --aips-control-px-sm: 10px;
     --aips-control-px-lg: 20px;
@@ -8521,4 +8522,37 @@ tr.aips-row-details > td {
 .aips-wrap select[size] {
     height: auto;
     min-height: 0;
+}
+
+/* Toolbars, filter bars and bulk-action rows: buttons sit beside selects and
+   inputs, so every control (including -sm / -xs / .button-small buttons) uses
+   --aips-toolbar-control-h and they line up. */
+.aips-filter-bar .aips-btn,
+.aips-filter-bar .button,
+.aips-panel-toolbar .aips-btn,
+.aips-panel-toolbar .button,
+.aips-toolbar .aips-btn,
+.aips-toolbar .button,
+.aips-toolbar-left .aips-btn,
+.aips-toolbar-right .aips-btn,
+.aips-toolbar-actions .aips-btn,
+.aips-toolbar-filters .aips-btn,
+.aips-bulk-actions .aips-btn,
+.aips-redirects-toolbar .aips-btn,
+.aips-silos-toolbar .aips-btn,
+.aips-visualizer-toolbar .aips-btn,
+.tablenav .aips-btn,
+.tablenav .button {
+    min-height: var(--aips-toolbar-control-h);
+    padding-left: var(--aips-control-px-sm);
+    padding-right: var(--aips-control-px-sm);
+    font-size: var(--aips-control-font);
+}
+
+.aips-filter-bar .aips-btn-icon,
+.aips-panel-toolbar .aips-btn-icon,
+.aips-toolbar .aips-btn-icon {
+    width: var(--aips-toolbar-control-h);
+    height: var(--aips-toolbar-control-h);
+    padding: 0;
 }
