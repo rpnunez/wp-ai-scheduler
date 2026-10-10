@@ -77,6 +77,19 @@
     --aips-text-xs: 12px;
     --aips-text-2xs: 11px;
 
+    /* Control sizing: single source of truth for buttons, selects, inputs.
+       Adjust here to resize every control in the plugin. */
+    --aips-control-h: 36px;
+    --aips-control-h-sm: 30px;
+    --aips-control-h-xs: 24px;
+    --aips-control-h-lg: 44px;
+    --aips-control-px: 14px;
+    --aips-control-px-sm: 10px;
+    --aips-control-px-lg: 20px;
+    --aips-control-font: var(--aips-text-sm);
+    --aips-control-font-sm: var(--aips-text-xs);
+    --aips-control-radius: var(--aips-radius-base);
+
     --aips-leading-none: 1;
     --aips-leading-tight: 1.25;
     --aips-leading-snug: 1.375;
@@ -548,16 +561,10 @@
     width: auto;
     max-width: 200px;
     min-width: 140px;
-    height: 32px;
-}
-
-.aips-filter-bar .aips-form-input {
-    height: 32px;
 }
 
 .aips-filter-bar .aips-btn,
 .aips-panel-toolbar .aips-btn {
-    height: 32px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1729,10 +1736,14 @@
     align-items: center;
     justify-content: center;
     gap: var(--aips-space-2);
-    padding: var(--aips-space-2) var(--aips-space-4);
-    font-size: var(--aips-text-sm);
+    box-sizing: border-box;
+    min-height: var(--aips-control-h);
+    padding: 0 var(--aips-control-px);
+    font-size: var(--aips-control-font);
+    line-height: 1.3;
     font-weight: var(--aips-font-medium);
-    border-radius: var(--aips-radius-base);
+    border-radius: var(--aips-control-radius);
+    vertical-align: middle;
     cursor: pointer;
     transition: all var(--aips-transition-base);
     border: 1px solid transparent;
@@ -1813,7 +1824,7 @@ button.aips-btn-secondary:active {
 .aips-btn-ghost {
     background: transparent;
     color: var(--aips-gray-600);
-    border: none;
+    border: 1px solid transparent;
 }
 
 .aips-btn-ghost:hover {
@@ -1823,7 +1834,7 @@ button.aips-btn-secondary:active {
 .aips-btn-danger {
     background: transparent;
     color: var(--aips-error);
-    border: none;
+    border: 1px solid transparent;
 }
 
 .aips-btn-danger:hover {
@@ -1849,14 +1860,32 @@ button.aips-btn-secondary:active {
 }
 
 .aips-btn-sm {
-    padding: var(--aips-space-1) var(--aips-space-3);
-    font-size: var(--aips-text-xs);
+    min-height: var(--aips-control-h-sm);
+    padding: 0 var(--aips-control-px-sm);
+    font-size: var(--aips-control-font-sm);
+}
+
+.aips-btn-xs {
+    min-height: var(--aips-control-h-xs);
+    padding: 0 var(--aips-space-2);
+    font-size: var(--aips-control-font-sm);
+}
+
+.aips-btn-lg {
+    min-height: var(--aips-control-h-lg);
+    padding: 0 var(--aips-control-px-lg);
+    font-size: var(--aips-text-base);
 }
 
 .aips-btn-icon {
-    padding: var(--aips-space-2);
-    width: 32px;
-    height: 32px;
+    padding: 0;
+    width: var(--aips-control-h);
+    height: var(--aips-control-h);
+}
+
+.aips-btn-icon.aips-btn-sm {
+    width: var(--aips-control-h-sm);
+    height: var(--aips-control-h-sm);
 }
 
 .aips-btn .dashicons {
@@ -1972,11 +2001,12 @@ button.aips-btn-secondary:active {
 .aips-form-input,
 .aips-form-select,
 .aips-form-textarea {
+    box-sizing: border-box;
     width: 100%;
     padding: var(--aips-space-2) var(--aips-space-3);
-    font-size: var(--aips-text-sm);
+    font-size: var(--aips-control-font);
     border: 1px solid var(--aips-gray-300);
-    border-radius: var(--aips-radius-base);
+    border-radius: var(--aips-control-radius);
     transition: all var(--aips-transition-base);
     background: var(--aips-white);
     color: var(--aips-gray-900);
@@ -2473,8 +2503,8 @@ button.aips-btn-secondary:active {
 .aips-btn.aips-modal-close {
     font-size: var(--aips-text-sm, 13px) !important;
     line-height: 1.4 !important;
-    padding: 6px 14px !important;
-    min-height: 32px;
+    padding: 0 var(--aips-control-px) !important;
+    min-height: var(--aips-control-h);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3537,8 +3567,8 @@ input[type="submit"].is-busy,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: var(--aips-control-h-sm);
+    height: var(--aips-control-h-sm);
     transition: all 0.2s;
 }
 
@@ -4255,9 +4285,9 @@ input[type="submit"].is-busy,
 }
 
 .aips-history-log-detail-actions .aips-btn {
-    font-size: 11px;
-    min-height: 30px;
-    padding: 0 12px;
+    font-size: var(--aips-control-font-sm);
+    min-height: var(--aips-control-h-sm);
+    padding: 0 var(--aips-control-px-sm);
 }
 
 .aips-history-log-detail-panel {
@@ -7400,9 +7430,6 @@ button.aips-rail-item.aips-rail-item-child.active,
 /* Stress Test UI Utilities */
 .aips-stress-history-select {
 	max-width: 210px;
-	height: 36px;
-	font-size: 13px;
-	padding: 0 8px;
 }
 
 .aips-stress-actions-group {
@@ -7423,9 +7450,6 @@ button.aips-rail-item.aips-rail-item-child.active,
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	height: 36px;
-	line-height: 34px;
-	padding: 0 10px;
 }
 
 .aips-stress-summary-actions {
@@ -7528,7 +7552,7 @@ button.aips-rail-item.aips-rail-item-child.active,
 .aips-toolbar-search-input {
 	width: 100%;
 	padding-left: 32px !important;
-	height: 34px !important;
+	height: var(--aips-control-h) !important;
 	border-radius: var(--aips-radius-md) !important;
 }
 
@@ -8379,8 +8403,8 @@ tr.aips-row-details > td {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 32px;
-	height: 32px;
+	width: var(--aips-control-h);
+	height: var(--aips-control-h);
 	padding: 0;
 	border: 1px solid var(--aips-gray-300, #c3c4c7);
 	border-radius: 4px;
@@ -8415,4 +8439,86 @@ tr.aips-row-details > td {
 .aips-internal-links-table .aips-il-row-sub:hover,
 .aips-internal-links-table .aips-il-row-main:has(+ .aips-il-row-sub:hover) {
 	background: var(--aips-gray-50);
+}
+
+
+/* ==========================================================================
+   Uniform control sizing
+   Buttons, selects and text inputs share --aips-control-h so they align in
+   toolbars, filter bars, bulk-action rows and forms. Tune the tokens in :root.
+   ========================================================================== */
+
+.aips-wrap .button,
+.aips-wrap a.button,
+.aips-wrap input[type="submit"].button,
+.aips-wrap input[type="button"].button,
+.aips-modal .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--aips-space-1);
+    box-sizing: border-box;
+    min-height: var(--aips-control-h);
+    padding: 0 var(--aips-control-px);
+    font-size: var(--aips-control-font);
+    line-height: 1.3;
+    vertical-align: middle;
+    border-radius: var(--aips-control-radius);
+}
+
+.aips-wrap .button.button-small,
+.aips-wrap .button-small {
+    min-height: var(--aips-control-h-sm);
+    padding: 0 var(--aips-control-px-sm);
+    font-size: var(--aips-control-font-sm);
+}
+
+.aips-wrap .button.button-large {
+    min-height: var(--aips-control-h-lg);
+    padding: 0 var(--aips-control-px-lg);
+}
+
+.aips-wrap select:not([multiple]):not([size]),
+.aips-modal select:not([multiple]):not([size]),
+.aips-wrap input[type="text"],
+.aips-wrap input[type="search"],
+.aips-wrap input[type="number"],
+.aips-wrap input[type="email"],
+.aips-wrap input[type="url"],
+.aips-wrap input[type="password"],
+.aips-wrap input[type="date"],
+.aips-wrap input[type="time"],
+.aips-wrap input[type="datetime-local"],
+.aips-modal input[type="text"],
+.aips-modal input[type="search"],
+.aips-modal input[type="number"],
+.aips-modal input[type="email"],
+.aips-modal input[type="url"],
+.aips-modal input[type="password"] {
+    box-sizing: border-box;
+    height: var(--aips-control-h);
+    min-height: var(--aips-control-h);
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--aips-control-font);
+    line-height: normal;
+    vertical-align: middle;
+    border-radius: var(--aips-control-radius);
+}
+
+.aips-wrap select.aips-input-sm,
+.aips-wrap select.aips-select-sm,
+.aips-wrap input.aips-input-sm,
+.aips-wrap .aips-form-select-sm {
+    height: var(--aips-control-h-sm);
+    min-height: var(--aips-control-h-sm);
+    font-size: var(--aips-control-font-sm);
+}
+
+/* Keep multi-line controls natural. */
+.aips-wrap textarea,
+.aips-wrap select[multiple],
+.aips-wrap select[size] {
+    height: auto;
+    min-height: 0;
 }
