@@ -156,7 +156,7 @@
 .aips-page-container {
     width: 100%;
     max-width: none;
-    margin: var(--aips-space-6) 0;
+    margin: 0 0 var(--aips-space-6) 0;
     padding: 0;
     box-sizing: border-box;
     position: relative;
@@ -2051,8 +2051,12 @@ button.aips-btn-secondary:active {
     }
 
     .aips-page-container {
-        margin: var(--aips-space-4) 0;
+        margin: 0 0 var(--aips-space-4) 0;
         padding: 0;
+    }
+
+    .aips-wrap {
+        padding-top: var(--aips-space-4);
     }
 
     .aips-page-header {
@@ -2116,6 +2120,8 @@ button.aips-btn-secondary:active {
 .aips-wrap {
     width: auto;
     max-width: none;
+    clear: both;
+    padding-top: var(--aips-space-5);
     position: relative;
     z-index: 1;
 }
