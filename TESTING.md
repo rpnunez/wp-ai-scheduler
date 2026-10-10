@@ -56,7 +56,7 @@ bash scripts/run-docker-test.sh --coverage-filter includes --coverage-html cover
 - `--coverage-html coverage` writes the HTML report to `ai-post-scheduler/coverage/` on your machine (the plugin directory is bind-mounted). Open `ai-post-scheduler/coverage/index.html` (or `dashboard.html`). The folder is gitignored.
 - `--coverage-text` prints a per-class summary in the terminal.
 - Passing a `--coverage*` argument also sets `XDEBUG_MODE=coverage` for that run (an environment variable overrides the runtime `xdebug.mode = off`).
-- Other formats work the same way, e.g. `--coverage-clover .artifacts/clover.xml`.
+- Other formats work the same way, e.g. `--coverage-clover .artifacts/clover.xml`. Note that relative output paths are resolved inside the plugin directory (the only bind-mounted folder), so that file lands at `ai-post-scheduler/.artifacts/clover.xml` (gitignored), not in the repo-root `.artifacts/`.
 
 **Let the report finish.** PHPUnit prints the test summary first, then prints `Generating code coverage report in HTML format ...` and renders every page. The stylesheets, scripts and icons (`_css/`, `_js/`, `_icons/`) are copied as the **last** step. If you interrupt (Ctrl+C) while it is generating, you get HTML pages with no styling. Coverage runs are noticeably slower than normal runs; a long quiet period is not a hang.
 
