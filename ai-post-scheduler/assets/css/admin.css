@@ -154,9 +154,11 @@
 
 /* Main Page Container */
 .aips-page-container {
-    max-width: var(--aips-container-3xl);
-    margin: var(--aips-space-6) auto;
-    padding: 0 var(--aips-space-5);
+    width: 100%;
+    max-width: none;
+    margin: 0 0 var(--aips-space-6) 0;
+    padding: 0;
+    box-sizing: border-box;
     position: relative;
     z-index: 1;
 }
@@ -168,6 +170,7 @@
     border-radius: var(--aips-radius-md);
     padding: var(--aips-space-6);
     margin-bottom: var(--aips-space-5);
+    margin-right: 148px;
     box-shadow: var(--aips-shadow-sm);
 }
 
@@ -578,9 +581,6 @@
     z-index: 30;
 }
 
-.aips-wrap {
-    clear: both;
-}
 
 /* Compact, troubleshooting-first History page. */
 .aips-history-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
@@ -2049,11 +2049,12 @@ button.aips-btn-secondary:active {
     }
 
     .aips-page-container {
-        margin: var(--aips-space-4) auto;
-        padding: 0 var(--aips-space-3);
+        margin: 0 0 var(--aips-space-4) 0;
+        padding: 0;
     }
 
     .aips-page-header {
+        margin-right: 0;
         padding: var(--aips-space-4);
     }
 
@@ -2112,7 +2113,8 @@ button.aips-btn-secondary:active {
    ========================================================================== */
 
 .aips-wrap {
-    max-width: var(--aips-container-3xl);
+    width: auto;
+    max-width: none;
     position: relative;
     z-index: 1;
 }
