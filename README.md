@@ -57,56 +57,196 @@ ai-post-scheduler/
 
 ### Quick Start (Docker, Recommended)
 
-> **Requires Bash** — run from Git Bash, WSL2, or a Mac/Linux terminal.
+> **Requires Bash** — run from Git Bash, WSL2, or a Mac/Linux terminal. Docker Desktop (or Docker Engine + Compose v2) must be running.
 
 ```bash
-./start-dev.sh
+./start-dev.sh          # or: make start-dev
 ```
 
-This provisions WordPress, database services, the official WordPress **AI plugin**, the **Google AI Connector**, API key credentials from `.env`, and AI Post Scheduler activation.
+This builds the image (`wordpress:7.1-php8.3-apache`), provisions WordPress, the database, phpMyAdmin, the official WordPress **AI plugin**, the **Google AI Provider** connector, and activates AI Post Scheduler. The environment always uses the **WP AI Client** with the **Google** connector.
 
-On first run, `start-dev.sh` automatically creates a `.env` file from `.env.example`. You can edit `.env` to update your `GOOGLE_API_KEY` or select a different default connector.
+What `start-dev.sh` does, in order:
 
-Local URLs:
+1. Creates `.env` from `.env.example` if missing, and gives this checkout a unique **instance id**, container names, and free host ports (so several checkouts/worktrees can run side by side).
+2. **Starts a log** at `.artifacts/start-dev-<instance>-<id>.log` (gitignored). Every run's full output is saved there.
+3. **Checks `GOOGLE_API_KEY`.** If it is empty or still the `your_google_api_key_here` placeholder, you are prompted for the key (hidden input) and it is saved to your gitignored `.env`. With no terminal (CI, agents) the script fails fast with instructions instead of starting a stack that can't generate content. `AIPS_SKIP_API_KEY_CHECK=1` starts anyway. The key value is never printed or logged.
+4. Builds the image (with retries for transient Docker Hub errors), pulls only the images that aren't cached locally, then starts everything and waits for the health checks.
+
+Flags:
+
+| Flag | Purpose |
+| :--- | :--- |
+| `--import-sql <file.sql\|file.sql.gz>` | Seed the database from a dump (see [Starting with existing data](#starting-with-existing-data)). |
+| `--force-import` | With `--import-sql`: back up the current database to `.artifacts/` and replace it even if it has data. |
+| `-h`, `--help` | Show usage. |
+
+Local URLs (default ports; `start-dev.sh` picks the first free port at or above these and stores them in `.env`, so check `make urls` for yours):
+
 - WordPress: http://localhost:8080
-- Admin: http://localhost:8080/wp-admin (admin/admin)
+- Admin: http://localhost:8080/wp-admin (`admin` / `admin`)
 - phpMyAdmin: http://localhost:8082
 - AI Connectors: http://localhost:8080/wp-admin/options-general.php?page=connectors
-
 
 See [docs/SETUP.md](docs/SETUP.md) for full setup details.
 
 ### Daily Workflow
 
+`make` shortcuts wrap `docker compose` and automatically use this checkout's names, ports, and credentials from `.env`.
+
 ```bash
-# Start services
-make up
-
-# Follow logs
-make logs
-
-# Open a shell in the app container
-make shell
-
-# Stop services
-make down
+make start-dev   # first time / after pulling changes (provision + build + start, logged)
+make start       # start existing containers
+make stop        # stop containers (keeps them and all data)
+make down        # remove containers (keeps data volumes)
+make logs        # follow all logs (logs-web, logs-db for one service)
+make shell       # bash in the WordPress container
+make wp-shell    # WP-CLI shell
+make db-shell    # MariaDB shell (credentials from .env)
+make urls        # URLs, ports and credentials for this instance
+make status      # container status
+make help        # list every target
 ```
+
+| Target | What it does |
+| :--- | :--- |
+| `start-dev` | Runs `start-dev.sh` (`ARGS="--import-sql x.sql"` is passed through). |
+| `up` / `start` / `stop` / `restart` / `down` | Plain compose lifecycle. `up` does **not** provision names/ports, so use `start-dev` on a fresh checkout. |
+| `build` / `rebuild` | Build images / rebuild and restart. |
+| `status`, `info`, `urls` | Container status; WordPress + plugin info; URLs and credentials. |
+| `logs`, `logs-web`, `logs-db` | Follow logs. |
+| `shell`, `wp-shell`, `db-shell` | Shells in the web container, WP-CLI, and the database. |
+| `plugin-activate`, `plugin-deactivate`, `plugin-list` | Manage the plugin via WP-CLI. |
+| `composer-install`, `composer-update` | Composer inside the plugin directory (container). |
+| `db-backup`, `db-restore` | Dump to / restore from `backup.sql`. |
+| `reload-php` | Reload Apache so `dev-php.ini` changes apply. |
+| `xdebug-on`, `xdebug-off`, `xdebug-status`, `xdebug-log`, `xdebug-log-follow` | Xdebug control (see Debugging). |
+| `test`, `test-verbose`, `test-coverage`, `test-ci` | PHPUnit (see [Testing](#testing)). |
+| `install`, `clean` | Reinstall / remove everything **including data volumes** (`clean` asks first). |
+| `prune` | Remove this project's dangling images only (other projects are untouched). |
+| `sync-wp-core` | Mirror WordPress files to `./.docker/wp-html` for IDE path mapping. |
+
+Set `NO_COLOR=1` to disable colored `make` output.
+
+### Starting with existing data
+
+By default every environment starts as an empty WordPress install. To seed it from a dump:
+
+```bash
+./start-dev.sh --import-sql path/to/dump.sql         # .sql or .sql.gz
+make start-dev ARGS="--import-sql path/to/dump.sql"
+```
+
+- The import runs only when the database has **no tables**; on normal reruns (data present) it is skipped and the log says so. `--force-import` first backs the database up to `.artifacts/db-backup-<instance>-<id>.sql`, then replaces it.
+- Set `AIPS_IMPORT_SQL` in `.env` for a standing default; the flag overrides it.
+- The dump's table prefix is detected and applied (`WP_TABLE_PREFIX`), MySQL 8 collations are mapped for MariaDB, and URLs are rewritten to `http://localhost:<WP_PORT>` (serialization-safe).
+- Admin credentials come from the imported database, not `.env`.
+
+### Environment Variables
+
+All variables live in `.env` (created from `.env.example`, gitignored). `docker compose` reads `.env` automatically; `start-dev.sh` and the `Makefile` read it too. Defaults below are what applies when a variable is unset.
+
+**Database**
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `MYSQL_ROOT_PASSWORD` | `root` | MariaDB root password (also used by the test runner to create the test database). |
+| `MYSQL_DATABASE` | `wordpress` | Database name for the dev site. |
+| `MYSQL_USER` | `wordpress` | Application database user. |
+| `MYSQL_PASSWORD` | `wordpress` | Application database password. |
+| `WP_TABLE_PREFIX` | `wp_` | WordPress table prefix. Set automatically when importing a dump with another prefix. |
+| `DB_IMAGE` | `mariadb:10.6` | Database image. Defaults to an image likely cached locally; `mariadb:10.11` is a good upgrade. |
+| `PMA_IMAGE` | `phpmyadmin/phpmyadmin:latest` | phpMyAdmin image (e.g. `phpmyadmin:5`). |
+
+**WordPress**
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `WP_ADMIN_USER` | `admin` | Admin username created on first install. |
+| `WP_ADMIN_PASSWORD` | `admin` | Admin password. |
+| `WP_ADMIN_EMAIL` | `admin@example.com` | Admin email. |
+| `WP_SITE_TITLE` | `WP AI Scheduler Dev` | Site title. |
+| `WP_SITE_URL` | `http://localhost:<WP_PORT>` | Derived from `WP_PORT` by `docker-compose.yml`; the value in `.env` is not read by compose. |
+| `WP_IMAGE_TAG` | `7.1-php8.3-apache` | Tag of the official [`wordpress`](https://hub.docker.com/_/wordpress) base image (WordPress + PHP + Apache). Changing it rebuilds the image. |
+| `WP_CORE_SOURCE` | `image` | `image` uses the WordPress core bundled in the image (reproducible). `trunk` clones WordPress trunk from GitHub on first boot. |
+| `AIPS_IMPORT_SQL` | *(unset)* | Default SQL dump for `start-dev.sh` to import into an empty database. |
+
+**AI (always WP AI Client + Google connector)**
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `GOOGLE_API_KEY` | placeholder | Required. `start-dev.sh` prompts for it when empty or a placeholder (`your_*`, `*api_key*`, `*_here*`) and saves it here. |
+| `AIPS_AI_PROVIDER` | `WP_AI_CLIENT` | Active AI provider. `start-dev.sh` normalizes this to `WP_AI_CLIENT`. |
+| `DEFAULT_AI_CONNECTOR_PLUGIN` | `ai-provider-for-google` | Connector plugin installed/activated at startup. `start-dev.sh` normalizes this to the Google connector. |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | *(empty)* | Written to `wp-config.php` only if the matching connector plugin is installed. |
+| `AIPS_SKIP_API_KEY_CHECK` | `0` | Set to `1` (in the shell) to let `start-dev.sh` start without a Google key. |
+
+**Ports** (auto-assigned to the first free port at or above the default on first run)
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `WP_PORT` | `8080` | Host port for WordPress. |
+| `PHPMYADMIN_PORT` | `8082` | Host port for phpMyAdmin. |
+| `MYSQL_PORT` | `3307` | Host port for the database (for external DB tools). |
+| `XDEBUG_PORT` | `9003` | Host port mapped to the container's Xdebug port. |
+
+**Instance identity** (written by `start-dev.sh`; delete `AIPS_INSTANCE_ID` to re-provision)
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `AIPS_INSTANCE_ID` | `<dir>-<hex>` | Unique id for this checkout; used in container names and log file names. |
+| `AIPS_WEB_CONTAINER` | `wp-ai-scheduler-web` | Web container name (suffixed with the instance id). |
+| `AIPS_DB_CONTAINER` | `wp-ai-scheduler-db` | Database container name. |
+| `AIPS_PMA_CONTAINER` | `wp-ai-scheduler-phpmyadmin` | phpMyAdmin container name. |
+| `COMPOSE_PROJECT_NAME` | directory name | Standard Compose variable; also scopes `make prune`. |
+
+**Xdebug** (off by default; see [Debugging](#debugging-vs-code))
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `XDEBUG_MODE` | `off` | `off`, `debug`, `develop,debug`, `profile`, `trace`, `coverage`. |
+| `XDEBUG_START_WITH_REQUEST` | `trigger` | `trigger` (only when `XDEBUG_TRIGGER` is present), `yes` (every request, slow), `no`. |
+| `XDEBUG_CLIENT_HOST` | `host.docker.internal` | Where the container connects back to your IDE. |
+| `XDEBUG_CLIENT_PORT` | `9003` | IDE port. |
+| `XDEBUG_IDEKEY` | `PHPSTORM` | IDE key (`.env.example` suggests `VSCODE`). |
+| `XDEBUG_LOG` | `/tmp/xdebug.log` | Xdebug log path inside the container (`make xdebug-log`). |
+| `XDEBUG_LOG_LEVEL` | `7` | Xdebug log verbosity. |
+| `XDEBUG_VERSION` | `3.4.0` | PECL version installed at **build** time (empty = latest compatible). |
+
+**Other**
+
+| Variable | Default | What it does |
+| :--- | :--- | :--- |
+| `ENTRYPOINT_DEBUG` | `1` | Verbose container startup output (set in `docker-compose.yml`). |
+| `PHP_IDE_CONFIG` | `serverName=localhost` | Xdebug server name for IDEs (set in `docker-compose.yml`). |
+| `NO_COLOR` | unset | Shell variable: disable colors in `make` output. |
+| `WP_USERNAME`, `WP_APP_PASSWORD`, `MCP_BRIDGE_URL` | placeholders | Only for the MCP bridge client; see [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md). |
+
+PHP limits (`memory_limit`, upload size, execution time) are not environment variables here: edit `dev-php.ini` and run `make reload-php`. Test-runner variables (`AIPS_WP_TEST_*`, `WP_TESTS_DIR`, `WP_CORE_DIR`) are listed in [TESTING.md](TESTING.md).
 
 ### Manual/Non-Docker Setup
 
 - See [ai-post-scheduler/readme.txt](ai-post-scheduler/readme.txt) for plugin installation details.
-- PHPUnit is maintained around the Docker-backed WordPress test environment. See [docs/SETUP.md](docs/SETUP.md) for the supported workflow.
+- PHPUnit is maintained around the Docker-backed WordPress test environment. See [TESTING.md](TESTING.md).
 
 ### Debugging (VS Code)
 
 Xdebug is **off by default** for performance. Enable it only when actively debugging:
 
-1. `make xdebug-on` (sets `XDEBUG_MODE=develop,debug` with `trigger`-based startup, rebuilds & restarts `web`).
+1. `make xdebug-on` (sets `XDEBUG_MODE=develop,debug` with `trigger`-based startup and recreates `web`; no image rebuild needed).
 2. Press `F5` in VS Code and select `Listen for Xdebug (Docker)`.
 3. Trigger the request (with the Xdebug browser helper, or append `?XDEBUG_TRIGGER=1`).
 4. When finished: `make xdebug-off`.
 
 See [docs/SETUP.md](docs/SETUP.md#xdebug--vs-code-debugging) for the full env-var reference and mode explanations.
+
+### Troubleshooting
+
+| Symptom | Fix |
+| :--- | :--- |
+| Build fails with `auth.docker.io ... 500/504` | Docker Hub outage. `start-dev.sh` retries automatically; if it still fails, retry later or `docker login`. Images already cached locally are reused without contacting Docker Hub. |
+| `start-dev.sh` exits with "GOOGLE_API_KEY is not set" | Run it in a terminal to be prompted, set the key in `.env`, or use `AIPS_SKIP_API_KEY_CHECK=1`. |
+| Need to see what a run did | Open the newest `.artifacts/start-dev-*.log`. |
+| Ports already in use | Delete `AIPS_INSTANCE_ID` from `.env` and re-run `start-dev.sh` to re-provision. |
 
 ## Configuration & Settings Reference
 
@@ -238,32 +378,18 @@ The tables below document all canonical options registered and maintained by AI 
 
 ## Testing
 
-Run test commands from [ai-post-scheduler/](ai-post-scheduler/):
+PHPUnit runs inside the `web` container of the dev stack, against a separate `wp_tests` database (never your development data). Start the stack first (`./start-dev.sh`), then:
 
 ```bash
-cd ai-post-scheduler
-
-# Full test suite
-composer test
-
-# Verbose output
-composer test:verbose
-
-# Coverage
-composer test:coverage
-
-# Single test file
-vendor/bin/phpunit tests/test-template-processor.php
+make test                                            # whole suite
+make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
+make test-verbose                                    # verbose output
+make test-coverage                                   # coverage: text summary + HTML report
 ```
 
-Canonical Docker-backed workflow:
+The coverage HTML report is written to `ai-post-scheduler/coverage/` (open `index.html`); generating it takes a while after the tests finish, so let it complete before opening it. Equivalent without `make`: `bash scripts/run-docker-test.sh [phpunit args]`.
 
-```bash
-bash scripts/run-wp-tests-docker.sh
-bash scripts/run-wp-tests-docker.sh coverage
-```
-
-For agent-session PHPUnit bootstrap behavior and troubleshooting, see [TESTING.md](TESTING.md).
+`make test-ci` runs the host-side CI runner (`scripts/run-wp-tests-docker.sh`, needs host PHP and Composer). For the full guide, flags, a baseline run, and troubleshooting, see [TESTING.md](TESTING.md).
 
 ### Performance Benchmarks
 

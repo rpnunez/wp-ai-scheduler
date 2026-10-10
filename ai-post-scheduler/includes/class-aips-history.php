@@ -712,7 +712,7 @@ class AIPS_History {
         $embedding_dims = 0;
 
         foreach ($logs as $log) {
-            if (in_array($log['log_type'], array('trigger_source', 'trigger_method'), true)) {
+            if (isset($log['log_type']) && in_array($log['log_type'], array('trigger_source', 'trigger_method'), true)) {
                 continue;
             }
             $details = !empty($log['details']) && is_array($log['details']) ? $log['details'] : array();
