@@ -24,6 +24,12 @@ if (!trait_exists('AIPS_Cacheable_Repository')) {
  * Encapsulates all database operations related to generation history.
  */
 class AIPS_History_Repository implements AIPS_History_Repository_Interface {
+
+    /**
+     * Default maximum rows collapsed into a single History group.
+     */
+    const GROUP_MAX_ROWS = 50;
+
     use AIPS_Cacheable_Repository;
 
     /**
@@ -335,50 +341,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * Get paginated history with optional filtering.
+     * Creation-method LIKE patterns that define each non-default history domain.
      *
-     * @param array $args {
-     *     Optional. Query arguments.
-     *
-     *     @type int    $per_page    Number of items per page. Default 20.
-     *     @type int    $page        Current page number. Default 1.
-     *     @type string $status      Filter by status. Default empty.
-     *     @type string $search      Search term for title. Default empty.
-     *     @type int    $template_id Filter by template ID. Default 0.
-     *     @type string $orderby     Column to order by. Default 'created_at'.
-     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
-     * }
-     * @return array {
-     *     @type array $items        Array of history items.
-     *     @type int   $total        Total number of items.
-     *     @type int   $pages        Total number of pages.
-     *     @type int   $current_page Current page number.
-     * }
+     * @return array<string,string> Domain key => SQL LIKE pattern.
      */
-    public function get_history($args = array()) {
-        $defaults = array(
-            'per_page' => 50,
-            'page' => 1,
-            'status' => '',
-            'search' => '',
-            'template_id' => 0,
-            'campaign_id' => 0,
-            'author_id' => 0,
-            'domain' => '',
-            'actor' => '',
-            'post_type' => '',
-            'date_from' => '',
-            'date_to' => '',
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'fields' => 'all',
-        );
-
-        $args = wp_parse_args($args, $defaults);
-
-        $offset = ($args['page'] - 1) * $args['per_page'];
-
-        $domain_patterns = array(
+    private function get_domain_patterns() {
+        return array(
             'content_indexing' => '%content_index%',
             'author_topics' => 'author_topic%',
             'research' => '%research%',
@@ -387,50 +355,16 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'internal_links' => '%internal_link%',
             'batch_jobs' => '%batch%',
         );
+    }
 
-        $event_domain_case_parts = array('CASE');
-        foreach ($domain_patterns as $domain_key => $domain_pattern) {
-            $event_domain_case_parts[] = sprintf(
-                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
-                esc_sql($domain_pattern),
-                esc_sql($domain_key)
-            );
-        }
-        $event_domain_case_parts[] = "ELSE 'post_generation'";
-        $event_domain_case_parts[] = 'END';
-        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
-        $event_label_case_sql = "CASE
-                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
-                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
-                WHEN h.post_id IS NOT NULL THEN CONCAT('Post #', h.post_id)
-                WHEN COALESCE(h.creation_method, '') LIKE '%content_index%' THEN 'Content Indexing'
-                ELSE 'Generation Event'
-            END";
-        $actor_type_case_sql = "CASE
-                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
-                ELSE 'system'
-            END";
-
-        // Build select fields
-        if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
-                {$event_domain_case_sql} AS event_domain,
-                {$event_label_case_sql} AS event_label,
-                {$actor_type_case_sql} AS actor_type,
-                t.name as template_name,
-                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
-        } elseif ($args['fields'] === 'all') {
-            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
-                {$event_domain_case_sql} AS event_domain,
-                {$event_label_case_sql} AS event_label,
-                {$actor_type_case_sql} AS actor_type,
-                t.name as template_name";
-        } else {
-            // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
-        }
-
+    /**
+     * Build the shared WHERE clause for history listing queries.
+     *
+     * @param array $args            Normalised get_history() arguments.
+     * @param array $domain_patterns Domain key => LIKE pattern map.
+     * @return array{0:string,1:array} Tuple of [where_sql, where_args].
+     */
+    private function build_history_where($args, $domain_patterns) {
         // Build where clauses
         $where_clauses = array("1=1");
         $where_args = array();
@@ -529,6 +463,104 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         $where_sql = implode(' AND ', $where_clauses);
 
+        return array($where_sql, $where_args);
+    }
+
+    /**
+     * Get paginated history with optional filtering.
+     *
+     * @param array $args {
+     *     Optional. Query arguments.
+     *
+     *     @type int    $per_page    Number of items per page. Default 20.
+     *     @type int    $page        Current page number. Default 1.
+     *     @type string $status      Filter by status. Default empty.
+     *     @type string $search      Search term for title. Default empty.
+     *     @type int    $template_id Filter by template ID. Default 0.
+     *     @type string $orderby     Column to order by. Default 'created_at'.
+     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+     * }
+     * @return array {
+     *     @type array $items        Array of history items.
+     *     @type int   $total        Total number of items.
+     *     @type int   $pages        Total number of pages.
+     *     @type int   $current_page Current page number.
+     * }
+     */
+    public function get_history($args = array()) {
+        $defaults = array(
+            'per_page' => 50,
+            'page' => 1,
+            'status' => '',
+            'search' => '',
+            'template_id' => 0,
+            'campaign_id' => 0,
+            'author_id' => 0,
+            'domain' => '',
+            'actor' => '',
+            'post_type' => '',
+            'date_from' => '',
+            'date_to' => '',
+            'orderby' => 'created_at',
+            'order' => 'DESC',
+            'fields' => 'all',
+            'collapse' => false,
+            'group_max_rows' => self::GROUP_MAX_ROWS,
+        );
+
+        $args = wp_parse_args($args, $defaults);
+        $args['per_page'] = max(1, (int) $args['per_page']);
+        $args['page'] = max(1, (int) $args['page']);
+
+        $offset = ($args['page'] - 1) * $args['per_page'];
+
+        $domain_patterns = $this->get_domain_patterns();
+
+        $event_domain_case_parts = array('CASE');
+        foreach ($domain_patterns as $domain_key => $domain_pattern) {
+            $event_domain_case_parts[] = sprintf(
+                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
+                esc_sql($domain_pattern),
+                esc_sql($domain_key)
+            );
+        }
+        $event_domain_case_parts[] = "ELSE 'post_generation'";
+        $event_domain_case_parts[] = 'END';
+        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
+        $event_label_case_sql = "CASE
+                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
+                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
+                WHEN h.post_id IS NOT NULL THEN CONCAT('Post #', h.post_id)
+                WHEN COALESCE(h.creation_method, '') LIKE '%content_index%' THEN 'Content Indexing'
+                ELSE 'Generation Event'
+            END";
+        $actor_type_case_sql = "CASE
+                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
+                ELSE 'system'
+            END";
+
+        // Build select fields
+        if ($args['fields'] === 'list') {
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name,
+                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
+        } elseif ($args['fields'] === 'all') {
+            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name";
+        } else {
+            // For specifically 'performance' or any other restricted fields
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+        }
+
+        list($where_sql, $where_args) = $this->build_history_where($args, $domain_patterns);
+
         // Validate orderby and order
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
@@ -536,18 +568,38 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $templates_table = $this->wpdb->prefix . 'aips_templates';
 
         // Query for items
-        $query_args = $where_args;
-        $query_args[] = $args['per_page'];
-        $query_args[] = $offset;
+        $collapse_plan = null;
+        if (!empty($args['collapse'])) {
+            // Entry-based pagination: a page is `per_page` display entries (collapsed groups or single rows),
+            // so the rows to hydrate are picked by the planner rather than by LIMIT/OFFSET.
+            $collapse_plan = $this->plan_collapsed_page($where_sql, $where_args, $orderby, $order, $args);
+            $page_ids = $collapse_plan['ids'];
+            if (empty($page_ids)) {
+                $results = array();
+            } else {
+                $ids_in = implode(',', array_fill(0, count($page_ids), '%d'));
+                $results = $this->wpdb->get_results($this->wpdb->prepare("
+                    SELECT $fields_sql
+                    FROM {$this->table_name} h
+                    LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                    WHERE h.id IN ({$ids_in})
+                    ORDER BY h.$orderby $order, h.id $order
+                ", $page_ids));
+            }
+        } else {
+            $query_args = $where_args;
+            $query_args[] = $args['per_page'];
+            $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT $fields_sql
-            FROM {$this->table_name} h
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id
-            WHERE $where_sql
-            ORDER BY h.$orderby $order
-            LIMIT %d OFFSET %d
-        ", $query_args));
+            $results = $this->wpdb->get_results($this->wpdb->prepare("
+                SELECT $fields_sql
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE $where_sql
+                ORDER BY h.$orderby $order, h.id $order
+                LIMIT %d OFFSET %d
+            ", $query_args));
+        }
 
         // If 'list' fields were requested, attach aggregated log statistics for the paginated slice only.
         // This replaces the full-table log aggregation subquery that previously caused severe performance degradation.
@@ -583,6 +635,17 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             }
         }
 
+        if ($collapse_plan !== null) {
+            return array(
+                'items' => $results,
+                'total' => $collapse_plan['total_rows'],
+                'total_entries' => $collapse_plan['total_entries'],
+                'pages' => (int) ceil($collapse_plan['total_entries'] / $args['per_page']),
+                'current_page' => $args['page'],
+                'group_max_rows' => (int) $args['group_max_rows'],
+            );
+        }
+
         // Query for total count
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
@@ -598,6 +661,103 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'total' => (int) $total,
             'pages' => ceil($total / $args['per_page']),
             'current_page' => $args['page'],
+        );
+    }
+
+    /**
+     * Split an ordered list of creation-method keys into collapsed-entry sizes.
+     *
+     * Adjacent rows sharing a key form a run. Runs are chunked into groups of at
+     * most $max_rows; a chunk of 1 is a single (ungrouped) entry. This is the one
+     * definition of "what is an entry" shared by pagination and rendering.
+     *
+     * @param string[] $keys     Normalised creation-method keys in display order.
+     * @param int      $max_rows Maximum rows per collapsed group (min 2).
+     * @return int[] Row count of each entry, in display order.
+     */
+    public static function plan_entry_sizes(array $keys, $max_rows = self::GROUP_MAX_ROWS) {
+        $max_rows = max(2, (int) $max_rows);
+        $sizes    = array();
+        $run      = 0;
+        $prev     = null;
+
+        foreach ($keys as $key) {
+            if ($prev !== null && $key !== $prev) {
+                self::push_run_sizes($sizes, $run, $max_rows);
+                $run = 0;
+            }
+            $run++;
+            $prev = $key;
+        }
+        if ($run > 0) {
+            self::push_run_sizes($sizes, $run, $max_rows);
+        }
+
+        return $sizes;
+    }
+
+    /**
+     * Append the chunk sizes for one run of identical rows.
+     *
+     * @param int[] $sizes    Sizes accumulator (by reference).
+     * @param int   $run      Run length.
+     * @param int   $max_rows Chunk cap.
+     * @return void
+     */
+    private static function push_run_sizes(array &$sizes, $run, $max_rows) {
+        while ($run > 0) {
+            $chunk   = min($run, $max_rows);
+            $sizes[] = $chunk;
+            $run    -= $chunk;
+        }
+    }
+
+    /**
+     * Work out which history rows belong on a collapsed page.
+     *
+     * Scans only (id, normalised creation method) for the filtered set, builds the
+     * entry plan, and returns the ids of the rows covered by the requested page of
+     * `per_page` entries.
+     *
+     * @param string $where_sql  Shared WHERE clause.
+     * @param array  $where_args Placeholder values for the WHERE clause.
+     * @param string $orderby    Validated order column.
+     * @param string $order      Validated direction.
+     * @param array  $args       Normalised get_history() arguments.
+     * @return array{ids:int[],total_rows:int,total_entries:int}
+     */
+    private function plan_collapsed_page($where_sql, array $where_args, $orderby, $order, array $args) {
+        $sql = "SELECT h.id, COALESCE(NULLIF(h.creation_method, ''), 'post_generation') AS method_key
+            FROM {$this->table_name} h
+            WHERE $where_sql
+            ORDER BY h.$orderby $order, h.id $order";
+        if (!empty($where_args)) {
+            $sql = $this->wpdb->prepare($sql, $where_args);
+        }
+
+        $rows = $this->wpdb->get_results($sql, ARRAY_N);
+        $rows = is_array($rows) ? $rows : array();
+
+        $keys = array();
+        foreach ($rows as $row) {
+            $keys[] = (string) $row[1];
+        }
+
+        $sizes     = self::plan_entry_sizes($keys, (int) $args['group_max_rows']);
+        $per_page  = (int) $args['per_page'];
+        $first     = ((int) $args['page'] - 1) * $per_page;
+        $row_start = (int) array_sum(array_slice($sizes, 0, $first));
+        $row_count = (int) array_sum(array_slice($sizes, $first, $per_page));
+
+        $ids = array();
+        foreach (array_slice($rows, $row_start, $row_count) as $row) {
+            $ids[] = (int) $row[0];
+        }
+
+        return array(
+            'ids' => $ids,
+            'total_rows' => count($rows),
+            'total_entries' => count($sizes),
         );
     }
 

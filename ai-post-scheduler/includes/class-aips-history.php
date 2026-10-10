@@ -1754,11 +1754,13 @@ class AIPS_History {
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
+            'per_page' => $this->get_per_page(),
+            'collapse' => $this->should_collapse($status_filter),
         ));
 
         $this->prepare_items_for_display($history['items']);
 
-        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items'], $status_filter) : '';
+        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items'], $status_filter, isset($history['group_max_rows']) ? (int) $history['group_max_rows'] : 0) : '';
 
         ob_start();
         $this->render_pagination_html($history, $status_filter, $search_query);
@@ -1924,6 +1926,8 @@ class AIPS_History {
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
+            'per_page' => $this->get_per_page(),
+            'collapse' => $this->should_collapse($status_filter),
         ));
 
         $this->prepare_items_for_display($history['items']);
@@ -2041,13 +2045,18 @@ class AIPS_History {
      * Clusters runs of 2 or more adjacent items of the same activity type into
      * a collapsed group structure for cleaner list presentation.
      *
-     * @param array $items List of prepared history item objects.
+     * @param array $items    List of prepared history item objects.
+     * @param int   $max_rows Maximum rows per group (0 = repository default).
      * @return array Array of group descriptors and individual item wrappers.
      */
-    public function group_contiguous_items( array $items ): array {
+    public function group_contiguous_items( array $items, int $max_rows = 0 ): array {
         if ( empty( $items ) ) {
             return array();
         }
+
+        // Runs longer than the cap are split into consecutive groups, matching the
+        // entry plan the repository paginates with.
+        $max_rows = $max_rows >= 2 ? $max_rows : AIPS_History_Repository::GROUP_MAX_ROWS;
 
         $grouped = array();
         $count   = count( $items );
@@ -2068,6 +2077,7 @@ class AIPS_History {
                 $j++;
             }
 
+            $j          = min( $j, $i + $max_rows );
             $run_length = $j - $i;
 
             if ( $run_length >= 2 ) {
@@ -2129,17 +2139,30 @@ class AIPS_History {
     }
 
     /**
+     * Whether the History list collapses adjacent same-type runs for a status filter.
+     *
+     * Processing/failed views stay flat so each event is individually visible.
+     *
+     * @param string $status_filter Active status filter.
+     * @return bool
+     */
+    public function should_collapse( string $status_filter ): bool {
+        return $status_filter !== 'processing' && $status_filter !== 'failed';
+    }
+
+    /**
      * Render the table rows HTML (with contiguous grouping) for a list of items.
      * When filtered by a specific status (e.g. processing or failed), grouping is bypassed
      * to provide a clear, flat, un-nested list of individual generation events.
      *
      * @param array  $items Prepared history item objects.
      * @param string $status_filter Optional active status filter.
+     * @param int    $max_rows Maximum rows per group (0 = repository default).
      * @return string HTML of rows.
      */
-    public function render_table_rows_html( array $items, string $status_filter = '' ): string {
-        $should_group = empty( $status_filter ) || ( $status_filter !== 'processing' && $status_filter !== 'failed' );
-        $grouped_entries = $should_group ? $this->group_contiguous_items( $items ) : array_map( function( $item ) {
+    public function render_table_rows_html( array $items, string $status_filter = '', int $max_rows = 0 ): string {
+        $should_group = $this->should_collapse( $status_filter );
+        $grouped_entries = $should_group ? $this->group_contiguous_items( $items, $max_rows ) : array_map( function( $item ) {
             return array( 'is_group' => false, 'item' => $item );
         }, $items );
 
