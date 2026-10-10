@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  * Builds complete prompts for article structures by resolving section
  * placeholders and processing template variables.
  */
-class AIPS_Prompt_Builder_Article_Structure_Section {
+class AIPS_Prompt_Builder_Article_Structure_Section extends AIPS_Prompt_Builder_Section_Base {
 
 	/**
 	 * @var AIPS_Article_Structure_Manager
@@ -32,19 +32,15 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 	private $section_repository;
 
 	/**
-	 * @var AIPS_Template_Processor
-	 */
-	private $template_processor;
-
-	/**
 	 * @param AIPS_Article_Structure_Manager|null $structure_manager Optional structure manager.
 	 * @param AIPS_Prompt_Section_Repository|null $section_repository Optional section repository.
 	 * @param AIPS_Template_Processor|null        $template_processor Optional template processor.
 	 */
 	public function __construct($structure_manager = null, $section_repository = null, $template_processor = null) {
+		parent::__construct($template_processor);
+
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
 		$this->section_repository = $section_repository ?: new AIPS_Prompt_Section_Repository();
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 	}
 
 	/**
@@ -75,7 +71,7 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 			$prompt = str_replace($search, $replace, $prompt);
 		}
 
-		return $this->template_processor->process($prompt, $topic);
+		return $this->get_template_processor()->process($prompt, $topic);
 	}
 
 	/**
