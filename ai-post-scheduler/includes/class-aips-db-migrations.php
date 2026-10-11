@@ -1227,6 +1227,7 @@ class AIPS_DB_Migrations {
 	 *    `topic_auto_approval_min_score`; copy it into the new dedicated
 	 *    `topic_auto_approval_min_relevance` column. Explicit modes and every
 	 *    other column are left unchanged.
+	 *  - Authors with mode `manual` (the old column default) are set to `inherit`.
 	 *  - The global fallback value `reject` becomes `rejected`.
 	 *  - The hidden, UI-less option family that nothing could configure is deleted.
 	 *
@@ -1248,6 +1249,15 @@ class AIPS_DB_Migrations {
 				AND topic_auto_approval_min_score BETWEEN 1 AND 100"
 			);
 		}
+
+		// Existing authors on the old `manual` column default are switched to
+		// `inherit` so they follow the global Settings → Authors policy. Authors
+		// with an explicit non-manual mode are left alone.
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"UPDATE `{$table}` SET topic_auto_approval_mode = 'inherit'
+			WHERE topic_auto_approval_mode IS NULL
+			OR topic_auto_approval_mode IN ('', 'manual')"
+		);
 
 		if ( 'reject' === get_option( 'aips_author_topic_auto_approval_fallback' ) ) {
 			update_option( 'aips_author_topic_auto_approval_fallback', 'rejected' );
