@@ -127,8 +127,15 @@ class AIPS_Internal_Links_Service {
 		$ensured    = $this->indexer->ensure_indexed($source_post_id);
 		$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
 
-		if (is_wp_error($ensured) && !$source_row) {
-			return $ensured;
+		if (is_wp_error($ensured)) {
+			if (!$source_row) {
+				return $ensured;
+			}
+
+			$this->logger->log(
+				sprintf('Using the stored embedding for post %d because re-indexing failed: %s', $source_post_id, $ensured->get_error_message()),
+				'warning'
+			);
 		}
 
 		if (!$source_row) {

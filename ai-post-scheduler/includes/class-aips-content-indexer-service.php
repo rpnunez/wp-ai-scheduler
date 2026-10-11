@@ -27,6 +27,19 @@ class AIPS_Content_Indexer_Service {
 	const QUEUE_PAUSED_OPTION = 'aips_indexer_queue_paused';
 
 	/**
+	 * Option holding the dimension count the provider actually returned, per model.
+	 *
+	 * A provider may ignore the configured dimension count; comparing stored rows to the
+	 * configured value would then leave every row permanently stale.
+	 */
+	const OBSERVED_DIMENSIONS_OPTION = 'aips_embeddings_observed_dimensions';
+
+	/**
+	 * Transient that rate-limits automatic stale re-index starts.
+	 */
+	const STALE_REINDEX_THROTTLE = 'aips_stale_reindex_throttle';
+
+	/**
 	 * Per-post lock key prefix guarding embed-and-store.
 	 */
 	const LOCK_PREFIX = 'aips_embed_post_';
@@ -233,12 +246,39 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Configured embedding dimension count (0 when not configured).
+	 * Dimension count current embeddings should have: what the provider returned for the
+	 * active model when known, else the configured count (0 when neither is set).
 	 *
 	 * @return int
 	 */
 	public function get_active_dimensions(): int {
+		$observed = get_option(self::OBSERVED_DIMENSIONS_OPTION, array());
+		$model    = $this->embeddings_service->get_active_model();
+
+		if (is_array($observed) && isset($observed[$model]) && (int) $observed[$model] > 0) {
+			return (int) $observed[$model];
+		}
+
 		return max(0, (int) $this->config->get_option('aips_embeddings_dimensions', 1536));
+	}
+
+	/**
+	 * Remember the dimension count the provider returned for the active model.
+	 *
+	 * @param string $model      Model slug.
+	 * @param int    $dimensions Vector length.
+	 * @return void
+	 */
+	private function record_observed_dimensions($model, $dimensions) {
+		$observed = get_option(self::OBSERVED_DIMENSIONS_OPTION, array());
+		$observed = is_array($observed) ? $observed : array();
+
+		if (isset($observed[$model]) && (int) $observed[$model] === (int) $dimensions) {
+			return;
+		}
+
+		$observed[$model] = (int) $dimensions;
+		update_option(self::OBSERVED_DIMENSIONS_OPTION, $observed, false);
 	}
 
 	/**
@@ -407,6 +447,8 @@ class AIPS_Content_Indexer_Service {
 
 			return $error;
 		}
+
+		$this->record_observed_dimensions($model, $dimensions);
 
 		if ($verbose) {
 			$container->record(
@@ -638,7 +680,8 @@ class AIPS_Content_Indexer_Service {
 				$post_types,
 				$post_status,
 				$this->embeddings_service->get_active_model(),
-				$this->get_active_dimensions()
+				$this->get_active_dimensions(),
+				(string) $this->config->get_option('aips_embeddings_scope', 'aips_only')
 			);
 		} else {
 			$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
@@ -937,11 +980,19 @@ class AIPS_Content_Indexer_Service {
 			return false;
 		}
 
+		// A stale post that cannot be re-embedded (for example, now empty) would restart
+		// the run on every empty-queue tick; at most one automatic attempt per interval.
+		if (false !== get_transient(self::STALE_REINDEX_THROTTLE)) {
+			return false;
+		}
+
 		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
 		$status     = $this->get_indexing_status($post_types);
 		if (empty($status['stale'])) {
 			return false;
 		}
+
+		set_transient(self::STALE_REINDEX_THROTTLE, time(), 6 * HOUR_IN_SECONDS);
 
 		$snapshot = AIPS_Container::get_instance()
 			->make(AIPS_Background_Process_Manager::class)

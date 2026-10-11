@@ -291,4 +291,39 @@ class Test_AIPS_Content_Indexer_Process extends WP_UnitTestCase {
 		$this->assertContains( 'content_indexing', $keys );
 		$this->assertNotContains( 'internal_links_indexing', $keys );
 	}
+
+	public function test_rate_limit_mid_slice_keeps_the_run_open() {
+		$this->create_posts( 3 );
+		$limiter = $this->limiter;
+
+		$count   = 0;
+		$service = $this->getMockBuilder( 'AIPS_Embeddings_Service' )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'is_enabled', 'is_embeddings_supported', 'generate_embedding', 'get_active_model', 'get_rate_limiter' ) )
+			->getMock();
+		$service->method( 'is_enabled' )->willReturn( true );
+		$service->method( 'is_embeddings_supported' )->willReturn( true );
+		$service->method( 'get_active_model' )->willReturn( 'text-embedding-3-small' );
+		$service->method( 'get_rate_limiter' )->willReturn( $limiter );
+		$service->method( 'generate_embedding' )->willReturnCallback( function () use ( &$count, $limiter ) {
+			$count++;
+			if ( $count > 1 ) {
+				return new WP_Error( 'rate_limit_exceeded', 'Rate limit reached.' );
+			}
+			$limiter->record_usage( 1 );
+			return array( 0.1, 0.2, 0.3 );
+		} );
+
+		$config  = AIPS_Config::get_instance();
+		$indexer = new AIPS_Content_Indexer_Service( new AIPS_Embeddings_Repository(), null, $service, null, null, $config );
+		$process = new AIPS_Content_Indexer_Process( $this->repo, $indexer, $service, $config );
+
+		$process->start();
+		$process->tick();
+
+		$snapshot = $process->get_snapshot();
+		$this->assertSame( 1, $snapshot['processed'] );
+		$this->assertTrue( $snapshot['is_active'], 'A rate limit mid-slice must not complete the run.' );
+		$this->assertNotSame( 'idle', $snapshot['status'] );
+	}
 }

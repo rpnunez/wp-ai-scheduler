@@ -505,8 +505,18 @@ class AIPS_Content_Indexer_Controller {
 
 		$preview = $this->indexer_service->get_clear_preview();
 
+		// Stop the run first so no further slice starts, then refuse while one is still
+		// embedding: it would write its batch back after the delete. Retrying is safe.
 		$manager = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class);
 		$manager->control(AIPS_Content_Indexer_Process::KEY, AIPS_Background_Process_Manager::ACTION_CANCEL);
+
+		$process = $manager->get(AIPS_Content_Indexer_Process::KEY);
+		if ($process instanceof AIPS_Managed_Background_Process && $process->is_tick_running()) {
+			AIPS_Ajax_Response::error(
+				__('An indexing slice is still running. The run was stopped; wait a few seconds and clear the index again.', 'ai-post-scheduler'),
+				'indexing_slice_running'
+			);
+		}
 
 		$this->indexer_service->clear_index();
 

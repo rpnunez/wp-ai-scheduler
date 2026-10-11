@@ -593,4 +593,47 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertSame( 1, $preview['topics'] );
 		$this->assertSame( 2, $preview['embeddings'] );
 	}
+
+	public function test_provider_returning_other_dimensions_than_configured_does_not_loop() {
+		list( $indexer, $counter ) = $this->make_counting_indexer( 2 );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_dimensions', 1536 );
+		$post_id = $this->make_post();
+
+		$indexer->ensure_indexed( $post_id );
+		$indexer->ensure_indexed( $post_id );
+
+		$this->assertSame( 1, $counter->calls, 'The provider\'s real dimension count is what rows are compared with.' );
+		$this->assertSame( 0, $indexer->get_indexing_status( array( 'post' ) )['stale'] );
+	}
+
+	public function test_stale_only_batch_honors_the_embeddings_scope() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'aips_only' );
+		$in_scope  = $this->make_post( 'In scope', 'Body a' );
+		$out_scope = $this->make_post( 'Out of scope', 'Body b' );
+		update_post_meta( $in_scope, '_aips_generated_post', 1 );
+
+		foreach ( array( $in_scope, $out_scope ) as $id ) {
+			$this->embeddings_repo->upsert( 'post', $id, array( 0.5, 0.5 ), 'an-older-model', 2, 'x', 'post' );
+		}
+
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts', true );
+
+		$this->assertSame( 1, $result['success'], 'Out-of-scope posts are not re-embedded.' );
+		$this->assertSame( 1, $counter->calls );
+	}
+
+	public function test_automatic_stale_reindex_is_throttled() {
+		list( $indexer ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_indexer_auto_reindex_stale', true );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$post_id = $this->make_post();
+		$this->embeddings_repo->upsert( 'post', $post_id, array( 0.5, 0.5 ), 'an-older-model', 2, 'x', 'post' );
+
+		delete_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE );
+		$indexer->maybe_start_stale_reindex();
+
+		$this->assertNotFalse( get_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE ) );
+		$this->assertFalse( $indexer->maybe_start_stale_reindex(), 'A second attempt within the interval does nothing.' );
+	}
 }

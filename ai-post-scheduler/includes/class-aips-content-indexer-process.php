@@ -9,7 +9,7 @@
  * AIPS_Embeddings_Background_Process).
  *
  * @package AI_Post_Scheduler
- * @since 3.7.14
+ * @since 3.7.12
  */
 
 if (!defined('ABSPATH')) {
@@ -89,13 +89,14 @@ class AIPS_Content_Indexer_Process extends AIPS_Embeddings_Background_Process {
 		$failed     = isset($result['failed']) ? (int) $result['failed'] : 0;
 		$new_cursor = isset($result['last_post_id']) ? (int) $result['last_post_id'] : $cursor;
 
-		// Rate limit or cooldown tripped before anything was processed: the next tick
-		// re-checks the limits and retries the same items.
-		if (!empty($result['rate_limit_exceeded']) && $success === 0) {
+		// A rate limit or cooldown stopped the slice (the service reports done=true for it).
+		// The run is not finished: keep what was embedded and let the next tick re-check the
+		// limits and retry from the item that tripped them.
+		if (!empty($result['rate_limit_exceeded'])) {
 			return array(
-				'processed' => 0,
-				'failed'    => 0,
-				'cursor'    => $cursor,
+				'processed' => $success,
+				'failed'    => $success === 0 ? 0 : $failed,
+				'cursor'    => $new_cursor,
 				'done'      => false,
 				'message'   => __('Waiting for the embeddings rate limit.', 'ai-post-scheduler'),
 			);

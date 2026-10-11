@@ -88,4 +88,16 @@ class Test_AIPS_Lock extends WP_UnitTestCase {
 
 		$wpdb->delete( $wpdb->options, array( 'option_name' => 'aips_lock_test_lock' ) );
 	}
+
+	public function test_purge_expired_removes_only_expired_locks() {
+		global $wpdb;
+
+		AIPS_Lock::acquire( 'test_lock', 30 );
+		$wpdb->insert( $wpdb->options, array( 'option_name' => 'aips_lock_orphan', 'option_value' => ( time() - 100 ) . '|x', 'autoload' => 'no' ) );
+
+		$this->assertGreaterThanOrEqual( 1, AIPS_Lock::purge_expired() );
+		$this->assertFalse( AIPS_Lock::is_locked( 'orphan' ) );
+		$this->assertNull( $wpdb->get_var( "SELECT option_value FROM {$wpdb->options} WHERE option_name = 'aips_lock_orphan'" ) );
+		$this->assertTrue( AIPS_Lock::is_locked( 'test_lock' ), 'A live lock is kept.' );
+	}
 }

@@ -290,6 +290,15 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	}
 
 	/**
+	 * Whether a slice of this process is executing right now (its tick lock is held).
+	 *
+	 * @return bool
+	 */
+	public function is_tick_running(): bool {
+		return (bool) get_transient('aips_bg_lock_' . $this->get_key());
+	}
+
+	/**
 	 * Re-queue a running process whose tick event went missing (for example
 	 * after cron events were flushed). Safe to call on every status poll.
 	 *

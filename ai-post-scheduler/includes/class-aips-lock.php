@@ -128,6 +128,25 @@ class AIPS_Lock {
 	}
 
 	/**
+	 * Delete lock rows that expired without being released (for example after a crash).
+	 *
+	 * Transient locks expired on their own; option-backed locks need this sweep.
+	 *
+	 * @return int Rows deleted.
+	 */
+	public static function purge_expired(): int {
+		global $wpdb;
+
+		$rows = $wpdb->query($wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST(SUBSTRING_INDEX(option_value, '|', 1) AS UNSIGNED) <= %d",
+			$wpdb->esc_like(self::PREFIX) . '%',
+			time()
+		));
+
+		return max(0, (int) $rows);
+	}
+
+	/**
 	 * @param string $key Lock key.
 	 * @return string Option name holding the lock.
 	 */

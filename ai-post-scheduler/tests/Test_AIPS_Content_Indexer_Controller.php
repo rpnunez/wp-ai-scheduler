@@ -234,4 +234,23 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'relationships', $response['data'] );
 		$this->assertArrayHasKey( 'total', $response['data'] );
 	}
+
+	public function test_clear_index_is_refused_while_a_slice_is_running() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array(
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'confirm_word' => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
+		);
+		$_REQUEST = $_POST;
+
+		$repo = new AIPS_Embeddings_Repository();
+		$repo->upsert( 'topic', 904, array( 0.1, 0.2 ), 'm', 2, 'h' );
+		set_transient( 'aips_bg_lock_content_indexing', 1, 60 );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_clear_index' ) );
+		delete_transient( 'aips_bg_lock_content_indexing' );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertNotNull( $repo->get_by_topic_id( 904 ), 'Nothing is deleted while a slice could write it back.' );
+	}
 }
