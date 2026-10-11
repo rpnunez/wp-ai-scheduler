@@ -30,6 +30,7 @@ class AIPS_Repository_Cache_Dependencies {
 				return $tags;
 
 			case 'author_topics.get_by_author':
+			case 'author_topics.get_by_author_bucket':
 				return self::author_topic_read_tags( $args );
 
 			case 'author_topics.get_by_id':
