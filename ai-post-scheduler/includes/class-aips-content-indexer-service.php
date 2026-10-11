@@ -27,6 +27,16 @@ class AIPS_Content_Indexer_Service {
 	const QUEUE_PAUSED_OPTION = 'aips_indexer_queue_paused';
 
 	/**
+	 * Per-post lock key prefix guarding embed-and-store.
+	 */
+	const LOCK_PREFIX = 'aips_embed_post_';
+
+	/**
+	 * Seconds the per-post lock is held; long enough for a rate-limited embedding call.
+	 */
+	const LOCK_TTL = 120;
+
+	/**
 	 * @var AIPS_Embeddings_Repository
 	 */
 	private $embeddings_repo;
@@ -99,14 +109,31 @@ class AIPS_Content_Indexer_Service {
 	/**
 	 * Index a single WordPress post or Custom Post Type.
 	 *
-	 * Generates embedding vector, stores it in aips_embeddings, precomputes relationships,
-	 * and logs the event to History.
+	 * Kept for existing callers; it is ensure_indexed() with relationships on by default.
 	 *
 	 * @param int  $post_id WordPress post ID.
 	 * @param bool $compute_relationships Whether to automatically compute related posts.
 	 * @return true|WP_Error
 	 */
 	public function index_post($post_id, $compute_relationships = true) {
+		return $this->ensure_indexed($post_id, $compute_relationships);
+	}
+
+	/**
+	 * Make sure a post has an up-to-date embedding. This is the only place a post
+	 * embedding is written.
+	 *
+	 * Idempotent: it does nothing when the stored row was made from the same text
+	 * (content hash) with the active model and dimensions. Otherwise it embeds the
+	 * post under a per-post lock so concurrent callers (browser batch, background
+	 * run, save queue) do not pay for the same embedding twice.
+	 *
+	 * @param int  $post_id               WordPress post ID.
+	 * @param bool $compute_relationships Whether to recompute related posts afterwards.
+	 * @param bool $force                 Re-embed even when the stored row is current.
+	 * @return true|WP_Error
+	 */
+	public function ensure_indexed($post_id, $compute_relationships = false, $force = false) {
 		if (!$this->embeddings_service->is_enabled()) {
 			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
 		}
@@ -124,24 +151,110 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		$content_hash = md5($text);
-		$existing     = $this->embeddings_repo->get_by_post_id($post_id);
 
-		// Skip if text hasn't changed
-		if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
+		if (!$force && $this->is_current($this->embeddings_repo->get_by_post_id($post_id), $content_hash)) {
 			if ($compute_relationships) {
 				$this->recompute_relationships_for_post($post_id);
 			}
 			return true;
 		}
 
-		$start_time = microtime(true);
-		$ai_config  = $this->config->get_ai_config();
-		$configured_model = (string) $this->config->get_option('aips_embeddings_model');
-		if ($configured_model === '') {
-			$configured_model = !empty($ai_config['model']) ? (string) $ai_config['model'] : 'text-embedding-3-small';
+		$cooldown = $this->embeddings_service->get_rate_limiter()->get_cooldown_status();
+		if (!empty($cooldown['is_paused'])) {
+			return new WP_Error(
+				'embeddings_cooldown_active',
+				sprintf(
+					/* translators: %s: formatted date/time when cooldown expires */
+					__('Embeddings rate limit cooldown active. Paused until %s.', 'ai-post-scheduler'),
+					date_i18n('Y-m-d H:i:s', $cooldown['paused_until'])
+				),
+				$cooldown
+			);
 		}
-		$model    = $configured_model;
-		$provider = (string) $this->config->get_option('aips_embeddings_provider');
+
+		$result = AIPS_Lock::with_lock(
+			self::LOCK_PREFIX . $post_id,
+			function () use ($post, $text, $content_hash, $compute_relationships, $force) {
+				// Another worker may have finished while this one waited for the lock.
+				if (!$force && $this->is_current($this->embeddings_repo->get_by_post_id($post->ID), $content_hash)) {
+					return true;
+				}
+
+				return $this->embed_and_store($post, $text, $content_hash, $compute_relationships);
+			},
+			self::LOCK_TTL
+		);
+
+		// A worker already embedding this post will store the same vector.
+		if (is_wp_error($result) && 'resource_locked' === $result->get_error_code()
+			&& $this->is_current($this->embeddings_repo->get_by_post_id($post_id), $content_hash)) {
+			return true;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Whether a stored embedding row exists for exactly this content, model and dimensions.
+	 *
+	 * @param object|null $row          Embedding row.
+	 * @param string      $content_hash Hash of the text that would be embedded.
+	 * @return bool
+	 */
+	private function is_current($row, $content_hash) {
+		return $row
+			&& !empty($row->content_hash)
+			&& $row->content_hash === $content_hash
+			&& !$this->is_stale($row);
+	}
+
+	/**
+	 * Whether an embedding row was made with a different model or dimension count
+	 * than the active ones. A row with no recorded model or dimensions is unknown,
+	 * not stale.
+	 *
+	 * @param object $row Embedding row.
+	 * @return bool
+	 */
+	public function is_stale($row): bool {
+		if (!is_object($row)) {
+			return false;
+		}
+
+		$model = isset($row->model) ? (string) $row->model : '';
+		if ('' !== $model && $model !== $this->embeddings_service->get_active_model()) {
+			return true;
+		}
+
+		$dimensions = isset($row->dimensions) ? (int) $row->dimensions : 0;
+		$expected   = $this->get_active_dimensions();
+
+		return $dimensions > 0 && $expected > 0 && $dimensions !== $expected;
+	}
+
+	/**
+	 * Configured embedding dimension count (0 when not configured).
+	 *
+	 * @return int
+	 */
+	public function get_active_dimensions(): int {
+		return max(0, (int) $this->config->get_option('aips_embeddings_dimensions', 1536));
+	}
+
+	/**
+	 * Embed a post and persist the vector, with History logging.
+	 *
+	 * @param WP_Post $post                  Post.
+	 * @param string  $text                  Text to embed.
+	 * @param string  $content_hash          Hash of $text.
+	 * @param bool    $compute_relationships Whether to recompute related posts afterwards.
+	 * @return true|WP_Error
+	 */
+	private function embed_and_store($post, $text, $content_hash, $compute_relationships) {
+		$post_id    = (int) $post->ID;
+		$start_time = microtime(true);
+		$model      = $this->embeddings_service->get_active_model();
+		$provider   = (string) $this->config->get_option('aips_embeddings_provider');
 		if ($provider === '') {
 			$provider = 'default';
 		}
@@ -435,6 +548,8 @@ class AIPS_Content_Indexer_Service {
 	 * @param string[]|string $post_types   Post types to index.
 	 * @param string          $post_status  Post status to index.
 	 * @param string          $entity_scope Entity scope ('all', 'posts', 'topics'). Default 'all'.
+	 * @param bool            $stale_only   Re-embed only posts whose stored embedding is stale
+	 *                                      (different model or dimensions). Topics are skipped.
 	 * @return array
 	 */
 	public function process_indexing_batch(
@@ -442,8 +557,13 @@ class AIPS_Content_Indexer_Service {
 		$last_post_id = 0,
 		$post_types = array('post'),
 		$post_status = 'publish',
-		$entity_scope = 'all'
+		$entity_scope = 'all',
+		$stale_only = false
 	) {
+		if ($stale_only) {
+			$entity_scope = 'posts';
+		}
+
 		$post_types = (array) $post_types;
 		if (empty($post_types)) {
 			$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
@@ -511,12 +631,23 @@ class AIPS_Content_Indexer_Service {
 			);
 		}
 
-		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
-			$batch_size,
-			$last_post_id,
-			$post_types,
-			$post_status
-		);
+		if ($stale_only) {
+			$post_ids = $this->embeddings_repo->get_stale_post_ids(
+				$batch_size,
+				$last_post_id,
+				$post_types,
+				$post_status,
+				$this->embeddings_service->get_active_model(),
+				$this->get_active_dimensions()
+			);
+		} else {
+			$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
+				$batch_size,
+				$last_post_id,
+				$post_types,
+				$post_status
+			);
+		}
 
 		$success     = 0;
 		$failed      = 0;
@@ -590,7 +721,8 @@ class AIPS_Content_Indexer_Service {
 			}
 			$done = ($status['unindexed'] === 0 && $status['unindexed_topics'] === 0) || !empty($rate_limit_error);
 		} else {
-			$done = empty($post_ids) || count($post_ids) < $batch_size || $status['unindexed'] === 0 || !empty($rate_limit_error);
+			$remaining = $stale_only ? $status['stale'] : $status['unindexed'];
+			$done      = empty($post_ids) || count($post_ids) < $batch_size || $remaining === 0 || !empty($rate_limit_error);
 		}
 
 		return array(
@@ -718,6 +850,9 @@ class AIPS_Content_Indexer_Service {
 		$indexed     = $this->embeddings_repo->count_indexed_for_types($post_types, $post_status, $scope);
 		$unindexed   = max(0, $total_posts - $indexed);
 		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
+		$active_model      = $this->embeddings_service->get_active_model();
+		$active_dimensions = $this->get_active_dimensions();
+		$stale             = $this->embeddings_repo->count_stale_posts($post_types, $post_status, $active_model, $active_dimensions, $scope);
 
 		$total_topics     = $this->embeddings_repo->get_total_topic_count();
 		$unindexed_topics = $this->embeddings_repo->get_unindexed_topic_count();
@@ -731,6 +866,9 @@ class AIPS_Content_Indexer_Service {
 			'total_posts'        => $total_posts,
 			'indexed'            => $indexed,
 			'unindexed'          => $unindexed,
+			'stale'              => $stale,
+			'active_model'       => $active_model,
+			'active_dimensions'  => $active_dimensions,
 			'percent'            => $percent,
 			'total_topics'       => $total_topics,
 			'indexed_topics'     => $indexed_topics,
@@ -740,6 +878,7 @@ class AIPS_Content_Indexer_Service {
 				'total'     => $total_posts,
 				'indexed'   => $indexed,
 				'unindexed' => $unindexed,
+				'stale'     => $stale,
 				'percent'   => $percent,
 			),
 			'topics'             => array(
@@ -762,9 +901,62 @@ class AIPS_Content_Indexer_Service {
 	}
 
 	/**
-	 * Clear all embeddings and precomputed relationships.
+	 * Rows a full clear_index() would delete, for the confirmation prompt.
 	 *
-	 * @param string $object_type Optional entity filter.
+	 * @return array{posts:int, topics:int, embeddings:int, relationships:int, total:int}
+	 */
+	public function get_clear_preview(): array {
+		$posts         = (int) $this->embeddings_repo->count('post');
+		$topics        = (int) $this->embeddings_repo->count('topic');
+		$embeddings    = (int) $this->embeddings_repo->count();
+		$relationships = (int) $this->relationships_repo->count();
+
+		return array(
+			'posts'         => $posts,
+			'topics'        => $topics,
+			'embeddings'    => $embeddings,
+			'relationships' => $relationships,
+			'total'         => $embeddings + $relationships,
+		);
+	}
+
+	/**
+	 * Start a stale-only background re-index when the setting allows it and stale
+	 * rows exist. The managed run applies the embeddings quota, cooldown and budget.
+	 *
+	 * Safe to call often: it does nothing while a run is already open.
+	 *
+	 * @return bool True if a run was started.
+	 */
+	public function maybe_start_stale_reindex(): bool {
+		if (!(bool) $this->config->get_option('aips_indexer_auto_reindex_stale', false)) {
+			return false;
+		}
+
+		if (!$this->embeddings_service->is_enabled()) {
+			return false;
+		}
+
+		$post_types = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
+		$status     = $this->get_indexing_status($post_types);
+		if (empty($status['stale'])) {
+			return false;
+		}
+
+		$snapshot = AIPS_Container::get_instance()
+			->make(AIPS_Background_Process_Manager::class)
+			->control(AIPS_Content_Indexer_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('mode' => 'stale'));
+
+		return !is_wp_error($snapshot);
+	}
+
+	/**
+	 * Clear embeddings and precomputed relationships.
+	 *
+	 * With no entity filter this empties the whole index (posts and topics). This is
+	 * the only code path that deletes embeddings in bulk.
+	 *
+	 * @param string $object_type Optional entity filter ('post' or 'topic').
 	 * @return void
 	 */
 	public function clear_index($object_type = '') {
@@ -1067,6 +1259,7 @@ class AIPS_Content_Indexer_Service {
 		$topic_queue = (array) get_option('aips_pending_topic_index_queue', array());
 
 		if (empty($post_queue) && empty($topic_queue)) {
+			$this->maybe_start_stale_reindex();
 			return array('status' => 'empty', 'processed' => 0);
 		}
 

@@ -208,6 +208,12 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.8', '<' ) ) {
 			$this->migrate_to_3_7_8();
 		}
+
+		// migrate_to_3_7_12() retires the Internal Links indexing job, which the
+		// Content Indexer's managed run replaced.
+		if ( version_compare( $from_version, '3.7.12', '<' ) ) {
+			$this->migrate_to_3_7_12();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1210,6 +1216,44 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 3.7.12.
+	 *
+	 * Cancels any open `internal_links_indexing` background run and drops the
+	 * cron events of the retired Internal Links indexer. Post indexing is now the
+	 * `content_indexing` process, so a run left open under the old key would
+	 * never be ticked again.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_12() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_background_processes';
+
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		if ( $table === $exists ) {
+			$repository = new AIPS_Background_Process_Repository();
+			$open       = $repository->get_open( 'internal_links_indexing' );
+			if ( $open ) {
+				$repository->transition(
+					(int) $open->id,
+					AIPS_Background_Process_Repository::STATUS_CANCELLED,
+					AIPS_Background_Process_Repository::open_statuses(),
+					__( 'Stopped: indexing moved to the Content Indexer.', 'ai-post-scheduler' )
+				);
+			}
+		}
+
+		wp_clear_scheduled_hook( 'aips_bg_process_tick', array( 'internal_links_indexing' ) );
+		wp_clear_scheduled_hook( 'aips_index_posts_batch' );
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( 'aips_index_posts_batch' );
+		}
+
+		$this->logger->log( 'Migration 3.7.12: Cancelled the retired internal_links_indexing background run.', 'info' );
 	}
 
 	/**

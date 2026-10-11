@@ -22,7 +22,7 @@ Detailed context for AI agents working on AI Post Scheduler. [AGENTS.md](../AGEN
 - Sources: `AIPS_Sources_*` classes and the `aips_source_group` taxonomy.
 - Embeddings & Semantic Intelligence: `AIPS_Embeddings_Repository` (`wp_aips_embeddings`), `AIPS_Relationships_Repository` (`wp_aips_relationships`), `AIPS_Embeddings_Service`, `AIPS_Content_Indexer_Service`, `AIPS_Related_Posts_Service`, `AIPS_Deduplication_Service`, `AIPS_Related_Posts_Frontend`.
 - Content Indexer: `AIPS_Content_Indexer_Controller` (`aips-content-indexer`), interactive semantic graph visualizer, continuous sync on publish, and cannibalization audit.
-- Internal links: `AIPS_Internal_Links_Controller`, services/repository, and the `aips_index_posts_batch` cron.
+- Internal links: `AIPS_Internal_Links_Controller`, services/repository (suggestions only; post embeddings are written solely by `AIPS_Content_Indexer_Service::ensure_indexed()`, bulk-run by `AIPS_Content_Indexer_Process`).
 - Notifications: registry, senders, templates, event handler, plus `AIPS_Notifications_Repository`.
 - Campaigns, post slices, AI assistance, operations insights, telemetry, taxonomy, onboarding, and diagnostics each have dedicated controllers, repositories, and services.
 
@@ -64,4 +64,3 @@ Single-event hooks:
 - `aips_retry_failed_author_slices_posts`
 - `aips_process_bulk_batch`
 - `aips_process_author_embeddings`
-- `aips_index_posts_batch`

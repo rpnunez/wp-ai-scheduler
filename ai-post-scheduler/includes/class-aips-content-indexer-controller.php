@@ -19,6 +19,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Content_Indexer_Controller {
 
 	/**
+	 * Word an administrator must type to clear the whole index.
+	 */
+	const CLEAR_CONFIRM_WORD = 'DELETE';
+
+	/**
 	 * @var AIPS_Content_Indexer_Service
 	 */
 	private $indexer_service;
@@ -91,7 +96,7 @@ class AIPS_Content_Indexer_Controller {
 
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_indexer_get_status', array($this, 'ajax_get_status'));
-		add_action('wp_ajax_aips_indexer_process_batch', array($this, 'ajax_process_batch'));
+		add_action('wp_ajax_aips_indexer_get_clear_preview', array($this, 'ajax_get_clear_preview'));
 		add_action('wp_ajax_aips_indexer_clear_index', array($this, 'ajax_clear_index'));
 		add_action('wp_ajax_aips_indexer_get_graph', array($this, 'ajax_get_graph'));
 		add_action('wp_ajax_aips_indexer_run_cannibalization_audit', array($this, 'ajax_run_cannibalization_audit'));
@@ -203,6 +208,7 @@ class AIPS_Content_Indexer_Controller {
 			'batch_size'                     => (int) $this->config->get_option('aips_indexer_batch_size', 10),
 			'queue_debounce_seconds'         => (int) $this->config->get_option('aips_indexer_queue_debounce_seconds', 15),
 			'quota_pause_enabled'            => (bool) $this->config->get_option('aips_indexer_quota_pause_enabled', true),
+			'auto_reindex_stale'             => (bool) $this->config->get_option('aips_indexer_auto_reindex_stale', false),
 			'queue_notifications_enabled'    => (bool) $this->config->get_option('aips_indexer_queue_notifications_enabled', true),
 			'error_pause_duration'           => (int) $this->config->get_option('aips_indexer_error_pause_duration', 30),
 			'error_pause_unit'               => (string) $this->config->get_option('aips_indexer_error_pause_unit', 'minutes'),
@@ -315,8 +321,10 @@ class AIPS_Content_Indexer_Controller {
 		$topics_percent     = isset($status['topics_percent']) ? (int) $status['topics_percent'] : 0;
 		$combined_unindexed = $unindexed + $unindexed_topics;
 
-		$active_model = !empty($stats['models']) ? $stats['models'][0]->model : 'Default (AI Engine)';
-		$active_dims  = !empty($stats['models']) ? (int) $stats['models'][0]->dimensions : $active_dims;
+		// The model new embeddings are made with, not whichever model happens to be stored first.
+		$active_model = !empty($status['active_model']) ? (string) $status['active_model'] : 'Default (AI Engine)';
+		$active_dims  = !empty($status['active_dimensions']) ? (int) $status['active_dimensions'] : $active_dims;
+		$stale        = isset($status['stale']) ? (int) $status['stale'] : 0;
 
 		$metrics = array(
 			'total_posts'               => $total_posts,
@@ -336,6 +344,7 @@ class AIPS_Content_Indexer_Controller {
 			),
 			'active_model'              => $active_model,
 			'active_dims'               => $active_dims,
+			'stale'                     => $stale,
 		);
 
 		// Post Types Breakdown
@@ -472,30 +481,32 @@ class AIPS_Content_Indexer_Controller {
 	}
 
 	/**
-	 * AJAX: Process a progressive indexing batch.
+	 * AJAX: How many rows a full "Clear Index" would delete, for the confirmation prompt.
 	 */
-	public function ajax_process_batch() {
+	public function ajax_get_clear_preview() {
 		$this->verify_request();
 
-		if (!$this->config->get_option('aips_embeddings_enabled', true)) {
-			AIPS_Ajax_Response::error(__('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
-		}
-
-		$batch_size   = isset($_POST['batch_size']) ? absint($_POST['batch_size']) : 10;
-		$last_post_id = isset($_POST['last_post_id']) ? absint($_POST['last_post_id']) : 0;
-		$entity_scope = isset($_POST['entity_scope']) ? sanitize_key($_POST['entity_scope']) : (string) $this->config->get_option('aips_indexer_scan_entity_scope', 'all');
-		$post_types   = (array) $this->config->get_option('aips_indexer_post_types', array('post'));
-
-		$result = $this->indexer_service->process_indexing_batch($batch_size, $last_post_id, $post_types, 'publish', $entity_scope);
-
-		AIPS_Ajax_Response::success($result);
+		AIPS_Ajax_Response::success($this->indexer_service->get_clear_preview());
 	}
 
 	/**
-	 * AJAX: Clear all embeddings and relationships index.
+	 * AJAX: Clear the entire index (all post and topic embeddings and relationships).
+	 *
+	 * Destructive and irreversible, so the request must carry the confirmation word.
+	 * Any running indexing job is stopped first so it cannot re-fill the index mid-clear.
 	 */
 	public function ajax_clear_index() {
 		$this->verify_request();
+
+		$confirm = isset($_POST['confirm_word']) ? sanitize_text_field(wp_unslash($_POST['confirm_word'])) : '';
+		if (self::CLEAR_CONFIRM_WORD !== $confirm) {
+			AIPS_Ajax_Response::error(__('Type the confirmation word to clear the index.', 'ai-post-scheduler'), 'confirmation_required');
+		}
+
+		$preview = $this->indexer_service->get_clear_preview();
+
+		$manager = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class);
+		$manager->control(AIPS_Content_Indexer_Process::KEY, AIPS_Background_Process_Manager::ACTION_CANCEL);
 
 		$this->indexer_service->clear_index();
 
@@ -504,12 +515,21 @@ class AIPS_Content_Indexer_Controller {
 			true,
 			__('Content index cleared', 'ai-post-scheduler'),
 			'content_index_operation',
-			array('event' => __('Clear content index', 'ai-post-scheduler')),
+			array(
+				'event'         => __('Clear content index', 'ai-post-scheduler'),
+				'embeddings'    => $preview['embeddings'],
+				'relationships' => $preview['relationships'],
+			),
 			'manual'
 		);
 
 		AIPS_Ajax_Response::success(array(
-			'message' => __('Index cleared successfully.', 'ai-post-scheduler'),
+			'message' => sprintf(
+				/* translators: 1: embeddings deleted, 2: relationships deleted. */
+				__('Index cleared: %1$s embeddings and %2$s relationships deleted.', 'ai-post-scheduler'),
+				number_format_i18n($preview['embeddings']),
+				number_format_i18n($preview['relationships'])
+			),
 		));
 	}
 
@@ -734,6 +754,10 @@ class AIPS_Content_Indexer_Controller {
 
 		if (isset($_POST['quota_pause_enabled'])) {
 			$this->config->set_option('aips_indexer_quota_pause_enabled', filter_var($_POST['quota_pause_enabled'], FILTER_VALIDATE_BOOLEAN));
+		}
+
+		if (isset($_POST['auto_reindex_stale'])) {
+			$this->config->set_option('aips_indexer_auto_reindex_stale', filter_var($_POST['auto_reindex_stale'], FILTER_VALIDATE_BOOLEAN));
 		}
 
 		if (isset($_POST['queue_notifications_enabled'])) {

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.11
+ * Version: 3.7.12
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.11');
+    define('AIPS_VERSION', '3.7.12');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -757,6 +757,17 @@ final class AI_Post_Scheduler {
             AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->process_pending_indexer_queue();
         });
 
+        // A changed embeddings model or dimension count makes stored vectors stale. When the
+        // administrator opted in, wake the queue worker: once its queue is empty it starts a
+        // stale-only background re-index, which honors the embeddings quota and cooldown.
+        foreach (array('aips_embeddings_model', 'aips_embeddings_dimensions') as $aips_embeddings_option) {
+            add_action('update_option_' . $aips_embeddings_option, function () {
+                if (AIPS_Config::get_instance()->get_option('aips_indexer_auto_reindex_stale', false)) {
+                    AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->schedule_queue_worker(time() + 15);
+                }
+            });
+        }
+
         // Background processes: one slice per tick (pause/resume/stop and quota
         // waits are handled by AIPS_Managed_Background_Process). Registered in every
         // context, not only wp-cron, so an event fired by WP-CLI or a "run now" tool
@@ -1072,12 +1083,6 @@ final class AI_Post_Scheduler {
 
         // Reconciler's save_post hook fires when cron creates or updates posts.
         new AIPS_Partial_Generation_State_Reconciler();
-
-        // Internal Links indexing cron — construct the controller lazily only
-        // when the cron hook fires to avoid eager instantiation on every cron boot.
-        add_action('aips_index_posts_batch', function($args) {
-            (new AIPS_Internal_Links_Controller())->process_indexing_batch_cron($args);
-        }, 10, 1);
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));

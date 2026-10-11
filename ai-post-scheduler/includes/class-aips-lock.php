@@ -27,34 +27,69 @@ class AIPS_Lock {
 	private const DEFAULT_TTL = 30;
 
 	/**
+	 * Tokens of the locks this request holds, keyed by option name.
+	 *
+	 * @var array<string,string>
+	 */
+	private static $held = array();
+
+	/**
 	 * Attempt to acquire an execution lock for a given key.
 	 *
-	 * Uses WordPress transients. If a lock already exists, returns false.
+	 * The lock is a row in the options table whose value is "expiry|token". The
+	 * option_name unique index makes the insert atomic, so two concurrent callers
+	 * cannot both acquire it (a get-then-set transient has that race). An expired
+	 * lock is taken over with a compare-and-delete, so only one caller wins.
 	 *
 	 * @param string $key Name of the lock (e.g., 'run_now_template_12').
 	 * @param int    $ttl Lock expiration in seconds (default 30).
 	 * @return bool True if lock acquired, false if already locked.
 	 */
 	public static function acquire(string $key, int $ttl = self::DEFAULT_TTL): bool {
-		$transient_key = self::PREFIX . sanitize_key($key);
+		$name  = self::option_name($key);
+		$token = wp_generate_password(12, false);
+		$value = (time() + max(5, $ttl)) . '|' . $token;
 
-		if (get_transient($transient_key) !== false) {
-			return false;
+		if (self::insert($name, $value)) {
+			self::$held[$name] = $token;
+			return true;
 		}
 
-		return set_transient($transient_key, time(), max(5, $ttl));
+		// Held by someone else: take it over only if it has expired.
+		$current = self::read($name);
+		if (null !== $current && self::is_expired($current) && self::delete_if_equals($name, $current) && self::insert($name, $value)) {
+			self::$held[$name] = $token;
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
 	 * Release an execution lock for a given key.
 	 *
+	 * A lock this request acquired is only released while it still owns it, so a
+	 * slow holder whose lock expired and was taken over cannot free the new
+	 * holder's lock. A lock acquired in another request is released outright.
+	 *
 	 * @param string $key Name of the lock.
 	 * @return bool True if lock was released.
 	 */
 	public static function release(string $key): bool {
-		$transient_key = self::PREFIX . sanitize_key($key);
+		$name  = self::option_name($key);
+		$token = isset(self::$held[$name]) ? self::$held[$name] : null;
+		unset(self::$held[$name]);
 
-		return delete_transient($transient_key);
+		$current = self::read($name);
+		if (null === $current) {
+			return false;
+		}
+
+		if (null !== $token && self::token_of($current) !== $token) {
+			return false;
+		}
+
+		return self::delete_if_equals($name, $current);
 	}
 
 	/**
@@ -64,9 +99,9 @@ class AIPS_Lock {
 	 * @return bool True if locked, false otherwise.
 	 */
 	public static function is_locked(string $key): bool {
-		$transient_key = self::PREFIX . sanitize_key($key);
+		$current = self::read(self::option_name($key));
 
-		return get_transient($transient_key) !== false;
+		return null !== $current && !self::is_expired($current);
 	}
 
 	/**
@@ -90,5 +125,88 @@ class AIPS_Lock {
 		} finally {
 			self::release($key);
 		}
+	}
+
+	/**
+	 * @param string $key Lock key.
+	 * @return string Option name holding the lock.
+	 */
+	private static function option_name(string $key): string {
+		return self::PREFIX . sanitize_key($key);
+	}
+
+	/**
+	 * Insert the lock row; fails when it already exists.
+	 *
+	 * INSERT IGNORE against the option_name unique index is the atomic step.
+	 *
+	 * @param string $name  Option name.
+	 * @param string $value Lock value.
+	 * @return bool True if this call created the row.
+	 */
+	private static function insert(string $name, string $value): bool {
+		global $wpdb;
+
+		$rows = $wpdb->query($wpdb->prepare(
+			"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+			$name,
+			$value
+		));
+
+		return 1 === (int) $rows;
+	}
+
+	/**
+	 * Read the lock value straight from the database, bypassing the object cache.
+	 *
+	 * @param string $name Option name.
+	 * @return string|null Null when there is no lock.
+	 */
+	private static function read(string $name): ?string {
+		global $wpdb;
+
+		$value = $wpdb->get_var($wpdb->prepare(
+			"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+			$name
+		));
+
+		return is_string($value) ? $value : null;
+	}
+
+	/**
+	 * Delete the lock row only if it still holds the given value.
+	 *
+	 * @param string $name  Option name.
+	 * @param string $value Expected value.
+	 * @return bool True if a row was deleted.
+	 */
+	private static function delete_if_equals(string $name, string $value): bool {
+		global $wpdb;
+
+		$rows = $wpdb->query($wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+			$name,
+			$value
+		));
+
+		return (int) $rows > 0;
+	}
+
+	/**
+	 * @param string $value Lock value ("expiry|token").
+	 * @return bool
+	 */
+	private static function is_expired(string $value): bool {
+		return (int) $value <= time();
+	}
+
+	/**
+	 * @param string $value Lock value ("expiry|token").
+	 * @return string
+	 */
+	private static function token_of(string $value): string {
+		$parts = explode('|', $value, 2);
+
+		return isset($parts[1]) ? $parts[1] : '';
 	}
 }

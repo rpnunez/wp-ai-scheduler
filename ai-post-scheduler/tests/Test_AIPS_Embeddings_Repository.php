@@ -253,5 +253,49 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 		$this->assertEquals( 24, $summary['byte_size'] );
 		$this->assertTrue( $summary['is_binary'] );
 	}
-}
 
+	/**
+	 * upsert is one atomic statement: writing the same object twice yields one row, updated in place.
+	 */
+	public function test_upsert_twice_yields_one_row_with_latest_values() {
+		global $wpdb;
+
+		$post_id = wp_insert_post( array( 'post_title' => 'Upsert twice', 'post_content' => 'x', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->repo->upsert( 'post', $post_id, array( 0.1, 0.2 ), 'model-a', 2, 'hash-a', 'post' );
+		$this->repo->upsert( 'post', $post_id, array( 0.3, 0.4, 0.5 ), 'model-b', 3, 'hash-b', 'post' );
+
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}aips_embeddings WHERE object_type = 'post' AND object_id = %d", $post_id ) );
+		$this->assertCount( 1, $rows );
+		$this->assertSame( 'model-b', $rows[0]->model );
+		$this->assertSame( 3, (int) $rows[0]->dimensions );
+		$this->assertSame( 'hash-b', $rows[0]->content_hash );
+		$this->assertEqualsWithDelta( array( 0.3, 0.4, 0.5 ), $this->repo->decode_embedding( $rows[0]->embedding ), 0.0001 );
+	}
+
+	/**
+	 * Stale queries match rows made with another model or dimension count, and ignore unknown ones.
+	 */
+	public function test_stale_post_queries_match_other_model_and_dimensions() {
+		$current = wp_insert_post( array( 'post_title' => 'Current', 'post_content' => 'x', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$old_mdl = wp_insert_post( array( 'post_title' => 'Old model', 'post_content' => 'x', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$old_dim = wp_insert_post( array( 'post_title' => 'Old dims', 'post_content' => 'x', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$unknown = wp_insert_post( array( 'post_title' => 'Unknown', 'post_content' => 'x', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->repo->upsert( 'post', $current, array( 0.1, 0.2 ), 'model-new', 2, 'h', 'post' );
+		$this->repo->upsert( 'post', $old_mdl, array( 0.1, 0.2 ), 'model-old', 2, 'h', 'post' );
+		$this->repo->upsert( 'post', $old_dim, array( 0.1, 0.2, 0.3 ), 'model-new', 3, 'h', 'post' );
+		$this->repo->upsert( 'post', $unknown, array( 0.1, 0.2 ), '', 0, 'h', 'post' );
+		// upsert() derives dimensions from the vector when 0 is passed; clear the model/dims to mimic a legacy row.
+		global $wpdb;
+		$wpdb->update( $wpdb->prefix . 'aips_embeddings', array( 'dimensions' => 0 ), array( 'object_id' => $unknown ) );
+
+		$this->assertSame( 2, $this->repo->count_stale_posts( array( 'post' ), 'publish', 'model-new', 2, 'all' ) );
+
+		$ids = $this->repo->get_stale_post_ids( 10, 0, array( 'post' ), 'publish', 'model-new', 2, 'all' );
+		sort( $ids );
+		$expected = array( $old_mdl, $old_dim );
+		sort( $expected );
+		$this->assertSame( $expected, $ids );
+	}
+}

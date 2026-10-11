@@ -31,7 +31,7 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 	public function test_registers_the_built_in_processes() {
 		$keys = array_keys( $this->manager->all() );
 
-		$this->assertContains( 'internal_links_indexing', $keys );
+		$this->assertContains( 'content_indexing', $keys );
 		$this->assertContains( 'content_indexer_queue', $keys );
 		$this->assertContains( 'link_index_scan', $keys );
 		$this->assertContains( 'relationships_recompute', $keys );
@@ -91,7 +91,7 @@ class Test_AIPS_Background_Process_Manager extends WP_UnitTestCase {
 		$paused = $this->manager->pause_all();
 
 		$this->assertContains( 'content_indexer_queue', $paused );
-		$this->assertNotContains( 'internal_links_indexing', $paused, 'An idle process has nothing to pause.' );
+		$this->assertNotContains( 'content_indexing', $paused, 'An idle process has nothing to pause.' );
 	}
 
 	public function test_heartbeat_answers_only_admins_who_ask() {

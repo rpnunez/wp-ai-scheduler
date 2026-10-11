@@ -16,8 +16,9 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Internal_Links_Service
  *
- * Orchestrates indexing published posts (generating and storing their embeddings)
- * and generating ranked internal-link suggestions between them.
+ * Generates ranked internal-link suggestions between posts. It never writes
+ * embeddings itself: indexing belongs to AIPS_Content_Indexer_Service, which this
+ * service asks (ensure_indexed) and reads status from.
  */
 class AIPS_Internal_Links_Service {
 
@@ -52,6 +53,11 @@ class AIPS_Internal_Links_Service {
 	private $config;
 
 	/**
+	 * @var AIPS_Content_Indexer_Service
+	 */
+	private $indexer;
+
+	/**
 	 * Initialize the service.
 	 *
 	 * @param AIPS_Embeddings_Repository|null   $embeddings_repo      Embeddings repository.
@@ -60,6 +66,7 @@ class AIPS_Internal_Links_Service {
 	 * @param AIPS_Logger|null                  $logger               Logger instance.
 	 * @param AIPS_Similarity_Evaluator|null    $similarity_evaluator Similarity evaluator instance.
 	 * @param AIPS_Config|null                  $config               Config instance.
+	 * @param AIPS_Content_Indexer_Service|null $indexer              Content indexer (sole writer of post embeddings).
 	 */
 	public function __construct(
 		$embeddings_repo = null,
@@ -67,7 +74,8 @@ class AIPS_Internal_Links_Service {
 		$embeddings_service = null,
 		$logger = null,
 		$similarity_evaluator = null,
-		$config = null
+		$config = null,
+		$indexer = null
 	) {
 		$container                  = AIPS_Container::get_instance();
 		$this->embeddings_repo      = $embeddings_repo      ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
@@ -76,6 +84,7 @@ class AIPS_Internal_Links_Service {
 		$this->logger               = $logger               ?: new AIPS_Logger();
 		$this->config               = $config               ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
+		$this->indexer              = $indexer              ?: $container->make(AIPS_Content_Indexer_Service::class);
 	}
 
 	/**
@@ -85,175 +94,6 @@ class AIPS_Internal_Links_Service {
 	 */
 	public function get_similarity_evaluator(): AIPS_Similarity_Evaluator {
 		return $this->similarity_evaluator;
-	}
-
-	// -------------------------------------------------------------------------
-	// Indexing
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Index a single post — generate its embedding and store it.
-	 *
-	 * @param int $post_id WordPress post ID.
-	 * @return true|WP_Error True on success or WP_Error on failure.
-	 */
-	public function index_post($post_id) {
-		if (!$this->embeddings_service->is_enabled()) {
-			return new WP_Error('embeddings_disabled', __('The vector embeddings system is disabled in settings.', 'ai-post-scheduler'));
-		}
-
-		$rate_limiter = $this->embeddings_service->get_rate_limiter();
-		$cooldown     = $rate_limiter->get_cooldown_status();
-		if ($cooldown['is_paused']) {
-			return new WP_Error(
-				'embeddings_cooldown_active',
-				sprintf(
-					/* translators: %s: formatted date/time when cooldown expires */
-					__('Embeddings rate limit cooldown active. Paused until %s.', 'ai-post-scheduler'),
-					date_i18n('Y-m-d H:i:s', $cooldown['paused_until'])
-				)
-			);
-		}
-
-		$post_id = absint($post_id);
-		$post    = get_post($post_id);
-
-		if (!$post) {
-			return new WP_Error('post_not_found', __('Post not found.', 'ai-post-scheduler'));
-		}
-
-		$text = $this->get_post_text($post);
-
-		if (empty($text)) {
-			return new WP_Error('empty_content', __('Post has no indexable content.', 'ai-post-scheduler'));
-		}
-
-		$content_hash = md5($text);
-		$existing     = $this->embeddings_repo->get_by_post_id($post_id);
-
-		// Skip if text hasn't changed (0 AI calls required)
-		if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
-			$this->logger->log(
-				sprintf('Post %d content unchanged (hash: %s), skipping internal links embedding generation.', $post_id, $content_hash),
-				'debug'
-			);
-			return true;
-		}
-
-		$embedding = $this->embeddings_service->generate_embedding($text);
-
-		if (is_wp_error($embedding) || !is_array($embedding)) {
-			return $embedding;
-		}
-
-		$model      = $this->embeddings_service->get_active_model();
-		$dimensions = count($embedding);
-
-		$this->embeddings_repo->upsert(
-			'post',
-			$post_id,
-			$embedding,
-			$model,
-			$dimensions,
-			$content_hash,
-			$post->post_type
-		);
-
-		$this->logger->log(
-			sprintf('Indexed post %d for internal links.', $post_id),
-			'debug'
-		);
-
-		return true;
-	}
-
-	/**
-	 * Process a batch of unindexed posts.
-	 *
-	 * Respects sliding-window API quotas, auto-cooldown detection, and error thresholds.
-	 *
-	 * @param int    $batch_size    Number of posts to process per call.
-	 * @param int    $last_post_id  Resume cursor: only posts with ID > this value.
-	 * @param string $post_type     Post type to index.
-	 * @param string $post_status   Post status to index.
-	 * @return array{success: int, failed: int, last_post_id: int, done: bool, cooldown?: bool, paused_until?: int}
-	 */
-	public function process_indexing_batch(
-		$batch_size = 10,
-		$last_post_id = 0,
-		$post_type = null,
-		$post_status = 'publish'
-	) {
-		$post_type = $this->resolve_post_types($post_type);
-
-		if (!$this->embeddings_service->is_enabled()) {
-			return array(
-				'success'      => 0,
-				'failed'       => 0,
-				'last_post_id' => $last_post_id,
-				'done'         => true,
-			);
-		}
-
-		$rate_limiter = $this->embeddings_service->get_rate_limiter();
-		$cooldown     = $rate_limiter->get_cooldown_status();
-
-		if ($cooldown['is_paused']) {
-			return array(
-				'success'      => 0,
-				'failed'       => 0,
-				'last_post_id' => $last_post_id,
-				'done'         => true,
-				'cooldown'     => true,
-				'paused_until' => $cooldown['paused_until'],
-			);
-		}
-
-		$post_ids = $this->embeddings_repo->get_unindexed_post_ids(
-			$batch_size,
-			$last_post_id,
-			$post_type,
-			$post_status
-		);
-
-		$success     = 0;
-		$failed      = 0;
-		$new_last_id = $last_post_id;
-
-		foreach ($post_ids as $post_id) {
-			$result = $this->index_post($post_id);
-
-			if (is_wp_error($result)) {
-				$this->logger->log(
-					sprintf(
-						'Failed to index post %d: %s',
-						$post_id,
-						$result->get_error_message()
-					),
-					'error'
-				);
-				$failed++;
-				$rate_limiter->record_failure($result);
-
-				if ($rate_limiter->is_rate_limit_or_exhaustion_error($result) || $result->get_error_code() === 'rate_limit_exceeded' || $result->get_error_code() === 'embeddings_cooldown_active') {
-					break;
-				}
-			} else {
-				$rate_limiter->record_success();
-				$success++;
-			}
-
-			$new_last_id = max($new_last_id, $post_id);
-		}
-
-		$done = count($post_ids) < $batch_size;
-
-		return array(
-			'success'      => $success,
-			'failed'       => $failed,
-			'last_post_id' => $new_last_id,
-			'done'         => $done,
-		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -281,17 +121,14 @@ class AIPS_Internal_Links_Service {
 		$max_suggestions      = ($max_suggestions !== null && (int) $max_suggestions > 0) ? (int) $max_suggestions : $this->similarity_evaluator->get_default_max_suggestions();
 		$similarity_threshold = ($similarity_threshold !== null && is_numeric($similarity_threshold)) ? (float) $similarity_threshold : $this->similarity_evaluator->get_default_threshold('internal_links');
 
-		// Ensure the post is indexed first
+		// Make sure the source post is indexed with the current text and model. A
+		// current row costs no embedding call. If re-embedding is not possible right
+		// now (cooldown, lock), a previously stored vector is still good enough.
+		$ensured    = $this->indexer->ensure_indexed($source_post_id);
 		$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
 
-		if (!$source_row) {
-			$result = $this->index_post($source_post_id);
-
-			if (is_wp_error($result)) {
-				return $result;
-			}
-
-			$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
+		if (is_wp_error($ensured) && !$source_row) {
+			return $ensured;
 		}
 
 		if (!$source_row) {
@@ -390,26 +227,21 @@ class AIPS_Internal_Links_Service {
 	/**
 	 * Get indexing status statistics.
 	 *
-	 * @param string $post_type   Post type to check.
-	 * @param string $post_status Post status to check.
-	 * @return array{total_posts: int, indexed: int, unindexed: int, percent: int}
+	 * Reads the Content Indexer's status so every page shows the same numbers.
+	 *
+	 * @param string|string[]|null $post_type   Post type(s) to check, or null for the indexer setting.
+	 * @param string               $post_status Post status to check.
+	 * @return array{total_posts: int, indexed: int, unindexed: int, stale: int, percent: int}
 	 */
 	public function get_indexing_status($post_type = null, $post_status = 'publish') {
-		$post_type = $this->resolve_post_types($post_type);
-
-		// Total and indexed counts must use the same indexing scope (the
-		// aips_embeddings_scope setting), otherwise the denominator includes
-		// posts the indexer will never process.
-		$total_posts = $this->embeddings_repo->count_total_posts_for_scope((array) $post_type, $post_status);
-		$indexed     = $this->embeddings_repo->count_indexed_for_types((array) $post_type, $post_status);
-		$unindexed   = max(0, $total_posts - $indexed);
-		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
+		$status = $this->indexer->get_indexing_status($this->resolve_post_types($post_type), $post_status);
 
 		return array(
-			'total_posts' => $total_posts,
-			'indexed'     => $indexed,
-			'unindexed'   => $unindexed,
-			'percent'     => $percent,
+			'total_posts' => (int) $status['total_posts'],
+			'indexed'     => (int) $status['indexed'],
+			'unindexed'   => (int) $status['unindexed'],
+			'stale'       => (int) $status['stale'],
+			'percent'     => (int) $status['percent'],
 		);
 	}
 
@@ -443,21 +275,5 @@ class AIPS_Internal_Links_Service {
 		$types = array_values(array_filter(array_map('sanitize_key', $types)));
 
 		return !empty($types) ? $types : array('post');
-	}
-
-	/**
-	 * Build the text content to embed for a post (title + excerpt + content).
-	 *
-	 * @param WP_Post $post Post object.
-	 * @return string Plain-text representation.
-	 */
-	private function get_post_text($post) {
-		$parts = array(
-			$post->post_title,
-			$post->post_excerpt,
-			wp_strip_all_tags($post->post_content),
-		);
-
-		return trim(implode(' ', array_filter($parts)));
 	}
 }

@@ -102,10 +102,6 @@
 			// Background indexing state pushed by background-processes.js (Heartbeat)
 			$(document).on('aips:bg-update', this.onBackgroundUpdate.bind(this));
 
-			// Index management
-			$(document).on('click', '#aips-start-indexing-btn', this.onStartIndexingClick.bind(this));
-			$(document).on('click', '#aips-clear-index-btn', this.onClearIndexClick.bind(this));
-
 			// Per-post generation
 			$(document).on('click', '#aips-generate-for-post-btn', this.onGenerateForPostClick.bind(this));
 			$(document).on('click', '#aips-reindex-post-btn', this.onReindexPostClick.bind(this));
@@ -213,58 +209,23 @@
 		},
 
 		/**
-		 * Start background indexing when the "Start Indexing" button is clicked.
-		 *
-		 * @param {Event} e Click event from `#aips-start-indexing-btn`.
-		 */
-		onStartIndexingClick: function (e) {
-			this.startIndexing();
-		},
-
-		/**
-		 * Keep the Index Posts button and the stat cards in step with the
-		 * background indexing job.
+		 * Keep the index status line in step with the Content Indexer's background run.
 		 *
 		 * @param {Event}  e     The aips:bg-update event.
 		 * @param {Array}  list  Snapshots from the server.
 		 * @param {Object} state Snapshots keyed by process key.
 		 */
 		onBackgroundUpdate: function (e, list, state) {
-			var snap = state && state.internal_links_indexing;
+			var snap = state && state.content_indexing;
 			if (!snap) {
 				return;
 			}
-
-			$('#aips-start-indexing-btn').prop('disabled', !snap.can_start);
 
 			// Refresh the real indexed/total numbers while the job runs, and once more when it stops.
 			if (snap.is_active || this._indexingWasActive) {
 				this.refreshStatus();
 			}
 			this._indexingWasActive = !!snap.is_active;
-		},
-
-		/**
-		 * Ask for confirmation then clear the full index.
-		 *
-		 * @param {Event} e Click event from `#aips-clear-index-btn`.
-		 */
-		onClearIndexClick: function (e) {
-			var self = this;
-			AIPS.Utilities.confirm(
-				aipsInternalLinksL10n.confirmClearIndex || 'Clear internal links index?',
-				'Clear Index',
-				[
-					{ label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-					{
-						label: 'Clear Index',
-						className: 'aips-btn aips-btn-danger-solid',
-						action: function () {
-							self.clearIndex();
-						}
-					}
-				]
-			);
 		},
 
 		/**
@@ -708,66 +669,6 @@
 		// -----------------------------------------------------------------------
 
 		/**
-		 * Start background indexing of unindexed posts.
-		 */
-		startIndexing: function () {
-			var self = this;
-			var $btn = $('#aips-start-indexing-btn');
-
-			// Preferred path: show the cost estimate, then start under the background
-			// process manager (rate limits, pause / resume / stop).
-			if (AIPS.BackgroundProcesses) {
-				AIPS.BackgroundProcesses.startWithEstimate('internal_links_indexing', $btn);
-				return;
-			}
-
-			var req = $.post(aipsAjax.ajaxUrl, {
-				action: 'aips_internal_links_start_indexing',
-				nonce:  aipsInternalLinksL10n.nonce,
-			}, function (response) {
-				if (response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'success');
-					setTimeout(function () { self.refreshStatus(); }, 2000);
-				} else {
-					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || aipsInternalLinksL10n.indexingNotAvailable,
-						'error'
-					);
-				}
-			});
-
-			AIPS.Utilities.withLock($btn, req, { loadingText: aipsInternalLinksL10n.loading, timeout: 180000 });
-		},
-
-		/**
-		 * Clear the full embeddings index and all suggestions.
-		 */
-		clearIndex: function () {
-			var self = this;
-			var $btn = $('#aips-clear-index-btn');
-
-			var req = $.post(aipsAjax.ajaxUrl, {
-				action: 'aips_internal_links_clear_index',
-				nonce:  aipsInternalLinksL10n.nonce,
-			}, function (response) {
-				if (response.success) {
-					AIPS.Utilities.showToast(response.data.message, 'success');
-					self.loadSuggestions();
-					self.refreshStatus();
-				} else {
-					AIPS.Utilities.showToast(
-						(response.data && response.data.message) || 'Error.',
-						'error'
-					);
-				}
-			});
-
-			if ($btn.length) {
-				AIPS.Utilities.withLock($btn, req);
-			}
-		},
-
-		/**
 		 * Generate suggestions for a specific post.
 		 */
 		generateForPost: function () {
@@ -953,6 +854,7 @@
 						total:   idx.total_posts,
 					}));
 					$('#aips-index-progress-bar').css('width', idx.percent + '%');
+					$('#aips-index-stale-line').prop('hidden', !(idx.stale > 0));
 				}
 
 				if (counts) {
@@ -1555,7 +1457,6 @@
 		// Store original button texts before any modification
 		AIPS.InternalLinks.originalGenerateText = $('#aips-generate-for-post-btn').text().trim();
 		AIPS.InternalLinks.originalReindexText  = $('#aips-reindex-post-btn').text().trim();
-		AIPS.InternalLinks.originalIndexText    = $('#aips-start-indexing-btn').text().trim();
 
 		AIPS.InternalLinks.init();
 	});

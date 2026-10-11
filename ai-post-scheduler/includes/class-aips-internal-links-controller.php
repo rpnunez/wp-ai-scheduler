@@ -2,12 +2,8 @@
 /**
  * Internal Links Controller
  *
- * Handles AJAX endpoints for the Internal Links admin page and registers
- * the cron callback that runs the background post-indexing job.
- *
- * Intentionally instantiated outside the admin-only bootstrap so that the
- * 'aips_index_posts_batch' cron callback is registered during wp-cron
- * and frontend contexts as well as admin contexts.
+ * Handles AJAX endpoints for the Internal Links admin page: suggestion
+ * review and link insertion. Post indexing is owned by the Content Indexer.
  *
  * @package AI_Post_Scheduler
  * @since 2.3.0
@@ -35,11 +31,6 @@ class AIPS_Internal_Links_Controller {
 	private $links_repo;
 
 	/**
-	 * @var AIPS_Embeddings_Repository
-	 */
-	private $embeddings_repo;
-
-	/**
 	 * @var AIPS_Internal_Link_Inserter_Service
 	 */
 	private $inserter_service;
@@ -50,35 +41,32 @@ class AIPS_Internal_Links_Controller {
 	private $logger;
 
 	/**
-	 * @var AIPS_Job_Scheduler
+	 * @var AIPS_Content_Indexer_Service
 	 */
-	private $job_scheduler;
+	private $indexer;
 
 	/**
 	 * Initialize the controller and register AJAX hooks.
 	 *
 	 * @param AIPS_Internal_Links_Service|null          $service          Internal links service.
 	 * @param AIPS_Internal_Links_Repository|null       $links_repo       Links repository.
-	 * @param AIPS_Embeddings_Repository|null           $embeddings_repo  Embeddings repository.
 	 * @param AIPS_Logger|null                          $logger           Logger instance.
 	 * @param AIPS_Internal_Link_Inserter_Service|null  $inserter_service Link inserter service.
-	 * @param AIPS_Job_Scheduler|null                   $job_scheduler    Job scheduler service.
+	 * @param AIPS_Content_Indexer_Service|null         $indexer          Content indexer service.
 	 */
 	public function __construct(
 		$service = null,
 		$links_repo = null,
-		$embeddings_repo = null,
 		$logger = null,
 		$inserter_service = null,
-		$job_scheduler = null
+		$indexer = null
 	) {
 		$container              = AIPS_Container::get_instance();
 		$this->service          = $service          ?: new AIPS_Internal_Links_Service();
 		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
-		$this->embeddings_repo  = $embeddings_repo  ?: ($container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository());
 		$this->logger           = $logger           ?: new AIPS_Logger();
 		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
-		$this->job_scheduler    = $job_scheduler    ?: new AIPS_Job_Scheduler();
+		$this->indexer          = $indexer          ?: $container->make(AIPS_Content_Indexer_Service::class);
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));
@@ -86,10 +74,8 @@ class AIPS_Internal_Links_Controller {
 		add_action('wp_ajax_aips_internal_links_update_status', array($this, 'ajax_update_status'));
 		add_action('wp_ajax_aips_internal_links_update_anchor', array($this, 'ajax_update_anchor'));
 		add_action('wp_ajax_aips_internal_links_delete', array($this, 'ajax_delete'));
-		add_action('wp_ajax_aips_internal_links_start_indexing', array($this, 'ajax_start_indexing'));
 		add_action('wp_ajax_aips_internal_links_get_status', array($this, 'ajax_get_status'));
 		add_action('wp_ajax_aips_internal_links_reindex_post', array($this, 'ajax_reindex_post'));
-		add_action('wp_ajax_aips_internal_links_clear_index', array($this, 'ajax_clear_index'));
 
 		// AJAX endpoints — link insertion workflow
 		add_action('wp_ajax_aips_internal_links_get_post_for_insertion', array($this, 'ajax_get_post_for_insertion'));
@@ -111,7 +97,6 @@ class AIPS_Internal_Links_Controller {
 		$summary       = $this->service->get_dashboard_summary();
 		$links_repo    = $this->links_repo;
 		$service       = $this->service;
-		$bg_snapshot   = $this->get_indexing_process_snapshot();
 
 		include AIPS_PLUGIN_DIR . 'templates/admin/internal-links.php';
 	}
@@ -306,42 +291,6 @@ class AIPS_Internal_Links_Controller {
 	}
 
 	/**
-	 * AJAX: Start background indexing of all unindexed posts.
-	 *
-	 * Schedules the first cron batch and returns immediately.
-	 *
-	 * @return void
-	 */
-	public function ajax_start_indexing() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		if (!$this->embeddings_service_available()) {
-			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
-		}
-
-		// The indexing job runs under the background process manager, which
-		// applies the embeddings rate limits and supports pause/resume/stop.
-		$result = AIPS_Container::get_instance()
-			->make(AIPS_Background_Process_Manager::class)
-			->control(AIPS_Internal_Links_Indexing_Process::KEY, AIPS_Background_Process_Manager::ACTION_START);
-
-		if (is_wp_error($result)) {
-			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
-		}
-
-		AIPS_Ajax_Response::success(array(
-			'message'  => __('Indexing started. Posts will be indexed in the background.', 'ai-post-scheduler'),
-			'snapshot' => $result,
-		));
-	}
-
-	/**
 	 * AJAX: Get current indexing status.
 	 *
 	 * @return void
@@ -383,7 +332,8 @@ class AIPS_Internal_Links_Controller {
 			AIPS_Ajax_Response::error(array('message' => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler')));
 		}
 
-		$result = $this->service->index_post($post_id);
+		// Force a fresh embedding: this is the explicit "Re-index & suggest" action.
+		$result = $this->indexer->ensure_indexed($post_id, true, true);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
@@ -414,28 +364,6 @@ class AIPS_Internal_Links_Controller {
 				),
 				count($suggestion_ids)
 			),
-		));
-	}
-
-	/**
-	 * AJAX: Clear the entire embeddings index and all link suggestions.
-	 *
-	 * @return void
-	 */
-	public function ajax_clear_index() {
-		if ( ! check_ajax_referer('aips_ajax_nonce', 'nonce', false) ) {
-			AIPS_Ajax_Response::error(__('Invalid nonce.', 'ai-post-scheduler'));
-		}
-
-		if (!current_user_can('manage_options')) {
-			AIPS_Ajax_Response::permission_denied();
-		}
-
-		$this->embeddings_repo->delete_all();
-		$this->links_repo->delete_all();
-
-		AIPS_Ajax_Response::success(array(
-			'message' => __('Index cleared. All embeddings and suggestions have been removed.', 'ai-post-scheduler'),
 		));
 	}
 
@@ -687,65 +615,8 @@ class AIPS_Internal_Links_Controller {
 	}
 
 	// -------------------------------------------------------------------------
-	// Cron callback
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Cron callback: process one batch of unindexed posts.
-	 *
-	 * Called via the 'aips_index_posts_batch' action hook.
-	 * Re-schedules itself if more work remains.
-	 *
-	 * @param array $args Arguments with keys: last_post_id, batch_size.
-	 * @return void
-	 */
-	public function process_indexing_batch_cron($args) {
-		$last_post_id = isset($args['last_post_id']) ? absint($args['last_post_id']) : 0;
-		$batch_size   = isset($args['batch_size']) ? absint($args['batch_size']) : 10;
-
-		if (!$this->embeddings_service_available()) {
-			$this->logger->log('Internal links indexing skipped: embeddings not available.', 'warning');
-			return;
-		}
-
-		$result = $this->service->process_indexing_batch($batch_size, $last_post_id);
-
-		$this->logger->log(
-			sprintf(
-				'Internal links indexing batch: success=%d failed=%d last_post_id=%d done=%s',
-				$result['success'],
-				$result['failed'],
-				$result['last_post_id'],
-				$result['done'] ? 'yes' : 'no'
-			),
-			'info'
-		);
-
-		if (!$result['done']) {
-			$this->schedule_indexing_batch($result['last_post_id'], $batch_size);
-		}
-	}
-
-	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
-
-	/**
-	 * Current state of the background indexing job, for the first paint of the page.
-	 *
-	 * @return array Snapshot, or an empty array when it cannot be read.
-	 */
-	private function get_indexing_process_snapshot() {
-		try {
-			$process = AIPS_Container::get_instance()
-				->make(AIPS_Background_Process_Manager::class)
-				->get(AIPS_Internal_Links_Indexing_Process::KEY);
-
-			return $process ? $process->get_snapshot() : array();
-		} catch (\Throwable $e) {
-			return array();
-		}
-	}
 
 	/**
 	 * Check whether the embeddings service is available.
@@ -755,38 +626,5 @@ class AIPS_Internal_Links_Controller {
 	private function embeddings_service_available() {
 		$svc = new AIPS_Embeddings_Service();
 		return $svc->is_embeddings_supported();
-	}
-
-	/**
-	 * Schedule the next indexing batch cron event.
-	 *
-	 * @param int $last_post_id Last indexed post ID cursor.
-	 * @param int $batch_size   Batch size for the next run.
-	 * @return void
-	 */
-	private function schedule_indexing_batch($last_post_id, $batch_size = 10) {
-		$args = array(
-			'last_post_id' => $last_post_id,
-			'batch_size'   => $batch_size,
-		);
-
-		$timestamp = time() + 5;
-
-		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action($timestamp, 'aips_index_posts_batch', array($args), 'aips-internal-links');
-		} else {
-			// Use centralized job scheduler
-			$this->job_scheduler->schedule_simple(
-				'aips_index_posts_batch',
-				$timestamp,
-				array($args),
-				array(
-					'job_type'      => 'internal_links_indexing',
-					'retry_options' => array(
-						'max_attempts' => 3,
-					),
-				)
-			);
-		}
 	}
 }

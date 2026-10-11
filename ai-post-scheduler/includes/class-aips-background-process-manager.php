@@ -46,7 +46,7 @@ class AIPS_Background_Process_Manager {
 	 */
 	private function get_process_classes(): array {
 		$classes = array(
-			AIPS_Internal_Links_Indexing_Process::KEY => 'AIPS_Internal_Links_Indexing_Process',
+			AIPS_Content_Indexer_Process::KEY         => 'AIPS_Content_Indexer_Process',
 			AIPS_Content_Indexer_Queue_Process::KEY   => 'AIPS_Content_Indexer_Queue_Process',
 			AIPS_Link_Index_Scan_Process::KEY         => 'AIPS_Link_Index_Scan_Process',
 			AIPS_Relationships_Recompute_Process::KEY => 'AIPS_Relationships_Recompute_Process',

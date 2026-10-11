@@ -563,6 +563,8 @@ class AIPS_Admin_Assets {
             'minute'                   => __('1 minute', 'ai-post-scheduler'),
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
             'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
+            'typeWordToConfirm'        => __('Type %s to confirm', 'ai-post-scheduler'),
+            'typedWordMismatch'        => __('The text you typed does not match %s.', 'ai-post-scheduler'),
         ));
 
         $this->enqueue_history_modal_opener_script();
@@ -1939,9 +1941,6 @@ class AIPS_Admin_Assets {
             wp_localize_script('aips-admin-internal-links', 'aipsInternalLinksL10n', array(
                 'nonce'                    => wp_create_nonce('aips_ajax_nonce'),
                 'confirmDelete'            => __('Delete this suggestion? This cannot be undone.', 'ai-post-scheduler'),
-                'confirmClearIndex'        => __('Clear the entire index and all suggestions? This cannot be undone.', 'ai-post-scheduler'),
-                'indexingStarted'          => __('Indexing started. Posts will be processed in the background.', 'ai-post-scheduler'),
-                'indexingNotAvailable'     => __('Embeddings are not available. Please configure AI Engine.', 'ai-post-scheduler'),
                 'generating'               => __('Generating…', 'ai-post-scheduler'),
                 'reindexing'               => __('Re-indexing…', 'ai-post-scheduler'),
                 'loading'                  => __('Loading…', 'ai-post-scheduler'),
@@ -2026,7 +2025,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-content-indexer-script',
             AIPS_PLUGIN_URL . 'assets/js/admin-content-indexer.js',
-            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script'),
+            array('jquery', 'aips-admin-script', 'aips-utilities-script', 'aips-templates-script', 'aips-background-processes'),
             AIPS_VERSION,
             true
         );
@@ -2036,11 +2035,16 @@ class AIPS_Admin_Assets {
             'aipsContentIndexerL10n',
             array(
                 'nonce'                 => wp_create_nonce('aips_ajax_nonce'),
-                'startScan'             => __('Start Scan', 'ai-post-scheduler'),
-                'resumeScan'            => __('Resume Scan', 'ai-post-scheduler'),
-                'indexingPaused'        => __('Indexing Paused', 'ai-post-scheduler'),
                 'indexingComplete'      => __('Content indexing complete!', 'ai-post-scheduler'),
-                'confirmClear'          => __('Are you sure you want to clear all semantic embeddings and relationships? This will reset indexing coverage.', 'ai-post-scheduler'),
+                'clearHeading'          => __('Clear the entire index', 'ai-post-scheduler'),
+                /* translators: 1: embeddings count, 2: post embeddings, 3: topic embeddings, 4: relationships count. */
+                'clearMessage'          => __('This will permanently delete %1$s embeddings (%2$s posts, %3$s topics) and %4$s precomputed relationships. This is a destructive, irreversible action. Take a database backup before continuing.', 'ai-post-scheduler'),
+                /* translators: %s: confirmation word. */
+                'clearDescription'      => __('Indexing coverage resets to zero and everything must be re-embedded, which uses AI calls. Type %s to confirm.', 'ai-post-scheduler'),
+                'clearConfirmLabel'     => __('Delete the entire index', 'ai-post-scheduler'),
+                'cancel'                => __('Cancel', 'ai-post-scheduler'),
+                'clearWord'             => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
+                'requestFailed'         => __('Request failed. Please try again.', 'ai-post-scheduler'),
                 'indexed'               => __('Indexed', 'ai-post-scheduler'),
                 'pendingIndex'          => __('Pending Index', 'ai-post-scheduler'),
                 'authorTopic'           => __('Author Topic', 'ai-post-scheduler'),

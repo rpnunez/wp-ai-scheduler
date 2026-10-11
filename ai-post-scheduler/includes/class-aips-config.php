@@ -242,6 +242,7 @@ class AIPS_Config {
             'aips_indexer_batch_size'                  => 10,
             'aips_indexer_queue_debounce_seconds'      => 15,
             'aips_indexer_quota_pause_enabled'         => true,
+            'aips_indexer_auto_reindex_stale'          => false,
             'aips_indexer_queue_notifications_enabled' => true,
             'aips_indexer_post_cluster_threshold'      => 0.65,
             'aips_indexer_error_pause_duration'        => 30,

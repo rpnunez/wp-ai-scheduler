@@ -554,6 +554,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_indexer_quota_pause_enabled'],
 			),
+			'aips_indexer_auto_reindex_stale' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_indexer_auto_reindex_stale'],
+			),
 			'aips_indexer_queue_notifications_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_indexer_queue_notifications_enabled'],

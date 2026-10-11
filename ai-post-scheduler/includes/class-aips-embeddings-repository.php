@@ -452,45 +452,32 @@ class AIPS_Embeddings_Repository {
 			}
 		}
 
-		$existing = $this->get_by_object($object_type, $object_id);
+		// One atomic statement against the (object_type, object_id) unique key, so
+		// concurrent workers cannot race a select-then-insert into a duplicate-key error.
+		$res = $this->wpdb->query($this->wpdb->prepare(
+			"INSERT INTO {$this->table} (object_type, object_id, embedding, model, dimensions, content_hash, object_post_type, indexed_at)
+			VALUES (%s, %d, %s, %s, %d, %s, %s, %d)
+			ON DUPLICATE KEY UPDATE
+				embedding = VALUES(embedding),
+				model = VALUES(model),
+				dimensions = VALUES(dimensions),
+				content_hash = VALUES(content_hash),
+				object_post_type = VALUES(object_post_type),
+				indexed_at = VALUES(indexed_at)",
+			$object_type,
+			$object_id,
+			$this->encode_embedding($embedding),
+			sanitize_text_field($model),
+			$dimensions,
+			sanitize_text_field($content_hash),
+			$object_post_type,
+			$now
+		));
 
-		$data = array(
-			'embedding'        => $this->encode_embedding($embedding),
-			'model'            => sanitize_text_field($model),
-			'dimensions'       => $dimensions,
-			'content_hash'     => sanitize_text_field($content_hash),
-			'object_post_type' => $object_post_type,
-			'indexed_at'       => $now,
-		);
-
-		if ($existing) {
-			$res = $this->wpdb->update(
-				$this->table,
-				$data,
-				array(
-					'object_type' => $object_type,
-					'object_id'   => $object_id,
-				),
-				array('%s', '%s', '%d', '%s', '%s', '%d'),
-				array('%s', '%d')
-			);
-			if (false !== $res) {
-				$this->invalidate_cached_vector($object_type, $object_id);
-			}
-			return $res;
-		}
-
-		$data['object_type'] = $object_type;
-		$data['object_id']   = $object_id;
-
-		$res = $this->wpdb->insert(
-			$this->table,
-			$data,
-			array('%s', '%s', '%d', '%s', '%s', '%d', '%s', '%d')
-		);
 		if (false !== $res) {
 			$this->invalidate_cached_vector($object_type, $object_id);
 		}
+
 		return $res;
 	}
 
@@ -774,6 +761,129 @@ class AIPS_Embeddings_Repository {
 
 		$results = $this->wpdb->get_col($sql);
 		return array_map('intval', (array) $results);
+	}
+
+	/**
+	 * SQL fragment matching embedding rows (alias "e") made with a different model or
+	 * dimension count than the active ones.
+	 *
+	 * Rows with no recorded model or dimensions are unknown, not stale. An empty
+	 * model and zero dimensions match nothing.
+	 *
+	 * @param string $model      Active model slug.
+	 * @param int    $dimensions Active dimension count (0 to skip the check).
+	 * @return array{sql:string, params:array}
+	 */
+	private function build_stale_condition($model, $dimensions) {
+		$clauses = array();
+		$params  = array();
+
+		if ('' !== (string) $model) {
+			$clauses[] = "(e.model <> '' AND e.model <> %s)";
+			$params[]  = (string) $model;
+		}
+
+		if ((int) $dimensions > 0) {
+			$clauses[] = '(e.dimensions > 0 AND e.dimensions <> %d)';
+			$params[]  = (int) $dimensions;
+		}
+
+		if (empty($clauses)) {
+			return array('sql' => '1=0', 'params' => array());
+		}
+
+		return array('sql' => '(' . implode(' OR ', $clauses) . ')', 'params' => $params);
+	}
+
+	/**
+	 * Get post IDs whose stored embedding was made with a different model or dimension count.
+	 *
+	 * @param int             $limit        Batch limit.
+	 * @param int             $last_post_id Cursor: return IDs > this value.
+	 * @param string[]|string $post_types   Post types.
+	 * @param string          $post_status  Post status.
+	 * @param string          $model        Active model slug.
+	 * @param int             $dimensions   Active dimension count (0 to skip the check).
+	 * @param string|null     $scope        Scope filter ('aips_only', 'date_range', 'all').
+	 * @return int[]
+	 */
+	public function get_stale_post_ids($limit, $last_post_id, $post_types, $post_status, $model, $dimensions, $scope = null) {
+		if (!$this->table_exists()) {
+			return array();
+		}
+
+		$post_types  = array_map('sanitize_key', (array) $post_types);
+		$post_types  = !empty($post_types) ? $post_types : array('post');
+		$post_status = sanitize_key($post_status);
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+		$scope_clause = $this->build_scope_conditions($scope);
+		$stale        = $this->build_stale_condition($model, $dimensions);
+
+		$params = array_merge(
+			$post_types,
+			array($post_status, absint($last_post_id)),
+			$scope_clause['params'],
+			$stale['params'],
+			array(absint($limit))
+		);
+
+		$sql = $this->wpdb->prepare(
+			"SELECT DISTINCT p.ID
+			FROM {$this->wpdb->posts} p
+			{$scope_clause['join']}
+			INNER JOIN {$this->table} e ON p.ID = e.object_id AND e.object_type = 'post'
+			WHERE p.post_type IN ($placeholders)
+			AND p.post_status = %s
+			AND p.ID > %d
+			{$scope_clause['where']}
+			AND {$stale['sql']}
+			ORDER BY p.ID ASC
+			LIMIT %d",
+			...$params
+		);
+
+		return array_map('intval', (array) $this->wpdb->get_col($sql));
+	}
+
+	/**
+	 * Count posts whose stored embedding was made with a different model or dimension count.
+	 *
+	 * @param string[]|string $post_types  Post types.
+	 * @param string          $post_status Post status.
+	 * @param string          $model       Active model slug.
+	 * @param int             $dimensions  Active dimension count (0 to skip the check).
+	 * @param string|null     $scope       Scope filter ('aips_only', 'date_range', 'all').
+	 * @return int
+	 */
+	public function count_stale_posts($post_types, $post_status, $model, $dimensions, $scope = null) {
+		if (!$this->table_exists()) {
+			return 0;
+		}
+
+		$post_types  = array_map('sanitize_key', (array) $post_types);
+		$post_types  = !empty($post_types) ? $post_types : array('post');
+		$post_status = sanitize_key($post_status);
+
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+		$scope_clause = $this->build_scope_conditions($scope);
+		$stale        = $this->build_stale_condition($model, $dimensions);
+
+		$params = array_merge($post_types, array($post_status), $scope_clause['params'], $stale['params']);
+
+		$sql = $this->wpdb->prepare(
+			"SELECT COUNT(DISTINCT e.id)
+			FROM {$this->table} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID AND e.object_type = 'post'
+			{$scope_clause['join']}
+			WHERE p.post_type IN ($placeholders)
+			AND p.post_status = %s
+			{$scope_clause['where']}
+			AND {$stale['sql']}",
+			...$params
+		);
+
+		return (int) $this->wpdb->get_var($sql);
 	}
 
 	/**

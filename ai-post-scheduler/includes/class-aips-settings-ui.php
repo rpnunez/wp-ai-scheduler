@@ -2103,6 +2103,7 @@ class AIPS_Settings_UI {
 		$debounce_sec  = (int) $config->get_option('aips_indexer_queue_debounce_seconds', 15);
 		$quota_pause   = (bool) $config->get_option('aips_indexer_quota_pause_enabled', true);
 		$notifications = (bool) $config->get_option('aips_indexer_queue_notifications_enabled', true);
+		$auto_stale    = (bool) $config->get_option('aips_indexer_auto_reindex_stale', false);
 		?>
 		<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px;">
 			<div>
@@ -2120,6 +2121,11 @@ class AIPS_Settings_UI {
 			<label for="aips_indexer_quota_pause_enabled" style="display:block;margin-bottom:6px;">
 				<input type="checkbox" name="aips_indexer_quota_pause_enabled" id="aips_indexer_quota_pause_enabled" value="1" <?php checked($quota_pause); ?>>
 				<?php esc_html_e('Auto-Pause indexing queue when approaching rate limits or remote quota', 'ai-post-scheduler'); ?>
+			</label>
+			<label for="aips_indexer_auto_reindex_stale" style="display:block;margin-bottom:6px;">
+				<input type="checkbox" name="aips_indexer_auto_reindex_stale" id="aips_indexer_auto_reindex_stale" value="1" <?php checked($auto_stale); ?>>
+				<?php esc_html_e('Automatically re-index stale embeddings in the background (after the embeddings model or dimensions change)', 'ai-post-scheduler'); ?>
+				<span class="description" style="display:block;margin-left:22px;"><?php esc_html_e('Off by default. Re-embedding uses AI calls and always respects your embeddings rate limits, quota reserve and cooldown. You can also start it manually from Content Indexer.', 'ai-post-scheduler'); ?></span>
 			</label>
 			<label for="aips_indexer_queue_notifications_enabled" style="display:block;">
 				<input type="checkbox" name="aips_indexer_queue_notifications_enabled" id="aips_indexer_queue_notifications_enabled" value="1" <?php checked($notifications); ?>>
