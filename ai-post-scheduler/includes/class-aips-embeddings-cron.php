@@ -269,10 +269,21 @@ class AIPS_Embeddings_Cron {
 		}
 
 		// Create new history container
-		return $this->history_service->create('author_embeddings', array(
+		$container = $this->history_service->create('author_embeddings', array(
 			'author_id' => $author_id,
 			'creation_method' => 'author_embeddings',
 		));
+
+		AIPS_Generation_Trigger::record(
+			$container,
+			array(
+				'event'     => __('Embeddings processing', 'ai-post-scheduler'),
+				'author_id' => (int) $author_id,
+			),
+			'author_embeddings'
+		);
+
+		return $container;
 	}
 
 	/**

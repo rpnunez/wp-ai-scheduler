@@ -181,9 +181,11 @@ class AIPS_Internal_Links_Service {
 	public function process_indexing_batch(
 		$batch_size = 10,
 		$last_post_id = 0,
-		$post_type = 'post',
+		$post_type = null,
 		$post_status = 'publish'
 	) {
+		$post_type = $this->resolve_post_types($post_type);
+
 		if (!$this->embeddings_service->is_enabled()) {
 			return array(
 				'success'      => 0,
@@ -392,9 +394,13 @@ class AIPS_Internal_Links_Service {
 	 * @param string $post_status Post status to check.
 	 * @return array{total_posts: int, indexed: int, unindexed: int, percent: int}
 	 */
-	public function get_indexing_status($post_type = 'post', $post_status = 'publish') {
-		$counts      = wp_count_posts($post_type);
-		$total_posts = isset($counts->$post_status) ? (int) $counts->$post_status : 0;
+	public function get_indexing_status($post_type = null, $post_status = 'publish') {
+		$post_type = $this->resolve_post_types($post_type);
+
+		// Total and indexed counts must use the same indexing scope (the
+		// aips_embeddings_scope setting), otherwise the denominator includes
+		// posts the indexer will never process.
+		$total_posts = $this->embeddings_repo->count_total_posts_for_scope((array) $post_type, $post_status);
 		$indexed     = $this->embeddings_repo->count_indexed_for_types((array) $post_type, $post_status);
 		$unindexed   = max(0, $total_posts - $indexed);
 		$percent     = $total_posts > 0 ? min(100, (int) round(($indexed / $total_posts) * 100)) : 0;
@@ -422,6 +428,22 @@ class AIPS_Internal_Links_Service {
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Post types to index: the explicit argument, else the configured indexer post types.
+	 *
+	 * @param string|string[]|null $post_type Explicit post type(s) or null for the setting.
+	 * @return string[]
+	 */
+	private function resolve_post_types($post_type = null) {
+		$types = $post_type === null || $post_type === ''
+			? (array) $this->config->get_option('aips_indexer_post_types', array('post'))
+			: (array) $post_type;
+
+		$types = array_values(array_filter(array_map('sanitize_key', $types)));
+
+		return !empty($types) ? $types : array('post');
+	}
 
 	/**
 	 * Build the text content to embed for a post (title + excerpt + content).

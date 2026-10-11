@@ -40,6 +40,7 @@ class AIPS_DB_Manager {
         'aips_link_index',
         'aips_link_clicks',
         'aips_redirects',
+        'aips_background_processes',
     );
 
     public function __construct() {
@@ -108,6 +109,7 @@ class AIPS_DB_Manager {
         $table_link_index           = $tables['aips_link_index'];
         $table_link_clicks          = $tables['aips_link_clicks'];
         $table_redirects            = $tables['aips_redirects'];
+        $table_background_processes = $tables['aips_background_processes'];
 
         $sql = array();
 
@@ -727,6 +729,29 @@ class AIPS_DB_Manager {
             KEY job_type (job_type),
             KEY status (status),
             KEY created_at (created_at),
+            KEY status_updated (status, updated_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_background_processes (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            process_key varchar(64) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'running',
+            total int(11) NOT NULL DEFAULT 0,
+            processed int(11) NOT NULL DEFAULT 0,
+            failed int(11) NOT NULL DEFAULT 0,
+            cursor_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            ai_calls_used int(11) NOT NULL DEFAULT 0,
+            ai_calls_budget int(11) NOT NULL DEFAULT 0,
+            options_json longtext,
+            message varchar(500) DEFAULT NULL,
+            next_run_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            last_tick_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            started_by bigint(20) unsigned NOT NULL DEFAULT 0,
+            started_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            finished_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            updated_at bigint(20) unsigned NOT NULL DEFAULT 0,
+            PRIMARY KEY  (id),
+            KEY process_status (process_key, status),
             KEY status_updated (status, updated_at)
         ) $charset_collate;";
 

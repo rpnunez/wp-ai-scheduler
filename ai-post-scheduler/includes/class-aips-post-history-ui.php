@@ -513,9 +513,7 @@ class AIPS_Post_History_UI {
 					? $container->make(AIPS_Content_Indexer_Service::class)
 					: new AIPS_Content_Indexer_Service();
 
-				foreach ($post_ids as $pid) {
-					$indexer->enqueue_post_for_indexing(absint($pid));
-				}
+				$indexer->enqueue_posts_for_indexing($post_ids);
 
 				$redirect_to = add_query_arg('aips_queued_count', count($post_ids), $redirect_to);
 			}

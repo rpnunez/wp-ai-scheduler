@@ -399,22 +399,33 @@ class AIPS_Relationships_Repository {
 			return (array) $rows;
 		}
 
+		// Neighbours are stored per source, from whichever post was indexed or recomputed last:
+		// a new post B that duplicates an older post A is stored as B -> A. Normalise each row
+		// to (lower ID, higher ID) and keep the best similarity per pair, so a pair is found
+		// whichever direction it was stored in.
 		$rows = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT r.source_id, r.target_id, r.similarity,
+				"SELECT pr.source_id, pr.target_id, pr.similarity,
 					p1.post_title as source_title, p1.post_type as source_post_type, p1.post_date as source_date,
 					p2.post_title as target_title, p2.post_type as target_post_type, p2.post_date as target_date,
 					'post_duplicate' as audit_type
-				FROM {$this->table} r
-				INNER JOIN {$this->wpdb->posts} p1 ON r.source_id = p1.ID
-				INNER JOIN {$this->wpdb->posts} p2 ON r.target_id = p2.ID
-				WHERE r.source_type = 'post'
-				AND r.target_type = 'post'
-				AND r.source_id < r.target_id
-				AND r.similarity >= %f
-				AND p1.post_status = 'publish'
+				FROM (
+					SELECT LEAST(r.source_id, r.target_id) AS source_id,
+						GREATEST(r.source_id, r.target_id) AS target_id,
+						MAX(r.similarity) AS similarity
+					FROM {$this->table} r
+					WHERE r.source_type = 'post'
+					AND r.target_type = 'post'
+					AND r.source_id <> r.target_id
+					AND r.similarity >= %f
+					AND (r.relation_type = 'similar' OR r.relation_type = 'related_post')
+					GROUP BY LEAST(r.source_id, r.target_id), GREATEST(r.source_id, r.target_id)
+				) pr
+				INNER JOIN {$this->wpdb->posts} p1 ON pr.source_id = p1.ID
+				INNER JOIN {$this->wpdb->posts} p2 ON pr.target_id = p2.ID
+				WHERE p1.post_status = 'publish'
 				AND p2.post_status = 'publish'
-				ORDER BY r.similarity DESC
+				ORDER BY pr.similarity DESC
 				LIMIT %d",
 				$min_similarity,
 				$limit
@@ -523,6 +534,78 @@ class AIPS_Relationships_Repository {
 		}
 
 		return (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table}");
+	}
+
+	/**
+	 * Post IDs that have an embedding and are due for a relationship recompute.
+	 *
+	 * @param string[]|string $post_types   Post types to include.
+	 * @param string          $post_status  Post status filter.
+	 * @param int             $after_id     Cursor: return IDs greater than this.
+	 * @param int             $limit        Maximum IDs.
+	 * @param bool            $only_missing True to skip posts that already have related-post rows.
+	 * @return int[]
+	 */
+	public function get_source_post_ids($post_types = array('post'), $post_status = 'publish', $after_id = 0, $limit = 20, $only_missing = true) {
+		list($from_sql, $params) = $this->build_source_query($post_types, $post_status, $after_id, $only_missing);
+
+		$sql = $this->wpdb->prepare(
+			"SELECT e.object_id {$from_sql} ORDER BY e.object_id ASC LIMIT %d",
+			...array_merge($params, array(max(1, absint($limit))))
+		);
+
+		return array_map('intval', (array) $this->wpdb->get_col($sql));
+	}
+
+	/**
+	 * Count post IDs that get_source_post_ids() would return from the start.
+	 *
+	 * @param string[]|string $post_types   Post types to include.
+	 * @param string          $post_status  Post status filter.
+	 * @param bool            $only_missing True to skip posts that already have related-post rows.
+	 * @return int
+	 */
+	public function count_source_post_ids($post_types = array('post'), $post_status = 'publish', $only_missing = true) {
+		list($from_sql, $params) = $this->build_source_query($post_types, $post_status, 0, $only_missing);
+
+		return (int) $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) {$from_sql}", ...$params));
+	}
+
+	/**
+	 * Shared FROM/WHERE for the source post queries.
+	 *
+	 * @param string[]|string $post_types   Post types.
+	 * @param string          $post_status  Post status.
+	 * @param int             $after_id     Cursor.
+	 * @param bool            $only_missing Skip posts that already have related-post rows.
+	 * @return array{0:string, 1:array} SQL fragment and its parameters.
+	 */
+	private function build_source_query($post_types, $post_status, $after_id, $only_missing) {
+		$post_types = array_values(array_filter(array_map('sanitize_key', (array) $post_types)));
+		if (empty($post_types)) {
+			$post_types = array('post');
+		}
+
+		$embeddings   = $this->wpdb->prefix . 'aips_embeddings';
+		$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+
+		$join  = '';
+		$where = '';
+		if ($only_missing) {
+			$join  = "LEFT JOIN {$this->table} r ON r.source_type = 'post' AND r.source_id = e.object_id AND r.relation_type = 'related_post'";
+			$where = 'AND r.id IS NULL';
+		}
+
+		$sql = "FROM {$embeddings} e
+			INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
+			{$join}
+			WHERE e.object_type = 'post'
+			AND p.post_type IN ({$placeholders})
+			AND p.post_status = %s
+			AND e.object_id > %d
+			{$where}";
+
+		return array($sql, array_merge($post_types, array(sanitize_key($post_status), absint($after_id))));
 	}
 
 	/**

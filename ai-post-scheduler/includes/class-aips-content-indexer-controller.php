@@ -381,6 +381,7 @@ class AIPS_Content_Indexer_Controller {
 		$cluster_config    = array(
 			'threshold'         => $cluster_threshold,
 			'threshold_percent' => (int) round($cluster_threshold * 100),
+			'min_size'          => max(2, (int) $this->config->get_option('aips_cluster_default_min_size', 3)),
 		);
 
 		try {
@@ -498,6 +499,15 @@ class AIPS_Content_Indexer_Controller {
 
 		$this->indexer_service->clear_index();
 
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::CONTENT_INDEX_CLEARED,
+			true,
+			__('Content index cleared', 'ai-post-scheduler'),
+			'content_index_operation',
+			array('event' => __('Clear content index', 'ai-post-scheduler')),
+			'manual'
+		);
+
 		AIPS_Ajax_Response::success(array(
 			'message' => __('Index cleared successfully.', 'ai-post-scheduler'),
 		));
@@ -548,11 +558,21 @@ class AIPS_Content_Indexer_Controller {
 	public function ajax_run_cannibalization_audit() {
 		$this->verify_request();
 
-		$threshold   = isset($_POST['threshold']) ? (float) $_POST['threshold'] : 0.80;
-		$limit       = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
+		$threshold   = isset($_POST['threshold']) ? (float) $_POST['threshold'] : (float) $this->config->get_option('aips_deduplication_threshold', 0.85);
+		$limit       = isset($_POST['limit']) ? absint($_POST['limit']) : (int) $this->config->get_option('aips_audit_result_limit', 50);
 		$entity_type = isset($_POST['entity_type']) ? sanitize_key($_POST['entity_type']) : 'all';
 
 		$results = $this->deduplication_service->get_cannibalization_audit_results($threshold, $limit, $entity_type);
+
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::CANNIBALIZATION_AUDIT_RUN,
+			true,
+			sprintf(__('Cannibalization audit found %d clusters', 'ai-post-scheduler'), count($results)),
+			'content_index_operation',
+			array('event' => __('Cannibalization audit', 'ai-post-scheduler'), 'detail' => sprintf(__('Threshold %1$s, entity type %2$s', 'ai-post-scheduler'), $threshold, $entity_type)),
+			'manual',
+			array('threshold' => $threshold, 'limit' => $limit, 'entity_type' => $entity_type, 'clusters' => count($results))
+		);
 
 		AIPS_Ajax_Response::success(array(
 			'clusters'    => $results,
@@ -784,8 +804,28 @@ class AIPS_Content_Indexer_Controller {
 		$this->verify_request();
 
 		$threshold = isset($_POST['threshold']) ? (float) $_POST['threshold'] : (float) $this->config->get_option('aips_indexer_post_cluster_threshold', 0.65);
-		$clusters = $this->similarity_evaluator->detect_post_clusters($threshold);
-		$orphans  = $this->similarity_evaluator->get_orphan_posts($threshold);
+		$min_size  = isset($_POST['min_size']) ? max(2, absint($_POST['min_size'])) : 2;
+		$clusters  = $this->similarity_evaluator->detect_post_clusters($threshold, $min_size);
+
+		// An orphan is a post that is not in any displayed cluster. Posts with no
+		// inbound internal links are a separate (link) problem, so they are counted
+		// separately instead of being mixed into the topic orphan list.
+		$clustered_ids = array();
+		foreach ($clusters as $c) {
+			$clustered_ids = array_merge($clustered_ids, isset($c['member_ids']) ? (array) $c['member_ids'] : array());
+		}
+		$flagged        = $this->similarity_evaluator->get_orphan_posts($threshold, 'hybrid', $clustered_ids);
+		$orphans        = array();
+		$unlinked_posts = 0;
+		foreach ($flagged as $row) {
+			$type = isset($row['orphan_type']) ? $row['orphan_type'] : '';
+			if ($type !== 'unlinked_post') {
+				$orphans[] = $row;
+			}
+			if ($type === 'unlinked_post' || $type === 'isolated_and_unlinked') {
+				$unlinked_posts++;
+			}
+		}
 
 		$total_clusters  = count($clusters);
 		$clustered_posts = 0;
@@ -806,6 +846,7 @@ class AIPS_Content_Indexer_Controller {
 				'clustered_posts' => $clustered_posts,
 				'avg_cohesion'    => $avg_cohesion,
 				'orphan_posts'    => $orphan_count,
+				'unlinked_posts'  => $unlinked_posts,
 			),
 		));
 	}

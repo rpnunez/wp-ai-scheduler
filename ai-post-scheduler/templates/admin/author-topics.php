@@ -47,26 +47,56 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 ?>
 
 		<!-- Author Stats -->
-		<div class="aips-author-topics-stats">
+		<div class="aips-stats-grid aips-author-topics-stats">
 			<div class="aips-stat-card aips-stat-pending">
-				<span class="aips-stat-value" id="stat-pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-clock aips-stat-icon aips-text-warning" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-warning" id="stat-pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('Awaiting editorial review', 'ai-post-scheduler'); ?></div>
 			</div>
 			<div class="aips-stat-card aips-stat-approved">
-				<span class="aips-stat-value" id="stat-approved-count"><?php echo esc_html($status_counts['approved']); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></span>
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-yes-alt aips-stat-icon aips-text-success" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-success" id="stat-approved-count"><?php echo esc_html($status_counts['approved']); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('Ready for post generation', 'ai-post-scheduler'); ?></div>
 			</div>
 			<div class="aips-stat-card aips-stat-rejected">
-				<span class="aips-stat-value" id="stat-rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-dismiss aips-stat-icon aips-text-danger" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-danger" id="stat-rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('Declined suggestions', 'ai-post-scheduler'); ?></div>
 			</div>
 			<div class="aips-stat-card aips-stat-generated">
-				<span class="aips-stat-value" id="stat-generated-count"><?php echo esc_html($posts_count); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-admin-post aips-stat-icon aips-text-primary" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value aips-text-primary" id="stat-generated-count"><?php echo esc_html($posts_count); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('Articles created from topics', 'ai-post-scheduler'); ?></div>
 			</div>
 			<div class="aips-stat-card">
-				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
+				<div class="aips-stat-header">
+					<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
+					<span class="dashicons dashicons-category aips-stat-icon" aria-hidden="true"></span>
+				</div>
+				<div class="aips-stat-value-wrap">
+					<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
+				</div>
+				<div class="aips-stat-subtext"><?php esc_html_e('All generated author topics', 'ai-post-scheduler'); ?></div>
 			</div>
 		</div>
 

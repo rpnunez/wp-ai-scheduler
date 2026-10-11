@@ -83,6 +83,51 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test get_by_source alias.
+	 */
+	public function test_get_by_source() {
+		$vector = array( 0.4, 0.5, 0.6 );
+		$this->repo->upsert(
+			'topic',
+			55,
+			$vector,
+			'test-model',
+			3,
+			md5( 'sample topic' ),
+			''
+		);
+
+		$record = $this->repo->get_by_source( 'topic', 55 );
+		$this->assertNotNull( $record );
+		$this->assertEquals( 'topic', $record->object_type );
+		$this->assertEquals( 55, (int) $record->object_id );
+		$this->assertEquals( 3, (int) $record->dimensions );
+	}
+
+	/**
+	 * Test helper get_by_topic_id and delete_by_topic_id.
+	 */
+	public function test_get_and_delete_by_topic_id() {
+		$vector = array( 0.7, 0.8, 0.9 );
+		$this->repo->upsert(
+			'topic',
+			88,
+			$vector,
+			'test-model',
+			3,
+			'',
+			''
+		);
+
+		$record = $this->repo->get_by_topic_id( 88 );
+		$this->assertNotNull( $record );
+		$this->assertEquals( 88, (int) $record->object_id );
+
+		$this->repo->delete_by_topic_id( 88 );
+		$this->assertNull( $this->repo->get_by_topic_id( 88 ) );
+	}
+
+	/**
 	 * Test delete by object and delete by post id.
 	 */
 	public function test_delete_and_delete_by_post_id() {

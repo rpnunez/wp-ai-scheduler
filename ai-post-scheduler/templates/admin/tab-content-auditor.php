@@ -207,29 +207,29 @@ $authors       = (new AIPS_Authors_Repository())->get_all(true);
 		</div>
 
 		<!-- Detailed Findings Tabs -->
-		<div class="aips-content-panel">
-			<div class="aips-tab-nav aips-findings-tab-nav">
-				<button type="button" class="aips-findings-tab-btn active" data-findings-tab="gaps">
+		<div class="aips-content-panel aips-panel-with-tabs">
+			<div class="aips-tab-nav aips-panel-tab-nav aips-findings-tab-nav">
+				<button type="button" class="aips-tab-link aips-findings-tab-btn active" data-findings-tab="gaps">
 					<span class="dashicons dashicons-chart-area"></span>
 					<?php esc_html_e('Topic Gaps & Pillars', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-badge" id="aips-count-badge-gaps">0</span>
 				</button>
-				<button type="button" class="aips-findings-tab-btn" data-findings-tab="cannibalization">
+				<button type="button" class="aips-tab-link aips-findings-tab-btn" data-findings-tab="cannibalization">
 					<span class="dashicons dashicons-randomize"></span>
 					<?php esc_html_e('Keyword Cannibalization', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-badge" id="aips-count-badge-cannibalization">0</span>
 				</button>
-				<button type="button" class="aips-findings-tab-btn" data-findings-tab="decay">
+				<button type="button" class="aips-tab-link aips-findings-tab-btn" data-findings-tab="decay">
 					<span class="dashicons dashicons-clock"></span>
 					<?php esc_html_e('Content Decay & Freshness', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-badge" id="aips-count-badge-decay">0</span>
 				</button>
-				<button type="button" class="aips-findings-tab-btn" data-findings-tab="links">
+				<button type="button" class="aips-tab-link aips-findings-tab-btn" data-findings-tab="links">
 					<span class="dashicons dashicons-admin-links"></span>
 					<?php esc_html_e('Link Silos & Orphans', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-badge" id="aips-count-badge-links">0</span>
 				</button>
-				<button type="button" class="aips-findings-tab-btn" data-findings-tab="trends">
+				<button type="button" class="aips-tab-link aips-findings-tab-btn" data-findings-tab="trends">
 					<span class="dashicons dashicons-rss"></span>
 					<?php esc_html_e('Source Industry Trends', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-badge" id="aips-count-badge-trends">0</span>

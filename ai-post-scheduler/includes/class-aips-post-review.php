@@ -456,7 +456,10 @@ class AIPS_Post_Review {
 		
 		// Trigger regeneration using the generator (same API as history retry)
 		$generator = new AIPS_Generator();
-		$result = $generator->generate_post($template);
+		$result = $generator->generate_post($template, null, null, array(
+			'creation_method' => 'regenerate',
+			'trigger_context' => array('detail' => sprintf(__('Regeneration of History #%d', 'ai-post-scheduler'), (int) $history_id)),
+		));
 		
 		if (is_wp_error($result)) {
 			// Log the regeneration failure
@@ -651,7 +654,10 @@ class AIPS_Post_Review {
 					'error_message' => null,
 				));
 
-				$regen_result = $generator->generate_post($template);
+				$regen_result = $generator->generate_post($template, null, null, array(
+					'creation_method' => 'regenerate',
+					'trigger_context' => array('detail' => sprintf(__('Bulk regeneration of History #%d', 'ai-post-scheduler'), (int) $history_id)),
+				));
 
 				if (is_wp_error($regen_result)) {
 					return $regen_result;

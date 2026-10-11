@@ -273,6 +273,15 @@
 			$('#aips-refresh-clusters-btn').on('click', this.onRefreshClustersClick.bind(this));
 			$('#aips-cluster-sim-threshold').on('input', this.onClusterSimThresholdInput.bind(this));
 			$(document).on('click', '.aips-cluster-card-header', this.onClusterCardHeaderClick.bind(this));
+			$(document).on('click', '.aips-cluster-show-more', function (e) {
+				var $card = $(e.currentTarget).closest('.aips-cluster-card');
+				$card.find('.aips-cluster-row-extra').removeClass('aips-hidden aips-cluster-row-extra');
+				$(e.currentTarget).closest('.aips-cluster-more').remove();
+			});
+			$(document).on('click', '.aips-clusters-show-more', function (e) {
+				$('#aips-clusters-accordion .aips-cluster-extra').removeClass('aips-hidden aips-cluster-extra');
+				$(e.currentTarget).closest('.aips-cluster-more').remove();
+			});
 			$(document).on('click', '.aips-cluster-rename-btn', this.onClusterRenameClick.bind(this));
 			$(document).on('click', '.aips-pillar-toggle-btn', this.onPillarToggleClick.bind(this));
 			$(document).on('click', '.aips-cluster-gaps-btn', this.onClusterGapsClick.bind(this));
@@ -1596,8 +1605,6 @@
 				data: {
 					action: 'aips_indexer_run_cannibalization_audit',
 					nonce: aipsContentIndexerL10n.nonce,
-					threshold: 0.75,
-					limit: 50,
 					entity_type: entityType
 				},
 				success: function (res) {
@@ -2184,6 +2191,14 @@
 					$('#aips-metric-avg-cohesion').text((stats.avg_cohesion !== undefined ? stats.avg_cohesion : '--') + (stats.avg_cohesion !== undefined ? '%' : ''));
 					$('#aips-metric-orphans-count').text(stats.orphan_posts !== undefined ? stats.orphan_posts : (data.orphans ? data.orphans.length : 0));
 
+					// Posts with no inbound internal links are a link problem, not a topic one.
+					var $unlinkedNote = $('#aips-unlinked-note');
+					if (stats.unlinked_posts > 0) {
+						$unlinkedNote.text(stats.unlinked_posts + ' posts have no inbound internal links. See the Link Report to fix them.').removeClass('aips-hidden').show();
+					} else {
+						$unlinkedNote.addClass('aips-hidden').hide();
+					}
+
 					// Render Cluster Accordion Cards
 					if (!data.clusters || data.clusters.length === 0) {
 						$container.html(AIPS.Templates.render('aips-tmpl-indexer-cluster-empty', {
@@ -2192,8 +2207,11 @@
 						}));
 					} else {
 						var cardsHtml = '';
-						data.clusters.forEach(function (cluster) {
+						var CLUSTERS_PER_PAGE = 15;
+						var POSTS_PER_CLUSTER = 10;
+						data.clusters.forEach(function (cluster, clusterIndex) {
 							var postsHtml = '';
+							var shownPosts = 0;
 							var pillarId = cluster.pillar_post_id !== undefined ? cluster.pillar_post_id : cluster.pillar_id;
 							var pillarTitle = cluster.pillar_title || '';
 
@@ -2205,7 +2223,12 @@
 								var rawScore = p.similarity_to_centroid !== undefined ? p.similarity_to_centroid : (p.topic_score !== undefined ? p.topic_score : 0);
 								var simPct = Math.round(rawScore * 100);
 
+								var showRow = isPillar || shownPosts < POSTS_PER_CLUSTER;
+								if (showRow) {
+									shownPosts++;
+								}
 								postsHtml += AIPS.Templates.render('aips-tmpl-indexer-cluster-post-row', {
+									rowClass: showRow ? '' : 'aips-hidden aips-cluster-row-extra',
 									clusterId: cluster.id,
 									postId: p.id,
 									title: AIPS.Templates.escape(p.title),
@@ -2226,7 +2249,10 @@
 								title: AIPS.Templates.escape(pillarTitle)
 							}) : '';
 
-							cardsHtml += AIPS.Templates.renderRaw('aips-tmpl-indexer-cluster-card', {
+							var hiddenPosts = (cluster.posts || []).length - shownPosts;
+							var cardHtml = AIPS.Templates.renderRaw('aips-tmpl-indexer-cluster-card', {
+								collapsedClass: 'is-collapsed',
+								moreHtml: hiddenPosts > 0 ? AIPS.Templates.render('aips-tmpl-indexer-cluster-more', { count: hiddenPosts }) : '',
 								id: cluster.id,
 								name: AIPS.Templates.escape(cluster.name),
 								postCount: cluster.post_count,
@@ -2235,7 +2261,14 @@
 								pillarBadgeHtml: pillarBadgeHtml,
 								postsHtml: postsHtml
 							});
+							if (clusterIndex >= CLUSTERS_PER_PAGE) {
+								cardHtml = cardHtml.replace('class="aips-cluster-card"', 'class="aips-cluster-card aips-hidden aips-cluster-extra"');
+							}
+							cardsHtml += cardHtml;
 						});
+						if (data.clusters.length > CLUSTERS_PER_PAGE) {
+							cardsHtml += AIPS.Templates.render('aips-tmpl-indexer-clusters-more', { count: data.clusters.length - CLUSTERS_PER_PAGE });
+						}
 						$container.html(cardsHtml);
 					}
 

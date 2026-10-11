@@ -9,8 +9,9 @@
  * Tab 3: Pending Review      - @see templates/admin/tab-pending-review.php
  * Tab 4: Content Indexer     - @see templates/admin/content-indexer.php
  * Tab 5: Link Report         - @see templates/admin/link-report.php
- * Tab 6: Link Rules          - @see templates/admin/link-rules.php
- * Tab 7: Redirects           - @see templates/admin/redirects.php
+ * Tab 6: Broken Links        - @see templates/admin/broken-links.php
+ * Tab 7: Link Rules          - @see templates/admin/link-rules.php
+ * Tab 8: Redirects           - @see templates/admin/redirects.php
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -29,6 +30,7 @@ $valid_tabs = array(
 	'aips-pending-review',
 	'aips-content-indexer',
 	'aips-link-report',
+	'aips-broken-links',
 	'aips-link-rules',
 	'aips-redirects',
 	'aips-silos',
@@ -40,6 +42,8 @@ if ('content-indexer' === $active_tab || 'indexer' === $active_tab || 'embedding
 	$active_tab = 'aips-content-indexer';
 } elseif ('link-report' === $active_tab || 'links' === $active_tab) {
 	$active_tab = 'aips-link-report';
+} elseif ('broken-links' === $active_tab || 'broken' === $active_tab) {
+	$active_tab = 'aips-broken-links';
 } elseif ('link-rules' === $active_tab || 'rules' === $active_tab) {
 	$active_tab = 'aips-link-rules';
 } elseif ('redirects' === $active_tab) {
@@ -98,6 +102,14 @@ $rail_items = array(
 		'description' => __('Internal links, orphans & broken links', 'ai-post-scheduler'),
 		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-link-report'),
 		'active'      => ($active_tab === 'aips-link-report'),
+	),
+	array(
+		'key'         => 'aips-broken-links',
+		'label'       => __('Broken Links', 'ai-post-scheduler'),
+		'icon'        => 'dashicons-editor-unlink',
+		'description' => __('Internal links to pages that no longer exist', 'ai-post-scheduler'),
+		'url'         => admin_url('admin.php?page=aips-generated-posts&tab=aips-broken-links'),
+		'active'      => ($active_tab === 'aips-broken-links'),
 	),
 	array(
 		'key'         => 'aips-link-rules',
@@ -214,6 +226,17 @@ $page_context = AIPS_Admin_Page_Context::resolve(
 						extract($link_report_controller->get_view_data());
 						include AIPS_PLUGIN_DIR . 'templates/admin/link-report.php';
 					}, __('Link Report', 'ai-post-scheduler'), true);
+					?>
+				</div>
+
+				<!-- Tab: Broken Links -->
+				<div id="aips-broken-links-tab" class="aips-tab-content<?php echo $active_tab === 'aips-broken-links' ? ' active' : ''; ?>" role="tabpanel" aria-hidden="<?php echo $active_tab === 'aips-broken-links' ? 'false' : 'true'; ?>" <?php echo $active_tab === 'aips-broken-links' ? '' : 'hidden'; ?>>
+					<?php
+					AIPS_Admin_Menu_Helper::safe_render(function() {
+						$broken_links_controller = new AIPS_Broken_Links_Controller();
+						extract($broken_links_controller->get_view_data());
+						include AIPS_PLUGIN_DIR . 'templates/admin/broken-links.php';
+					}, __('Broken Links', 'ai-post-scheduler'), true);
 					?>
 				</div>
 

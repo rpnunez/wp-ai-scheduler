@@ -131,6 +131,39 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$this->assertSame( 5, $response['data']['orphans'][0]['id'] );
 	}
 
+	public function test_ajax_get_post_clusters_separates_unlinked_posts_from_orphans() {
+		$admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
+		$evaluator = $this->createMock( AIPS_Similarity_Evaluator::class );
+		$evaluator->method( 'detect_post_clusters' )
+			->with( 0.7, 5 )
+			->willReturn( array( 'cluster_1' => array( 'id' => 'cluster_1', 'member_ids' => array( 1, 2 ), 'post_count' => 2 ) ) );
+		$evaluator->expects( $this->once() )
+			->method( 'get_orphan_posts' )
+			->with( 0.7, 'hybrid', array( 1, 2 ) )
+			->willReturn( array(
+				array( 'id' => 5, 'orphan_type' => 'semantic_island' ),
+				array( 'id' => 6, 'orphan_type' => 'isolated_and_unlinked' ),
+				array( 'id' => 7, 'orphan_type' => 'unlinked_post' ),
+			) );
+
+		$controller = new AIPS_Content_Indexer_Controller( null, null, null, null, null, $evaluator );
+
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'threshold' => '0.7',
+			'min_size'  => '5',
+		);
+		$_REQUEST = $_POST;
+
+		$response = $this->capture_ajax_response( array( $controller, 'ajax_get_post_clusters' ) );
+
+		$this->assertSame( array( 5, 6 ), wp_list_pluck( $response['data']['orphans'], 'id' ) );
+		$this->assertSame( 2, $response['data']['stats']['orphan_posts'] );
+		$this->assertSame( 2, $response['data']['stats']['unlinked_posts'] );
+	}
+
 	public function test_ajax_rename_post_cluster_delegates_to_evaluator() {
 		$admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_user_id );

@@ -272,7 +272,7 @@ class AIPS_Embeddings_Service {
 
 		// Check if embedding with identical content hash already exists
 		if ($embeddings_repo) {
-			$existing = $embeddings_repo->get_by_source('topic', $topic_id);
+			$existing = $embeddings_repo->get_by_object('topic', $topic_id);
 			if ($existing && !empty($existing->content_hash) && $existing->content_hash === $content_hash) {
 				$decoded = $embeddings_repo->decode_embedding($existing->embedding, 'topic', $topic_id, $content_hash);
 				if (!empty($decoded)) {
@@ -330,7 +330,7 @@ class AIPS_Embeddings_Service {
 	public function get_topic_embedding(int $topic_id): ?array {
 		$embeddings_repo = $this->get_embeddings_repository();
 		if ($embeddings_repo) {
-			$record = $embeddings_repo->get_by_source('topic', (int) $topic_id);
+			$record = $embeddings_repo->get_by_object('topic', (int) $topic_id);
 			if ($record && !empty($record->embedding)) {
 				$vec = $embeddings_repo->decode_embedding(
 					$record->embedding,

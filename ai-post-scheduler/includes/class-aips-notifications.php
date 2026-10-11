@@ -445,6 +445,16 @@ class AIPS_Notifications {
 		$this->senders->post_consolidated($payload);
 	}
 
+	/**
+	 * Notify that a scheduled duplicate scan found new groups to review.
+	 *
+	 * @param array $payload Keys: new_groups, group_count, post_count.
+	 * @return void
+	 */
+	public function duplicate_groups_found(array $payload) {
+		$this->senders->duplicate_groups_found($payload);
+	}
+
 
 	/**
 	 * Persist a DB notification via the repository.

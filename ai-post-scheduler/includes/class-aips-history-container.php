@@ -343,6 +343,8 @@ class AIPS_History_Container {
 			'info' => AIPS_History_Type::INFO,
 			'debug' => AIPS_History_Type::DEBUG,
 			'log' => AIPS_History_Type::LOG,
+			'trigger_source' => AIPS_History_Type::ACTIVITY,
+			'trigger_method' => AIPS_History_Type::ACTIVITY,
 			'metric_generation_result' => AIPS_History_Type::METRIC,
 			'session_metadata' => AIPS_History_Type::SESSION_METADATA,
 		);

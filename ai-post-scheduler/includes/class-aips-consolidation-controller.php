@@ -25,16 +25,74 @@ class AIPS_Consolidation_Controller {
 	private $service;
 
 	/**
-	 * @param AIPS_Consolidation_Service|null $service Consolidation service.
+	 * @var AIPS_Duplicate_Group_Service
 	 */
-	public function __construct(?AIPS_Consolidation_Service $service = null) {
+	private $groups;
+
+	/**
+	 * @param AIPS_Consolidation_Service|null   $service Consolidation service.
+	 * @param AIPS_Duplicate_Group_Service|null $groups  Duplicate group service.
+	 */
+	public function __construct(?AIPS_Consolidation_Service $service = null, ?AIPS_Duplicate_Group_Service $groups = null) {
 		$this->service = $service ?: new AIPS_Consolidation_Service();
+		$this->groups  = $groups ?: new AIPS_Duplicate_Group_Service();
 
 		add_action('wp_ajax_aips_consolidation_preview', array($this, 'ajax_preview'));
 		add_action('wp_ajax_aips_consolidation_merge', array($this, 'ajax_merge'));
 		add_action('wp_ajax_aips_consolidation_run', array($this, 'ajax_run'));
 		add_action('wp_ajax_aips_consolidation_undo', array($this, 'ajax_undo'));
 		add_action('wp_ajax_aips_consolidation_history', array($this, 'ajax_history'));
+		add_action('wp_ajax_aips_duplicate_groups', array($this, 'ajax_duplicate_groups'));
+		add_action('wp_ajax_aips_duplicate_dismiss', array($this, 'ajax_duplicate_dismiss'));
+		add_action('wp_ajax_aips_duplicate_reset_dismissed', array($this, 'ajax_duplicate_reset_dismissed'));
+	}
+
+	/**
+	 * AJAX: the duplicate review queue, as small groups with a recommended keeper.
+	 *
+	 * Optional `threshold` (0.70-0.99) overrides the saved Settings value for this scan.
+	 *
+	 * @return void
+	 */
+	public function ajax_duplicate_groups() {
+		$this->verify_request();
+
+		$threshold = isset($_POST['threshold']) && $_POST['threshold'] !== '' ? (float) $_POST['threshold'] : null;
+
+		AIPS_Ajax_Response::success($this->groups->get_review_groups($threshold));
+	}
+
+	/**
+	 * AJAX: mark a group's posts as "not duplicates" so it stops being listed.
+	 *
+	 * @return void
+	 */
+	public function ajax_duplicate_dismiss() {
+		$this->verify_request();
+
+		$ids = isset($_POST['post_ids']) ? array_map('absint', (array) wp_unslash($_POST['post_ids'])) : array();
+		$ids = array_values(array_unique(array_filter($ids)));
+		if (count($ids) < 2) {
+			AIPS_Ajax_Response::error(__('Choose at least two posts.', 'ai-post-scheduler'));
+		}
+
+		AIPS_Ajax_Response::success(array(
+			'dismissed' => $this->groups->dismiss_group($ids),
+			'message'   => __('Marked as not duplicates. They will no longer be listed.', 'ai-post-scheduler'),
+		));
+	}
+
+	/**
+	 * AJAX: forget every "not a duplicate" decision.
+	 *
+	 * @return void
+	 */
+	public function ajax_duplicate_reset_dismissed() {
+		$this->verify_request();
+
+		$this->groups->reset_dismissed();
+
+		AIPS_Ajax_Response::success(array('message' => __('Dismissed groups will be listed again.', 'ai-post-scheduler')));
 	}
 
 	/**

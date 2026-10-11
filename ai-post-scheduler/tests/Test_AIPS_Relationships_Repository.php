@@ -115,4 +115,17 @@ class Test_AIPS_Relationships_Repository extends WP_UnitTestCase {
 		$this->assertEquals( $max_id, (int) $clusters[0]->target_id );
 		$this->assertEquals( 0.95, (float) $clusters[0]->similarity );
 	}
+
+	/**
+	 * Pillar/spoke links are structural, not similarity, so they must never be
+	 * reported as duplicate pairs however high their stored weight is.
+	 */
+	public function test_get_top_duplicate_pairs_ignores_pillar_spoke_rows() {
+		$p1 = wp_insert_post( array( 'post_title' => 'Pillar', 'post_status' => 'publish', 'post_type' => 'post' ) );
+		$p2 = wp_insert_post( array( 'post_title' => 'Spoke', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->repo->upsert( 'post', min( $p1, $p2 ), 'post', max( $p1, $p2 ), 1.0, 'pillar_spoke' );
+
+		$this->assertCount( 0, $this->repo->get_top_duplicate_pairs( 0.70, 10, 'posts' ) );
+	}
 }

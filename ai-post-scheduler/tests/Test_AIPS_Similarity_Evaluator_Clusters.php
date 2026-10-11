@@ -105,6 +105,74 @@ class Test_AIPS_Similarity_Evaluator_Clusters extends WP_UnitTestCase {
 		$this->assertSame('semantic_island', $orphans[0]['orphan_type']);
 	}
 
+	public function test_detect_post_clusters_respects_min_size_and_adds_post_date() {
+		$this->assertCount(0, $this->evaluator->detect_post_clusters(0.9, 3));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9, 2);
+		$this->assertNotEmpty($clusters['cluster_1']['posts'][0]['post_date']);
+	}
+
+	public function test_get_orphan_posts_uses_cluster_membership_and_reports_closest() {
+		$this->relationships_repo->method('count_incoming_internal_links')->willReturn(3);
+		$this->evaluator->detect_post_clusters(0.9);
+
+		$orphans = $this->evaluator->get_orphan_posts(0.9, 'semantic', array($this->post_ids[0], $this->post_ids[1]));
+
+		// Only the unrelated post is outside every cluster.
+		$this->assertCount(1, $orphans);
+		$this->assertSame($this->post_ids[2], $orphans[0]['id']);
+		$this->assertNotEmpty($orphans[0]['post_date']);
+		$this->assertArrayHasKey('closest_cluster_name', $orphans[0]);
+		$this->assertSame(0.0, $orphans[0]['closest_cluster_similarity']);
+	}
+
+	private function evaluator_for_angles(array $degrees) {
+		$rows = array();
+		foreach ($degrees as $i => $deg) {
+			$rad     = deg2rad($deg);
+			$post_id = $this->factory->post->create(array('post_title' => 'Angle Post ' . $i));
+			$rows[]  = (object) array('object_id' => $post_id, 'post_type' => 'post', 'embedding' => array(cos($rad), sin($rad)));
+		}
+
+		$repo = $this->getMockBuilder(AIPS_Embeddings_Repository::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('get_all_for_similarity', 'decode_embedding'))
+			->getMock();
+		$repo->method('get_all_for_similarity')->willReturn($rows);
+		$repo->method('decode_embedding')->willReturnCallback(function ($raw) {
+			return $raw;
+		});
+
+		return new AIPS_Similarity_Evaluator(AIPS_Config::get_instance(), $repo, null, $this->relationships_repo, $this->ai_service);
+	}
+
+	public function test_cluster_tightness_stops_chains_from_fusing_unrelated_posts() {
+		$config = AIPS_Config::get_instance();
+
+		// 0, 40 and 80 degrees: neighbours are ~0.77 similar, the ends only ~0.17.
+		$config->set_option('aips_cluster_tightness', 'loose');
+		$loose = $this->evaluator_for_angles(array(0, 40, 80))->detect_post_clusters(0.7, 2);
+		$this->assertSame(3, $loose['cluster_1']['post_count']);
+
+		$config->set_option('aips_cluster_tightness', 'strict');
+		$strict = $this->evaluator_for_angles(array(0, 40, 80))->detect_post_clusters(0.7, 2);
+		$this->assertSame(2, $strict['cluster_1']['post_count']);
+
+		$config->set_option('aips_cluster_tightness', 'balanced');
+	}
+
+	public function test_cluster_max_posts_setting_caps_the_scan() {
+		$config = AIPS_Config::get_instance();
+		$config->set_option('aips_cluster_detection_max_posts', 50);
+
+		$degrees = array_fill(0, 60, 1); // 60 identical posts.
+		$clusters = $this->evaluator_for_angles($degrees)->detect_post_clusters(0.9, 2);
+
+		$this->assertSame(50, $clusters['cluster_1']['post_count']);
+
+		$config->set_option('aips_cluster_detection_max_posts', 250);
+	}
+
 	public function test_get_orphan_posts_links_flags_unlinked_only() {
 		$unlinked = $this->post_ids[2];
 		$this->relationships_repo->method('count_incoming_internal_links')->willReturnCallback(function ($post_id) use ($unlinked) {
@@ -116,6 +184,49 @@ class Test_AIPS_Similarity_Evaluator_Clusters extends WP_UnitTestCase {
 		$this->assertCount(1, $orphans);
 		$this->assertSame($unlinked, $orphans[0]['id']);
 		$this->assertSame('unlinked_post', $orphans[0]['orphan_type']);
+	}
+
+	public function test_saved_name_and_pillar_follow_the_members_not_the_cluster_number() {
+		AIPS_Config::get_instance()->set_option('aips_post_clusters', array(
+			'cluster_7' => array(
+				'name'             => 'My Custom Hub',
+				'pillar_id'        => $this->post_ids[1],
+				'pillar_confirmed' => true,
+				'member_ids'       => array($this->post_ids[0], $this->post_ids[1]),
+			),
+		));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9);
+
+		$this->assertSame('My Custom Hub', $clusters['cluster_1']['name']);
+		$this->assertSame($this->post_ids[1], $clusters['cluster_1']['pillar_id']);
+		$this->assertTrue($clusters['cluster_1']['pillar_confirmed']);
+	}
+
+	public function test_generated_cluster_names_are_rebuilt_not_carried_over() {
+		AIPS_Config::get_instance()->set_option('aips_post_clusters', array(
+			'cluster_9' => array(
+				'name'       => 'Post Cluster #9: Stale Title',
+				'member_ids' => array($this->post_ids[0], $this->post_ids[1]),
+			),
+		));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9);
+
+		$this->assertStringStartsWith('Post Cluster #1: ', $clusters['cluster_1']['name']);
+	}
+
+	public function test_saved_cluster_with_little_overlap_is_not_matched() {
+		AIPS_Config::get_instance()->set_option('aips_post_clusters', array(
+			'cluster_1' => array(
+				'name'       => 'Unrelated Hub',
+				'member_ids' => array($this->post_ids[2], 999991, 999992, 999993),
+			),
+		));
+
+		$clusters = $this->evaluator->detect_post_clusters(0.9);
+
+		$this->assertNotSame('Unrelated Hub', $clusters['cluster_1']['name']);
 	}
 
 	public function test_set_pillar_post_and_rename_update_saved_cluster() {

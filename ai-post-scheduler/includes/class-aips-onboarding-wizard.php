@@ -435,7 +435,10 @@ class AIPS_Onboarding_Wizard {
 		}
 
 		$generator = new AIPS_Generator();
-		$post_id = $generator->generate_post($template, null, $topic);
+		$post_id = $generator->generate_post($template, null, $topic, array(
+			'creation_method' => 'manual',
+			'trigger_context' => array('detail' => __('Onboarding wizard', 'ai-post-scheduler')),
+		));
 
 		if (is_wp_error($post_id)) {
 			AIPS_Ajax_Response::error($post_id->get_error_message(), 'error', 500);

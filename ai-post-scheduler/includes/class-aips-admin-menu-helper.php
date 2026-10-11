@@ -83,6 +83,7 @@ class AIPS_Admin_Menu_Helper {
 		'operations_insights' => 'operations-insights',
 		'telemetry'           => 'telemetry',
 		'dev_tools'           => 'dev-tools',
+		'background_processes' => 'background-processes',
 	);
 
 	/**

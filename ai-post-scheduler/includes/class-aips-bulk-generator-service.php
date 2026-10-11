@@ -345,6 +345,14 @@ class AIPS_Bulk_Generator_Service {
 		);
 
 		$history = $this->history_service->create( $history_type, $meta );
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'  => __( 'Bulk generation', 'ai-post-scheduler' ),
+				'detail' => sprintf( __( '%1$d items via %2$s', 'ai-post-scheduler' ), count( $items ), $trigger_name ),
+			),
+			'manual'
+		);
 		$history->record_user_action( $user_action, $user_message, array( 'item_count' => count( $items ) ) );
 
 		if ( $was_limited ) {
@@ -523,6 +531,14 @@ class AIPS_Bulk_Generator_Service {
 		);
 
 		$history = $this->history_service->create( $history_type, $meta );
+		AIPS_Generation_Trigger::record(
+			$history,
+			array(
+				'event'  => __( 'Bulk generation (queued)', 'ai-post-scheduler' ),
+				'detail' => sprintf( __( 'Bulk job %1$s, %2$d items via %3$s', 'ai-post-scheduler' ), $job_id, count( $items ), $trigger_name ),
+			),
+			'manual'
+		);
 		$history->record_user_action( $user_action, $user_message, array( 'item_count' => count( $items ) ) );
 		$history->record(
 			'activity',

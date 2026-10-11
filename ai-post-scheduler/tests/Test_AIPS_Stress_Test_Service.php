@@ -164,6 +164,8 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $this->assertSame('passed', $result['status'], isset($result['error']) ? (string) $result['error'] : '');
         $post_id = $result['plugin_value']['post_id'];
 
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_score', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_deep_summary', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_specs_table', true));
@@ -174,6 +176,8 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $result  = $service->run('post_with_taxonomies');
 
         $this->assertSame('passed', $result['status']);
+        $this->assertSame('private', get_post_status($result['plugin_value']['post_id']));
+        $this->assertNotSame('publish', get_post_status($result['plugin_value']['post_id']));
         $this->assertNotEmpty($result['plugin_value']['categories']);
         $this->assertNotEmpty($result['plugin_value']['tags']);
     }
@@ -197,6 +201,8 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $post_id = $result['artifacts']['post_ids'][0];
 
         $this->assertSame('post', get_post_type($post_id));
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_headline', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_summary', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_cta', true));
@@ -213,6 +219,8 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $post_id = $result['artifacts']['post_ids'][0];
 
         $this->assertSame('post', get_post_type($post_id));
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_headline', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_summary', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_cta', true));
@@ -229,10 +237,68 @@ class Test_AIPS_Stress_Test_Service extends WP_UnitTestCase {
         $post_id = $result['artifacts']['post_ids'][0];
 
         $this->assertSame('page', get_post_type($post_id));
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_page_subtitle', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_page_overview', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_page_details', true));
         $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_page_cta', true));
+    }
+
+    public function test_meta_fields_single_generates_private_stub_post() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        $result = $service->run('meta_fields_single');
+
+        $this->assertSame('passed', $result['status'], isset($result['error']) ? (string) $result['error'] : '');
+        $this->assertNotEmpty($result['artifacts']['post_ids']);
+        $post_id = $result['artifacts']['post_ids'][0];
+
+        $this->assertSame('post', get_post_type($post_id));
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
+        $this->assertNotSame('', get_post_meta($post_id, 'aips_stress_summary', true));
+    }
+
+    public function test_stress_test_cases_create_private_data_and_never_publish() {
+        $service = new AIPS_Stress_Test_Service(new AIPS_Test_Stress_Meta_AI_Service(), new AIPS_Test_Stress_Logger());
+
+        $save_post_result = $service->run('save_post');
+        $this->assertSame('passed', $save_post_result['status']);
+        $post_id = $save_post_result['plugin_value']['post_id'];
+        $this->assertSame('private', get_post_status($post_id));
+        $this->assertNotSame('publish', get_post_status($post_id));
+
+        $save_page_result = $service->run('save_page');
+        $this->assertSame('passed', $save_page_result['status']);
+        $page_id = $save_page_result['plugin_value']['post_id'];
+        $this->assertSame('private', get_post_status($page_id));
+        $this->assertNotSame('publish', get_post_status($page_id));
+
+        $author_result = $service->run('author_post');
+        $this->assertSame('passed', $author_result['status']);
+        $author_post_id = $author_result['plugin_value']['post_id'];
+        $this->assertSame('private', get_post_status($author_post_id));
+        $this->assertNotSame('publish', get_post_status($author_post_id));
+
+        // Verify filter cannot override post_status to publish.
+        $override_callback = function ($tpl) {
+            $tpl->post_status = 'publish';
+            return $tpl;
+        };
+        add_filter('aips_stress_test_template', $override_callback);
+
+        $filter_result = $service->run('save_post');
+        remove_filter('aips_stress_test_template', $override_callback);
+
+        $this->assertSame('passed', $filter_result['status']);
+        $filter_post_id = $filter_result['plugin_value']['post_id'];
+        $this->assertSame('private', get_post_status($filter_post_id));
+        $this->assertNotSame('publish', get_post_status($filter_post_id));
+
+        // Verify cleanup properly deletes the private fixtures.
+        $cleanup_result = $service->cleanup_test_data();
+        $this->assertGreaterThanOrEqual(4, $cleanup_result['posts']);
     }
 
     public function test_save_run_to_history_and_diff() {

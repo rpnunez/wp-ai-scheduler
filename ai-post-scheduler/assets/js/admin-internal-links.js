@@ -53,6 +53,13 @@
 		 */
 		init: function () {
 			this.bindEvents();
+
+			// background-processes.js initialises first and fires its first update before
+			// this module is listening, so read the current state directly.
+			if (AIPS.BackgroundProcesses) {
+				this.onBackgroundUpdate(null, [], AIPS.BackgroundProcesses.state);
+			}
+
 			this.applyUrlFilters();
 			this.loadSuggestions();
 		},
@@ -91,6 +98,9 @@
 			// Search
 			$(document).on('input', '#aips-il-search', this.onSearchInput.bind(this));
 			$(document).on('click', '#aips-il-search-clear', this.onSearchClear.bind(this));
+
+			// Background indexing state pushed by background-processes.js (Heartbeat)
+			$(document).on('aips:bg-update', this.onBackgroundUpdate.bind(this));
 
 			// Index management
 			$(document).on('click', '#aips-start-indexing-btn', this.onStartIndexingClick.bind(this));
@@ -209,6 +219,29 @@
 		 */
 		onStartIndexingClick: function (e) {
 			this.startIndexing();
+		},
+
+		/**
+		 * Keep the Index Posts button and the stat cards in step with the
+		 * background indexing job.
+		 *
+		 * @param {Event}  e     The aips:bg-update event.
+		 * @param {Array}  list  Snapshots from the server.
+		 * @param {Object} state Snapshots keyed by process key.
+		 */
+		onBackgroundUpdate: function (e, list, state) {
+			var snap = state && state.internal_links_indexing;
+			if (!snap) {
+				return;
+			}
+
+			$('#aips-start-indexing-btn').prop('disabled', !snap.can_start);
+
+			// Refresh the real indexed/total numbers while the job runs, and once more when it stops.
+			if (snap.is_active || this._indexingWasActive) {
+				this.refreshStatus();
+			}
+			this._indexingWasActive = !!snap.is_active;
 		},
 
 		/**
@@ -524,10 +557,41 @@
 		 * @return {string} HTML string for the row.
 		 */
 		renderRow: function (item) {
-			var statusLabel = this.getStatusLabel(item.status);
-			var statusClass = 'aips-status-' + item.status;
-			var score       = Math.round(parseFloat(item.similarity_score) * 100) + '%';
-			var anchor      = AIPS.Templates.escape(item.anchor_text || '');
+			var l10n   = aipsInternalLinksL10n;
+			var rawScore = parseFloat(item.similarity_score) || 0;
+			var anchor = item.anchor_text
+				? AIPS.Templates.escape(item.anchor_text)
+				: '<em class="aips-text-muted">' + AIPS.Templates.escape(l10n.noAnchor) + '</em>';
+
+			// A score of 0 means no semantic score exists (the post matched on the anchor
+			// phrase alone), not that the posts are 0% similar.
+			var match = rawScore > 0
+				? AIPS.Templates.render('aips-tmpl-il-chip', {
+					cls:   rawScore >= 0.85 ? 'aips-badge-success' : (rawScore >= 0.7 ? 'aips-badge-info' : 'aips-badge-neutral'),
+					label: Math.round(rawScore * 100) + '%',
+					title: l10n.chipSimilarityTip,
+				})
+				: AIPS.Templates.render('aips-tmpl-il-chip', {
+					cls:   'aips-badge-neutral',
+					label: l10n.chipKeyword,
+					title: l10n.chipKeywordTip,
+				});
+
+			var isInbound  = item.origin === 'inbound';
+			var originChip = AIPS.Templates.render('aips-tmpl-il-chip', {
+				cls:   isInbound ? 'aips-badge-info' : 'aips-badge-neutral',
+				label: isInbound ? l10n.chipInbound : l10n.chipOutbound,
+				title: isInbound ? l10n.chipInboundTip : l10n.chipOutboundTip,
+			});
+
+			// The Status filter already says which status is listed, except for "All".
+			var statusChip = this.currentStatus === ''
+				? AIPS.Templates.render('aips-tmpl-il-chip', {
+					cls:   'aips-status-' + item.status,
+					label: this.getStatusLabel(item.status),
+					title: '',
+				})
+				: '';
 
 			var sourceTitle = item.source_post_title || '(#' + item.source_post_id + ')';
 			var targetTitle = item.target_post_title || '(#' + item.target_post_id + ')';
@@ -546,10 +610,6 @@
 				})
 				: AIPS.Templates.escape(targetTitle);
 
-			if (item.origin === 'inbound') {
-				target += ' ' + AIPS.Templates.renderRaw('aips-tmpl-il-origin-badge', {});
-			}
-
 			var actions = '';
 
 			if (item.status === 'pending') {
@@ -557,6 +617,8 @@
 					id:           item.id,
 					acceptLabel:  aipsInternalLinksL10n.acceptAction,
 					rejectLabel:  aipsInternalLinksL10n.rejectAction,
+					acceptTip:    aipsInternalLinksL10n.tipAccept,
+					rejectTip:    aipsInternalLinksL10n.tipReject,
 				});
 			}
 
@@ -564,6 +626,7 @@
 				actions += AIPS.Templates.render('aips-tmpl-il-actions-accepted', {
 					id:          item.id,
 					insertLabel: aipsInternalLinksL10n.insertLink,
+					insertTip:   aipsInternalLinksL10n.tipInsert,
 				});
 			}
 
@@ -572,16 +635,19 @@
 				anchor:      item.anchor_text || '',
 				editLabel:   aipsInternalLinksL10n.editAnchorText,
 				deleteLabel: aipsInternalLinksL10n.deleteSuggestion,
+				editTip:     aipsInternalLinksL10n.tipEdit,
+				deleteTip:   aipsInternalLinksL10n.tipDelete,
 			});
 
 			return AIPS.Templates.renderRaw('aips-tmpl-il-suggestion-row', {
 				id:          item.id,
 				source:      source,
 				target:      target,
-				score:       score,
+				match:       match,
+				originChip:  originChip,
+				anchorLabel: AIPS.Templates.escape(l10n.anchorLabel),
 				anchor:      anchor,
-				statusClass: statusClass,
-				statusLabel: AIPS.Templates.escape(statusLabel),
+				statusChip:  statusChip,
 				actions:     actions,
 			});
 		},
@@ -647,6 +713,13 @@
 		startIndexing: function () {
 			var self = this;
 			var $btn = $('#aips-start-indexing-btn');
+
+			// Preferred path: show the cost estimate, then start under the background
+			// process manager (rate limits, pause / resume / stop).
+			if (AIPS.BackgroundProcesses) {
+				AIPS.BackgroundProcesses.startWithEstimate('internal_links_indexing', $btn);
+				return;
+			}
 
 			var req = $.post(aipsAjax.ajaxUrl, {
 				action: 'aips_internal_links_start_indexing',
@@ -813,7 +886,8 @@
 				id:     id,
 			}, function (response) {
 				if (response.success) {
-					$row.fadeOut(200, function () { $(this).remove(); });
+					// A suggestion is two table rows (post pair + anchor/actions).
+					$('#aips-suggestions-tbody tr[data-id="' + id + '"]').fadeOut(200, function () { $(this).remove(); });
 					self.refreshStatus();
 				} else {
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.errorDeleting, 'error');
@@ -841,7 +915,12 @@
 
 				if (response.success) {
 					// Update cell in table
-					$('tr[data-id="' + id + '"] .aips-il-anchor-cell').text(anchorText);
+					var $anchorCell = $('tr[data-id="' + id + '"] .aips-il-anchor-cell');
+					if (anchorText) {
+						$anchorCell.text(anchorText);
+					} else {
+						$anchorCell.html('<em class="aips-text-muted">' + AIPS.Templates.escape(aipsInternalLinksL10n.noAnchor) + '</em>');
+					}
 					// Update data attribute on edit button
 					$('tr[data-id="' + id + '"] .aips-il-edit-anchor-btn').data('anchor', anchorText);
 					AIPS.Utilities.showToast(aipsInternalLinksL10n.anchorUpdated, 'success');

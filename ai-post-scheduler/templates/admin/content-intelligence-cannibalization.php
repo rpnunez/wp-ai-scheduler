@@ -73,11 +73,46 @@ if (!defined('ABSPATH')) {
 		</div>
 	</div>
 
+	<!-- Duplicate Review: small groups of near-duplicates with a recommended keeper -->
+	<?php
+	$config_dup = AIPS_Config::get_instance();
+	$dup_threshold = (float) $config_dup->get_option('aips_duplicate_review_threshold', 0.88);
+	?>
+	<div class="aips-content-panel" id="aips-dup-review">
+		<div class="aips-panel-header aips-panel-header-flex">
+			<div>
+				<h3 class="aips-panel-title"><?php esc_html_e('Duplicate Review', 'ai-post-scheduler'); ?></h3>
+				<p class="description aips-panel-header-desc">
+					<?php esc_html_e('Each group below is a handful of published posts that say nearly the same thing. A post is only grouped with posts it closely matches, so groups stay small. Keep the recommended post, merge the others into it, or mark the group as not duplicates.', 'ai-post-scheduler'); ?>
+				</p>
+			</div>
+			<div class="aips-audit-actions aips-toolbar-right">
+				<label for="aips-dup-threshold" class="aips-control-label"><?php esc_html_e('Similarity at least:', 'ai-post-scheduler'); ?></label>
+				<input type="number" id="aips-dup-threshold" class="small-text" min="0.70" max="0.99" step="0.01" value="<?php echo esc_attr((string) $dup_threshold); ?>">
+				<button type="button" id="aips-dup-scan-btn" class="aips-btn aips-btn-primary">
+					<span class="dashicons dashicons-update" aria-hidden="true"></span>
+					<?php esc_html_e('Refresh', 'ai-post-scheduler'); ?>
+				</button>
+				<button type="button" id="aips-dup-reset-btn" class="aips-btn aips-btn-ghost aips-hidden">
+					<?php esc_html_e('Show dismissed groups', 'ai-post-scheduler'); ?> (<span class="aips-dup-reset-count">0</span>)
+				</button>
+			</div>
+		</div>
+		<div class="aips-panel-body">
+			<p id="aips-dup-summary" class="aips-dup-summary aips-hidden"></p>
+			<div id="aips-dup-loading" class="aips-audit-loading aips-hidden">
+				<span class="spinner is-active"></span>
+				<?php esc_html_e('Looking for near-duplicate posts…', 'ai-post-scheduler'); ?>
+			</div>
+			<div id="aips-dup-groups" class="aips-dup-groups"></div>
+		</div>
+	</div>
+
 	<!-- Main Cannibalization Audit Panel -->
 	<div class="aips-content-panel">
 		<div class="aips-panel-header aips-panel-header-flex">
 			<div>
-				<h3 class="aips-panel-title"><?php esc_html_e('Content Cannibalization & Overlap Matrix', 'ai-post-scheduler'); ?></h3>
+				<h3 class="aips-panel-title"><?php esc_html_e('Overlap Audit (every similar pair)', 'ai-post-scheduler'); ?></h3>
 				<p class="description aips-panel-header-desc">
 					<?php esc_html_e('Cross-compares all published posts and topics against stored vector embeddings using cosine similarity.', 'ai-post-scheduler'); ?>
 				</p>
@@ -159,6 +194,75 @@ if (!defined('ABSPATH')) {
 <!-- =====================================================================
      CLIENT-SIDE HTML TEMPLATES
      ===================================================================== -->
+
+<!-- Template: Duplicate Review group card -->
+<script type="text/html" id="aips-tmpl-dup-group">
+	<div class="aips-dup-group" data-group-id="{{id}}" data-post-ids="{{postIds}}">
+		<div class="aips-dup-group-header">
+			<button type="button" class="aips-dup-group-toggle aips-btn-icon" aria-expanded="true" aria-label="<?php esc_attr_e('Show or hide this group', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
+			</button>
+			<strong class="aips-dup-group-title">{{title}}</strong>
+			<span class="aips-badge aips-badge-warning" title="<?php esc_attr_e('The least similar pair in this group', 'ai-post-scheduler'); ?>"><?php esc_html_e('Weakest match:', 'ai-post-scheduler'); ?> {{minPct}}%</span>
+			<span class="aips-badge aips-badge-neutral"><?php esc_html_e('Average:', 'ai-post-scheduler'); ?> {{avgPct}}%</span>
+			<button type="button" class="aips-btn aips-btn-xs aips-btn-ghost aips-dup-dismiss"><?php esc_html_e('Not duplicates', 'ai-post-scheduler'); ?></button>
+		</div>
+		<table class="aips-table aips-dup-table">
+			<thead>
+				<tr>
+					<th scope="col"><?php esc_html_e('Decision', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Words', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Inbound links', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Why', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+				</tr>
+			</thead>
+			<tbody>{{rowsHtml}}</tbody>
+		</table>
+	</div>
+</script>
+
+<!-- Template: Duplicate Review member row -->
+<script type="text/html" id="aips-tmpl-dup-row">
+	<tr class="{{rowClass}}">
+		<td>{{badge}}</td>
+		<td>
+			<strong>{{title}}</strong>
+			<small class="aips-audit-target-meta">#{{postId}} ({{postType}})</small>
+		</td>
+		<td>{{date}}</td>
+		<td>{{words}}</td>
+		<td>{{links}}</td>
+		<td class="aips-text-muted">{{reasons}}</td>
+		<td>
+			<div class="aips-row-action-group">
+				<a href="{{viewUrl}}" class="aips-btn aips-btn-xs aips-btn-ghost" target="_blank" rel="noopener"><?php esc_html_e('View', 'ai-post-scheduler'); ?></a>
+				<a href="{{editUrl}}" class="aips-btn aips-btn-xs aips-btn-secondary" target="_blank" rel="noopener"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></a>
+				{{mergeBtn}}
+			</div>
+		</td>
+	</tr>
+</script>
+
+<!-- Template: Duplicate Review badge -->
+<script type="text/html" id="aips-tmpl-dup-badge">
+	<span class="aips-badge {{cls}}">{{label}}</span>
+</script>
+
+<!-- Template: Merge into recommended post (opens the Consolidate dialog with the keeper first) -->
+<script type="text/html" id="aips-tmpl-dup-merge-btn">
+	<button type="button" class="aips-btn aips-btn-xs aips-btn-primary aips-consolidate-open" data-a="{{keep}}" data-b="{{retire}}"><?php esc_html_e('Merge into keeper', 'ai-post-scheduler'); ?></button>
+</script>
+
+<!-- Template: Duplicate Review empty state -->
+<script type="text/html" id="aips-tmpl-dup-empty">
+	<div class="aips-cluster-empty-cell">
+		<h4 class="aips-cluster-empty-title">{{title}}</h4>
+		<p class="aips-cluster-empty-desc">{{message}}</p>
+	</div>
+</script>
 
 <!-- Template: Audit empty state row -->
 <script type="text/html" id="aips-tmpl-indexer-audit-empty">

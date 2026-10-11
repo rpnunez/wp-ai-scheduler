@@ -861,4 +861,34 @@ class AIPS_Notification_Senders {
 			)
 		);
 	}
+
+	/**
+	 * Scheduled duplicate scan found new groups of near-duplicate posts.
+	 *
+	 * @param array $payload Keys: new_groups, group_count, post_count.
+	 * @return void
+	 */
+	public function duplicate_groups_found( array $payload ) {
+		$new    = isset($payload['new_groups']) ? (int) $payload['new_groups'] : 0;
+		$groups = isset($payload['group_count']) ? (int) $payload['group_count'] : 0;
+		$posts  = isset($payload['post_count']) ? (int) $payload['post_count'] : 0;
+
+		call_user_func(
+			$this->dispatcher,
+			'duplicate_groups_found',
+			array(
+				'title'   => __('New duplicate posts to review', 'ai-post-scheduler'),
+				'message' => sprintf(
+					/* translators: 1: new groups, 2: total groups awaiting review, 3: posts in those groups */
+					__('%1$d new group(s) of near-duplicate posts were found. %2$d group(s) (%3$d posts) are waiting for review.', 'ai-post-scheduler'),
+					$new,
+					$groups,
+					$posts
+				),
+				'url'     => admin_url('admin.php?page=aips-generated-posts&tab=cannibalization'),
+				'level'   => 'info',
+				'meta'    => $payload,
+			)
+		);
+	}
 }

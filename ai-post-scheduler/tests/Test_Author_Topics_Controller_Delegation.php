@@ -6,7 +6,7 @@
  * Covers controller -> service -> repository delegation boundaries for:
  *   - ajax_get_similar_topics     -> expansion_service->find_similar_topics()
  *   - ajax_suggest_related_topics -> expansion_service->suggest_related_topics()
- *   - ajax_compute_topic_embeddings -> expansion_service->batch_compute_*_embeddings()
+ *   - ajax_compute_topic_embeddings -> Author Topic Embeddings background process
  *   - ajax_get_bulk_generate_estimate -> history_repository->get_estimated_generation_time()
  *
  * @package AI_Post_Scheduler
@@ -151,40 +151,49 @@ public function test_suggest_related_topics_delegates_to_expansion_service() {
 }
 
 // -----------------------------------------------------------------------
-// ajax_compute_topic_embeddings -> expansion_service->batch_compute_*()
+// ajax_compute_topic_embeddings -> Author Topic Embeddings background process
 // -----------------------------------------------------------------------
 
 /**
- * ajax_compute_topic_embeddings with author_id > 0 delegates to
- * expansion_service->batch_compute_approved_embeddings().
+ * Create an unembedded topic for an author.
+ *
+ * @param int    $author_id Author ID.
+ * @param string $title     Topic title.
+ * @return int Topic ID.
  */
-public function test_compute_embeddings_for_author_delegates_to_expansion_service() {
+private function create_unembedded_topic( $author_id, $title ) {
+		$repo = new AIPS_Author_Topics_Repository();
+		return (int) $repo->create( array(
+			'author_id'   => $author_id,
+			'topic_title' => $title,
+			'status'      => 'approved',
+		) );
+}
+
+/**
+ * Remove the background run and topics created by the embeddings tests.
+ */
+private function reset_embeddings_run() {
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_background_processes" );
+		// Start from a clean slate so topics left by other tests cannot change the counts.
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_author_topics" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_embeddings WHERE object_type = 'topic'" );
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Author_Embeddings_Process::KEY ) );
+}
+
+/**
+ * ajax_compute_topic_embeddings with author_id > 0 starts the Author Topic
+ * Embeddings process scoped to that author.
+ */
+public function test_compute_embeddings_for_author_starts_the_background_process() {
+		AIPS_DB_Manager::install_tables();
+		$this->reset_embeddings_run();
 		wp_set_current_user( $this->admin_user_id );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
-			->disableOriginalConstructor()
-			->getMock();
+		$this->create_unembedded_topic( 3, 'Embedding test one' );
 
-		$mock_job_scheduler = $this->getMockBuilder( 'AIPS_Job_Scheduler' )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'schedule_simple' ) )
-			->getMock();
-
-		$mock_job_scheduler->expects( $this->once() )
-			->method( 'schedule_simple' )
-			->with(
-				'aips_process_author_embeddings',
-				$this->isType( 'int' ),
-				$this->callback( function( $args ) {
-					return isset( $args[0]['author_id'] ) && 3 === $args[0]['author_id'];
-				} ),
-				$this->callback( function( $options ) {
-					return isset( $options['job_type'] ) && 'author_embeddings' === $options['job_type'];
-				} )
-			)
-			->willReturn( true );
-
-		$controller = new AIPS_Author_Topics_Controller( $mock_expansion, null, null, $mock_job_scheduler );
+		$controller = new AIPS_Author_Topics_Controller();
 
 		$_POST = array(
 			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
@@ -195,51 +204,26 @@ public function test_compute_embeddings_for_author_delegates_to_expansion_servic
 
 		$this->assertTrue( $response['success'] );
 		$this->assertEquals( 1, $response['data']['queued_count'] );
+
+		$run = ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY );
+		$this->assertNotNull( $run );
+		$this->assertSame( 3, (int) $run->options['author_id'] );
+
+		$this->reset_embeddings_run();
 }
 
 /**
- * ajax_compute_topic_embeddings with no author_id delegates to
- * expansion_service->batch_compute_all_approved_embeddings().
+ * ajax_compute_topic_embeddings with no author_id starts one run for every author.
  */
-public function test_compute_embeddings_for_all_delegates_to_expansion_service() {
+public function test_compute_embeddings_for_all_starts_one_run() {
+		AIPS_DB_Manager::install_tables();
+		$this->reset_embeddings_run();
 		wp_set_current_user( $this->admin_user_id );
 
-		$authors_repository = new AIPS_Authors_Repository();
-		$authors_repository->create(
-			array(
-				'name' => 'Author One',
-				'field_niche' => 'Testing',
-			)
-		);
-		$authors_repository->create(
-			array(
-				'name' => 'Author Two',
-				'field_niche' => 'Testing',
-			)
-		);
+		$this->create_unembedded_topic( 11, 'Embedding test a' );
+		$this->create_unembedded_topic( 12, 'Embedding test b' );
 
-		$mock_expansion = $this->getMockBuilder( 'AIPS_Similarity_Evaluator' )
-			->disableOriginalConstructor()
-			->getMock();
-
-		$mock_job_scheduler = $this->getMockBuilder( 'AIPS_Job_Scheduler' )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'schedule_simple' ) )
-			->getMock();
-
-		$mock_job_scheduler->expects( $this->exactly( 2 ) )
-			->method( 'schedule_simple' )
-			->with(
-				'aips_process_author_embeddings',
-				$this->isType( 'int' ),
-				$this->callback( function( $args ) {
-					return isset( $args[0]['author_id'] ) && $args[0]['author_id'] > 0;
-				} ),
-				$this->anything()
-			)
-			->willReturn( true );
-
-		$controller = new AIPS_Author_Topics_Controller( $mock_expansion, null, null, $mock_job_scheduler );
+		$controller = new AIPS_Author_Topics_Controller();
 
 		$_POST = array(
 			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
@@ -249,7 +233,102 @@ public function test_compute_embeddings_for_all_delegates_to_expansion_service()
 		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
 
 		$this->assertTrue( $response['success'] );
-		$this->assertEquals( 2, $response['data']['queued_count'] );
+		$this->assertGreaterThanOrEqual( 2, $response['data']['queued_count'] );
+
+		$run = ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY );
+		$this->assertNotNull( $run );
+		$this->assertSame( 0, (int) $run->options['author_id'] );
+
+		$this->reset_embeddings_run();
+}
+
+/**
+ * When there is nothing left to embed, the request succeeds without starting a run.
+ */
+public function test_compute_embeddings_reports_when_nothing_is_queued() {
+		AIPS_DB_Manager::install_tables();
+		$this->reset_embeddings_run();
+		wp_set_current_user( $this->admin_user_id );
+
+		$controller = new AIPS_Author_Topics_Controller();
+
+		// An author with no topics: nothing to embed.
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'author_id' => 987654,
+		);
+
+		$response = $this->call_ajax( array( $controller, 'ajax_compute_topic_embeddings' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertEquals( 0, $response['data']['queued_count'] );
+		$this->assertNull( ( new AIPS_Background_Process_Repository() )->get_open( AIPS_Author_Embeddings_Process::KEY ) );
+}
+
+/**
+ * Ask for embeddings for an author while a run in the given state is open.
+ *
+ * @param int    $run_author Author the open run is scoped to (0 = every author).
+ * @param string $run_status Status of the open run.
+ * @param int    $requested  Author the request is for.
+ * @return array Decoded AJAX response.
+ */
+private function compute_embeddings_with_open_run( $run_author, $run_status, $requested ) {
+		AIPS_DB_Manager::install_tables();
+		$this->reset_embeddings_run();
+		wp_set_current_user( $this->admin_user_id );
+
+		$runs   = new AIPS_Background_Process_Repository();
+		$run_id = $runs->create( AIPS_Author_Embeddings_Process::KEY, 5, array( 'author_id' => $run_author ) );
+		if ( 'running' !== $run_status ) {
+			$runs->transition( $run_id, $run_status, array( 'running' ) );
+		}
+
+		$_POST = array(
+			'nonce'     => wp_create_nonce( 'aips_ajax_nonce' ),
+			'author_id' => $requested,
+		);
+
+		$response = $this->call_ajax( array( new AIPS_Author_Topics_Controller(), 'ajax_compute_topic_embeddings' ) );
+
+		$this->reset_embeddings_run();
+
+		return $response;
+}
+
+/**
+ * The open run already covers the request (same author, or every author): succeed, queue nothing.
+ */
+public function test_compute_embeddings_succeeds_when_an_open_run_already_covers_the_request() {
+		$same_author = $this->compute_embeddings_with_open_run( 3, 'running', 3 );
+		$this->assertTrue( $same_author['success'] );
+		$this->assertEquals( 0, $same_author['data']['queued_count'] );
+
+		$all_authors = $this->compute_embeddings_with_open_run( 0, 'running', 5 );
+		$this->assertTrue( $all_authors['success'], 'A run for every author covers any one author.' );
+		$this->assertEquals( 0, $all_authors['data']['queued_count'] );
+}
+
+/**
+ * A run for a different author does not cover the request, so it is reported as an error rather than a false success.
+ */
+public function test_compute_embeddings_errors_when_the_open_run_is_for_another_author() {
+		$other_author = $this->compute_embeddings_with_open_run( 3, 'running', 5 );
+		$this->assertFalse( $other_author['success'] );
+		$this->assertStringContainsString( 'another author', $other_author['data']['message'] );
+
+		$all_requested = $this->compute_embeddings_with_open_run( 3, 'running', 0 );
+		$this->assertFalse( $all_requested['success'], 'A run for one author does not cover every author.' );
+}
+
+/**
+ * A paused run processes nothing, so asking for embeddings must say so instead of claiming progress.
+ */
+public function test_compute_embeddings_errors_when_the_open_run_is_paused() {
+		$response = $this->compute_embeddings_with_open_run( 3, 'paused', 3 );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'paused', $response['data']['message'] );
 }
 
 // -----------------------------------------------------------------------

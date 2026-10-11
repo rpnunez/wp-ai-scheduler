@@ -120,6 +120,46 @@ class AIPS_GSC_Keywords_Service {
 	 * @return array{time:int, posts:int, queries:int, rows:int, error:string}|WP_Error
 	 */
 	public function sync() {
+		$result = $this->run_sync();
+		$this->record_sync_history($result);
+
+		return $result;
+	}
+
+	/**
+	 * Record a Search Console sync (manual or cron) in History.
+	 *
+	 * @param array|WP_Error $result Sync result.
+	 * @return void
+	 */
+	private function record_sync_history($result) {
+		if (is_wp_error($result)) {
+			$ok      = false;
+			$message = sprintf(__('Search Console sync failed: %s', 'ai-post-scheduler'), $result->get_error_message());
+			$input   = array('error_code' => $result->get_error_code());
+		} else {
+			$ok      = true;
+			$message = sprintf(__('Search Console synced: %1$d target keywords for %2$d posts', 'ai-post-scheduler'), (int) $result['queries'], (int) $result['posts']);
+			$input   = array('queries' => (int) $result['queries'], 'posts' => (int) $result['posts']);
+		}
+
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			AIPS_History_Event_Type::GSC_SYNC,
+			$ok,
+			$message,
+			'gsc_sync',
+			array('event' => __('Search Console sync', 'ai-post-scheduler')),
+			AIPS_Generation_Trigger::detect_creation_method(),
+			$input
+		);
+	}
+
+	/**
+	 * Run the Search Console sync without recording History.
+	 *
+	 * @return array{time:int, posts:int, queries:int, rows:int, error:string}|WP_Error
+	 */
+	private function run_sync() {
 		if (!$this->client->is_configured()) {
 			return $this->fail(new WP_Error('aips_gsc_not_configured', __('Search Console is not connected. Add a service account key and property under Settings → API Keys.', 'ai-post-scheduler')));
 		}
