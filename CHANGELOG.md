@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
+
 ### Fixed
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
