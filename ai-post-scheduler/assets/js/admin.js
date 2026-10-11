@@ -1066,7 +1066,9 @@
          * Duplicate an existing template via AJAX after user confirmation.
          *
          * Shows a confirmation dialog, then sends the `aips_clone_template`
-         * AJAX action. Reloads the page on success.
+         * AJAX action. On success, refreshes the template list and automatically
+         * opens the wizard in edit mode for the newly cloned template to streamline
+         * the duplication flow.
          *
          * @param {Event} e - Click event from an `.aips-clone-template` element.
          */
@@ -1088,7 +1090,15 @@
                         },
                         success: function(response) {
                             if (response.success) {
-                                AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results');
+                                AIPS.refreshContentPanel('.aips-templates-list', '#aips-template-search-no-results', function() {
+                                    if (response.data.template_id) {
+                                        // Find the edit button for the newly cloned template and trigger it
+                                        var $editBtn = $('.aips-edit-template[data-id="' + response.data.template_id + '"]');
+                                        if ($editBtn.length) {
+                                            $editBtn.trigger('click');
+                                        }
+                                    }
+                                });
                             } else {
                                 AIPS.Utilities.showToast(response.data.message, 'error');
                             }
@@ -1321,21 +1331,24 @@
         /**
          * Run a one-off test generation using the current template form values.
          *
-         * Requires a non-empty content prompt. Sends the `aips_test_template`
-         * AJAX action with `post_quantity` forced to 1, then displays the
-         * generated title, excerpt, content, and optional image prompt in the
-         * test-result modal.
+         * Cross-validates all required wizard fields across steps. If any required
+         * field is missing (like template name or content prompt), it automatically
+         * navigates to the first invalid step and focuses the field. Sends the
+         * `aips_test_template` AJAX action with `post_quantity` forced to 1, then
+         * displays the generated title, excerpt, content, and optional image prompt
+         * in the test-result modal.
          *
          * @param {Event} e - Click event from an `.aips-test-template` element.
          */
         testTemplate: function(e) {
             e.preventDefault();
             
-            // Validate at least prompt is there
-            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 2; })[0];
-            if (promptRule && !$(promptRule.selector).val().trim()) {
-                AIPS.Utilities.showToast(aipsTemplatesL10n[promptRule.messageKey], 'warning');
-                $(promptRule.selector).focus();
+            // Cross-step validation: navigate to the first step with an unfilled required field.
+            var invalid = AIPS.getFirstInvalidStep($('#aips-template-modal'));
+            if (invalid) {
+                AIPS.Utilities.showToast(invalid.message, 'warning');
+                AIPS.wizardGoToStep(invalid.step, $('#aips-template-modal'));
+                $(invalid.selector).focus();
                 return;
             }
 
