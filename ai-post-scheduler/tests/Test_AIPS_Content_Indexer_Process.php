@@ -341,4 +341,19 @@ class Test_AIPS_Content_Indexer_Process extends WP_UnitTestCase {
 		$this->assertIsArray( $snapshot, 'A stale run needs stale posts, not unindexed ones.' );
 		$this->assertSame( 1, $snapshot['total'] );
 	}
+
+	public function test_wake_queues_an_immediate_tick_for_a_waiting_run() {
+		$this->create_posts( 2 );
+		$this->process->start();
+		wp_clear_scheduled_hook( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) );
+		wp_schedule_single_event( time() + 3600, AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) );
+
+		$this->assertTrue( $this->process->wake() );
+
+		$this->assertLessThanOrEqual( time() + 5, wp_next_scheduled( AIPS_Managed_Background_Process::TICK_HOOK, array( AIPS_Content_Indexer_Process::KEY ) ) );
+	}
+
+	public function test_wake_does_nothing_without_an_active_run() {
+		$this->assertFalse( $this->process->wake() );
+	}
 }

@@ -1042,6 +1042,12 @@ class AIPS_Content_Indexer_Controller {
 
 		$this->rate_limiter->clear_cooldown();
 
+		// A background run waiting out the cooldown would otherwise sit until its retry time.
+		$process = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->get(AIPS_Content_Indexer_Process::KEY);
+		if ($process instanceof AIPS_Managed_Background_Process) {
+			$process->wake();
+		}
+
 		AIPS_Ajax_Response::success(array(
 			'message'  => __('Cooldown cleared. Indexing operations have been resumed.', 'ai-post-scheduler'),
 			'cooldown' => $this->rate_limiter->get_cooldown_status(),

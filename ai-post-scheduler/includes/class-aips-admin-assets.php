@@ -1944,7 +1944,7 @@ class AIPS_Admin_Assets {
                 'generating'               => __('Generating…', 'ai-post-scheduler'),
                 'reindexing'               => __('Re-indexing…', 'ai-post-scheduler'),
                 'loading'                  => __('Loading…', 'ai-post-scheduler'),
-                'noSuggestions'            => __('No suggestions found. Run indexing and generate suggestions to see results.', 'ai-post-scheduler'),
+                'noSuggestions'            => __('No suggestions found. Index your content in Content → Content Indexer, then generate suggestions.', 'ai-post-scheduler'),
                 'errorLoading'             => __('Error loading suggestions.', 'ai-post-scheduler'),
                 'errorDeleting'            => __('Error deleting suggestion.', 'ai-post-scheduler'),
                 'statusUpdated'            => __('Status updated.', 'ai-post-scheduler'),
@@ -2015,6 +2015,11 @@ class AIPS_Admin_Assets {
      * Enqueue assets for the Content Indexer page.
      */
     private function enqueue_content_indexer_assets() {
+        // The page script depends on the background-process script (run controls and live
+        // progress). Register it here: a missing dependency silently drops the page script,
+        // and the admin bar that normally enqueues it is not always showing.
+        AIPS_Background_Process_Assets::enqueue();
+
         wp_enqueue_style(
             'aips-content-indexer-style',
             AIPS_PLUGIN_URL . 'assets/css/admin-content-indexer.css',

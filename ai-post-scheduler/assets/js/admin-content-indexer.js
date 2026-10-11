@@ -1007,10 +1007,15 @@
 		 * Persist the scan scope; the background run reads it from settings.
 		 */
 		onScanScopeChange: function () {
+			// Keep the run buttons off until the scope is saved, so a start cannot read the old one.
+			var $runButtons = $('#aips-start-indexing-btn, #aips-reindex-stale-btn').prop('disabled', true);
+
 			$.post(ajaxurl, {
 				action: 'aips_indexer_save_settings',
 				nonce: aipsContentIndexerL10n.nonce,
 				scan_entity_scope: $('#aips-scan-entity-scope').val() || 'all'
+			}).always(function () {
+				$runButtons.prop('disabled', false);
 			});
 		},
 
@@ -1035,6 +1040,8 @@
 				$banner.addClass('aips-hidden').hide();
 			}
 
+			this.syncRunBanners(snap);
+
 			// The scope select cannot change mid-run.
 			$('#aips-scan-entity-scope').prop('disabled', !!snap.is_active);
 
@@ -1045,6 +1052,34 @@
 				AIPS.Utilities && AIPS.Utilities.showNotice(aipsContentIndexerL10n.indexingComplete || 'Content indexing complete!', 'success');
 			}
 			this._indexingWasActive = !!snap.is_active;
+		},
+
+		/**
+		 * Show the cooldown / quota banners while the managed run is waiting on them (the
+		 * browser-driven batch used to raise these from each response), and hide them when
+		 * the run has moved on.
+		 *
+		 * @param {Object} snap Snapshot of the content_indexing run.
+		 */
+		syncRunBanners: function (snap) {
+			var $quota = $('#aips-rate-limit-warning-banner');
+
+			if (snap.status === 'cooldown') {
+				if ($('#aips-cooldown-banner').hasClass('aips-hidden')) {
+					this.showCooldownBanner({ until: snap.next_run_at, reason: snap.message });
+				}
+			} else if (this._runWasCooldown) {
+				this.hideCooldownBanner();
+			}
+			this._runWasCooldown = snap.status === 'cooldown';
+
+			if (snap.status === 'waiting_quota') {
+				$('#aips-rate-limit-warning-msg').text(snap.message || '');
+				$quota.removeClass('aips-hidden').show();
+			} else if (this._runWasWaitingQuota) {
+				$quota.addClass('aips-hidden').hide();
+			}
+			this._runWasWaitingQuota = snap.status === 'waiting_quota';
 		},
 
 		/**

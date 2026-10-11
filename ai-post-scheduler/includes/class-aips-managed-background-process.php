@@ -292,6 +292,25 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	}
 
 	/**
+	 * Run the next slice now instead of at the scheduled retry time.
+	 *
+	 * Used after an administrator clears a cooldown, so a run waiting on it carries on
+	 * at once. Does nothing when there is no active run.
+	 *
+	 * @return bool True when a tick was queued.
+	 */
+	public function wake(): bool {
+		$run = $this->repository->get_open($this->get_key());
+		if (!$run || !in_array($run->status, AIPS_Background_Process_Repository::active_statuses(), true)) {
+			return false;
+		}
+
+		$this->replace_tick(0);
+
+		return true;
+	}
+
+	/**
 	 * Transient key of the per-process tick lock (the single place it is built).
 	 *
 	 * @return string
