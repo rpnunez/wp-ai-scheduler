@@ -1,6 +1,11 @@
 ## [Unreleased]
 
 ### Fixed
+- **Author Topic Auto-Approval:** Global Settings → Authors now actually control authors set to "Use Global Settings".
+  - New `AIPS_Author_Topic_Approval_Policy::resolve()` is the single policy resolver; the generator passes the resolved policy to `evaluate_author_topic_auto_approval()` instead of the evaluator re-deriving it from the author row.
+  - Removed the hidden, UI-less option family (`aips_author_topic_auto_approval_enabled`, `..._approval_mode`, `..._min_relevance`, `..._max_duplicate`, `..._fallback_action`); the global default mode is now `manual`.
+  - Quality score and niche relevance are separate settings, columns (`topic_auto_approval_min_relevance`) and Authors-form fields; settings gain the `score` mode and `pending` fallback, and legacy `reject`/`embeddings`/`none` values are normalized.
+  - Authors with the old `manual` default are unchanged; switch them to "Use Global Settings" to pick up the global policy.
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
   - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.

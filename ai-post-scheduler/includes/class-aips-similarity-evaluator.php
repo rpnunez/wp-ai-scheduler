@@ -510,19 +510,19 @@ class AIPS_Similarity_Evaluator {
 	 *    Unconditionally approves all topics generated for this author.
 	 * 2. 'score':
 	 *    Evaluates the topic's LLM-assigned quality score against the author's
-	 *    `auto_approval_min_score` threshold (default 70).
+	 *    `min_score` policy threshold (default 70).
 	 * 3. 'similarity' / 'embeddings':
 	 *    Applies Dual-Boundary Semantic Gating using vector embeddings:
 	 *    a) Upper Boundary (Cannibalization Guard):
 	 *       If duplicate similarity to published posts or existing topics meets or
-	 *       exceeds `auto_approval_max_similarity` (default 0.85 / 85%), the topic
+	 *       exceeds `max_similarity` (default 0.85 / 85%), the topic
 	 *       is marked as an auto-rejected duplicate.
 	 *    b) Lower Boundary (Niche Relevance Floor):
 	 *       If cosine similarity against the author's composite persona baseline
-	 *       vector falls below `auto_approval_min_relevance` (default 0.70 / 70%),
+	 *       vector falls below `min_relevance` (default 0.65 / 65%),
 	 *       the topic fails to qualify due to off-topic drifting.
 	 *    c) Acceptance Corridor:
-	 *       Topics falling inside the corridor (relevance >= 70% AND duplicate < 85%)
+	 *       Topics falling inside the corridor (relevance >= min AND duplicate < 85%)
 	 *       are automatically approved.
 	 * 4. Fallback Routing:
 	 *    When a topic does not qualify:
@@ -534,6 +534,9 @@ class AIPS_Similarity_Evaluator {
 	 * @param array      $topic               Topic data array.
 	 * @param object     $author              Author configuration object.
 	 * @param array|null $author_baseline_vec Optional composite author baseline vector.
+	 * @param array|null $policy              Optional resolved policy from
+	 *                                        AIPS_Author_Topic_Approval_Policy::resolve(); resolved from
+	 *                                        $author when null.
 	 * @return array{
 	 *     qualifies: bool,
 	 *     decision: string,
@@ -543,7 +546,7 @@ class AIPS_Similarity_Evaluator {
 	 *     meta: array<string, mixed>
 	 * } Evaluation result.
 	 */
-	public function evaluate_author_topic_auto_approval(array $topic, object $author, ?array $author_baseline_vec = null): array {
+	public function evaluate_author_topic_auto_approval(array $topic, object $author, ?array $author_baseline_vec = null, ?array $policy = null): array {
 		// Step 1: Decode existing topic metadata
 		$meta = isset($topic['metadata']) && is_string($topic['metadata'])
 			? json_decode($topic['metadata'], true)
@@ -552,19 +555,17 @@ class AIPS_Similarity_Evaluator {
 			$meta = array();
 		}
 
-		// Step 2: Extract author policy configuration with defensive defaults.
-		// Property names match the aips_authors columns / AIPS_Authors_Controller
-		// (topic_auto_approval_*), not the unprefixed auto_approval_* names this
-		// used to read — those never existed on a real author object, so this
-		// always fell through to the 'none' branch regardless of the author's
-		// configured mode.
-		$mode           = !empty($author->topic_auto_approval_mode) ? (string) $author->topic_auto_approval_mode : 'none';
-		$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
-		// No dedicated relevance column; similarity/embeddings mode derives it from
-		// the score field, the same way AIPS_Author_Topics_Generator::apply_auto_approval_rules() does.
-		$min_relevance  = isset($author->topic_auto_approval_min_score) ? max(0.01, min(1.0, (float) $author->topic_auto_approval_min_score / 100)) : 0.70;
-		$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.85;
-		$fallback       = !empty($author->topic_auto_approval_fallback) ? (string) $author->topic_auto_approval_fallback : 'pending';
+		// Step 2: Use the supplied policy, or resolve the effective one (author
+		// columns, or global options for 'inherit') so every caller agrees.
+		if ($policy === null) {
+			$policy = AIPS_Author_Topic_Approval_Policy::resolve($author);
+		}
+		$mode           = AIPS_Author_Topic_Approval_Policy::normalize_mode(isset($policy['mode']) ? $policy['mode'] : 'manual');
+		$min_score      = isset($policy['min_score']) ? (int) $policy['min_score'] : AIPS_Author_Topic_Approval_Policy::DEFAULT_MIN_SCORE;
+		$min_relevance  = isset($policy['min_relevance']) ? (float) $policy['min_relevance'] : AIPS_Author_Topic_Approval_Policy::DEFAULT_MIN_RELEVANCE / 100;
+		$max_similarity = isset($policy['max_similarity']) ? (float) $policy['max_similarity'] : AIPS_Author_Topic_Approval_Policy::DEFAULT_MAX_SIMILARITY;
+		$fallback       = AIPS_Author_Topic_Approval_Policy::normalize_fallback(isset($policy['fallback']) ? $policy['fallback'] : 'pending');
+		$source         = isset($policy['source']) ? (string) $policy['source'] : 'author';
 
 		$qualifies        = false;
 		$is_dup_rejection = false;
@@ -610,7 +611,7 @@ class AIPS_Similarity_Evaluator {
 					? (float) $meta['duplicate_similarity']
 					: (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
 
-				$rel_sim = 0.70;
+				$rel_sim = $min_relevance;
 				$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
 
 				$embeddings_svc = $this->get_embeddings_service();
@@ -674,6 +675,7 @@ class AIPS_Similarity_Evaluator {
 			$decision                     = 'approved';
 			$meta['auto_approved']        = true;
 			$meta['auto_approval_rule']   = $mode;
+			$meta['auto_approval_source'] = $source;
 			$meta['auto_approval_reason'] = $reason;
 			$meta['auto_approval_note']   = $note;
 		} else {
@@ -682,6 +684,7 @@ class AIPS_Similarity_Evaluator {
 
 			$meta['auto_approved']        = false;
 			$meta['auto_approval_rule']   = $mode;
+			$meta['auto_approval_source'] = $source;
 			$meta['auto_approval_reason'] = $reason;
 			$meta['auto_approval_note']   = $note;
 		}

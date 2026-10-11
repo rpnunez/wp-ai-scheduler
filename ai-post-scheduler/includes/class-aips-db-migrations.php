@@ -208,6 +208,13 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.8', '<' ) ) {
 			$this->migrate_to_3_7_8();
 		}
+
+		// migrate_to_3_7_12() backfills the topic_auto_approval_min_relevance
+		// column added by install_tables() above, so it runs after the
+		// Layer-1 schema apply.
+		if ( version_compare( $from_version, '3.7.12', '<' ) ) {
+			$this->migrate_to_3_7_12();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1210,6 +1217,53 @@ class AIPS_DB_Migrations {
 		}
 
 		return (int) $run_at->getTimestamp();
+	}
+
+	/**
+	 * Migration for version 3.7.12.
+	 *
+	 * Consolidates Author Topic Auto-Approval onto one option family:
+	 *  - Authors in `similarity` mode stored their relevance % in
+	 *    `topic_auto_approval_min_score`; copy it into the new dedicated
+	 *    `topic_auto_approval_min_relevance` column. Explicit modes and every
+	 *    other column are left unchanged.
+	 *  - The global fallback value `reject` becomes `rejected`.
+	 *  - The hidden, UI-less option family that nothing could configure is deleted.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_12() {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'aips_authors';
+
+		$column = $wpdb->get_var( $wpdb->prepare(
+			"SHOW COLUMNS FROM `{$table}` LIKE %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'topic_auto_approval_min_relevance'
+		) );
+		if ( $column ) {
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"UPDATE `{$table}` SET topic_auto_approval_min_relevance = topic_auto_approval_min_score
+				WHERE topic_auto_approval_mode IN ('similarity', 'embeddings')
+				AND topic_auto_approval_min_score BETWEEN 1 AND 100"
+			);
+		}
+
+		if ( 'reject' === get_option( 'aips_author_topic_auto_approval_fallback' ) ) {
+			update_option( 'aips_author_topic_auto_approval_fallback', 'rejected' );
+		}
+
+		foreach ( array(
+			'aips_author_topic_auto_approval_enabled',
+			'aips_author_topic_approval_mode',
+			'aips_author_topic_min_relevance',
+			'aips_author_topic_max_duplicate',
+			'aips_author_topic_fallback_action',
+		) as $option_name ) {
+			delete_option( $option_name );
+		}
+
+		$this->logger->log( 'Migration 3.7.12: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );
 	}
 
 	/**
