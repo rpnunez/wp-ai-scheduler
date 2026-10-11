@@ -110,12 +110,16 @@ class AIPS_Internal_Links_Service {
 	 * @param int        $source_post_id       WordPress post ID.
 	 * @param int|null   $max_suggestions      Maximum suggestions to create. Null for evaluator default.
 	 * @param float|null $similarity_threshold Minimum similarity score. Null for evaluator default.
+	 * @param bool       $allow_embedding      Whether this call may embed the source post (an AI call).
+	 *                                         Pass false from background paths that must never wait on
+	 *                                         the provider; an unindexed post then returns 'not_indexed'.
 	 * @return int[]|WP_Error Array of created suggestion IDs or WP_Error.
 	 */
 	public function generate_suggestions_for_post(
 		$source_post_id,
 		$max_suggestions = null,
-		$similarity_threshold = null
+		$similarity_threshold = null,
+		$allow_embedding = true
 	) {
 		$source_post_id       = absint($source_post_id);
 		$max_suggestions      = ($max_suggestions !== null && (int) $max_suggestions > 0) ? (int) $max_suggestions : $this->similarity_evaluator->get_default_max_suggestions();
@@ -124,8 +128,12 @@ class AIPS_Internal_Links_Service {
 		// Make sure the source post is indexed with the current text and model. A
 		// current row costs no embedding call. If re-embedding is not possible right
 		// now (cooldown, lock), a previously stored vector is still good enough.
-		$ensured    = $this->indexer->ensure_indexed($source_post_id);
+		$ensured    = $allow_embedding ? $this->indexer->ensure_indexed($source_post_id) : true;
 		$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
+
+		if (!$allow_embedding && !$source_row) {
+			return new WP_Error('not_indexed', __('The post is not indexed yet.', 'ai-post-scheduler'));
+		}
 
 		if (is_wp_error($ensured)) {
 			if (!$source_row) {

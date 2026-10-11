@@ -354,6 +354,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_publish_linking_outbound'],
 			),
+			'aips_publish_linking_embed_inline' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_publish_linking_embed_inline'],
+			),
 			'aips_link_click_tracking_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_link_click_tracking_enabled'],

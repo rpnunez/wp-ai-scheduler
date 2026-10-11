@@ -262,6 +262,7 @@ class AIPS_Config {
             'aips_redirect_provider'                   => 'auto',
             'aips_publish_linking_mode'                => 'review',
             'aips_publish_linking_outbound'            => true,
+            'aips_publish_linking_embed_inline'        => false,
             'aips_link_click_tracking_enabled'         => false,
             'aips_link_click_retention_days'           => 365,
             'aips_silo_guide_enabled'                  => true,
