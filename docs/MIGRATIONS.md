@@ -14,6 +14,17 @@ The AI Post Scheduler uses WordPress's built-in `dbDelta()` function to manage d
 - **Idempotent**: Safe to run multiple times - won't duplicate or break existing data
 - **Version Tracking**: Plugin tracks DB version in `aips_db_version` option
 
+## Version-Specific Data Migrations
+
+### 3.7.12 - Author topic auto-approval consolidation
+
+Runs after `install_tables()` adds `aips_authors.topic_auto_approval_min_relevance`:
+
+- Copies `topic_auto_approval_min_score` into `topic_auto_approval_min_relevance` for authors in `similarity`/`embeddings` mode.
+- Switches authors with mode `manual`, empty or NULL (the old column default) to `inherit`; explicit `score`, `all` and `similarity` modes are unchanged.
+- Renames the stored global fallback `reject` to `rejected`.
+- Deletes the retired option family (`aips_author_topic_auto_approval_enabled`, `aips_author_topic_approval_mode`, `aips_author_topic_min_relevance`, `aips_author_topic_max_duplicate`, `aips_author_topic_fallback_action`).
+
 ## How Updates Are Applied
 
 ### On Plugin Activation or Update

@@ -5,6 +5,7 @@
   - New `AIPS_Author_Topic_Approval_Policy::resolve()` is the single policy resolver; the generator passes the resolved policy to `evaluate_author_topic_auto_approval()` instead of the evaluator re-deriving it from the author row.
   - Removed the hidden, UI-less option family (`aips_author_topic_auto_approval_enabled`, `..._approval_mode`, `..._min_relevance`, `..._max_duplicate`, `..._fallback_action`); the global default mode is now `manual`.
   - Quality score and niche relevance are separate settings, columns (`topic_auto_approval_min_relevance`) and Authors-form fields; settings gain the `score` mode and `pending` fallback, and legacy `reject`/`embeddings`/`none` values are normalized.
+  - Similarity mode no longer auto-approves topics whose niche relevance could not be measured (embeddings disabled or failing); the fallback applies instead. Author max-similarity is now clamped to 0.50-0.99, and saving an author in `manual`/`inherit` mode resets that author's stored thresholds to defaults.
   - Migration 3.7.12 switches existing authors on `manual` (the old column default) to `inherit`; explicit `score`/`all`/`similarity` authors are unchanged.
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.

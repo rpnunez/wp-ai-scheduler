@@ -144,6 +144,10 @@ class AIPS_Author_Topic_Approval_Policy {
 				return __('Manual review (topics stay pending)', 'ai-post-scheduler');
 		}
 
+		if ($policy['mode'] === 'all') {
+			return $summary;
+		}
+
 		$fallbacks = array(
 			'pending'     => __('others stay pending', 'ai-post-scheduler'),
 			'rejected'    => __('others are rejected', 'ai-post-scheduler'),

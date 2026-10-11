@@ -186,4 +186,12 @@ class Test_AIPS_Author_Topic_Approval_Policy extends WP_UnitTestCase {
 		$this->assertSame(100, $ui->sanitize_author_topic_auto_approval_percent(250));
 		$this->assertEqualsWithDelta(0.5, $ui->sanitize_author_topic_auto_approval_max_similarity(0.1), 0.0001);
 	}
+
+	public function test_describe_global_omits_fallback_for_all_mode() {
+		$this->set_global('all', array('fallback' => 'rejected'));
+		$this->assertSame('Auto-approve all topics', AIPS_Author_Topic_Approval_Policy::describe_global());
+
+		$this->set_global('score', array('min_score' => 80, 'fallback' => 'rejected'));
+		$this->assertStringContainsString('others are rejected', AIPS_Author_Topic_Approval_Policy::describe_global());
+	}
 }

@@ -499,6 +499,27 @@ class AIPS_Similarity_Evaluator {
 	}
 
 	/**
+	 * Measure a topic title's relevance against the author baseline vector.
+	 *
+	 * @param string     $topic_title         Topic title.
+	 * @param array|null $author_baseline_vec Composite author baseline vector.
+	 * @return float|null Cosine similarity, or null when it cannot be measured.
+	 */
+	protected function measure_topic_relevance(string $topic_title, ?array $author_baseline_vec): ?float {
+		$embeddings_svc = $this->get_embeddings_service();
+		if (empty($author_baseline_vec) || '' === $topic_title || !$embeddings_svc || !$embeddings_svc->is_enabled()) {
+			return null;
+		}
+
+		$tvec = $embeddings_svc->generate_embedding($topic_title);
+		if (is_wp_error($tvec) || !is_array($tvec) || count($tvec) !== count($author_baseline_vec)) {
+			return null;
+		}
+
+		return $this->cosine_similarity($tvec, $author_baseline_vec);
+	}
+
+	/**
 	 * Evaluate author topic auto-approval rules and return the decision and metadata.
 	 *
 	 * Decouples auto-approval logic from AIPS_Author_Topics_Generator and centralizes
@@ -611,18 +632,12 @@ class AIPS_Similarity_Evaluator {
 					? (float) $meta['duplicate_similarity']
 					: (!empty($meta['potential_duplicate']) ? 1.0 : 0.0);
 
-				$rel_sim = $min_relevance;
 				$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
+				// null when relevance cannot be measured (embeddings disabled, no
+				// baseline vector, or the embedding call failed).
+				$rel_sim = $this->measure_topic_relevance($topic_title, $author_baseline_vec);
 
-				$embeddings_svc = $this->get_embeddings_service();
-				if (!empty($author_baseline_vec) && !empty($topic_title) && $embeddings_svc && $embeddings_svc->is_enabled()) {
-					$tvec = $embeddings_svc->generate_embedding($topic_title);
-					if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
-						$rel_sim = $this->cosine_similarity($tvec, $author_baseline_vec);
-					}
-				}
-
-				$meta['auto_approval_relevance']      = round($rel_sim, 4);
+				$meta['auto_approval_relevance']      = null === $rel_sim ? null : round($rel_sim, 4);
 				$meta['auto_approval_duplicate_sim']  = round($dup_sim, 4);
 				$meta['auto_approval_min_relevance']  = round($min_relevance, 4);
 				$meta['auto_approval_max_similarity'] = round($max_similarity, 4);
@@ -639,6 +654,12 @@ class AIPS_Similarity_Evaluator {
 						$dup_sim * 100,
 						$max_similarity * 100
 					);
+				} elseif (null === $rel_sim) {
+					// Never auto-approve a topic whose niche relevance was not measured.
+					$qualifies        = false;
+					$is_dup_rejection = false;
+					$reason           = 'relevance_unavailable';
+					$note             = __('Did not qualify: Niche relevance could not be measured (embeddings unavailable).', 'ai-post-scheduler');
 				} elseif ($rel_sim < $min_relevance) {
 					// Lower boundary breached: Off-niche drift
 					$qualifies        = false;
