@@ -486,7 +486,21 @@ class AIPS_Content_Indexer_Controller {
 	public function ajax_get_clear_preview() {
 		$this->verify_request();
 
-		AIPS_Ajax_Response::success($this->indexer_service->get_clear_preview());
+		AIPS_Ajax_Response::success($this->get_clear_preview_data());
+	}
+
+	/**
+	 * Rows a full clear deletes: index rows plus the pending link suggestions derived from them.
+	 *
+	 * @return array
+	 */
+	private function get_clear_preview_data(): array {
+		$preview = $this->indexer_service->get_clear_preview();
+		$counts  = (new AIPS_Internal_Links_Repository())->get_status_counts();
+
+		$preview['pending_suggestions'] = isset($counts['pending']) ? (int) $counts['pending'] : 0;
+
+		return $preview;
 	}
 
 	/**
@@ -503,22 +517,29 @@ class AIPS_Content_Indexer_Controller {
 			AIPS_Ajax_Response::error(__('Type the confirmation word to clear the index.', 'ai-post-scheduler'), 'confirmation_required');
 		}
 
-		$preview = $this->indexer_service->get_clear_preview();
+		$preview = $this->get_clear_preview_data();
 
 		// Stop the run first so no further slice starts, then refuse while one is still
 		// embedding: it would write its batch back after the delete. Retrying is safe.
 		$manager = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class);
-		$manager->control(AIPS_Content_Indexer_Process::KEY, AIPS_Background_Process_Manager::ACTION_CANCEL);
+		foreach (array(AIPS_Content_Indexer_Process::KEY, AIPS_Author_Embeddings_Process::KEY) as $process_key) {
+			$manager->control($process_key, AIPS_Background_Process_Manager::ACTION_CANCEL);
 
-		$process = $manager->get(AIPS_Content_Indexer_Process::KEY);
-		if ($process instanceof AIPS_Managed_Background_Process && $process->is_tick_running()) {
-			AIPS_Ajax_Response::error(
-				__('An indexing slice is still running. The run was stopped; wait a few seconds and clear the index again.', 'ai-post-scheduler'),
-				'indexing_slice_running'
-			);
+			$process = $manager->get($process_key);
+			if ($process instanceof AIPS_Managed_Background_Process && $process->is_tick_running()) {
+				AIPS_Ajax_Response::error(
+					__('An indexing slice is still running. The run was stopped; wait a few seconds and clear the index again.', 'ai-post-scheduler'),
+					'indexing_slice_running'
+				);
+			}
 		}
 
 		$this->indexer_service->clear_index();
+
+		// Drop the pending link suggestions that were derived from the deleted embeddings.
+		// Accepted, rejected and inserted suggestions are editorial records and are kept.
+		$links_repo = new AIPS_Internal_Links_Repository();
+		$links_repo->delete_all_pending();
 
 		AIPS_History_Event_Recorder::instance()->record_simple(
 			AIPS_History_Event_Type::CONTENT_INDEX_CLEARED,
@@ -529,6 +550,7 @@ class AIPS_Content_Indexer_Controller {
 				'event'         => __('Clear content index', 'ai-post-scheduler'),
 				'embeddings'    => $preview['embeddings'],
 				'relationships' => $preview['relationships'],
+				'suggestions'   => $preview['pending_suggestions'],
 			),
 			'manual'
 		);

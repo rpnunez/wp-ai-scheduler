@@ -70,8 +70,29 @@ class AIPS_Content_Indexer_Process extends AIPS_Embeddings_Background_Process {
 		return true;
 	}
 
+	/**
+	 * Options of the run being started; count_remaining() takes none, but the number of
+	 * items to do depends on the mode (unindexed vs stale).
+	 *
+	 * @var array
+	 */
+	private $start_options = array();
+
+	/**
+	 * @inheritDoc
+	 */
+	public function start(array $options = array()) {
+		$this->start_options = $options;
+
+		try {
+			return parent::start($options);
+		} finally {
+			$this->start_options = array();
+		}
+	}
+
 	protected function count_remaining(): int {
-		return $this->count_for(array());
+		return $this->count_for($this->start_options);
 	}
 
 	protected function process_slice(int $cursor, int $limit, array $options): array {
@@ -95,7 +116,8 @@ class AIPS_Content_Indexer_Process extends AIPS_Embeddings_Background_Process {
 		if (!empty($result['rate_limit_exceeded'])) {
 			return array(
 				'processed' => $success,
-				'failed'    => $success === 0 ? 0 : $failed,
+				// The item that tripped the limit is retried next tick, so it is not counted as failed.
+				'failed'    => max(0, $failed - 1),
 				'cursor'    => $new_cursor,
 				'done'      => false,
 				'message'   => __('Waiting for the embeddings rate limit.', 'ai-post-scheduler'),

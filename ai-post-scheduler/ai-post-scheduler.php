@@ -764,17 +764,22 @@ final class AI_Post_Scheduler {
         // update_option. The delay lets an administrator finish editing the settings, and
         // schedule_queue_worker() is a no-op while a worker is already queued.
         $aips_on_embeddings_config_change = function () {
-            delete_option(AIPS_Content_Indexer_Service::OBSERVED_DIMENSIONS_OPTION);
             delete_transient(AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE);
 
             if (AIPS_Config::get_instance()->get_option('aips_indexer_auto_reindex_stale', false)) {
                 AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->schedule_queue_worker(time() + 5 * MINUTE_IN_SECONDS);
             }
         };
-        foreach (array('aips_embeddings_model', 'aips_embeddings_dimensions') as $aips_embeddings_option) {
-            add_action('update_option_' . $aips_embeddings_option, $aips_on_embeddings_config_change);
-            add_action('add_option_' . $aips_embeddings_option, $aips_on_embeddings_config_change);
-        }
+        // The observed dimensions are kept per model, so a model change needs no reset; a
+        // dimensions change does (the provider may now return a different size).
+        $aips_on_dimensions_change = function () use ($aips_on_embeddings_config_change) {
+            delete_option(AIPS_Content_Indexer_Service::OBSERVED_DIMENSIONS_OPTION);
+            $aips_on_embeddings_config_change();
+        };
+        add_action('update_option_aips_embeddings_model', $aips_on_embeddings_config_change);
+        add_action('add_option_aips_embeddings_model', $aips_on_embeddings_config_change);
+        add_action('update_option_aips_embeddings_dimensions', $aips_on_dimensions_change);
+        add_action('add_option_aips_embeddings_dimensions', $aips_on_dimensions_change);
 
         // Background processes: one slice per tick (pause/resume/stop and quota
         // waits are handled by AIPS_Managed_Background_Process). Registered in every
@@ -1053,8 +1058,8 @@ final class AI_Post_Scheduler {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
             $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
-            // Locks left behind by crashed requests.
-            $deleted += AIPS_Lock::purge_expired();
+            // Locks left behind by crashed requests (not job rows, so not in the count above).
+            AIPS_Lock::purge_expired();
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),

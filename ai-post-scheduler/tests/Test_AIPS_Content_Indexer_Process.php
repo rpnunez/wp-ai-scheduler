@@ -326,4 +326,19 @@ class Test_AIPS_Content_Indexer_Process extends WP_UnitTestCase {
 		$this->assertTrue( $snapshot['is_active'], 'A rate limit mid-slice must not complete the run.' );
 		$this->assertNotSame( 'idle', $snapshot['status'] );
 	}
+
+	public function test_stale_run_starts_when_nothing_is_unindexed() {
+		$ids = $this->create_posts( 2 );
+		$this->process->start();
+		$this->process->tick();
+
+		$repo = new AIPS_Embeddings_Repository();
+		$row  = $repo->get_by_post_id( $ids[0] );
+		$repo->upsert( 'post', $ids[0], array( 0.1, 0.2, 0.3 ), 'an-older-model', 3, $row->content_hash, 'post' );
+
+		$snapshot = $this->process->start( array( 'mode' => 'stale' ) );
+
+		$this->assertIsArray( $snapshot, 'A stale run needs stale posts, not unindexed ones.' );
+		$this->assertSame( 1, $snapshot['total'] );
+	}
 }

@@ -2037,8 +2037,8 @@ class AIPS_Admin_Assets {
                 'nonce'                 => wp_create_nonce('aips_ajax_nonce'),
                 'indexingComplete'      => __('Content indexing complete!', 'ai-post-scheduler'),
                 'clearHeading'          => __('Clear the entire index', 'ai-post-scheduler'),
-                /* translators: 1: embeddings count, 2: post embeddings, 3: topic embeddings, 4: relationships count. */
-                'clearMessage'          => __('This will permanently delete %1$s embeddings (%2$s posts, %3$s topics) and %4$s precomputed relationships. This is a destructive, irreversible action. Take a database backup before continuing.', 'ai-post-scheduler'),
+                /* translators: 1: embeddings count, 2: post embeddings, 3: topic embeddings, 4: relationships count, 5: pending link suggestions. */
+                'clearMessage'          => __('This will permanently delete %1$s embeddings (%2$s posts, %3$s topics), %4$s precomputed relationships and %5$s pending internal link suggestions. This is a destructive, irreversible action. Take a database backup before continuing.', 'ai-post-scheduler'),
                 /* translators: %s: confirmation word. */
                 'clearDescription'      => __('Indexing coverage resets to zero and everything must be re-embedded, which uses AI calls. Type %s to confirm.', 'ai-post-scheduler'),
                 'clearConfirmLabel'     => __('Delete the entire index', 'ai-post-scheduler'),

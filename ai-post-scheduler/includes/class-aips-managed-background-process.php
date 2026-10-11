@@ -290,12 +290,21 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	}
 
 	/**
+	 * Transient key of the per-process tick lock (the single place it is built).
+	 *
+	 * @return string
+	 */
+	protected function tick_lock_key(): string {
+		return 'aips_bg_lock_' . $this->get_key();
+	}
+
+	/**
 	 * Whether a slice of this process is executing right now (its tick lock is held).
 	 *
 	 * @return bool
 	 */
 	public function is_tick_running(): bool {
-		return (bool) get_transient('aips_bg_lock_' . $this->get_key());
+		return (bool) get_transient($this->tick_lock_key());
 	}
 
 	/**
@@ -333,7 +342,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 		}
 
 		// Overlapping ticks (a spawned cron plus a manual run) would double-process a slice.
-		$lock_key = 'aips_bg_lock_' . $this->get_key();
+		$lock_key = $this->tick_lock_key();
 		if (get_transient($lock_key)) {
 			$this->schedule_tick(30);
 			return;

@@ -1147,7 +1147,8 @@
 						.replace('%1$s', fmt(d.embeddings))
 						.replace('%2$s', fmt(d.posts))
 						.replace('%3$s', fmt(d.topics))
-						.replace('%4$s', fmt(d.relationships)),
+						.replace('%4$s', fmt(d.relationships))
+						.replace('%5$s', fmt(d.pending_suggestions)),
 					description: (L10n.clearDescription || '').replace('%s', word),
 					word: word,
 					confirmLabel: L10n.clearConfirmLabel,

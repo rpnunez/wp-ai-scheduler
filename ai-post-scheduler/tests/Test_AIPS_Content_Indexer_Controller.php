@@ -253,4 +253,24 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		$this->assertFalse( $response['success'] );
 		$this->assertNotNull( $repo->get_by_topic_id( 904 ), 'Nothing is deleted while a slice could write it back.' );
 	}
+
+	public function test_clear_index_drops_pending_suggestions_but_keeps_reviewed_ones() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$_POST    = array(
+			'nonce'        => wp_create_nonce( 'aips_ajax_nonce' ),
+			'confirm_word' => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
+		);
+		$_REQUEST = $_POST;
+
+		$links    = new AIPS_Internal_Links_Repository();
+		$pending  = $links->insert( 10, 11, 0.9 );
+		$accepted = $links->insert( 10, 12, 0.8 );
+		$links->update_status( $accepted, 'accepted' );
+
+		$response = $this->capture_ajax_response( array( $this->controller, 'ajax_clear_index' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertNull( $links->get_by_id( $pending ) );
+		$this->assertNotNull( $links->get_by_id( $accepted ) );
+	}
 }

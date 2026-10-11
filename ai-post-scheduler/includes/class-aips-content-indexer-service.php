@@ -40,6 +40,11 @@ class AIPS_Content_Indexer_Service {
 	const STALE_REINDEX_THROTTLE = 'aips_stale_reindex_throttle';
 
 	/**
+	 * Lock held while the whole index is being cleared; embedding writes back off.
+	 */
+	const CLEAR_LOCK = 'aips_index_clearing';
+
+	/**
 	 * Per-post lock key prefix guarding embed-and-store.
 	 */
 	const LOCK_PREFIX = 'aips_embed_post_';
@@ -188,6 +193,10 @@ class AIPS_Content_Indexer_Service {
 		$result = AIPS_Lock::with_lock(
 			self::LOCK_PREFIX . $post_id,
 			function () use ($post, $text, $content_hash, $compute_relationships, $force) {
+				if (AIPS_Lock::is_locked(self::CLEAR_LOCK)) {
+					return $this->clearing_error();
+				}
+
 				// Another worker may have finished while this one waited for the lock.
 				if (!$force && $this->is_current($this->embeddings_repo->get_by_post_id($post->ID), $content_hash)) {
 					return true;
@@ -205,6 +214,18 @@ class AIPS_Content_Indexer_Service {
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Whether an indexing error means "another worker has this post" or "the index is
+	 * being cleared", rather than a provider failure. Batch callers skip such posts and
+	 * must not count them as failures or feed them to the rate limiter.
+	 *
+	 * @param mixed $result Result of ensure_indexed().
+	 * @return bool
+	 */
+	public static function is_skippable_error($result): bool {
+		return is_wp_error($result) && in_array($result->get_error_code(), array('resource_locked', 'index_clearing'), true);
 	}
 
 	/**
@@ -279,6 +300,13 @@ class AIPS_Content_Indexer_Service {
 
 		$observed[$model] = (int) $dimensions;
 		update_option(self::OBSERVED_DIMENSIONS_OPTION, $observed, false);
+	}
+
+	/**
+	 * @return WP_Error
+	 */
+	private function clearing_error() {
+		return new WP_Error('index_clearing', __('The index is being cleared. Try again shortly.', 'ai-post-scheduler'));
 	}
 
 	/**
@@ -411,6 +439,12 @@ class AIPS_Content_Indexer_Service {
 				),
 				array('component' => 'embeddings')
 			);
+		}
+
+		// The embedding call can be slow; do not write into an index that was cleared meanwhile.
+		if (AIPS_Lock::is_locked(self::CLEAR_LOCK)) {
+			$container->complete_failure(__('The index was cleared while this post was being embedded.', 'ai-post-scheduler'), array('post_id' => $post_id));
+			return $this->clearing_error();
 		}
 
 		$persisted = $this->embeddings_repo->upsert(
@@ -711,6 +745,11 @@ class AIPS_Content_Indexer_Service {
 				// Relationships are computed once for the whole batch below, not per post.
 				$result = $this->index_post($post_id, false);
 
+				if (self::is_skippable_error($result)) {
+					$new_last_id = max($new_last_id, $post_id);
+					continue;
+				}
+
 				if (is_wp_error($result)) {
 					$failed++;
 					$cooldown_res = $rate_limiter->record_failure($result);
@@ -992,13 +1031,18 @@ class AIPS_Content_Indexer_Service {
 			return false;
 		}
 
-		set_transient(self::STALE_REINDEX_THROTTLE, time(), 6 * HOUR_IN_SECONDS);
-
 		$snapshot = AIPS_Container::get_instance()
 			->make(AIPS_Background_Process_Manager::class)
 			->control(AIPS_Content_Indexer_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('mode' => 'stale'));
 
-		return !is_wp_error($snapshot);
+		if (is_wp_error($snapshot)) {
+			return false;
+		}
+
+		// Only a run that actually started counts against the interval.
+		set_transient(self::STALE_REINDEX_THROTTLE, time(), 6 * HOUR_IN_SECONDS);
+
+		return true;
 	}
 
 	/**
@@ -1011,6 +1055,22 @@ class AIPS_Content_Indexer_Service {
 	 * @return void
 	 */
 	public function clear_index($object_type = '') {
+		// Writers check this lock before and after their embedding call, so a slice already
+		// in flight does not write its batch back into the emptied index.
+		AIPS_Lock::acquire(self::CLEAR_LOCK, 120);
+
+		try {
+			$this->do_clear_index($object_type);
+		} finally {
+			AIPS_Lock::release(self::CLEAR_LOCK);
+		}
+	}
+
+	/**
+	 * @param string $object_type Optional entity filter ('post' or 'topic').
+	 * @return void
+	 */
+	private function do_clear_index($object_type) {
 		$this->embeddings_repo->clear_all($object_type);
 		$this->relationships_repo->clear_all();
 		$this->embeddings_service->clear_cache();
@@ -1331,6 +1391,10 @@ class AIPS_Content_Indexer_Service {
 
 			// Relationships are computed once for the whole slice below, not per post.
 			$result = $this->index_post($post_id, false);
+
+			if (self::is_skippable_error($result)) {
+				continue;
+			}
 
 			if (is_wp_error($result)) {
 				$failed++;

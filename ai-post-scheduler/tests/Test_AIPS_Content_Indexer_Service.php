@@ -636,4 +636,36 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertNotFalse( get_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE ) );
 		$this->assertFalse( $indexer->maybe_start_stale_reindex(), 'A second attempt within the interval does nothing.' );
 	}
+
+	public function test_failed_automatic_stale_start_does_not_set_the_throttle() {
+		list( $indexer ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_indexer_auto_reindex_stale', true );
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		delete_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE );
+
+		// Nothing is stale, so no run can start.
+		$this->assertFalse( $indexer->maybe_start_stale_reindex() );
+		$this->assertFalse( get_transient( AIPS_Content_Indexer_Service::STALE_REINDEX_THROTTLE ) );
+	}
+
+	public function test_lock_conflict_and_clearing_are_skipped_not_counted_as_failures() {
+		list( $indexer, $counter ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$post_id = $this->make_post();
+
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 );
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts' );
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
+
+		$this->assertSame( 0, $result['failed'], 'Another worker holding the post is not a failure.' );
+		$this->assertSame( 0, $counter->calls );
+
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::CLEAR_LOCK, 60 );
+		$cleared = $indexer->ensure_indexed( $post_id );
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::CLEAR_LOCK );
+
+		$this->assertWPError( $cleared );
+		$this->assertTrue( AIPS_Content_Indexer_Service::is_skippable_error( $cleared ) );
+		$this->assertSame( 0, $counter->calls );
+	}
 }
