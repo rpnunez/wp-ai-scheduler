@@ -45,6 +45,11 @@ class AIPS_Content_Indexer_Service {
 	const CLEAR_LOCK = 'aips_index_clearing';
 
 	/**
+	 * Seconds the clear lock is held; generous because clearing a large index is slow.
+	 */
+	const CLEAR_LOCK_TTL = 900;
+
+	/**
 	 * Per-post lock key prefix guarding embed-and-store.
 	 */
 	const LOCK_PREFIX = 'aips_embed_post_';
@@ -728,6 +733,7 @@ class AIPS_Content_Indexer_Service {
 
 		$success     = 0;
 		$failed      = 0;
+		$skipped     = 0;
 		$new_last_id = $last_post_id;
 
 		$correlation_id        = AIPS_Correlation_ID::get();
@@ -746,6 +752,10 @@ class AIPS_Content_Indexer_Service {
 				$result = $this->index_post($post_id, false);
 
 				if (self::is_skippable_error($result)) {
+					// Busy (another worker has it, or the index is being cleared): not a
+					// failure. The cursor moves on; a post that stays unindexed shows in the
+					// status and is picked up by the next run.
+					$skipped++;
 					$new_last_id = max($new_last_id, $post_id);
 					continue;
 				}
@@ -820,6 +830,7 @@ class AIPS_Content_Indexer_Service {
 			'rate_limit_error'    => $rate_limit_error,
 			'rate_limits'         => $status['rate_limits'],
 			'entity_scope'        => $entity_scope,
+			'skipped'             => $skipped,
 		);
 	}
 
@@ -1036,6 +1047,9 @@ class AIPS_Content_Indexer_Service {
 			->control(AIPS_Content_Indexer_Process::KEY, AIPS_Background_Process_Manager::ACTION_START, array('mode' => 'stale'));
 
 		if (is_wp_error($snapshot)) {
+			// Back off briefly so a start that keeps failing (run already open, quota,
+			// embeddings unavailable) does not redo the status queries on every tick.
+			set_transient(self::STALE_REINDEX_THROTTLE, time(), 15 * MINUTE_IN_SECONDS);
 			return false;
 		}
 
@@ -1052,18 +1066,23 @@ class AIPS_Content_Indexer_Service {
 	 * the only code path that deletes embeddings in bulk.
 	 *
 	 * @param string $object_type Optional entity filter ('post' or 'topic').
-	 * @return void
+	 * @return bool False when another clear is already running.
 	 */
 	public function clear_index($object_type = '') {
 		// Writers check this lock before and after their embedding call, so a slice already
-		// in flight does not write its batch back into the emptied index.
-		AIPS_Lock::acquire(self::CLEAR_LOCK, 120);
+		// in flight does not write its batch back into the emptied index. Another clear
+		// holding it means one is already running.
+		if (!AIPS_Lock::acquire(self::CLEAR_LOCK, self::CLEAR_LOCK_TTL)) {
+			return false;
+		}
 
 		try {
 			$this->do_clear_index($object_type);
 		} finally {
 			AIPS_Lock::release(self::CLEAR_LOCK);
 		}
+
+		return true;
 	}
 
 	/**

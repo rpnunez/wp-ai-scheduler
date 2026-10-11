@@ -71,4 +71,16 @@ class Test_AIPS_Publish_Linking_Service extends WP_UnitTestCase {
 		$this->assertWPError( $result );
 		$this->assertSame( 'not_indexed', $result->get_error_code() );
 	}
+
+	public function test_deferred_pass_queues_the_post_only_once() {
+		$post_id = $this->make_published_post();
+		$service = new AIPS_Publish_Linking_Service();
+
+		$service->process( $post_id );
+		delete_option( 'aips_pending_index_queue' );
+		$service->process( $post_id );
+
+		$this->assertSame( 2, (int) get_post_meta( $post_id, AIPS_Publish_Linking_Service::DEFER_META, true ) );
+		$this->assertEmpty( (array) get_option( 'aips_pending_index_queue', array() ), 'Retries wait; they do not re-queue.' );
+	}
 }

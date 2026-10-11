@@ -298,4 +298,12 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 		sort( $expected );
 		$this->assertSame( $expected, $ids );
 	}
+
+	public function test_has_post_embedding_checks_existence_without_loading_the_vector() {
+		$post_id = wp_insert_post( array( 'post_title' => 'Exists', 'post_content' => 'x', 'post_status' => 'publish', 'post_type' => 'post' ) );
+
+		$this->assertFalse( $this->repo->has_post_embedding( $post_id ) );
+		$this->repo->upsert( 'post', $post_id, array( 0.1, 0.2 ), 'm', 2, 'h', 'post' );
+		$this->assertTrue( $this->repo->has_post_embedding( $post_id ) );
+	}
 }

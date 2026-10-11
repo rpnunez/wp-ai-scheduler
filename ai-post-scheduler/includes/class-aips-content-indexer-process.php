@@ -70,29 +70,8 @@ class AIPS_Content_Indexer_Process extends AIPS_Embeddings_Background_Process {
 		return true;
 	}
 
-	/**
-	 * Options of the run being started; count_remaining() takes none, but the number of
-	 * items to do depends on the mode (unindexed vs stale).
-	 *
-	 * @var array
-	 */
-	private $start_options = array();
-
-	/**
-	 * @inheritDoc
-	 */
-	public function start(array $options = array()) {
-		$this->start_options = $options;
-
-		try {
-			return parent::start($options);
-		} finally {
-			$this->start_options = array();
-		}
-	}
-
-	protected function count_remaining(): int {
-		return $this->count_for($this->start_options);
+	protected function count_remaining(array $options = array()): int {
+		return $this->count_for($options);
 	}
 
 	protected function process_slice(int $cursor, int $limit, array $options): array {
@@ -126,12 +105,22 @@ class AIPS_Content_Indexer_Process extends AIPS_Embeddings_Background_Process {
 
 		// A slice that embedded nothing and moved the cursor nowhere (only topics that
 		// keep failing, or an empty scope) would repeat forever: treat it as finished.
-		return array(
+		$slice = array(
 			'processed' => $success,
 			'failed'    => $failed,
 			'cursor'    => $new_cursor,
 			'done'      => !empty($result['done']) || ($success === 0 && $new_cursor === $cursor),
 		);
+
+		if (!empty($result['skipped'])) {
+			$slice['message'] = sprintf(
+				/* translators: %d: number of posts. */
+				_n('%d post was busy and skipped; run again to pick it up.', '%d posts were busy and skipped; run again to pick them up.', (int) $result['skipped'], 'ai-post-scheduler'),
+				(int) $result['skipped']
+			);
+		}
+
+		return $slice;
 	}
 
 	// -------------------------------------------------------------------------

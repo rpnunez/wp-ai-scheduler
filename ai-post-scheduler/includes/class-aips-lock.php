@@ -34,6 +34,11 @@ class AIPS_Lock {
 	private static $held = array();
 
 	/**
+	 * @var AIPS_Lock_Repository|null
+	 */
+	private static $repository = null;
+
+	/**
 	 * Attempt to acquire an execution lock for a given key.
 	 *
 	 * The lock is a row in the options table whose value is "expiry|token". The
@@ -50,14 +55,14 @@ class AIPS_Lock {
 		$token = wp_generate_password(12, false);
 		$value = (time() + max(5, $ttl)) . '|' . $token;
 
-		if (self::insert($name, $value)) {
+		if (self::repository()->insert($name, $value)) {
 			self::$held[$name] = $token;
 			return true;
 		}
 
 		// Held by someone else: take it over only if it has expired.
-		$current = self::read($name);
-		if (null !== $current && self::is_expired($current) && self::delete_if_equals($name, $current) && self::insert($name, $value)) {
+		$current = self::repository()->read($name);
+		if (null !== $current && self::is_expired($current) && self::repository()->delete_if_equals($name, $current) && self::repository()->insert($name, $value)) {
 			self::$held[$name] = $token;
 			return true;
 		}
@@ -80,7 +85,7 @@ class AIPS_Lock {
 		$token = isset(self::$held[$name]) ? self::$held[$name] : null;
 		unset(self::$held[$name]);
 
-		$current = self::read($name);
+		$current = self::repository()->read($name);
 		if (null === $current) {
 			return false;
 		}
@@ -89,7 +94,7 @@ class AIPS_Lock {
 			return false;
 		}
 
-		return self::delete_if_equals($name, $current);
+		return self::repository()->delete_if_equals($name, $current);
 	}
 
 	/**
@@ -99,7 +104,7 @@ class AIPS_Lock {
 	 * @return bool True if locked, false otherwise.
 	 */
 	public static function is_locked(string $key): bool {
-		$current = self::read(self::option_name($key));
+		$current = self::repository()->read(self::option_name($key));
 
 		return null !== $current && !self::is_expired($current);
 	}
@@ -135,15 +140,18 @@ class AIPS_Lock {
 	 * @return int Rows deleted.
 	 */
 	public static function purge_expired(): int {
-		global $wpdb;
+		return self::repository()->delete_expired(self::PREFIX, time());
+	}
 
-		$rows = $wpdb->query($wpdb->prepare(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST(SUBSTRING_INDEX(option_value, '|', 1) AS UNSIGNED) <= %d",
-			$wpdb->esc_like(self::PREFIX) . '%',
-			time()
-		));
+	/**
+	 * @return AIPS_Lock_Repository
+	 */
+	private static function repository(): AIPS_Lock_Repository {
+		if (null === self::$repository) {
+			self::$repository = new AIPS_Lock_Repository();
+		}
 
-		return max(0, (int) $rows);
+		return self::$repository;
 	}
 
 	/**
@@ -152,63 +160,6 @@ class AIPS_Lock {
 	 */
 	private static function option_name(string $key): string {
 		return self::PREFIX . sanitize_key($key);
-	}
-
-	/**
-	 * Insert the lock row; fails when it already exists.
-	 *
-	 * INSERT IGNORE against the option_name unique index is the atomic step.
-	 *
-	 * @param string $name  Option name.
-	 * @param string $value Lock value.
-	 * @return bool True if this call created the row.
-	 */
-	private static function insert(string $name, string $value): bool {
-		global $wpdb;
-
-		$rows = $wpdb->query($wpdb->prepare(
-			"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
-			$name,
-			$value
-		));
-
-		return 1 === (int) $rows;
-	}
-
-	/**
-	 * Read the lock value straight from the database, bypassing the object cache.
-	 *
-	 * @param string $name Option name.
-	 * @return string|null Null when there is no lock.
-	 */
-	private static function read(string $name): ?string {
-		global $wpdb;
-
-		$value = $wpdb->get_var($wpdb->prepare(
-			"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-			$name
-		));
-
-		return is_string($value) ? $value : null;
-	}
-
-	/**
-	 * Delete the lock row only if it still holds the given value.
-	 *
-	 * @param string $name  Option name.
-	 * @param string $value Expected value.
-	 * @return bool True if a row was deleted.
-	 */
-	private static function delete_if_equals(string $name, string $value): bool {
-		global $wpdb;
-
-		$rows = $wpdb->query($wpdb->prepare(
-			"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
-			$name,
-			$value
-		));
-
-		return (int) $rows > 0;
 	}
 
 	/**

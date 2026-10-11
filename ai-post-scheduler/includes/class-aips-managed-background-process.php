@@ -57,9 +57,11 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 	/**
 	 * Items left to process right now.
 	 *
+	 * @param array $options Options the run is being started with (empty when counting
+	 *                       outside start()); a process whose workload depends on a mode uses them.
 	 * @return int
 	 */
-	abstract protected function count_remaining(): int;
+	abstract protected function count_remaining(array $options = array()): int;
 
 	/**
 	 * Process up to $limit items starting after $cursor.
@@ -182,7 +184,7 @@ abstract class AIPS_Managed_Background_Process extends AIPS_Background_Process_B
 			return $can_run;
 		}
 
-		$remaining = $this->count_remaining();
+		$remaining = $this->count_remaining($options);
 		if ($remaining <= 0) {
 			return new WP_Error(
 				'aips_bg_nothing_to_do',

@@ -66,7 +66,7 @@ class AIPS_Internal_Links_Controller {
 		$this->links_repo       = $links_repo       ?: new AIPS_Internal_Links_Repository();
 		$this->logger           = $logger           ?: new AIPS_Logger();
 		$this->inserter_service = $inserter_service ?: new AIPS_Internal_Link_Inserter_Service();
-		$this->indexer          = $indexer          ?: $container->make(AIPS_Content_Indexer_Service::class);
+		$this->indexer          = $indexer;
 
 		// AJAX endpoints — suggestion management
 		add_action('wp_ajax_aips_internal_links_get_suggestions', array($this, 'ajax_get_suggestions'));
@@ -333,7 +333,7 @@ class AIPS_Internal_Links_Controller {
 		}
 
 		// Force a fresh embedding: this is the explicit "Re-index & suggest" action.
-		$result = $this->indexer->ensure_indexed($post_id, true, true);
+		$result = $this->get_indexer()->ensure_indexed($post_id, true, true);
 
 		if (is_wp_error($result)) {
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
@@ -617,6 +617,19 @@ class AIPS_Internal_Links_Controller {
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
+
+	/**
+	 * The Content Indexer, resolved on first use.
+	 *
+	 * @return AIPS_Content_Indexer_Service
+	 */
+	private function get_indexer() {
+		if (null === $this->indexer) {
+			$this->indexer = AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class);
+		}
+
+		return $this->indexer;
+	}
 
 	/**
 	 * Check whether the embeddings service is available.

@@ -92,6 +92,23 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Whether an embedding exists for a post, without loading the vector.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 */
+	public function has_post_embedding($post_id) {
+		if (!$this->table_exists()) {
+			return false;
+		}
+
+		return null !== $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT 1 FROM {$this->table} WHERE object_type = 'post' AND object_id = %d LIMIT 1",
+			absint($post_id)
+		));
+	}
+
+	/**
 	 * Get a single embedding record by source/object type and ID.
 	 * Alias for get_by_object().
 	 *

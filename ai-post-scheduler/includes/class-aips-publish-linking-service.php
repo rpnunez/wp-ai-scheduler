@@ -188,7 +188,10 @@ class AIPS_Publish_Linking_Service {
 
 		// By default this pass never waits on an embedding call. If the new post is not
 		// indexed yet, queue it for indexing and try again later, a few times at most.
-		if ($wants_outbound && !$embed_inline && !$this->is_indexed($post_id) && $this->defer($post_id)) {
+		// Waiting only helps when something can index the post: with embeddings off it never will.
+		$can_index = AIPS_Container::get_instance()->make(AIPS_Embeddings_Service::class)->is_enabled();
+
+		if ($wants_outbound && !$embed_inline && $can_index && !$this->is_indexed($post_id) && $this->defer($post_id)) {
 			return new WP_Error('aips_publish_linking_deferred', __('Waiting for the post to be indexed; linking will be retried shortly.', 'ai-post-scheduler'));
 		}
 
@@ -241,7 +244,7 @@ class AIPS_Publish_Linking_Service {
 		$container = AIPS_Container::get_instance();
 		$repo      = $container->has(AIPS_Embeddings_Repository::class) ? $container->make(AIPS_Embeddings_Repository::class) : new AIPS_Embeddings_Repository();
 
-		return (bool) $repo->get_by_post_id($post_id);
+		return $repo->has_post_embedding($post_id);
 	}
 
 	/**
@@ -257,7 +260,11 @@ class AIPS_Publish_Linking_Service {
 		}
 
 		update_post_meta($post_id, self::DEFER_META, $deferrals + 1);
-		AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->enqueue_post_for_indexing($post_id);
+
+		// Queue it once; later retries only wait.
+		if ($deferrals === 0) {
+			AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class)->enqueue_post_for_indexing($post_id);
+		}
 
 		if (!wp_next_scheduled(self::CRON_HOOK, array($post_id))) {
 			wp_schedule_single_event(time() + self::DELAY, self::CRON_HOOK, array($post_id));

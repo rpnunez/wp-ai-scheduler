@@ -668,4 +668,26 @@ class Test_AIPS_Content_Indexer_Service extends WP_UnitTestCase {
 		$this->assertTrue( AIPS_Content_Indexer_Service::is_skippable_error( $cleared ) );
 		$this->assertSame( 0, $counter->calls );
 	}
+
+	public function test_clear_index_refuses_to_run_twice_at_once() {
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::CLEAR_LOCK, 60 );
+
+		$this->assertFalse( $this->indexer_service->clear_index() );
+
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::CLEAR_LOCK );
+		$this->assertTrue( $this->indexer_service->clear_index() );
+	}
+
+	public function test_batch_reports_how_many_busy_posts_were_skipped() {
+		list( $indexer ) = $this->make_counting_indexer();
+		AIPS_Config::get_instance()->set_option( 'aips_embeddings_scope', 'all' );
+		$post_id = $this->make_post();
+
+		AIPS_Lock::acquire( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id, 60 );
+		$result = $indexer->process_indexing_batch( 10, 0, array( 'post' ), 'publish', 'posts' );
+		AIPS_Lock::release( AIPS_Content_Indexer_Service::LOCK_PREFIX . $post_id );
+
+		$this->assertSame( 1, $result['skipped'] );
+		$this->assertSame( 0, $result['failed'] );
+	}
 }

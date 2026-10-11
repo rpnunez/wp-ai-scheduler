@@ -534,7 +534,9 @@ class AIPS_Content_Indexer_Controller {
 			}
 		}
 
-		$this->indexer_service->clear_index();
+		if (!$this->indexer_service->clear_index()) {
+			AIPS_Ajax_Response::error(__('The index is already being cleared.', 'ai-post-scheduler'), 'clear_in_progress');
+		}
 
 		// Drop the pending link suggestions that were derived from the deleted embeddings.
 		// Accepted, rejected and inserted suggestions are editorial records and are kept.

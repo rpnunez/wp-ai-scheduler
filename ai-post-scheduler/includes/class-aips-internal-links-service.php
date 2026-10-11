@@ -84,7 +84,20 @@ class AIPS_Internal_Links_Service {
 		$this->logger               = $logger               ?: new AIPS_Logger();
 		$this->config               = $config               ?: ($container->has(AIPS_Config::class) ? $container->make(AIPS_Config::class) : AIPS_Config::get_instance());
 		$this->similarity_evaluator = $similarity_evaluator ?: ($container->has(AIPS_Similarity_Evaluator::class) ? $container->make(AIPS_Similarity_Evaluator::class) : new AIPS_Similarity_Evaluator($this->config, $this->embeddings_repo, $this->embeddings_service));
-		$this->indexer              = $indexer              ?: $container->make(AIPS_Content_Indexer_Service::class);
+		$this->indexer              = $indexer;
+	}
+
+	/**
+	 * The Content Indexer, resolved on first use (building it pulls in the whole embeddings stack).
+	 *
+	 * @return AIPS_Content_Indexer_Service
+	 */
+	private function get_indexer() {
+		if (null === $this->indexer) {
+			$this->indexer = AIPS_Container::get_instance()->make(AIPS_Content_Indexer_Service::class);
+		}
+
+		return $this->indexer;
 	}
 
 	/**
@@ -128,7 +141,7 @@ class AIPS_Internal_Links_Service {
 		// Make sure the source post is indexed with the current text and model. A
 		// current row costs no embedding call. If re-embedding is not possible right
 		// now (cooldown, lock), a previously stored vector is still good enough.
-		$ensured    = $allow_embedding ? $this->indexer->ensure_indexed($source_post_id) : true;
+		$ensured    = $allow_embedding ? $this->get_indexer()->ensure_indexed($source_post_id) : true;
 		$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
 
 		if (!$allow_embedding && !$source_row) {
@@ -249,7 +262,7 @@ class AIPS_Internal_Links_Service {
 	 * @return array{total_posts: int, indexed: int, unindexed: int, stale: int, percent: int}
 	 */
 	public function get_indexing_status($post_type = null, $post_status = 'publish') {
-		$status = $this->indexer->get_indexing_status($this->resolve_post_types($post_type), $post_status);
+		$status = $this->get_indexer()->get_indexing_status($this->resolve_post_types($post_type), $post_status);
 
 		return array(
 			'total_posts' => (int) $status['total_posts'],

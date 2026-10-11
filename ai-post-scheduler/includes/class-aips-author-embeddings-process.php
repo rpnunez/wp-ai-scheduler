@@ -84,7 +84,7 @@ class AIPS_Author_Embeddings_Process extends AIPS_Embeddings_Background_Process 
 		return true;
 	}
 
-	protected function count_remaining(): int {
+	protected function count_remaining(array $options = array()): int {
 		return $this->embeddings_repo->get_unindexed_topic_count($this->author_id);
 	}
 

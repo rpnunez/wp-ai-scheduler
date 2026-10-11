@@ -30,7 +30,7 @@ class AIPS_Test_Watchdog_Process extends AIPS_Managed_Background_Process {
 		return 'Test process.';
 	}
 
-	protected function count_remaining(): int {
+	protected function count_remaining(array $options = array()): int {
 		return 5;
 	}
 
