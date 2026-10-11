@@ -449,12 +449,23 @@ class AIPS_Authors_Repository {
 	 * @return void
 	 */
 	private function invalidate_author_cache( $author_id, $reason ) {
+		$author_id = absint( $author_id );
 		$this->invalidate_cache_domain(
 			'author',
 			array(
-				'author_id' => absint( $author_id ),
+				'author_id' => $author_id,
 			),
 			(string) $reason
 		);
+
+		delete_transient( 'aips_author_composite_vec_' . $author_id );
+
+		if ( 'author_deleted' === $reason ) {
+			$container = class_exists( 'AIPS_Container' ) ? AIPS_Container::get_instance() : null;
+			$emb_repo  = $container && $container->has( AIPS_Embeddings_Repository::class )
+				? $container->make( AIPS_Embeddings_Repository::class )
+				: new AIPS_Embeddings_Repository();
+			$emb_repo->delete_by_author_id( $author_id );
+		}
 	}
 }

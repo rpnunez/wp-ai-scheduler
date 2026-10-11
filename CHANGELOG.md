@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
+
 ### Fixed
 - **Author Topic Auto-Approval:** Global Settings → Authors now actually control authors set to "Use Global Settings".
   - New `AIPS_Author_Topic_Approval_Policy::resolve()` is the single policy resolver; the generator passes the resolved policy to `evaluate_author_topic_auto_approval()` instead of the evaluator re-deriving it from the author row.

@@ -1020,6 +1020,21 @@ class Test_Author_Topics_Repository_Cache extends WP_UnitTestCase {
 		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
 	}
 
+	public function test_get_by_author_bucket_cached_per_bucket_and_rejects_unknown_bucket() {
+		$this->mock_wpdb->get_results_return = array( (object) array( 'id' => 1 ) );
+		$repo = new AIPS_Author_Topics_Repository();
+
+		$repo->get_by_author_bucket( 9, 'approved' );
+		$repo->get_by_author_bucket( 9, 'approved' );
+		$this->assertEquals( 1, $this->mock_wpdb->get_results_calls );
+
+		$repo->get_by_author_bucket( 9, 'posts_generated' );
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
+
+		$this->assertSame( array(), $repo->get_by_author_bucket( 9, 'bogus' ) );
+		$this->assertEquals( 2, $this->mock_wpdb->get_results_calls );
+	}
+
 	public function test_get_global_status_counts_cached_after_first_call() {
 		$this->mock_wpdb->get_results_return = array(
 			array( 'status' => 'pending', 'count' => 5 ),

@@ -130,7 +130,7 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 				$this->fixed = $fixed;
 			}
 
-			protected function measure_topic_relevance(string $topic_title, ?array $author_baseline_vec): ?float {
+			protected function measure_topic_relevance(string $topic_title, ?array $author_baseline_vec, ?array &$candidate_vec = null): ?float {
 				return $this->fixed;
 			}
 		};
@@ -203,5 +203,108 @@ class Test_AIPS_Author_Topic_Auto_Approval extends WP_UnitTestCase {
 		// Quality score threshold is high, relevance threshold low: relevance 0.5 passes.
 		$result = $eval->evaluate_author_topic_auto_approval($topic, $author, array(1.0), $this->similarity_policy(array('min_score' => 95, 'min_relevance' => 0.4)));
 		$this->assertSame('approved', $result['decision']);
+	}
+
+	/**
+	 * A reused candidate vector whose dimensions differ from the baseline is
+	 * unmeasurable and must follow the fallback instead of silently passing.
+	 */
+	public function test_candidate_vector_dimension_mismatch_follows_fallback() {
+		$evaluator = new AIPS_Similarity_Evaluator();
+		$author    = (object) array('id' => 1);
+		$topic     = array(
+			'topic_title' => 'Mismatched',
+			'embedding'   => array(0.1, 0.2),
+			'metadata'    => array('duplicate_similarity' => 0.1),
+		);
+
+		$result = $evaluator->evaluate_author_topic_auto_approval($topic, $author, array(1.0, 0.0, 0.0), $this->similarity_policy());
+
+		$this->assertSame('pending', $result['decision']);
+		$this->assertSame('relevance_unavailable', $result['reason']);
+	}
+
+	/**
+	 * Test that evaluate_author_topic_auto_approval reuses candidate embeddings from topic array or metadata.
+	 */
+	public function test_auto_approval_reuses_precomputed_candidate_embedding() {
+		$evaluator = new AIPS_Similarity_Evaluator();
+
+		$author = (object) array(
+			'id'                                 => 1,
+			'name'                               => 'Test Author',
+			'topic_auto_approval_mode'           => 'similarity',
+			'topic_auto_approval_min_score'      => 60,
+			'topic_auto_approval_max_similarity' => 0.85,
+			'topic_auto_approval_fallback'       => 'pending',
+		);
+
+		$baseline_vec = array( 1.0, 0.0, 0.0 );
+		$candidate_vec = array( 0.9, 0.1, 0.0 ); // High similarity to baseline
+
+		$topic = array(
+			'topic_title' => 'Pre-embedded Topic',
+			'score'       => 80,
+			'embedding'   => $candidate_vec,
+			'metadata'    => wp_json_encode( array(
+				'potential_duplicate'  => false,
+				'duplicate_similarity' => 0.15,
+			) ),
+		);
+
+		$result = $evaluator->evaluate_author_topic_auto_approval( $topic, $author, $baseline_vec );
+
+		$this->assertSame( 'approved', $result['decision'] );
+		$this->assertTrue( $result['meta']['auto_approved'] );
+		$this->assertGreaterThan( 0.80, $result['meta']['auto_approval_relevance'] );
+		$this->assertSame( $candidate_vec, $result['meta']['embedding'] );
+	}
+
+	/**
+	 * Test that get_author_composite_embedding retrieves cached vector from embeddings repository by content hash.
+	 */
+	public function test_author_composite_embedding_reuses_matching_content_hash() {
+		$author = (object) array(
+			'id'             => 42,
+			'name'           => 'Tech Writer',
+			'author_persona' => 'Expert in cloud computing and databases.',
+			'author_bio'     => 'Writes extensively about distributed systems.',
+			'niche'          => 'Cloud Infrastructure',
+		);
+
+		$profile_text = 'Tech Writer Expert in cloud computing and databases. Writes extensively about distributed systems. Cloud Infrastructure';
+		$content_hash = md5( $profile_text );
+		$saved_vector = array( 0.25, 0.50, 0.75 );
+
+		$emb_repo = $this->createMock( AIPS_Embeddings_Repository::class );
+		$emb_repo->method( 'get_by_object' )
+			->with( 'author', 42 )
+			->willReturn( (object) array(
+				'embedding'    => json_encode( $saved_vector ),
+				'content_hash' => $content_hash,
+			) );
+		$emb_repo->method( 'decode_embedding' )
+			->willReturn( $saved_vector );
+
+		$emb_service = $this->createMock( AIPS_Embeddings_Service::class );
+		$emb_service->method( 'is_enabled' )->willReturn( true );
+		// Ensure remote generate_embedding is NEVER called because repository cache matches!
+		$emb_service->expects( $this->never() )->method( 'generate_embedding' );
+
+		$generator = new AIPS_Author_Topics_Generator(
+			null,
+			null,
+			null,
+			null,
+			$emb_service,
+			null,
+			null,
+			null,
+			null,
+			$emb_repo
+		);
+
+		$result = $generator->get_author_composite_embedding( $author );
+		$this->assertSame( $saved_vector, $result );
 	}
 }

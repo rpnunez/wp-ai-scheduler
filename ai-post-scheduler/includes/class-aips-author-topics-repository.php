@@ -76,6 +76,73 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
+	 * SQL predicate: topic alias `t` has at least one generated post.
+	 *
+	 * Single definition of "has a generated post" shared by the bucket list
+	 * and the bucket counts so tabs and counts cannot drift apart.
+	 *
+	 * @return string
+	 */
+	private function generated_post_exists_sql() {
+		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+
+		return "EXISTS (SELECT 1 FROM {$logs_table} l WHERE l.author_topic_id = t.id AND l.action = 'post_generated' AND l.post_id IS NOT NULL)";
+	}
+
+	/**
+	 * Invalidate cached topic reads after a change made outside this repository
+	 * (e.g. a post_generated log row, which moves a topic between buckets).
+	 *
+	 * @param int $topic_id  Topic ID.
+	 * @param int $author_id Owning author ID.
+	 * @return void
+	 */
+	public function invalidate_topic_cache($topic_id, $author_id) {
+		$this->invalidate_author_topic_cache_by_id( $topic_id, 'author_topic_post_generated', $author_id );
+	}
+
+	/**
+	 * Get an author's topics for one mutually exclusive status bucket.
+	 *
+	 * Buckets match get_status_counts(): approved topics that already have a
+	 * generated post belong to 'posts_generated', not 'approved'.
+	 *
+	 * @param int    $author_id Author ID.
+	 * @param string $bucket    One of pending, approved, rejected, posts_generated.
+	 * @return array Array of topic objects, newest first.
+	 */
+	public function get_by_author_bucket($author_id, $bucket) {
+		$bucket = (string) $bucket;
+		if (!in_array($bucket, array('pending', 'approved', 'rejected', 'posts_generated'), true)) {
+			return array();
+		}
+
+		return $this->cache_read(
+			'author_topics.get_by_author_bucket',
+			array(
+				'author_id' => absint( $author_id ),
+				'bucket'    => $bucket,
+			),
+			function() use ( $author_id, $bucket ) {
+				$has_post = $this->generated_post_exists_sql();
+
+				if ('posts_generated' === $bucket) {
+					$condition = "t.status = 'approved' AND {$has_post}";
+				} elseif ('approved' === $bucket) {
+					$condition = "t.status = 'approved' AND NOT {$has_post}";
+				} else {
+					$condition = $this->wpdb->prepare('t.status = %s', $bucket);
+				}
+
+				return $this->wpdb->get_results($this->wpdb->prepare(
+					"SELECT t.* FROM {$this->table_name} t WHERE t.author_id = %d AND {$condition} ORDER BY t.generated_at DESC",
+					$author_id
+				));
+			}
+		);
+	}
+
+	/**
 	 * Get a single topic by ID.
 	 *
 	 * @param int      $id        Topic ID.
@@ -470,27 +537,22 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Associative array of bucket => count.
 	 */
 	public function get_status_counts($author_id) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
-
 		return $this->cache_read(
 			'author_topics.get_status_counts',
 			array(
 				'author_id' => absint( $author_id ),
 			),
-			function() use ( $author_id, $logs_table ) {
-				$results = $this->wpdb->get_results(
+			function() use ( $author_id ) {
+				$has_post = $this->generated_post_exists_sql();
+				$results  = $this->wpdb->get_results(
 					$this->wpdb->prepare(
 						"SELECT
 							CASE
-								WHEN t.status = 'approved' AND l.id IS NOT NULL THEN 'posts_generated'
+								WHEN t.status = 'approved' AND {$has_post} THEN 'posts_generated'
 								ELSE t.status
 							END AS bucket,
-							COUNT(DISTINCT t.id) AS count
+							COUNT(*) AS count
 						FROM {$this->table_name} t
-						LEFT JOIN {$logs_table} l
-							ON l.author_topic_id = t.id
-							AND l.action = 'post_generated'
-							AND l.post_id IS NOT NULL
 						WHERE t.author_id = %d
 						GROUP BY bucket",
 						$author_id
@@ -690,6 +752,10 @@ class AIPS_Author_Topics_Repository {
 			'author_topics.get_by_author'             => array(
 				'tier'        => 'medium',
 				'description' => 'Cache author-topic lists for admin review views.',
+			),
+			'author_topics.get_by_author_bucket'      => array(
+				'tier'        => 'medium',
+				'description' => 'Cache author-topic lists for a status bucket (pending, approved, rejected, posts_generated).',
 			),
 			'author_topics.get_by_id'                 => array(
 				'tier'        => 'medium',

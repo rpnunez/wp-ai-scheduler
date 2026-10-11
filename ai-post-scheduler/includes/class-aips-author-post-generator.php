@@ -519,6 +519,8 @@ class AIPS_Author_Post_Generator extends AIPS_Author_Slice_Scheduler_Base implem
 					'author_id' => $author->id
 				))
 			);
+			// The new log row moves the topic from the Approved to the Posts Generated bucket.
+			$this->topics_repository->invalidate_topic_cache($topic->id, $author->id);
 
 			// Always record author's last run timestamp on successful generation.
 			$this->authors_repository->update_post_generation_last_run($author->id, AIPS_DateTime::now()->timestamp());

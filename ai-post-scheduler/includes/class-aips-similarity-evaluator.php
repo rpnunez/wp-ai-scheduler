@@ -499,24 +499,38 @@ class AIPS_Similarity_Evaluator {
 	}
 
 	/**
-	 * Measure a topic title's relevance against the author baseline vector.
+	 * Measure a topic's relevance against the author baseline vector.
+	 *
+	 * Reuses $candidate_vec when supplied (e.g. computed during deduplication);
+	 * otherwise embeds the title and returns the generated vector via $candidate_vec.
 	 *
 	 * @param string     $topic_title         Topic title.
 	 * @param array|null $author_baseline_vec Composite author baseline vector.
+	 * @param array|null $candidate_vec       Precomputed candidate vector (by reference).
 	 * @return float|null Cosine similarity, or null when it cannot be measured.
 	 */
-	protected function measure_topic_relevance(string $topic_title, ?array $author_baseline_vec): ?float {
-		$embeddings_svc = $this->get_embeddings_service();
-		if (empty($author_baseline_vec) || '' === $topic_title || !$embeddings_svc || !$embeddings_svc->is_enabled()) {
+	protected function measure_topic_relevance(string $topic_title, ?array $author_baseline_vec, ?array &$candidate_vec = null): ?float {
+		if (empty($author_baseline_vec)) {
 			return null;
 		}
 
-		$tvec = $embeddings_svc->generate_embedding($topic_title);
-		if (is_wp_error($tvec) || !is_array($tvec) || count($tvec) !== count($author_baseline_vec)) {
+		if (empty($candidate_vec)) {
+			$embeddings_svc = $this->get_embeddings_service();
+			if ('' === $topic_title || !$embeddings_svc || !$embeddings_svc->is_enabled()) {
+				return null;
+			}
+			$generated = $embeddings_svc->generate_embedding($topic_title);
+			if (is_wp_error($generated) || !is_array($generated)) {
+				return null;
+			}
+			$candidate_vec = $generated;
+		}
+
+		if (count($candidate_vec) !== count($author_baseline_vec)) {
 			return null;
 		}
 
-		return $this->cosine_similarity($tvec, $author_baseline_vec);
+		return $this->cosine_similarity($candidate_vec, $author_baseline_vec);
 	}
 
 	/**
@@ -635,7 +649,17 @@ class AIPS_Similarity_Evaluator {
 				$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
 				// null when relevance cannot be measured (embeddings disabled, no
 				// baseline vector, or the embedding call failed).
-				$rel_sim = $this->measure_topic_relevance($topic_title, $author_baseline_vec);
+				// Reuse a candidate vector already computed by deduplication when present.
+				$candidate_vec = null;
+				if (!empty($topic['embedding']) && is_array($topic['embedding'])) {
+					$candidate_vec = $topic['embedding'];
+				} elseif (!empty($meta['embedding']) && is_array($meta['embedding'])) {
+					$candidate_vec = $meta['embedding'];
+				}
+				$rel_sim = $this->measure_topic_relevance($topic_title, $author_baseline_vec, $candidate_vec);
+				if (empty($meta['embedding']) && is_array($candidate_vec)) {
+					$meta['embedding'] = $candidate_vec;
+				}
 
 				$meta['auto_approval_relevance']      = null === $rel_sim ? null : round($rel_sim, 4);
 				$meta['auto_approval_duplicate_sim']  = round($dup_sim, 4);

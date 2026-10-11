@@ -297,12 +297,6 @@ make start-dev ARGS="--import-sql path/to/dump.sql"
 
 ---
 
-## MCP Bridge
-
-To connect MCP-compatible tools (GitHub Copilot, automation scripts) to the plugin, see [docs/MCP_BRIDGE.md](MCP_BRIDGE.md).
-
----
-
 ## Troubleshooting
 
 | Symptom | Fix |
