@@ -59,4 +59,54 @@ class Test_AIPS_History_Query_Service extends WP_UnitTestCase {
         $through_shim = $this->shim->get_history();
         $this->assertSame(array_keys($direct), array_keys($through_shim));
     }
+
+    public function test_extract_timeline_post_entity_data() {
+        require_once dirname(__DIR__) . '/includes/class-aips-history.php';
+        $history = new AIPS_History();
+        $ref = new ReflectionClass($history);
+        $method = $ref->getMethod('extract_timeline_post_entity_data');
+        $method->setAccessible(true);
+
+        $post_id = self::factory()->post->create(array('post_title' => 'Test Post', 'post_content' => 'Test content excerpt text for testing timeline helper.'));
+        update_post_meta($post_id, 'aips_custom_meta', 'meta_value');
+        update_post_meta($post_id, '_aips_generated_post', '1');
+
+        $container = array('post_id' => $post_id);
+        $history_item = (object) array('post_id' => $post_id);
+
+        $res = $method->invoke($history, $container, $history_item);
+        $this->assertSame('Post', $res['post_type_label']);
+        $this->assertSame('Test Post', $res['generated_title']);
+        $this->assertTrue($res['has_content']);
+        $this->assertNotEmpty($res['custom_fields']);
+    }
+
+    public function test_format_timeline_chronological_events() {
+        require_once dirname(__DIR__) . '/includes/class-aips-history.php';
+        $history = new AIPS_History();
+        $ref = new ReflectionClass($history);
+        $method = $ref->getMethod('format_timeline_chronological_events');
+        $method->setAccessible(true);
+
+        $display_logs = array(
+            array(
+                'log_type' => 'info',
+                'timestamp' => time(),
+                'sections' => array(array('message_html' => 'Log message 1')),
+                'type_ids' => array('info'),
+                'type_class' => 'info-class'
+            ),
+            array(
+                'log_type' => 'warning',
+                'timestamp' => time(),
+                'sections' => array(array('message_html' => 'Warning message alert')),
+                'type_ids' => array('warning'),
+                'type_class' => 'warning-class'
+            ),
+        );
+
+        $res = $method->invoke($history, $display_logs);
+        $this->assertSame('Warning message alert', $res['warning_text']);
+        $this->assertCount(2, $res['formatted_events']);
+    }
 }

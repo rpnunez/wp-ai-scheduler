@@ -1460,3 +1460,10 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting option parsing, slice job creation, dispatch looping, summary creation, and summary logging into focused private helper methods.
 **Consequence:** The main `schedule_batched` method is now a clean orchestrator under 20 lines. Increased number of private methods but greatly improved readability and maintainability.
 **Tests:** Added characterization coverage for batch options, slice timing and metadata, retry forwarding, partial failures, warning logging, summary metadata, and invalid item counts. The focused scheduler suite passes with 12 tests and 53 assertions.
+
+## 2026-10-10 - [Refactor History Timeline Builder God Method]
+
+- **Context:** `AIPS_History::build_history_timeline_data` was a 126-line God method handling post entity resolution, excerpt normalization, thumbnail resolution, custom fields extraction, log type humanization, date formatting, and event payload formatting all in one function, violating SRP and SoC.
+- **Decision:** Applied Extract Method refactoring to extract `extract_timeline_post_entity_data()` and `format_timeline_chronological_events()` helper methods. Reduced `build_history_timeline_data()` to a clean, 20-line orchestrator method with 100% backward compatibility.
+- **Consequence:** Improved code readability and maintainability without breaking any existing timeline functionality or contract.
+- **Tests:** Ran full PHPUnit test suite including `Test_AIPS_History_Query_Service` to ensure 0 regressions.
