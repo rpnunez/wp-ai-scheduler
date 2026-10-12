@@ -540,22 +540,30 @@ class AIPS_Author_Topics_Controller {
 		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
 		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
 
+		$user_id = get_current_user_id();
+		$update_result = $this->repository->update_status_bulk($topic_ids, 'approved', $user_id);
+
 		$success_count = 0;
 		$failed_count  = 0;
-		foreach ($topic_ids as $topic_id) {
-			$result = $this->repository->update_status($topic_id, 'approved', get_current_user_id());
-			if ($result) {
-				$this->logs_repository->log_approval($topic_id, get_current_user_id());
+
+		if (false === $update_result) {
+			$failed_count = count($topic_ids);
+		} else {
+			foreach ($topic_ids as $topic_id) {
+				if (!$this->repository->get_by_id($topic_id)) {
+					$failed_count++;
+					continue;
+				}
+
+				$this->logs_repository->log_approval($topic_id, $user_id);
 
 				// Record feedback and apply reward if feedback context is provided
 				if (!empty($reason) || !empty($reason_category)) {
-					$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+					$this->feedback_repository->record_approval($topic_id, $user_id, $reason, '', $reason_category, $source);
 					$this->penalty_service->apply_reward($topic_id, $reason_category);
 				}
 
 				$success_count++;
-			} else {
-				$failed_count++;
 			}
 		}
 
@@ -593,24 +601,32 @@ class AIPS_Author_Topics_Controller {
 		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
 		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
 
+		$user_id = get_current_user_id();
+		$update_result = $this->repository->update_status_bulk($topic_ids, 'rejected', $user_id);
+
 		$success_count = 0;
 		$failed_count  = 0;
-		foreach ($topic_ids as $topic_id) {
-			$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
-			if ($result) {
+
+		if (false === $update_result) {
+			$failed_count = count($topic_ids);
+		} else {
+			foreach ($topic_ids as $topic_id) {
+				if (!$this->repository->get_by_id($topic_id)) {
+					$failed_count++;
+					continue;
+				}
+
 				$this->embeddings_repo->delete('topic', $topic_id);
 				$this->relationships_repo->delete_for_object('topic', $topic_id);
-				$this->logs_repository->log_rejection($topic_id, get_current_user_id());
+				$this->logs_repository->log_rejection($topic_id, $user_id);
 
 				// Record feedback and apply penalty if feedback context is provided
 				if (!empty($reason) || !empty($reason_category)) {
-					$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+					$this->feedback_repository->record_rejection($topic_id, $user_id, $reason, '', $reason_category, $source);
 					$this->penalty_service->apply_penalty($topic_id, $reason_category);
 				}
 
 				$success_count++;
-			} else {
-				$failed_count++;
 			}
 		}
 
