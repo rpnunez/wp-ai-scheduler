@@ -112,8 +112,9 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 		$this->assertEmpty(array_diff($shared, $this->call_private($history_repo, 'get_auxiliary_creation_methods')));
 		$this->assertContains('notification_sent', $this->call_private($history_repo, 'get_auxiliary_creation_methods'));
 
-		$dashboard = (new ReflectionClass('AIPS_Dashboard_Repository'))->newInstanceWithoutConstructor();
-		$this->assertSame($shared, $this->call_private($dashboard, 'auxiliary_creation_methods'));
+		// The dashboard and the stats count generation runs only, so lifecycle containers
+		// are never counted there either.
+		$this->assertEmpty(array_intersect($shared, AIPS_History_Repository::generation_run_creation_methods()));
 	}
 
 	public function test_new_event_types_are_registered() {
@@ -390,7 +391,7 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 		$allowlist = array(
 			'content_indexing', 'content_index_operation', 'notification_sent', 'schedule_lifecycle',
 			'post_generation', 'topic_post_generation', 'taxonomy_generation', 'stress_test', 'bulk_schedule',
-			'research_run', 'source_fetch', 'gsc_sync', 'link_index_run',
+			'research_run', 'source_fetch', 'gsc_sync', 'link_index_run', 'author_suggestion', 'settings_connection_test',
 		);
 		$files   = glob(dirname(__DIR__) . '/includes/*.php');
 		$files[] = dirname(__DIR__) . '/ai-post-scheduler.php';

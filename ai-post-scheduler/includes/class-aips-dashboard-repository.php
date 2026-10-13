@@ -81,8 +81,8 @@ class AIPS_Dashboard_Repository {
 				'to_ts'   => (int) $to_ts,
 			),
 			function() use ( $from_ts, $to_ts ) {
-				$methods = $this->auxiliary_creation_methods();
-				$placeholders = $this->placeholders_for($methods);
+				// Generation runs only (event containers and background jobs are not runs).
+				$run_condition = AIPS_History_Repository::generation_run_stats_condition();
 
 				$row = $this->wpdb->get_row($this->wpdb->prepare(
 					"SELECT
@@ -92,10 +92,9 @@ class AIPS_Dashboard_Repository {
 						SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
 						SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
 					 FROM {$this->history_table}
-					 WHERE COALESCE(creation_method, '') NOT IN ({$placeholders})
-					   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
+					 WHERE {$run_condition}
 					   AND created_at >= %d AND created_at <= %d",
-					array_merge($methods, array( (int) $from_ts, (int) $to_ts ))
+					array( (int) $from_ts, (int) $to_ts )
 				));
 
 				return array(
@@ -252,8 +251,7 @@ class AIPS_Dashboard_Repository {
 				'limit'   => (int) $limit,
 			),
 			function() use ( $from_ts, $to_ts, $limit ) {
-				$methods = $this->auxiliary_creation_methods();
-				$placeholders = $this->placeholders_for($methods);
+				$run_condition = AIPS_History_Repository::generation_run_stats_condition('h');
 
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.completed_at, h.creation_method,
@@ -261,15 +259,10 @@ class AIPS_Dashboard_Repository {
 					 FROM {$this->history_table} h
 					 LEFT JOIN {$this->templates_table} t ON h.template_id = t.id
 					 WHERE h.created_at >= %d AND h.created_at <= %d
-					   AND COALESCE(h.creation_method, '') NOT IN ({$placeholders})
-					   AND NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)
+					   AND {$run_condition}
 					 ORDER BY h.created_at DESC
 					 LIMIT %d",
-					array_merge(
-						array( (int) $from_ts, (int) $to_ts ),
-						$methods,
-						array( (int) $limit )
-					)
+					array( (int) $from_ts, (int) $to_ts, (int) $limit )
 				));
 			}
 		);
@@ -324,12 +317,17 @@ class AIPS_Dashboard_Repository {
 				'limit'   => (int) $limit,
 			),
 			function() use ( $from_ts, $to_ts, $limit ) {
+				// The run and its topic_post_generation wrapper both carry the topic and post;
+				// only the run is the post's generation.
+				$run_condition = AIPS_History_Repository::generation_run_stats_condition('h');
+
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT h.post_id, h.generated_title, h.completed_at, t.topic_title, a.name as author_name
 					 FROM {$this->history_table} h
 					 INNER JOIN {$this->author_topics_table} t ON h.topic_id = t.id
 					 LEFT JOIN {$this->authors_table} a ON h.author_id = a.id
 					 WHERE h.status IN ('completed', 'partial') AND h.created_at >= %d AND h.created_at <= %d
+					   AND {$run_condition}
 					 ORDER BY h.completed_at DESC
 					 LIMIT %d",
 					(int) $from_ts,
@@ -391,8 +389,7 @@ class AIPS_Dashboard_Repository {
 				'to_ts'   => (int) $to_ts,
 			),
 			function() use ( $from_ts, $to_ts ) {
-				$methods = $this->auxiliary_creation_methods();
-				$placeholders = $this->placeholders_for($methods);
+				$run_condition = AIPS_History_Repository::generation_run_stats_condition();
 
 				$results = $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT
@@ -402,14 +399,10 @@ class AIPS_Dashboard_Repository {
 						COUNT(*) AS total
 					 FROM {$this->history_table}
 					 WHERE created_at >= %d AND created_at <= %d
-					   AND COALESCE(creation_method, '') NOT IN ({$placeholders})
-					   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
+					   AND {$run_condition}
 					 GROUP BY day
 					 ORDER BY day ASC",
-					array_merge(
-						array( (int) $from_ts, (int) $to_ts ),
-						$methods
-					)
+					array( (int) $from_ts, (int) $to_ts )
 				));
 
 				$data = array();
@@ -581,24 +574,5 @@ class AIPS_Dashboard_Repository {
 				'description' => 'Cache daily AI chart data (longer TTL - data finalized at end of day).',
 			),
 		);
-	}
-
-	/**
-	 * Return the shared auxiliary creation methods excluded from dashboard generation aggregates.
-	 *
-	 * @return array
-	 */
-	private function auxiliary_creation_methods() {
-		return AIPS_History_Event_Recorder::lifecycle_creation_methods();
-	}
-
-	/**
-	 * Build a placeholder list for a set of string values.
-	 *
-	 * @param array $values Values to bind.
-	 * @return string
-	 */
-	private function placeholders_for(array $values) {
-		return implode(', ', array_fill(0, count($values), '%s'));
 	}
 }

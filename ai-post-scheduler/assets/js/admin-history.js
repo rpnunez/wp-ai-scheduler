@@ -1606,6 +1606,11 @@
 						$('#aips-stat-stalled').text(stats.stalled || 0);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
 						$('#aips-stat-median-duration').text(self.formatDuration(stats.median_duration));
+						if (stats.jobs) {
+							$('#aips-stat-jobs').text(stats.jobs.total || 0);
+							$('#aips-stat-jobs-failed').text(stats.jobs.failed || 0);
+							$('#aips-stat-jobs-stalled').text(stats.jobs.stalled || 0);
+						}
 
 						if (parseInt(stats.processing || 0, 10) + parseInt(stats.stalled || 0, 10) > 0) {
 							$('#aips-clear-processing-btn').show();
@@ -1738,7 +1743,10 @@
 
 		applyMetricFilter: function (e) {
 			e.preventDefault();
-			$('#aips-filter-status').val($(e.currentTarget).data('status') || '');
+			var $tile = $(e.currentTarget);
+			$('#aips-filter-status').val($tile.data('status') || '');
+			// Run tiles list generation runs only, so the tile and the list count the same rows.
+			$('#aips-filter-domain').val($tile.data('domain') || '');
 			this.applyFilter();
 		},
 
