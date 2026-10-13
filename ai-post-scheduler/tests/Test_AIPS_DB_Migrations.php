@@ -271,4 +271,39 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertContains( 'post_generation_lock', $authors_cols );
 		$this->assertContains( 'claimed_at', $topics_cols );
 	}
+
+	/**
+	 * migrate_to_3_7_15() must fill a NULL post_type on generation-run rows from the
+	 * post, leave event rows alone and never overwrite an existing value.
+	 */
+	public function test_migrate_to_3_7_15_backfills_post_type_on_run_rows_only() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+		$history_repository = new AIPS_History_Repository();
+		$run_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+		) );
+		$event_id           = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'topic_post_generation',
+		) );
+		$set_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'manual',
+			'post_type'       => 'post',
+		) );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.14' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$this->assertSame( 'page', $history_repository->get_by_id( $run_id )->post_type );
+		$this->assertNull( $history_repository->get_by_id( $event_id )->post_type );
+		$this->assertSame( 'post', $history_repository->get_by_id( $set_id )->post_type );
+	}
 }

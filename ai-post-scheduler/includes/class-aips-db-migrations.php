@@ -226,6 +226,13 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.14', '<' ) ) {
 			$this->migrate_to_3_7_14();
 		}
+
+		// migrate_to_3_7_15() fills aips_history.post_type for generation runs written
+		// before the write path populated it, so History filters and the Pending Review
+		// and Partial Generations tabs can rely on it.
+		if ( version_compare( $from_version, '3.7.15', '<' ) ) {
+			$this->migrate_to_3_7_15();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1362,6 +1369,25 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.14: Added post_generation_lock to authors and claimed_at to author_topics.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.15.
+	 *
+	 * Backfills the NULL post_type on generation-run History rows created after the
+	 * column was introduced (3.4.0) but before the write path set it. Event rows and
+	 * rows whose post no longer exists are left alone; existing values are never
+	 * overwritten.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_15() {
+		$changed = AIPS_History_Repository::instance()->backfill_post_type();
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.15: Backfilled post_type on %d History rows.', $changed ),
+			'info'
+		);
 	}
 
 	/**

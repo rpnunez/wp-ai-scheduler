@@ -92,11 +92,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      *
      * 'bulk_generate' is the Planner's per-post run; the bulk summary container
      * shares the value but never has a post_id, so post-keyed queries are unaffected.
+     * 'post_generation' is the run container's own type, which becomes its
+     * creation_method when the caller passes none.
      *
      * @return string[]
      */
     public static function generation_run_creation_methods() {
-        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate');
+        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation');
 
         /**
          * Filters the creation_method values treated as post-generation runs.
@@ -136,22 +138,28 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      *                            newest run per post is unchanged by it; it only
      *                            keeps the aggregate from scanning posts the caller
      *                            will discard anyway.
+     * @param int    $campaign_id Optional campaign to restrict to. Unlike $post_status
+     *                            this changes which run is newest: only that
+     *                            campaign's runs are considered.
      * @return string Parenthesised sub-select exposing post_id and latest_history_id.
      */
-    public static function latest_generation_run_subquery($post_status = '') {
+    public static function latest_generation_run_subquery($post_status = '', $campaign_id = 0) {
         global $wpdb;
 
-        $table = $wpdb->prefix . 'aips_history';
-        $join  = '';
+        $table       = $wpdb->prefix . 'aips_history';
+        $join        = '';
+        $campaign_id = absint($campaign_id);
         if ($post_status !== '') {
             $join = "INNER JOIN {$wpdb->posts} p ON p.ID = r.post_id AND p.post_status = '" . esc_sql($post_status) . "'";
         }
+        $campaign_sql = $campaign_id ? "AND r.campaign_id = {$campaign_id}" : '';
 
         return "(SELECT r.post_id, MAX(r.id) AS latest_history_id
                 FROM {$table} r
                 {$join}
                 WHERE r.status IN ('completed', 'partial')
                   AND r.post_id IS NOT NULL
+                  {$campaign_sql}
                   AND " . self::generation_run_condition('r') . "
                 GROUP BY r.post_id)";
     }
@@ -1106,6 +1114,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'template_id' => 0,
             'campaign_id' => 0,
             'author_id' => 0,
+            'post_type' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
         );
@@ -1139,6 +1148,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_args[] = $args['author_id'];
         }
 
+        if (!empty($args['post_type'])) {
+            // The post is authoritative: history rows written before the column existed have NULL.
+            $where_clauses[] = 'p.post_type = %s';
+            $where_args[] = sanitize_key($args['post_type']);
+        }
+
         if (!empty($args['search'])) {
             $where_clauses[] = '(h.generated_title LIKE %s OR p.post_title LIKE %s)';
             $search_term = '%' . $this->wpdb->esc_like($args['search']) . '%';
@@ -1161,6 +1176,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         $posts_table = $this->wpdb->posts;
         $postmeta_table = $this->wpdb->postmeta;
+        // Newest generation run per post: event rows are always newer than the run they describe.
+        $latest_run = self::latest_generation_run_subquery();
 
         $query = "SELECT
                 h.*,
@@ -1172,12 +1189,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 pm_incomplete.meta_value as is_currently_incomplete,
                 pm_status.meta_value as component_statuses
             FROM {$this->table_name} h
-            INNER JOIN (
-                SELECT post_id, MAX(id) AS latest_history_id
-                FROM {$this->table_name}
-                WHERE status IN ('completed', 'partial') AND post_id IS NOT NULL
-                GROUP BY post_id
-            ) latest ON latest.latest_history_id = h.id
+            INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
             INNER JOIN {$posts_table} p ON h.post_id = p.ID
             LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
             LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
@@ -1204,12 +1216,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*)
                 FROM {$this->table_name} h
-                INNER JOIN (
-                    SELECT post_id, MAX(id) AS latest_history_id
-                    FROM {$this->table_name}
-                    WHERE status IN ('completed', 'partial') AND post_id IS NOT NULL
-                    GROUP BY post_id
-                ) latest ON latest.latest_history_id = h.id
+                INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
                 LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
                 LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
@@ -1220,12 +1227,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $total = $this->wpdb->get_var(
                 "SELECT COUNT(*)
                 FROM {$this->table_name} h
-                INNER JOIN (
-                    SELECT post_id, MAX(id) AS latest_history_id
-                    FROM {$this->table_name}
-                    WHERE status IN ('completed', 'partial') AND post_id IS NOT NULL
-                    GROUP BY post_id
-                ) latest ON latest.latest_history_id = h.id
+                INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
                 LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
                 LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
@@ -2179,6 +2181,57 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         ));
 
         return $this->finish_bulk_status_update($updated) > 0;
+    }
+
+    /**
+     * Fill aips_history.post_type from the linked post for generation runs that lack it.
+     *
+     * Rows written after the column was introduced (3.4.0) but before the write path
+     * populated it have a NULL post_type. Only generation-run rows whose post still
+     * exists are touched, an existing value is never overwritten, and event rows are
+     * left alone. Batched and idempotent.
+     *
+     * @param int $batch_size Rows updated per statement.
+     * @return int Number of rows changed.
+     */
+    public function backfill_post_type($batch_size = 500) {
+        $batch_size    = max(1, absint($batch_size));
+        $posts_table   = $this->wpdb->posts;
+        $run_condition = self::generation_run_condition('h');
+        $total         = 0;
+
+        do {
+            $ids = $this->wpdb->get_col($this->wpdb->prepare(
+                "SELECT h.id
+                 FROM {$this->table_name} h
+                 INNER JOIN {$posts_table} p ON p.ID = h.post_id
+                 WHERE h.post_id IS NOT NULL
+                   AND (h.post_type IS NULL OR h.post_type = '')
+                   AND p.post_type <> ''
+                   AND {$run_condition}
+                 LIMIT %d",
+                $batch_size
+            ));
+            if (empty($ids)) {
+                break;
+            }
+
+            $ids          = array_map('intval', $ids);
+            $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+            $updated      = $this->wpdb->query($this->wpdb->prepare(
+                "UPDATE {$this->table_name} h
+                 INNER JOIN {$posts_table} p ON p.ID = h.post_id
+                 SET h.post_type = p.post_type
+                 WHERE h.id IN ({$placeholders})",
+                $ids
+            ));
+            if ($updated === false || $updated < 1) {
+                break;
+            }
+            $total += (int) $updated;
+        } while (count($ids) === $batch_size);
+
+        return $this->finish_bulk_status_update($total);
     }
 
     /**

@@ -3,6 +3,11 @@
 ## [3.7.14] - 2026-10-13
 
 ### Fixed
+- **History Run Queries (Partial Generations, Campaign Recent Posts):**
+  - Partial Generations and the campaign recent-posts list now resolve each post to its newest generation run instead of its newest History row, so topic-generation wrappers, review actions, content-indexing runs and notifications no longer replace the run (wrong row, wrong history link).
+  - Pending Review also lists runs whose `creation_method` is the container default `post_generation`, which the first Pending Review fix left out.
+  - The Partial Generations post-type filter now works; it was passed by the page but ignored by the query.
+  - Migration 3.7.15 backfills `aips_history.post_type` for generation runs written before the column was populated, so the History post-type filter no longer hides them.
 - **Author Post Generation Race Condition & Duplicate Runs (#2203):**
   - Added atomic compare-and-swap (CAS) topic claim lock (`claimed_at`) with TTL (default 15 minutes) and historical post check (`NOT EXISTS` in `aips_author_topic_logs`) before post generation starts.
   - Added per-author post generation run lock (`post_generation_lock`) with TTL (default 15 minutes) on `aips_authors` to prevent concurrent slice executions or overlapping manual/scheduled generation runs for the same author.
