@@ -250,4 +250,25 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$after = $history_repository->get_by_id( $history_id );
 		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
 	}
+
+	/**
+	 * migrate_to_3_7_14() must ensure post_generation_lock exists on aips_authors
+	 * and claimed_at exists on aips_author_topics.
+	 */
+	public function test_migrate_to_3_7_14_adds_lock_and_claim_columns() {
+		AIPS_DB_Manager::install_tables();
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.13' );
+		AIPS_DB_Migrations::check_and_run();
+
+		global $wpdb;
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		$topics_table  = $wpdb->prefix . 'aips_author_topics';
+
+		$authors_cols = $wpdb->get_col( "SHOW COLUMNS FROM `{$authors_table}`" );
+		$topics_cols  = $wpdb->get_col( "SHOW COLUMNS FROM `{$topics_table}`" );
+
+		$this->assertContains( 'post_generation_lock', $authors_cols );
+		$this->assertContains( 'claimed_at', $topics_cols );
+	}
 }
