@@ -56,6 +56,7 @@ class Test_AIPS_Generation_Run_Partial_Campaign extends WP_UnitTestCase {
 			'generated_title' => 'Generated Title',
 			'created_at'      => time(),
 			'completed_at'    => time(),
+			'record_kind'     => AIPS_History_Record_Kind::for_creation_method($creation_method, array('post_id' => $post_id)),
 		);
 		if (null !== $creation_method) {
 			$row['creation_method'] = $creation_method;

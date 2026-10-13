@@ -269,7 +269,7 @@ class AIPS_Metrics_Repository {
 
 				// Generation runs only: event containers and indexing rows carry
 				// their own completed/failed/partial outcomes that are not generations.
-				$run_condition = AIPS_History_Repository::generation_run_stats_condition();
+				$run_condition = AIPS_History_Repository::generation_run_condition();
 
 				$partial_count = (int) $this->wpdb->get_var(
 					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial' AND {$run_condition}"
@@ -447,7 +447,7 @@ class AIPS_Metrics_Repository {
 	 */
 	private function get_generation_counts( $window_days ) {
 		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
-		$run_condition = AIPS_History_Repository::generation_run_stats_condition();
+		$run_condition = AIPS_History_Repository::generation_run_condition();
 
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
@@ -494,7 +494,7 @@ class AIPS_Metrics_Repository {
 	 */
 	private function get_duration_percentiles( $window_days ) {
 		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
-		$run_condition = AIPS_History_Repository::generation_run_stats_condition();
+		$run_condition = AIPS_History_Repository::generation_run_condition();
 
 		// Fetch all durations so we can compute percentiles in PHP without
 		// relying on ROW_NUMBER() / NTILE() which require MySQL 8+.
@@ -564,7 +564,7 @@ class AIPS_Metrics_Repository {
 	 */
 	private function get_avg_ai_calls_per_post( $window_days ) {
 		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
-		$run_condition = AIPS_History_Repository::generation_run_stats_condition('h');
+		$run_condition = AIPS_History_Repository::generation_run_condition('h');
 
 		// Compute average AI request entries per completed history record,
 		// including posts with zero AI requests (counted as 0).
@@ -725,7 +725,7 @@ class AIPS_Metrics_Repository {
 				        CASE WHEN completed_at >= created_at THEN completed_at - created_at ELSE NULL END AS duration_seconds,
 				        error_message
 				FROM {$this->table_history}
-				WHERE " . AIPS_History_Repository::generation_run_stats_condition() . "
+				WHERE " . AIPS_History_Repository::generation_run_condition() . "
 				ORDER BY created_at DESC
 				LIMIT %d",
 				$limit

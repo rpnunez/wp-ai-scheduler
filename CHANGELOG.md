@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Added
+- **History `record_kind` Column:**
+  - Every History row now stores what it is: `generation` (a run that produces or regenerates a post), `job` (content indexing, embeddings, bulk slices, source fetches and other background work) or `event` (lifecycle containers, topic-generation wrappers, review actions, notifications). Run lists, run statistics and the status sync filter on the stored kind instead of guessing from `creation_method` names, so a new container type can no longer leak into them: anything unclassified is an event.
+  - The generator tags every run as a generation whatever its `creation_method`, and the bulk-generation summary container is a job, which separates it from the Planner's per-post runs that share its name. `AIPS_History_Record_Kind` classifies everything else; the `aips_generation_run_creation_methods` and `aips_history_job_creation_methods` filters extend it.
+  - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
+
 ### Fixed
 - **History Status Sync Targets the Generation Run:**
   - Moving a post's History status between `completed` and `partial` (when its components become incomplete or are repaired) now updates the post's newest generation run, the row the Pending Review and Partial Generations tabs show. It used to update the post's newest non-event row, which for an indexed post is the `content_indexing` row: that row was marked partial while the real run kept its old status, and a failed indexing row blocked the update entirely.

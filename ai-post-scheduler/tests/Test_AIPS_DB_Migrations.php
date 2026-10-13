@@ -344,4 +344,57 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			wp_delete_post( $post_id, true );
 		}
 	}
+
+	/**
+	 * migrate_to_3_7_17() must classify existing rows, then re-run the post_type backfill
+	 * and the status repair, which both select rows by record_kind.
+	 */
+	public function test_migrate_to_3_7_17_classifies_rows_and_reruns_the_kind_based_repairs() {
+		global $wpdb;
+
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true' );
+
+		$table = $wpdb->prefix . 'aips_history';
+		$ids   = array();
+		foreach ( array(
+			'run'      => array( 'scheduled', 'completed' ),
+			'indexing' => array( 'content_indexing', 'partial' ),
+			'wrapper'  => array( 'topic_post_generation', 'completed' ),
+		) as $key => $row ) {
+			// Rows as an older install has them: record_kind left at the column default.
+			$wpdb->insert( $table, array(
+				'post_id'         => $post_id,
+				'creation_method' => $row[0],
+				'status'          => $row[1],
+				'created_at'      => time(),
+				'completed_at'    => time(),
+			) );
+			$ids[ $key ] = (int) $wpdb->insert_id;
+		}
+
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.16' );
+			AIPS_DB_Migrations::check_and_run();
+
+			$history = new AIPS_History_Repository();
+			$this->assertSame( 'generation', $history->get_by_id( $ids['run'] )->record_kind );
+			$this->assertSame( 'job', $history->get_by_id( $ids['indexing'] )->record_kind );
+			$this->assertSame( 'event', $history->get_by_id( $ids['wrapper'] )->record_kind );
+
+			// The repairs that select rows by kind ran after the classification.
+			$this->assertSame( 'page', $history->get_by_id( $ids['run'] )->post_type );
+			$this->assertSame( 'partial', $history->get_by_id( $ids['run'] )->status );
+			$this->assertSame( 'completed', $history->get_by_id( $ids['indexing'] )->status );
+		} finally {
+			// install_tables() runs DDL, which commits, so the test case's rollback will not
+			// remove these rows.
+			foreach ( $ids as $id ) {
+				$wpdb->delete( $table, array( 'id' => $id ), array( '%d' ) );
+			}
+			wp_delete_post( $post_id, true );
+		}
+	}
 }

@@ -229,7 +229,7 @@ class Test_AIPS_Campaigns_Repository extends WP_UnitTestCase {
 		$this->assertStringContainsString('MAX(r.id) AS latest_history_id', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString("r.status IN ('completed', 'partial')", $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('r.campaign_id = 42', $this->wpdb_stub->last_get_results_query);
-		$this->assertStringContainsString("r.creation_method IN ('scheduled'", $this->wpdb_stub->last_get_results_query);
+		$this->assertStringContainsString("r.record_kind = 'generation'", $this->wpdb_stub->last_get_results_query);
 		$this->assertStringNotContainsString('topic_post_generation', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('GROUP BY r.post_id', $this->wpdb_stub->last_get_results_query);
 		$this->assertStringContainsString('INNER JOIN wp_posts p ON h.post_id = p.ID', $this->wpdb_stub->last_get_results_query);

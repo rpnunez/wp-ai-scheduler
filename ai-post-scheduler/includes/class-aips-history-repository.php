@@ -84,14 +84,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * creation_method values written by real post-generation runs.
      *
-     * Only these rows own a generated post's components. Event containers
-     * (review actions, topic-generation wrappers, notifications), indexing and
-     * other background jobs also carry a post_id and finish as 'completed', so
-     * every "the run that generated this post" lookup must go through
-     * generation_run_condition() instead of listing methods to exclude.
+     * These classify a row as a generation run when it is written without an explicit
+     * record_kind, and during the one-off backfill of existing rows (see
+     * AIPS_History_Record_Kind). Queries never use this list: they filter on the stored
+     * record_kind through generation_run_condition(). The generator tags every run
+     * explicitly, so this list only matters for rows written some other way.
      *
-     * 'bulk_generate' is the Planner's per-post run; the bulk summary container
-     * shares the value but never has a post_id, so post-keyed queries are unaffected.
+     * 'bulk_generate' is the Planner's per-post run; the bulk summary container shares
+     * the value, so the bulk service tags that container 'job' explicitly.
      * 'post_generation' is the run container's own type, which becomes its
      * creation_method when the caller passes none.
      *
@@ -101,7 +101,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation');
 
         /**
-         * Filters the creation_method values treated as post-generation runs.
+         * Filters the creation_method values classified as post-generation runs when a
+         * row is written without an explicit record_kind, and by the backfill.
+         *
+         * It does not change rows that are already stored: after adding a method here,
+         * run AIPS_History_Repository::backfill_record_kind() to promote its existing
+         * rows (only rows still marked 'event' are touched).
          *
          * @param string[] $methods creation_method values.
          */
@@ -111,44 +116,22 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * SQL condition matching post-generation runs.
+     * SQL condition matching generation runs: rows whose stored record_kind is
+     * 'generation'.
      *
-     * Rows with no creation_method are legacy runs: AIPS_History_Container is the
-     * only writer and always persists its type as the method, so a NULL/empty
-     * value cannot be an event row. A new writer that calls
-     * AIPS_History_Repository::create() directly must pass a creation_method.
+     * The kind is written with the row (see AIPS_History_Record_Kind), so no query has
+     * to guess from creation_method names which rows are real post generations.
      *
      * @param string $alias Optional table alias (without the dot).
      * @return string
      */
     public static function generation_run_condition($alias = '') {
-        $column = ($alias !== '' ? $alias . '.' : '') . 'creation_method';
-        $list   = self::quoted_sql_list(self::generation_run_creation_methods());
-
-        return "({$column} IS NULL OR {$column} = '' OR {$column} IN ({$list}))";
+        return ($alias !== '' ? $alias . '.' : '') . "record_kind = 'generation'";
     }
 
     /**
-     * SQL condition for rows that count in statistics: generation runs, minus the
-     * legacy empty shells (no creation_method and no linkage at all).
-     *
-     * History stats, the dashboard and the metrics repository all use this, so the same
-     * rows are counted everywhere.
-     *
-     * @param string $alias Optional table alias (without the dot).
-     * @return string
-     */
-    public static function generation_run_stats_condition($alias = '') {
-        $prefix = $alias !== '' ? $alias . '.' : '';
-
-        return self::generation_run_condition($alias)
-            . " AND NOT ({$prefix}creation_method IS NULL AND {$prefix}template_id IS NULL AND {$prefix}topic_id IS NULL"
-            . " AND {$prefix}post_id IS NULL AND {$prefix}author_id IS NULL)";
-    }
-
-    /**
-     * SQL condition for background-job rows: not a generation run and not an event
-     * container. Content indexing, embeddings, bulk slices, source fetches and the like.
+     * SQL condition matching background-job rows: content indexing, embeddings, bulk
+     * slices, source fetches and the like.
      *
      * Reported separately from the run figures (see get_stats()['jobs']).
      *
@@ -156,10 +139,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string
      */
     public static function background_job_condition($alias = '') {
-        $column = ($alias !== '' ? $alias . '.' : '') . 'creation_method';
-
-        return '(NOT ' . self::generation_run_condition($alias)
-            . " AND {$column} NOT IN (" . self::event_only_in_sql() . '))';
+        return ($alias !== '' ? $alias . '.' : '') . "record_kind = 'job'";
     }
 
     /**
@@ -1536,7 +1516,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             function() {
                 // Generation runs only: event containers, indexing and other background
                 // jobs would otherwise inflate the totals and the success rate.
-                $run_condition = self::generation_run_stats_condition();
+                $run_condition = self::generation_run_condition();
                 $results = $this->wpdb->get_row(
                     "SELECT
                         COUNT(*) as total,
@@ -1603,7 +1583,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // Whether an in-progress run is Stalled depends on the current time and no write
         // marks the moment it goes idle, so the split is computed live, outside the cache.
         if ($stats['processing'] > 0) {
-            $stalled = $this->count_stalled_rows(self::generation_run_stats_condition('h'));
+            $stalled = $this->count_stalled_rows(self::generation_run_condition('h'));
 
             $stats['stalled']     = min($stalled, $stats['processing']);
             $stats['processing'] -= $stats['stalled'];
@@ -1657,7 +1637,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
         $start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
-        $run_condition = self::generation_run_stats_condition();
+        $run_condition = self::generation_run_condition();
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
@@ -1949,9 +1929,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
             'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : null,
             'created_at' => absint($data['created_at']),
+            'record_kind' => AIPS_History_Record_Kind::resolve($data),
         );
 
-        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d');
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         $insert_id = $result ? (int) $this->wpdb->insert_id : false;
@@ -1986,6 +1967,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if (isset($data['post_type'])) {
             $update_data['post_type'] = sanitize_key($data['post_type']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['record_kind']) && AIPS_History_Record_Kind::is_valid($data['record_kind'])) {
+            $update_data['record_kind'] = $data['record_kind'];
             $format[] = '%s';
         }
 
@@ -2256,6 +2242,107 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         ));
 
         return $this->finish_bulk_status_update($updated) > 0;
+    }
+
+    /**
+     * Classify existing rows as generation runs or background jobs.
+     *
+     * The schema upgrade adds record_kind with the default 'event', so every existing
+     * row starts as an event. This promotes the rows that are generation runs or jobs
+     * from their creation_method, in batches. Only rows still marked 'event' are
+     * touched, so a kind written by newer code is never overwritten and a second run
+     * changes nothing.
+     *
+     * 'bulk_generate' is both the Planner's per-post run and the bulk summary container:
+     * a completed row without a post is the summary and becomes a job; with a post, or
+     * failed, pending or in progress, it is a run. New rows are tagged when written;
+     * this is the best available rule for historic ones.
+     *
+     * Rows that carry a post but match no known method are left as events; they are
+     * returned in `unclassified` (method => count) so the caller can report them.
+     *
+     * @param int $batch_size Rows updated per statement.
+     * @return array{generation:int, job:int, errors:int, unclassified:array<string,int>}
+     */
+    public function backfill_record_kind($batch_size = 1000) {
+        $batch_size = max(1, absint($batch_size));
+
+        $runs   = self::quoted_sql_list(self::generation_run_creation_methods());
+        $events = self::quoted_sql_list(AIPS_History_Record_Kind::event_creation_methods());
+        $jobs   = self::quoted_sql_list(AIPS_History_Record_Kind::job_creation_methods());
+        $chain  = array();
+        foreach (self::chain_method_patterns() as $pattern) {
+            $chain[] = "creation_method LIKE '{$pattern}'";
+        }
+
+        // Only a finished row can be told apart: a Planner run that is still pending or
+        // in progress has no post yet either, and must stay a generation.
+        $bulk_summary = "(creation_method = 'bulk_generate' AND post_id IS NULL AND status = 'completed')";
+
+        $conditions = array(
+            AIPS_History_Record_Kind::GENERATION => "((creation_method IN ({$runs}) AND NOT {$bulk_summary})"
+                . " OR ((creation_method IS NULL OR creation_method = '')"
+                . ' AND (template_id IS NOT NULL OR topic_id IS NOT NULL OR post_id IS NOT NULL OR author_id IS NOT NULL)))',
+            AIPS_History_Record_Kind::JOB        => '(((creation_method IN (' . $jobs . ') OR ' . implode(' OR ', $chain) . ')'
+                . " AND creation_method NOT IN ({$runs}) AND creation_method NOT IN ({$events}))"
+                . " OR {$bulk_summary})",
+        );
+
+        $counts = array(AIPS_History_Record_Kind::GENERATION => 0, AIPS_History_Record_Kind::JOB => 0);
+        $errors = 0;
+
+        // The SQL contains LIKE wildcards, so it is not passed through prepare(); every
+        // interpolated value is a code constant or an integer.
+        foreach ($conditions as $kind => $condition) {
+            $total = 0;
+            do {
+                $changed = $this->wpdb->query(
+                    "UPDATE {$this->table_name} SET record_kind = '{$kind}' WHERE record_kind = 'event' AND {$condition} LIMIT {$batch_size}"
+                );
+                if ($changed === false) {
+                    $errors++;
+                    break;
+                }
+                $total += (int) $changed;
+            } while ((int) $changed === $batch_size);
+
+            $counts[$kind] = $this->finish_bulk_status_update($total);
+        }
+
+        return array(
+            'generation'   => $counts[AIPS_History_Record_Kind::GENERATION],
+            'job'          => $counts[AIPS_History_Record_Kind::JOB],
+            'errors'       => $errors,
+            'unclassified' => $this->unclassified_methods_with_posts(),
+        );
+    }
+
+    /**
+     * Creation methods of rows that carry a post but are still marked 'event' without
+     * being a known event type: the rows a name-based backfill may have misjudged.
+     *
+     * @param int $limit Maximum number of methods to return.
+     * @return array<string,int> creation_method => row count, most frequent first.
+     */
+    private function unclassified_methods_with_posts($limit = 10) {
+        $events = self::quoted_sql_list(AIPS_History_Record_Kind::event_creation_methods());
+        $rows   = $this->wpdb->get_results(
+            "SELECT creation_method AS method, COUNT(*) AS n
+             FROM {$this->table_name}
+             WHERE record_kind = 'event'
+               AND post_id IS NOT NULL
+               AND creation_method NOT IN ({$events})
+             GROUP BY creation_method
+             ORDER BY n DESC
+             LIMIT " . absint($limit)
+        );
+
+        $methods = array();
+        foreach ((array) $rows as $row) {
+            $methods[(string) $row->method] = (int) $row->n;
+        }
+
+        return $methods;
     }
 
     /**

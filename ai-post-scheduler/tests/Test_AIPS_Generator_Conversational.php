@@ -201,7 +201,30 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 		return new AIPS_Test_Conversational_AI_Service($text_responses);
 	}
 
-	private function make_context() {
+	public function test_run_container_is_tagged_a_generation_whatever_its_creation_method() {
+		$history   = new AIPS_Test_Conversational_History_Service();
+		$generator = new AIPS_Generator(
+			null,
+			$this->make_service(array(self::BODY, 'A Title', 'An excerpt.')),
+			null,
+			null,
+			null,
+			new AIPS_Test_Conversational_Post_Manager(),
+			$history
+		);
+
+		$generator->generate_post($this->make_context('extension_run'));
+
+		$this->assertSame('post_generation', $history->created[0]['type']);
+		$this->assertSame('extension_run', $history->created[0]['metadata']['creation_method']);
+		$this->assertSame(
+			AIPS_History_Record_Kind::GENERATION,
+			$history->created[0]['metadata']['record_kind'],
+			'A run is a generation even under a creation_method the classifier does not know.'
+		);
+	}
+
+	private function make_context($creation_method = 'scheduled') {
 		$template = (object) array(
 			'id'                      => 321,
 			'name'                    => 'Conversational Test',
@@ -217,7 +240,7 @@ class Test_AIPS_Generator_Conversational extends WP_UnitTestCase {
 			'article_structure_id'    => null,
 		);
 
-		return new AIPS_Template_Context($template, null, 'Widgets', 'scheduled');
+		return new AIPS_Template_Context($template, null, 'Widgets', $creation_method);
 	}
 }
 
@@ -313,11 +336,16 @@ class AIPS_Test_Conversational_History_Service implements AIPS_History_Service_I
 
 	public $container;
 
+	/** @var array[] Every create() call: ['type', 'metadata']. */
+	public $created = array();
+
 	public function __construct() {
 		$this->container = new AIPS_Test_Conversational_History_Container();
 	}
 
 	public function create($type, $metadata = array()) {
+		$this->created[] = array('type' => $type, 'metadata' => $metadata);
+
 		return $this->container;
 	}
 

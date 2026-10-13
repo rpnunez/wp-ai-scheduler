@@ -82,7 +82,7 @@ class AIPS_Dashboard_Repository {
 			),
 			function() use ( $from_ts, $to_ts ) {
 				// Generation runs only (event containers and background jobs are not runs).
-				$run_condition = AIPS_History_Repository::generation_run_stats_condition();
+				$run_condition = AIPS_History_Repository::generation_run_condition();
 
 				$row = $this->wpdb->get_row($this->wpdb->prepare(
 					"SELECT
@@ -251,7 +251,7 @@ class AIPS_Dashboard_Repository {
 				'limit'   => (int) $limit,
 			),
 			function() use ( $from_ts, $to_ts, $limit ) {
-				$run_condition = AIPS_History_Repository::generation_run_stats_condition('h');
+				$run_condition = AIPS_History_Repository::generation_run_condition('h');
 
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.completed_at, h.creation_method,
@@ -319,7 +319,7 @@ class AIPS_Dashboard_Repository {
 			function() use ( $from_ts, $to_ts, $limit ) {
 				// The run and its topic_post_generation wrapper both carry the topic and post;
 				// only the run is the post's generation.
-				$run_condition = AIPS_History_Repository::generation_run_stats_condition('h');
+				$run_condition = AIPS_History_Repository::generation_run_condition('h');
 
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT h.post_id, h.generated_title, h.completed_at, t.topic_title, a.name as author_name
@@ -389,7 +389,7 @@ class AIPS_Dashboard_Repository {
 				'to_ts'   => (int) $to_ts,
 			),
 			function() use ( $from_ts, $to_ts ) {
-				$run_condition = AIPS_History_Repository::generation_run_stats_condition();
+				$run_condition = AIPS_History_Repository::generation_run_condition();
 
 				$results = $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT
