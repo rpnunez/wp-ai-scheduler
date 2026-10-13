@@ -343,7 +343,7 @@ class AIPS_Campaigns_Repository {
 
 		$posts_table = $this->wpdb->posts;
 		// Newest generation run of this campaign per post; event rows are never "the post's run".
-		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery('', $campaign_id);
+		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery(array('campaign_id' => $campaign_id));
 
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT

@@ -120,7 +120,7 @@ class AIPS_Post_Review_Repository {
 		
 		$templates_table = $this->wpdb->prefix . 'aips_templates';
 		$posts_table = $this->wpdb->posts;
-		$latest_run = AIPS_History_Repository::latest_generation_run_subquery('draft');
+		$latest_run = AIPS_History_Repository::latest_generation_run_subquery(array('post_status' => 'draft'));
 		
 		// Query for items
 		$query_args = $where_args;
@@ -180,7 +180,7 @@ class AIPS_Post_Review_Repository {
 	 */
 	public function get_draft_count() {
 		$posts_table = $this->wpdb->posts;
-		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery('draft');
+		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery(array('post_status' => 'draft'));
 		
 		$count = $this->wpdb->get_var("
 			SELECT COUNT(*) 

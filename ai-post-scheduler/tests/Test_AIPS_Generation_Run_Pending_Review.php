@@ -285,7 +285,7 @@ class Test_AIPS_Generation_Run_Pending_Review extends WP_UnitTestCase {
 		$this->insert_history($published_id, 'scheduled');
 
 		$all   = $wpdb->get_col('SELECT post_id FROM ' . AIPS_History_Repository::latest_generation_run_subquery() . ' latest');
-		$draft_only = $wpdb->get_col('SELECT post_id FROM ' . AIPS_History_Repository::latest_generation_run_subquery('draft') . ' latest');
+		$draft_only = $wpdb->get_col('SELECT post_id FROM ' . AIPS_History_Repository::latest_generation_run_subquery(array('post_status' => 'draft')) . ' latest');
 
 		$this->assertContains((string) $published_id, $all);
 		$this->assertNotContains((string) $published_id, $draft_only);
