@@ -600,10 +600,17 @@
 .aips-history-metric-label { display:block; margin-top:4px; color:var(--aips-gray-600); font-size:12px; }
 .aips-history-metric-sub { display:block; margin-top:2px; color:var(--aips-gray-500); font-size:11px; }
 .aips-history-quick-dates { display:inline-flex; gap:2px; }
-.aips-history-page .aips-filter-left { width:100%; }
-.aips-filter-left #aips-history-search-input { flex:0 1 320px; min-width:220px; width:320px; }
-.aips-filter-left #aips-filter-status { flex:0 0 170px; }
-.aips-history-advanced-filters { display:flex; flex-basis:100%; gap:8px; align-items:center; padding-top:8px; }
+/* Filter bar: row 1 = dropdowns (left) + search inputs (right); row 2 = dates + Filter. */
+.aips-history-filter-bar { flex-direction:column; align-items:stretch; gap:10px; }
+.aips-history-filter-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.aips-history-filter-selects,.aips-history-advanced-filters,.aips-history-filter-search { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.aips-history-filter-search { margin-left:auto; }
+.aips-history-filter-bar .aips-form-select { flex:0 0 auto; width:auto; min-width:0; max-width:150px; }
+.aips-history-filter-bar #aips-history-search-input { flex:0 1 180px; width:180px; min-width:140px; }
+.aips-history-filter-bar #aips-filter-correlation { flex:0 1 160px; width:160px; min-width:120px; }
+.aips-history-filter-row-dates .aips-date-range-group { display:inline-flex; align-items:center; gap:6px; }
+.aips-history-filter-row-dates .aips-date-range-group .aips-form-input { width:140px; }
+.aips-history-filter-row-dates #aips-filter-btn { margin-left:auto; }
 .aips-history-advanced-filters[hidden] { display:none; }
 .aips-history-filter-chips { display:flex; flex-basis:100%; flex-wrap:wrap; gap:6px; min-height:0; }
 .aips-history-filter-chips:empty { display:none; }

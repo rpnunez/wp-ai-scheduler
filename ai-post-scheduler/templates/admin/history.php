@@ -100,10 +100,9 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                 </button>
             </div>
             <!-- Filter Bar -->
-            <div class="aips-filter-bar">
-                <div class="aips-filter-left">
-                    <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
-                    <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
+            <div class="aips-filter-bar aips-history-filter-bar">
+                <div class="aips-history-filter-row">
+                    <div class="aips-history-filter-selects">
                     <select id="aips-filter-status" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
@@ -113,14 +112,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <option value="partial" <?php selected($status_filter, 'partial'); ?>><?php esc_html_e('Partial', 'ai-post-scheduler'); ?></option>
                         <option value="terminated" <?php selected($status_filter, 'terminated'); ?>><?php esc_html_e('Terminated', 'ai-post-scheduler'); ?></option>
                     </select>
-                    <div class="aips-history-quick-dates" role="group" aria-label="<?php esc_attr_e('Date range', 'ai-post-scheduler'); ?>">
-                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="0"><?php esc_html_e('Today', 'ai-post-scheduler'); ?></button>
-                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="7"><?php esc_html_e('7 days', 'ai-post-scheduler'); ?></button>
-                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
                     </div>
-                    <button class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
-                </div>
-                <div id="aips-history-advanced-filters" class="aips-history-advanced-filters">
+                    <div id="aips-history-advanced-filters" class="aips-history-advanced-filters">
                     <select id="aips-filter-domain" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
                         <option value="generation_runs" <?php selected($domain_filter, 'generation_runs'); ?>><?php esc_html_e('Generation runs', 'ai-post-scheduler'); ?></option>
@@ -148,7 +141,14 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         </option>
                         <?php endforeach; ?>
                     </select>
+                    </div>
+                    <div class="aips-history-filter-search">
+                    <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
+                    <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
                     <input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($correlation_filter); ?>">
+                    </div>
+                </div>
+                <div class="aips-history-filter-row aips-history-filter-row-dates">
                     <div class="aips-date-range-group">
                         <label class="screen-reader-text" for="aips-filter-date-from"><?php esc_html_e('Logged after', 'ai-post-scheduler'); ?></label>
                         <input type="date" id="aips-filter-date-from" class="aips-form-input" aria-label="<?php esc_attr_e('Logged after', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_from); ?>">
@@ -156,6 +156,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <label class="screen-reader-text" for="aips-filter-date-to"><?php esc_html_e('Logged before', 'ai-post-scheduler'); ?></label>
                         <input type="date" id="aips-filter-date-to" class="aips-form-input" aria-label="<?php esc_attr_e('Logged before', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_to); ?>">
                     </div>
+                    <div class="aips-history-quick-dates" role="group" aria-label="<?php esc_attr_e('Date range', 'ai-post-scheduler'); ?>">
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="0"><?php esc_html_e('Today', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="7"><?php esc_html_e('7 days', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
+                    </div>
+                    <button class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
                 </div>
                 <div id="aips-history-filter-chips" class="aips-history-filter-chips" aria-live="polite"></div>
             </div>
