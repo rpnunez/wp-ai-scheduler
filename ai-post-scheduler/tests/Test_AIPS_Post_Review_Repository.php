@@ -55,6 +55,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 			'post_id' => $post_id,
 			'template_id' => $template_id,
 			'status' => 'completed',
+			'record_kind' => 'generation',
 			'generated_title' => 'Test Generated Title',
 			'generated_content' => 'Test generated content',
 			'created_at' => current_time('mysql'),

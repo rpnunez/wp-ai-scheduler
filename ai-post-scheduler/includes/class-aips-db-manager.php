@@ -124,6 +124,7 @@ class AIPS_DB_Manager {
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(64) DEFAULT NULL,
+            record_kind varchar(16) NOT NULL DEFAULT 'event',
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -146,6 +147,7 @@ class AIPS_DB_Manager {
             KEY template_created (template_id, created_at),
             KEY template_status (template_id, status),
             KEY post_status (post_id, status),
+            KEY record_kind_status_post (record_kind, status, post_id),
             KEY correlation_id (correlation_id)
         ) $charset_collate;";
 

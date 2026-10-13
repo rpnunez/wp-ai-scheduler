@@ -241,6 +241,14 @@ class AIPS_DB_Migrations {
 			// Return without stamping the version so the next request retries the repair.
 			return;
 		}
+
+		// migrate_to_3_7_17() classifies existing History rows now that record_kind exists
+		// (added with the default 'event' by the schema apply above), then re-runs the
+		// post_type and status repairs, whose queries filter on record_kind.
+		if ( version_compare( $from_version, '3.7.17', '<' ) && ! $this->migrate_to_3_7_17() ) {
+			// Return without stamping the version so the next request retries.
+			return;
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1429,6 +1437,64 @@ class AIPS_DB_Migrations {
 			),
 			'info'
 		);
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.17.
+	 *
+	 * Adds the record_kind column (via the schema apply) and classifies existing rows as
+	 * generation runs or background jobs; everything else stays an event. The 3.7.15
+	 * post_type backfill and the 3.7.16 status repair select rows by record_kind, so on a
+	 * site upgrading from an older version they ran before any row was classified and
+	 * did nothing; run both again here. All three steps are idempotent, so a failed
+	 * attempt can simply run again.
+	 *
+	 * @return bool True when every statement succeeded; false leaves the version unstamped.
+	 */
+	private function migrate_to_3_7_17() {
+		$history = AIPS_History_Repository::instance();
+
+		$classified = $history->backfill_record_kind();
+		$post_types = $history->backfill_post_type();
+		$repaired   = $history->repair_generation_statuses();
+
+		$errors = (int) $classified['errors'] + (int) $repaired['errors'];
+		if ( $errors > 0 ) {
+			$this->logger->log(
+				sprintf( 'Migration 3.7.17: %d History statement(s) failed; will retry on the next request.', $errors ),
+				'error'
+			);
+
+			return false;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.17: Classified %d History rows as generation runs and %d as background jobs, backfilled post_type on %d rows, repaired %d run statuses.',
+				$classified['generation'],
+				$classified['job'],
+				$post_types,
+				$repaired['jobs_reset'] + $repaired['marked_partial'] + $repaired['marked_completed']
+			),
+			'info'
+		);
+
+		if ( ! empty( $classified['unclassified'] ) ) {
+			$listed = array();
+			foreach ( $classified['unclassified'] as $method => $count ) {
+				$listed[] = sprintf( '%s (%d)', $method, $count );
+			}
+
+			$this->logger->log(
+				sprintf(
+					'Migration 3.7.17: History rows that carry a post were left as events because their creation_method is not a known run, job or event type: %s. If any are generation runs, add them with the aips_generation_run_creation_methods filter and run AIPS_History_Repository::backfill_record_kind().',
+					implode( ', ', $listed )
+				),
+				'warning'
+			);
+		}
 
 		return true;
 	}

@@ -59,6 +59,7 @@ class Test_AIPS_History_Status_Sync extends WP_UnitTestCase {
 			'post_id'         => $post_id,
 			'creation_method' => $creation_method,
 			'status'          => $status,
+			'record_kind'     => AIPS_History_Record_Kind::for_creation_method($creation_method, array('post_id' => $post_id)),
 			'created_at'      => time(),
 			'completed_at'    => time(),
 		));

@@ -56,6 +56,7 @@ class Test_AIPS_Generation_Run_Pending_Review extends WP_UnitTestCase {
 			'generated_title' => 'Generated Title',
 			'created_at'      => time(),
 			'completed_at'    => time(),
+			'record_kind'     => AIPS_History_Record_Kind::for_creation_method($creation_method, array('post_id' => $post_id)),
 		);
 		if (null !== $creation_method) {
 			$row['creation_method'] = $creation_method;
@@ -120,35 +121,26 @@ class Test_AIPS_Generation_Run_Pending_Review extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_generation_run_condition_covers_legacy_rows_and_run_methods() {
-		$sql = AIPS_History_Repository::generation_run_condition('h');
-
-		$this->assertStringContainsString('h.creation_method IS NULL', $sql);
-		$this->assertStringContainsString("h.creation_method = ''", $sql);
-		$this->assertStringContainsString("'scheduled'", $sql);
-		$this->assertStringNotContainsString('topic_post_generation', $sql);
-		$this->assertStringNotContainsString('content_indexing', $sql);
+	public function test_generation_run_condition_filters_on_the_stored_kind() {
+		$this->assertSame("h.record_kind = 'generation'", AIPS_History_Repository::generation_run_condition('h'));
+		$this->assertSame("record_kind = 'generation'", AIPS_History_Repository::generation_run_condition());
+		$this->assertSame("r.record_kind = 'job'", AIPS_History_Repository::background_job_condition('r'));
 	}
 
 	/**
-	 * Every creation_method literal the plugin writes must be classified, so a new
-	 * container type cannot silently start (or stop) appearing in post-keyed run
-	 * queries.
+	 * Every creation_method literal the plugin writes must be named by the classifier, so a
+	 * new container type is a conscious decision instead of silently becoming an event.
 	 *
-	 * Limits: it only sees string literals passed to history `create()` or assigned
-	 * to a `'creation_method'` key. Types supplied through variables (for example
+	 * Limits: it only sees string literals passed to history `create()` or assigned to a
+	 * `'creation_method'` key. Types supplied through variables (for example
 	 * `$event->type()`) are not visible to it; those event types are covered by
 	 * AIPS_History_Event_Type and must be classified by hand when added.
 	 */
 	public function test_every_creation_method_literal_is_classified() {
-		$classified = array_merge(
+		$explicit = array_merge(
 			AIPS_History_Repository::generation_run_creation_methods(),
-			AIPS_History_Repository::event_only_creation_methods(),
-			// Background jobs and wrappers that are not generation runs.
-			array(
-				'author_embeddings', 'author_suggestion', 'author_topic_generation', 'bulk_batch_slice',
-				'content_indexing', 'manual_generation', 'manual_regeneration',
-			)
+			AIPS_History_Record_Kind::event_creation_methods(),
+			AIPS_History_Record_Kind::job_creation_methods()
 		);
 
 		$found    = array();
@@ -168,12 +160,18 @@ class Test_AIPS_Generation_Run_Pending_Review extends WP_UnitTestCase {
 
 		$this->assertNotEmpty($found, 'The scan found no creation_method literals; the patterns are out of date.');
 
-		$unclassified = array_values(array_diff(array_unique($found), $classified));
+		$unclassified = array();
+		foreach (array_unique($found) as $method) {
+			// 'post_generation' is the run container's own type, classified through the allowlist.
+			if (!in_array($method, $explicit, true) && !AIPS_History_Repository::is_chain_method($method)) {
+				$unclassified[] = $method;
+			}
+		}
 
 		$this->assertSame(
 			array(),
 			$unclassified,
-			'New history creation_method values must be added to AIPS_History_Repository::generation_run_creation_methods() or event_only_creation_methods() (or the job list in this test): ' . implode(', ', $unclassified)
+			'New history creation_method values must be added to AIPS_History_Record_Kind (job_creation_methods() or event_creation_methods()) or AIPS_History_Repository::generation_run_creation_methods(): ' . implode(', ', $unclassified)
 		);
 	}
 
