@@ -528,7 +528,7 @@
 
 		/**
 		 * Confirm and immediately trigger post generation for an author via the
-		 * unified schedule run-now endpoint used on the Schedule page.
+		 * schedule run-now endpoint used on the Schedule page.
 		 *
 		 * @param {Event} e - Click event from an `.aips-generate-author-posts-now` element.
 		 */
@@ -585,7 +585,7 @@
 								url: aipsAjax.ajaxUrl,
 								type: 'POST',
 								data: {
-									action: 'aips_unified_run_now',
+									action: 'aips_schedule_run_now',
 									nonce: aipsAjax.nonce,
 									id: authorId,
 									type: type,

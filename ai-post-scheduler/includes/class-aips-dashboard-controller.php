@@ -351,8 +351,8 @@ class AIPS_Dashboard_Controller {
 		$next_month_end = AIPS_DateTime::now()->advance('+30 days')->timestamp();
 		$upcoming_runs_count = $dashboard_repo->get_upcoming_runs_count($next_month_start, $next_month_end);
 
-		$unified_service = new AIPS_Unified_Schedule_Service();
-		$all_schedules    = $unified_service->get_all('', false);
+		$schedule_service = new AIPS_Schedule_Service();
+		$all_schedules    = $schedule_service->get_all('', false);
 		$upcoming_schedules = array();
 		foreach ($all_schedules as $s) {
 			if (!empty($s['is_active']) && !empty($s['next_run']) && $s['next_run'] >= $next_month_start) {

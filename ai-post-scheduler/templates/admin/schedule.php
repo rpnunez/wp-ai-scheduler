@@ -3,10 +3,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-// Data for the unified schedules page
-$unified_service = new AIPS_Unified_Schedule_Service();
-$type_filter     = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
-$all_schedules   = $unified_service->get_all($type_filter);
+// Data for the schedules page
+$schedule_service = new AIPS_Schedule_Service();
+$type_filter      = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
+$all_schedules    = $schedule_service->get_all($type_filter);
 
 // Also fetch template-schedule data needed for the "Add Schedule" modal
 $templates_handler  = new AIPS_Templates();
@@ -49,11 +49,11 @@ if (!function_exists('aips_frequency_label')) {
 if (!function_exists('aips_type_badge')) {
 	function aips_type_badge($type) {
 		switch ($type) {
-			case AIPS_Unified_Schedule_Service::TYPE_TEMPLATE:
+			case AIPS_Schedule_Service::TYPE_TEMPLATE:
 				return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
-			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC:
+			case AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC:
 				return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
-			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
+			case AIPS_Schedule_Service::TYPE_AUTHOR_POST:
 				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
 		}
 		return '';
@@ -65,10 +65,10 @@ if (!function_exists('aips_type_badge')) {
  */
 if (!function_exists('aips_run_output_label')) {
 	function aips_run_output_label($type) {
-		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
+		if ($type === AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC) {
 			return __('Generated topics for author queue', 'ai-post-scheduler');
 		}
-		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+		if ($type === AIPS_Schedule_Service::TYPE_AUTHOR_POST) {
 			return __('Generated approved-topic post', 'ai-post-scheduler');
 		}
 		return __('Generated post from template', 'ai-post-scheduler');
@@ -213,57 +213,57 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
 				<div class="aips-filter-left">
-					<select id="aips-unified-type-filter" class="aips-form-select">
+					<select id="aips-schedule-type-filter" class="aips-form-select">
 						<option value="" <?php selected($type_filter, ''); ?>><?php esc_html_e('All Types', 'ai-post-scheduler'); ?></option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>>
+						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_TEMPLATE); ?>>
 							<?php esc_html_e('Post Generation', 'ai-post-scheduler'); ?>
 						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>>
+						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>>
 							<?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?>
 						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>>
+						<option value="<?php echo esc_attr(AIPS_Schedule_Service::TYPE_AUTHOR_POST); ?>" <?php selected($type_filter, AIPS_Schedule_Service::TYPE_AUTHOR_POST); ?>>
 							<?php esc_html_e('Author Posts', 'ai-post-scheduler'); ?>
 						</option>
 					</select>
 				</div>
 				<div class="aips-filter-right">
-					<label class="screen-reader-text" for="aips-unified-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
-					<input type="search" id="aips-unified-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-unified-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
+					<label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-schedule-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules…', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-schedule-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" style="display:none;"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 				</div>
 			</div>
 
 			<!-- Bulk Actions Toolbar -->
 			<div class="aips-panel-toolbar">
 				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-					<button type="button" id="aips-unified-select-all" class="aips-btn aips-btn-secondary aips-btn-sm">
+					<button type="button" id="aips-schedule-select-all" class="aips-btn aips-btn-secondary aips-btn-sm">
 						<?php esc_html_e('Select All', 'ai-post-scheduler'); ?>
 					</button>
-					<button type="button" id="aips-unified-unselect-all" class="aips-btn aips-btn-secondary aips-btn-sm" disabled>
+					<button type="button" id="aips-schedule-unselect-all" class="aips-btn aips-btn-secondary aips-btn-sm" disabled>
 						<?php esc_html_e('Unselect All', 'ai-post-scheduler'); ?>
 					</button>
-					<select id="aips-unified-bulk-action" class="aips-form-input" style="width:auto;">
+					<select id="aips-schedule-bulk-action" class="aips-form-input" style="width:auto;">
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="run_now"><?php esc_html_e('Run Now', 'ai-post-scheduler'); ?></option>
 						<option value="pause"><?php esc_html_e('Pause', 'ai-post-scheduler'); ?></option>
 						<option value="resume"><?php esc_html_e('Resume', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button type="button" id="aips-unified-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
+					<button type="button" id="aips-schedule-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
 						<?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
 					</button>
-					<span id="aips-unified-selected-count" class="aips-selected-count" style="display:none;"></span>
+					<span id="aips-schedule-selected-count" class="aips-selected-count" style="display:none;"></span>
 				</div>
 			</div>
 
-			<!-- Unified Schedules Table -->
+			<!-- Schedules Table -->
 			<div class="aips-panel-body no-padding">
 				<?php if (!empty($all_schedules)): ?>
-				<table class="aips-table aips-unified-schedule-table">
+				<table class="aips-table aips-schedule-table">
 					<thead>
 						<tr>
 							<th class="check-column">
-								<input type="checkbox" id="cb-select-all-unified" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
+								<input type="checkbox" id="cb-select-all-schedules" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
 							</th>
 							<th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 							<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
@@ -327,13 +327,13 @@ if (!function_exists('aips_datetime_from_db_value')) {
 
 						// Tab category for filtering
 						$tab_category = 'all';
-						if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
+						if ($sched['type'] === AIPS_Schedule_Service::TYPE_TEMPLATE) {
 							$tab_category = 'content';
-						} elseif ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC || $sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
+						} elseif ($sched['type'] === AIPS_Schedule_Service::TYPE_AUTHOR_TOPIC || $sched['type'] === AIPS_Schedule_Service::TYPE_AUTHOR_POST) {
 							$tab_category = 'author';
 						}
 					?>
-					<tr class="aips-unified-row"
+					<tr class="aips-schedule-row"
 						data-id="<?php echo esc_attr($sched['id']); ?>"
 						data-type="<?php echo esc_attr($sched['type']); ?>"
 						data-row-key="<?php echo $row_key; ?>"
@@ -352,7 +352,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
-								class="aips-unified-checkbox"
+								class="aips-schedule-checkbox"
 								value="<?php echo $row_key; ?>"
 								aria-label="<?php echo esc_attr(sprintf(__('Select: %s', 'ai-post-scheduler'), $sched['title'])); ?>">
 						</th>
@@ -372,7 +372,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 							<?php endif; ?>
 							<div class="aips-row-actions">
 								<a href="#"
-									class="aips-view-unified-history"
+									class="aips-view-schedule-history"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									data-name="<?php echo esc_attr($sched['title']); ?>"
@@ -440,7 +440,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 									</span>
 									<label class="aips-toggle">
 										<input type="checkbox"
-											class="aips-unified-toggle-schedule"
+											class="aips-toggle-schedule"
 											data-id="<?php echo esc_attr($sched['id']); ?>"
 											data-type="<?php echo esc_attr($sched['type']); ?>"
 											aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>"
@@ -453,7 +453,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<td class="column-actions">
 							<div class="cell-actions">
 								<!-- Edit (template schedules only) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE): ?>
+								<?php if ($sched['type'] === AIPS_Schedule_Service::TYPE_TEMPLATE): ?>
 								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
 									aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>"
 									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
@@ -471,7 +471,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 								<?php endif; ?>
 
 								<!-- Run Now (all types) -->
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-run-now"
+								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-run-now-schedule"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
 									aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>"
@@ -480,7 +480,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 								</button>
 
 								<!-- Reset Circuit (template schedules only, when circuit is open) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $circuit_state === 'open'): ?>
+								<?php if ($sched['type'] === AIPS_Schedule_Service::TYPE_TEMPLATE && $circuit_state === 'open'): ?>
 								<button class="aips-btn aips-btn-sm aips-btn-warning aips-reset-circuit"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
@@ -491,7 +491,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 								<?php endif; ?>
 
 								<!-- Resume Batch (template schedules only, when batch is incomplete) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $has_incomplete_batch): ?>
+								<?php if ($sched['type'] === AIPS_Schedule_Service::TYPE_TEMPLATE && $has_incomplete_batch): ?>
 								<button class="aips-btn aips-btn-sm aips-btn-info aips-resume-batch"
 									data-id="<?php echo esc_attr($sched['id']); ?>"
 									data-type="<?php echo esc_attr($sched['type']); ?>"
@@ -524,12 +524,12 @@ if (!function_exists('aips_datetime_from_db_value')) {
 				</table>
 
 				<!-- No Search Results State -->
-				<div id="aips-unified-search-no-results" class="aips-empty-state" style="display:none;padding:60px 20px;">
+				<div id="aips-schedule-search-no-results" class="aips-empty-state" style="display:none;padding:60px 20px;">
 					<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
 					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
 					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-ghost aips-clear-unified-search-btn" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
+						<button type="button" class="aips-btn aips-btn-ghost aips-clear-schedule-search-btn" title="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></button>
 					</div>
 				</div>
 
@@ -606,7 +606,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<?php endforeach; ?>
 					</select>
 				</div>
-				<!-- Unified Schedule & Cadence Builder -->
+				<!-- Schedule & Cadence Builder -->
 				<div class="aips-form-row aips-schedule-builder-wrap">
 					<label class="aips-builder-title"><?php esc_html_e('Schedule Cadence', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
 					<p class="description" style="margin-top:0; margin-bottom:12px;"><?php esc_html_e('Choose how often and when this schedule should run.', 'ai-post-scheduler'); ?></p>

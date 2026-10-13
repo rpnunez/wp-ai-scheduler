@@ -997,7 +997,7 @@ class AIPS_Admin_Assets {
                 'deleteOneScheduleConfirm'       => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
                 /* translators: %d: number of schedules to delete */
                 'deleteMultipleSchedulesConfirm' => __('Are you sure you want to delete %d schedules?', 'ai-post-scheduler'),
-                // Unified schedule bulk-action validation
+                // Schedule bulk-action validation
                 'selectBulkAction'               => __('Please select a bulk action.', 'ai-post-scheduler'),
                 'selectAtLeastOne'               => __('Please select at least one schedule.', 'ai-post-scheduler'),
                 // Schedule error toasts
@@ -1012,7 +1012,7 @@ class AIPS_Admin_Assets {
                 'runOneScheduleConfirm'          => __('This will run 1 schedule. Are you sure?', 'ai-post-scheduler'),
                 /* translators: %d: number of schedules to run */
                 'runMultipleSchedulesConfirm'    => __('This will run %d schedules. Are you sure?', 'ai-post-scheduler'),
-                // Unified schedule bulk delete dialog
+                // Schedule bulk delete dialog
                 'deleteSchedulesHeading'         => __('Delete Schedules', 'ai-post-scheduler'),
                 'noDeletableSchedulesSelected'   => __('None of the selected schedules can be deleted.', 'ai-post-scheduler'),
                 'deleteSchedulesListIntro'       => __('The following schedules will be deleted:', 'ai-post-scheduler'),

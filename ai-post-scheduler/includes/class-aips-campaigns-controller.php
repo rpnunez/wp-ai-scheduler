@@ -36,9 +36,9 @@ class AIPS_Campaigns_Controller {
 	private $template_repository;
 
 	/**
-	 * @var AIPS_Unified_Schedule_Service
+	 * @var AIPS_Schedule_Service
 	 */
-	private $unified_schedule_service;
+	private $schedule_service;
 
 	/**
 	 * @var AIPS_Config
@@ -56,7 +56,7 @@ class AIPS_Campaigns_Controller {
 	public function __construct(
 		?AIPS_Campaigns_Repository $campaigns_repository = null,
 		?AIPS_Template_Repository $template_repository = null,
-		?AIPS_Unified_Schedule_Service $unified_schedule_service = null,
+		?AIPS_Schedule_Service $schedule_service = null,
 		?AIPS_Config $config = null,
 		?AIPS_AI_Service_Interface $ai_service = null
 	) {
@@ -68,8 +68,8 @@ class AIPS_Campaigns_Controller {
 		$this->template_repository = $template_repository ?: $container->makeIfExists(AIPS_Template_Repository::class, function() {
 			return AIPS_Template_Repository::instance();
 		});
-		$this->unified_schedule_service = $unified_schedule_service ?: $container->makeIfExists(AIPS_Unified_Schedule_Service::class, function() {
-			return new AIPS_Unified_Schedule_Service();
+		$this->schedule_service = $schedule_service ?: $container->makeIfExists(AIPS_Schedule_Service::class, function() {
+			return new AIPS_Schedule_Service();
 		});
 		$this->config = $config ?: $container->makeIfExists(AIPS_Config::class, function() {
 			return AIPS_Config::get_instance();
@@ -565,7 +565,7 @@ class AIPS_Campaigns_Controller {
 			'campaign_id' => $result['campaign_id'],
 			'template_id' => $result['template_id'],
 			'schedule_id' => $result['schedule_id'],
-			'schedule' => $this->find_unified_schedule($result['schedule_id']),
+			'schedule' => $this->find_schedule($result['schedule_id']),
 			'summary' => $this->build_summary($payload),
 			'redirect_url' => AIPS_Admin_Menu_Helper::get_page_url('campaigns'),
 		), __('Campaign created and scheduled.', 'ai-post-scheduler'));
@@ -1126,13 +1126,13 @@ class AIPS_Campaigns_Controller {
 	}
 
 	/**
-	 * Find schedule in unified list.
+	 * Find schedule in schedule list.
 	 *
 	 * @param int $schedule_id Schedule ID.
 	 * @return array|null
 	 */
-	private function find_unified_schedule($schedule_id) {
-		$schedules = $this->unified_schedule_service->get_all(AIPS_Unified_Schedule_Service::TYPE_TEMPLATE, false);
+	private function find_schedule($schedule_id) {
+		$schedules = $this->schedule_service->get_all(AIPS_Schedule_Service::TYPE_TEMPLATE, false);
 		foreach ($schedules as $schedule) {
 			if (isset($schedule['id']) && (int) $schedule['id'] === (int) $schedule_id) {
 				return $schedule;

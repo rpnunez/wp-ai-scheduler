@@ -301,6 +301,7 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var scheduleId = $btn.data('id');
+			var scheduleType = $btn.data('type') || 'template_schedule';
 			var l10n = window.aipsDashboardL10n || {};
 
 			$btn.text('Running...');
@@ -309,9 +310,10 @@
 				url: ajaxurl,
 				type: 'POST',
 				data: {
-					action: 'aips_unified_run_now',
+					action: 'aips_schedule_run_now',
 					nonce: l10n.nonce,
-					id: scheduleId
+					id: scheduleId,
+					type: scheduleType
 				},
 				success: function(response) {
 					if (response.success) {
@@ -525,7 +527,7 @@
 		/**
 		 * Dynamically update dashboard widgets, charts, and tables from AJAX response data.
 		 *
-		 * @param {Object} data Unified dashboard JSON payload.
+		 * @param {Object} data Dashboard JSON payload.
 		 * @return {void}
 		 */
 		updateDashboardData: function(data) {
@@ -631,7 +633,7 @@
 						dataList: data.executed_schedules,
 						templateId: 'aips-tmpl-dashboard-schedules-row',
 						processItem: function(item) {
-							item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '">Run Now</a></div>';
+							item.actions_html = '<div class="aips-row-actions" style="margin-top: 4px;"><a href="#" class="aips-dashboard-run-schedule" data-id="' + item.id + '" data-type="' + (item.type || 'template_schedule') + '">Run Now</a></div>';
 						}
 					}
 				];
