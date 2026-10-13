@@ -129,6 +129,40 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
+     * SQL condition for rows that count in statistics: generation runs, minus the
+     * legacy empty shells (no creation_method and no linkage at all).
+     *
+     * History stats, the dashboard and the metrics repository all use this, so the same
+     * rows are counted everywhere.
+     *
+     * @param string $alias Optional table alias (without the dot).
+     * @return string
+     */
+    public static function generation_run_stats_condition($alias = '') {
+        $prefix = $alias !== '' ? $alias . '.' : '';
+
+        return self::generation_run_condition($alias)
+            . " AND NOT ({$prefix}creation_method IS NULL AND {$prefix}template_id IS NULL AND {$prefix}topic_id IS NULL"
+            . " AND {$prefix}post_id IS NULL AND {$prefix}author_id IS NULL)";
+    }
+
+    /**
+     * SQL condition for background-job rows: not a generation run and not an event
+     * container. Content indexing, embeddings, bulk slices, source fetches and the like.
+     *
+     * Reported separately from the run figures (see get_stats()['jobs']).
+     *
+     * @param string $alias Optional table alias (without the dot).
+     * @return string
+     */
+    public static function background_job_condition($alias = '') {
+        $column = ($alias !== '' ? $alias . '.' : '') . 'creation_method';
+
+        return '(NOT ' . self::generation_run_condition($alias)
+            . " AND {$column} NOT IN (" . self::event_only_in_sql() . '))';
+    }
+
+    /**
      * Derived table holding the newest completed/partial generation run per post.
      *
      * Join on `latest_history_id = h.id`. Event rows are always newer than the run
@@ -586,7 +620,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
         $args[] = $now - self::stalled_threshold_seconds('');
 
-        $sql = "({$alias}.status = 'processing' AND {$last_activity} < CASE COALESCE({$alias}.creation_method, ''){$cases} ELSE %d END)";
+        // With no in-progress method to special-case, a CASE without any WHEN is a SQL
+        // syntax error, so fall back to the default threshold alone.
+        $threshold = $cases === ''
+            ? '%d'
+            : "CASE COALESCE({$alias}.creation_method, ''){$cases} ELSE %d END";
+
+        $sql = "({$alias}.status = 'processing' AND {$last_activity} < {$threshold})";
 
         return array($sql, $args);
     }
@@ -709,6 +749,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             if (isset($domain_patterns[$domain])) {
                 $where_clauses[] = "COALESCE(h.creation_method, '') LIKE %s";
                 $where_args[] = $domain_patterns[$domain];
+            } elseif ($domain === 'generation_runs') {
+                // Exactly the rows the run statistics count.
+                $where_clauses[] = self::generation_run_condition('h');
+            } elseif ($domain === 'background_jobs') {
+                $where_clauses[] = self::background_job_condition('h');
             } elseif ($domain === 'post_generation') {
                 $post_generation_clauses = array();
                 foreach ($domain_patterns as $pattern) {
@@ -1479,21 +1524,29 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'history.get_stats',
             array(),
             function() {
-                $auxiliary_methods = $this->get_auxiliary_creation_methods();
-                $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+                // Generation runs only: event containers, indexing and other background
+                // jobs would otherwise inflate the totals and the success rate.
+                $run_condition = self::generation_run_stats_condition();
                 $results = $this->wpdb->get_row(
-                    $this->wpdb->prepare(
-                        "SELECT
-                            COUNT(*) as total,
-                            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                            SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-                            SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
-                         FROM {$this->table_name}
-                         WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                           AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)",
-                        ...$auxiliary_methods
-                    )
+                    "SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                        SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
+                     FROM {$this->table_name}
+                     WHERE {$run_condition}"
+                );
+
+                // Background jobs (indexing, bulk slices, source fetches...) are not generation
+                // runs, so they are reported next to the run figures instead of inside them.
+                $job_results = $this->wpdb->get_row(
+                    "SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+                     FROM {$this->table_name}
+                     WHERE " . self::background_job_condition()
                 );
 
                 $stats = array(
@@ -1503,6 +1556,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     'processing' => isset($results->processing) ? (int) $results->processing : 0,
                     'partial'    => isset($results->partial)    ? (int) $results->partial    : 0,
                     'stalled'    => 0,
+                    'jobs'       => array(
+                        'total'      => isset($job_results->total)      ? (int) $job_results->total      : 0,
+                        'failed'     => isset($job_results->failed)     ? (int) $job_results->failed     : 0,
+                        'processing' => isset($job_results->processing) ? (int) $job_results->processing : 0,
+                        'stalled'    => 0,
+                    ),
                 );
 
                 // Only terminal outcomes count toward the rate; `processing`
@@ -1511,16 +1570,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 $stats['success_rate'] = AIPS_Outcome_Rate::success_rate($stats['completed'], $stats['failed'], $stats['partial']);
 
                 $durations = $this->wpdb->get_col(
-                    $this->wpdb->prepare(
-                        "SELECT completed_at - created_at
-                         FROM {$this->table_name}
-                         WHERE completed_at > 0
-                           AND completed_at >= created_at
-                           AND COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                           AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-                         ORDER BY completed_at - created_at ASC",
-                        ...$auxiliary_methods
-                    )
+                    "SELECT completed_at - created_at
+                     FROM {$this->table_name}
+                     WHERE completed_at > 0
+                       AND completed_at >= created_at
+                       AND {$run_condition}
+                     ORDER BY completed_at - created_at ASC"
                 );
                 $duration_count = count($durations);
                 $stats['median_duration'] = null;
@@ -1538,26 +1593,40 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // Whether an in-progress run is Stalled depends on the current time and no write
         // marks the moment it goes idle, so the split is computed live, outside the cache.
         if ($stats['processing'] > 0) {
-            $auxiliary_methods      = $this->get_auxiliary_creation_methods();
-            $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
-
-            list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
-            $stalled = (int) $this->wpdb->get_var(
-                $this->wpdb->prepare(
-                    "SELECT COUNT(*)
-                     FROM {$this->table_name} h
-                     WHERE {$stalled_sql}
-                       AND COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})
-                       AND NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)",
-                    array_merge($stalled_args, $auxiliary_methods)
-                )
-            );
+            $stalled = $this->count_stalled_rows(self::generation_run_stats_condition('h'));
 
             $stats['stalled']     = min($stalled, $stats['processing']);
             $stats['processing'] -= $stats['stalled'];
         }
 
+        if ($stats['jobs']['processing'] > 0) {
+            $job_stalled = $this->count_stalled_rows(self::background_job_condition('h'));
+
+            $stats['jobs']['stalled']     = min($job_stalled, $stats['jobs']['processing']);
+            $stats['jobs']['processing'] -= $stats['jobs']['stalled'];
+        }
+
         return $stats;
+    }
+
+    /**
+     * Count in-progress rows matching a condition that have gone idle past their threshold.
+     *
+     * @param string $row_condition SQL condition on the `h` alias.
+     * @return int
+     */
+    private function count_stalled_rows($row_condition) {
+        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+
+        return (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*)
+                 FROM {$this->table_name} h
+                 WHERE {$stalled_sql}
+                   AND {$row_condition}",
+                $stalled_args
+            )
+        );
     }
 
     /**
@@ -1567,8 +1636,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * associative array with 'completed', 'failed', and 'total' counts.
      * Days with no records are omitted; callers should fill gaps as needed.
      *
-     * Applies the same row-exclusion filters as get_stats() so that
-     * auxiliary lifecycle rows and empty-shell records are not counted.
+     * Applies the same row filter as get_stats(): generation runs only, so event
+     * containers, background jobs and empty-shell records are not counted.
      *
      * @param int $days Number of calendar days to look back (inclusive today). Default 14.
      * @return array<string, array{completed: int, failed: int, total: int}>
@@ -1578,9 +1647,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
         $start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
-        $auxiliary_methods = $this->get_auxiliary_creation_methods();
-        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
-        $query_args = array_merge(array($start), $auxiliary_methods);
+        $run_condition = self::generation_run_stats_condition();
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
@@ -1590,11 +1657,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     COUNT(*) AS total
                  FROM {$this->table_name}
                  WHERE created_at >= %d
-                   AND COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
+                   AND {$run_condition}
                  GROUP BY DATE(FROM_UNIXTIME(created_at))
                  ORDER BY day ASC",
-                ...$query_args
+                $start
             )
         );
 

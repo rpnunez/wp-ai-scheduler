@@ -3,6 +3,12 @@
 ## [3.7.14] - 2026-10-13
 
 ### Fixed
+- **History, Dashboard and Metrics Statistics Count Generation Runs Only:**
+  - History stats and the daily chart, the dashboard summary, daily chart and recent posts, and the metrics repository (generation counts, duration percentiles, average AI calls, queue-health partial/failed/retry counts, recent outcomes) now count only post-generation runs. Topic-generation wrappers, review actions, notifications, lifecycle containers and content-indexing/background-job rows are no longer included, so totals and the success rate are no longer inflated and each failure counts once instead of once for the run and once for its wrapper.
+  - The dashboard "posts by topic" list shows a topic once; the run and its topic-generation wrapper both matched before.
+  - Queue health no longer logs a database error and reports 0 stalled runs when nothing is in progress (the stalled-run condition rendered a `CASE` with no `WHEN`).
+  - The dashboard no longer keeps its own list of excluded creation methods; the History list still hides lifecycle and notification rows as before.
+  - History page: the stat tiles are now labelled as generation runs (Failed runs, Runs in progress, Stalled runs, Run success rate, Median run duration) and clicking one filters the list to generation runs, so the tile and the list count the same rows. A new Background jobs tile shows content-indexing, bulk, source-fetch and similar work (with failed and stalled counts) and filters the list to it. "Generation runs" and "Background jobs" are also available in the Domain filter.
 - **History Run Queries (Partial Generations, Campaign Recent Posts):**
   - Partial Generations and the campaign recent-posts list now resolve each post to its newest generation run instead of its newest History row, so topic-generation wrappers, review actions, content-indexing runs and notifications no longer replace the run (wrong row, wrong history link).
   - Pending Review also lists runs whose `creation_method` is the container default `post_generation`, which the first Pending Review fix left out.

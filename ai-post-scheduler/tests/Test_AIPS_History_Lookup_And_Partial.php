@@ -19,6 +19,15 @@ class Test_AIPS_History_Lookup_And_Partial extends WP_UnitTestCase {
 		parent::set_up();
 		$this->repository = new AIPS_History_Repository();
 		$this->service    = new AIPS_History_Service($this->repository);
+
+		// Queue health is cached and history writes do not invalidate it, so an earlier
+		// test's value would otherwise leak into the next one.
+		(new AIPS_Metrics_Repository())->invalidate_cache();
+	}
+
+	public function tear_down() {
+		(new AIPS_Metrics_Repository())->invalidate_cache();
+		parent::tear_down();
 	}
 
 	private function status_of($history_id) {
