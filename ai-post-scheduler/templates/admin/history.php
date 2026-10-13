@@ -44,9 +44,6 @@ $summary_items = array();
 if ($total_items > 0) {
 	$summary_items[] = array('label' => __('Logged Sessions', 'ai-post-scheduler'), 'value' => $total_items, 'type' => 'neutral', 'icon' => 'dashicons-backup');
 }
-if (!empty($stats['failed'])) {
-	$summary_items[] = array('label' => __('Failed Runs', 'ai-post-scheduler'), 'value' => (int) $stats['failed'], 'type' => 'danger', 'icon' => 'dashicons-warning');
-}
 
 $page_context = AIPS_Admin_Page_Context::resolve(
 	'aips-history',
@@ -67,25 +64,45 @@ $page_context = AIPS_Admin_Page_Context::resolve(
         <?php if ($show_panel): ?>
         <div class="aips-content-panel">
             <div class="aips-history-overview" aria-label="<?php esc_attr_e('History overview', 'ai-post-scheduler'); ?>">
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed" data-domain="generation_runs">
-                    <span class="aips-history-metric-value" id="aips-stat-failed"><?php echo esc_html((int) ($stats['failed'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Failed runs', 'ai-post-scheduler'); ?></span>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-domain="generation_runs" title="<?php esc_attr_e('Post generation runs. Background work is counted separately.', 'ai-post-scheduler'); ?>">
+                    <span class="aips-history-metric-value" id="aips-stat-total"><?php echo esc_html((int) ($stats['total'] ?? 0)); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Generation runs', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub">
+                            <span id="aips-stat-failed"><?php echo esc_html((int) ($stats['failed'] ?? 0)); ?></span> <?php esc_html_e('failed', 'ai-post-scheduler'); ?>
+                            &middot;
+                            <span id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span> <?php esc_html_e('in progress', 'ai-post-scheduler'); ?>
+                            &middot;
+                            <span id="aips-stat-stalled"><?php echo esc_html((int) ($stats['stalled'] ?? 0)); ?></span> <?php esc_html_e('stalled', 'ai-post-scheduler'); ?>
+                        </span>
+                    </span>
                 </button>
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="processing" data-domain="generation_runs">
-                    <span class="aips-history-metric-value" id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Runs in progress', 'ai-post-scheduler'); ?></span>
-                </button>
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="stalled" data-domain="generation_runs">
-                    <span class="aips-history-metric-value" id="aips-stat-stalled"><?php echo esc_html((int) ($stats['stalled'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Stalled runs', 'ai-post-scheduler'); ?></span>
+                <?php
+                $runs_24h      = (int) ($stats['runs_24h'] ?? 0);
+                $runs_prev_24h = (int) ($stats['runs_prev_24h'] ?? 0);
+                $runs_delta    = $runs_24h - $runs_prev_24h;
+                $top_failure   = isset($stats['top_failure']) && is_array($stats['top_failure']) ? $stats['top_failure'] : null;
+                ?>
+                <div class="aips-history-metric">
+                    <span class="aips-history-metric-value" id="aips-stat-runs-24h"><?php echo esc_html($runs_24h); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Runs, last 24h', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub" id="aips-stat-runs-24h-trend"><?php
+                            /* translators: %d: number of runs in the previous 24 hours */
+                            echo esc_html(sprintf(__('%1$s vs %2$d previous 24h', 'ai-post-scheduler'), ($runs_delta > 0 ? '+' : '') . $runs_delta, $runs_prev_24h));
+                        ?></span>
+                    </span>
+                </div>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed" data-domain="generation_runs" title="<?php esc_attr_e('Most common failure reason across generation runs in the last 7 days. Click to list failed runs.', 'ai-post-scheduler'); ?>">
+                    <span class="aips-history-metric-value" id="aips-stat-top-failure-count"><?php echo esc_html($top_failure ? (int) $top_failure['count'] : 0); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Top failure, 7 days', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub aips-history-metric-reason" id="aips-stat-top-failure-reason"><?php echo esc_html($top_failure ? $top_failure['reason'] : __('No failures', 'ai-post-scheduler')); ?></span>
+                    </span>
                 </button>
                 <div class="aips-history-metric">
                     <span class="aips-history-metric-value" id="aips-stat-success-rate"><?php echo esc_html(number_format_i18n((float) ($stats['success_rate'] ?? 0), 1)); ?>%</span>
                     <span class="aips-history-metric-label"><?php esc_html_e('Run success rate', 'ai-post-scheduler'); ?></span>
-                </div>
-                <div class="aips-history-metric">
-                    <span class="aips-history-metric-value" id="aips-stat-median-duration"><?php echo isset($stats['median_duration']) ? esc_html($history_handler->format_duration_for_display($stats['median_duration'])) : '&mdash;'; ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Median run duration', 'ai-post-scheduler'); ?></span>
                 </div>
                 <button type="button" class="aips-history-metric aips-history-metric-filter" data-domain="background_jobs" title="<?php esc_attr_e('Content indexing, embeddings, bulk slices, source fetches and other background work. Not included in the run figures.', 'ai-post-scheduler'); ?>">
                     <span class="aips-history-metric-value" id="aips-stat-jobs"><?php echo esc_html((int) ($stats['jobs']['total'] ?? 0)); ?></span>
@@ -100,11 +117,9 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                 </button>
             </div>
             <!-- Filter Bar -->
-            <div class="aips-filter-bar">
-                <div class="aips-filter-left">
-                    <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
-                    <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
-                    <select id="aips-filter-status" class="aips-form-select">
+            <div class="aips-filter-bar aips-history-filter-bar">
+                <div class="aips-history-filter-row aips-history-filter-row-selects">
+                    <select id="aips-filter-status" class="aips-form-select" aria-label="<?php esc_attr_e('Status', 'ai-post-scheduler'); ?>">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
@@ -113,15 +128,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <option value="partial" <?php selected($status_filter, 'partial'); ?>><?php esc_html_e('Partial', 'ai-post-scheduler'); ?></option>
                         <option value="terminated" <?php selected($status_filter, 'terminated'); ?>><?php esc_html_e('Terminated', 'ai-post-scheduler'); ?></option>
                     </select>
-                    <div class="aips-history-quick-dates" role="group" aria-label="<?php esc_attr_e('Date range', 'ai-post-scheduler'); ?>">
-                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="0"><?php esc_html_e('Today', 'ai-post-scheduler'); ?></button>
-                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="7"><?php esc_html_e('7 days', 'ai-post-scheduler'); ?></button>
-                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
-                    </div>
-                    <button class="aips-btn aips-btn-sm aips-btn-primary" id="aips-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
-                </div>
-                <div id="aips-history-advanced-filters" class="aips-history-advanced-filters">
-                    <select id="aips-filter-domain" class="aips-form-select">
+                    <select id="aips-filter-domain" class="aips-form-select" aria-label="<?php esc_attr_e('Domain', 'ai-post-scheduler'); ?>">
                         <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
                         <option value="generation_runs" <?php selected($domain_filter, 'generation_runs'); ?>><?php esc_html_e('Generation runs', 'ai-post-scheduler'); ?></option>
                         <option value="background_jobs" <?php selected($domain_filter, 'background_jobs'); ?>><?php esc_html_e('Background jobs', 'ai-post-scheduler'); ?></option>
@@ -135,12 +142,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <option value="batch_jobs" <?php selected($domain_filter, 'batch_jobs'); ?>>Batch Jobs</option>
                         <option value="post_review" <?php selected($domain_filter, 'post_review'); ?>><?php esc_html_e('Post Review', 'ai-post-scheduler'); ?></option>
                     </select>
-                    <select id="aips-filter-actor" class="aips-form-select">
+                    <select id="aips-filter-actor" class="aips-form-select" aria-label="<?php esc_attr_e('Actor', 'ai-post-scheduler'); ?>">
                         <option value=""><?php esc_html_e('All Actors', 'ai-post-scheduler'); ?></option>
                         <option value="system" <?php selected($actor_filter, 'system'); ?>>System</option>
                         <option value="admin" <?php selected($actor_filter, 'admin'); ?>>Admin</option>
                     </select>
-                    <select id="aips-filter-post-type" class="aips-form-select">
+                    <select id="aips-filter-post-type" class="aips-form-select" aria-label="<?php esc_attr_e('Post type', 'ai-post-scheduler'); ?>">
                         <option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
                         <?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
                         <option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
@@ -148,7 +155,13 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         </option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                <div class="aips-history-filter-row aips-history-filter-row-inputs">
+                    <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
+                    <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
                     <input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($correlation_filter); ?>">
+                </div>
+                <div class="aips-history-filter-row aips-history-filter-row-dates">
                     <div class="aips-date-range-group">
                         <label class="screen-reader-text" for="aips-filter-date-from"><?php esc_html_e('Logged after', 'ai-post-scheduler'); ?></label>
                         <input type="date" id="aips-filter-date-from" class="aips-form-input" aria-label="<?php esc_attr_e('Logged after', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_from); ?>">
@@ -156,6 +169,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <label class="screen-reader-text" for="aips-filter-date-to"><?php esc_html_e('Logged before', 'ai-post-scheduler'); ?></label>
                         <input type="date" id="aips-filter-date-to" class="aips-form-input" aria-label="<?php esc_attr_e('Logged before', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($date_to); ?>">
                     </div>
+                    <div class="aips-history-quick-dates" role="group" aria-label="<?php esc_attr_e('Date range', 'ai-post-scheduler'); ?>">
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="0"><?php esc_html_e('Today', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="7"><?php esc_html_e('7 days', 'ai-post-scheduler'); ?></button>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="30"><?php esc_html_e('30 days', 'ai-post-scheduler'); ?></button>
+                    </div>
+                    <button class="aips-btn aips-btn-sm aips-btn-primary aips-history-filter-apply" id="aips-filter-btn"><span class="dashicons dashicons-filter" aria-hidden="true"></span><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
                 </div>
                 <div id="aips-history-filter-chips" class="aips-history-filter-chips" aria-live="polite"></div>
             </div>

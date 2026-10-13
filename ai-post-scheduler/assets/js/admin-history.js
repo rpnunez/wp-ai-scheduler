@@ -616,10 +616,9 @@
 			$(document).on('click', '#aips-clear-processing-btn', this.clearProcessingHistory.bind(this));
 
 			/* --- Row Action Events --- */
-			// Overflow toggle for the action group
-			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
-			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
-			$(document).on('click', this.onDocumentClick.bind(this));
+			// The overflow toggle, item-click and outside-click handlers are bound
+			// globally by admin.js (AIPS.bindCoreEvents). Binding them again here
+			// toggled the menu open then closed within the same click.
 			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Individual row delete
@@ -678,38 +677,6 @@
 		/* ========================================================================
 		 * Row Action Overflow Menu
 		 * ======================================================================== */
-
-		onRowActionOverflowToggle: function (e) {
-			e.preventDefault();
-			e.stopPropagation();
-
-			var $toggle = $(e.currentTarget);
-			var menuId  = $toggle.attr('aria-controls');
-			var $menu   = menuId ? $('#' + menuId) : $();
-
-			if (!$menu.length) {
-				return;
-			}
-
-			var isExpanded = $toggle.attr('aria-expanded') === 'true';
-			this.closeAllRowActionMenus();
-
-			if (!isExpanded) {
-				$toggle.attr('aria-expanded', 'true');
-				$menu.prop('hidden', false);
-			}
-		},
-
-		onRowActionItemClick: function () {
-			this.closeAllRowActionMenus();
-		},
-
-		onDocumentClick: function (e) {
-			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
-				return;
-			}
-			this.closeAllRowActionMenus();
-		},
 
 		onDocumentKeyDown: function (e) {
 			if (e.key === 'Escape') {
@@ -1605,7 +1572,12 @@
 						$('#aips-stat-processing').text(stats.processing);
 						$('#aips-stat-stalled').text(stats.stalled || 0);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
-						$('#aips-stat-median-duration').text(self.formatDuration(stats.median_duration));
+						var runs24h = parseInt(stats.runs_24h || 0, 10);
+						var runsPrev = parseInt(stats.runs_prev_24h || 0, 10);
+						$('#aips-stat-runs-24h').text(runs24h);
+						$('#aips-stat-runs-24h-trend').text(((runs24h - runsPrev) > 0 ? '+' : '') + (runs24h - runsPrev) + ' vs ' + runsPrev + ' previous 24h');
+						$('#aips-stat-top-failure-count').text(stats.top_failure ? stats.top_failure.count : 0);
+						$('#aips-stat-top-failure-reason').text(stats.top_failure ? stats.top_failure.reason : (aipsHistoryL10n.noFailures || 'No failures'));
 						if (stats.jobs) {
 							$('#aips-stat-jobs').text(stats.jobs.total || 0);
 							$('#aips-stat-jobs-failed').text(stats.jobs.failed || 0);
