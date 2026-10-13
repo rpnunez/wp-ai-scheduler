@@ -288,10 +288,11 @@ The tables below document all canonical options registered and maintained by AI 
 
 | Option Key | Type | Default | UI Location | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `aips_author_topic_auto_approval_mode` | `string` | `'similarity'` | Settings > Authors | Default policy: `'similarity'` (Dual-Boundary Gate), `'manual'`, or `'all'`. |
-| `aips_author_topic_auto_approval_min_score` | `float` | `70.0` | Settings > Authors | Minimum niche relevance percentage against author baseline required for approval. |
-| `aips_author_topic_auto_approval_max_similarity` | `float` | `0.85` | Settings > Authors | Maximum duplicate similarity ceiling against existing topics/posts. |
-| `aips_author_topic_auto_approval_fallback` | `string` | `'reject'` | Settings > Authors | Sub-threshold handling: `'reject'` (auto-reject) or `'smart_split'` (hold in Pending). |
+| `aips_author_topic_auto_approval_mode` | `string` | `'manual'` | Settings > Authors | Global policy for authors set to "Use Global Settings": `'manual'`, `'all'`, `'score'`, or `'similarity'`. |
+| `aips_author_topic_auto_approval_min_score` | `int` | `70` | Settings > Authors | Minimum AI quality score (1-100) for `'score'` mode. |
+| `aips_author_topic_auto_approval_min_relevance` | `int` | `65` | Settings > Authors | Minimum niche relevance percentage (1-100) for `'similarity'` mode. |
+| `aips_author_topic_auto_approval_max_similarity` | `float` | `0.85` | Settings > Authors | Maximum duplicate similarity ceiling (0.50-0.99) for `'similarity'` mode. |
+| `aips_author_topic_auto_approval_fallback` | `string` | `'smart_split'` | Settings > Authors | Non-qualifying handling: `'pending'`, `'rejected'`, or `'smart_split'` (reject duplicates, hold the rest).
 
 ### 3. General & Editorial Workflow
 

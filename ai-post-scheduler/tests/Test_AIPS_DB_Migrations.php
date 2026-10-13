@@ -397,4 +397,54 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			wp_delete_post( $post_id, true );
 		}
 	}
+
+	/**
+	 * Migration 3.7.18 backfills min_relevance for similarity authors, switches
+	 * manual authors to inherit, leaves explicit modes alone, renames the stored
+	 * `reject` fallback and deletes the hidden option family.
+	 */
+	public function test_migration_3_7_18_consolidates_author_auto_approval() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+		$table = $wpdb->prefix . 'aips_authors';
+
+		$base = array('name' => 'M', 'field_niche' => 'n', 'topic_generation_frequency' => 'weekly', 'post_generation_frequency' => 'daily');
+		$ids  = array();
+		foreach (array(
+			'manual'     => array('topic_auto_approval_mode' => 'manual', 'topic_auto_approval_min_score' => 70),
+			'similarity' => array('topic_auto_approval_mode' => 'similarity', 'topic_auto_approval_min_score' => 55),
+			'score'      => array('topic_auto_approval_mode' => 'score', 'topic_auto_approval_min_score' => 88),
+			'all'        => array('topic_auto_approval_mode' => 'all'),
+		) as $key => $cols) {
+			$wpdb->insert($table, array_merge($base, $cols, array('created_at' => 1, 'updated_at' => 1)));
+			$ids[$key] = (int) $wpdb->insert_id;
+		}
+
+		update_option('aips_author_topic_auto_approval_fallback', 'reject');
+		update_option('aips_author_topic_auto_approval_enabled', true);
+		update_option('aips_author_topic_approval_mode', 'embeddings');
+
+		$method = new ReflectionMethod('AIPS_DB_Migrations', 'migrate_to_3_7_18');
+		$method->setAccessible(true);
+		$method->invoke(new AIPS_DB_Migrations());
+
+		$row = function ($key) use ($wpdb, $table, $ids) {
+			return $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$table}` WHERE id = %d", $ids[$key]));
+		};
+
+		$this->assertSame('inherit', $row('manual')->topic_auto_approval_mode);
+		$this->assertSame('similarity', $row('similarity')->topic_auto_approval_mode);
+		$this->assertSame(55, (int) $row('similarity')->topic_auto_approval_min_relevance);
+		$this->assertSame('score', $row('score')->topic_auto_approval_mode);
+		$this->assertSame(88, (int) $row('score')->topic_auto_approval_min_score);
+		$this->assertSame(65, (int) $row('score')->topic_auto_approval_min_relevance);
+		$this->assertSame('all', $row('all')->topic_auto_approval_mode);
+
+		$this->assertSame('rejected', get_option('aips_author_topic_auto_approval_fallback'));
+		$this->assertFalse(get_option('aips_author_topic_auto_approval_enabled', false));
+		$this->assertFalse(get_option('aips_author_topic_approval_mode', false));
+
+		$wpdb->query("DELETE FROM `{$table}` WHERE id IN (" . implode(',', $ids) . ')');
+		delete_option('aips_author_topic_auto_approval_fallback');
+	}
 }
