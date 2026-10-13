@@ -449,6 +449,100 @@ class AIPS_Author_Topics_Repository {
 	}
 
 	/**
+	 * Atomically claim an approved topic for post generation.
+	 *
+	 * Prevents concurrent workers from generating posts for the same topic.
+	 * Uses an atomic UPDATE with compare-and-swap semantics, ensuring that only
+	 * one worker wins the claim.
+	 *
+	 * @param int  $topic_id         Topic ID.
+	 * @param int  $claim_timeout    Claim timeout in seconds. Default 900 (15 minutes).
+	 * @param bool $allow_regenerate Whether to allow claiming a topic that already generated a post (for regeneration). Default false.
+	 * @return bool True if topic was claimed by this worker, false if already claimed or already generated.
+	 */
+	public function claim_topic_for_generation( int $topic_id, int $claim_timeout = 900, bool $allow_regenerate = false ): bool {
+		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$now        = AIPS_DateTime::now()->timestamp();
+		$cutoff     = $now - max( 60, $claim_timeout );
+
+		if ( $allow_regenerate ) {
+			$result = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"UPDATE {$this->table_name}
+					SET claimed_at = %d
+					WHERE id = %d
+					AND status = 'approved'
+					AND (claimed_at = 0 OR claimed_at < %d)",
+					$now,
+					$topic_id,
+					$cutoff
+				)
+			);
+		} else {
+			$result = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"UPDATE {$this->table_name}
+					SET claimed_at = %d
+					WHERE id = %d
+					AND status = 'approved'
+					AND (claimed_at = 0 OR claimed_at < %d)
+					AND NOT EXISTS (
+						SELECT 1 FROM {$logs_table}
+						WHERE author_topic_id = %d
+						AND action = 'post_generated'
+						AND post_id IS NOT NULL
+					)",
+					$now,
+					$topic_id,
+					$cutoff,
+					$topic_id
+				)
+			);
+		}
+
+		if ( false !== $result && $result > 0 ) {
+			$this->invalidate_cache_domain(
+				'author_topic',
+				$this->author_topic_context_by_id( $topic_id ),
+				'author_topic_claimed'
+			);
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Release the claim on a topic so it can be retried.
+	 *
+	 * Called when post generation fails or an exception is thrown.
+	 *
+	 * @param int $topic_id Topic ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function release_topic_claim( int $topic_id ): bool {
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table_name}
+				SET claimed_at = 0
+				WHERE id = %d",
+				$topic_id
+			)
+		);
+
+		if ( false !== $result ) {
+			$this->invalidate_cache_domain(
+				'author_topic',
+				$this->author_topic_context_by_id( $topic_id ),
+				'author_topic_claim_released'
+			);
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Get approved topics for an author (for post generation).
 	 *
 	 * @param int $author_id Author ID.
@@ -457,7 +551,10 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects.
 	 */
 	public function get_approved_for_generation($author_id, $limit = 1, $after_id = 0) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$logs_table    = $this->wpdb->prefix . 'aips_author_topic_logs';
+		$claim_timeout = (int) apply_filters( 'aips_topic_claim_timeout_seconds', 900, null );
+		$now           = AIPS_DateTime::now()->timestamp();
+		$cutoff        = $now - max( 60, $claim_timeout );
 
 		return $this->cache_read(
 			'author_topics.get_approved_for_generation',
@@ -466,7 +563,7 @@ class AIPS_Author_Topics_Repository {
 				'limit'     => (int) $limit,
 				'after_id'  => (int) $after_id,
 			),
-			function() use ( $author_id, $limit, $after_id, $logs_table ) {
+			function() use ( $author_id, $limit, $after_id, $logs_table, $cutoff ) {
 				if ($after_id > 0) {
 					return $this->wpdb->get_results($this->wpdb->prepare(
 						"SELECT t.* FROM {$this->table_name} t
@@ -477,10 +574,12 @@ class AIPS_Author_Topics_Repository {
 						WHERE t.author_id = %d
 						AND t.status = 'approved'
 						AND l.id IS NULL
+						AND (t.claimed_at = 0 OR t.claimed_at < %d)
 						AND t.id > %d
 						ORDER BY t.id ASC
 						LIMIT %d",
 						$author_id,
+						$cutoff,
 						$after_id,
 						$limit
 					));
@@ -495,9 +594,11 @@ class AIPS_Author_Topics_Repository {
 					WHERE t.author_id = %d
 					AND t.status = 'approved'
 					AND l.id IS NULL
+					AND (t.claimed_at = 0 OR t.claimed_at < %d)
 					ORDER BY t.id ASC
 					LIMIT %d",
 					$author_id,
+					$cutoff,
 					$limit
 				));
 			},

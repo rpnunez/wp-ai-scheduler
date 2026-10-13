@@ -140,7 +140,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual(1, $result['total']);
 		$found = false;
 		foreach ($result['items'] as $item) {
-			if ($item->post_id === $test_data['post_id']) {
+			if ((int) $item->post_id === (int) $test_data['post_id']) {
 				$found = true;
 				break;
 			}

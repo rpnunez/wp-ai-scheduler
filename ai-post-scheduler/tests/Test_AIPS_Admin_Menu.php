@@ -339,4 +339,31 @@ class Test_AIPS_Admin_Menu extends WP_UnitTestCase {
 		unset($_GET['s'], $_GET['paged'], $_GET['filter_status'], $_GET['page']);
 	}
 
+	/**
+	 * Verify that Monetization / Affiliate Links tab and URLs are integrated into Automations.
+	 */
+	public function test_automations_monetization_tab_and_urls() {
+		$controller = new AIPS_Automations_Controller();
+		$tabs = $controller->get_tabs();
+
+		$this->assertArrayHasKey('monetization', $tabs, 'Monetization tab should be present in Automations tabs.');
+		$this->assertSame('Monetization', $tabs['monetization']['label']);
+
+		$url = AIPS_Admin_Menu_Helper::get_page_url('affiliate_links');
+		$this->assertStringContainsString('page=aips-automations', $url);
+		$this->assertStringContainsString('tab=monetization', $url);
+
+		$context = $controller->get_page_context('monetization');
+		$this->assertInstanceOf('AIPS_Admin_Page_Context', $context);
+
+		$this->assertFalse(
+			method_exists($this->admin_menu, 'render_prompt_sections_page'),
+			'render_prompt_sections_page method must not exist on AIPS_Admin_Menu.'
+		);
+		$this->assertFileDoesNotExist(
+			AIPS_PLUGIN_DIR . 'templates/admin/sections.php',
+			'sections.php template must not exist.'
+		);
+	}
+
 }
