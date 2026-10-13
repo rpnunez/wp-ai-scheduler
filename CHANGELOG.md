@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+- **History Status Sync Targets the Generation Run:**
+  - Moving a post's History status between `completed` and `partial` (when its components become incomplete or are repaired) now updates the post's newest generation run, the row the Pending Review and Partial Generations tabs show. It used to update the post's newest non-event row, which for an indexed post is the `content_indexing` row: that row was marked partial while the real run kept its old status, and a failed indexing row blocked the update entirely.
+  - Migration 3.7.16 resets background-job rows that were wrongly marked partial and puts the status back on the generation run.
+
 ## [3.7.14] - 2026-10-13
 
 ### Fixed

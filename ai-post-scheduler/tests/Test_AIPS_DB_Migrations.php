@@ -306,4 +306,42 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertNull( $history_repository->get_by_id( $event_id )->post_type );
 		$this->assertSame( 'post', $history_repository->get_by_id( $set_id )->post_type );
 	}
+
+	/**
+	 * migrate_to_3_7_16() must move a status the old sync wrote to a post's
+	 * content_indexing row back onto its generation run.
+	 */
+	public function test_migrate_to_3_7_16_repairs_statuses_written_to_the_wrong_row() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create();
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true' );
+
+		$history_repository = new AIPS_History_Repository();
+		$run_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+		) );
+		$indexing_id        = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'partial',
+			'creation_method' => 'content_indexing',
+		) );
+
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.15' );
+			AIPS_DB_Migrations::check_and_run();
+
+			$this->assertSame( 'partial', $history_repository->get_by_id( $run_id )->status );
+			$this->assertSame( 'completed', $history_repository->get_by_id( $indexing_id )->status );
+		} finally {
+			// install_tables() runs DDL, which commits, so the test case's rollback will not
+			// remove these rows.
+			global $wpdb;
+			$wpdb->delete( $wpdb->prefix . 'aips_history', array( 'id' => $run_id ), array( '%d' ) );
+			$wpdb->delete( $wpdb->prefix . 'aips_history', array( 'id' => $indexing_id ), array( '%d' ) );
+			wp_delete_post( $post_id, true );
+		}
+	}
 }

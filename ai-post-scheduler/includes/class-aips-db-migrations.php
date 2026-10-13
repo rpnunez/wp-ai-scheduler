@@ -233,6 +233,14 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.15', '<' ) ) {
 			$this->migrate_to_3_7_15();
 		}
+
+		// migrate_to_3_7_16() repairs History statuses the sync wrote to the wrong row
+		// (a post's content_indexing row instead of its generation run). It reads post
+		// meta, so it runs after the schema apply.
+		if ( version_compare( $from_version, '3.7.16', '<' ) && ! $this->migrate_to_3_7_16() ) {
+			// Return without stamping the version so the next request retries the repair.
+			return;
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1388,6 +1396,41 @@ class AIPS_DB_Migrations {
 			sprintf( 'Migration 3.7.15: Backfilled post_type on %d History rows.', $changed ),
 			'info'
 		);
+	}
+
+	/**
+	 * Migration for version 3.7.16.
+	 *
+	 * The status sync and the 3.7.13 backfill updated each post's newest non-event row,
+	 * which for an indexed post is its content_indexing row. Reset those rows and put
+	 * the status back on the generation run. Idempotent, so a failed attempt can simply
+	 * run again.
+	 *
+	 * @return bool True when every statement succeeded; false leaves the version unstamped.
+	 */
+	private function migrate_to_3_7_16() {
+		$repaired = AIPS_History_Repository::instance()->repair_generation_statuses();
+
+		if ( $repaired['errors'] > 0 ) {
+			$this->logger->log(
+				sprintf( 'Migration 3.7.16: %d History repair statement(s) failed; will retry on the next request.', $repaired['errors'] ),
+				'error'
+			);
+
+			return false;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.16: Reset %d content-indexing rows from partial, marked %d runs partial and %d runs completed in History.',
+				$repaired['jobs_reset'],
+				$repaired['marked_partial'],
+				$repaired['marked_completed']
+			),
+			'info'
+		);
+
+		return true;
 	}
 
 	/**

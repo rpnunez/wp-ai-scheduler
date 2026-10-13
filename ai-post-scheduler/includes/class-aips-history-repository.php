@@ -168,25 +168,34 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * Join on `latest_history_id = h.id`. Event rows are always newer than the run
      * they describe, so a bare MAX(id) per post would pick them instead.
      *
-     * @param string $post_status Optional wp_posts.post_status to restrict to. The
-     *                            newest run per post is unchanged by it; it only
-     *                            keeps the aggregate from scanning posts the caller
-     *                            will discard anyway.
-     * @param int    $campaign_id Optional campaign to restrict to. Unlike $post_status
-     *                            this changes which run is newest: only that
-     *                            campaign's runs are considered.
+     * @param array $filters {
+     *     Optional filters.
+     *
+     *     @type string $post_status Restrict to posts with this wp_posts.post_status. The
+     *                               newest run per post is unchanged by it; it only keeps
+     *                               the aggregate from scanning posts the caller will
+     *                               discard anyway.
+     *     @type int    $campaign_id Restrict to this campaign. Unlike post_status this
+     *                               changes which run is newest: only that campaign's runs
+     *                               are considered.
+     *     @type int    $post_id     Restrict to this post (an indexed lookup, for
+     *                               single-post updates).
+     * }
      * @return string Parenthesised sub-select exposing post_id and latest_history_id.
      */
-    public static function latest_generation_run_subquery($post_status = '', $campaign_id = 0) {
+    public static function latest_generation_run_subquery(array $filters = array()) {
         global $wpdb;
 
         $table       = $wpdb->prefix . 'aips_history';
         $join        = '';
-        $campaign_id = absint($campaign_id);
+        $post_status = isset($filters['post_status']) ? (string) $filters['post_status'] : '';
+        $campaign_id = isset($filters['campaign_id']) ? absint($filters['campaign_id']) : 0;
+        $post_id     = isset($filters['post_id']) ? absint($filters['post_id']) : 0;
         if ($post_status !== '') {
             $join = "INNER JOIN {$wpdb->posts} p ON p.ID = r.post_id AND p.post_status = '" . esc_sql($post_status) . "'";
         }
         $campaign_sql = $campaign_id ? "AND r.campaign_id = {$campaign_id}" : '';
+        $post_sql     = $post_id ? "AND r.post_id = {$post_id}" : '';
 
         return "(SELECT r.post_id, MAX(r.id) AS latest_history_id
                 FROM {$table} r
@@ -194,6 +203,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 WHERE r.status IN ('completed', 'partial')
                   AND r.post_id IS NOT NULL
                   {$campaign_sql}
+                  {$post_sql}
                   AND " . self::generation_run_condition('r') . "
                 GROUP BY r.post_id)";
     }
@@ -2213,11 +2223,14 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * Keep a post's latest generation row in step with its component state.
+     * Keep a post's latest generation run in step with its component state.
      *
      * A generation that finished with missing components is 'partial'; once the
-     * components are fixed it becomes 'completed' again (and vice versa). Only
-     * completed/partial rows move; failed and in-progress rows are left alone.
+     * components are fixed it becomes 'completed' again (and vice versa). The row that
+     * moves is the post's newest completed/partial generation run, the same row the
+     * Pending Review and Partial Generations tabs show. Indexing, other background jobs
+     * and event containers carry the post_id too and are always newer than the run, so
+     * they are never the target; failed and in-progress rows are left alone.
      *
      * @param int  $post_id    Post ID.
      * @param bool $incomplete Whether any component is still missing.
@@ -2230,20 +2243,16 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         }
 
         // One conditional UPDATE: no read is needed to find out the row is already correct.
-        $target       = $incomplete ? 'partial' : 'completed';
-        $methods      = self::event_only_creation_methods();
-        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
+        $target     = $incomplete ? 'partial' : 'completed';
+        $latest_run = self::latest_generation_run_subquery(array('post_id' => $post_id));
 
         $updated = $this->wpdb->query($this->wpdb->prepare(
             "UPDATE {$this->table_name} h
-             INNER JOIN (
-                 SELECT MAX(id) AS latest_id
-                 FROM {$this->table_name}
-                 WHERE post_id = %d AND COALESCE(creation_method, '') NOT IN ({$placeholders})
-             ) latest ON latest.latest_id = h.id
+             INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
              SET h.status = %s
-             WHERE h.status IN ('completed', 'partial') AND h.status <> %s",
-            array_merge(array($post_id), $methods, array($target, $target))
+             WHERE h.status <> %s",
+            $target,
+            $target
         ));
 
         return $this->finish_bulk_status_update($updated) > 0;
@@ -2301,33 +2310,85 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * Mark existing generation rows as partial when their post is flagged incomplete.
+     * Mark existing generation runs as partial when their post is flagged incomplete.
      *
      * One-time backfill for rows written before generations could be 'partial'.
-     * Only the newest generation row of each post is touched.
+     * Only the newest generation run of each post is touched.
      *
      * @return int Number of rows changed.
      */
     public function backfill_partial_generation_status() {
-        $methods      = self::event_only_creation_methods();
-        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
-        $postmeta     = $this->wpdb->postmeta;
+        return $this->finish_bulk_status_update(
+            $this->set_run_status_by_incomplete_flag('true', 'completed', 'partial')
+        );
+    }
 
-        $updated = $this->wpdb->query($this->wpdb->prepare(
+    /**
+     * Move each post's newest generation run between statuses according to its post's
+     * incomplete flag.
+     *
+     * @param string $flag   Value the post's incomplete meta must have ('true' or 'false').
+     * @param string $from   Current run status to change.
+     * @param string $to     New run status.
+     * @return int|false Rows changed, or false when the query failed.
+     */
+    private function set_run_status_by_incomplete_flag($flag, $from, $to) {
+        $latest_run = self::latest_generation_run_subquery();
+
+        return $this->wpdb->query($this->wpdb->prepare(
             "UPDATE {$this->table_name} h
-             INNER JOIN (
-                 SELECT post_id, MAX(id) AS latest_id
-                 FROM {$this->table_name}
-                 WHERE post_id IS NOT NULL AND COALESCE(creation_method, '') NOT IN ({$placeholders})
-                 GROUP BY post_id
-             ) latest ON latest.latest_id = h.id
-             INNER JOIN {$postmeta} pm ON pm.post_id = h.post_id AND pm.meta_key = %s AND pm.meta_value = 'true'
-             SET h.status = 'partial'
-             WHERE h.status = 'completed'",
-            array_merge($methods, array(AIPS_Post_Manager::META_GENERATION_INCOMPLETE))
+             INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
+             INNER JOIN {$this->wpdb->postmeta} pm ON pm.post_id = h.post_id AND pm.meta_key = %s AND pm.meta_value = %s
+             SET h.status = %s
+             WHERE h.status = %s",
+            AIPS_Post_Manager::META_GENERATION_INCOMPLETE,
+            $flag,
+            $to,
+            $from
         ));
+    }
 
-        return $this->finish_bulk_status_update($updated);
+    /**
+     * Repair statuses written by the sync before it targeted the generation run.
+     *
+     * The sync and the 3.7.13 backfill picked each post's newest non-event row, which
+     * for an indexed post is the content_indexing row. That row was marked 'partial'
+     * (indexing never ends partial) while the real run kept its old status. This:
+     *
+     * 1. resets content_indexing rows that carry a post_id from 'partial' to 'completed'
+     *    (only that creation_method: it is the only background job the old sync reached
+     *    in practice, and any other 'partial' row may be a real run the allowlist does
+     *    not name);
+     * 2. marks each post's newest run 'partial' when its post is flagged incomplete;
+     * 3. marks it 'completed' again when the post's incomplete flag is 'false'.
+     *
+     * Idempotent: a second run changes nothing.
+     *
+     * @return array{jobs_reset:int, marked_partial:int, marked_completed:int, errors:int}
+     *         `errors` counts the statements that failed; callers should not treat the
+     *         repair as done when it is above zero.
+     */
+    public function repair_generation_statuses() {
+        $jobs_reset = $this->wpdb->query(
+            "UPDATE {$this->table_name}
+             SET status = 'completed'
+             WHERE post_id IS NOT NULL
+               AND status = 'partial'
+               AND creation_method = 'content_indexing'"
+        );
+        $marked_partial   = $this->set_run_status_by_incomplete_flag('true', 'completed', 'partial');
+        $marked_completed = $this->set_run_status_by_incomplete_flag('false', 'partial', 'completed');
+
+        $errors = count(array_filter(array($jobs_reset, $marked_partial, $marked_completed), function ($result) {
+            return $result === false;
+        }));
+
+        return array(
+            'jobs_reset'       => $this->finish_bulk_status_update($jobs_reset),
+            'marked_partial'   => $this->finish_bulk_status_update($marked_partial),
+            'marked_completed' => $this->finish_bulk_status_update($marked_completed),
+            'errors'           => $errors,
+        );
     }
 
     /**
