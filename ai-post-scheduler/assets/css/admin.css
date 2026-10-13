@@ -599,6 +599,7 @@
 .aips-history-metric-value { display:block; color:var(--aips-gray-900); font-size:22px; font-weight:700; line-height:1.1; }
 .aips-history-metric-label { display:block; margin-top:4px; color:var(--aips-gray-600); font-size:12px; }
 .aips-history-metric-sub { display:block; margin-top:2px; color:var(--aips-gray-500); font-size:11px; }
+.aips-history-metric-reason { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .aips-history-quick-dates { display:inline-flex; gap:2px; }
 .aips-history-filter-bar { flex-direction:column; align-items:stretch; gap:10px; }
 .aips-history-filter-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; width:100%; }

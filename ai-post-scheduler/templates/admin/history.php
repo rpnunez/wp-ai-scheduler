@@ -77,6 +77,29 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         </span>
                     </span>
                 </button>
+                <?php
+                $runs_24h      = (int) ($stats['runs_24h'] ?? 0);
+                $runs_prev_24h = (int) ($stats['runs_prev_24h'] ?? 0);
+                $runs_delta    = $runs_24h - $runs_prev_24h;
+                $top_failure   = isset($stats['top_failure']) && is_array($stats['top_failure']) ? $stats['top_failure'] : null;
+                ?>
+                <div class="aips-history-metric">
+                    <span class="aips-history-metric-value" id="aips-stat-runs-24h"><?php echo esc_html($runs_24h); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Runs, last 24h', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub" id="aips-stat-runs-24h-trend"><?php
+                            /* translators: %d: number of runs in the previous 24 hours */
+                            echo esc_html(sprintf(__('%1$s vs %2$d previous 24h', 'ai-post-scheduler'), ($runs_delta > 0 ? '+' : '') . $runs_delta, $runs_prev_24h));
+                        ?></span>
+                    </span>
+                </div>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed" data-domain="generation_runs" title="<?php esc_attr_e('Most common failure reason across generation runs in the last 7 days. Click to list failed runs.', 'ai-post-scheduler'); ?>">
+                    <span class="aips-history-metric-value" id="aips-stat-top-failure-count"><?php echo esc_html($top_failure ? (int) $top_failure['count'] : 0); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Top failure, 7 days', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub aips-history-metric-reason" id="aips-stat-top-failure-reason"><?php echo esc_html($top_failure ? $top_failure['reason'] : __('No failures', 'ai-post-scheduler')); ?></span>
+                    </span>
+                </button>
                 <div class="aips-history-metric">
                     <span class="aips-history-metric-value" id="aips-stat-success-rate"><?php echo esc_html(number_format_i18n((float) ($stats['success_rate'] ?? 0), 1)); ?>%</span>
                     <span class="aips-history-metric-label"><?php esc_html_e('Run success rate', 'ai-post-scheduler'); ?></span>

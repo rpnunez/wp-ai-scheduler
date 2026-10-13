@@ -1572,6 +1572,12 @@
 						$('#aips-stat-processing').text(stats.processing);
 						$('#aips-stat-stalled').text(stats.stalled || 0);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
+						var runs24h = parseInt(stats.runs_24h || 0, 10);
+						var runsPrev = parseInt(stats.runs_prev_24h || 0, 10);
+						$('#aips-stat-runs-24h').text(runs24h);
+						$('#aips-stat-runs-24h-trend').text(((runs24h - runsPrev) > 0 ? '+' : '') + (runs24h - runsPrev) + ' vs ' + runsPrev + ' previous 24h');
+						$('#aips-stat-top-failure-count').text(stats.top_failure ? stats.top_failure.count : 0);
+						$('#aips-stat-top-failure-reason').text(stats.top_failure ? stats.top_failure.reason : (aipsHistoryL10n.noFailures || 'No failures'));
 						if (stats.jobs) {
 							$('#aips-stat-jobs').text(stats.jobs.total || 0);
 							$('#aips-stat-jobs-failed').text(stats.jobs.failed || 0);
