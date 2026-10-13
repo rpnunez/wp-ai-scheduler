@@ -147,7 +147,7 @@ class Test_AIPS_Generation_Run_Pending_Review extends WP_UnitTestCase {
 			// Background jobs and wrappers that are not generation runs.
 			array(
 				'author_embeddings', 'author_suggestion', 'author_topic_generation', 'bulk_batch_slice',
-				'content_indexing', 'post_generation', 'manual_generation', 'manual_regeneration',
+				'content_indexing', 'manual_generation', 'manual_regeneration',
 			)
 		);
 
@@ -221,6 +221,16 @@ class Test_AIPS_Generation_Run_Pending_Review extends WP_UnitTestCase {
 
 		$this->assertCount(1, $items);
 		$this->assertSame($run_id, (int) $items[0]->id);
+	}
+
+	public function test_run_whose_creation_method_is_the_container_default_is_listed() {
+		$draft = $this->make_draft('post_generation');
+		$this->add_event_rows($draft['post_id']);
+
+		$items = $this->items_for_post($this->repository->get_draft_posts(array('per_page' => 500)), $draft['post_id']);
+
+		$this->assertCount(1, $items);
+		$this->assertSame($draft['run_id'], (int) $items[0]->id);
 	}
 
 	public function test_post_with_only_event_rows_is_not_listed_or_counted() {
