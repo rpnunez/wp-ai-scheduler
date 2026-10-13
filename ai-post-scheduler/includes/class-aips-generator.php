@@ -1452,6 +1452,7 @@ class AIPS_Generator {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
     }
+
     /**
      * Record selected source-data snapshots once they are injected into a prompt.
      *
