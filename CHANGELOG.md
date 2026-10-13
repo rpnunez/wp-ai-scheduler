@@ -36,6 +36,12 @@
 - **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
 
 ### Fixed
+- **Author Topic Auto-Approval:** Global Settings → Authors now actually control authors set to "Use Global Settings".
+  - New `AIPS_Author_Topic_Approval_Policy::resolve()` is the single policy resolver; the generator passes the resolved policy to `evaluate_author_topic_auto_approval()` instead of the evaluator re-deriving it from the author row.
+  - Removed the hidden, UI-less option family (`aips_author_topic_auto_approval_enabled`, `..._approval_mode`, `..._min_relevance`, `..._max_duplicate`, `..._fallback_action`); the global default mode is now `manual`.
+  - Quality score and niche relevance are separate settings, columns (`topic_auto_approval_min_relevance`) and Authors-form fields; settings gain the `score` mode and `pending` fallback, and legacy `reject`/`embeddings`/`none` values are normalized.
+  - Similarity mode no longer auto-approves topics whose niche relevance could not be measured (embeddings disabled or failing); the fallback applies instead. Author max-similarity is now clamped to 0.50-0.99, and saving an author in `manual`/`inherit` mode resets that author's stored thresholds to defaults.
+  - Migration 3.7.18 switches existing authors on `manual` (the old column default) to `inherit`; explicit `score`/`all`/`similarity` authors are unchanged.
 - **Pending Review Duplicate Rows:**
   - A draft is now listed once, however many History rows reference it. Topic-generation wrappers, review-queue actions, content-indexing runs and notifications carry the same post ID and finish as completed; the list, its total and the dashboard draft count now use only the newest generation run per post (`AIPS_History_Repository::generation_run_condition()` / `latest_generation_run_subquery()`).
   - The Type column reads the post's own type, so History rows written before the `post_type` column existed no longer show a dash.

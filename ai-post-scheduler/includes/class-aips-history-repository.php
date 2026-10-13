@@ -1576,6 +1576,33 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                         : (int) round(((int) $durations[$middle - 1] + (int) $durations[$middle]) / 2);
                 }
 
+                // Activity: runs started in the last 24h versus the 24h before that.
+                $activity = $this->wpdb->get_row(
+                    "SELECT
+                        SUM(CASE WHEN created_at >= UNIX_TIMESTAMP() - 86400 THEN 1 ELSE 0 END) as last_24h,
+                        SUM(CASE WHEN created_at < UNIX_TIMESTAMP() - 86400 AND created_at >= UNIX_TIMESTAMP() - 172800 THEN 1 ELSE 0 END) as prev_24h
+                     FROM {$this->table_name}
+                     WHERE created_at >= UNIX_TIMESTAMP() - 172800
+                       AND {$run_condition}"
+                );
+                $stats['runs_24h']      = isset($activity->last_24h) ? (int) $activity->last_24h : 0;
+                $stats['runs_prev_24h'] = isset($activity->prev_24h) ? (int) $activity->prev_24h : 0;
+
+                // Most common failure reason across generation runs in the last 7 days.
+                $top_failure = $this->wpdb->get_row(
+                    "SELECT COALESCE(NULLIF(TRIM(error_message), ''), 'Unknown failure') AS reason, COUNT(*) AS failure_count
+                     FROM {$this->table_name}
+                     WHERE status = 'failed'
+                       AND created_at >= UNIX_TIMESTAMP() - 604800
+                       AND {$run_condition}
+                     GROUP BY reason
+                     ORDER BY failure_count DESC
+                     LIMIT 1"
+                );
+                $stats['top_failure'] = $top_failure
+                    ? array('reason' => (string) $top_failure->reason, 'count' => (int) $top_failure->failure_count)
+                    : null;
+
                 return $stats;
             }
         );
