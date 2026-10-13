@@ -194,7 +194,7 @@ abstract class AIPS_List_Table extends WP_List_Table {
 		echo '<div class="aips-list-table-empty">';
 		AIPS_Admin_UI_Primitives::render_empty_state(array(
 			'icon'    => 'dashicons-database',
-			'title'   => sprintf(__('No %s Found', 'ai-post-scheduler'), esc_html($this->_args['plural'])),
+			'title'   => sprintf(__('No %s found', 'ai-post-scheduler'), esc_html($this->_args['plural'])),
 			'message' => __('There are currently no items matching your criteria.', 'ai-post-scheduler'),
 		));
 		echo '</div>';

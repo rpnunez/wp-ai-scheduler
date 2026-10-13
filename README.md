@@ -219,7 +219,7 @@ All variables live in `.env` (created from `.env.example`, gitignored). `docker 
 | `ENTRYPOINT_DEBUG` | `1` | Verbose container startup output (set in `docker-compose.yml`). |
 | `PHP_IDE_CONFIG` | `serverName=localhost` | Xdebug server name for IDEs (set in `docker-compose.yml`). |
 | `NO_COLOR` | unset | Shell variable: disable colors in `make` output. |
-| `WP_USERNAME`, `WP_APP_PASSWORD`, `MCP_BRIDGE_URL` | placeholders | Only for the MCP bridge client; see [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md). |
+| `WP_USERNAME`, `WP_APP_PASSWORD` | placeholders | WordPress credentials placeholders in `.env.example`; reserved for future use. |
 
 PHP limits (`memory_limit`, upload size, execution time) are not environment variables here: edit `dev-php.ini` and run `make reload-php`. Test-runner variables (`AIPS_WP_TEST_*`, `WP_TESTS_DIR`, `WP_CORE_DIR`) are listed in [TESTING.md](TESTING.md).
 
@@ -288,10 +288,11 @@ The tables below document all canonical options registered and maintained by AI 
 
 | Option Key | Type | Default | UI Location | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `aips_author_topic_auto_approval_mode` | `string` | `'similarity'` | Settings > Authors | Default policy: `'similarity'` (Dual-Boundary Gate), `'manual'`, or `'all'`. |
-| `aips_author_topic_auto_approval_min_score` | `float` | `70.0` | Settings > Authors | Minimum niche relevance percentage against author baseline required for approval. |
-| `aips_author_topic_auto_approval_max_similarity` | `float` | `0.85` | Settings > Authors | Maximum duplicate similarity ceiling against existing topics/posts. |
-| `aips_author_topic_auto_approval_fallback` | `string` | `'reject'` | Settings > Authors | Sub-threshold handling: `'reject'` (auto-reject) or `'smart_split'` (hold in Pending). |
+| `aips_author_topic_auto_approval_mode` | `string` | `'manual'` | Settings > Authors | Global policy for authors set to "Use Global Settings": `'manual'`, `'all'`, `'score'`, or `'similarity'`. |
+| `aips_author_topic_auto_approval_min_score` | `int` | `70` | Settings > Authors | Minimum AI quality score (1-100) for `'score'` mode. |
+| `aips_author_topic_auto_approval_min_relevance` | `int` | `65` | Settings > Authors | Minimum niche relevance percentage (1-100) for `'similarity'` mode. |
+| `aips_author_topic_auto_approval_max_similarity` | `float` | `0.85` | Settings > Authors | Maximum duplicate similarity ceiling (0.50-0.99) for `'similarity'` mode. |
+| `aips_author_topic_auto_approval_fallback` | `string` | `'smart_split'` | Settings > Authors | Non-qualifying handling: `'pending'`, `'rejected'`, or `'smart_split'` (reject duplicates, hold the rest).
 
 ### 3. General & Editorial Workflow
 
@@ -417,7 +418,6 @@ Benchmarks can be run manually; no CI workflow currently enforces them automatic
 - [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
 - [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — coding and architectural guidelines
-- [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md) — MCP bridge API reference
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
 ## Contributing

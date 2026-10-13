@@ -68,7 +68,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			$titles = $this->get_recent_post_titles(
 				array(
 					'template_id' => (int) $subject->get_id(),
-					'status'      => 'completed',
+					'status'      => 'generated',
 					'per_page'    => $limit,
 					'fields'      => 'list',
 					'orderby'     => 'completed_at',
@@ -81,7 +81,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 				$titles = $this->get_recent_post_titles(
 					array(
 						'author_id' => (int) $author->id,
-						'status'    => 'completed',
+						'status'    => 'generated',
 						'per_page'  => $limit,
 						'fields'    => 'list',
 						'orderby'   => 'completed_at',
@@ -93,7 +93,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 			$titles = $this->get_recent_post_titles(
 				array(
 					'template_id' => (int) $subject->id,
-					'status'      => 'completed',
+					'status'      => 'generated',
 					'per_page'    => $limit,
 					'fields'      => 'list',
 					'orderby'     => 'completed_at',
@@ -318,7 +318,7 @@ class AIPS_Prompt_Builder_Diversity_Injector {
 		static $cache = array();
 
 		$args = array(
-			'status'   => 'completed',
+			'status'   => 'generated',
 			'per_page' => 1,
 			'page'     => 1,
 			'fields'   => 'list',

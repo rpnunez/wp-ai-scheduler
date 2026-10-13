@@ -537,6 +537,16 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
+	 * Delete embedding for an author ID.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return int|false
+	 */
+	public function delete_by_author_id($author_id) {
+		return $this->delete('author', $author_id);
+	}
+
+	/**
 	 * Clear all embeddings, optionally for a specific object type.
 	 *
 	 * @param string $object_type Optional. If specified, clear only this type.

@@ -15,6 +15,9 @@ class AIPS_History {
      * Maximum number of items shown in timeline sidebar.
      */
     private const TIMELINE_MAX_ITEMS = 30;
+
+    /** Upper bound for the History per-page Screen Option. */
+    private const MAX_PER_PAGE = 100;
     
     /**
      * @var AIPS_History_Repository Repository for database operations
@@ -68,7 +71,48 @@ class AIPS_History {
             'research_run'            => __( 'Research Run', 'ai-post-scheduler' ),
             'source_fetch'            => __( 'Source Fetch', 'ai-post-scheduler' ),
             'gsc_sync'                => __( 'Search Console Sync', 'ai-post-scheduler' ),
+            'post_review_action'      => __( 'Post Review', 'ai-post-scheduler' ),
+            'topic_post_generation'   => __( 'Topic Post Generation', 'ai-post-scheduler' ),
+            'manual_generation'       => __( 'Manual Generation', 'ai-post-scheduler' ),
+            'manual_regeneration'     => __( 'Manual Regeneration', 'ai-post-scheduler' ),
+            'bulk_delete'             => __( 'Bulk Delete', 'ai-post-scheduler' ),
+            'bulk_delete_feedback'    => __( 'Bulk Delete Feedback', 'ai-post-scheduler' ),
+            'bulk_schedule'           => __( 'Bulk Schedule', 'ai-post-scheduler' ),
+            'taxonomy_generation'     => __( 'Taxonomy Generation', 'ai-post-scheduler' ),
+            'stress_test'             => __( 'Stress Test', 'ai-post-scheduler' ),
+            'settings_connection_test' => __( 'AI Connection Test', 'ai-post-scheduler' ),
+            'notification_sent'       => __( 'Notification', 'ai-post-scheduler' ),
+            'schedule_lifecycle'      => __( 'Schedule Change', 'ai-post-scheduler' ),
+            'template_lifecycle'      => __( 'Template Change', 'ai-post-scheduler' ),
+            'campaign_lifecycle'      => __( 'Campaign Change', 'ai-post-scheduler' ),
+            'author_lifecycle'        => __( 'Author Change', 'ai-post-scheduler' ),
+            'source_lifecycle'        => __( 'Source Change', 'ai-post-scheduler' ),
         );
+    }
+
+    /**
+     * Whether a creation method has an explicit human-readable label.
+     *
+     * @param string $method Raw creation_method value.
+     * @return bool
+     */
+    public static function has_creation_method_label( string $method ): bool {
+        return $method !== '' && isset( self::creation_method_labels()[ $method ] );
+    }
+
+    /**
+     * Whether a creation method produces a post through the generation pipeline.
+     *
+     * Event-only containers (review-queue actions, lifecycle changes, deletes,
+     * notifications, tests, and the topic-generation wrapper) never own the
+     * generated post's components, so the Timeline must not present the linked
+     * post's title/image/content as if that row generated them.
+     *
+     * @param string $method Raw creation_method value.
+     * @return bool
+     */
+    public static function is_generation_method( string $method ): bool {
+        return ! in_array( $method, AIPS_History_Repository::event_only_creation_methods(), true );
     }
 
     /**
@@ -143,7 +187,8 @@ class AIPS_History {
     }
 
     /**
-     * AJAX handler to clear/purge history records by status or filter (e.g. stalled processing runs).
+     * AJAX handler to clear history records by status or filter. For status 'processing' it closes
+     * runs shown as Stalled instead of deleting them.
      *
      * @return void
      */
@@ -163,6 +208,25 @@ class AIPS_History {
             'status'          => $status,
             'older_than_days' => $older_than_days,
         );
+
+        // "Clear in-progress" must not delete runs that are still working. Only rows
+        // that are currently Stalled are closed (as terminated), and they are kept.
+        if ($status === 'processing' && $older_than_days === 0) {
+            $closed  = $this->repository->close_stalled_processing_rows(
+                AIPS_History_Event_Recorder::lifecycle_creation_methods()
+            );
+            $message = sprintf(
+                /* translators: %d: number of runs closed */
+                _n('Closed %d stalled run.', 'Closed %d stalled runs.', $closed, 'ai-post-scheduler'),
+                $closed
+            );
+
+            AIPS_Ajax_Response::success(array(
+                'deleted' => $closed,
+                'closed'  => $closed,
+                'stats'   => $this->get_stats(),
+            ), $message);
+        }
 
         $result = $this->repository->clear_history($clear_args);
 
@@ -253,7 +317,7 @@ class AIPS_History {
                     $item->id,
                     $item->created_at,
                     $this->sanitize_csv_cell($item->generated_title),
-                    $item->status,
+                    isset($item->effective_status) ? $item->effective_status : $item->status,
                     $this->sanitize_csv_cell(self::get_creation_method_label((string) $item->creation_method)),
                     $item->post_id,
                     $this->sanitize_csv_cell($item->error_message)
@@ -355,6 +419,11 @@ class AIPS_History {
         $post_id = !empty($history_item->post_id) ? (int) $history_item->post_id : (!empty($container['post_id']) ? (int) $container['post_id'] : 0);
         $post = $post_id ? get_post($post_id) : null;
 
+        // Only generation runs own the post's components; event rows (publish,
+        // delete, lifecycle, ...) just link to the post.
+        $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
+        $show_milestones = $post_id > 0 && self::is_generation_method($creation_method);
+
         $post_type = '';
         if ($post) {
             $post_type = $post->post_type;
@@ -400,17 +469,46 @@ class AIPS_History {
             $has_content = true;
         }
 
-        // Custom fields
+        // Component statuses recorded by the generator (decoded from JSON post meta).
+        $component_statuses = array();
+        $incomplete_components = array();
+        if ($show_milestones && $post) {
+            $raw_statuses = get_post_meta($post->ID, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, true);
+            $decoded      = is_string($raw_statuses) ? json_decode($raw_statuses, true) : $raw_statuses;
+            if (is_array($decoded)) {
+                $component_statuses = $decoded;
+            }
+
+            $component_labels = array(
+                'post_title'     => __('title', 'ai-post-scheduler'),
+                'post_excerpt'   => __('excerpt', 'ai-post-scheduler'),
+                'featured_image' => __('featured image', 'ai-post-scheduler'),
+                'post_content'   => __('content', 'ai-post-scheduler'),
+            );
+            foreach ($component_statuses as $component => $ok) {
+                if ($ok === false) {
+                    $incomplete_components[] = isset($component_labels[$component]) ? $component_labels[$component] : (string) $component;
+                }
+            }
+        }
+
+        // Featured image: distinguish "failed" from "not generated / not requested".
+        $image_status = 'none';
+        if (!empty($thumb_url)) {
+            $image_status = 'present';
+        } elseif (array_key_exists('featured_image', $component_statuses) && $component_statuses['featured_image'] === false) {
+            $image_status = 'failed';
+        }
+
+        // Custom fields: user-facing meta only. Underscore-prefixed meta (including
+        // every _aips_* bookkeeping key) is internal and never shown here.
         $custom_fields = array();
-        if ($post) {
+        if ($show_milestones && $post) {
+            $hidden_meta_keys = (array) apply_filters('aips_history_timeline_hidden_meta_keys', array('aips_source_snapshots_used'), $post->ID);
             $all_meta = get_post_meta($post->ID);
             if (is_array($all_meta)) {
                 foreach ($all_meta as $meta_key => $meta_vals) {
-                    if (strpos($meta_key, '_aips_') === 0 || strpos($meta_key, 'aips_') === 0) {
-                        if (in_array($meta_key, array('_aips_generated_post', '_aips_generation_incomplete', '_aips_generation_component_statuses', '_aips_had_partial_generation'), true)) {
-                            continue;
-                        }
-                    } elseif (strpos($meta_key, '_') === 0) {
+                    if (strpos($meta_key, '_') === 0 || in_array($meta_key, $hidden_meta_keys, true)) {
                         continue;
                     }
                     $custom_fields[] = array(
@@ -425,6 +523,10 @@ class AIPS_History {
         // Errors & Warnings
         $error_text = !empty($container['root_issue']) ? $container['root_issue'] : (!empty($history_item->error_message) ? $history_item->error_message : '');
         $warning_text = '';
+        if (!empty($incomplete_components)) {
+            /* translators: %s: comma-separated list of components that did not generate */
+            $warning_text = sprintf(__('Generation incomplete: %s did not generate.', 'ai-post-scheduler'), implode(', ', $incomplete_components));
+        }
 
         // Format chronological events
         $formatted_events = array();
@@ -467,7 +569,9 @@ class AIPS_History {
             'attempt_text' => sprintf(__('Attempting to create a %s', 'ai-post-scheduler'), $post_type_label),
             'post_title' => $generated_title,
             'post_excerpt' => $excerpt_30,
+            'show_milestones' => $show_milestones,
             'has_image' => !empty($thumb_url),
+            'image_status' => $image_status,
             'image_url' => $thumb_url,
             'image_edit_url' => $thumb_edit_url,
             'has_content' => $has_content,
@@ -532,6 +636,9 @@ class AIPS_History {
     /**
      * Get items per page for History from user meta Screen Options, falling back to 50.
      *
+     * Capped at MAX_PER_PAGE: with collapsing, each entry can expand to a full group of
+     * rows, so an unbounded page size would hydrate and render a very large page.
+     *
      * @param int $default Default fallback.
      * @return int
      */
@@ -540,7 +647,7 @@ class AIPS_History {
         if ($user_id) {
             $user_option = get_user_meta($user_id, 'aips_history_per_page', true);
             if (!empty($user_option) && (int) $user_option > 0) {
-                return (int) $user_option;
+                return min((int) $user_option, self::MAX_PER_PAGE);
             }
         }
         return $default;
@@ -700,7 +807,13 @@ class AIPS_History {
             ? __('Success', 'ai-post-scheduler')
             : ($container['status'] === 'failed'
                 ? __('Failed', 'ai-post-scheduler')
-                : __('In progress', 'ai-post-scheduler'));
+                : ($container['status'] === 'stalled'
+                    ? __('Stalled', 'ai-post-scheduler')
+                    : ($container['status'] === 'partial'
+                        ? __('Partial', 'ai-post-scheduler')
+                        : ($container['status'] === 'terminated'
+                            ? __('Terminated', 'ai-post-scheduler')
+                            : __('In progress', 'ai-post-scheduler')))));
 
         $saw_title_change = false;
         $saw_content_change = false;
@@ -984,6 +1097,9 @@ class AIPS_History {
                 ? __('Review the error and retry this run after correcting its template or AI configuration.', 'ai-post-scheduler')
                 : __('Review the error and technical log before retrying the originating workflow.', 'ai-post-scheduler');
         }
+        if ($container['status'] === 'stalled') {
+            return __('No activity has been logged for a while. If it does not resume, use Clear In-Progress on the History page to close it, then retry the originating workflow.', 'ai-post-scheduler');
+        }
         if ($container['status'] === 'processing') {
             return __('Allow the run to finish; reload History if it remains in progress unexpectedly.', 'ai-post-scheduler');
         }
@@ -1123,6 +1239,10 @@ class AIPS_History {
             $completed_at = !empty($completed_at) ? AIPS_DateTime::formatRelativeOrAbsolute($completed_at) : '';
         }
         $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
+        // An idle in-progress run is shown as Stalled rather than Processing.
+        $display_status = isset($history_item->effective_status)
+            ? (string) $history_item->effective_status
+            : (isset($history_item->status) ? (string) $history_item->status : '');
         $actor_type = isset($history_item->actor_type) ? (string) $history_item->actor_type : '';
         if ($actor_type === '') {
             $actor_type = strpos($creation_method, 'manual') !== false || strpos($creation_method, 'admin') !== false ? 'admin' : 'system';
@@ -1130,8 +1250,8 @@ class AIPS_History {
 
         return array(
             'id' => (int) $history_item->id,
-            'status' => isset($history_item->status) ? (string) $history_item->status : '',
-            'status_class' => $this->get_history_status_class(isset($history_item->status) ? (string) $history_item->status : ''),
+            'status' => $display_status,
+            'status_class' => $this->get_history_status_class($display_status),
             'generated_title' => isset($history_item->generated_title) ? $history_item->generated_title : '',
             'template_name' => isset($history_item->template_name) ? $history_item->template_name : '',
             'created_at' => $created_at,
@@ -1397,6 +1517,10 @@ class AIPS_History {
 
         if ($status === 'processing') {
             return 'aips-badge-info';
+        }
+
+        if ($status === 'stalled' || $status === 'partial') {
+            return 'aips-badge-warning';
         }
 
         return 'aips-badge-neutral';
@@ -1754,11 +1878,13 @@ class AIPS_History {
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
+            'per_page' => $this->get_per_page(),
+            'collapse' => $this->should_collapse($status_filter),
         ));
 
         $this->prepare_items_for_display($history['items']);
 
-        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items'], $status_filter) : '';
+        $items_html = !empty($history['items']) ? $this->render_table_rows_html($history['items'], $status_filter, isset($history['group_max_rows']) ? (int) $history['group_max_rows'] : 0) : '';
 
         ob_start();
         $this->render_pagination_html($history, $status_filter, $search_query);
@@ -1924,6 +2050,8 @@ class AIPS_History {
             'date_from' => $date_from,
             'date_to' => $date_to,
             'fields' => 'list',
+            'per_page' => $this->get_per_page(),
+            'collapse' => $this->should_collapse($status_filter),
         ));
 
         $this->prepare_items_for_display($history['items']);
@@ -2041,40 +2169,43 @@ class AIPS_History {
      * Clusters runs of 2 or more adjacent items of the same activity type into
      * a collapsed group structure for cleaner list presentation.
      *
-     * @param array $items List of prepared history item objects.
+     * @param array $items    List of prepared history item objects.
+     * @param int   $max_rows Maximum rows per group (0 = repository default).
      * @return array Array of group descriptors and individual item wrappers.
      */
-    public function group_contiguous_items( array $items ): array {
+    public function group_contiguous_items( array $items, int $max_rows = 0 ): array {
         if ( empty( $items ) ) {
             return array();
         }
 
-        $grouped = array();
-        $count   = count( $items );
-        $i       = 0;
+        // Runs longer than the cap are split into consecutive groups, matching the
+        // entry plan the repository paginates with.
+        $max_rows = $max_rows >= 2 ? $max_rows : AIPS_History_Repository::GROUP_MAX_ROWS;
+
+        // Entry sizes come from the repository planner, so rendered groups always match
+        // the entries that pagination counted.
+        $keys = array();
+        foreach ( $items as $item ) {
+            $keys[] = AIPS_History_Repository::normalize_method_key( isset( $item->creation_method ) ? $item->creation_method : null );
+        }
+        $sizes = AIPS_History_Repository::plan_entry_sizes( $keys, $max_rows );
+
+        $grouped     = array();
+        $i           = 0;
         $group_index = 1;
 
-        while ( $i < $count ) {
+        foreach ( $sizes as $run_length ) {
             $current_item   = $items[ $i ];
-            $current_method = ! empty( $current_item->creation_method ) ? (string) $current_item->creation_method : 'post_generation';
-
-            // Look ahead for identical consecutive methods
-            $j = $i + 1;
-            while ( $j < $count ) {
-                $next_method = ! empty( $items[ $j ]->creation_method ) ? (string) $items[ $j ]->creation_method : 'post_generation';
-                if ( $next_method !== $current_method ) {
-                    break;
-                }
-                $j++;
-            }
-
-            $run_length = $j - $i;
+            $current_method = $keys[ $i ];
+            $j              = $i + $run_length;
 
             if ( $run_length >= 2 ) {
                 $slice      = array_slice( $items, $i, $run_length );
                 $completed  = 0;
                 $failed     = 0;
                 $processing = 0;
+                $stalled    = 0;
+                $partial    = 0;
                 $post_types = array();
                 $ids        = array();
 
@@ -2084,8 +2215,14 @@ class AIPS_History {
                         $completed++;
                     } elseif ( $item->status === 'failed' ) {
                         $failed++;
+                    } elseif ( $item->status === 'partial' ) {
+                        $partial++;
                     } elseif ( $item->status === 'processing' ) {
-                        $processing++;
+                        if ( isset( $item->effective_status ) && $item->effective_status === 'stalled' ) {
+                            $stalled++;
+                        } else {
+                            $processing++;
+                        }
                     }
                     if ( ! empty( $item->post_type ) && ! in_array( $item->post_type, $post_types, true ) ) {
                         $post_types[] = $item->post_type;
@@ -2108,6 +2245,8 @@ class AIPS_History {
                     'completed_count' => $completed,
                     'failed_count'    => $failed,
                     'processing_count'=> $processing,
+                    'stalled_count'   => $stalled,
+                    'partial_count'   => $partial,
                     'post_types'      => $post_types,
                     'ids'             => $ids,
                     'first_date'      => $first_date,
@@ -2129,17 +2268,30 @@ class AIPS_History {
     }
 
     /**
+     * Whether the History list collapses adjacent same-type runs for a status filter.
+     *
+     * Processing/stalled/failed views stay flat so each event is individually visible.
+     *
+     * @param string $status_filter Active status filter.
+     * @return bool
+     */
+    public function should_collapse( string $status_filter ): bool {
+        return !in_array($status_filter, array('processing', 'stalled', 'failed'), true);
+    }
+
+    /**
      * Render the table rows HTML (with contiguous grouping) for a list of items.
      * When filtered by a specific status (e.g. processing or failed), grouping is bypassed
      * to provide a clear, flat, un-nested list of individual generation events.
      *
      * @param array  $items Prepared history item objects.
      * @param string $status_filter Optional active status filter.
+     * @param int    $max_rows Maximum rows per group (0 = repository default).
      * @return string HTML of rows.
      */
-    public function render_table_rows_html( array $items, string $status_filter = '' ): string {
-        $should_group = empty( $status_filter ) || ( $status_filter !== 'processing' && $status_filter !== 'failed' );
-        $grouped_entries = $should_group ? $this->group_contiguous_items( $items ) : array_map( function( $item ) {
+    public function render_table_rows_html( array $items, string $status_filter = '', int $max_rows = 0 ): string {
+        $should_group = $this->should_collapse( $status_filter );
+        $grouped_entries = $should_group ? $this->group_contiguous_items( $items, $max_rows ) : array_map( function( $item ) {
             return array( 'is_group' => false, 'item' => $item );
         }, $items );
 
