@@ -83,7 +83,7 @@ class AIPS_Generated_Posts_Controller {
 		$history = $this->history_repository->get_history(array(
 			'page' => $generated_page,
 			'per_page' => 20,
-			'status' => 'completed',
+			'status' => 'generated', // completed and partial runs both produced a post
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,

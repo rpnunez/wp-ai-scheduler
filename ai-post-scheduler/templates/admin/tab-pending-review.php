@@ -128,9 +128,14 @@ if (!defined('ABSPATH')) {
 										<span class="aips-cell-source"><?php echo esc_html($controller->format_source($item)); ?></span>
 									</td>
 									<td>
-										<?php $post_type_obj = !empty($item->post_type) ? get_post_type_object($item->post_type) : null; ?>
+										<?php
+										// The wp_posts type is authoritative: history rows written before
+										// the post_type column existed have it NULL.
+										$item_post_type = !empty($item->wp_post_type) ? $item->wp_post_type : ($item->post_type ?? '');
+										$post_type_obj  = !empty($item_post_type) ? get_post_type_object($item_post_type) : null;
+										?>
 										<span class="aips-badge aips-badge-neutral">
-											<?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : ($item->post_type ?: '—')); ?>
+											<?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : ($item_post_type ?: '—')); ?>
 										</span>
 									</td>
 									<td class="aips-col-created">

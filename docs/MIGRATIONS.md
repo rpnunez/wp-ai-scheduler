@@ -16,7 +16,7 @@ The AI Post Scheduler uses WordPress's built-in `dbDelta()` function to manage d
 
 ## Version-Specific Data Migrations
 
-### 3.7.12 - Author topic auto-approval consolidation
+### 3.7.18 - Author topic auto-approval consolidation
 
 Runs after `install_tables()` adds `aips_authors.topic_auto_approval_min_relevance`:
 

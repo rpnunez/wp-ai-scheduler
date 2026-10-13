@@ -516,6 +516,7 @@ class AIPS_Notifications {
 					'to_email'          => $to_email,
 				)
 			);
+			$history->complete_success();
 
 			return true;
 		}
@@ -535,6 +536,7 @@ class AIPS_Notifications {
 				'to_email'          => $to_email,
 			)
 		);
+		$history->complete_failure(sprintf(__('Notification email failed for %s', 'ai-post-scheduler'), $to_email));
 
 		return false;
 	}

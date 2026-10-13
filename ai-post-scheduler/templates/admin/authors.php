@@ -384,7 +384,7 @@ $site_ctx = AIPS_Site_Context::get();
                         sprintf(
                             /* translators: %s: link to Affiliate Links page */
                             __( 'When enabled, affiliate link mappings matching post tags will be injected into posts generated for this author. Manage mappings on the %s page.', 'ai-post-scheduler' ),
-                            '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                            '<a href="' . esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'affiliate_links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
                         ),
                         array(
                             'a' => array(

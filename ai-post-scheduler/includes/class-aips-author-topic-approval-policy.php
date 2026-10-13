@@ -8,7 +8,7 @@
  * normalized so every caller sees one vocabulary.
  *
  * @package AI_Post_Scheduler
- * @since 3.7.12
+ * @since 3.7.18
  */
 
 if (!defined('ABSPATH')) {

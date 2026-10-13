@@ -344,7 +344,8 @@ class AIPS_Bulk_Generator_Service {
 			$history_meta
 		);
 
-		$history = $this->history_service->create( $history_type, $meta );
+		// The summary container for a bulk run is a job; the per-post runs are generations.
+		$history = $this->history_service->create( $history_type, array_merge( $meta, array( 'record_kind' => AIPS_History_Record_Kind::JOB ) ) );
 		AIPS_Generation_Trigger::record(
 			$history,
 			array(
@@ -530,7 +531,8 @@ class AIPS_Bulk_Generator_Service {
 			$history_meta
 		);
 
-		$history = $this->history_service->create( $history_type, $meta );
+		// The summary container for a bulk run is a job; the per-post runs are generations.
+		$history = $this->history_service->create( $history_type, array_merge( $meta, array( 'record_kind' => AIPS_History_Record_Kind::JOB ) ) );
 		AIPS_Generation_Trigger::record(
 			$history,
 			array(
