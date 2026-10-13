@@ -220,6 +220,12 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.13', '<' ) ) {
 			$this->migrate_to_3_7_13();
 		}
+
+		// migrate_to_3_7_14() adds post_generation_lock to aips_authors and
+		// claimed_at to aips_author_topics for claim-first mutual exclusion.
+		if ( version_compare( $from_version, '3.7.14', '<' ) ) {
+			$this->migrate_to_3_7_14();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1310,6 +1316,52 @@ class AIPS_DB_Migrations {
 			sprintf( 'Migration 3.7.13: Marked %d incomplete generations as partial in History.', $changed ),
 			'info'
 		);
+	}
+
+	/**
+	 * Migration for version 3.7.14.
+	 *
+	 * Adds `post_generation_lock` to `aips_authors` and `claimed_at` to `aips_author_topics`
+	 * for claim-first atomic locking and mutual exclusion during post generation.
+	 *
+	 * Both statements are guarded with SHOW COLUMNS checks so they are
+	 * safe no-ops on fresh installs where dbDelta already created the schema.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_14() {
+		global $wpdb;
+
+		$table_authors = $wpdb->prefix . 'aips_authors';
+		$table_topics  = $wpdb->prefix . 'aips_author_topics';
+
+		// 1. Author table: post_generation_lock
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists === $table_authors ) {
+			$has_lock_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'post_generation_lock'
+			) );
+
+			if ( ! $has_lock_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0 AFTER post_generation_is_active, ADD KEY post_generation_lock (post_generation_lock)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		// 2. Author topics table: claimed_at
+		$topics_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_topics ) );
+		if ( $topics_table_exists === $table_topics ) {
+			$has_claimed_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_topics}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'claimed_at'
+			) );
+
+			if ( ! $has_claimed_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_topics}` ADD COLUMN claimed_at bigint(20) unsigned NOT NULL DEFAULT 0 AFTER metadata, ADD KEY claimed_at (claimed_at)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.14: Added post_generation_lock to authors and claimed_at to author_topics.', 'info' );
 	}
 
 	/**
