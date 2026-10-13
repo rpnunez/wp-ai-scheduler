@@ -24,7 +24,14 @@ class AIPS_Generator {
      */
     const EXCERPT_MAX_CHARS = 400;
 
+    /**
+     * @var AIPS_AI_Service_Interface AI service used for text and image generation requests.
+     */
     private $ai_service;
+
+    /**
+     * @var AIPS_Logger_Interface Logger for diagnostics and errors.
+     */
     private $logger;
 
     /**
@@ -37,15 +44,54 @@ class AIPS_Generator {
      */
     private $current_history;
 
+    /**
+     * @var AIPS_Template_Processor Resolves template variables in prompts and titles.
+     */
     private $template_processor;
+
+    /**
+     * @var AIPS_Image_Service Generates and imports featured images.
+     */
     private $image_service;
+
+    /**
+     * @var AIPS_Article_Structure_Manager Provides article structure definitions and sections.
+     */
     private $structure_manager;
+
+    /**
+     * @var AIPS_Post_Manager Creates and updates the WordPress post for a generation run.
+     */
     private $post_manager;
+
+    /**
+     * @var AIPS_Prompt_Builder Facade that exposes the per-component prompt builders.
+     */
     private $prompt_builder;
+
+    /**
+     * @var object Prompt builder for the post body content.
+     */
     private $post_content_prompt_builder;
+
+    /**
+     * @var object Prompt builder for the post title.
+     */
     private $post_title_prompt_builder;
+
+    /**
+     * @var object Prompt builder for the post excerpt.
+     */
     private $post_excerpt_prompt_builder;
+
+    /**
+     * @var object Prompt builder for the featured image prompt.
+     */
     private $post_featured_image_prompt_builder;
+
+    /**
+     * @var AIPS_Prompt_Builder_Post_Metadata|null Combined title/excerpt/image-prompt builder, created lazily.
+     */
     private $post_metadata_prompt_builder;
 
     /**
@@ -64,7 +110,7 @@ class AIPS_Generator {
     private $current_source_snapshots = array();
 
     /**
-     * @var AIPS_Markdown_Parser Markdown parser
+     * @var AIPS_Markdown_Parser Converts Markdown output to HTML.
      */
     private $markdown_parser;
 
@@ -74,13 +120,13 @@ class AIPS_Generator {
      * Accepts dependencies for easier testing; falls back to concrete
      * implementations when not provided.
      *
-    * @param AIPS_Logger_Interface|null $logger
-    * @param AIPS_AI_Service_Interface|null $ai_service
+     * @param AIPS_Logger_Interface|null $logger
+     * @param AIPS_AI_Service_Interface|null $ai_service
      * @param object|null $template_processor
      * @param object|null $image_service
      * @param object|null $structure_manager
      * @param object|null $post_manager
-    * @param AIPS_History_Service_Interface|null $history_service
+     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
      */
@@ -109,14 +155,7 @@ class AIPS_Generator {
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
-        if ( $markdown_parser ) {
-            $this->markdown_parser = $markdown_parser;
-        } elseif ( class_exists( 'AIPS_Markdown_Parser' ) ) {
-            $this->markdown_parser = new AIPS_Markdown_Parser();
-        } else {
-            $this->markdown_parser = null;
-        }
-
+        $this->markdown_parser = $markdown_parser ?: new AIPS_Markdown_Parser();
     }
 
     /**
@@ -1106,35 +1145,7 @@ class AIPS_Generator {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
 
-        // Create new history container using new API
-        // Extract source information from context
-        $history_metadata = array();
-
-        if ($context instanceof AIPS_Template_Context) {
-            $history_metadata['template_id'] = $context->get_id();
-            $template = $context->get_template();
-            if ($template && !empty($template->campaign_id)) {
-                $history_metadata['campaign_id'] = absint($template->campaign_id);
-            }
-        } elseif ($context instanceof AIPS_Topic_Context) {
-            // For topic context, store author_id and topic_id
-            $history_metadata['topic_id'] = $context->get_id();
-            $author = $context->get_author();
-            if ($author && isset($author->id)) {
-                $history_metadata['author_id'] = $author->id;
-            }
-        }
-
-        // Get creation_method from context, default to 'manual' if not specified
-        $creation_method = $context->get_creation_method() ?: 'manual';
-        $history_metadata['creation_method'] = $creation_method;
-
-        $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
-
-        if (!$this->current_history->get_id()) {
-            // Fallback if history creation fails (though unlikely)
-            $this->logger->log('Failed to create history record', 'error');
-        }
+        $this->current_history = $this->create_history_for_context($context);
 
         // Record what triggered this run and how, as the first two history entries.
         $this->record_generation_trigger($context);
@@ -1143,25 +1154,25 @@ class AIPS_Generator {
         // and the active provider can replay it.
         $this->start_conversation();
 
-		// Generate and normalize the content.
-		$content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
-		if (is_wp_error($content)) {
-			return $content;
-		}
+        // Generate and normalize the content.
+        $content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
+        if (is_wp_error($content)) {
+            return $content;
+        }
 
-		$component_statuses['post_content'] = true;
-		$content = $this->strip_leading_title_block_from_content($content);
+        $component_statuses['post_content'] = true;
+        $content = $this->strip_leading_title_block_from_content($content);
 
-		$metadata_result = $this->generate_and_resolve_metadata($context, $content);
-		$title                 = $metadata_result['title'];
-		$excerpt               = $metadata_result['excerpt'];
-		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
+        $metadata_result = $this->generate_and_resolve_metadata($context, $content);
+        $title                 = $metadata_result['title'];
+        $excerpt               = $metadata_result['excerpt'];
+        $resolved_image_prompt = $metadata_result['resolved_image_prompt'];
 
-		$component_statuses['post_title']   = $metadata_result['title_success'];
-		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
+        $component_statuses['post_title']   = $metadata_result['title_success'];
+        $component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 
-		$pre_image_incomplete  = in_array(false, $component_statuses, true);
-		$generation_incomplete = $pre_image_incomplete;
+        $pre_image_incomplete  = in_array(false, $component_statuses, true);
+        $generation_incomplete = $pre_image_incomplete;
 
         // Resolve the status the context/template would normally apply.
         $intended_post_status = $context->get_post_status();
@@ -1174,16 +1185,7 @@ class AIPS_Generator {
         // ever downgrade further, never upgrade back to the intended status.
         $initial_post_status = $pre_image_incomplete ? 'draft' : $intended_post_status;
 
-        // Generation-time affiliate link injection (when enabled on the template/author).
-        if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() && ! empty( $content ) ) {
-            $raw_tags = $context->get_post_tags();
-            if ( ! empty( $raw_tags ) ) {
-                $tag_names = array_filter( array_map( 'trim', explode( ',', $raw_tags ) ) );
-                if ( ! empty( $tag_names ) ) {
-                    $content = ( new AIPS_Affiliate_Links_Service() )->inject_into_content( $content, $tag_names );
-                }
-            }
-        }
+        $content = $this->inject_affiliate_links_if_enabled($context, $content);
 
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
@@ -1206,29 +1208,7 @@ class AIPS_Generator {
         $post_id = $this->post_manager->create_post($post_creation_data);
 
         if (is_wp_error($post_id)) {
-            // Use new history API to complete with failure
-            $this->current_history->complete_failure($post_id->get_error_message(), array(
-                'component' => 'post_creation',
-                'title' => $title,
-                'content_length' => strlen($content),
-            ));
-
-            // Write a metric snapshot so the metrics repository can count this failure
-            // without querying scattered tables.
-            $this->current_history->record(
-                'metric_generation_result',
-                'Generation failed — post could not be created',
-                array(
-                    'outcome'          => 'failed',
-                    'duration_seconds' => (int) round( microtime(true) - $generation_start ),
-                    'image_attempted'  => false,
-                    'image_success'    => null,
-                )
-            );
-
-            $this->end_conversation();
-
-            return $post_id;
+            return $this->handle_post_creation_failure($post_id, $title, $content, $generation_start);
         }
 
         if (!empty($this->current_source_snapshots)) {
@@ -1243,25 +1223,154 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
-        // If the featured image failed after post creation and the post was
-        // not already forced to draft pre-creation, downgrade it now. This
-        // never upgrades a post back to the intended status.
-        if ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
-            $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
-
-            if (is_wp_error($downgrade_result)) {
-                $this->generation_logger->log(
-                    'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
-                    'error',
-                    array('post_id' => $post_id)
-                );
-            }
+        // The image is the only component that can fail after post creation. If it
+        // did, and the post was not already saved as a draft, downgrade it now.
+        $image_failed_after_creation = !$component_statuses['featured_image'] && !$pre_image_incomplete;
+        if ($image_failed_after_creation && $initial_post_status !== 'draft') {
+            $this->downgrade_post_to_draft($post_id);
         }
 
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
         }
 
+        $this->finalize_history_and_metrics($context, $post_id, $title, $content, $generation_incomplete, $component_statuses, $generation_start, $featured_image_success);
+
+        $this->log_generation_activity($context, $post_id, $title, $generation_incomplete, $component_statuses);
+
+        $this->trigger_post_generated_hooks($context, $post_id);
+
+        $this->end_conversation();
+
+        return $post_id;
+    }
+
+    /**
+     * Creates a history record for the generation context.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return AIPS_History_Container History container instance.
+     */
+    private function create_history_for_context($context) {
+        $history_metadata = array();
+
+        if ($context instanceof AIPS_Template_Context) {
+            $history_metadata['template_id'] = $context->get_id();
+            $template = $context->get_template();
+            if ($template && !empty($template->campaign_id)) {
+                $history_metadata['campaign_id'] = absint($template->campaign_id);
+            }
+        } elseif ($context instanceof AIPS_Topic_Context) {
+            // For topic context, store author_id and topic_id
+            $history_metadata['topic_id'] = $context->get_id();
+            $author = $context->get_author();
+            if ($author && isset($author->id)) {
+                $history_metadata['author_id'] = $author->id;
+            }
+        }
+
+        // Get creation_method from context, default to 'manual' if not specified
+        $creation_method = $context->get_creation_method() ?: 'manual';
+        $history_metadata['creation_method'] = $creation_method;
+
+        $history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
+
+        if (!$history->get_id()) {
+            // Fallback if history creation fails (though unlikely)
+            $this->logger->log('Failed to create history record', 'error');
+        }
+
+        return $history;
+    }
+
+    /**
+     * Injects affiliate links into the content if enabled in the context.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param string                  $content Post content.
+     * @return string Modified content.
+     */
+    private function inject_affiliate_links_if_enabled($context, $content) {
+        // Generation-time affiliate link injection (when enabled on the template/author).
+        if ( $context instanceof AIPS_Generation_Context && $context->get_affiliate_links_enabled() && ! empty( $content ) ) {
+            $raw_tags = $context->get_post_tags();
+            if ( ! empty( $raw_tags ) ) {
+                $tag_names = array_filter( array_map( 'trim', explode( ',', $raw_tags ) ) );
+                if ( ! empty( $tag_names ) ) {
+                    $content = ( new AIPS_Affiliate_Links_Service() )->inject_into_content( $content, $tag_names );
+                }
+            }
+        }
+        return $content;
+    }
+
+    /**
+     * Handles post creation failure by recording metrics and ending conversation.
+     *
+     * @param WP_Error $error            Error object.
+     * @param string   $title            Generated title.
+     * @param string   $content          Generated content.
+     * @param float    $generation_start Start time of generation.
+     * @return WP_Error The original error object.
+     */
+    private function handle_post_creation_failure($error, $title, $content, $generation_start) {
+        // Use new history API to complete with failure
+        $this->current_history->complete_failure($error->get_error_message(), array(
+            'component' => 'post_creation',
+            'title' => $title,
+            'content_length' => strlen($content),
+        ));
+
+        // Write a metric snapshot so the metrics repository can count this failure
+        // without querying scattered tables.
+        $this->current_history->record(
+            'metric_generation_result',
+            'Generation failed — post could not be created',
+            array(
+                'outcome'          => 'failed',
+                'duration_seconds' => (int) round( microtime(true) - $generation_start ),
+                'image_attempted'  => false,
+                'image_success'    => null,
+            )
+        );
+
+        $this->end_conversation();
+
+        return $error;
+    }
+
+    /**
+     * Forces a post back to draft after its featured image failed, logging any failure.
+     *
+     * @param int $post_id Post ID.
+     * @return void
+     */
+    private function downgrade_post_to_draft($post_id) {
+        $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
+
+        if (is_wp_error($downgrade_result)) {
+            $this->logger->log(
+                'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
+                'error',
+                array('post_id' => $post_id)
+            );
+        }
+    }
+
+    /**
+     * Finalizes history records and records generation metrics.
+     *
+     * @param AIPS_Generation_Context $context                Generation context.
+     * @param int                     $post_id                Post ID.
+     * @param string                  $title                  Generated title.
+     * @param string                  $content                Generated content.
+     * @param bool                    $generation_incomplete  Whether generation was incomplete.
+     * @param array                   $component_statuses     Component statuses.
+     * @param float                   $generation_start       Start time.
+     * @param bool                    $featured_image_success Whether featured image was successful.
+     * @return void
+     */
+    private function finalize_history_and_metrics($context, $post_id, $title, $content, $generation_incomplete, $component_statuses, $generation_start, $featured_image_success) {
         // Use new history API to complete with success
         $completion_data = array(
             'post_id' => $post_id,
@@ -1305,7 +1414,19 @@ class AIPS_Generator {
                 'component_statuses' => $component_statuses,
             )
         );
+    }
 
+    /**
+     * Logs the final generation activity and warnings.
+     *
+     * @param AIPS_Generation_Context $context               Generation context.
+     * @param int                     $post_id               Post ID.
+     * @param string                  $title                 Generated title.
+     * @param bool                    $generation_incomplete Whether generation was incomplete.
+     * @param array                   $component_statuses    Component statuses.
+     * @return void
+     */
+    private function log_generation_activity($context, $post_id, $title, $generation_incomplete, $component_statuses) {
         // Log activity
         if ($generation_incomplete) {
             $this->current_history->record(
@@ -1348,7 +1469,16 @@ class AIPS_Generator {
                 'title' => $title
             ));
         }
+    }
 
+    /**
+     * Triggers hooks after a post is successfully generated.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param int                     $post_id Post ID.
+     * @return void
+     */
+    private function trigger_post_generated_hooks($context, $post_id) {
         // Trigger hook for other systems to respond to the new post
         // For backward compatibility, extract template if it's a template context
         if ($context instanceof AIPS_Template_Context) {
@@ -1357,10 +1487,6 @@ class AIPS_Generator {
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
-
-        $this->end_conversation();
-
-        return $post_id;
     }
 
     /**
@@ -1610,7 +1736,7 @@ class AIPS_Generator {
             return '';
         }
 
-        if ( $this->markdown_parser && $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
+        if ( $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
             $normalized_content = $this->markdown_parser->parse( $normalized_content );
         }
 
