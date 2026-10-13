@@ -125,15 +125,27 @@ class AIPS_Admin_Bar {
 			'aips_admin_bar'
 		);
 
-		// ---------- Root node (icon + badge) ----------
+		$bg_snapshots = $this->get_background_snapshots();
+		$bg_active    = AIPS_Background_Process_Manager::filter_active($bg_snapshots);
+
+		$this->add_root_node($wp_admin_bar, $unread_count, $bg_active);
+		$this->add_quick_links_group($wp_admin_bar);
+		$this->add_notifications_group($wp_admin_bar, $unread_count);
+		$this->add_background_processes_group($wp_admin_bar, $bg_snapshots);
+	}
+
+	/**
+	 * Adds the root node to the admin bar.
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+	 * @param int $unread_count The number of unread notifications.
+	 * @param array $bg_active The active background processes.
+	 */
+	private function add_root_node($wp_admin_bar, int $unread_count, array $bg_active): void {
 		$badge = '';
 		if ($unread_count > 0) {
 			$badge = '<span class="aips-toolbar-badge">' . esc_html(min($unread_count, 99)) . ($unread_count > 99 ? '+' : '') . '</span>';
 		}
-
-		// Background processes: a pulsing dot while anything runs (see background-processes.js).
-		$bg_snapshots = $this->get_background_snapshots();
-		$bg_active    = AIPS_Background_Process_Manager::filter_active($bg_snapshots);
 
 		$title = '<span class="ab-icon dashicons dashicons-schedule aips-toolbar-icon"></span>'
 			. '<span class="ab-label">' . esc_html__('AI Scheduler', 'ai-post-scheduler') . '</span>'
@@ -150,18 +162,22 @@ class AIPS_Admin_Bar {
 				'title' => esc_attr__('AI Post Scheduler', 'ai-post-scheduler'),
 			),
 		));
+	}
 
-		// ---------- Quick links group ----------
+	/**
+	 * Adds the quick links group to the admin bar.
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+	 */
+	private function add_quick_links_group($wp_admin_bar): void {
 		$wp_admin_bar->add_group(array(
 			'id'     => 'aips-toolbar-links',
 			'parent' => 'aips-toolbar',
 			'meta'   => array('class' => 'aips-toolbar-group-links'),
 		));
 
-		// Column-major: items 1-3 fill column 1, 4-6 column 2, 7-9 column 3 (CSS grid, auto-flow: column).
 		foreach ($this->get_quick_links() as $link) {
 			$wp_admin_bar->add_node(array(
-				// "link-" prefix keeps ids from ever colliding with group ids (a collision once removed the grid).
 				'id'     => 'aips-toolbar-link-' . $link['slug'],
 				'parent' => 'aips-toolbar-links',
 				'title'  => '<span class="ab-icon dashicons ' . esc_attr($link['icon']) . '" aria-hidden="true"></span>'
@@ -170,8 +186,15 @@ class AIPS_Admin_Bar {
 				'meta'   => array('title' => $link['label']),
 			));
 		}
+	}
 
-		// ---------- Notifications group ----------
+	/**
+	 * Adds the notifications group to the admin bar.
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+	 * @param int $unread_count The number of unread notifications.
+	 */
+	private function add_notifications_group($wp_admin_bar, int $unread_count): void {
 		$notifications = ($unread_count > 0) ? $this->get_repository()->get_unread(20) : array();
 
 		$wp_admin_bar->add_group(array(
@@ -181,7 +204,6 @@ class AIPS_Admin_Bar {
 		));
 
 		if (empty($notifications)) {
-			// "No new notifications" placeholder
 			$wp_admin_bar->add_node(array(
 				'id'     => 'aips-toolbar-no-notifications',
 				'parent' => 'aips-toolbar-notifications',
@@ -190,7 +212,6 @@ class AIPS_Admin_Bar {
 				'meta'   => array('class' => 'aips-toolbar-no-notifications ab-empty-item'),
 			));
 		} else {
-			// Header row with "Mark all as read"
 			$wp_admin_bar->add_node(array(
 				'id'     => 'aips-toolbar-notifications-header',
 				'parent' => 'aips-toolbar-notifications',
@@ -205,44 +226,60 @@ class AIPS_Admin_Bar {
 			));
 
 			foreach ($notifications as $notif) {
-				$title_markup = '';
-				if (!empty($notif->title)) {
-					$title_markup = '<span class="aips-notif-title" title="' . esc_attr($notif->title) . '">' . esc_html($notif->title) . '</span>';
-				}
-
-				// Full text in a tooltip: long messages are clamped to two lines in the dropdown.
-				$node_title = $title_markup . '<span class="aips-notif-message" title="' . esc_attr($notif->message) . '">';
-
-				if (!empty($notif->url)) {
-					$node_title .= '<a href="' . esc_url($notif->url) . '">' . esc_html($notif->message) . '</a>';
-				} else {
-					$node_title .= esc_html($notif->message);
-				}
-
-				$node_title .= '</span>'
-					. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
-					. '<span class="dashicons dashicons-yes-alt"></span>'
-					. '</button>';
-
-				$level_class = ' aips-notif-cat-' . $this->get_notification_category($notif->type ?? '');
-				if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
-					$level_class .= ' aips-notif-level-' . $notif->level;
-				}
-
-				$wp_admin_bar->add_node(array(
-					'id'     => 'aips-notif-' . absint($notif->id),
-					'parent' => 'aips-toolbar-notifications',
-					'title'  => $node_title,
-					'href'   => false,
-					'meta'   => array(
-						'class'         => 'aips-toolbar-notification ab-empty-item' . $level_class,
-						'data-notif-id' => absint($notif->id),
-					),
-				));
+				$this->add_notification_node($wp_admin_bar, $notif);
 			}
 		}
+	}
 
-		// ---------- Background processes (below the notifications) ----------
+	/**
+	 * Adds a single notification node.
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+	 * @param object $notif The notification object.
+	 */
+	private function add_notification_node($wp_admin_bar, $notif): void {
+		$title_markup = '';
+		if (!empty($notif->title)) {
+			$title_markup = '<span class="aips-notif-title" title="' . esc_attr($notif->title) . '">' . esc_html($notif->title) . '</span>';
+		}
+
+		$node_title = $title_markup . '<span class="aips-notif-message" title="' . esc_attr($notif->message) . '">';
+
+		if (!empty($notif->url)) {
+			$node_title .= '<a href="' . esc_url($notif->url) . '">' . esc_html($notif->message) . '</a>';
+		} else {
+			$node_title .= esc_html($notif->message);
+		}
+
+		$node_title .= '</span>'
+			. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
+			. '<span class="dashicons dashicons-yes-alt"></span>'
+			. '</button>';
+
+		$level_class = ' aips-notif-cat-' . $this->get_notification_category($notif->type ?? '');
+		if (!empty($notif->level) && in_array($notif->level, array('warning', 'error'), true)) {
+			$level_class .= ' aips-notif-level-' . $notif->level;
+		}
+
+		$wp_admin_bar->add_node(array(
+			'id'     => 'aips-notif-' . absint($notif->id),
+			'parent' => 'aips-toolbar-notifications',
+			'title'  => $node_title,
+			'href'   => false,
+			'meta'   => array(
+				'class'         => 'aips-toolbar-notification ab-empty-item' . $level_class,
+				'data-notif-id' => absint($notif->id),
+			),
+		));
+	}
+
+	/**
+	 * Adds the background processes group to the admin bar.
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+	 * @param array $bg_snapshots The background process snapshots.
+	 */
+	private function add_background_processes_group($wp_admin_bar, array $bg_snapshots): void {
 		$wp_admin_bar->add_group(array(
 			'id'     => 'aips-toolbar-bg',
 			'parent' => 'aips-toolbar',
@@ -266,7 +303,6 @@ class AIPS_Admin_Bar {
 			'href'   => AIPS_Admin_Menu_Helper::get_page_url('background_processes'),
 		));
 	}
-
 	/**
 	 * Quick links shown in the 3x3 grid, in column-major order.
 	 *
