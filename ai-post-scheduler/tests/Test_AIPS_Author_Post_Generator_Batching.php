@@ -145,6 +145,12 @@ class Test_AIPS_Author_Post_Generator_Batching extends WP_UnitTestCase {
 			public function update_post_generation_schedule($author_id, $next_run) {
 				// No-op: avoid DB writes in unit tests.
 			}
+			public function acquire_post_generation_lock(int $author_id, int $lock_ttl = 900): bool {
+				return true;
+			}
+			public function release_post_generation_lock(int $author_id): bool {
+				return true;
+			}
 		};
 
 		$post_generator = new class extends AIPS_Author_Post_Generator {
