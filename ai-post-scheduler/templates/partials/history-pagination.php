@@ -24,7 +24,7 @@ $pages = (int) $history['pages'];
     <?php if ($pages > 1): ?>
     <span class="pagination-links">
         <button type="button" class="button aips-history-page-nav aips-history-page-first" data-page="1" <?php echo $current <= 1 ? 'disabled' : ''; ?> title="<?php esc_attr_e('First page', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('First page', 'ai-post-scheduler'); ?>">
-            <span class="dashicons dashicons-arrow-left-alt" aria-hidden="true"></span>
+            <span class="dashicons dashicons-controls-skipback" aria-hidden="true"></span>
         </button>
         <button type="button" class="button aips-history-page-nav aips-history-page-prev" data-page="<?php echo esc_attr(max(1, $current - 1)); ?>" <?php echo $current <= 1 ? 'disabled' : ''; ?> title="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
             <span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
@@ -38,7 +38,7 @@ $pages = (int) $history['pages'];
             <span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>
         </button>
         <button type="button" class="button aips-history-page-nav aips-history-page-last" data-page="<?php echo esc_attr($pages); ?>" <?php echo $current >= $pages ? 'disabled' : ''; ?> title="<?php esc_attr_e('Last page', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Last page', 'ai-post-scheduler'); ?>">
-            <span class="dashicons dashicons-arrow-right-alt" aria-hidden="true"></span>
+            <span class="dashicons dashicons-controls-skipforward" aria-hidden="true"></span>
         </button>
     </span>
     <?php endif; ?>
