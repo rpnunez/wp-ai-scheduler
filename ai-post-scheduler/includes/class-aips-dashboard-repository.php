@@ -329,7 +329,7 @@ class AIPS_Dashboard_Repository {
 					 FROM {$this->history_table} h
 					 INNER JOIN {$this->author_topics_table} t ON h.topic_id = t.id
 					 LEFT JOIN {$this->authors_table} a ON h.author_id = a.id
-					 WHERE h.status = 'completed' AND h.created_at >= %d AND h.created_at <= %d
+					 WHERE h.status IN ('completed', 'partial') AND h.created_at >= %d AND h.created_at <= %d
 					 ORDER BY h.completed_at DESC
 					 LIMIT %d",
 					(int) $from_ts,

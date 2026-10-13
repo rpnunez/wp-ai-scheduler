@@ -613,11 +613,26 @@ class AIPS_Similarity_Evaluator {
 				$rel_sim = 0.70;
 				$topic_title = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
 
-				$embeddings_svc = $this->get_embeddings_service();
-				if (!empty($author_baseline_vec) && !empty($topic_title) && $embeddings_svc && $embeddings_svc->is_enabled()) {
-					$tvec = $embeddings_svc->generate_embedding($topic_title);
-					if (!is_wp_error($tvec) && is_array($tvec) && count($tvec) === count($author_baseline_vec)) {
-						$rel_sim = $this->cosine_similarity($tvec, $author_baseline_vec);
+				if (!empty($author_baseline_vec)) {
+					$tvec = null;
+					if (!empty($topic['embedding']) && is_array($topic['embedding'])) {
+						$tvec = $topic['embedding'];
+					} elseif (!empty($meta['embedding']) && is_array($meta['embedding'])) {
+						$tvec = $meta['embedding'];
+					} else {
+						$embeddings_svc = $this->get_embeddings_service();
+						if (!empty($topic_title) && $embeddings_svc && $embeddings_svc->is_enabled()) {
+							$tvec = $embeddings_svc->generate_embedding($topic_title);
+						}
+					}
+
+					if (!is_wp_error($tvec) && is_array($tvec)) {
+						if (empty($meta['embedding'])) {
+							$meta['embedding'] = $tvec;
+						}
+						if (count($tvec) === count($author_baseline_vec)) {
+							$rel_sim = $this->cosine_similarity($tvec, $author_baseline_vec);
+						}
 					}
 				}
 

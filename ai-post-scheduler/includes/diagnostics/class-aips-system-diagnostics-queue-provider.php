@@ -85,7 +85,8 @@ class AIPS_System_Diagnostics_Queue_Provider implements AIPS_System_Diagnostic_P
 		$checks = array();
 
 		// --- Pending / partial backlog ---
-		$backlog_total   = $qh['pending_count'] + $qh['partial_count'];
+		// 'partial' rows are finished generations with missing components, not queued work.
+		$backlog_total   = $qh['pending_count'];
 		$backlog_status  = $backlog_total === 0 ? 'ok' : 'info';
 		$checks['queue_backlog'] = array(
 			'label'   => __( 'Queue Backlog', 'ai-post-scheduler' ),
@@ -97,7 +98,7 @@ class AIPS_System_Diagnostics_Queue_Provider implements AIPS_System_Diagnostic_P
 			),
 			'status'  => $backlog_status,
 			'details' => $backlog_total > 0 ? array(
-				__( 'Pending jobs are waiting to run; partial jobs started but did not complete.', 'ai-post-scheduler' ),
+				__( 'Pending jobs are waiting to run. Partial runs finished but are missing a component such as the featured image.', 'ai-post-scheduler' ),
 				__( 'If counts are unexpectedly high, check WP-Cron is running and AI Engine is reachable.', 'ai-post-scheduler' ),
 			) : array(),
 		);
@@ -128,7 +129,7 @@ class AIPS_System_Diagnostics_Queue_Provider implements AIPS_System_Diagnostic_P
 		$stuck_details = $stuck > 0 ? array(
 			sprintf(
 				/* translators: %d: threshold in minutes */
-				__( 'A job is considered stuck when it remains in pending/partial status for more than %d minutes.', 'ai-post-scheduler' ),
+				__( 'A job is considered stuck when it stays pending for more than %d minutes, or an in-progress run logs no activity (shown as Stalled in History).', 'ai-post-scheduler' ),
 				AIPS_Metrics_Repository::STUCK_JOB_THRESHOLD_MINUTES
 			),
 			__( 'To recover: check the History log for correlation IDs, verify AI Engine is responding, then use Flush WP-Cron Events if cron events are missing.', 'ai-post-scheduler' ),

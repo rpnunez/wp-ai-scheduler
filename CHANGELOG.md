@@ -1,6 +1,23 @@
 ## [Unreleased]
 
+## [3.7.14] - 2026-10-13
+
 ### Fixed
+- **Author Post Generation Race Condition & Duplicate Runs (#2203):**
+  - Added atomic compare-and-swap (CAS) topic claim lock (`claimed_at`) with TTL (default 15 minutes) and historical post check (`NOT EXISTS` in `aips_author_topic_logs`) before post generation starts.
+  - Added per-author post generation run lock (`post_generation_lock`) with TTL (default 15 minutes) on `aips_authors` to prevent concurrent slice executions or overlapping manual/scheduled generation runs for the same author.
+  - Implemented automatic claim release on generation failure or exception so topics can be retried on subsequent schedule runs.
+  - Supported post regeneration flows by allowing claim override when `allow_regenerate` is explicitly requested.
+  - Added database migration `migrate_to_3_7_14()` adding `post_generation_lock` and `claimed_at` columns and index keys.
+
+### Removed
+- **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
+
+### Fixed
+- **Pending Review Duplicate Rows:**
+  - A draft is now listed once, however many History rows reference it. Topic-generation wrappers, review-queue actions, content-indexing runs and notifications carry the same post ID and finish as completed; the list, its total and the dashboard draft count now use only the newest generation run per post (`AIPS_History_Repository::generation_run_condition()` / `latest_generation_run_subquery()`).
+  - The Type column reads the post's own type, so History rows written before the `post_type` column existed no longer show a dash.
+  - The template and search filters on Pending Review now match each post's newest generation run.
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
   - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.

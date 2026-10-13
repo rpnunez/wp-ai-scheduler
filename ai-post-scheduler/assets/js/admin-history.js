@@ -1345,7 +1345,7 @@
 		},
 
 		/**
-		 * Clear all in-progress / stalled history records via AJAX.
+		 * Close stalled in-progress history records via AJAX (rows are kept, not deleted).
 		 *
 		 * @param {Event} e Click event.
 		 */
@@ -1355,11 +1355,11 @@
 			var self = this;
 			var $btn = $(e.currentTarget);
 			var processingCount = parseInt($('#aips-stat-processing').text() || '0', 10);
-			var msg = (aipsHistoryL10n.confirmClearProcessing || 'Clear all %d in-progress history entries? Stalled background runs will be removed.').replace('%d', processingCount || '');
+			var msg = (aipsHistoryL10n.confirmClearProcessing || 'Close stalled in-progress runs? Runs shown as Stalled are marked as terminated and kept in History; runs that are still working are left alone.').replace('%d', processingCount || '');
 
-			AIPS.Utilities.confirm(msg, 'Clear In-Progress Runs', [
+			AIPS.Utilities.confirm(msg, 'Close Stalled Runs', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
-				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, clear runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, close stalled runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
@@ -1370,9 +1370,14 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Cleared in-progress entries.', 'success');
-								$('#aips-stat-processing').text('0');
-								$('#aips-clear-processing-btn').hide();
+								AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Closed stalled runs.', 'success');
+								if (response.data && response.data.stats) {
+									$('#aips-stat-processing').text(response.data.stats.processing);
+									$('#aips-stat-stalled').text(response.data.stats.stalled || 0);
+								}
+								if (!response.data || !response.data.stats || (parseInt(response.data.stats.processing || 0, 10) + parseInt(response.data.stats.stalled || 0, 10)) === 0) {
+									$('#aips-clear-processing-btn').hide();
+								}
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
@@ -1598,10 +1603,11 @@
 						$('#aips-stat-completed').text(stats.completed);
 						$('#aips-stat-failed').text(stats.failed);
 						$('#aips-stat-processing').text(stats.processing);
+						$('#aips-stat-stalled').text(stats.stalled || 0);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
 						$('#aips-stat-median-duration').text(self.formatDuration(stats.median_duration));
 
-						if (parseInt(stats.processing || 0, 10) > 0) {
+						if (parseInt(stats.processing || 0, 10) + parseInt(stats.stalled || 0, 10) > 0) {
 							$('#aips-clear-processing-btn').show();
 						} else {
 							$('#aips-clear-processing-btn').hide();

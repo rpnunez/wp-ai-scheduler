@@ -64,6 +64,11 @@ class Test_AIPS_Generator_Required_Content extends WP_UnitTestCase {
 		$this->assertTrue($post_manager->created_post_data['generation_incomplete']);
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_title']);
 		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_content']);
+
+		// An incomplete generation is recorded as partial, never as completed.
+		$this->assertFalse($history_service->container->success_called);
+		$this->assertTrue($history_service->container->partial_data['generation_incomplete']);
+		$this->assertSame(999, $history_service->container->partial_data['post_id']);
 	}
 
 	public function test_generated_leading_title_is_removed_before_post_creation() {
@@ -219,6 +224,8 @@ class AIPS_Test_Generator_Required_Content_History_Service implements AIPS_Histo
 
 class AIPS_Test_Generator_Required_Content_History_Container {
 	public $failure_data = array();
+	public $partial_data = array();
+	public $success_called = false;
 
 	public function get_id() {
 		return 1;
@@ -237,6 +244,12 @@ class AIPS_Test_Generator_Required_Content_History_Container {
 	}
 
 	public function complete_success($result_data = array()) {
+		$this->success_called = true;
+		return true;
+	}
+
+	public function complete_partial($message = '', $result_data = array()) {
+		$this->partial_data = $result_data;
 		return true;
 	}
 

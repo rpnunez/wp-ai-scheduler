@@ -359,9 +359,10 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'generated_content'=> '',
 					'prompt'           => '',
 					'error_message'    => null,
-					'created_at'       => $today . ' 10:00:00',
+					// created_at is a unix-timestamp column; a datetime string would be stored as 2026.
+					'created_at'       => strtotime($today . ' 12:00:00 UTC'),
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -377,9 +378,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'generated_content'=> '',
 				'prompt'           => '',
 				'error_message'    => null,
-				'created_at'       => $yesterday . ' 08:00:00',
+				'created_at'       => strtotime($yesterday . ' 12:00:00 UTC'),
 			),
-			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
 		);
 		$extra_ids[] = $wpdb->insert_id;
 
@@ -549,8 +550,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 
 		$results = $this->repository->get_history(array('post_type' => 'product_review', 'per_page' => 50));
 
-		$ids = wp_list_pluck($results['items'], 'id');
-		$this->assertContains($matching_id, $ids);
-		$this->assertNotContains($other_id, $ids);
+		// wpdb returns ids as strings; compare as integers.
+		$ids = array_map('intval', wp_list_pluck($results['items'], 'id'));
+		$this->assertContains((int) $matching_id, $ids);
+		$this->assertNotContains((int) $other_id, $ids);
 	}
 }

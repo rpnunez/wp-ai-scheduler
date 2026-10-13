@@ -219,7 +219,7 @@ All variables live in `.env` (created from `.env.example`, gitignored). `docker 
 | `ENTRYPOINT_DEBUG` | `1` | Verbose container startup output (set in `docker-compose.yml`). |
 | `PHP_IDE_CONFIG` | `serverName=localhost` | Xdebug server name for IDEs (set in `docker-compose.yml`). |
 | `NO_COLOR` | unset | Shell variable: disable colors in `make` output. |
-| `WP_USERNAME`, `WP_APP_PASSWORD`, `MCP_BRIDGE_URL` | placeholders | Only for the MCP bridge client; see [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md). |
+| `WP_USERNAME`, `WP_APP_PASSWORD` | placeholders | WordPress credentials placeholders in `.env.example`; reserved for future use. |
 
 PHP limits (`memory_limit`, upload size, execution time) are not environment variables here: edit `dev-php.ini` and run `make reload-php`. Test-runner variables (`AIPS_WP_TEST_*`, `WP_TESTS_DIR`, `WP_CORE_DIR`) are listed in [TESTING.md](TESTING.md).
 
@@ -417,7 +417,6 @@ Benchmarks can be run manually; no CI workflow currently enforces them automatic
 - [docs/HOOKS.md](docs/HOOKS.md) — `aips_*` action/filter reference
 - [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
 - [docs/DEVELOPMENT_GUIDELINES.md](docs/DEVELOPMENT_GUIDELINES.md) — coding and architectural guidelines
-- [docs/MCP_BRIDGE.md](docs/MCP_BRIDGE.md) — MCP bridge API reference
 - [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
 ## Contributing

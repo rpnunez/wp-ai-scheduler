@@ -243,8 +243,8 @@ class AIPS_Metrics_Repository {
 	 * @return array {
 	 *     @type int        $pending_count              Jobs in 'pending' status right now.
 	 *     @type int        $partial_count              Jobs in 'partial' status right now.
-	 *     @type int        $stuck_count                Jobs in 'pending' or 'partial' status
-	 *                                                  created more than STUCK_JOB_THRESHOLD_MINUTES ago.
+	 *     @type int        $stuck_count                Pending jobs older than STUCK_JOB_THRESHOLD_MINUTES plus
+	 *                                                  in-progress runs idle past their stalled threshold.
 	 *     @type int|null   $oldest_stuck_age_minutes   Age (minutes) of the oldest stuck job, or null if none.
 	 *     @type int        $failed_24h                 Jobs that transitioned to 'failed' in the last 24 hours
 	 *                                                  (window based on completed_at).
@@ -271,30 +271,41 @@ class AIPS_Metrics_Repository {
 					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial'"
 				);
 
-				// --- Stuck jobs (pending or partial, older than threshold) ---
-				$stuck_count = (int) $this->wpdb->get_var(
+				// --- Stuck jobs ---
+				// 'partial' is a finished state (post created, some components missing),
+				// not a stuck one. Stuck work is pending jobs that never started plus
+				// in-progress runs that have gone idle (shown as Stalled in History).
+				$stuck_cutoff        = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
+				$stuck_pending_count = (int) $this->wpdb->get_var(
 					$this->wpdb->prepare(
 						"SELECT COUNT(*) FROM {$this->table_history}
-						WHERE status IN ('pending','partial')
+						WHERE status = 'pending'
 						  AND created_at <= %d",
-						$now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS )
+						$stuck_cutoff
 					)
 				);
+				$stalled_summary = AIPS_History_Repository::instance()->get_stalled_summary();
+				$stuck_count     = $stuck_pending_count + $stalled_summary['count'];
 
 				$oldest_stuck_age_minutes = null;
 				if ( $stuck_count > 0 ) {
-					$stuck_cutoff = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
-					$age_raw = $this->wpdb->get_var(
-						$this->wpdb->prepare(
-							"SELECT MIN(created_at)
-							FROM {$this->table_history}
-							WHERE status IN ('pending','partial')
-							  AND created_at <= %d",
-							$stuck_cutoff
-						)
-					);
-					if ( $age_raw !== null ) {
-						$oldest_stuck_age_minutes = (int) floor( ( $now_ts - (int) $age_raw ) / MINUTE_IN_SECONDS );
+					$oldest_seconds = $stalled_summary['oldest_idle_seconds'];
+					if ( $stuck_pending_count > 0 ) {
+						$age_raw = $this->wpdb->get_var(
+							$this->wpdb->prepare(
+								"SELECT MIN(created_at)
+								FROM {$this->table_history}
+								WHERE status = 'pending'
+								  AND created_at <= %d",
+								$stuck_cutoff
+							)
+						);
+						if ( $age_raw !== null ) {
+							$oldest_seconds = max( (int) $oldest_seconds, $now_ts - (int) $age_raw );
+						}
+					}
+					if ( $oldest_seconds !== null ) {
+						$oldest_stuck_age_minutes = (int) floor( $oldest_seconds / MINUTE_IN_SECONDS );
 					}
 				}
 

@@ -345,6 +345,7 @@ class AIPS_Test_Conversational_History_Service implements AIPS_History_Service_I
 class AIPS_Test_Conversational_History_Container {
 
 	public $records = array();
+	public $partial_data = array();
 
 	public function with_session($context) {
 		return $this;
@@ -365,6 +366,12 @@ class AIPS_Test_Conversational_History_Container {
 	}
 
 	public function complete_success($data = array()) {
+		return $this;
+	}
+
+	public function complete_partial($message = '', $data = array()) {
+		$this->partial_data = $data;
+
 		return $this;
 	}
 

@@ -324,6 +324,7 @@ class AIPS_DB_Manager {
             post_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_is_active tinyint(1) DEFAULT 1,
+            post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
@@ -355,7 +356,8 @@ class AIPS_DB_Manager {
             KEY article_structure_id (article_structure_id),
             KEY is_active (is_active),
           KEY topic_generation_next_run (topic_generation_next_run),
-          KEY post_generation_next_run (post_generation_next_run)
+          KEY post_generation_next_run (post_generation_next_run),
+          KEY post_generation_lock (post_generation_lock)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_post_slices (
@@ -380,12 +382,14 @@ class AIPS_DB_Manager {
             status varchar(20) DEFAULT 'pending',
             score int DEFAULT 50,
             metadata longtext,
+            claimed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY author_id (author_id),
             KEY status (status),
+            KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
             KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)

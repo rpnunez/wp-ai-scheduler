@@ -93,6 +93,7 @@ $type_labels = array(
 
 	<section class="aips-history-detail-panel" data-panel="timeline" role="tabpanel" hidden>
 		<div class="aips-timeline-milestones">
+			<?php if (!empty($timeline_data['show_milestones'])): ?>
 			<div class="aips-timeline-milestone-item">
 				<span class="dashicons dashicons-arrow-right-alt2 aips-timeline-milestone-bullet" aria-hidden="true"></span>
 				<span><?php echo esc_html(!empty($timeline_data['attempt_text']) ? $timeline_data['attempt_text'] : __('Attempting post creation', 'ai-post-scheduler')); ?></span>
@@ -122,8 +123,10 @@ $type_labels = array(
 					<?php else: ?>
 						<img src="<?php echo esc_url($timeline_data['image_url']); ?>" alt="" class="aips-timeline-thumb" />
 					<?php endif; ?>
+				<?php elseif (($timeline_data['image_status'] ?? 'none') === 'failed'): ?>
+					<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error" title="<?php esc_attr_e('Featured image generation failed', 'ai-post-scheduler'); ?>"></span>
 				<?php else: ?>
-					<span class="dashicons dashicons-dismiss aips-timeline-milestone-icon error" title="<?php esc_attr_e('No image generated', 'ai-post-scheduler'); ?>"></span>
+					<span class="aips-meta-text" title="<?php esc_attr_e('No featured image was generated or requested', 'ai-post-scheduler'); ?>">&mdash;</span>
 				<?php endif; ?>
 			</div>
 			<div class="aips-timeline-milestone-item">
@@ -148,6 +151,7 @@ $type_labels = array(
 				</div>
 				<?php endforeach; ?>
 			<?php endif; ?>
+			<?php endif; // show_milestones ?>
 			<?php if (!empty($timeline_data['error_text'])): ?>
 			<div class="aips-timeline-milestone-item aips-timeline-milestone-error">
 				<span class="dashicons dashicons-warning aips-timeline-milestone-icon error"></span>

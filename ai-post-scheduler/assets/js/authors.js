@@ -632,6 +632,34 @@
 
 
 		/**
+		 * Re-fetch the current page and swap in the server-rendered topics list
+		 * table and stat cards, preserving the active tab, search and paging.
+		 */
+		refreshListTable: function () {
+			// Coalesce overlapping refreshes (e.g. rapid double actions) into one request.
+			if (this.refreshingListTable) {
+				return;
+			}
+			this.refreshingListTable = true;
+			const $panel = $('#aips-author-topics-panel').css('opacity', 0.6);
+
+			$.get(window.location.href).done(function (html) {
+				const $doc = $('<div>').append($.parseHTML(html));
+				['#aips-author-topics-panel', '.aips-author-topics-stats'].forEach(function (selector) {
+					const $fresh = $doc.find(selector).first();
+					if ($fresh.length) {
+						$(selector).first().replaceWith($fresh);
+					}
+				});
+			}).fail(function () {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoadingTopics, 'error');
+			}).always(() => {
+				this.refreshingListTable = false;
+				$panel.css('opacity', '');
+			});
+		},
+
+		/**
 		 * Fetch topics for the current author filtered by status.
 		 *
 		 * Sends the `aips_get_author_topics` AJAX action. On success, calls
@@ -642,6 +670,12 @@
 		 *                          (`'pending'`, `'approved'`, or `'rejected'`).
 		 */
 		loadTopics: function (status) {
+			// The Author Topics page is a server-rendered list table; refresh it in place.
+			if ($('#aips-author-topics-panel .aips-list-table-wrap').length) {
+				this.refreshListTable();
+				return;
+			}
+
 			// Immediately show a loading skeleton while the AJAX request is in flight.
 			this.showTopicsLoading();
 
@@ -1516,7 +1550,7 @@
 		 */
 		deleteTopic: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('id');
+			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDeleteTopic, 'Notice', [
 				{ label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
@@ -1658,7 +1692,7 @@
 		 */
 		generatePostNow: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('id');
+			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 			const $btn = $(e.currentTarget);
 
 			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePost, 'Notice', [
@@ -1782,7 +1816,7 @@
 		 */
 		viewTopicLog: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('id');
+			const topicId = $(e.currentTarget).data('topic-id') || $(e.currentTarget).data('id');
 
 			$('#aips-topic-logs-modal').find('.aips-modal-content-body').html('<p>' + (aipsAuthorsL10n.logViewerLoading || 'Loading logs...') + '</p>');
 			$('#aips-topic-logs-modal').fadeIn();
@@ -2992,8 +3026,11 @@
 		// page param is 'aips-author-topics'), so no inline script injection is needed.
 		if ( typeof aipsAuthorContext !== 'undefined' && aipsAuthorContext.authorId ) {
 			AuthorsModule.currentAuthorId = aipsAuthorContext.authorId;
-			AuthorsModule.updateBulkActionDropdown('pending');
-			AuthorsModule.loadTopics('pending');
+			// The list-table page is server-rendered; only legacy markup needs the AJAX load.
+			if (!$('#aips-author-topics-panel .aips-list-table-wrap').length) {
+				AuthorsModule.updateBulkActionDropdown('pending');
+				AuthorsModule.loadTopics('pending');
+			}
 		}
 
 		// Deep-link: on the Authors list page, open the Edit modal directly when
