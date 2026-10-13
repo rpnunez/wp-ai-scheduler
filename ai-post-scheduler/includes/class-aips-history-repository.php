@@ -66,9 +66,94 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string e.g. "'a', 'b'" (values are code constants, escaped anyway).
      */
     private static function event_only_in_sql() {
-        return implode(', ', array_map(function ($method) {
-            return "'" . esc_sql($method) . "'";
-        }, self::event_only_creation_methods()));
+        return self::quoted_sql_list(self::event_only_creation_methods());
+    }
+
+    /**
+     * Comma-separated, escaped SQL string literals for a list of values.
+     *
+     * @param string[] $values Values to quote.
+     * @return string e.g. "'a', 'b'"
+     */
+    private static function quoted_sql_list(array $values) {
+        return implode(', ', array_map(function ($value) {
+            return "'" . esc_sql($value) . "'";
+        }, $values));
+    }
+
+    /**
+     * creation_method values written by real post-generation runs.
+     *
+     * Only these rows own a generated post's components. Event containers
+     * (review actions, topic-generation wrappers, notifications), indexing and
+     * other background jobs also carry a post_id and finish as 'completed', so
+     * every "the run that generated this post" lookup must go through
+     * generation_run_condition() instead of listing methods to exclude.
+     *
+     * 'bulk_generate' is the Planner's per-post run; the bulk summary container
+     * shares the value but never has a post_id, so post-keyed queries are unaffected.
+     *
+     * @return string[]
+     */
+    public static function generation_run_creation_methods() {
+        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate');
+
+        /**
+         * Filters the creation_method values treated as post-generation runs.
+         *
+         * @param string[] $methods creation_method values.
+         */
+        $methods = apply_filters('aips_generation_run_creation_methods', $methods);
+
+        return array_values(array_unique(array_filter(array_map('strval', (array) $methods))));
+    }
+
+    /**
+     * SQL condition matching post-generation runs.
+     *
+     * Rows with no creation_method are legacy runs: AIPS_History_Container is the
+     * only writer and always persists its type as the method, so a NULL/empty
+     * value cannot be an event row. A new writer that calls
+     * AIPS_History_Repository::create() directly must pass a creation_method.
+     *
+     * @param string $alias Optional table alias (without the dot).
+     * @return string
+     */
+    public static function generation_run_condition($alias = '') {
+        $column = ($alias !== '' ? $alias . '.' : '') . 'creation_method';
+        $list   = self::quoted_sql_list(self::generation_run_creation_methods());
+
+        return "({$column} IS NULL OR {$column} = '' OR {$column} IN ({$list}))";
+    }
+
+    /**
+     * Derived table holding the newest completed/partial generation run per post.
+     *
+     * Join on `latest_history_id = h.id`. Event rows are always newer than the run
+     * they describe, so a bare MAX(id) per post would pick them instead.
+     *
+     * @param string $post_status Optional wp_posts.post_status to restrict to. The
+     *                            newest run per post is unchanged by it; it only
+     *                            keeps the aggregate from scanning posts the caller
+     *                            will discard anyway.
+     * @return string Parenthesised sub-select exposing post_id and latest_history_id.
+     */
+    public static function latest_generation_run_subquery($post_status = '') {
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'aips_history';
+        $join  = '';
+        if ($post_status !== '') {
+            $join = "INNER JOIN {$wpdb->posts} p ON p.ID = r.post_id AND p.post_status = '" . esc_sql($post_status) . "'";
+        }
+
+        return "(SELECT r.post_id, MAX(r.id) AS latest_history_id
+                FROM {$table} r
+                {$join}
+                WHERE r.status IN ('completed', 'partial')
+                  AND r.post_id IS NOT NULL
+                  AND " . self::generation_run_condition('r') . "
+                GROUP BY r.post_id)";
     }
 
     /**
