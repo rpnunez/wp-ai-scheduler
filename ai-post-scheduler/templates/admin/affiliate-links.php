@@ -46,6 +46,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</table>
 			</div>
 
+			<div id="aips-afl-empty-state" class="aips-empty-state" style="display:none;padding:48px 20px;">
+				<div class="dashicons dashicons-money-alt aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e( 'No Affiliate Mappings Yet', 'ai-post-scheduler' ); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e( 'Map post tags to affiliate links to automatically inject recommendations and CTAs into generated posts.', 'ai-post-scheduler' ); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-afl-empty-add-btn">
+						<span class="dashicons dashicons-plus-alt2"></span>
+						<?php esc_html_e( 'Add Mapping', 'ai-post-scheduler' ); ?>
+					</button>
+				</div>
+			</div>
+
+			<div id="aips-afl-search-empty-state" class="aips-empty-state" style="display:none;padding:48px 20px;">
+				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e( 'No Mappings Found', 'ai-post-scheduler' ); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e( 'No affiliate mappings match your search term.', 'ai-post-scheduler' ); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-afl-clear-search-btn">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e( 'Clear Search', 'ai-post-scheduler' ); ?>
+					</button>
+				</div>
+			</div>
+
 			<!-- Pagination -->
 			<div class="aips-panel-footer" id="aips-afl-pagination" style="display:none;">
 				<div class="aips-pagination">
@@ -183,10 +207,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	function renderRows(items) {
 		var tbody = $('#aips-afl-tbody');
+		var table = $('#aips-afl-table');
+		var emptyState = $('#aips-afl-empty-state');
+		var searchEmptyState = $('#aips-afl-search-empty-state');
+
 		if (!items.length) {
-			tbody.html('<tr><td colspan="7" style="text-align:center;padding:24px;"><?php echo esc_js( __( 'No mappings found. Click "Add Mapping" to create one.', 'ai-post-scheduler' ) ); ?></td></tr>');
+			table.hide();
+			tbody.empty();
+			if (aflState.search && aflState.search.trim().length > 0) {
+				emptyState.hide();
+				searchEmptyState.show();
+			} else {
+				searchEmptyState.hide();
+				emptyState.show();
+			}
 			return;
 		}
+
+		table.show();
+		emptyState.hide();
+		searchEmptyState.hide();
+
 		var rows = items.map(function(item) {
 			var enabledToggle = '<label class="aips-toggle" title="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
 				+ '<input type="checkbox" class="aips-afl-toggle" data-id="' + item.id + '"' + (item.enabled == 1 ? ' checked' : '') + ' aria-label="<?php echo esc_js( __( 'Toggle enabled', 'ai-post-scheduler' ) ); ?>">'
@@ -249,7 +290,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		$('#aips-afl-text-group').toggle(val === 'after_text');
 	});
 
-	$(document).on('click', '#aips-afl-add-btn', function() { openModal(null); });
+	$(document).on('click', '#aips-afl-add-btn, #aips-afl-empty-add-btn', function() { openModal(null); });
 
 	$(document).on('click', '.aips-modal-close, .aips-modal-backdrop', closeModal);
 
@@ -318,9 +359,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		clearTimeout(searchTimer);
 		searchTimer = setTimeout(function() { aflState.search = val; aflState.page = 1; loadList(); }, 350);
 	});
-	$(document).on('click', '#aips-afl-search-clear', function() {
+	$(document).on('click', '#aips-afl-search-clear, #aips-afl-clear-search-btn', function() {
 		$('#aips-afl-search').val('');
-		$(this).hide();
+		$('#aips-afl-search-clear').hide();
 		aflState.search = '';
 		aflState.page   = 1;
 		loadList();
