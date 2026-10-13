@@ -118,7 +118,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
             </div>
             <!-- Filter Bar -->
             <div class="aips-filter-bar aips-history-filter-bar">
-                <div class="aips-history-filter-row aips-history-filter-row-selects">
+                <div class="aips-history-filter-row">
+                    <div class="aips-history-filter-selects">
                     <select id="aips-filter-status" class="aips-form-select" aria-label="<?php esc_attr_e('Status', 'ai-post-scheduler'); ?>">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
@@ -155,11 +156,12 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         </option>
                         <?php endforeach; ?>
                     </select>
-                </div>
-                <div class="aips-history-filter-row aips-history-filter-row-inputs">
+                    </div>
+                    <div class="aips-history-filter-search">
                     <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
                     <input type="text" id="aips-filter-correlation" class="aips-form-input" placeholder="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Correlation ID', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($correlation_filter); ?>">
+                    </div>
                 </div>
                 <div class="aips-history-filter-row aips-history-filter-row-dates">
                     <div class="aips-date-range-group">
