@@ -64,17 +64,18 @@ $page_context = AIPS_Admin_Page_Context::resolve(
         <?php if ($show_panel): ?>
         <div class="aips-content-panel">
             <div class="aips-history-overview" aria-label="<?php esc_attr_e('History overview', 'ai-post-scheduler'); ?>">
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed" data-domain="generation_runs">
-                    <span class="aips-history-metric-value" id="aips-stat-failed"><?php echo esc_html((int) ($stats['failed'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Failed runs', 'ai-post-scheduler'); ?></span>
-                </button>
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="processing" data-domain="generation_runs">
-                    <span class="aips-history-metric-value" id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Runs in progress', 'ai-post-scheduler'); ?></span>
-                </button>
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="stalled" data-domain="generation_runs">
-                    <span class="aips-history-metric-value" id="aips-stat-stalled"><?php echo esc_html((int) ($stats['stalled'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Stalled runs', 'ai-post-scheduler'); ?></span>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-domain="generation_runs" title="<?php esc_attr_e('Post generation runs. Background work is counted separately.', 'ai-post-scheduler'); ?>">
+                    <span class="aips-history-metric-value" id="aips-stat-total"><?php echo esc_html((int) ($stats['total'] ?? 0)); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Generation runs', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub">
+                            <span id="aips-stat-failed"><?php echo esc_html((int) ($stats['failed'] ?? 0)); ?></span> <?php esc_html_e('failed', 'ai-post-scheduler'); ?>
+                            &middot;
+                            <span id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span> <?php esc_html_e('in progress', 'ai-post-scheduler'); ?>
+                            &middot;
+                            <span id="aips-stat-stalled"><?php echo esc_html((int) ($stats['stalled'] ?? 0)); ?></span> <?php esc_html_e('stalled', 'ai-post-scheduler'); ?>
+                        </span>
+                    </span>
                 </button>
                 <div class="aips-history-metric">
                     <span class="aips-history-metric-value" id="aips-stat-success-rate"><?php echo esc_html(number_format_i18n((float) ($stats['success_rate'] ?? 0), 1)); ?>%</span>

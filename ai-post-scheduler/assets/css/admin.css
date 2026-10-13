@@ -591,7 +591,7 @@
 
 
 /* Compact, troubleshooting-first History page. */
-.aips-history-overview { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
+.aips-history-overview { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
 .aips-history-metric { appearance:none; border:0; border-right:1px solid var(--aips-gray-200); background:transparent; padding:14px 18px; text-align:left; }
 .aips-history-metric:last-child { border-right:0; }
 .aips-history-metric-filter { cursor:pointer; }
