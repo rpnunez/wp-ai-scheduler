@@ -27,6 +27,201 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     use AIPS_Cacheable_Repository;
 
     /**
+     * Default maximum rows collapsed into a single History group.
+     */
+    const GROUP_MAX_ROWS = 50;
+
+    /**
+     * Seconds without activity after which an in-progress run is shown as stalled.
+     */
+    const STALLED_AFTER_SECONDS = 900;
+
+    /**
+     * Seconds without activity after which a long-running chained job (indexing,
+     * embeddings, batches) is shown as stalled. These jobs legitimately wait on
+     * rate limits and cron slices between log entries.
+     */
+    const STALLED_AFTER_CHAIN_SECONDS = 21600;
+
+    /**
+     * creation_method values that are events or configuration changes rather than
+     * generation runs. They never own a generated post's components, so lookups by
+     * post must skip them.
+     *
+     * @return string[]
+     */
+    public static function event_only_creation_methods() {
+        return array_merge(
+            AIPS_History_Event_Recorder::lifecycle_creation_methods(),
+            array(
+                'notification_sent', 'topic_post_generation', 'bulk_delete', 'bulk_delete_feedback',
+                'bulk_schedule', 'settings_connection_test', 'stress_test', 'taxonomy_generation',
+            )
+        );
+    }
+
+    /**
+     * Placeholders string for the event-only creation methods.
+     *
+     * @return string e.g. "'a', 'b'" (values are code constants, escaped anyway).
+     */
+    private static function event_only_in_sql() {
+        return self::quoted_sql_list(self::event_only_creation_methods());
+    }
+
+    /**
+     * Comma-separated, escaped SQL string literals for a list of values.
+     *
+     * @param string[] $values Values to quote.
+     * @return string e.g. "'a', 'b'"
+     */
+    private static function quoted_sql_list(array $values) {
+        return implode(', ', array_map(function ($value) {
+            return "'" . esc_sql($value) . "'";
+        }, $values));
+    }
+
+    /**
+     * creation_method values written by real post-generation runs.
+     *
+     * Only these rows own a generated post's components. Event containers
+     * (review actions, topic-generation wrappers, notifications), indexing and
+     * other background jobs also carry a post_id and finish as 'completed', so
+     * every "the run that generated this post" lookup must go through
+     * generation_run_condition() instead of listing methods to exclude.
+     *
+     * 'bulk_generate' is the Planner's per-post run; the bulk summary container
+     * shares the value but never has a post_id, so post-keyed queries are unaffected.
+     *
+     * @return string[]
+     */
+    public static function generation_run_creation_methods() {
+        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate');
+
+        /**
+         * Filters the creation_method values treated as post-generation runs.
+         *
+         * @param string[] $methods creation_method values.
+         */
+        $methods = apply_filters('aips_generation_run_creation_methods', $methods);
+
+        return array_values(array_unique(array_filter(array_map('strval', (array) $methods))));
+    }
+
+    /**
+     * SQL condition matching post-generation runs.
+     *
+     * Rows with no creation_method are legacy runs: AIPS_History_Container is the
+     * only writer and always persists its type as the method, so a NULL/empty
+     * value cannot be an event row. A new writer that calls
+     * AIPS_History_Repository::create() directly must pass a creation_method.
+     *
+     * @param string $alias Optional table alias (without the dot).
+     * @return string
+     */
+    public static function generation_run_condition($alias = '') {
+        $column = ($alias !== '' ? $alias . '.' : '') . 'creation_method';
+        $list   = self::quoted_sql_list(self::generation_run_creation_methods());
+
+        return "({$column} IS NULL OR {$column} = '' OR {$column} IN ({$list}))";
+    }
+
+    /**
+     * Derived table holding the newest completed/partial generation run per post.
+     *
+     * Join on `latest_history_id = h.id`. Event rows are always newer than the run
+     * they describe, so a bare MAX(id) per post would pick them instead.
+     *
+     * @param string $post_status Optional wp_posts.post_status to restrict to. The
+     *                            newest run per post is unchanged by it; it only
+     *                            keeps the aggregate from scanning posts the caller
+     *                            will discard anyway.
+     * @return string Parenthesised sub-select exposing post_id and latest_history_id.
+     */
+    public static function latest_generation_run_subquery($post_status = '') {
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'aips_history';
+        $join  = '';
+        if ($post_status !== '') {
+            $join = "INNER JOIN {$wpdb->posts} p ON p.ID = r.post_id AND p.post_status = '" . esc_sql($post_status) . "'";
+        }
+
+        return "(SELECT r.post_id, MAX(r.id) AS latest_history_id
+                FROM {$table} r
+                {$join}
+                WHERE r.status IN ('completed', 'partial')
+                  AND r.post_id IS NOT NULL
+                  AND " . self::generation_run_condition('r') . "
+                GROUP BY r.post_id)";
+    }
+
+    /**
+     * creation_method LIKE patterns of chained, long-running jobs.
+     *
+     * @return string[]
+     */
+    public static function chain_method_patterns() {
+        return array('%content_index%', '%embedding%', '%batch%', '%internal_link%', '%bulk%');
+    }
+
+    /**
+     * Whether a creation method belongs to a chained, long-running job.
+     *
+     * @param string|null $creation_method Raw creation_method.
+     * @return bool
+     */
+    public static function is_chain_method($creation_method) {
+        $creation_method = (string) $creation_method;
+        foreach (self::chain_method_patterns() as $pattern) {
+            if ($creation_method !== '' && strpos($creation_method, trim($pattern, '%')) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Inactivity threshold (seconds) after which a processing run counts as stalled.
+     *
+     * @param string|null $creation_method Raw creation_method.
+     * @return int
+     */
+    public static function stalled_threshold_seconds($creation_method = '') {
+        $default = self::is_chain_method($creation_method) ? self::STALLED_AFTER_CHAIN_SECONDS : self::STALLED_AFTER_SECONDS;
+
+        /**
+         * Filters how long (seconds) an in-progress History run may go without
+         * logged activity before it is shown as Stalled.
+         *
+         * @param int    $seconds         Threshold in seconds.
+         * @param string $creation_method Run creation method.
+         */
+        return max(60, (int) apply_filters('aips_history_stalled_after_seconds', $default, (string) $creation_method));
+    }
+
+    /**
+     * Resolve the display status of a run: 'stalled' replaces 'processing' once the
+     * run has been idle past its threshold; every other status is returned as is.
+     *
+     * @param string      $status          Stored status.
+     * @param string|null $creation_method Raw creation_method.
+     * @param int         $last_activity   Unix time of the newest log entry or the run start.
+     * @param int|null    $now             Current time (defaults to now).
+     * @return string
+     */
+    public static function resolve_effective_status($status, $creation_method, $last_activity, $now = null) {
+        if ((string) $status !== 'processing') {
+            return (string) $status;
+        }
+
+        $now = $now === null ? AIPS_DateTime::now()->timestamp() : (int) $now;
+
+        return ($now - (int) $last_activity) >= self::stalled_threshold_seconds($creation_method) ? 'stalled' : 'processing';
+    }
+
+    /**
      * @var self|null Singleton instance.
      */
     private static $instance = null;
@@ -335,50 +530,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
-     * Get paginated history with optional filtering.
+     * Creation-method LIKE patterns that define each non-default history domain.
      *
-     * @param array $args {
-     *     Optional. Query arguments.
-     *
-     *     @type int    $per_page    Number of items per page. Default 20.
-     *     @type int    $page        Current page number. Default 1.
-     *     @type string $status      Filter by status. Default empty.
-     *     @type string $search      Search term for title. Default empty.
-     *     @type int    $template_id Filter by template ID. Default 0.
-     *     @type string $orderby     Column to order by. Default 'created_at'.
-     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
-     * }
-     * @return array {
-     *     @type array $items        Array of history items.
-     *     @type int   $total        Total number of items.
-     *     @type int   $pages        Total number of pages.
-     *     @type int   $current_page Current page number.
-     * }
+     * @return array<string,string> Domain key => SQL LIKE pattern.
      */
-    public function get_history($args = array()) {
-        $defaults = array(
-            'per_page' => 50,
-            'page' => 1,
-            'status' => '',
-            'search' => '',
-            'template_id' => 0,
-            'campaign_id' => 0,
-            'author_id' => 0,
-            'domain' => '',
-            'actor' => '',
-            'post_type' => '',
-            'date_from' => '',
-            'date_to' => '',
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'fields' => 'all',
-        );
-
-        $args = wp_parse_args($args, $defaults);
-
-        $offset = ($args['page'] - 1) * $args['per_page'];
-
-        $domain_patterns = array(
+    private function get_domain_patterns() {
+        return array(
             'content_indexing' => '%content_index%',
             'author_topics' => 'author_topic%',
             'research' => '%research%',
@@ -386,56 +543,101 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'embeddings' => '%embedding%',
             'internal_links' => '%internal_link%',
             'batch_jobs' => '%batch%',
+            'post_review' => 'post_review_action',
         );
+    }
 
-        $event_domain_case_parts = array('CASE');
-        foreach ($domain_patterns as $domain_key => $domain_pattern) {
-            $event_domain_case_parts[] = sprintf(
-                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
-                esc_sql($domain_pattern),
-                esc_sql($domain_key)
-            );
+    /**
+     * SQL condition that is true for a processing run that has gone idle.
+     *
+     * Idle means no log entry (falling back to created_at) within the run's
+     * threshold. The threshold comes from stalled_threshold_seconds() for each
+     * creation method currently in progress, so the SQL (filter, stats, queue
+     * health) and the per-row badge share one definition, including any
+     * aips_history_stalled_after_seconds override. Placeholders and args are
+     * returned together so callers can splice the condition into any clause.
+     *
+     * @param string $alias History table alias.
+     * @return array{0:string,1:array} Tuple of [sql, args].
+     */
+    private function stalled_condition($alias = 'h') {
+        $now           = AIPS_DateTime::now()->timestamp();
+        $last_activity = "GREATEST({$alias}.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = {$alias}.id), 0))";
+
+        $methods = $this->wpdb->get_col("SELECT DISTINCT COALESCE(creation_method, '') FROM {$this->table_name} WHERE status = 'processing'");
+
+        $cases = '';
+        $args  = array();
+        foreach ((array) $methods as $method) {
+            if ($method === '') {
+                continue;
+            }
+            $cases .= ' WHEN %s THEN %d';
+            $args[] = (string) $method;
+            $args[] = $now - self::stalled_threshold_seconds($method);
         }
-        $event_domain_case_parts[] = "ELSE 'post_generation'";
-        $event_domain_case_parts[] = 'END';
-        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
-        $event_label_case_sql = "CASE
-                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
-                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
-                WHEN h.post_id IS NOT NULL THEN CONCAT('Post #', h.post_id)
-                WHEN COALESCE(h.creation_method, '') LIKE '%content_index%' THEN 'Content Indexing'
-                ELSE 'Generation Event'
-            END";
-        $actor_type_case_sql = "CASE
-                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
-                ELSE 'system'
-            END";
+        $args[] = $now - self::stalled_threshold_seconds('');
 
-        // Build select fields
-        if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
-                {$event_domain_case_sql} AS event_domain,
-                {$event_label_case_sql} AS event_label,
-                {$actor_type_case_sql} AS actor_type,
-                t.name as template_name,
-                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
-        } elseif ($args['fields'] === 'all') {
-            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
-                {$event_domain_case_sql} AS event_domain,
-                {$event_label_case_sql} AS event_label,
-                {$actor_type_case_sql} AS actor_type,
-                t.name as template_name";
-        } else {
-            // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+        $sql = "({$alias}.status = 'processing' AND {$last_activity} < CASE COALESCE({$alias}.creation_method, ''){$cases} ELSE %d END)";
+
+        return array($sql, $args);
+    }
+
+    /**
+     * Attach last_activity_at and effective_status to rows.
+     *
+     * Only processing rows need a lookup, so this stays cheap on a paginated page.
+     *
+     * @param array $rows History rows (modified in place).
+     * @return void
+     */
+    private function attach_effective_status(array $rows) {
+        $processing_ids = array();
+        foreach ($rows as $row) {
+            $row->effective_status = isset($row->status) ? (string) $row->status : '';
+            if ($row->effective_status === 'processing') {
+                $processing_ids[] = (int) $row->id;
+            }
         }
 
+        if (empty($processing_ids)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($processing_ids), '%d'));
+        $activity     = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT history_id, MAX(timestamp) AS last_log FROM {$this->table_name_log} WHERE history_id IN ({$placeholders}) GROUP BY history_id",
+            $processing_ids
+        ), OBJECT_K);
+
+        $now = AIPS_DateTime::now()->timestamp();
+        foreach ($rows as $row) {
+            if ($row->effective_status !== 'processing') {
+                continue;
+            }
+            $last_log              = isset($activity[(int) $row->id]) ? (int) $activity[(int) $row->id]->last_log : 0;
+            $row->last_activity_at = max((int) $row->created_at, $last_log);
+            $row->effective_status = self::resolve_effective_status('processing', isset($row->creation_method) ? $row->creation_method : '', $row->last_activity_at, $now);
+        }
+    }
+
+    /**
+     * Build the shared WHERE clause for history listing queries.
+     *
+     * @param array $args            Normalised get_history() arguments.
+     * @param array $domain_patterns Domain key => LIKE pattern map.
+     * @return array{0:string,1:array} Tuple of [where_sql, where_args].
+     */
+    private function build_history_where($args, $domain_patterns) {
         // Build where clauses
         $where_clauses = array("1=1");
         $where_args = array();
 
         $auxiliary_methods = $this->get_auxiliary_creation_methods();
+        // Review-queue actions are hidden by default but can be listed explicitly.
+        if (!empty($args['domain']) && sanitize_key($args['domain']) === 'post_review') {
+            $auxiliary_methods = array_values(array_diff($auxiliary_methods, array('post_review_action')));
+        }
         $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
         $where_clauses[] = "COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})";
         $where_args = array_merge($where_args, $auxiliary_methods);
@@ -446,10 +648,31 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             if ($args['status'] === 'completed') {
                 $where_clauses[] = "(h.status = %s OR h.status = 'indexed')";
                 $where_args[] = 'completed';
+            } elseif ($args['status'] === 'in_progress') {
+                // Raw processing rows, stalled or not (used to resume an open container).
+                $where_clauses[] = "h.status = 'processing'";
+            } elseif ($args['status'] === 'generated') {
+                // Runs that produced output: completed, partial, or indexed.
+                $where_clauses[] = "h.status IN ('completed', 'partial', 'indexed')";
+            } elseif ($args['status'] === 'stalled') {
+                list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+                $where_clauses[] = $stalled_sql;
+                $where_args      = array_merge($where_args, $stalled_args);
+            } elseif ($args['status'] === 'processing') {
+                // A run that has gone idle is Stalled, not Processing.
+                list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+                $where_clauses[] = "(h.status = 'processing' AND NOT {$stalled_sql})";
+                $where_args      = array_merge($where_args, $stalled_args);
             } else {
                 $where_clauses[] = "h.status = %s";
                 $where_args[] = $args['status'];
             }
+        }
+
+        if (!empty($args['creation_method'])) {
+            // Legacy rows may have an empty creation_method; they still match any type.
+            $where_clauses[] = "(h.creation_method = %s OR COALESCE(h.creation_method, '') = '')";
+            $where_args[] = (string) $args['creation_method'];
         }
 
         if (!empty($args['template_id'])) {
@@ -529,6 +752,112 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         $where_sql = implode(' AND ', $where_clauses);
 
+        return array($where_sql, $where_args);
+    }
+
+    /**
+     * Get paginated history with optional filtering.
+     *
+     * @param array $args {
+     *     Optional. Query arguments.
+     *
+     *     @type int    $per_page    Number of items per page. Default 20.
+     *     @type int    $page        Current page number. Default 1.
+     *     @type string $status      Filter by status. Default empty.
+     *     @type string $search      Search term for title. Default empty.
+     *     @type int    $template_id Filter by template ID. Default 0.
+     *     @type string $orderby     Column to order by. Default 'created_at'.
+     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+     *     @type bool   $collapse    Paginate by display entries instead of rows: adjacent rows with the
+     *                               same creation method form one entry (a group), so a page holds
+     *                               `per_page` entries. Default false (row-based LIMIT/OFFSET).
+     *     @type int    $group_max_rows Maximum rows per collapsed group (min 2). Default GROUP_MAX_ROWS.
+     * }
+     * @return array {
+     *     @type array $items         Array of history items (every row on the page).
+     *     @type int   $total         Total number of rows matching the filters.
+     *     @type int   $pages         Total number of pages (entry-based when collapsing).
+     *     @type int   $current_page  Current page number.
+     *     @type int   $total_entries Total display entries. Only present when collapsing.
+     *     @type int   $group_max_rows Normalised group cap used. Only present when collapsing.
+     * }
+     */
+    public function get_history($args = array()) {
+        $defaults = array(
+            'per_page' => 50,
+            'page' => 1,
+            'status' => '',
+            'search' => '',
+            'template_id' => 0,
+            'campaign_id' => 0,
+            'author_id' => 0,
+            'creation_method' => '',
+            'domain' => '',
+            'actor' => '',
+            'post_type' => '',
+            'date_from' => '',
+            'date_to' => '',
+            'orderby' => 'created_at',
+            'order' => 'DESC',
+            'fields' => 'all',
+            'collapse' => false,
+            'group_max_rows' => self::GROUP_MAX_ROWS,
+        );
+
+        $args = wp_parse_args($args, $defaults);
+        $args['per_page'] = max(1, (int) $args['per_page']);
+        $args['page'] = max(1, (int) $args['page']);
+        $args['group_max_rows'] = max(2, (int) $args['group_max_rows']);
+
+        $offset = ($args['page'] - 1) * $args['per_page'];
+
+        $domain_patterns = $this->get_domain_patterns();
+
+        $event_domain_case_parts = array('CASE');
+        foreach ($domain_patterns as $domain_key => $domain_pattern) {
+            $event_domain_case_parts[] = sprintf(
+                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
+                esc_sql($domain_pattern),
+                esc_sql($domain_key)
+            );
+        }
+        $event_domain_case_parts[] = "ELSE 'post_generation'";
+        $event_domain_case_parts[] = 'END';
+        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
+        $event_label_case_sql = "CASE
+                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
+                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
+                WHEN h.post_id IS NOT NULL THEN CONCAT('Post #', h.post_id)
+                WHEN COALESCE(h.creation_method, '') LIKE '%content_index%' THEN 'Content Indexing'
+                ELSE 'Generation Event'
+            END";
+        $actor_type_case_sql = "CASE
+                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
+                ELSE 'system'
+            END";
+
+        // Build select fields
+        if ($args['fields'] === 'list') {
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name,
+                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
+        } elseif ($args['fields'] === 'all') {
+            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name";
+        } else {
+            // For specifically 'performance' or any other restricted fields
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+        }
+
+        list($where_sql, $where_args) = $this->build_history_where($args, $domain_patterns);
+
         // Validate orderby and order
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
@@ -536,18 +865,38 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $templates_table = $this->wpdb->prefix . 'aips_templates';
 
         // Query for items
-        $query_args = $where_args;
-        $query_args[] = $args['per_page'];
-        $query_args[] = $offset;
+        $collapse_plan = null;
+        if (!empty($args['collapse'])) {
+            // Entry-based pagination: a page is `per_page` display entries (collapsed groups or single rows),
+            // so the rows to hydrate are picked by the planner rather than by LIMIT/OFFSET.
+            $collapse_plan = $this->plan_collapsed_page($where_sql, $where_args, $orderby, $order, $args);
+            $page_ids = $collapse_plan['ids'];
+            if (empty($page_ids)) {
+                $results = array();
+            } else {
+                $ids_in = implode(',', array_fill(0, count($page_ids), '%d'));
+                $results = $this->wpdb->get_results($this->wpdb->prepare("
+                    SELECT $fields_sql
+                    FROM {$this->table_name} h
+                    LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                    WHERE h.id IN ({$ids_in})
+                    ORDER BY h.$orderby $order, h.id $order
+                ", $page_ids));
+            }
+        } else {
+            $query_args = $where_args;
+            $query_args[] = $args['per_page'];
+            $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT $fields_sql
-            FROM {$this->table_name} h
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id
-            WHERE $where_sql
-            ORDER BY h.$orderby $order
-            LIMIT %d OFFSET %d
-        ", $query_args));
+            $results = $this->wpdb->get_results($this->wpdb->prepare("
+                SELECT $fields_sql
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE $where_sql
+                ORDER BY h.$orderby $order, h.id $order
+                LIMIT %d OFFSET %d
+            ", $query_args));
+        }
 
         // If 'list' fields were requested, attach aggregated log statistics for the paginated slice only.
         // This replaces the full-table log aggregation subquery that previously caused severe performance degradation.
@@ -583,6 +932,21 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             }
         }
 
+        if (!empty($results)) {
+            $this->attach_effective_status($results);
+        }
+
+        if ($collapse_plan !== null) {
+            return array(
+                'items' => $results,
+                'total' => $collapse_plan['total_rows'],
+                'total_entries' => $collapse_plan['total_entries'],
+                'pages' => (int) ceil($collapse_plan['total_entries'] / $args['per_page']),
+                'current_page' => $args['page'],
+                'group_max_rows' => (int) $args['group_max_rows'],
+            );
+        }
+
         // Query for total count
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
@@ -598,6 +962,117 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'total' => (int) $total,
             'pages' => ceil($total / $args['per_page']),
             'current_page' => $args['page'],
+        );
+    }
+
+    /**
+     * Normalise a creation method to the key used for grouping.
+     *
+     * Mirrors the SQL expression COALESCE(NULLIF(creation_method, ''), 'post_generation').
+     *
+     * @param mixed $method Raw creation_method value.
+     * @return string
+     */
+    public static function normalize_method_key($method) {
+        $method = (string) $method;
+        return $method === '' ? 'post_generation' : $method;
+    }
+
+    /**
+     * Split an ordered list of creation-method keys into collapsed-entry sizes.
+     *
+     * Adjacent rows sharing a key form a run. Runs are chunked into groups of at
+     * most $max_rows; a chunk of 1 is a single (ungrouped) entry. This is the one
+     * definition of "what is an entry" shared by pagination and rendering.
+     *
+     * @param string[] $keys     Normalised creation-method keys in display order.
+     * @param int      $max_rows Maximum rows per collapsed group (min 2).
+     * @return int[] Row count of each entry, in display order.
+     */
+    public static function plan_entry_sizes(array $keys, $max_rows = self::GROUP_MAX_ROWS) {
+        $max_rows = max(2, (int) $max_rows);
+        $sizes    = array();
+        $run      = 0;
+        $prev     = null;
+
+        foreach ($keys as $key) {
+            if ($prev !== null && $key !== $prev) {
+                self::push_run_sizes($sizes, $run, $max_rows);
+                $run = 0;
+            }
+            $run++;
+            $prev = $key;
+        }
+        if ($run > 0) {
+            self::push_run_sizes($sizes, $run, $max_rows);
+        }
+
+        return $sizes;
+    }
+
+    /**
+     * Append the chunk sizes for one run of identical rows.
+     *
+     * @param int[] $sizes    Sizes accumulator (by reference).
+     * @param int   $run      Run length.
+     * @param int   $max_rows Chunk cap.
+     * @return void
+     */
+    private static function push_run_sizes(array &$sizes, $run, $max_rows) {
+        while ($run > 0) {
+            $chunk   = min($run, $max_rows);
+            $sizes[] = $chunk;
+            $run    -= $chunk;
+        }
+    }
+
+    /**
+     * Work out which history rows belong on a collapsed page.
+     *
+     * Scans only (id, normalised creation method) for the filtered set, builds the
+     * entry plan, and returns the ids of the rows covered by the requested page of
+     * `per_page` entries.
+     *
+     * @param string $where_sql  Shared WHERE clause.
+     * @param array  $where_args Placeholder values for the WHERE clause.
+     * @param string $orderby    Validated order column.
+     * @param string $order      Validated direction.
+     * @param array  $args       Normalised get_history() arguments.
+     * @return array{ids:int[],total_rows:int,total_entries:int}
+     */
+    private function plan_collapsed_page($where_sql, array $where_args, $orderby, $order, array $args) {
+        $sql = "SELECT h.id, COALESCE(NULLIF(h.creation_method, ''), 'post_generation') AS method_key
+            FROM {$this->table_name} h
+            WHERE $where_sql
+            ORDER BY h.$orderby $order, h.id $order";
+        if (!empty($where_args)) {
+            $sql = $this->wpdb->prepare($sql, $where_args);
+        }
+
+        $rows = $this->wpdb->get_results($sql, ARRAY_N);
+        $rows = is_array($rows) ? $rows : array();
+
+        // Split into parallel id/key lists and free the row objects early: this scan
+        // covers every matching row, so avoid holding both representations.
+        $ids_all = array();
+        $keys    = array();
+        foreach ($rows as $row) {
+            $ids_all[] = (int) $row[0];
+            $keys[]    = (string) $row[1];
+        }
+        unset($rows);
+
+        $sizes     = self::plan_entry_sizes($keys, (int) $args['group_max_rows']);
+        unset($keys);
+        $per_page  = (int) $args['per_page'];
+        $first     = ((int) $args['page'] - 1) * $per_page;
+        $row_start = (int) array_sum(array_slice($sizes, 0, $first));
+        $row_count = (int) array_sum(array_slice($sizes, $first, $per_page));
+
+        return array(
+            'ids' => array_slice($ids_all, $row_start, $row_count),
+            'total_rows' => count($ids_all),
+            'total_entries' => count($sizes),
         );
     }
 
@@ -643,7 +1118,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $offset = $use_limit ? (($args['page'] - 1) * $args['per_page']) : 0;
 
         $where_clauses = array(
-            "h.status = 'completed'",
+            "h.status IN ('completed', 'partial')",
             "h.post_id IS NOT NULL",
             "(pm_incomplete.meta_value = 'true' OR pm_had_partial.meta_value = 'true')",
         );
@@ -700,7 +1175,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             INNER JOIN (
                 SELECT post_id, MAX(id) AS latest_history_id
                 FROM {$this->table_name}
-                WHERE status = 'completed' AND post_id IS NOT NULL
+                WHERE status IN ('completed', 'partial') AND post_id IS NOT NULL
                 GROUP BY post_id
             ) latest ON latest.latest_history_id = h.id
             INNER JOIN {$posts_table} p ON h.post_id = p.ID
@@ -732,7 +1207,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 INNER JOIN (
                     SELECT post_id, MAX(id) AS latest_history_id
                     FROM {$this->table_name}
-                    WHERE status = 'completed' AND post_id IS NOT NULL
+                    WHERE status IN ('completed', 'partial') AND post_id IS NOT NULL
                     GROUP BY post_id
                 ) latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
@@ -748,7 +1223,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 INNER JOIN (
                     SELECT post_id, MAX(id) AS latest_history_id
                     FROM {$this->table_name}
-                    WHERE status = 'completed' AND post_id IS NOT NULL
+                    WHERE status IN ('completed', 'partial') AND post_id IS NOT NULL
                     GROUP BY post_id
                 ) latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
@@ -784,6 +1259,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC, id ASC",
                 $id
             ));
+
+            $last_log = !empty($history->log) ? (int) end($history->log)->timestamp : 0;
+            $history->last_activity_at = max((int) $history->created_at, $last_log);
+            $history->effective_status = self::resolve_effective_status($history->status, isset($history->creation_method) ? $history->creation_method : '', $history->last_activity_at);
         }
 
         return $history;
@@ -797,7 +1276,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function post_has_history_and_completed($post_id) {
         $count = $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE post_id = %d AND status = 'completed'",
+            "SELECT COUNT(*) FROM {$this->table_name}
+             WHERE post_id = %d AND status IN ('completed', 'partial')
+               AND COALESCE(creation_method, '') NOT IN (" . self::event_only_in_sql() . ")",
             $post_id
         ));
         
@@ -819,7 +1300,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
                     creation_method, status, generated_title, error_message,
                     created_at, completed_at
-             FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+             FROM {$this->table_name}
+             WHERE post_id = %d AND COALESCE(creation_method, '') NOT IN (" . self::event_only_in_sql() . ")
+             ORDER BY created_at DESC, id DESC LIMIT 1",
             $post_id
         ));
     }
@@ -990,7 +1473,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     public function get_stats() {
-        return $this->cache_read(
+        $stats = $this->cache_read(
             'history.get_stats',
             array(),
             function() {
@@ -1017,6 +1500,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     'failed'     => isset($results->failed)     ? (int) $results->failed     : 0,
                     'processing' => isset($results->processing) ? (int) $results->processing : 0,
                     'partial'    => isset($results->partial)    ? (int) $results->partial    : 0,
+                    'stalled'    => 0,
                 );
 
                 // Only terminal outcomes count toward the rate; `processing`
@@ -1048,6 +1532,30 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 return $stats;
             }
         );
+
+        // Whether an in-progress run is Stalled depends on the current time and no write
+        // marks the moment it goes idle, so the split is computed live, outside the cache.
+        if ($stats['processing'] > 0) {
+            $auxiliary_methods      = $this->get_auxiliary_creation_methods();
+            $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+
+            list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+            $stalled = (int) $this->wpdb->get_var(
+                $this->wpdb->prepare(
+                    "SELECT COUNT(*)
+                     FROM {$this->table_name} h
+                     WHERE {$stalled_sql}
+                       AND COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})
+                       AND NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)",
+                    array_merge($stalled_args, $auxiliary_methods)
+                )
+            );
+
+            $stats['stalled']     = min($stalled, $stats['processing']);
+            $stats['processing'] -= $stats['stalled'];
+        }
+
+        return $stats;
     }
 
     /**
@@ -1108,7 +1616,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_template_stats($template_id) {
         return (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status = 'completed'",
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status IN ('completed', 'partial')",
             $template_id
         ));
     }
@@ -1122,7 +1630,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $results = $this->wpdb->get_results("
             SELECT template_id, COUNT(*) as count
             FROM {$this->table_name}
-            WHERE status = 'completed'
+            WHERE status IN ('completed', 'partial')
             GROUP BY template_id
         ");
 
@@ -1602,6 +2110,239 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'deleted' => $deleted !== false ? (int) $deleted : 0,
             'message' => $deleted !== false ? "Deleted {$deleted} history records" : "Failed to delete history records"
         );
+    }
+
+    /**
+     * Count generation runs that are in progress but idle past their threshold.
+     *
+     * Event-only containers (including persistent lifecycle containers, which stay
+     * open on purpose) are never counted.
+     *
+     * @return array{count:int,oldest_idle_seconds:int|null}
+     */
+    public function get_stalled_summary() {
+        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+
+        $methods      = self::event_only_creation_methods();
+        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
+        $row          = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT COUNT(*) AS total,
+                    MIN(GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0))) AS oldest_activity
+             FROM {$this->table_name} h
+             WHERE {$stalled_sql}
+               AND COALESCE(h.creation_method, '') NOT IN ({$placeholders})",
+            array_merge($stalled_args, $methods)
+        ));
+
+        $count = $row ? (int) $row->total : 0;
+
+        return array(
+            'count'               => $count,
+            'oldest_idle_seconds' => ($count > 0 && $row->oldest_activity !== null)
+                ? max(0, AIPS_DateTime::now()->timestamp() - (int) $row->oldest_activity)
+                : null,
+        );
+    }
+
+    /**
+     * Keep a post's latest generation row in step with its component state.
+     *
+     * A generation that finished with missing components is 'partial'; once the
+     * components are fixed it becomes 'completed' again (and vice versa). Only
+     * completed/partial rows move; failed and in-progress rows are left alone.
+     *
+     * @param int  $post_id    Post ID.
+     * @param bool $incomplete Whether any component is still missing.
+     * @return bool True when a row changed.
+     */
+    public function sync_generation_status_for_post($post_id, $incomplete) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return false;
+        }
+
+        // One conditional UPDATE: no read is needed to find out the row is already correct.
+        $target       = $incomplete ? 'partial' : 'completed';
+        $methods      = self::event_only_creation_methods();
+        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             INNER JOIN (
+                 SELECT MAX(id) AS latest_id
+                 FROM {$this->table_name}
+                 WHERE post_id = %d AND COALESCE(creation_method, '') NOT IN ({$placeholders})
+             ) latest ON latest.latest_id = h.id
+             SET h.status = %s
+             WHERE h.status IN ('completed', 'partial') AND h.status <> %s",
+            array_merge(array($post_id), $methods, array($target, $target))
+        ));
+
+        return $this->finish_bulk_status_update($updated) > 0;
+    }
+
+    /**
+     * Mark existing generation rows as partial when their post is flagged incomplete.
+     *
+     * One-time backfill for rows written before generations could be 'partial'.
+     * Only the newest generation row of each post is touched.
+     *
+     * @return int Number of rows changed.
+     */
+    public function backfill_partial_generation_status() {
+        $methods      = self::event_only_creation_methods();
+        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
+        $postmeta     = $this->wpdb->postmeta;
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             INNER JOIN (
+                 SELECT post_id, MAX(id) AS latest_id
+                 FROM {$this->table_name}
+                 WHERE post_id IS NOT NULL AND COALESCE(creation_method, '') NOT IN ({$placeholders})
+                 GROUP BY post_id
+             ) latest ON latest.latest_id = h.id
+             INNER JOIN {$postmeta} pm ON pm.post_id = h.post_id AND pm.meta_key = %s AND pm.meta_value = 'true'
+             SET h.status = 'partial'
+             WHERE h.status = 'completed'",
+            array_merge($methods, array(AIPS_Post_Manager::META_GENERATION_INCOMPLETE))
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Close event-only containers that were left in 'processing'.
+     *
+     * One-shot event containers (review-queue actions, topic-generation wrappers,
+     * notifications) used to be created without ever being closed. A container is
+     * closed as 'failed' when any of its log entries carries a failed event status,
+     * and as 'completed' otherwise. completed_at is set to its last log activity.
+     *
+     * @param string[] $creation_methods creation_method values to repair.
+     * @return int Number of rows closed.
+     */
+    public function close_orphaned_event_rows(array $creation_methods) {
+        $creation_methods = array_values(array_filter(array_map('strval', $creation_methods)));
+
+        // Without the indexed event_status column a failed run cannot be told
+        // apart from a successful one, so leave the rows untouched.
+        if (empty($creation_methods) || !$this->history_log_has_event_columns()) {
+            return 0;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($creation_methods), '%s'));
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             SET h.status = CASE
+                     WHEN EXISTS (
+                         SELECT 1 FROM {$this->table_name_log} l
+                         WHERE l.history_id = h.id AND l.event_status = 'failed'
+                     ) THEN 'failed'
+                     ELSE 'completed'
+                 END,
+                 h.completed_at = GREATEST(
+                     h.created_at,
+                     COALESCE((SELECT MAX(l2.timestamp) FROM {$this->table_name_log} l2 WHERE l2.history_id = h.id), 0)
+                 )
+             WHERE h.status = 'processing'
+               AND h.creation_method IN ({$placeholders})",
+            $creation_methods
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Close 'processing' containers that have shown no activity for a while.
+     *
+     * Last activity is the newest log entry, falling back to created_at. Matching
+     * rows are closed as 'terminated' (never deleted) with an explanatory message,
+     * so a genuinely running job keeps its row and a dead one stops showing as
+     * in progress.
+     *
+     * @param int      $stale_seconds   Inactivity, in seconds, after which a row is stale.
+     * @param string[] $exclude_methods creation_method values that must never be closed
+     *                                  (persistent lifecycle containers).
+     * @return int Number of rows closed.
+     */
+    public function close_stale_processing_rows($stale_seconds, array $exclude_methods = array()) {
+        $stale_seconds = max(60, (int) $stale_seconds);
+        $cutoff        = AIPS_DateTime::now()->timestamp() - $stale_seconds;
+        $last_activity = "GREATEST(h.created_at, COALESCE((SELECT MAX(l.timestamp) FROM {$this->table_name_log} l WHERE l.history_id = h.id), 0))";
+
+        // Placeholders appear in SQL order: message, excluded methods, cutoff.
+        $args            = array(__('Closed automatically: no activity was recorded and the run did not finish.', 'ai-post-scheduler'));
+        $where_exclude   = '';
+        $exclude_methods = array_values(array_filter(array_map('strval', $exclude_methods)));
+        if (!empty($exclude_methods)) {
+            $where_exclude = " AND COALESCE(h.creation_method, '') NOT IN (" . implode(', ', array_fill(0, count($exclude_methods), '%s')) . ')';
+            $args          = array_merge($args, $exclude_methods);
+        }
+        $args[] = $cutoff;
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             SET h.completed_at = {$last_activity},
+                 h.error_message = CASE WHEN h.error_message IS NULL OR h.error_message = '' THEN %s ELSE h.error_message END,
+                 h.status = 'terminated'
+             WHERE h.status = 'processing'{$where_exclude}
+               AND {$last_activity} < %d",
+            $args
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Close runs that are currently shown as Stalled.
+     *
+     * Uses the same idle thresholds as the Stalled status (15 minutes for
+     * generation runs, longer for chained jobs), so a run that History still shows
+     * as Processing is never closed. Rows are marked 'terminated', not deleted.
+     *
+     * @param string[] $exclude_methods creation_method values that must never be closed.
+     * @return int Number of rows closed.
+     */
+    public function close_stalled_processing_rows(array $exclude_methods = array()) {
+        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+
+        $args            = array(__('Closed automatically: no activity was recorded and the run did not finish.', 'ai-post-scheduler'));
+        $args            = array_merge($args, $stalled_args);
+        $where_exclude   = '';
+        $exclude_methods = array_values(array_filter(array_map('strval', $exclude_methods)));
+        if (!empty($exclude_methods)) {
+            $where_exclude = " AND COALESCE(h.creation_method, '') NOT IN (" . implode(', ', array_fill(0, count($exclude_methods), '%s')) . ')';
+            $args          = array_merge($args, $exclude_methods);
+        }
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             SET h.completed_at = GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0)),
+                 h.error_message = CASE WHEN h.error_message IS NULL OR h.error_message = '' THEN %s ELSE h.error_message END,
+                 h.status = 'terminated'
+             WHERE {$stalled_sql}{$where_exclude}",
+            $args
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Normalise a bulk UPDATE result and invalidate History caches when rows changed.
+     *
+     * @param int|false $updated Result of $wpdb->query().
+     * @return int Rows affected.
+     */
+    private function finish_bulk_status_update($updated) {
+        if ($updated === false || $updated < 1) {
+            return 0;
+        }
+
+        $this->invalidate_cache_domain('history', array(), 'history_mutated');
+
+        return (int) $updated;
     }
 
     /**

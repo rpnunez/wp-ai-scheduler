@@ -75,6 +75,10 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                     <span class="aips-history-metric-value" id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span>
                     <span class="aips-history-metric-label"><?php esc_html_e('In progress', 'ai-post-scheduler'); ?></span>
                 </button>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="stalled">
+                    <span class="aips-history-metric-value" id="aips-stat-stalled"><?php echo esc_html((int) ($stats['stalled'] ?? 0)); ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Stalled', 'ai-post-scheduler'); ?></span>
+                </button>
                 <div class="aips-history-metric">
                     <span class="aips-history-metric-value" id="aips-stat-success-rate"><?php echo esc_html(number_format_i18n((float) ($stats['success_rate'] ?? 0), 1)); ?>%</span>
                     <span class="aips-history-metric-label"><?php esc_html_e('Success rate', 'ai-post-scheduler'); ?></span>
@@ -94,6 +98,9 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
+                        <option value="stalled" <?php selected($status_filter, 'stalled'); ?>><?php esc_html_e('Stalled', 'ai-post-scheduler'); ?></option>
+                        <option value="partial" <?php selected($status_filter, 'partial'); ?>><?php esc_html_e('Partial', 'ai-post-scheduler'); ?></option>
+                        <option value="terminated" <?php selected($status_filter, 'terminated'); ?>><?php esc_html_e('Terminated', 'ai-post-scheduler'); ?></option>
                     </select>
                     <div class="aips-history-quick-dates" role="group" aria-label="<?php esc_attr_e('Date range', 'ai-post-scheduler'); ?>">
                         <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-history-quick-date" data-days="0"><?php esc_html_e('Today', 'ai-post-scheduler'); ?></button>
@@ -113,6 +120,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <option value="embeddings" <?php selected($domain_filter, 'embeddings'); ?>>Embeddings</option>
                         <option value="internal_links" <?php selected($domain_filter, 'internal_links'); ?>>Internal Links</option>
                         <option value="batch_jobs" <?php selected($domain_filter, 'batch_jobs'); ?>>Batch Jobs</option>
+                        <option value="post_review" <?php selected($domain_filter, 'post_review'); ?>><?php esc_html_e('Post Review', 'ai-post-scheduler'); ?></option>
                     </select>
                     <select id="aips-filter-actor" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Actors', 'ai-post-scheduler'); ?></option>
@@ -154,7 +162,7 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                         <span class="dashicons dashicons-download" aria-hidden="true"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-warning-outline" id="aips-clear-processing-btn" style="<?php echo empty($stats['processing']) ? 'display: none;' : ''; ?>" title="<?php esc_attr_e('Purge all stalled in-progress runs', 'ai-post-scheduler'); ?>">
+                    <button class="aips-btn aips-btn-sm aips-btn-warning-outline" id="aips-clear-processing-btn" style="<?php echo empty($stats['processing']) && empty($stats['stalled']) ? 'display: none;' : ''; ?>" title="<?php esc_attr_e('Close in-progress runs that are shown as Stalled', 'ai-post-scheduler'); ?>">
                         <span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
                         <?php esc_html_e('Clear In-Progress', 'ai-post-scheduler'); ?>
                     </button>

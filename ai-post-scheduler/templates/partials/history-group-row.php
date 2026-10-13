@@ -16,6 +16,8 @@ $label = isset($group['label']) ? $group['label'] : __('Activity', 'ai-post-sche
 $completed = isset($group['completed_count']) ? (int) $group['completed_count'] : 0;
 $failed = isset($group['failed_count']) ? (int) $group['failed_count'] : 0;
 $processing = isset($group['processing_count']) ? (int) $group['processing_count'] : 0;
+$stalled = isset($group['stalled_count']) ? (int) $group['stalled_count'] : 0;
+$partial = isset($group['partial_count']) ? (int) $group['partial_count'] : 0;
 $first_date = isset($group['first_date']) ? (string) $group['first_date'] : '';
 $last_date = isset($group['last_date']) ? (string) $group['last_date'] : '';
 $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $group['post_types'] : array();
@@ -66,6 +68,18 @@ $post_types = isset($group['post_types']) && is_array($group['post_types']) ? $g
                 <span class="aips-badge aips-badge-sm aips-badge-info">
                     <span class="dashicons dashicons-update" aria-hidden="true"></span>
                     <?php echo esc_html(sprintf(_n('%d Processing', '%d Processing', $processing, 'ai-post-scheduler'), $processing)); ?>
+                </span>
+            <?php endif; ?>
+            <?php if ($partial > 0): ?>
+                <span class="aips-badge aips-badge-sm aips-badge-warning">
+                    <span class="dashicons dashicons-warning" aria-hidden="true"></span>
+                    <?php echo esc_html(sprintf(_n('%d Partial', '%d Partial', $partial, 'ai-post-scheduler'), $partial)); ?>
+                </span>
+            <?php endif; ?>
+            <?php if ($stalled > 0): ?>
+                <span class="aips-badge aips-badge-sm aips-badge-warning">
+                    <span class="dashicons dashicons-warning" aria-hidden="true"></span>
+                    <?php echo esc_html(sprintf(_n('%d Stalled', '%d Stalled', $stalled, 'ai-post-scheduler'), $stalled)); ?>
                 </span>
             <?php endif; ?>
         </div>

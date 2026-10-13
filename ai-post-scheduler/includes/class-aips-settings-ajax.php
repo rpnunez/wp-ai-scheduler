@@ -152,7 +152,7 @@ class AIPS_Settings_AJAX {
 			null,
 			$result
 		);
-		$history->complete_success(array('status' => 'success'));
+		$history->complete_success();
 
 		// SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
 		// Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.

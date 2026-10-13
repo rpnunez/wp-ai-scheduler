@@ -244,7 +244,7 @@ class AIPS_Campaigns_Repository {
 		$history_stats = $this->wpdb->get_row($this->wpdb->prepare(
 			"SELECT
 				SUM(CASE WHEN h.status = 'failed' THEN 1 ELSE 0 END) AS failed_generation_count,
-				COUNT(DISTINCT CASE WHEN h.status = 'completed' AND h.post_id IS NOT NULL AND p.post_status IN ('draft', 'pending') THEN h.post_id END) AS pending_review_count
+				COUNT(DISTINCT CASE WHEN h.status IN ('completed', 'partial') AND h.post_id IS NOT NULL AND p.post_status IN ('draft', 'pending') THEN h.post_id END) AS pending_review_count
 			FROM {$this->history_table} h
 			LEFT JOIN {$posts_table} p ON h.post_id = p.ID
 			WHERE h.campaign_id = %d",
@@ -360,7 +360,7 @@ class AIPS_Campaigns_Repository {
 				SELECT post_id, MAX(id) AS latest_history_id
 				FROM {$this->history_table}
 				WHERE campaign_id = %d
-				AND status = 'completed'
+				AND status IN ('completed', 'partial')
 				AND post_id IS NOT NULL
 				GROUP BY post_id
 			) latest ON latest.latest_history_id = h.id
@@ -1025,7 +1025,7 @@ class AIPS_Campaigns_Repository {
 			LEFT JOIN (
 				SELECT
 					campaign_id,
-					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS generated_posts_count,
+					SUM(CASE WHEN status IN ('completed', 'partial') THEN 1 ELSE 0 END) AS generated_posts_count,
 					COUNT(*) AS total_history_count
 				FROM {$this->history_table}
 				WHERE campaign_id IS NOT NULL

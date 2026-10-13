@@ -208,6 +208,24 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.8', '<' ) ) {
 			$this->migrate_to_3_7_8();
 		}
+
+		// migrate_to_3_7_12() closes History rows that one-shot event containers
+		// left in 'processing'. It reads the indexed event_status log column, so it
+		// runs after the Layer-1 schema apply.
+		if ( version_compare( $from_version, '3.7.12', '<' ) ) {
+			$this->migrate_to_3_7_12();
+		}
+
+		// migrate_to_3_7_13() reads post meta, so it also runs after the schema apply.
+		if ( version_compare( $from_version, '3.7.13', '<' ) ) {
+			$this->migrate_to_3_7_13();
+		}
+
+		// migrate_to_3_7_14() adds post_generation_lock to aips_authors and
+		// claimed_at to aips_author_topics for claim-first mutual exclusion.
+		if ( version_compare( $from_version, '3.7.14', '<' ) ) {
+			$this->migrate_to_3_7_14();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1249,6 +1267,101 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.8: Dropped redundant aips_history_log indexes covered by history_type_timestamp.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.12.
+	 *
+	 * Review-queue actions, topic-generation wrappers and notifications created a
+	 * History container (always opened as 'processing') and never closed it, so
+	 * they showed as in progress forever. Close them from their logged outcome,
+	 * then close any other row that has had no activity for a day. Persistent
+	 * lifecycle containers are never touched.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_12() {
+		$repository = AIPS_History_Repository::instance();
+
+		$orphans = $repository->close_orphaned_event_rows(
+			array( 'post_review_action', 'topic_post_generation', 'notification_sent' )
+		);
+
+		// 'post_review_action' is a lifecycle method but was handled above; the other
+		// lifecycle containers are intentionally long-lived.
+		$stale = $repository->close_stale_processing_rows(
+			DAY_IN_SECONDS,
+			array_diff( AIPS_History_Event_Recorder::lifecycle_creation_methods(), array( 'post_review_action' ) )
+		);
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.12: Closed %d orphaned event rows and %d abandoned in-progress rows in History.', $orphans, $stale ),
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.7.13.
+	 *
+	 * Generations that finished with missing components used to be stored as
+	 * 'completed'. They are now 'partial', so mark each post's newest generation row
+	 * as partial when the post is flagged incomplete.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_13() {
+		$changed = AIPS_History_Repository::instance()->backfill_partial_generation_status();
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.13: Marked %d incomplete generations as partial in History.', $changed ),
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.7.14.
+	 *
+	 * Adds `post_generation_lock` to `aips_authors` and `claimed_at` to `aips_author_topics`
+	 * for claim-first atomic locking and mutual exclusion during post generation.
+	 *
+	 * Both statements are guarded with SHOW COLUMNS checks so they are
+	 * safe no-ops on fresh installs where dbDelta already created the schema.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_14() {
+		global $wpdb;
+
+		$table_authors = $wpdb->prefix . 'aips_authors';
+		$table_topics  = $wpdb->prefix . 'aips_author_topics';
+
+		// 1. Author table: post_generation_lock
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists === $table_authors ) {
+			$has_lock_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'post_generation_lock'
+			) );
+
+			if ( ! $has_lock_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0 AFTER post_generation_is_active, ADD KEY post_generation_lock (post_generation_lock)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		// 2. Author topics table: claimed_at
+		$topics_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_topics ) );
+		if ( $topics_table_exists === $table_topics ) {
+			$has_claimed_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_topics}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'claimed_at'
+			) );
+
+			if ( ! $has_claimed_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_topics}` ADD COLUMN claimed_at bigint(20) unsigned NOT NULL DEFAULT 0 AFTER metadata, ADD KEY claimed_at (claimed_at)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.14: Added post_generation_lock to authors and claimed_at to author_topics.', 'info' );
 	}
 
 	/**

@@ -1336,14 +1336,20 @@ class AIPS_Generator {
      */
     private function finalize_history_and_metrics($context, $post_id, $title, $content, $generation_incomplete, $component_statuses, $generation_start, $featured_image_success) {
         // Use new history API to complete with success
-        $this->current_history->complete_success(array(
+        $completion_data = array(
             'post_id' => $post_id,
             'post_type' => $context->get_post_type(),
             'generated_title' => $title,
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
-        ));
+        );
+        if ($generation_incomplete) {
+            // The post exists but some components failed: record that as partial, not completed.
+            $this->current_history->complete_partial('', $completion_data);
+        } else {
+            $this->current_history->complete_success($completion_data);
+        }
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();

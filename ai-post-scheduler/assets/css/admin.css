@@ -8558,3 +8558,49 @@ tr.aips-row-details > td {
     height: var(--aips-toolbar-control-h);
     padding: 0;
 }
+
+/* ==========================================================================
+   List table empty state: keep title and message centered together
+   ========================================================================== */
+.aips-list-table-wrap .wp-list-table tr.no-items td {
+	text-align: center;
+}
+
+.aips-list-table-empty .aips-empty-state-title,
+.aips-list-table-empty .aips-empty-state-text {
+	display: block;
+	float: none;
+	width: auto;
+	max-width: 480px;
+	margin-left: auto;
+	margin-right: auto;
+	text-align: center;
+}
+
+/* ==========================================================================
+   Author Topics queue: keep the table inside its panel
+   ========================================================================== */
+#aips-author-topics-panel .aips-author-topics-table {
+	table-layout: auto;
+	width: 100%;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .column-topic {
+	width: auto;
+	overflow-wrap: anywhere;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .column-created_at {
+	width: 140px;
+	white-space: nowrap;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .column-actions {
+	width: 1%;
+	white-space: nowrap;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .cell-actions {
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}

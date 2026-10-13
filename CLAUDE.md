@@ -175,4 +175,4 @@ Admin pages follow: `div.wrap.aips-wrap` → `div.aips-page-container` → `div.
 
 ## Testing policy
 
-Do not run PHPUnit unless the user explicitly asks or the task requires it. For code changes, prefer static/syntax checks on touched files and note unrun test suites in the response. When tests are needed, run them in the dev stack with `make test ARGS="tests/Test_X.php"` (see `TESTING.md`); for host-side `composer test`, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
+Run PHPUnit for code changes: run the tests that cover (or were added for) the touched code, plus static/syntax checks on touched files, and note any suite you could not run in the response. Run tests in the dev stack with `make test ARGS="tests/Test_X.php"` (see `TESTING.md`); for host-side `composer test`, use `AIPS_WP_TEST_SKIP_DB_CREATE=true` if DB creation is unavailable.
