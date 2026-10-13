@@ -342,6 +342,8 @@ class AIPS_Campaigns_Repository {
 		}
 
 		$posts_table = $this->wpdb->posts;
+		// Newest generation run of this campaign per post; event rows are never "the post's run".
+		$latest_run  = AIPS_History_Repository::latest_generation_run_subquery(array('campaign_id' => $campaign_id));
 
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT
@@ -356,19 +358,11 @@ class AIPS_Campaigns_Repository {
 				p.post_modified,
 				t.name AS template_name
 			FROM {$this->history_table} h
-			INNER JOIN (
-				SELECT post_id, MAX(id) AS latest_history_id
-				FROM {$this->history_table}
-				WHERE campaign_id = %d
-				AND status IN ('completed', 'partial')
-				AND post_id IS NOT NULL
-				GROUP BY post_id
-			) latest ON latest.latest_history_id = h.id
+			INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
 			INNER JOIN {$posts_table} p ON h.post_id = p.ID
 			LEFT JOIN {$this->templates_table} t ON h.template_id = t.id
 			ORDER BY COALESCE(NULLIF(h.completed_at, 0), h.created_at) DESC, h.id DESC
 			LIMIT %d",
-			$campaign_id,
 			$limit
 		));
 	}

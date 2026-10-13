@@ -124,6 +124,7 @@ class AIPS_DB_Manager {
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(64) DEFAULT NULL,
+            record_kind varchar(16) NOT NULL DEFAULT 'event',
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -146,6 +147,7 @@ class AIPS_DB_Manager {
             KEY template_created (template_id, created_at),
             KEY template_status (template_id, status),
             KEY post_status (post_id, status),
+            KEY record_kind_status_post (record_kind, status, post_id),
             KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
@@ -324,6 +326,7 @@ class AIPS_DB_Manager {
             post_generation_next_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_last_run bigint(20) unsigned NOT NULL DEFAULT 0,
             post_generation_is_active tinyint(1) DEFAULT 1,
+            post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
@@ -355,7 +358,8 @@ class AIPS_DB_Manager {
             KEY article_structure_id (article_structure_id),
             KEY is_active (is_active),
           KEY topic_generation_next_run (topic_generation_next_run),
-          KEY post_generation_next_run (post_generation_next_run)
+          KEY post_generation_next_run (post_generation_next_run),
+          KEY post_generation_lock (post_generation_lock)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_post_slices (
@@ -380,12 +384,14 @@ class AIPS_DB_Manager {
             status varchar(20) DEFAULT 'pending',
             score int DEFAULT 50,
             metadata longtext,
+            claimed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             generated_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_at bigint(20) unsigned NOT NULL DEFAULT 0,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY author_id (author_id),
             KEY status (status),
+            KEY claimed_at (claimed_at),
             KEY generated_at (generated_at),
             KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)

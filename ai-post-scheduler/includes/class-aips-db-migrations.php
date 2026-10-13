@@ -220,6 +220,35 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.13', '<' ) ) {
 			$this->migrate_to_3_7_13();
 		}
+
+		// migrate_to_3_7_14() adds post_generation_lock to aips_authors and
+		// claimed_at to aips_author_topics for claim-first mutual exclusion.
+		if ( version_compare( $from_version, '3.7.14', '<' ) ) {
+			$this->migrate_to_3_7_14();
+		}
+
+		// migrate_to_3_7_15() fills aips_history.post_type for generation runs written
+		// before the write path populated it, so History filters and the Pending Review
+		// and Partial Generations tabs can rely on it.
+		if ( version_compare( $from_version, '3.7.15', '<' ) ) {
+			$this->migrate_to_3_7_15();
+		}
+
+		// migrate_to_3_7_16() repairs History statuses the sync wrote to the wrong row
+		// (a post's content_indexing row instead of its generation run). It reads post
+		// meta, so it runs after the schema apply.
+		if ( version_compare( $from_version, '3.7.16', '<' ) && ! $this->migrate_to_3_7_16() ) {
+			// Return without stamping the version so the next request retries the repair.
+			return;
+		}
+
+		// migrate_to_3_7_17() classifies existing History rows now that record_kind exists
+		// (added with the default 'event' by the schema apply above), then re-runs the
+		// post_type and status repairs, whose queries filter on record_kind.
+		if ( version_compare( $from_version, '3.7.17', '<' ) && ! $this->migrate_to_3_7_17() ) {
+			// Return without stamping the version so the next request retries.
+			return;
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1310,6 +1339,164 @@ class AIPS_DB_Migrations {
 			sprintf( 'Migration 3.7.13: Marked %d incomplete generations as partial in History.', $changed ),
 			'info'
 		);
+	}
+
+	/**
+	 * Migration for version 3.7.14.
+	 *
+	 * Adds `post_generation_lock` to `aips_authors` and `claimed_at` to `aips_author_topics`
+	 * for claim-first atomic locking and mutual exclusion during post generation.
+	 *
+	 * Both statements are guarded with SHOW COLUMNS checks so they are
+	 * safe no-ops on fresh installs where dbDelta already created the schema.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_14() {
+		global $wpdb;
+
+		$table_authors = $wpdb->prefix . 'aips_authors';
+		$table_topics  = $wpdb->prefix . 'aips_author_topics';
+
+		// 1. Author table: post_generation_lock
+		$authors_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_authors ) );
+		if ( $authors_table_exists === $table_authors ) {
+			$has_lock_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_authors}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'post_generation_lock'
+			) );
+
+			if ( ! $has_lock_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_authors}` ADD COLUMN post_generation_lock bigint(20) unsigned NOT NULL DEFAULT 0 AFTER post_generation_is_active, ADD KEY post_generation_lock (post_generation_lock)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		// 2. Author topics table: claimed_at
+		$topics_table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_topics ) );
+		if ( $topics_table_exists === $table_topics ) {
+			$has_claimed_col = $wpdb->get_row( $wpdb->prepare(
+				"SHOW COLUMNS FROM `{$table_topics}` WHERE Field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'claimed_at'
+			) );
+
+			if ( ! $has_claimed_col ) {
+				$wpdb->query( "ALTER TABLE `{$table_topics}` ADD COLUMN claimed_at bigint(20) unsigned NOT NULL DEFAULT 0 AFTER metadata, ADD KEY claimed_at (claimed_at)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+
+		$this->logger->log( 'Migration 3.7.14: Added post_generation_lock to authors and claimed_at to author_topics.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.15.
+	 *
+	 * Backfills the NULL post_type on generation-run History rows created after the
+	 * column was introduced (3.4.0) but before the write path set it. Event rows and
+	 * rows whose post no longer exists are left alone; existing values are never
+	 * overwritten.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_15() {
+		$changed = AIPS_History_Repository::instance()->backfill_post_type();
+
+		$this->logger->log(
+			sprintf( 'Migration 3.7.15: Backfilled post_type on %d History rows.', $changed ),
+			'info'
+		);
+	}
+
+	/**
+	 * Migration for version 3.7.16.
+	 *
+	 * The status sync and the 3.7.13 backfill updated each post's newest non-event row,
+	 * which for an indexed post is its content_indexing row. Reset those rows and put
+	 * the status back on the generation run. Idempotent, so a failed attempt can simply
+	 * run again.
+	 *
+	 * @return bool True when every statement succeeded; false leaves the version unstamped.
+	 */
+	private function migrate_to_3_7_16() {
+		$repaired = AIPS_History_Repository::instance()->repair_generation_statuses();
+
+		if ( $repaired['errors'] > 0 ) {
+			$this->logger->log(
+				sprintf( 'Migration 3.7.16: %d History repair statement(s) failed; will retry on the next request.', $repaired['errors'] ),
+				'error'
+			);
+
+			return false;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.16: Reset %d content-indexing rows from partial, marked %d runs partial and %d runs completed in History.',
+				$repaired['jobs_reset'],
+				$repaired['marked_partial'],
+				$repaired['marked_completed']
+			),
+			'info'
+		);
+
+		return true;
+	}
+
+	/**
+	 * Migration for version 3.7.17.
+	 *
+	 * Adds the record_kind column (via the schema apply) and classifies existing rows as
+	 * generation runs or background jobs; everything else stays an event. The 3.7.15
+	 * post_type backfill and the 3.7.16 status repair select rows by record_kind, so on a
+	 * site upgrading from an older version they ran before any row was classified and
+	 * did nothing; run both again here. All three steps are idempotent, so a failed
+	 * attempt can simply run again.
+	 *
+	 * @return bool True when every statement succeeded; false leaves the version unstamped.
+	 */
+	private function migrate_to_3_7_17() {
+		$history = AIPS_History_Repository::instance();
+
+		$classified = $history->backfill_record_kind();
+		$post_types = $history->backfill_post_type();
+		$repaired   = $history->repair_generation_statuses();
+
+		$errors = (int) $classified['errors'] + (int) $repaired['errors'];
+		if ( $errors > 0 ) {
+			$this->logger->log(
+				sprintf( 'Migration 3.7.17: %d History statement(s) failed; will retry on the next request.', $errors ),
+				'error'
+			);
+
+			return false;
+		}
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.17: Classified %d History rows as generation runs and %d as background jobs, backfilled post_type on %d rows, repaired %d run statuses.',
+				$classified['generation'],
+				$classified['job'],
+				$post_types,
+				$repaired['jobs_reset'] + $repaired['marked_partial'] + $repaired['marked_completed']
+			),
+			'info'
+		);
+
+		if ( ! empty( $classified['unclassified'] ) ) {
+			$listed = array();
+			foreach ( $classified['unclassified'] as $method => $count ) {
+				$listed[] = sprintf( '%s (%d)', $method, $count );
+			}
+
+			$this->logger->log(
+				sprintf(
+					'Migration 3.7.17: History rows that carry a post were left as events because their creation_method is not a known run, job or event type: %s. If any are generation runs, add them with the aips_generation_run_creation_methods filter and run AIPS_History_Repository::backfill_record_kind().',
+					implode( ', ', $listed )
+				),
+				'warning'
+			);
+		}
+
+		return true;
 	}
 
 	/**

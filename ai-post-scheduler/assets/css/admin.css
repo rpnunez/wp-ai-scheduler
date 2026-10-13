@@ -591,13 +591,14 @@
 
 
 /* Compact, troubleshooting-first History page. */
-.aips-history-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
+.aips-history-overview { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
 .aips-history-metric { appearance:none; border:0; border-right:1px solid var(--aips-gray-200); background:transparent; padding:14px 18px; text-align:left; }
 .aips-history-metric:last-child { border-right:0; }
 .aips-history-metric-filter { cursor:pointer; }
 .aips-history-metric-filter:hover,.aips-history-metric-filter:focus-visible { background:var(--aips-gray-50); }
 .aips-history-metric-value { display:block; color:var(--aips-gray-900); font-size:22px; font-weight:700; line-height:1.1; }
 .aips-history-metric-label { display:block; margin-top:4px; color:var(--aips-gray-600); font-size:12px; }
+.aips-history-metric-sub { display:block; margin-top:2px; color:var(--aips-gray-500); font-size:11px; }
 .aips-history-quick-dates { display:inline-flex; gap:2px; }
 .aips-history-filter-bar { flex-direction:column; align-items:stretch; gap:10px; }
 .aips-history-filter-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; width:100%; }

@@ -250,4 +250,151 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$after = $history_repository->get_by_id( $history_id );
 		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
 	}
+
+	/**
+	 * migrate_to_3_7_14() must ensure post_generation_lock exists on aips_authors
+	 * and claimed_at exists on aips_author_topics.
+	 */
+	public function test_migrate_to_3_7_14_adds_lock_and_claim_columns() {
+		AIPS_DB_Manager::install_tables();
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.13' );
+		AIPS_DB_Migrations::check_and_run();
+
+		global $wpdb;
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		$topics_table  = $wpdb->prefix . 'aips_author_topics';
+
+		$authors_cols = $wpdb->get_col( "SHOW COLUMNS FROM `{$authors_table}`" );
+		$topics_cols  = $wpdb->get_col( "SHOW COLUMNS FROM `{$topics_table}`" );
+
+		$this->assertContains( 'post_generation_lock', $authors_cols );
+		$this->assertContains( 'claimed_at', $topics_cols );
+	}
+
+	/**
+	 * migrate_to_3_7_15() must fill a NULL post_type on generation-run rows from the
+	 * post, leave event rows alone and never overwrite an existing value.
+	 */
+	public function test_migrate_to_3_7_15_backfills_post_type_on_run_rows_only() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+		$history_repository = new AIPS_History_Repository();
+		$run_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+		) );
+		$event_id           = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'topic_post_generation',
+		) );
+		$set_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'manual',
+			'post_type'       => 'post',
+		) );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.14' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$this->assertSame( 'page', $history_repository->get_by_id( $run_id )->post_type );
+		$this->assertNull( $history_repository->get_by_id( $event_id )->post_type );
+		$this->assertSame( 'post', $history_repository->get_by_id( $set_id )->post_type );
+	}
+
+	/**
+	 * migrate_to_3_7_16() must move a status the old sync wrote to a post's
+	 * content_indexing row back onto its generation run.
+	 */
+	public function test_migrate_to_3_7_16_repairs_statuses_written_to_the_wrong_row() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create();
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true' );
+
+		$history_repository = new AIPS_History_Repository();
+		$run_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+		) );
+		$indexing_id        = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'partial',
+			'creation_method' => 'content_indexing',
+		) );
+
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.15' );
+			AIPS_DB_Migrations::check_and_run();
+
+			$this->assertSame( 'partial', $history_repository->get_by_id( $run_id )->status );
+			$this->assertSame( 'completed', $history_repository->get_by_id( $indexing_id )->status );
+		} finally {
+			// install_tables() runs DDL, which commits, so the test case's rollback will not
+			// remove these rows.
+			global $wpdb;
+			$wpdb->delete( $wpdb->prefix . 'aips_history', array( 'id' => $run_id ), array( '%d' ) );
+			$wpdb->delete( $wpdb->prefix . 'aips_history', array( 'id' => $indexing_id ), array( '%d' ) );
+			wp_delete_post( $post_id, true );
+		}
+	}
+
+	/**
+	 * migrate_to_3_7_17() must classify existing rows, then re-run the post_type backfill
+	 * and the status repair, which both select rows by record_kind.
+	 */
+	public function test_migrate_to_3_7_17_classifies_rows_and_reruns_the_kind_based_repairs() {
+		global $wpdb;
+
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true' );
+
+		$table = $wpdb->prefix . 'aips_history';
+		$ids   = array();
+		foreach ( array(
+			'run'      => array( 'scheduled', 'completed' ),
+			'indexing' => array( 'content_indexing', 'partial' ),
+			'wrapper'  => array( 'topic_post_generation', 'completed' ),
+		) as $key => $row ) {
+			// Rows as an older install has them: record_kind left at the column default.
+			$wpdb->insert( $table, array(
+				'post_id'         => $post_id,
+				'creation_method' => $row[0],
+				'status'          => $row[1],
+				'created_at'      => time(),
+				'completed_at'    => time(),
+			) );
+			$ids[ $key ] = (int) $wpdb->insert_id;
+		}
+
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.16' );
+			AIPS_DB_Migrations::check_and_run();
+
+			$history = new AIPS_History_Repository();
+			$this->assertSame( 'generation', $history->get_by_id( $ids['run'] )->record_kind );
+			$this->assertSame( 'job', $history->get_by_id( $ids['indexing'] )->record_kind );
+			$this->assertSame( 'event', $history->get_by_id( $ids['wrapper'] )->record_kind );
+
+			// The repairs that select rows by kind ran after the classification.
+			$this->assertSame( 'page', $history->get_by_id( $ids['run'] )->post_type );
+			$this->assertSame( 'partial', $history->get_by_id( $ids['run'] )->status );
+			$this->assertSame( 'completed', $history->get_by_id( $ids['indexing'] )->status );
+		} finally {
+			// install_tables() runs DDL, which commits, so the test case's rollback will not
+			// remove these rows.
+			foreach ( $ids as $id ) {
+				$wpdb->delete( $table, array( 'id' => $id ), array( '%d' ) );
+			}
+			wp_delete_post( $post_id, true );
+		}
+	}
 }

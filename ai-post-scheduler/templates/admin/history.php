@@ -64,22 +64,33 @@ $page_context = AIPS_Admin_Page_Context::resolve(
         <?php if ($show_panel): ?>
         <div class="aips-content-panel">
             <div class="aips-history-overview" aria-label="<?php esc_attr_e('History overview', 'ai-post-scheduler'); ?>">
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed">
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="failed" data-domain="generation_runs">
                     <span class="aips-history-metric-value" id="aips-stat-failed"><?php echo esc_html((int) ($stats['failed'] ?? 0)); ?></span>
                     <span class="aips-history-metric-label"><?php esc_html_e('Failed runs', 'ai-post-scheduler'); ?></span>
                 </button>
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="processing">
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="processing" data-domain="generation_runs">
                     <span class="aips-history-metric-value" id="aips-stat-processing"><?php echo esc_html((int) ($stats['processing'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('In progress', 'ai-post-scheduler'); ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Runs in progress', 'ai-post-scheduler'); ?></span>
                 </button>
-                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="stalled">
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-status="stalled" data-domain="generation_runs">
                     <span class="aips-history-metric-value" id="aips-stat-stalled"><?php echo esc_html((int) ($stats['stalled'] ?? 0)); ?></span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Stalled', 'ai-post-scheduler'); ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Stalled runs', 'ai-post-scheduler'); ?></span>
                 </button>
                 <div class="aips-history-metric">
                     <span class="aips-history-metric-value" id="aips-stat-success-rate"><?php echo esc_html(number_format_i18n((float) ($stats['success_rate'] ?? 0), 1)); ?>%</span>
-                    <span class="aips-history-metric-label"><?php esc_html_e('Success rate', 'ai-post-scheduler'); ?></span>
+                    <span class="aips-history-metric-label"><?php esc_html_e('Run success rate', 'ai-post-scheduler'); ?></span>
                 </div>
+                <button type="button" class="aips-history-metric aips-history-metric-filter" data-domain="background_jobs" title="<?php esc_attr_e('Content indexing, embeddings, bulk slices, source fetches and other background work. Not included in the run figures.', 'ai-post-scheduler'); ?>">
+                    <span class="aips-history-metric-value" id="aips-stat-jobs"><?php echo esc_html((int) ($stats['jobs']['total'] ?? 0)); ?></span>
+                    <span class="aips-history-metric-label">
+                        <?php esc_html_e('Background jobs', 'ai-post-scheduler'); ?>
+                        <span class="aips-history-metric-sub">
+                            <span id="aips-stat-jobs-failed"><?php echo esc_html((int) ($stats['jobs']['failed'] ?? 0)); ?></span> <?php esc_html_e('failed', 'ai-post-scheduler'); ?>
+                            &middot;
+                            <span id="aips-stat-jobs-stalled"><?php echo esc_html((int) ($stats['jobs']['stalled'] ?? 0)); ?></span> <?php esc_html_e('stalled', 'ai-post-scheduler'); ?>
+                        </span>
+                    </span>
+                </button>
             </div>
             <!-- Filter Bar -->
             <div class="aips-filter-bar aips-history-filter-bar">
@@ -95,6 +106,8 @@ $page_context = AIPS_Admin_Page_Context::resolve(
                     </select>
                     <select id="aips-filter-domain" class="aips-form-select" aria-label="<?php esc_attr_e('Domain', 'ai-post-scheduler'); ?>">
                         <option value=""><?php esc_html_e('All Domains', 'ai-post-scheduler'); ?></option>
+                        <option value="generation_runs" <?php selected($domain_filter, 'generation_runs'); ?>><?php esc_html_e('Generation runs', 'ai-post-scheduler'); ?></option>
+                        <option value="background_jobs" <?php selected($domain_filter, 'background_jobs'); ?>><?php esc_html_e('Background jobs', 'ai-post-scheduler'); ?></option>
                         <option value="post_generation" <?php selected($domain_filter, 'post_generation'); ?>>Post Generation</option>
                         <option value="content_indexing" <?php selected($domain_filter, 'content_indexing'); ?>>Content Indexing</option>
                         <option value="author_topics" <?php selected($domain_filter, 'author_topics'); ?>>Author Topics</option>
