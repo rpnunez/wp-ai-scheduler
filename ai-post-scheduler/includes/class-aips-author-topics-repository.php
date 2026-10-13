@@ -334,6 +334,80 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
+	 * Update status for multiple topics at once using a single query.
+	 *
+	 * Batches the UPDATE operation into a single SQL statement with `WHERE id IN (...)`
+	 * to eliminate N+1 database queries during bulk approval or rejection.
+	 *
+	 * @param array       $ids     List of topic IDs to update.
+	 * @param string      $status  New status value (e.g. 'approved', 'rejected').
+	 * @param int|null    $user_id User ID performing the action, if applicable.
+	 * @return int|false  Number of updated rows on success, or false on query failure.
+	 */
+	public function update_status_bulk($ids, $status, $user_id = null) {
+		$sanitized_ids = array_values(array_unique(array_filter(array_map('absint', (array) $ids))));
+		if (empty($sanitized_ids)) {
+			return 0;
+		}
+
+		// Retrieve author IDs and topic IDs for targeted cache invalidation prior to UPDATE
+		$placeholders = implode(',', array_fill(0, count($sanitized_ids), '%d'));
+		$sql_authors = $this->wpdb->prepare(
+			"SELECT id, author_id FROM {$this->table_name} WHERE id IN ($placeholders)",
+			$sanitized_ids
+		);
+		$rows = $this->wpdb->get_results($sql_authors);
+
+		$now = AIPS_DateTime::now()->timestamp();
+		$bind_values = array($status, $now);
+
+		if ($user_id) {
+			$update_sql = "UPDATE {$this->table_name} SET status = %s, reviewed_at = %d, reviewed_by = %d WHERE id IN ($placeholders)";
+			$bind_values[] = (int) $user_id;
+		} else {
+			$update_sql = "UPDATE {$this->table_name} SET status = %s, reviewed_at = %d WHERE id IN ($placeholders)";
+		}
+
+		$bind_values = array_merge($bind_values, $sanitized_ids);
+		$query = $this->wpdb->prepare($update_sql, $bind_values);
+
+		$result = $this->wpdb->query($query);
+
+		if (false !== $result && !empty($rows)) {
+			foreach ($rows as $row) {
+				$this->invalidate_author_topic_cache_by_id(
+					(int) $row->id,
+					'author_topic_bulk_status_updated',
+					(int) $row->author_id
+				);
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Return the subset of the given topic IDs that exist, using one query.
+	 *
+	 * @param array $ids Topic IDs.
+	 * @return int[] Existing topic IDs.
+	 */
+	public function get_existing_ids($ids) {
+		$ids = array_values(array_unique(array_filter(array_map('absint', (array) $ids))));
+		if (empty($ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+		$found = $this->wpdb->get_col($this->wpdb->prepare(
+			"SELECT id FROM {$this->table_name} WHERE id IN ($placeholders)",
+			$ids
+		));
+
+		return array_map('intval', (array) $found);
+	}
+
+	/**
 	 * Update topic status.
 	 *
 	 * @param int $id Topic ID.
