@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [3.7.14] - 2026-10-13
+
+### Fixed
+- **Author Post Generation Race Condition & Duplicate Runs (#2203):**
+  - Added atomic compare-and-swap (CAS) topic claim lock (`claimed_at`) with TTL (default 15 minutes) and historical post check (`NOT EXISTS` in `aips_author_topic_logs`) before post generation starts.
+  - Added per-author post generation run lock (`post_generation_lock`) with TTL (default 15 minutes) on `aips_authors` to prevent concurrent slice executions or overlapping manual/scheduled generation runs for the same author.
+  - Implemented automatic claim release on generation failure or exception so topics can be retried on subsequent schedule runs.
+  - Supported post regeneration flows by allowing claim override when `allow_regenerate` is explicitly requested.
+  - Added database migration `migrate_to_3_7_14()` adding `post_generation_lock` and `claimed_at` columns and index keys.
+
 ### Removed
 - **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
 
