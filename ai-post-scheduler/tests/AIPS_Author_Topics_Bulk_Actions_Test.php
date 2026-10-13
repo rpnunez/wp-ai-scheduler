@@ -389,11 +389,6 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_Ajax_UnitTestCase {
 	}
 
 	/**
-	 * Fractional averages should be rounded UP via ceil().
-	 *
-	 * E.g. [10.0, 11.0] → avg = 10.5 → per_post_seconds = 11.
-	 */
-	/**
 	 * Test update_status_bulk behavioral equivalence and database update.
 	 */
 	public function test_update_status_bulk_behavioral_equivalence() {
@@ -428,30 +423,25 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_Ajax_UnitTestCase {
 
 		$topic_ids = $this->create_test_topics(10);
 
-		if (!defined('SAVEQUERIES')) {
-			define('SAVEQUERIES', true);
-		}
-
-		$queries_before = is_array($wpdb->queries) ? count($wpdb->queries) : 0;
-		$this->repository->update_status_bulk($topic_ids, 'approved', $this->admin_user_id);
-		$queries_after = is_array($wpdb->queries) ? count($wpdb->queries) : 0;
-
-		if (is_array($wpdb->queries) && $queries_after > $queries_before) {
-			$update_queries = 0;
-			for ($i = $queries_before; $i < $queries_after; $i++) {
-				$sql = $wpdb->queries[$i][0];
-				if (0 === stripos(trim($sql), 'UPDATE')) {
-					$update_queries++;
-				}
+		$update_queries = 0;
+		$counter = function($sql) use (&$update_queries) {
+			if (0 === stripos(trim($sql), 'UPDATE')) {
+				$update_queries++;
 			}
-			$this->assertEquals(1, $update_queries);
-		} else {
-			// Fallback assertion when SAVEQUERIES is disabled by test harness
-			$topic = $this->repository->get_by_id($topic_ids[0]);
-			$this->assertEquals('approved', $topic->status);
-		}
+			return $sql;
+		};
+		add_filter('query', $counter);
+		$this->repository->update_status_bulk($topic_ids, 'approved', $this->admin_user_id);
+		remove_filter('query', $counter);
+
+		$this->assertEquals(1, $update_queries);
 	}
 
+	/**
+	 * Fractional averages should be rounded UP via ceil().
+	 *
+	 * E.g. [10.0, 11.0] → avg = 10.5 → per_post_seconds = 11.
+	 */
 	public function test_ajax_get_bulk_generate_estimate_ceil_rounds_up() {
 		wp_set_current_user($this->admin_user_id);
 

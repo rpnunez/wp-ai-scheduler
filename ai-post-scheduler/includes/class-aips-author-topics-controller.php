@@ -540,7 +540,8 @@ class AIPS_Author_Topics_Controller {
 		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
 		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
 
-		$user_id = get_current_user_id();
+		$topic_ids     = array_values(array_unique(array_filter($topic_ids)));
+		$user_id       = get_current_user_id();
 		$update_result = $this->repository->update_status_bulk($topic_ids, 'approved', $user_id);
 
 		$success_count = 0;
@@ -549,8 +550,9 @@ class AIPS_Author_Topics_Controller {
 		if (false === $update_result) {
 			$failed_count = count($topic_ids);
 		} else {
+			$existing_ids = $this->repository->get_existing_ids($topic_ids);
 			foreach ($topic_ids as $topic_id) {
-				if (!$this->repository->get_by_id($topic_id)) {
+				if (!in_array($topic_id, $existing_ids, true)) {
 					$failed_count++;
 					continue;
 				}
@@ -601,7 +603,8 @@ class AIPS_Author_Topics_Controller {
 		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field(wp_unslash($_POST['reason_category'])) : 'other';
 		$source          = isset($_POST['source']) ? sanitize_text_field(wp_unslash($_POST['source'])) : 'manual_ui';
 
-		$user_id = get_current_user_id();
+		$topic_ids     = array_values(array_unique(array_filter($topic_ids)));
+		$user_id       = get_current_user_id();
 		$update_result = $this->repository->update_status_bulk($topic_ids, 'rejected', $user_id);
 
 		$success_count = 0;
@@ -610,8 +613,9 @@ class AIPS_Author_Topics_Controller {
 		if (false === $update_result) {
 			$failed_count = count($topic_ids);
 		} else {
+			$existing_ids = $this->repository->get_existing_ids($topic_ids);
 			foreach ($topic_ids as $topic_id) {
-				if (!$this->repository->get_by_id($topic_id)) {
+				if (!in_array($topic_id, $existing_ids, true)) {
 					$failed_count++;
 					continue;
 				}

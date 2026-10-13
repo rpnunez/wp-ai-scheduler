@@ -353,7 +353,7 @@ class AIPS_Author_Topics_Repository {
 		// Retrieve author IDs and topic IDs for targeted cache invalidation prior to UPDATE
 		$placeholders = implode(',', array_fill(0, count($sanitized_ids), '%d'));
 		$sql_authors = $this->wpdb->prepare(
-			"SELECT DISTINCT id, author_id FROM {$this->table_name} WHERE id IN ($placeholders)",
+			"SELECT id, author_id FROM {$this->table_name} WHERE id IN ($placeholders)",
 			$sanitized_ids
 		);
 		$rows = $this->wpdb->get_results($sql_authors);
@@ -386,6 +386,35 @@ class AIPS_Author_Topics_Repository {
 		return $result;
 	}
 
+	/**
+	 * Return the subset of the given topic IDs that exist, using one query.
+	 *
+	 * @param array $ids Topic IDs.
+	 * @return int[] Existing topic IDs.
+	 */
+	public function get_existing_ids($ids) {
+		$ids = array_values(array_unique(array_filter(array_map('absint', (array) $ids))));
+		if (empty($ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+		$found = $this->wpdb->get_col($this->wpdb->prepare(
+			"SELECT id FROM {$this->table_name} WHERE id IN ($placeholders)",
+			$ids
+		));
+
+		return array_map('intval', (array) $found);
+	}
+
+	/**
+	 * Update topic status.
+	 *
+	 * @param int $id Topic ID.
+	 * @param string $status New status.
+	 * @param int $user_id User ID performing the action.
+	 * @return int|false The number of rows updated, or false on error.
+	 */
 	public function update_status($id, $status, $user_id = null) {
 		$data = array(
 			'status' => $status,
