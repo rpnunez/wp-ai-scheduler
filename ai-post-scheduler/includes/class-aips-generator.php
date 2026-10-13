@@ -24,7 +24,14 @@ class AIPS_Generator {
      */
     const EXCERPT_MAX_CHARS = 400;
 
+    /**
+     * @var AIPS_AI_Service_Interface AI service used for text and image generation requests.
+     */
     private $ai_service;
+
+    /**
+     * @var AIPS_Logger_Interface Logger for diagnostics and errors.
+     */
     private $logger;
 
     /**
@@ -37,15 +44,54 @@ class AIPS_Generator {
      */
     private $current_history;
 
+    /**
+     * @var AIPS_Template_Processor Resolves template variables in prompts and titles.
+     */
     private $template_processor;
+
+    /**
+     * @var AIPS_Image_Service Generates and imports featured images.
+     */
     private $image_service;
+
+    /**
+     * @var AIPS_Article_Structure_Manager Provides article structure definitions and sections.
+     */
     private $structure_manager;
+
+    /**
+     * @var AIPS_Post_Manager Creates and updates the WordPress post for a generation run.
+     */
     private $post_manager;
+
+    /**
+     * @var AIPS_Prompt_Builder Facade that exposes the per-component prompt builders.
+     */
     private $prompt_builder;
+
+    /**
+     * @var object Prompt builder for the post body content.
+     */
     private $post_content_prompt_builder;
+
+    /**
+     * @var object Prompt builder for the post title.
+     */
     private $post_title_prompt_builder;
+
+    /**
+     * @var object Prompt builder for the post excerpt.
+     */
     private $post_excerpt_prompt_builder;
+
+    /**
+     * @var object Prompt builder for the featured image prompt.
+     */
     private $post_featured_image_prompt_builder;
+
+    /**
+     * @var AIPS_Prompt_Builder_Post_Metadata|null Combined title/excerpt/image-prompt builder, created lazily.
+     */
     private $post_metadata_prompt_builder;
 
     /**
@@ -64,7 +110,7 @@ class AIPS_Generator {
     private $current_source_snapshots = array();
 
     /**
-     * @var AIPS_Markdown_Parser Markdown parser
+     * @var AIPS_Markdown_Parser Converts Markdown output to HTML.
      */
     private $markdown_parser;
 
@@ -74,13 +120,13 @@ class AIPS_Generator {
      * Accepts dependencies for easier testing; falls back to concrete
      * implementations when not provided.
      *
-    * @param AIPS_Logger_Interface|null $logger
-    * @param AIPS_AI_Service_Interface|null $ai_service
+     * @param AIPS_Logger_Interface|null $logger
+     * @param AIPS_AI_Service_Interface|null $ai_service
      * @param object|null $template_processor
      * @param object|null $image_service
      * @param object|null $structure_manager
      * @param object|null $post_manager
-    * @param AIPS_History_Service_Interface|null $history_service
+     * @param AIPS_History_Service_Interface|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
      */
@@ -109,14 +155,7 @@ class AIPS_Generator {
         $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
         $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
-        if ( $markdown_parser ) {
-            $this->markdown_parser = $markdown_parser;
-        } elseif ( class_exists( 'AIPS_Markdown_Parser' ) ) {
-            $this->markdown_parser = new AIPS_Markdown_Parser();
-        } else {
-            $this->markdown_parser = null;
-        }
-
+        $this->markdown_parser = $markdown_parser ?: new AIPS_Markdown_Parser();
     }
 
     /**
@@ -1115,25 +1154,25 @@ class AIPS_Generator {
         // and the active provider can replay it.
         $this->start_conversation();
 
-		// Generate and normalize the content.
-		$content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
-		if (is_wp_error($content)) {
-			return $content;
-		}
+        // Generate and normalize the content.
+        $content = $this->generate_and_normalize_content($context, $component_statuses, $generation_start);
+        if (is_wp_error($content)) {
+            return $content;
+        }
 
-		$component_statuses['post_content'] = true;
-		$content = $this->strip_leading_title_block_from_content($content);
+        $component_statuses['post_content'] = true;
+        $content = $this->strip_leading_title_block_from_content($content);
 
-		$metadata_result = $this->generate_and_resolve_metadata($context, $content);
-		$title                 = $metadata_result['title'];
-		$excerpt               = $metadata_result['excerpt'];
-		$resolved_image_prompt = $metadata_result['resolved_image_prompt'];
+        $metadata_result = $this->generate_and_resolve_metadata($context, $content);
+        $title                 = $metadata_result['title'];
+        $excerpt               = $metadata_result['excerpt'];
+        $resolved_image_prompt = $metadata_result['resolved_image_prompt'];
 
-		$component_statuses['post_title']   = $metadata_result['title_success'];
-		$component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
+        $component_statuses['post_title']   = $metadata_result['title_success'];
+        $component_statuses['post_excerpt'] = $metadata_result['excerpt_success'];
 
-		$pre_image_incomplete  = in_array(false, $component_statuses, true);
-		$generation_incomplete = $pre_image_incomplete;
+        $pre_image_incomplete  = in_array(false, $component_statuses, true);
+        $generation_incomplete = $pre_image_incomplete;
 
         // Resolve the status the context/template would normally apply.
         $intended_post_status = $context->get_post_status();
@@ -1184,7 +1223,12 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
-        $this->downgrade_post_status_on_image_failure($post_id, $generation_incomplete, $pre_image_incomplete, $initial_post_status);
+        // The image is the only component that can fail after post creation. If it
+        // did, and the post was not already saved as a draft, downgrade it now.
+        $image_failed_after_creation = !$component_statuses['featured_image'] && !$pre_image_incomplete;
+        if ($image_failed_after_creation && $initial_post_status !== 'draft') {
+            $this->downgrade_post_to_draft($post_id);
+        }
 
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
@@ -1296,28 +1340,20 @@ class AIPS_Generator {
     }
 
     /**
-     * Downgrades post status to draft if featured image generation fails and it wasn't already a draft.
+     * Forces a post back to draft after its featured image failed, logging any failure.
      *
-     * @param int    $post_id               Post ID.
-     * @param bool   $generation_incomplete Whether generation was incomplete overall.
-     * @param bool   $pre_image_incomplete  Whether generation was incomplete before image.
-     * @param string $initial_post_status   Initial post status.
+     * @param int $post_id Post ID.
      * @return void
      */
-    private function downgrade_post_status_on_image_failure($post_id, $generation_incomplete, $pre_image_incomplete, $initial_post_status) {
-        // If the featured image failed after post creation and the post was
-        // not already forced to draft pre-creation, downgrade it now. This
-        // never upgrades a post back to the intended status.
-        if ($generation_incomplete && !$pre_image_incomplete && $initial_post_status !== 'draft') {
-            $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
+    private function downgrade_post_to_draft($post_id) {
+        $downgrade_result = $this->post_manager->force_post_status($post_id, 'draft');
 
-            if (is_wp_error($downgrade_result)) {
-                $this->generation_logger->log(
-                    'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
-                    'error',
-                    array('post_id' => $post_id)
-                );
-            }
+        if (is_wp_error($downgrade_result)) {
+            $this->logger->log(
+                'Failed to downgrade post status to draft after featured image failure: ' . $downgrade_result->get_error_message(),
+                'error',
+                array('post_id' => $post_id)
+            );
         }
     }
 
@@ -1700,7 +1736,7 @@ class AIPS_Generator {
             return '';
         }
 
-        if ( $this->markdown_parser && $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
+        if ( $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
             $normalized_content = $this->markdown_parser->parse( $normalized_content );
         }
 
