@@ -335,7 +335,7 @@ class AIPS_Config {
      */
     public function get_option($option_name, $default = null) {
         // For critical options, try persistent cache first to avoid DB query
-        if ($default === null && in_array($option_name, self::$persistent_cache_options)) {
+        if (in_array($option_name, self::$persistent_cache_options)) {
             if (AIPS_Cache_Factory::instance()->is_available()) {
                 $persistent_cache = AIPS_Cache_Factory::instance();
                 if ($persistent_cache->has($option_name)) {
@@ -352,7 +352,7 @@ class AIPS_Config {
         }
 
         // Use per-request cache for all other options
-        if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
+        if ($this->cache !== null && $this->cache->has($option_name)) {
             $cached = $this->cache->get($option_name);
             return ($cached === $this->null_sentinel) ? null : $cached;
         }
@@ -369,16 +369,18 @@ class AIPS_Config {
 
         if ($value === $not_set) {
             // Option is not stored in the database.
-            if ($default === null) {
-                $defaults = $this->get_default_options();
-                $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
-                // Cache only authoritative defaults; use the null sentinel when
+            $defaults     = $this->get_default_options();
+            $auth_default = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+
+            if ($default === null || $default === $auth_default) {
+                $value = $auth_default;
+                // Cache authoritative defaults; use the null sentinel when
                 // the resolved value is null so that has() returns true next time.
                 if ($this->cache !== null) {
                     $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
                 }
             } else {
-                // Caller supplied a fallback — honour it but do NOT cache.
+                // Caller supplied an ad-hoc fallback — honour it but do NOT cache.
                 $value = $default;
             }
         } else {

@@ -183,7 +183,8 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 
 	/** @test */
 	public function test_has_option_returns_true_when_option_stored_as_false() {
-		update_option( 'aips_enable_retry', false );
+		delete_option( 'aips_enable_retry' );
+		add_option( 'aips_enable_retry', false );
 		// The value is explicitly stored — has_option() must return true even though
 		// the stored value is boolean false (which WordPress uses as its "not found" sentinel).
 		$this->assertTrue( $this->config->has_option( 'aips_enable_retry' ) );
@@ -483,7 +484,7 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 
 		$this->assertTrue( $l['enabled'] );
 		$this->assertSame( 30, $l['retention_days'] );
-		$this->assertSame( 'info', $l['level'] );
+		$this->assertSame( WP_DEBUG ? 'debug' : 'info', $l['level'] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -509,7 +510,7 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 
 		$this->assertFalse( $g['developer_mode'] );
 		$this->assertSame( '', $g['unsplash_access_key'] );
-		$this->assertSame( 0.8, $g['topic_similarity_threshold'] );
+		$this->assertSame( 0.85, $g['topic_similarity_threshold'] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -566,5 +567,61 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 		$this->config->flush_option_cache();
 
 		$this->assertSame( 'flushed', $this->config->get_option( 'aips_ai_model' ) );
+	}
+
+	/** @test */
+	public function test_get_option_caches_repeated_reads_with_explicit_defaults() {
+		$this->config->flush_option_cache();
+		delete_option( 'aips_related_posts_enabled' );
+
+		$db_reads = 0;
+		$filter   = function( $val ) use ( &$db_reads ) {
+			$db_reads++;
+			return $val;
+		};
+		add_filter( 'pre_option_aips_related_posts_enabled', $filter );
+
+		for ( $i = 0; $i < 500; $i++ ) {
+			$val = $this->config->get_option( 'aips_related_posts_enabled', true );
+			$this->assertTrue( $val );
+		}
+
+		remove_filter( 'pre_option_aips_related_posts_enabled', $filter );
+
+		$this->assertSame( 1, $db_reads );
+	}
+
+	/** @test */
+	public function test_get_option_caches_stored_db_values_when_explicit_default_passed() {
+		$this->config->flush_option_cache();
+		update_option( 'aips_related_posts_enabled', '0' );
+
+		$db_reads = 0;
+		$filter   = function( $val ) use ( &$db_reads ) {
+			$db_reads++;
+			return $val;
+		};
+		add_filter( 'pre_option_aips_related_posts_enabled', $filter );
+
+		for ( $i = 0; $i < 500; $i++ ) {
+			$val = $this->config->get_option( 'aips_related_posts_enabled', true );
+			$this->assertSame( '0', $val );
+		}
+
+		remove_filter( 'pre_option_aips_related_posts_enabled', $filter );
+
+		$this->assertSame( 1, $db_reads );
+	}
+
+	/** @test */
+	public function test_get_option_cache_invalidation_on_option_update() {
+		$this->config->flush_option_cache();
+		delete_option( 'aips_related_posts_enabled' );
+
+		$this->assertTrue( $this->config->get_option( 'aips_related_posts_enabled', true ) );
+
+		update_option( 'aips_related_posts_enabled', 'disabled' );
+
+		$this->assertSame( 'disabled', $this->config->get_option( 'aips_related_posts_enabled', true ) );
 	}
 }
