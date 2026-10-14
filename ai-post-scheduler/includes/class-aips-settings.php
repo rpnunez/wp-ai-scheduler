@@ -110,6 +110,10 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_logging'],
 			),
+			'aips_log_retention_days' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_log_retention_days'],
+			),
 			'aips_developer_mode' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_developer_mode'],
@@ -161,6 +165,10 @@ class AIPS_Settings {
 					return min(1440, max(1, absint($value)));
 				},
 				'default'           => $defaults['aips_batch_resume_cooldown_minutes'],
+			),
+			'aips_queue_driver' => array(
+				'sanitize_callback' => array($ui, 'sanitize_queue_driver'),
+				'default'           => $defaults['aips_queue_driver'],
 			),
 			'aips_enable_circuit_breaker' => array(
 				'sanitize_callback' => 'absint',
@@ -225,6 +233,10 @@ class AIPS_Settings {
 			'aips_conversational_metadata_turn' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_conversational_metadata_turn'],
+			),
+			'aips_enable_prompt_caching' => array(
+				'sanitize_callback' => array($ui, 'sanitize_enable_cache_system'),
+				'default'           => $defaults['aips_enable_prompt_caching'],
 			),
 			'aips_unsplash_access_key' => array(
 				'sanitize_callback' => 'sanitize_text_field',
@@ -1281,6 +1293,14 @@ class AIPS_Settings {
             'aips_authors_section'
         );
 
+        add_settings_field(
+            'aips_enable_prompt_caching',
+            __('Enable Prompt Caching', 'ai-post-scheduler'),
+            array($this->ui, 'enable_prompt_caching_field_callback'),
+            'aips-settings',
+            'aips_ai_section'
+        );
+
         // -----------------------------------------------------------------------
         // Feedback section: Topic Similarity Threshold
         // -----------------------------------------------------------------------
@@ -1371,6 +1391,14 @@ class AIPS_Settings {
             'aips_enable_logging',
             __('Enable Logging', 'ai-post-scheduler'),
             array($this->ui, 'logging_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_log_retention_days',
+            __('Log Retention (Days)', 'ai-post-scheduler'),
+            array($this->ui, 'log_retention_days_field_callback'),
             'aips-settings',
             'aips_developers_section'
         );
@@ -1474,6 +1502,14 @@ class AIPS_Settings {
             'aips_batch_resume_cooldown_minutes',
             __('Batch Resume Cooldown (Minutes)', 'ai-post-scheduler'),
             array($this->ui, 'batch_resume_cooldown_minutes_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_queue_driver',
+            __('Queue Execution Driver', 'ai-post-scheduler'),
+            array($this->ui, 'queue_driver_field_callback'),
             'aips-settings',
             'aips_resilience_section'
         );

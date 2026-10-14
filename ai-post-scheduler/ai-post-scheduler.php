@@ -123,6 +123,10 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Cache Monitor Maintenance', 'ai-post-scheduler' ),
             ),
+            'aips_daily_log_cleanup' => array(
+                'schedule' => 'daily',
+                'label'   => __( 'System Log Cleanup', 'ai-post-scheduler' ),
+            ),
         );
     }
 
@@ -662,6 +666,18 @@ final class AI_Post_Scheduler {
             AIPS_Telemetry::instance()->boot();
         }
 
+        // Single due-schedule events: staggered due schedules and yielded
+        // batches resuming after their cooldown. Runs through the same
+        // claim-first lock as the main tick, never the manual-run path.
+        // Registered in every context (not only WP-Cron) because Action
+        // Scheduler can fire these events from its async admin-ajax queue
+        // runner or WP-CLI; with no listener the action would be marked
+        // complete and the schedule silently skipped. Lazy closure, so no
+        // work happens until the hook actually fires.
+        add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
+            AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
+        });
+
         // Register the Source Group taxonomy (not attached to any post type).
         register_taxonomy(
             'aips_source_group',
@@ -800,12 +816,6 @@ final class AI_Post_Scheduler {
         // Lazy-resolve the main template scheduler only when its hook fires.
         add_action('aips_generate_scheduled_posts', function() {
             AIPS_Scheduler::instance()->process();
-        });
-        // Single due-schedule events: staggered due schedules and yielded
-        // batches resuming after their cooldown. Runs through the same
-        // claim-first lock as the main tick, never the manual-run path.
-        add_action(AIPS_Schedule_Processor::QUEUED_DUE_SCHEDULE_HOOK, function($schedule_id) {
-            AIPS_Scheduler::instance()->process_queued_due_schedule((int) $schedule_id);
         });
         add_filter('cron_schedules', function($schedules) {
             return AIPS_Scheduler::instance()->add_cron_intervals($schedules);
@@ -1081,6 +1091,9 @@ final class AI_Post_Scheduler {
 
         // Export-file cleanup cron handler.
         add_action('aips_cleanup_export_files', array('AIPS_Session_To_JSON', 'handle_export_cleanup'));
+
+        // System log retention daily cleanup cron handler.
+        add_action('aips_daily_log_cleanup', array('AIPS_Log_Cleaner', 'prune_logs'));
 
         // Post-save affiliate link injection — fires after every generated post.
         add_action('aips_post_generated', function($post_id) {

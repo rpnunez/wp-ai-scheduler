@@ -1297,6 +1297,71 @@ class AIPS_Settings_UI {
         <?php
     }
 
+
+
+
+    /**
+     * Render the Queue Execution Driver selector.
+     *
+     * @return void
+     */
+    public function queue_driver_field_callback() {
+        $value        = AIPS_Config::get_instance()->get_option('aips_queue_driver', 'wp_cron');
+        $as_installed = function_exists('as_schedule_single_action');
+        $options      = array(
+            'wp_cron'          => __('Standard WP-Cron (default)', 'ai-post-scheduler'),
+            'action_scheduler' => sprintf(__('Action Scheduler (Async background queue) [%s]', 'ai-post-scheduler'), $as_installed ? __('Available', 'ai-post-scheduler') : __('Not installed, falls back to WP-Cron', 'ai-post-scheduler')),
+            'auto'             => sprintf(__('Auto-detect (Action Scheduler if available) [%s]', 'ai-post-scheduler'), $as_installed ? __('Action Scheduler detected', 'ai-post-scheduler') : __('WP-Cron fallback', 'ai-post-scheduler')),
+        );
+        ?>
+        <div class="aips-queue-driver-field">
+            <select name="aips_queue_driver" id="aips_queue_driver">
+                <?php foreach ($options as $key => $label) : ?>
+                    <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <p class="description"><?php esc_html_e('WP-Cron is the default. Action Scheduler is opt-in and provides stronger reliability, concurrency control, and auditability for generation batches without blocking HTTP requests.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render the Prompt Caching toggle.
+     *
+     * @return void
+     */
+    public function enable_prompt_caching_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_prompt_caching', true);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_enable_prompt_caching" value="1" <?php checked( (bool) $value ); ?>>
+            <?php esc_html_e('Cache static prompt prefixes and site guidelines', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('Places system prompts and static site context first to maximize server-side prompt cache hits with OpenAI/Anthropic and caches prompt sections locally across batch runs.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the System Log Retention field.
+     *
+     * @return void
+     */
+    public function log_retention_days_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_log_retention_days', 30);
+        ?>
+        <div class="aips-log-retention-field">
+            <input type="number" name="aips_log_retention_days" id="aips_log_retention_days" value="<?php echo esc_attr($value); ?>" min="1" max="365" class="small-text">
+            <span><?php esc_html_e('Days', 'ai-post-scheduler'); ?></span>
+            <button type="button" id="aips_prune_logs_btn" class="button button-secondary" style="margin-left: 12px;">
+                <span class="dashicons dashicons-trash" style="vertical-align: middle;"></span>
+                <?php esc_html_e('Prune Logs Now', 'ai-post-scheduler'); ?>
+            </button>
+            <span id="aips_prune_logs_status" style="margin-left: 8px; vertical-align: middle;"></span>
+            <p class="description"><?php esc_html_e('Automatically cleans up system log files (uploads/aips-logs/*.log) older than the retention threshold. Generation history is never deleted.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <?php
+    }
+
     /**
      * Render the Default TTL field.
      *
@@ -1343,6 +1408,18 @@ class AIPS_Settings_UI {
         }
 
         return in_array($value, $allowed, true) ? $value : 'array';
+    }
+
+    /**
+     * Sanitize and validate the selected queue driver value.
+     *
+     * @param mixed $value Raw input value.
+     * @return string Sanitized queue driver name ('wp_cron', 'action_scheduler', or 'auto'); anything else falls back to 'wp_cron'.
+     */
+    public function sanitize_queue_driver( $value ) {
+        $allowed = array('auto', 'action_scheduler', 'wp_cron');
+        $value   = sanitize_key( (string) $value );
+        return in_array($value, $allowed, true) ? $value : 'wp_cron';
     }
 
     /**

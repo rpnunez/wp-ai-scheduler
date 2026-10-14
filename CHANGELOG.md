@@ -5,6 +5,13 @@
   - Every History row now stores what it is: `generation` (a run that produces or regenerates a post), `job` (content indexing, embeddings, bulk slices, source fetches and other background work) or `event` (lifecycle containers, topic-generation wrappers, review actions, notifications). Run lists, run statistics and the status sync filter on the stored kind instead of guessing from `creation_method` names, so a new container type can no longer leak into them: anything unclassified is an event.
   - The generator tags every run as a generation whatever its `creation_method`, and the bulk-generation summary container is a job, which separates it from the Planner's per-post runs that share its name. `AIPS_History_Record_Kind` classifies everything else; the `aips_generation_run_creation_methods` and `aips_history_job_creation_methods` filters extend it.
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
+- **Action Scheduler Queue & Batch Offloading:**
+  - Action Scheduler queue adapter (`AIPS_Action_Scheduler_Queue`) for non-blocking background execution of due schedules and pre-timeout yields.
+  - New Queue Execution Driver setting (`aips_queue_driver`: WP-Cron, Action Scheduler, Auto). The default is WP-Cron, so installing Action Scheduler (for example via WooCommerce) changes nothing until the setting is switched to Action Scheduler. Auto uses Action Scheduler when it is installed. Choosing Action Scheduler without it installed falls back to WP-Cron.
+- **Prompt Prefix Caching:**
+  - Static instructions and site context are placed first in the prompt so OpenAI / Anthropic server-side prompt caches can hit, and the assembled site context and brand guidelines are cached per request window (`prompt_cache` group). Toggle: `aips_enable_prompt_caching` (default on); saving settings flushes the group.
+- **System Log File Retention:**
+  - Daily cron (`aips_daily_log_cleanup`) and an on-demand "Prune now" button (`aips_prune_logs_now`) delete `aips-*.log` files in `uploads/aips-logs/` older than `aips_log_retention_days` (default 30; 0 keeps everything). Generation History and History log rows are not touched.
 
 ### Fixed
 - **History Status Sync Targets the Generation Run:**

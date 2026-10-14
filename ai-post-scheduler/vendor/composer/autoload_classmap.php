@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'AIPS_Action_Scheduler_Queue' => $baseDir . '/includes/job/class-aips-action-scheduler-queue.php',
     'AIPS_AI_Assistance_Controller' => $baseDir . '/includes/class-aips-ai-assistance-controller.php',
     'AIPS_AI_Assistance_Repository' => $baseDir . '/includes/class-aips-ai-assistance-repository.php',
     'AIPS_AI_Assistance_Service' => $baseDir . '/includes/class-aips-ai-assistance-service.php',
@@ -151,6 +152,7 @@ return array(
     'AIPS_Job_Scheduler' => $baseDir . '/includes/job/class-aips-job-scheduler.php',
     'AIPS_Logger' => $baseDir . '/includes/class-aips-logger.php',
     'AIPS_Logger_Interface' => $baseDir . '/includes/interface-aips-logger-interface.php',
+    'AIPS_Log_Cleaner' => $baseDir . '/includes/class-aips-log-cleaner.php',
     'AIPS_Markdown_Parser' => $baseDir . '/includes/class-aips-markdown-parser.php',
     'AIPS_Meow_AI_Provider' => $baseDir . '/includes/providers/class-aips-meow-ai-provider.php',
     'AIPS_Metrics_Repository' => $baseDir . '/includes/class-aips-metrics-repository.php',
@@ -1244,6 +1246,7 @@ return array(
     'Test_AIPS_Admin_Bar_Cache' => $baseDir . '/tests/Test_AIPS_Admin_Bar_Cache.php',
     'Test_AIPS_Admin_Flow_Controller' => $baseDir . '/tests/Test_AIPS_Admin_Flow_Controller.php',
     'Test_AIPS_Admin_Menu' => $baseDir . '/tests/Test_AIPS_Admin_Menu.php',
+    'Test_AIPS_Advanced_Performance' => $baseDir . '/tests/Test_AIPS_Advanced_Performance.php',
     'Test_AIPS_Ajax_Registry_Response' => $baseDir . '/tests/Test_AIPS_Ajax_Registry_Response.php',
     'Test_AIPS_Author_Post_Generator_Batching' => $baseDir . '/tests/Test_AIPS_Author_Post_Generator_Batching.php',
     'Test_AIPS_Author_Post_Generator_Expansion' => $baseDir . '/tests/Test_AIPS_Author_Post_Generator_Expansion.php',
