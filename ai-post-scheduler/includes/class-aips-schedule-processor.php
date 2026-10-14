@@ -1109,7 +1109,7 @@ class AIPS_Schedule_Processor {
      * @return bool True if queued, false if already scheduled or failed.
      */
     private function queue_single_due_schedule( int $schedule_id, int $fire_at ): bool {
-        $queue_driver = (string) AIPS_Config::get_instance()->get_option( 'aips_queue_driver', 'auto' );
+        $queue_driver = (string) AIPS_Config::get_instance()->get_option( 'aips_queue_driver', 'wp_cron' );
         $use_as       = ( 'action_scheduler' === $queue_driver || ( 'auto' === $queue_driver && AIPS_Action_Scheduler_Queue::is_available() ) );
 
         if ( $use_as && AIPS_Action_Scheduler_Queue::is_available() ) {

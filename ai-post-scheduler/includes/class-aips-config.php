@@ -316,7 +316,7 @@ class AIPS_Config {
             // Server load & generation pacing
             'aips_generation_delay_seconds'            => 2,
             'aips_batch_resume_cooldown_minutes'       => 5,
-            'aips_queue_driver'                        => 'auto',
+            'aips_queue_driver'                        => 'wp_cron',
             'aips_enable_prompt_caching'               => true,
             'aips_log_retention_days'                  => 30,
         );

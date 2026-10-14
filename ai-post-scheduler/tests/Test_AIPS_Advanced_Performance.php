@@ -135,6 +135,12 @@ class Test_AIPS_Advanced_Performance extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_queue_driver_defaults_to_wp_cron_and_action_scheduler_is_opt_in() {
+		$defaults = AIPS_Config::get_instance()->get_default_options();
+		$this->assertSame( 'wp_cron', $defaults['aips_queue_driver'] );
+		$this->assertSame( 'wp_cron', AIPS_Config::get_instance()->get_option( 'aips_queue_driver' ) );
+	}
+
 	public function test_registered_performance_settings() {
 		$ui = new AIPS_Settings_UI();
 		$settings = AIPS_Settings::get_registered_settings_args( $ui );
@@ -143,7 +149,8 @@ class Test_AIPS_Advanced_Performance extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'aips_enable_prompt_caching', $settings );
 		$this->assertArrayHasKey( 'aips_log_retention_days', $settings );
 
-		$this->assertSame( 'auto', $ui->sanitize_queue_driver( 'invalid_driver' ) );
+		$this->assertSame( 'wp_cron', $ui->sanitize_queue_driver( 'invalid_driver' ) );
+		$this->assertSame( 'auto', $ui->sanitize_queue_driver( 'auto' ) );
 		$this->assertSame( 'action_scheduler', $ui->sanitize_queue_driver( 'action_scheduler' ) );
 		$this->assertSame( 'wp_cron', $ui->sanitize_queue_driver( 'wp_cron' ) );
 	}

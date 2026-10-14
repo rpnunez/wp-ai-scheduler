@@ -1306,12 +1306,12 @@ class AIPS_Settings_UI {
      * @return void
      */
     public function queue_driver_field_callback() {
-        $value        = AIPS_Config::get_instance()->get_option('aips_queue_driver', 'auto');
+        $value        = AIPS_Config::get_instance()->get_option('aips_queue_driver', 'wp_cron');
         $as_installed = function_exists('as_schedule_single_action');
         $options      = array(
-            'auto'             => sprintf(__('Auto-detect (Prefers Action Scheduler if available) [%s]', 'ai-post-scheduler'), $as_installed ? __('Action Scheduler detected', 'ai-post-scheduler') : __('WP-Cron fallback', 'ai-post-scheduler')),
-            'action_scheduler' => sprintf(__('Action Scheduler (Async background queue) [%s]', 'ai-post-scheduler'), $as_installed ? __('Available', 'ai-post-scheduler') : __('Not installed', 'ai-post-scheduler')),
-            'wp_cron'          => __('Standard WP-Cron', 'ai-post-scheduler'),
+            'wp_cron'          => __('Standard WP-Cron (default)', 'ai-post-scheduler'),
+            'action_scheduler' => sprintf(__('Action Scheduler (Async background queue) [%s]', 'ai-post-scheduler'), $as_installed ? __('Available', 'ai-post-scheduler') : __('Not installed, falls back to WP-Cron', 'ai-post-scheduler')),
+            'auto'             => sprintf(__('Auto-detect (Action Scheduler if available) [%s]', 'ai-post-scheduler'), $as_installed ? __('Action Scheduler detected', 'ai-post-scheduler') : __('WP-Cron fallback', 'ai-post-scheduler')),
         );
         ?>
         <div class="aips-queue-driver-field">
@@ -1320,7 +1320,7 @@ class AIPS_Settings_UI {
                     <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>><?php echo esc_html($label); ?></option>
                 <?php endforeach; ?>
             </select>
-            <p class="description"><?php esc_html_e('Action Scheduler provides superior reliability, concurrency control, and auditability for generation batches without blocking HTTP requests.', 'ai-post-scheduler'); ?></p>
+            <p class="description"><?php esc_html_e('WP-Cron is the default. Action Scheduler is opt-in and provides stronger reliability, concurrency control, and auditability for generation batches without blocking HTTP requests.', 'ai-post-scheduler'); ?></p>
         </div>
         <?php
     }
@@ -1414,12 +1414,12 @@ class AIPS_Settings_UI {
      * Sanitize and validate the selected queue driver value.
      *
      * @param mixed $value Raw input value.
-     * @return string Sanitized queue driver name ('auto', 'action_scheduler', or 'wp_cron').
+     * @return string Sanitized queue driver name ('wp_cron', 'action_scheduler', or 'auto'); anything else falls back to 'wp_cron'.
      */
     public function sanitize_queue_driver( $value ) {
         $allowed = array('auto', 'action_scheduler', 'wp_cron');
         $value   = sanitize_key( (string) $value );
-        return in_array($value, $allowed, true) ? $value : 'auto';
+        return in_array($value, $allowed, true) ? $value : 'wp_cron';
     }
 
     /**

@@ -7,7 +7,7 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 - **Action Scheduler Queue & Batch Offloading:**
   - Action Scheduler queue adapter (`AIPS_Action_Scheduler_Queue`) for non-blocking background execution of due schedules and pre-timeout yields.
-  - New Queue Execution Driver setting (`aips_queue_driver`: Auto, Action Scheduler, WP-Cron). Auto uses Action Scheduler when it is installed and falls back to WP-Cron otherwise.
+  - New Queue Execution Driver setting (`aips_queue_driver`: WP-Cron, Action Scheduler, Auto). The default is WP-Cron, so installing Action Scheduler (for example via WooCommerce) changes nothing until the setting is switched to Action Scheduler. Auto uses Action Scheduler when it is installed. Choosing Action Scheduler without it installed falls back to WP-Cron.
 - **Prompt Prefix Caching:**
   - Static instructions and site context are placed first in the prompt so OpenAI / Anthropic server-side prompt caches can hit, and the assembled site context and brand guidelines are cached per request window (`prompt_cache` group). Toggle: `aips_enable_prompt_caching` (default on); saving settings flushes the group.
 - **System Log File Retention:**
