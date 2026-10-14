@@ -389,6 +389,29 @@ Filters the maximum number of similar approved topics used as expanded context w
 
 ---
 
+### `aips_ability_enrichment_steps`
+
+Filters the post-generation enrichment steps (only run when **Ability Enrichment** is enabled). Default: `alt_text`, which calls `ai/alt-text-generation` for a featured image that has no alt text.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array<string,callable> $steps` Step key => callable receiving the post ID and returning an outcome string or `WP_Error`.
+    *   `int $post_id` Generated post ID.
+
+---
+
+### `aips_ability_enrichment_user_id`
+
+Filters the service user enrichment runs as when generation has no logged-in user who can edit the post (cron). Revalidated with `edit_post` on every run; abilities still perform their own permission checks.
+
+*   **Type:** `filter`
+*   **Default:** The `aips_ability_enrichment_user_id` setting (`0` skips enrichment).
+*   **Arguments:**
+    *   `int $user_id` Service user ID.
+    *   `int $post_id` Generated post ID.
+
+---
+
 ### `aips_ability_workflow_execution_user_id`
 
 Filters the service user for an Ability Workflow run that was dispatched

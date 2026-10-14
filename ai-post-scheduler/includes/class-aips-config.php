@@ -212,6 +212,8 @@ class AIPS_Config {
             'aips_enable_telemetry' => false,
             // Ability Workflows
             'aips_enable_ability_workflows' => false,
+            'aips_enable_ability_enrichment' => false,
+            'aips_ability_enrichment_user_id' => 0,
             // Cache Monitor
             'aips_cache_monitor_enabled'               => false,
             'aips_cache_monitor_index_enabled'         => true,

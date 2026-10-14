@@ -459,6 +459,14 @@ final class AI_Post_Scheduler {
                 $container->make(AIPS_Ability_Service::class)
             );
         });
+
+        // Register AIPS_Ability_Enrichment_Service
+        $container->singleton(AIPS_Ability_Enrichment_Service::class, function( $container ) {
+            return new AIPS_Ability_Enrichment_Service(
+                $container->make(AIPS_Ability_Service::class),
+                $container->make(AIPS_Ability_Catalog_Service::class)
+            );
+        });
       
         // Register AIPS_System_Diagnostics_Service
         $container->singleton(AIPS_System_Diagnostics_Service::class, function( $container ) {
@@ -722,6 +730,14 @@ final class AI_Post_Scheduler {
         add_action('aips_template_changed', function ($args) {
             (new AIPS_Integration_Manager())->handle_template_deleted($args);
         });
+
+        // Opt-in Ability enrichment (e.g. featured-image alt text). The flag is
+        // checked before the service is resolved so disabled sites pay nothing.
+        add_action('aips_post_generated', function ($post_id) {
+            if (AIPS_Ability_Enrichment_Service::is_enabled()) {
+                AIPS_Container::get_instance()->make(AIPS_Ability_Enrichment_Service::class)->handle_post_generated($post_id);
+            }
+        }, 20, 1);
 
         // Continuous semantic indexing: automatically index published posts and refresh relationships
         add_action('save_post', function ($post_id, $post) {

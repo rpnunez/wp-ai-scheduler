@@ -784,6 +784,36 @@ class AIPS_Settings_UI {
         <?php
     }
   
+    /**
+     * Displays a checkbox to enable post-generation Ability enrichment.
+     *
+     * @return void
+     */
+    public function enable_ability_enrichment_field_callback() {
+        $value = AIPS_Config::get_instance()->get_option('aips_enable_ability_enrichment');
+        ?>
+        <input type="hidden" name="aips_enable_ability_enrichment" value="0">
+        <label>
+            <input type="checkbox" name="aips_enable_ability_enrichment" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enrich generated posts with WordPress Abilities', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('After a post is generated, call installed abilities (for example AI alt text for the featured image). Failures never affect generation.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Displays the service user used when generation runs without a logged-in user.
+     *
+     * @return void
+     */
+    public function ability_enrichment_user_id_field_callback() {
+        $value = (int) AIPS_Config::get_instance()->get_option('aips_ability_enrichment_user_id');
+        ?>
+        <input type="number" min="0" step="1" class="small-text" name="aips_ability_enrichment_user_id" value="<?php echo esc_attr($value); ?>">
+        <p class="description"><?php esc_html_e('User ID that ability enrichment runs as during scheduled (cron) generation. The user must be able to edit the generated post. Leave 0 to skip enrichment when nobody is logged in.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
     /*
      * Render the cache monitor setting field.
      *

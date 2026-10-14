@@ -126,6 +126,14 @@ class AIPS_Settings {
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_enable_ability_workflows'],
       ),
+			'aips_enable_ability_enrichment' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_enable_ability_enrichment'],
+			),
+			'aips_ability_enrichment_user_id' => array(
+				'sanitize_callback' => 'absint',
+				'default'           => $defaults['aips_ability_enrichment_user_id'],
+			),
 			'aips_cache_monitor_enabled' => array(
 				'sanitize_callback' => 'absint',
 				'default'           => $defaults['aips_cache_monitor_enabled'],
@@ -1407,6 +1415,22 @@ class AIPS_Settings {
             'aips_enable_ability_workflows',
             __('Enable Ability Workflows', 'ai-post-scheduler'),
             array($this->ui, 'enable_ability_workflows_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_enable_ability_enrichment',
+            __('Ability Enrichment', 'ai-post-scheduler'),
+            array($this->ui, 'enable_ability_enrichment_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_ability_enrichment_user_id',
+            __('Ability Enrichment User ID', 'ai-post-scheduler'),
+            array($this->ui, 'ability_enrichment_user_id_field_callback'),
             'aips-settings',
             'aips_developers_section'
         );
