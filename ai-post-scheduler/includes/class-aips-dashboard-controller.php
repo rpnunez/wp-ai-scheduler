@@ -91,7 +91,9 @@ class AIPS_Dashboard_Controller {
 		$completed_in_period = isset( $summary_stats['completed'] ) ? (int) $summary_stats['completed'] : 0;
 		$failed_in_period = isset( $summary_stats['failed'] ) ? (int) $summary_stats['failed'] : 0;
 		$partial_in_period = isset( $summary_stats['partial'] ) ? (int) $summary_stats['partial'] : 0;
-		$success_rate_in_period = $total_in_period > 0 ? round( ( $completed_in_period / $total_in_period ) * 100, 1 ) : 100.0;
+		// Rate is over resolved attempts (completed + failed + partial), not
+		// every history row in the range — in-flight rows are not outcomes.
+		$success_rate_in_period = AIPS_Outcome_Rate::success_rate( $completed_in_period, $failed_in_period, $partial_in_period, 100.0 );
 
 		$schedules_run_in_period = $dashboard_repo->get_schedules_run_count( $from_ts, $to_ts );
 
@@ -105,8 +107,31 @@ class AIPS_Dashboard_Controller {
 		$ai_error_rate_in_period = $ai_calls_in_period > 0 ? round( ( $ai_errors_in_period / $ai_calls_in_period ) * 100, 1 ) : 0.0;
 
 		$date_format = $this->get_cached_date_format();
-		
+
 		$recent_posts = $dashboard_repo->get_recent_posts( $from_ts, $to_ts, 10 );
+
+		$dashboard_post_ids = array();
+		if ( ! empty( $recent_posts ) ) {
+			foreach ( $recent_posts as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		$posts_by_topic = $dashboard_repo->get_posts_by_topic( $from_ts, $to_ts, 10 );
+		if ( ! empty( $posts_by_topic ) ) {
+			foreach ( $posts_by_topic as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		if ( ! empty( $dashboard_post_ids ) && function_exists( '_prime_post_caches' ) ) {
+			_prime_post_caches( array_unique( array_filter( $dashboard_post_ids ) ), false, true );
+		}
+
 		$recent_posts_formatted = array();
 		foreach ( $recent_posts as $item ) {
 			$recent_posts_formatted[] = array(
@@ -116,7 +141,7 @@ class AIPS_Dashboard_Controller {
 				'template_name'        => esc_html( $item->template_name ?: __( 'Custom Author Workflow', 'ai-post-scheduler' ) ),
 				'creation_method'      => esc_html( ucfirst( str_replace( '_', ' ', $item->creation_method ) ) ),
 				'status'               => esc_html( $item->status ),
-				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( $item->status === 'pending' ? 'warning' : 'neutral' ) ) ),
+				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( in_array( $item->status, array( 'pending', 'partial' ), true ) ? 'warning' : 'neutral' ) ) ),
 				'created_at_formatted' => esc_html( AIPS_DateTime::formatRelativeOrAbsolute( $item->created_at, $date_format ) ),
 				'edit_url'             => $item->post_id ? esc_url( get_edit_post_link( $item->post_id ) ) : '',
 			);
@@ -165,7 +190,7 @@ class AIPS_Dashboard_Controller {
 				'display_title'        => esc_html( $display_title ),
 				'method_label'         => esc_html( $method_label ),
 				'status'               => esc_html( $item->status ),
-				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( $item->status === 'processing' ? 'warning' : 'neutral' ) ) ),
+				'status_badge'         => esc_attr( $item->status === 'completed' ? 'success' : ( $item->status === 'failed' ? 'error' : ( in_array( $item->status, array( 'processing', 'partial' ), true ) ? 'warning' : 'neutral' ) ) ),
 				'created_at_formatted' => esc_html( AIPS_DateTime::formatRelativeOrAbsolute( $item->created_at, $date_format ) ),
 			);
 		}
@@ -307,7 +332,9 @@ class AIPS_Dashboard_Controller {
 		$completed_in_period = isset($summary_stats['completed']) ? (int) $summary_stats['completed'] : 0;
 		$failed_in_period = isset($summary_stats['failed']) ? (int) $summary_stats['failed'] : 0;
 		$partial_in_period = isset($summary_stats['partial']) ? (int) $summary_stats['partial'] : 0;
-		$success_rate_in_period = $total_in_period > 0 ? round(($completed_in_period / $total_in_period) * 100, 1) : 100.0;
+		// Rate is over resolved attempts (completed + failed + partial), not
+		// every history row in the range — in-flight rows are not outcomes.
+		$success_rate_in_period = AIPS_Outcome_Rate::success_rate($completed_in_period, $failed_in_period, $partial_in_period, 100.0);
 
 		// Schedules Executed in period
 		$schedules_run_in_period = $dashboard_repo->get_schedules_run_count($from_ts, $to_ts);
@@ -329,7 +356,9 @@ class AIPS_Dashboard_Controller {
 		$upcoming_runs_count = $dashboard_repo->get_upcoming_runs_count($next_month_start, $next_month_end);
 
 		$unified_service = new AIPS_Unified_Schedule_Service();
-		$all_schedules    = $unified_service->get_all('', false);
+		// Grouped: a persona's two generation stages are one entity going out,
+		// so they must not occupy two of the five upcoming rows.
+		$all_schedules    = $unified_service->get_all_grouped('', false);
 		$upcoming_schedules = array();
 		foreach ($all_schedules as $s) {
 			if (!empty($s['is_active']) && !empty($s['next_run']) && $s['next_run'] >= $next_month_start) {
@@ -359,6 +388,30 @@ class AIPS_Dashboard_Controller {
 		// 4. Detail lists/tables inside range
 		// Generated Posts
 		$recent_posts = $dashboard_repo->get_recent_posts($from_ts, $to_ts, 10);
+
+		$dashboard_render_post_ids = array();
+		if ( ! empty( $recent_posts ) ) {
+			foreach ( $recent_posts as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_render_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		// Pre-fetch posts_by_topic to prime caches together
+		$posts_by_topic = $dashboard_repo->get_posts_by_topic($from_ts, $to_ts, 10);
+		if ( ! empty( $posts_by_topic ) ) {
+			foreach ( $posts_by_topic as $item ) {
+				if ( ! empty( $item->post_id ) ) {
+					$dashboard_render_post_ids[] = (int) $item->post_id;
+				}
+			}
+		}
+
+		if ( ! empty( $dashboard_render_post_ids ) && function_exists( '_prime_post_caches' ) ) {
+			_prime_post_caches( array_unique( array_filter( $dashboard_render_post_ids ) ), false, true );
+		}
+
 		foreach ($recent_posts as $item) {
 			$item->created_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
 				$item->created_at,
@@ -375,8 +428,7 @@ class AIPS_Dashboard_Controller {
 			);
 		}
 
-		// Generated Posts via Individual Author Topic
-		$posts_by_topic = $dashboard_repo->get_posts_by_topic($from_ts, $to_ts, 10);
+		// Generated Posts via Individual Author Topic (Already fetched above for cache priming)
 		foreach ($posts_by_topic as $item) {
 			$item->completed_at_formatted = AIPS_DateTime::formatRelativeOrAbsolute(
 				$item->completed_at,

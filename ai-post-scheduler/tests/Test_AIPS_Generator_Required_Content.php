@@ -64,6 +64,59 @@ class Test_AIPS_Generator_Required_Content extends WP_UnitTestCase {
 		$this->assertTrue($post_manager->created_post_data['generation_incomplete']);
 		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_title']);
 		$this->assertTrue($post_manager->created_post_data['component_statuses']['post_content']);
+
+		// An incomplete generation is recorded as partial, never as completed.
+		$this->assertFalse($history_service->container->success_called);
+		$this->assertTrue($history_service->container->partial_data['generation_incomplete']);
+		$this->assertSame(999, $history_service->container->partial_data['post_id']);
+	}
+
+	public function test_generated_leading_title_is_removed_before_post_creation() {
+		$ai_service = new AIPS_Test_Generator_Required_Content_AI_Service(array(
+			'<h1>Generated Title</h1><p>Generated body content.</p>',
+			'Generated Title',
+			'Generated excerpt.',
+		));
+		$post_manager = new AIPS_Test_Generator_Required_Content_Post_Manager();
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			null,
+			null,
+			$post_manager,
+			new AIPS_Test_Generator_Required_Content_History_Service()
+		);
+
+		$generator->generate_post($this->make_context());
+
+		$this->assertSame('<p>Generated body content.</p>', $post_manager->created_post_data['content']);
+		$this->assertStringNotContainsString('<h1>Generated Title</h1>', $ai_service->calls[2]['prompt']);
+		$this->assertFalse($post_manager->created_post_data['generation_incomplete']);
+	}
+
+	public function test_unresolved_title_placeholder_uses_fallback_and_marks_partial() {
+		$ai_service = new AIPS_Test_Generator_Required_Content_AI_Service(array(
+			'<p>Generated body content.</p>',
+			'{{MissingTitle}}',
+			'Generated excerpt.',
+		));
+		$post_manager = new AIPS_Test_Generator_Required_Content_Post_Manager();
+		$generator = new AIPS_Generator(
+			null,
+			$ai_service,
+			null,
+			null,
+			null,
+			$post_manager,
+			new AIPS_Test_Generator_Required_Content_History_Service()
+		);
+
+		$generator->generate_post($this->make_context());
+
+		$this->assertStringStartsWith('AIPS Generated Post: Test Topic - ', $post_manager->created_post_data['title']);
+		$this->assertFalse($post_manager->created_post_data['component_statuses']['post_title']);
+		$this->assertTrue($post_manager->created_post_data['generation_incomplete']);
 	}
 
 	private function make_context() {
@@ -88,6 +141,7 @@ class Test_AIPS_Generator_Required_Content extends WP_UnitTestCase {
 
 class AIPS_Test_Generator_Required_Content_AI_Service implements AIPS_AI_Service_Interface {
 	public $text_call_count = 0;
+	public $calls = array();
 	private $responses;
 
 	public function __construct($responses) {
@@ -100,6 +154,10 @@ class AIPS_Test_Generator_Required_Content_AI_Service implements AIPS_AI_Service
 
 	public function generate_text($prompt, $options = array()) {
 		$this->text_call_count++;
+		$this->calls[] = array(
+			'prompt'  => $prompt,
+			'options' => $options,
+		);
 		if (empty($this->responses)) {
 			return new WP_Error('unexpected_ai_call', 'Unexpected AI text call.');
 		}
@@ -166,6 +224,8 @@ class AIPS_Test_Generator_Required_Content_History_Service implements AIPS_Histo
 
 class AIPS_Test_Generator_Required_Content_History_Container {
 	public $failure_data = array();
+	public $partial_data = array();
+	public $success_called = false;
 
 	public function get_id() {
 		return 1;
@@ -184,6 +244,12 @@ class AIPS_Test_Generator_Required_Content_History_Container {
 	}
 
 	public function complete_success($result_data = array()) {
+		$this->success_called = true;
+		return true;
+	}
+
+	public function complete_partial($message = '', $result_data = array()) {
+		$this->partial_data = $result_data;
 		return true;
 	}
 

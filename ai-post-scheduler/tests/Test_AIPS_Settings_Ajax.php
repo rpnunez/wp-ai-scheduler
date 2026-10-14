@@ -30,6 +30,10 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 	public function tearDown(): void {
 		$this->container->clear();
+		// Restore the real plugin bindings: the container is a process-wide
+		// singleton, so leaving it empty (from clear() above) would break every
+		// later test that resolves a service (e.g. the save_post indexer hook).
+		AI_Post_Scheduler::get_instance()->register_container_bindings();
 		$_POST = array();
 		$_REQUEST = array();
 
@@ -85,7 +89,7 @@ class Test_AIPS_Settings_Ajax extends WP_UnitTestCase {
 
 		$container = $history_service->created[0]['container'];
 		$this->assertSame(array('activity', 'ai_request', 'ai_response'), array_column($container->records, 'type'));
-		$this->assertSame(array('status' => 'success'), $container->success_data);
+		$this->assertSame(array(), $container->success_data);
 	}
 
 	public function test_ajax_test_connection_records_failure_history_for_wp_error() {

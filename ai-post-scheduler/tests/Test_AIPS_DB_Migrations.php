@@ -14,10 +14,12 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 			$this->markTestSkipped('Database migration tests require the full WordPress test library.');
 		}
 
+		AIPS_Config::get_instance()->set_option('aips_db_version', null);
 		delete_option('aips_db_version');
 	}
 
 	public function tearDown(): void {
+		AIPS_Config::get_instance()->set_option('aips_db_version', null);
 		delete_option('aips_db_version');
 		parent::tearDown();
 	}
@@ -79,7 +81,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertNotContains( 'dedupe_key_created_at', $index_names_before, 'Pre-condition: index should be absent before migration' );
 
 		// Trigger upgrade from a version older than 2.3.1.
-		update_option( 'aips_db_version', '2.3.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '2.3.0' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$index_names_after = $wpdb->get_col( "SHOW INDEX FROM `{$table}`", 2 );
@@ -100,7 +102,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	 * stored version is older than the current plugin version.
 	 */
 	public function test_check_and_run_saves_version_after_upgrade() {
-		update_option('aips_db_version', '0.0.1');
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '0.0.1' );
 
 		AIPS_DB_Migrations::check_and_run();
 
@@ -113,7 +115,7 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 	 * the current plugin version.
 	 */
 	public function test_check_and_run_skips_when_version_matches() {
-		update_option('aips_db_version', AIPS_VERSION);
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', AIPS_VERSION );
 
 		AIPS_DB_Migrations::check_and_run();
 
@@ -136,9 +138,9 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		add_post_meta( $post_id, 'aips_post_generation_incomplete', 'true' );
 		add_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_COMPONENT_STATUSES, wp_json_encode( array( 'post_title' => false ) ) );
 
-		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
 		AIPS_DB_Migrations::check_and_run();
-		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
 		AIPS_DB_Migrations::check_and_run();
 
 		$this->assertFalse( metadata_exists( 'post', $post_id, 'aips_post_generation_component_statuses' ) );
@@ -184,9 +186,265 @@ class Test_AIPS_DB_Migrations extends WP_UnitTestCase {
 		$this->assertNotFalse( $history_id );
 		$this->assertFalse( metadata_exists( 'post', $post_id, AIPS_Post_Manager::META_GENERATED_POST ) );
 
-		update_option( 'aips_db_version', '3.0.0' );
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.0.0' );
 		AIPS_DB_Migrations::check_and_run();
+		clean_post_cache( $post_id );
 
 		$this->assertSame( '1', get_post_meta( $post_id, AIPS_Post_Manager::META_GENERATED_POST, true ) );
+	}
+
+	/**
+	 * migrate_to_3_4_0() must backfill aips_history.post_type from the linked
+	 * post's actual post type for rows created before the column existed.
+	 */
+	public function test_migrate_to_3_4_0_backfills_post_type_from_linked_post() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array(
+			'post_title' => 'Legacy History Row Post',
+			'post_type'  => 'page',
+		) );
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id         = $history_repository->create( array(
+			'post_id' => $post_id,
+			'status'  => 'completed',
+			// post_type intentionally omitted, simulating a pre-3.4.0 row.
+		) );
+
+		$before = $history_repository->get_by_id( $history_id );
+		$this->assertNull( $before->post_type );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$after = $history_repository->get_by_id( $history_id );
+		$this->assertSame( 'page', $after->post_type );
+	}
+
+	/**
+	 * migrate_to_3_4_0() must not overwrite a post_type that's already set
+	 * (e.g. by the write path on a more recent row), and must be a safe
+	 * no-op to run twice.
+	 */
+	public function test_migrate_to_3_4_0_does_not_overwrite_existing_post_type() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array(
+			'post_title' => 'Already Backfilled Post',
+			'post_type'  => 'page',
+		) );
+
+		$history_repository = new AIPS_History_Repository();
+		$history_id         = $history_repository->create( array(
+			'post_id'   => $post_id,
+			'status'    => 'completed',
+			'post_type' => 'post', // Deliberately mismatched from the post's real type.
+		) );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
+		AIPS_DB_Migrations::check_and_run();
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.3.0' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$after = $history_repository->get_by_id( $history_id );
+		$this->assertSame( 'post', $after->post_type, 'Migration must only backfill NULL post_type values, never overwrite an existing one.' );
+	}
+
+	/**
+	 * migrate_to_3_7_14() must ensure post_generation_lock exists on aips_authors
+	 * and claimed_at exists on aips_author_topics.
+	 */
+	public function test_migrate_to_3_7_14_adds_lock_and_claim_columns() {
+		AIPS_DB_Manager::install_tables();
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.13' );
+		AIPS_DB_Migrations::check_and_run();
+
+		global $wpdb;
+		$authors_table = $wpdb->prefix . 'aips_authors';
+		$topics_table  = $wpdb->prefix . 'aips_author_topics';
+
+		$authors_cols = $wpdb->get_col( "SHOW COLUMNS FROM `{$authors_table}`" );
+		$topics_cols  = $wpdb->get_col( "SHOW COLUMNS FROM `{$topics_table}`" );
+
+		$this->assertContains( 'post_generation_lock', $authors_cols );
+		$this->assertContains( 'claimed_at', $topics_cols );
+	}
+
+	/**
+	 * migrate_to_3_7_15() must fill a NULL post_type on generation-run rows from the
+	 * post, leave event rows alone and never overwrite an existing value.
+	 */
+	public function test_migrate_to_3_7_15_backfills_post_type_on_run_rows_only() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+		$history_repository = new AIPS_History_Repository();
+		$run_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+		) );
+		$event_id           = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'topic_post_generation',
+		) );
+		$set_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'manual',
+			'post_type'       => 'post',
+		) );
+
+		AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.14' );
+		AIPS_DB_Migrations::check_and_run();
+
+		$this->assertSame( 'page', $history_repository->get_by_id( $run_id )->post_type );
+		$this->assertNull( $history_repository->get_by_id( $event_id )->post_type );
+		$this->assertSame( 'post', $history_repository->get_by_id( $set_id )->post_type );
+	}
+
+	/**
+	 * migrate_to_3_7_16() must move a status the old sync wrote to a post's
+	 * content_indexing row back onto its generation run.
+	 */
+	public function test_migrate_to_3_7_16_repairs_statuses_written_to_the_wrong_row() {
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create();
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true' );
+
+		$history_repository = new AIPS_History_Repository();
+		$run_id             = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'completed',
+			'creation_method' => 'scheduled',
+		) );
+		$indexing_id        = $history_repository->create( array(
+			'post_id'         => $post_id,
+			'status'          => 'partial',
+			'creation_method' => 'content_indexing',
+		) );
+
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.15' );
+			AIPS_DB_Migrations::check_and_run();
+
+			$this->assertSame( 'partial', $history_repository->get_by_id( $run_id )->status );
+			$this->assertSame( 'completed', $history_repository->get_by_id( $indexing_id )->status );
+		} finally {
+			// install_tables() runs DDL, which commits, so the test case's rollback will not
+			// remove these rows.
+			global $wpdb;
+			$wpdb->delete( $wpdb->prefix . 'aips_history', array( 'id' => $run_id ), array( '%d' ) );
+			$wpdb->delete( $wpdb->prefix . 'aips_history', array( 'id' => $indexing_id ), array( '%d' ) );
+			wp_delete_post( $post_id, true );
+		}
+	}
+
+	/**
+	 * migrate_to_3_7_17() must classify existing rows, then re-run the post_type backfill
+	 * and the status repair, which both select rows by record_kind.
+	 */
+	public function test_migrate_to_3_7_17_classifies_rows_and_reruns_the_kind_based_repairs() {
+		global $wpdb;
+
+		AIPS_DB_Manager::install_tables();
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		update_post_meta( $post_id, AIPS_Post_Manager::META_GENERATION_INCOMPLETE, 'true' );
+
+		$table = $wpdb->prefix . 'aips_history';
+		$ids   = array();
+		foreach ( array(
+			'run'      => array( 'scheduled', 'completed' ),
+			'indexing' => array( 'content_indexing', 'partial' ),
+			'wrapper'  => array( 'topic_post_generation', 'completed' ),
+		) as $key => $row ) {
+			// Rows as an older install has them: record_kind left at the column default.
+			$wpdb->insert( $table, array(
+				'post_id'         => $post_id,
+				'creation_method' => $row[0],
+				'status'          => $row[1],
+				'created_at'      => time(),
+				'completed_at'    => time(),
+			) );
+			$ids[ $key ] = (int) $wpdb->insert_id;
+		}
+
+		try {
+			AIPS_Config::get_instance()->set_option( 'aips_db_version', '3.7.16' );
+			AIPS_DB_Migrations::check_and_run();
+
+			$history = new AIPS_History_Repository();
+			$this->assertSame( 'generation', $history->get_by_id( $ids['run'] )->record_kind );
+			$this->assertSame( 'job', $history->get_by_id( $ids['indexing'] )->record_kind );
+			$this->assertSame( 'event', $history->get_by_id( $ids['wrapper'] )->record_kind );
+
+			// The repairs that select rows by kind ran after the classification.
+			$this->assertSame( 'page', $history->get_by_id( $ids['run'] )->post_type );
+			$this->assertSame( 'partial', $history->get_by_id( $ids['run'] )->status );
+			$this->assertSame( 'completed', $history->get_by_id( $ids['indexing'] )->status );
+		} finally {
+			// install_tables() runs DDL, which commits, so the test case's rollback will not
+			// remove these rows.
+			foreach ( $ids as $id ) {
+				$wpdb->delete( $table, array( 'id' => $id ), array( '%d' ) );
+			}
+			wp_delete_post( $post_id, true );
+		}
+	}
+
+	/**
+	 * Migration 3.7.18 backfills min_relevance for similarity authors, switches
+	 * manual authors to inherit, leaves explicit modes alone, renames the stored
+	 * `reject` fallback and deletes the hidden option family.
+	 */
+	public function test_migration_3_7_18_consolidates_author_auto_approval() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+		$table = $wpdb->prefix . 'aips_authors';
+
+		$base = array('name' => 'M', 'field_niche' => 'n', 'topic_generation_frequency' => 'weekly', 'post_generation_frequency' => 'daily');
+		$ids  = array();
+		foreach (array(
+			'manual'     => array('topic_auto_approval_mode' => 'manual', 'topic_auto_approval_min_score' => 70),
+			'similarity' => array('topic_auto_approval_mode' => 'similarity', 'topic_auto_approval_min_score' => 55),
+			'score'      => array('topic_auto_approval_mode' => 'score', 'topic_auto_approval_min_score' => 88),
+			'all'        => array('topic_auto_approval_mode' => 'all'),
+		) as $key => $cols) {
+			$wpdb->insert($table, array_merge($base, $cols, array('created_at' => 1, 'updated_at' => 1)));
+			$ids[$key] = (int) $wpdb->insert_id;
+		}
+
+		update_option('aips_author_topic_auto_approval_fallback', 'reject');
+		update_option('aips_author_topic_auto_approval_enabled', true);
+		update_option('aips_author_topic_approval_mode', 'embeddings');
+
+		$method = new ReflectionMethod('AIPS_DB_Migrations', 'migrate_to_3_7_18');
+		$method->setAccessible(true);
+		$method->invoke(new AIPS_DB_Migrations());
+
+		$row = function ($key) use ($wpdb, $table, $ids) {
+			return $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$table}` WHERE id = %d", $ids[$key]));
+		};
+
+		$this->assertSame('inherit', $row('manual')->topic_auto_approval_mode);
+		$this->assertSame('similarity', $row('similarity')->topic_auto_approval_mode);
+		$this->assertSame(55, (int) $row('similarity')->topic_auto_approval_min_relevance);
+		$this->assertSame('score', $row('score')->topic_auto_approval_mode);
+		$this->assertSame(88, (int) $row('score')->topic_auto_approval_min_score);
+		$this->assertSame(65, (int) $row('score')->topic_auto_approval_min_relevance);
+		$this->assertSame('all', $row('all')->topic_auto_approval_mode);
+
+		$this->assertSame('rejected', get_option('aips_author_topic_auto_approval_fallback'));
+		$this->assertFalse(get_option('aips_author_topic_auto_approval_enabled', false));
+		$this->assertFalse(get_option('aips_author_topic_approval_mode', false));
+
+		$wpdb->query("DELETE FROM `{$table}` WHERE id IN (" . implode(',', $ids) . ')');
+		delete_option('aips_author_topic_auto_approval_fallback');
 	}
 }

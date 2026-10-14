@@ -594,8 +594,10 @@ class AIPS_Notifications_Event_Handler {
 	 */
 	private function extract_creation_method($context) {
 		if (is_object($context) && method_exists($context, 'get_creation_method')) {
-			$method = sanitize_key((string) $context->get_creation_method());
-			if (in_array($method, array('manual', 'scheduled'), true)) {
+			// Classify via the shared trigger vocabulary so retry/regenerate/bulk-job
+			// creation methods are still treated as manual runs.
+			$method = AIPS_Generation_Trigger::classify_creation_method($context->get_creation_method());
+			if ($method === AIPS_Generation_Trigger::METHOD_MANUAL || $method === AIPS_Generation_Trigger::METHOD_AUTOMATIC) {
 				return $method;
 			}
 		}

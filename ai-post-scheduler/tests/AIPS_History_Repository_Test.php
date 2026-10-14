@@ -359,9 +359,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'generated_content'=> '',
 					'prompt'           => '',
 					'error_message'    => null,
-					'created_at'       => $today . ' 10:00:00',
+					// created_at is a unix-timestamp column; a datetime string would be stored as 2026.
+					'created_at'       => strtotime($today . ' 12:00:00 UTC'),
+					'record_kind'      => 'generation',
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s')
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -377,9 +379,10 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'generated_content'=> '',
 				'prompt'           => '',
 				'error_message'    => null,
-				'created_at'       => $yesterday . ' 08:00:00',
+				'created_at'       => strtotime($yesterday . ' 12:00:00 UTC'),
+					'record_kind'      => 'generation',
 			),
-			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
+			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s')
 		);
 		$extra_ids[] = $wpdb->insert_id;
 
@@ -497,5 +500,61 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		// Only the finished row (42s) is counted; the incomplete row is excluded.
 		$this->assertSame(1, (int) $probe['sample_count']);
 		$this->assertSame(42, (int) round((float) $probe['avg_duration_seconds']));
+	}
+
+	// -----------------------------------------------------------------------
+	// post_type
+	// -----------------------------------------------------------------------
+
+	public function test_create_persists_post_type() {
+		$id = $this->repository->create(array(
+			'status' => 'completed',
+			'post_id' => 999001,
+			'post_type' => 'product_review',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$this->test_history_ids[] = $id;
+
+		$item = $this->repository->get_by_id($id);
+		$this->assertSame('product_review', $item->post_type);
+	}
+
+	public function test_update_persists_post_type() {
+		$id = $this->repository->create(array(
+			'status' => 'processing',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$this->test_history_ids[] = $id;
+
+		$this->repository->update($id, array('post_type' => 'page'));
+
+		$item = $this->repository->get_by_id($id);
+		$this->assertSame('page', $item->post_type);
+	}
+
+	public function test_get_history_filters_by_post_type() {
+		$matching_id = $this->repository->create(array(
+			'status' => 'completed',
+			'post_type' => 'product_review',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$other_id = $this->repository->create(array(
+			'status' => 'completed',
+			'post_type' => 'post',
+			'creation_method' => 'manual',
+			'created_at' => time(),
+		));
+		$this->test_history_ids[] = $matching_id;
+		$this->test_history_ids[] = $other_id;
+
+		$results = $this->repository->get_history(array('post_type' => 'product_review', 'per_page' => 50));
+
+		// wpdb returns ids as strings; compare as integers.
+		$ids = array_map('intval', wp_list_pluck($results['items'], 'id'));
+		$this->assertContains((int) $matching_id, $ids);
+		$this->assertNotContains((int) $other_id, $ids);
 	}
 }

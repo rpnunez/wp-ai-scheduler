@@ -27,6 +27,233 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     use AIPS_Cacheable_Repository;
 
     /**
+     * Default maximum rows collapsed into a single History group.
+     */
+    const GROUP_MAX_ROWS = 50;
+
+    /**
+     * Seconds without activity after which an in-progress run is shown as stalled.
+     */
+    const STALLED_AFTER_SECONDS = 900;
+
+    /**
+     * Seconds without activity after which a long-running chained job (indexing,
+     * embeddings, batches) is shown as stalled. These jobs legitimately wait on
+     * rate limits and cron slices between log entries.
+     */
+    const STALLED_AFTER_CHAIN_SECONDS = 21600;
+
+    /**
+     * creation_method values that are events or configuration changes rather than
+     * generation runs. They never own a generated post's components, so lookups by
+     * post must skip them.
+     *
+     * @return string[]
+     */
+    public static function event_only_creation_methods() {
+        return array_merge(
+            AIPS_History_Event_Recorder::lifecycle_creation_methods(),
+            array(
+                'notification_sent', 'topic_post_generation', 'bulk_delete', 'bulk_delete_feedback',
+                'bulk_schedule', 'settings_connection_test', 'stress_test', 'taxonomy_generation',
+            )
+        );
+    }
+
+    /**
+     * Placeholders string for the event-only creation methods.
+     *
+     * @return string e.g. "'a', 'b'" (values are code constants, escaped anyway).
+     */
+    private static function event_only_in_sql() {
+        return self::quoted_sql_list(self::event_only_creation_methods());
+    }
+
+    /**
+     * Comma-separated, escaped SQL string literals for a list of values.
+     *
+     * @param string[] $values Values to quote.
+     * @return string e.g. "'a', 'b'"
+     */
+    private static function quoted_sql_list(array $values) {
+        return implode(', ', array_map(function ($value) {
+            return "'" . esc_sql($value) . "'";
+        }, $values));
+    }
+
+    /**
+     * creation_method values written by real post-generation runs.
+     *
+     * These classify a row as a generation run when it is written without an explicit
+     * record_kind, and during the one-off backfill of existing rows (see
+     * AIPS_History_Record_Kind). Queries never use this list: they filter on the stored
+     * record_kind through generation_run_condition(). The generator tags every run
+     * explicitly, so this list only matters for rows written some other way.
+     *
+     * 'bulk_generate' is the Planner's per-post run; the bulk summary container shares
+     * the value, so the bulk service tags that container 'job' explicitly.
+     * 'post_generation' is the run container's own type, which becomes its
+     * creation_method when the caller passes none.
+     *
+     * @return string[]
+     */
+    public static function generation_run_creation_methods() {
+        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation');
+
+        /**
+         * Filters the creation_method values classified as post-generation runs when a
+         * row is written without an explicit record_kind, and by the backfill.
+         *
+         * It does not change rows that are already stored: after adding a method here,
+         * run AIPS_History_Repository::backfill_record_kind() to promote its existing
+         * rows (only rows still marked 'event' are touched).
+         *
+         * @param string[] $methods creation_method values.
+         */
+        $methods = apply_filters('aips_generation_run_creation_methods', $methods);
+
+        return array_values(array_unique(array_filter(array_map('strval', (array) $methods))));
+    }
+
+    /**
+     * SQL condition matching generation runs: rows whose stored record_kind is
+     * 'generation'.
+     *
+     * The kind is written with the row (see AIPS_History_Record_Kind), so no query has
+     * to guess from creation_method names which rows are real post generations.
+     *
+     * @param string $alias Optional table alias (without the dot).
+     * @return string
+     */
+    public static function generation_run_condition($alias = '') {
+        return ($alias !== '' ? $alias . '.' : '') . "record_kind = 'generation'";
+    }
+
+    /**
+     * SQL condition matching background-job rows: content indexing, embeddings, bulk
+     * slices, source fetches and the like.
+     *
+     * Reported separately from the run figures (see get_stats()['jobs']).
+     *
+     * @param string $alias Optional table alias (without the dot).
+     * @return string
+     */
+    public static function background_job_condition($alias = '') {
+        return ($alias !== '' ? $alias . '.' : '') . "record_kind = 'job'";
+    }
+
+    /**
+     * Derived table holding the newest completed/partial generation run per post.
+     *
+     * Join on `latest_history_id = h.id`. Event rows are always newer than the run
+     * they describe, so a bare MAX(id) per post would pick them instead.
+     *
+     * @param array $filters {
+     *     Optional filters.
+     *
+     *     @type string $post_status Restrict to posts with this wp_posts.post_status. The
+     *                               newest run per post is unchanged by it; it only keeps
+     *                               the aggregate from scanning posts the caller will
+     *                               discard anyway.
+     *     @type int    $campaign_id Restrict to this campaign. Unlike post_status this
+     *                               changes which run is newest: only that campaign's runs
+     *                               are considered.
+     *     @type int    $post_id     Restrict to this post (an indexed lookup, for
+     *                               single-post updates).
+     * }
+     * @return string Parenthesised sub-select exposing post_id and latest_history_id.
+     */
+    public static function latest_generation_run_subquery(array $filters = array()) {
+        global $wpdb;
+
+        $table       = $wpdb->prefix . 'aips_history';
+        $join        = '';
+        $post_status = isset($filters['post_status']) ? (string) $filters['post_status'] : '';
+        $campaign_id = isset($filters['campaign_id']) ? absint($filters['campaign_id']) : 0;
+        $post_id     = isset($filters['post_id']) ? absint($filters['post_id']) : 0;
+        if ($post_status !== '') {
+            $join = "INNER JOIN {$wpdb->posts} p ON p.ID = r.post_id AND p.post_status = '" . esc_sql($post_status) . "'";
+        }
+        $campaign_sql = $campaign_id ? "AND r.campaign_id = {$campaign_id}" : '';
+        $post_sql     = $post_id ? "AND r.post_id = {$post_id}" : '';
+
+        return "(SELECT r.post_id, MAX(r.id) AS latest_history_id
+                FROM {$table} r
+                {$join}
+                WHERE r.status IN ('completed', 'partial')
+                  AND r.post_id IS NOT NULL
+                  {$campaign_sql}
+                  {$post_sql}
+                  AND " . self::generation_run_condition('r') . "
+                GROUP BY r.post_id)";
+    }
+
+    /**
+     * creation_method LIKE patterns of chained, long-running jobs.
+     *
+     * @return string[]
+     */
+    public static function chain_method_patterns() {
+        return array('%content_index%', '%embedding%', '%batch%', '%internal_link%', '%bulk%');
+    }
+
+    /**
+     * Whether a creation method belongs to a chained, long-running job.
+     *
+     * @param string|null $creation_method Raw creation_method.
+     * @return bool
+     */
+    public static function is_chain_method($creation_method) {
+        $creation_method = (string) $creation_method;
+        foreach (self::chain_method_patterns() as $pattern) {
+            if ($creation_method !== '' && strpos($creation_method, trim($pattern, '%')) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Inactivity threshold (seconds) after which a processing run counts as stalled.
+     *
+     * @param string|null $creation_method Raw creation_method.
+     * @return int
+     */
+    public static function stalled_threshold_seconds($creation_method = '') {
+        $default = self::is_chain_method($creation_method) ? self::STALLED_AFTER_CHAIN_SECONDS : self::STALLED_AFTER_SECONDS;
+
+        /**
+         * Filters how long (seconds) an in-progress History run may go without
+         * logged activity before it is shown as Stalled.
+         *
+         * @param int    $seconds         Threshold in seconds.
+         * @param string $creation_method Run creation method.
+         */
+        return max(60, (int) apply_filters('aips_history_stalled_after_seconds', $default, (string) $creation_method));
+    }
+
+    /**
+     * Resolve the display status of a run: 'stalled' replaces 'processing' once the
+     * run has been idle past its threshold; every other status is returned as is.
+     *
+     * @param string      $status          Stored status.
+     * @param string|null $creation_method Raw creation_method.
+     * @param int         $last_activity   Unix time of the newest log entry or the run start.
+     * @param int|null    $now             Current time (defaults to now).
+     * @return string
+     */
+    public static function resolve_effective_status($status, $creation_method, $last_activity, $now = null) {
+        if ((string) $status !== 'processing') {
+            return (string) $status;
+        }
+
+        $now = $now === null ? AIPS_DateTime::now()->timestamp() : (int) $now;
+
+        return ($now - (int) $last_activity) >= self::stalled_threshold_seconds($creation_method) ? 'stalled' : 'processing';
+    }
+
+    /**
      * @var self|null Singleton instance.
      */
     private static $instance = null;
@@ -106,8 +333,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'history.get_schedule_completed_count',
             array( 'schedule_id' => $schedule_id ),
             function() use ( $schedule, $schedule_id ) {
-                return (int) $this->wpdb->get_var($this->wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$this->table_name}
+                $count = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COALESCE(COUNT(*), 0) FROM {$this->table_name}
                     WHERE template_id = %d
                     AND status = %s
                     AND created_at >= (
@@ -117,6 +344,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     'completed',
                     $schedule_id
                 ));
+
+                return max(0, (int) $count);
             }
         );
     }
@@ -209,115 +438,279 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $limit
         ), ARRAY_A);
     }
-    
+
     /**
-     * Get paginated history with optional filtering.
+     * Fetch recent stress-test runs from history.
      *
-     * @param array $args {
-     *     Optional. Query arguments.
-     *
-     *     @type int    $per_page    Number of items per page. Default 20.
-     *     @type int    $page        Current page number. Default 1.
-     *     @type string $status      Filter by status. Default empty.
-     *     @type string $search      Search term for title. Default empty.
-     *     @type int    $template_id Filter by template ID. Default 0.
-     *     @type string $orderby     Column to order by. Default 'created_at'.
-     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
-     * }
-     * @return array {
-     *     @type array $items        Array of history items.
-     *     @type int   $total        Total number of items.
-     *     @type int   $pages        Total number of pages.
-     *     @type int   $current_page Current page number.
-     * }
+     * @param int $limit Maximum rows to return.
+     * @return array<int, array<string, mixed>>
      */
-    public function get_history($args = array()) {
-        $defaults = array(
-            'per_page' => 20,
-            'page' => 1,
-            'status' => '',
-            'search' => '',
-            'template_id' => 0,
-            'campaign_id' => 0,
-            'author_id' => 0,
-            'domain' => '',
-            'actor' => '',
-            'date_from' => '',
-            'date_to' => '',
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'fields' => 'all',
+    public function get_stress_test_runs($limit = 20) {
+        $limit = max(1, absint($limit));
+
+        $records = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT h.id, h.uuid, h.status, h.created_at, hl.details
+             FROM {$this->table_name} h
+             LEFT JOIN {$this->table_name_log} hl ON h.id = hl.history_id AND hl.history_type_id = %d
+             WHERE h.creation_method = %s
+             ORDER BY h.created_at DESC
+             LIMIT %d",
+            AIPS_History_Type::SESSION_METADATA,
+            'stress_test',
+            $limit
+        ));
+
+        if (!is_array($records)) {
+            return array();
+        }
+
+        $runs = array();
+        foreach ($records as $row) {
+            $details = !empty($row->details) ? json_decode($row->details, true) : array();
+            $payload = isset($details['output']) && is_array($details['output'])
+                ? $details['output']
+                : (isset($details['context']) && is_array($details['context']) ? $details['context'] : $details);
+            $totals  = isset($payload['totals']) ? $payload['totals'] : array();
+            $env     = isset($payload['environment']) ? $payload['environment'] : array();
+
+            $formatted_date = '';
+            if (!empty($row->created_at)) {
+                if (is_numeric($row->created_at)) {
+                    $formatted_date = AIPS_DateTime::fromTimestamp((int) $row->created_at)->format('M j, Y H:i:s');
+                } else {
+                    $dt = AIPS_DateTime::fromMysqlOrNull((string) $row->created_at);
+                    $formatted_date = $dt ? $dt->format('M j, Y H:i:s') : (string) $row->created_at;
+                }
+            }
+
+            $runs[] = array(
+                'id'             => (int) $row->id,
+                'uuid'           => $row->uuid,
+                'status'         => $row->status,
+                'created_at'     => $row->created_at,
+                'formatted_date' => $formatted_date,
+                'provider'       => isset($env['provider']) ? $env['provider'] : 'Unknown',
+                'model'          => isset($env['model']) ? $env['model'] : '',
+                'total_cases'    => isset($totals['cases']) ? (int) $totals['cases'] : 0,
+                'passed'         => isset($totals['passed']) ? (int) $totals['passed'] : 0,
+                'failed'         => isset($totals['failed']) ? (int) $totals['failed'] : 0,
+                'duration_ms'    => isset($totals['duration_ms']) ? (int) $totals['duration_ms'] : 0,
+            );
+        }
+
+        return $runs;
+    }
+
+    /**
+     * Fetch one stress-test run by ID.
+     *
+     * @param int $history_id History row ID.
+     * @return array<string, mixed>|null
+     */
+    public function get_stress_test_run_by_id($history_id) {
+        $row = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT h.id, h.uuid, h.status, h.created_at, hl.details
+             FROM {$this->table_name} h
+             LEFT JOIN {$this->table_name_log} hl ON h.id = hl.history_id AND hl.history_type_id = %d
+             WHERE h.id = %d AND h.creation_method = %s",
+            AIPS_History_Type::SESSION_METADATA,
+            absint($history_id),
+            'stress_test'
+        ));
+
+        if (!$row) {
+            return null;
+        }
+
+        $details = !empty($row->details) ? json_decode($row->details, true) : array();
+        $payload = isset($details['output']) && is_array($details['output'])
+            ? $details['output']
+            : (isset($details['context']) && is_array($details['context']) ? $details['context'] : $details);
+
+        $formatted_date = '';
+        if (!empty($row->created_at)) {
+            if (is_numeric($row->created_at)) {
+                $formatted_date = AIPS_DateTime::fromTimestamp((int) $row->created_at)->format('M j, Y H:i:s');
+            } else {
+                $dt = AIPS_DateTime::fromMysqlOrNull((string) $row->created_at);
+                $formatted_date = $dt ? $dt->format('M j, Y H:i:s') : (string) $row->created_at;
+            }
+        }
+
+        return array(
+            'id'             => (int) $row->id,
+            'uuid'           => $row->uuid,
+            'status'         => $row->status,
+            'created_at'     => $row->created_at,
+            'formatted_date' => $formatted_date,
+            'environment'    => isset($payload['environment']) ? $payload['environment'] : array(),
+            'totals'         => isset($payload['totals']) ? $payload['totals'] : array(),
+            'results'        => isset($payload['results']) ? $payload['results'] : array(),
         );
-        
-        $args = wp_parse_args($args, $defaults);
+    }
+    
+        /**
+     * Return creation_method values used for internal lifecycle containers.
+     *
+     * @return string[]
+     */
+    private function get_auxiliary_creation_methods() {
+        return array_merge(
+            AIPS_History_Event_Recorder::lifecycle_creation_methods(),
+            array('notification_sent')
+        );
+    }
 
-        $offset = ($args['page'] - 1) * $args['per_page'];
-
-        $domain_patterns = array(
+    /**
+     * Creation-method LIKE patterns that define each non-default history domain.
+     *
+     * @return array<string,string> Domain key => SQL LIKE pattern.
+     */
+    private function get_domain_patterns() {
+        return array(
+            'content_indexing' => '%content_index%',
             'author_topics' => 'author_topic%',
             'research' => '%research%',
             'sources' => '%source%',
             'embeddings' => '%embedding%',
             'internal_links' => '%internal_link%',
             'batch_jobs' => '%batch%',
+            'post_review' => 'post_review_action',
         );
+    }
 
-        $event_domain_case_parts = array('CASE');
-        foreach ($domain_patterns as $domain_key => $domain_pattern) {
-            $event_domain_case_parts[] = sprintf(
-                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
-                esc_sql($domain_pattern),
-                esc_sql($domain_key)
-            );
+    /**
+     * SQL condition that is true for a processing run that has gone idle.
+     *
+     * Idle means no log entry (falling back to created_at) within the run's
+     * threshold. The threshold comes from stalled_threshold_seconds() for each
+     * creation method currently in progress, so the SQL (filter, stats, queue
+     * health) and the per-row badge share one definition, including any
+     * aips_history_stalled_after_seconds override. Placeholders and args are
+     * returned together so callers can splice the condition into any clause.
+     *
+     * @param string $alias History table alias.
+     * @return array{0:string,1:array} Tuple of [sql, args].
+     */
+    private function stalled_condition($alias = 'h') {
+        $now           = AIPS_DateTime::now()->timestamp();
+        $last_activity = "GREATEST({$alias}.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = {$alias}.id), 0))";
+
+        $methods = $this->wpdb->get_col("SELECT DISTINCT COALESCE(creation_method, '') FROM {$this->table_name} WHERE status = 'processing'");
+
+        $cases = '';
+        $args  = array();
+        foreach ((array) $methods as $method) {
+            if ($method === '') {
+                continue;
+            }
+            $cases .= ' WHEN %s THEN %d';
+            $args[] = (string) $method;
+            $args[] = $now - self::stalled_threshold_seconds($method);
         }
-        $event_domain_case_parts[] = "ELSE 'post_generation'";
-        $event_domain_case_parts[] = 'END';
-        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
-        $event_label_case_sql = "CASE
-                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
-                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
-                ELSE 'Generation Event'
-            END";
-        $actor_type_case_sql = "CASE
-                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
-                ELSE 'system'
-            END";
+        $args[] = $now - self::stalled_threshold_seconds('');
 
-        // Build select fields
-        if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
-                {$event_domain_case_sql} AS event_domain,
-                {$event_label_case_sql} AS event_label,
-                {$actor_type_case_sql} AS actor_type,
-                t.name as template_name,
-                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds,
-                ls.warning_count, ls.error_count, ls.ai_call_count, ls.latest_message";
-        } elseif ($args['fields'] === 'all') {
-            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
-                {$event_domain_case_sql} AS event_domain,
-                {$event_label_case_sql} AS event_label,
-                {$actor_type_case_sql} AS actor_type,
-                t.name as template_name";
-        } else {
-            // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+        // With no in-progress method to special-case, a CASE without any WHEN is a SQL
+        // syntax error, so fall back to the default threshold alone.
+        $threshold = $cases === ''
+            ? '%d'
+            : "CASE COALESCE({$alias}.creation_method, ''){$cases} ELSE %d END";
+
+        $sql = "({$alias}.status = 'processing' AND {$last_activity} < {$threshold})";
+
+        return array($sql, $args);
+    }
+
+    /**
+     * Attach last_activity_at and effective_status to rows.
+     *
+     * Only processing rows need a lookup, so this stays cheap on a paginated page.
+     *
+     * @param array $rows History rows (modified in place).
+     * @return void
+     */
+    private function attach_effective_status(array $rows) {
+        $processing_ids = array();
+        foreach ($rows as $row) {
+            $row->effective_status = isset($row->status) ? (string) $row->status : '';
+            if ($row->effective_status === 'processing') {
+                $processing_ids[] = (int) $row->id;
+            }
         }
 
+        if (empty($processing_ids)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($processing_ids), '%d'));
+        $activity     = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT history_id, MAX(timestamp) AS last_log FROM {$this->table_name_log} WHERE history_id IN ({$placeholders}) GROUP BY history_id",
+            $processing_ids
+        ), OBJECT_K);
+
+        $now = AIPS_DateTime::now()->timestamp();
+        foreach ($rows as $row) {
+            if ($row->effective_status !== 'processing') {
+                continue;
+            }
+            $last_log              = isset($activity[(int) $row->id]) ? (int) $activity[(int) $row->id]->last_log : 0;
+            $row->last_activity_at = max((int) $row->created_at, $last_log);
+            $row->effective_status = self::resolve_effective_status('processing', isset($row->creation_method) ? $row->creation_method : '', $row->last_activity_at, $now);
+        }
+    }
+
+    /**
+     * Build the shared WHERE clause for history listing queries.
+     *
+     * @param array $args            Normalised get_history() arguments.
+     * @param array $domain_patterns Domain key => LIKE pattern map.
+     * @return array{0:string,1:array} Tuple of [where_sql, where_args].
+     */
+    private function build_history_where($args, $domain_patterns) {
         // Build where clauses
         $where_clauses = array("1=1");
         $where_args = array();
 
         $auxiliary_methods = $this->get_auxiliary_creation_methods();
+        // Review-queue actions are hidden by default but can be listed explicitly.
+        if (!empty($args['domain']) && sanitize_key($args['domain']) === 'post_review') {
+            $auxiliary_methods = array_values(array_diff($auxiliary_methods, array('post_review_action')));
+        }
         $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
         $where_clauses[] = "COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})";
         $where_args = array_merge($where_args, $auxiliary_methods);
         // Keep excluding legacy orphaned containers that have no contextual linkage.
         $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
-        
+
         if (!empty($args['status'])) {
-            $where_clauses[] = "h.status = %s";
-            $where_args[] = $args['status'];
+            if ($args['status'] === 'completed') {
+                $where_clauses[] = "(h.status = %s OR h.status = 'indexed')";
+                $where_args[] = 'completed';
+            } elseif ($args['status'] === 'in_progress') {
+                // Raw processing rows, stalled or not (used to resume an open container).
+                $where_clauses[] = "h.status = 'processing'";
+            } elseif ($args['status'] === 'generated') {
+                // Runs that produced output: completed, partial, or indexed.
+                $where_clauses[] = "h.status IN ('completed', 'partial', 'indexed')";
+            } elseif ($args['status'] === 'stalled') {
+                list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+                $where_clauses[] = $stalled_sql;
+                $where_args      = array_merge($where_args, $stalled_args);
+            } elseif ($args['status'] === 'processing') {
+                // A run that has gone idle is Stalled, not Processing.
+                list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+                $where_clauses[] = "(h.status = 'processing' AND NOT {$stalled_sql})";
+                $where_args      = array_merge($where_args, $stalled_args);
+            } else {
+                $where_clauses[] = "h.status = %s";
+                $where_args[] = $args['status'];
+            }
+        }
+
+        if (!empty($args['creation_method'])) {
+            // Legacy rows may have an empty creation_method; they still match any type.
+            $where_clauses[] = "(h.creation_method = %s OR COALESCE(h.creation_method, '') = '')";
+            $where_args[] = (string) $args['creation_method'];
         }
 
         if (!empty($args['template_id'])) {
@@ -335,12 +728,22 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_args[] = $args['author_id'];
         }
 
+        if (!empty($args['post_type'])) {
+            $where_clauses[] = "h.post_type = %s";
+            $where_args[] = sanitize_key($args['post_type']);
+        }
+
         if (!empty($args['domain'])) {
             $domain = sanitize_key($args['domain']);
 
             if (isset($domain_patterns[$domain])) {
                 $where_clauses[] = "COALESCE(h.creation_method, '') LIKE %s";
                 $where_args[] = $domain_patterns[$domain];
+            } elseif ($domain === 'generation_runs') {
+                // Exactly the rows the run statistics count.
+                $where_clauses[] = self::generation_run_condition('h');
+            } elseif ($domain === 'background_jobs') {
+                $where_clauses[] = self::background_job_condition('h');
             } elseif ($domain === 'post_generation') {
                 $post_generation_clauses = array();
                 foreach ($domain_patterns as $pattern) {
@@ -389,38 +792,204 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_clauses[] = "h.generated_title LIKE %s";
             $where_args[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
         }
-        
+
         $where_sql = implode(' AND ', $where_clauses);
+
+        return array($where_sql, $where_args);
+    }
+
+    /**
+     * Get paginated history with optional filtering.
+     *
+     * @param array $args {
+     *     Optional. Query arguments.
+     *
+     *     @type int    $per_page    Number of items per page. Default 20.
+     *     @type int    $page        Current page number. Default 1.
+     *     @type string $status      Filter by status. Default empty.
+     *     @type string $search      Search term for title. Default empty.
+     *     @type int    $template_id Filter by template ID. Default 0.
+     *     @type string $orderby     Column to order by. Default 'created_at'.
+     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+     *     @type bool   $collapse    Paginate by display entries instead of rows: adjacent rows with the
+     *                               same creation method form one entry (a group), so a page holds
+     *                               `per_page` entries. Default false (row-based LIMIT/OFFSET).
+     *     @type int    $group_max_rows Maximum rows per collapsed group (min 2). Default GROUP_MAX_ROWS.
+     * }
+     * @return array {
+     *     @type array $items         Array of history items (every row on the page).
+     *     @type int   $total         Total number of rows matching the filters.
+     *     @type int   $pages         Total number of pages (entry-based when collapsing).
+     *     @type int   $current_page  Current page number.
+     *     @type int   $total_entries Total display entries. Only present when collapsing.
+     *     @type int   $group_max_rows Normalised group cap used. Only present when collapsing.
+     * }
+     */
+    public function get_history($args = array()) {
+        $defaults = array(
+            'per_page' => 50,
+            'page' => 1,
+            'status' => '',
+            'search' => '',
+            'template_id' => 0,
+            'campaign_id' => 0,
+            'author_id' => 0,
+            'creation_method' => '',
+            'domain' => '',
+            'actor' => '',
+            'post_type' => '',
+            'date_from' => '',
+            'date_to' => '',
+            'orderby' => 'created_at',
+            'order' => 'DESC',
+            'fields' => 'all',
+            'collapse' => false,
+            'group_max_rows' => self::GROUP_MAX_ROWS,
+        );
+
+        $args = wp_parse_args($args, $defaults);
+        $args['per_page'] = max(1, (int) $args['per_page']);
+        $args['page'] = max(1, (int) $args['page']);
+        $args['group_max_rows'] = max(2, (int) $args['group_max_rows']);
+
+        $offset = ($args['page'] - 1) * $args['per_page'];
+
+        $domain_patterns = $this->get_domain_patterns();
+
+        $event_domain_case_parts = array('CASE');
+        foreach ($domain_patterns as $domain_key => $domain_pattern) {
+            $event_domain_case_parts[] = sprintf(
+                "WHEN COALESCE(h.creation_method, '') LIKE '%s' THEN '%s'",
+                esc_sql($domain_pattern),
+                esc_sql($domain_key)
+            );
+        }
+        $event_domain_case_parts[] = "ELSE 'post_generation'";
+        $event_domain_case_parts[] = 'END';
+        $event_domain_case_sql = implode("\n", $event_domain_case_parts);
+        $event_label_case_sql = "CASE
+                WHEN h.generated_title IS NOT NULL AND h.generated_title <> '' THEN h.generated_title
+                WHEN h.topic_id IS NOT NULL THEN CONCAT('Topic #', h.topic_id)
+                WHEN h.post_id IS NOT NULL THEN CONCAT('Post #', h.post_id)
+                WHEN COALESCE(h.creation_method, '') LIKE '%content_index%' THEN 'Content Indexing'
+                ELSE 'Generation Event'
+            END";
+        $actor_type_case_sql = "CASE
+                WHEN COALESCE(h.creation_method, '') LIKE '%manual%' OR COALESCE(h.creation_method, '') LIKE '%admin%' THEN 'admin'
+                ELSE 'system'
+            END";
+
+        // Build select fields
+        if ($args['fields'] === 'list') {
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.author_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, h.creation_method,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name,
+                CASE WHEN h.completed_at > 0 AND h.completed_at >= h.created_at THEN h.completed_at - h.created_at ELSE NULL END AS duration_seconds";
+        } elseif ($args['fields'] === 'all') {
+            // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log,
+                {$event_domain_case_sql} AS event_domain,
+                {$event_label_case_sql} AS event_label,
+                {$actor_type_case_sql} AS actor_type,
+                t.name as template_name";
+        } else {
+            // For specifically 'performance' or any other restricted fields
+            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.post_type, h.template_id, h.campaign_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+        }
+
+        list($where_sql, $where_args) = $this->build_history_where($args, $domain_patterns);
 
         // Validate orderby and order
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
-        
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
-        
-        // Query for items
-        $query_args = $where_args;
-        $query_args[] = $args['per_page'];
-        $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT $fields_sql
-            FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id
-            LEFT JOIN (
-                SELECT history_id,
-                    SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count,
-                    SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count,
-                    SUM(CASE WHEN history_type_id = 5 THEN 1 ELSE 0 END) AS ai_call_count,
-                    LEFT(SUBSTRING_INDEX(GROUP_CONCAT(details ORDER BY timestamp DESC SEPARATOR '||'), '||', 1), 180) AS latest_message
-                FROM {$this->table_name_log}
-                GROUP BY history_id
-            ) ls ON h.id = ls.history_id
-            WHERE $where_sql
-            ORDER BY h.$orderby $order 
-            LIMIT %d OFFSET %d
-        ", $query_args));
-        
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+
+        // Query for items
+        $collapse_plan = null;
+        if (!empty($args['collapse'])) {
+            // Entry-based pagination: a page is `per_page` display entries (collapsed groups or single rows),
+            // so the rows to hydrate are picked by the planner rather than by LIMIT/OFFSET.
+            $collapse_plan = $this->plan_collapsed_page($where_sql, $where_args, $orderby, $order, $args);
+            $page_ids = $collapse_plan['ids'];
+            if (empty($page_ids)) {
+                $results = array();
+            } else {
+                $ids_in = implode(',', array_fill(0, count($page_ids), '%d'));
+                $results = $this->wpdb->get_results($this->wpdb->prepare("
+                    SELECT $fields_sql
+                    FROM {$this->table_name} h
+                    LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                    WHERE h.id IN ({$ids_in})
+                    ORDER BY h.$orderby $order, h.id $order
+                ", $page_ids));
+            }
+        } else {
+            $query_args = $where_args;
+            $query_args[] = $args['per_page'];
+            $query_args[] = $offset;
+
+            $results = $this->wpdb->get_results($this->wpdb->prepare("
+                SELECT $fields_sql
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE $where_sql
+                ORDER BY h.$orderby $order, h.id $order
+                LIMIT %d OFFSET %d
+            ", $query_args));
+        }
+
+        // If 'list' fields were requested, attach aggregated log statistics for the paginated slice only.
+        // This replaces the full-table log aggregation subquery that previously caused severe performance degradation.
+        if (!empty($results) && $args['fields'] === 'list') {
+            $history_ids = array_map('intval', wp_list_pluck($results, 'id'));
+            if (!empty($history_ids)) {
+                $history_ids_in = implode(',', array_fill(0, count($history_ids), '%d'));
+                $log_stats = $this->wpdb->get_results($this->wpdb->prepare("
+                    SELECT history_id,
+                        SUM(CASE WHEN history_type_id = 3 THEN 1 ELSE 0 END) AS warning_count,
+                        SUM(CASE WHEN history_type_id = 2 THEN 1 ELSE 0 END) AS error_count,
+                        SUM(CASE WHEN history_type_id = 5 THEN 1 ELSE 0 END) AS ai_call_count,
+                        LEFT(SUBSTRING_INDEX(GROUP_CONCAT(details ORDER BY timestamp DESC SEPARATOR '||'), '||', 1), 180) AS latest_message
+                    FROM {$this->table_name_log}
+                    WHERE history_id IN ({$history_ids_in})
+                    GROUP BY history_id
+                ", $history_ids), OBJECT_K);
+
+                foreach ($results as $item) {
+                    $hid = (int) $item->id;
+                    if (isset($log_stats[$hid])) {
+                        $item->warning_count  = (int) $log_stats[$hid]->warning_count;
+                        $item->error_count    = (int) $log_stats[$hid]->error_count;
+                        $item->ai_call_count  = (int) $log_stats[$hid]->ai_call_count;
+                        $item->latest_message = $log_stats[$hid]->latest_message;
+                    } else {
+                        $item->warning_count  = 0;
+                        $item->error_count    = 0;
+                        $item->ai_call_count  = 0;
+                        $item->latest_message = null;
+                    }
+                }
+            }
+        }
+
+        if (!empty($results)) {
+            $this->attach_effective_status($results);
+        }
+
+        if ($collapse_plan !== null) {
+            return array(
+                'items' => $results,
+                'total' => $collapse_plan['total_rows'],
+                'total_entries' => $collapse_plan['total_entries'],
+                'pages' => (int) ceil($collapse_plan['total_entries'] / $args['per_page']),
+                'current_page' => $args['page'],
+                'group_max_rows' => (int) $args['group_max_rows'],
+            );
+        }
+
         // Query for total count
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
@@ -430,7 +999,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         } else {
             $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
         }
-        
+
         return array(
             'items' => $results,
             'total' => (int) $total,
@@ -438,6 +1007,118 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'current_page' => $args['page'],
         );
     }
+
+    /**
+     * Normalise a creation method to the key used for grouping.
+     *
+     * Mirrors the SQL expression COALESCE(NULLIF(creation_method, ''), 'post_generation').
+     *
+     * @param mixed $method Raw creation_method value.
+     * @return string
+     */
+    public static function normalize_method_key($method) {
+        $method = (string) $method;
+        return $method === '' ? 'post_generation' : $method;
+    }
+
+    /**
+     * Split an ordered list of creation-method keys into collapsed-entry sizes.
+     *
+     * Adjacent rows sharing a key form a run. Runs are chunked into groups of at
+     * most $max_rows; a chunk of 1 is a single (ungrouped) entry. This is the one
+     * definition of "what is an entry" shared by pagination and rendering.
+     *
+     * @param string[] $keys     Normalised creation-method keys in display order.
+     * @param int      $max_rows Maximum rows per collapsed group (min 2).
+     * @return int[] Row count of each entry, in display order.
+     */
+    public static function plan_entry_sizes(array $keys, $max_rows = self::GROUP_MAX_ROWS) {
+        $max_rows = max(2, (int) $max_rows);
+        $sizes    = array();
+        $run      = 0;
+        $prev     = null;
+
+        foreach ($keys as $key) {
+            if ($prev !== null && $key !== $prev) {
+                self::push_run_sizes($sizes, $run, $max_rows);
+                $run = 0;
+            }
+            $run++;
+            $prev = $key;
+        }
+        if ($run > 0) {
+            self::push_run_sizes($sizes, $run, $max_rows);
+        }
+
+        return $sizes;
+    }
+
+    /**
+     * Append the chunk sizes for one run of identical rows.
+     *
+     * @param int[] $sizes    Sizes accumulator (by reference).
+     * @param int   $run      Run length.
+     * @param int   $max_rows Chunk cap.
+     * @return void
+     */
+    private static function push_run_sizes(array &$sizes, $run, $max_rows) {
+        while ($run > 0) {
+            $chunk   = min($run, $max_rows);
+            $sizes[] = $chunk;
+            $run    -= $chunk;
+        }
+    }
+
+    /**
+     * Work out which history rows belong on a collapsed page.
+     *
+     * Scans only (id, normalised creation method) for the filtered set, builds the
+     * entry plan, and returns the ids of the rows covered by the requested page of
+     * `per_page` entries.
+     *
+     * @param string $where_sql  Shared WHERE clause.
+     * @param array  $where_args Placeholder values for the WHERE clause.
+     * @param string $orderby    Validated order column.
+     * @param string $order      Validated direction.
+     * @param array  $args       Normalised get_history() arguments.
+     * @return array{ids:int[],total_rows:int,total_entries:int}
+     */
+    private function plan_collapsed_page($where_sql, array $where_args, $orderby, $order, array $args) {
+        $sql = "SELECT h.id, COALESCE(NULLIF(h.creation_method, ''), 'post_generation') AS method_key
+            FROM {$this->table_name} h
+            WHERE $where_sql
+            ORDER BY h.$orderby $order, h.id $order";
+        if (!empty($where_args)) {
+            $sql = $this->wpdb->prepare($sql, $where_args);
+        }
+
+        $rows = $this->wpdb->get_results($sql, ARRAY_N);
+        $rows = is_array($rows) ? $rows : array();
+
+        // Split into parallel id/key lists and free the row objects early: this scan
+        // covers every matching row, so avoid holding both representations.
+        $ids_all = array();
+        $keys    = array();
+        foreach ($rows as $row) {
+            $ids_all[] = (int) $row[0];
+            $keys[]    = (string) $row[1];
+        }
+        unset($rows);
+
+        $sizes     = self::plan_entry_sizes($keys, (int) $args['group_max_rows']);
+        unset($keys);
+        $per_page  = (int) $args['per_page'];
+        $first     = ((int) $args['page'] - 1) * $per_page;
+        $row_start = (int) array_sum(array_slice($sizes, 0, $first));
+        $row_count = (int) array_sum(array_slice($sizes, $first, $per_page));
+
+        return array(
+            'ids' => array_slice($ids_all, $row_start, $row_count),
+            'total_rows' => count($ids_all),
+            'total_entries' => count($sizes),
+        );
+    }
+
 
     /**
      * Get paginated posts whose latest completed generation is incomplete.
@@ -468,6 +1149,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'template_id' => 0,
             'campaign_id' => 0,
             'author_id' => 0,
+            'post_type' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
         );
@@ -480,7 +1162,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $offset = $use_limit ? (($args['page'] - 1) * $args['per_page']) : 0;
 
         $where_clauses = array(
-            "h.status = 'completed'",
+            "h.status IN ('completed', 'partial')",
             "h.post_id IS NOT NULL",
             "(pm_incomplete.meta_value = 'true' OR pm_had_partial.meta_value = 'true')",
         );
@@ -499,6 +1181,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         if (!empty($args['author_id'])) {
             $where_clauses[] = 'h.author_id = %d';
             $where_args[] = $args['author_id'];
+        }
+
+        if (!empty($args['post_type'])) {
+            // The post is authoritative: history rows written before the column existed have NULL.
+            $where_clauses[] = 'p.post_type = %s';
+            $where_args[] = sanitize_key($args['post_type']);
         }
 
         if (!empty($args['search'])) {
@@ -523,6 +1211,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         $posts_table = $this->wpdb->posts;
         $postmeta_table = $this->wpdb->postmeta;
+        // Newest generation run per post: event rows are always newer than the run they describe.
+        $latest_run = self::latest_generation_run_subquery();
 
         $query = "SELECT
                 h.*,
@@ -534,12 +1224,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                 pm_incomplete.meta_value as is_currently_incomplete,
                 pm_status.meta_value as component_statuses
             FROM {$this->table_name} h
-            INNER JOIN (
-                SELECT post_id, MAX(id) AS latest_history_id
-                FROM {$this->table_name}
-                WHERE status = 'completed' AND post_id IS NOT NULL
-                GROUP BY post_id
-            ) latest ON latest.latest_history_id = h.id
+            INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
             INNER JOIN {$posts_table} p ON h.post_id = p.ID
             LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
             LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
@@ -566,12 +1251,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*)
                 FROM {$this->table_name} h
-                INNER JOIN (
-                    SELECT post_id, MAX(id) AS latest_history_id
-                    FROM {$this->table_name}
-                    WHERE status = 'completed' AND post_id IS NOT NULL
-                    GROUP BY post_id
-                ) latest ON latest.latest_history_id = h.id
+                INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
                 LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
                 LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
@@ -582,12 +1262,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $total = $this->wpdb->get_var(
                 "SELECT COUNT(*)
                 FROM {$this->table_name} h
-                INNER JOIN (
-                    SELECT post_id, MAX(id) AS latest_history_id
-                    FROM {$this->table_name}
-                    WHERE status = 'completed' AND post_id IS NOT NULL
-                    GROUP BY post_id
-                ) latest ON latest.latest_history_id = h.id
+                INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
                 INNER JOIN {$posts_table} p ON h.post_id = p.ID
                 LEFT JOIN {$postmeta_table} pm_incomplete ON pm_incomplete.post_id = p.ID AND pm_incomplete.meta_key = '" . AIPS_Post_Manager::META_GENERATION_INCOMPLETE . "'
                 LEFT JOIN {$postmeta_table} pm_had_partial ON pm_had_partial.post_id = p.ID AND pm_had_partial.meta_key = '" . AIPS_Post_Manager::META_GENERATION_HAD_PARTIAL . "'
@@ -602,7 +1277,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'current_page' => $args['page'],
         );
     }
-    
+
+  
     /**
      * Get a single history item by ID.
      *
@@ -617,9 +1293,13 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         if ($history) {
             $history->log = $this->wpdb->get_results($this->wpdb->prepare(
-                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC, id ASC",
                 $id
             ));
+
+            $last_log = !empty($history->log) ? (int) end($history->log)->timestamp : 0;
+            $history->last_activity_at = max((int) $history->created_at, $last_log);
+            $history->effective_status = self::resolve_effective_status($history->status, isset($history->creation_method) ? $history->creation_method : '', $history->last_activity_at);
         }
 
         return $history;
@@ -633,7 +1313,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function post_has_history_and_completed($post_id) {
         $count = $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE post_id = %d AND status = 'completed'",
+            "SELECT COUNT(*) FROM {$this->table_name}
+             WHERE post_id = %d AND status IN ('completed', 'partial')
+               AND COALESCE(creation_method, '') NOT IN (" . self::event_only_in_sql() . ")",
             $post_id
         ));
         
@@ -655,7 +1337,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
                     creation_method, status, generated_title, error_message,
                     created_at, completed_at
-             FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+             FROM {$this->table_name}
+             WHERE post_id = %d AND COALESCE(creation_method, '') NOT IN (" . self::event_only_in_sql() . ")
+             ORDER BY created_at DESC, id DESC LIMIT 1",
             $post_id
         ));
     }
@@ -682,11 +1366,85 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
         $format = array('%d', '%d', '%s', '%d');
 
+        // Mirror the event identity into indexed columns so consumers can filter
+        // on event_type / event_status without LIKE-scanning the serialized
+        // details blob. The canonical source of truth remains details.input;
+        // these columns are a best-effort denormalized projection of it. Guard
+        // on column existence so a database that has not yet applied the 3.5.0
+        // schema (e.g. a failed/retrying upgrade) still records the log entry —
+        // the backfill migration populates the columns once the schema catches up.
+        if ($this->history_log_has_event_columns()) {
+            list($event_type, $event_status) = $this->extract_event_identity($details);
+            $insert_data['event_type']   = $event_type;
+            $insert_data['event_status'] = $event_status;
+            $format[] = '%s';
+            $format[] = '%s';
+        }
+
         $result = $this->wpdb->insert($this->table_name_log, $insert_data, $format);
 
         return $result ? $this->wpdb->insert_id : false;
     }
-    
+
+    /**
+     * Whether the history-log table carries the indexed event_type / event_status
+     * columns introduced in 3.5.0.
+     *
+     * Resolved once per request and memoized: a lightweight guard so log writes
+     * never fail against a database that has not yet applied the 3.5.0 schema.
+     *
+     * @var bool|null
+     */
+    private $history_log_has_event_columns = null;
+
+    /**
+     * Determine (and memoize) whether the indexed event columns exist.
+     *
+     * @return bool
+     */
+    private function history_log_has_event_columns() {
+        if ($this->history_log_has_event_columns !== null) {
+            return $this->history_log_has_event_columns;
+        }
+
+        $column = $this->wpdb->get_var($this->wpdb->prepare(
+            "SHOW COLUMNS FROM `{$this->table_name_log}` LIKE %s",
+            'event_type'
+        ));
+
+        $this->history_log_has_event_columns = ($column === 'event_type');
+
+        return $this->history_log_has_event_columns;
+    }
+
+    /**
+     * Extract the event_type / event_status identity from a log details array.
+     *
+     * The identity is written by producers into the `input` block (canonically
+     * via AIPS_History_Event). Returns raw stored values (not canonicalized) so
+     * the indexed columns faithfully mirror the serialized payload; alias
+     * resolution happens on read.
+     *
+     * @param array|string $details Log details.
+     * @return array{0: string|null, 1: string|null} [event_type, event_status]
+     */
+    private function extract_event_identity($details) {
+        if (!is_array($details) || !isset($details['input']) || !is_array($details['input'])) {
+            return array(null, null);
+        }
+
+        $input = $details['input'];
+
+        $event_type = isset($input['event_type']) && $input['event_type'] !== ''
+            ? substr(sanitize_text_field((string) $input['event_type']), 0, 64)
+            : null;
+        $event_status = isset($input['event_status']) && $input['event_status'] !== ''
+            ? substr(sanitize_text_field((string) $input['event_status']), 0, 32)
+            : null;
+
+        return array($event_type, $event_status);
+    }
+
     /**
      * Get overall statistics for history.
      *
@@ -752,25 +1510,33 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     public function get_stats() {
-        return $this->cache_read(
+        $stats = $this->cache_read(
             'history.get_stats',
             array(),
             function() {
-                $auxiliary_methods = $this->get_auxiliary_creation_methods();
-                $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
+                // Generation runs only: event containers, indexing and other background
+                // jobs would otherwise inflate the totals and the success rate.
+                $run_condition = self::generation_run_condition();
                 $results = $this->wpdb->get_row(
-                    $this->wpdb->prepare(
-                        "SELECT
-                            COUNT(*) as total,
-                            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                            SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-                            SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
-                         FROM {$this->table_name}
-                         WHERE COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                           AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)",
-                        ...$auxiliary_methods
-                    )
+                    "SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                        SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
+                     FROM {$this->table_name}
+                     WHERE {$run_condition}"
+                );
+
+                // Background jobs (indexing, bulk slices, source fetches...) are not generation
+                // runs, so they are reported next to the run figures instead of inside them.
+                $job_results = $this->wpdb->get_row(
+                    "SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+                     FROM {$this->table_name}
+                     WHERE " . self::background_job_condition()
                 );
 
                 $stats = array(
@@ -779,23 +1545,27 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     'failed'     => isset($results->failed)     ? (int) $results->failed     : 0,
                     'processing' => isset($results->processing) ? (int) $results->processing : 0,
                     'partial'    => isset($results->partial)    ? (int) $results->partial    : 0,
+                    'stalled'    => 0,
+                    'jobs'       => array(
+                        'total'      => isset($job_results->total)      ? (int) $job_results->total      : 0,
+                        'failed'     => isset($job_results->failed)     ? (int) $job_results->failed     : 0,
+                        'processing' => isset($job_results->processing) ? (int) $job_results->processing : 0,
+                        'stalled'    => 0,
+                    ),
                 );
 
-                $stats['success_rate'] = $stats['total'] > 0
-                    ? round(($stats['completed'] / $stats['total']) * 100, 1)
-                    : 0;
+                // Only terminal outcomes count toward the rate; `processing`
+                // rows are still in flight and would deflate it.
+                $stats['resolved']     = AIPS_Outcome_Rate::resolved($stats['completed'], $stats['failed'], $stats['partial']);
+                $stats['success_rate'] = AIPS_Outcome_Rate::success_rate($stats['completed'], $stats['failed'], $stats['partial']);
 
                 $durations = $this->wpdb->get_col(
-                    $this->wpdb->prepare(
-                        "SELECT completed_at - created_at
-                         FROM {$this->table_name}
-                         WHERE completed_at > 0
-                           AND completed_at >= created_at
-                           AND COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                           AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
-                         ORDER BY completed_at - created_at ASC",
-                        ...$auxiliary_methods
-                    )
+                    "SELECT completed_at - created_at
+                     FROM {$this->table_name}
+                     WHERE completed_at > 0
+                       AND completed_at >= created_at
+                       AND {$run_condition}
+                     ORDER BY completed_at - created_at ASC"
                 );
                 $duration_count = count($durations);
                 $stats['median_duration'] = null;
@@ -806,8 +1576,73 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                         : (int) round(((int) $durations[$middle - 1] + (int) $durations[$middle]) / 2);
                 }
 
+                // Activity: runs started in the last 24h versus the 24h before that.
+                $activity = $this->wpdb->get_row(
+                    "SELECT
+                        SUM(CASE WHEN created_at >= UNIX_TIMESTAMP() - 86400 THEN 1 ELSE 0 END) as last_24h,
+                        SUM(CASE WHEN created_at < UNIX_TIMESTAMP() - 86400 AND created_at >= UNIX_TIMESTAMP() - 172800 THEN 1 ELSE 0 END) as prev_24h
+                     FROM {$this->table_name}
+                     WHERE created_at >= UNIX_TIMESTAMP() - 172800
+                       AND {$run_condition}"
+                );
+                $stats['runs_24h']      = isset($activity->last_24h) ? (int) $activity->last_24h : 0;
+                $stats['runs_prev_24h'] = isset($activity->prev_24h) ? (int) $activity->prev_24h : 0;
+
+                // Most common failure reason across generation runs in the last 7 days.
+                $top_failure = $this->wpdb->get_row(
+                    "SELECT COALESCE(NULLIF(TRIM(error_message), ''), 'Unknown failure') AS reason, COUNT(*) AS failure_count
+                     FROM {$this->table_name}
+                     WHERE status = 'failed'
+                       AND created_at >= UNIX_TIMESTAMP() - 604800
+                       AND {$run_condition}
+                     GROUP BY reason
+                     ORDER BY failure_count DESC
+                     LIMIT 1"
+                );
+                $stats['top_failure'] = $top_failure
+                    ? array('reason' => (string) $top_failure->reason, 'count' => (int) $top_failure->failure_count)
+                    : null;
+
                 return $stats;
             }
+        );
+
+        // Whether an in-progress run is Stalled depends on the current time and no write
+        // marks the moment it goes idle, so the split is computed live, outside the cache.
+        if ($stats['processing'] > 0) {
+            $stalled = $this->count_stalled_rows(self::generation_run_condition('h'));
+
+            $stats['stalled']     = min($stalled, $stats['processing']);
+            $stats['processing'] -= $stats['stalled'];
+        }
+
+        if ($stats['jobs']['processing'] > 0) {
+            $job_stalled = $this->count_stalled_rows(self::background_job_condition('h'));
+
+            $stats['jobs']['stalled']     = min($job_stalled, $stats['jobs']['processing']);
+            $stats['jobs']['processing'] -= $stats['jobs']['stalled'];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Count in-progress rows matching a condition that have gone idle past their threshold.
+     *
+     * @param string $row_condition SQL condition on the `h` alias.
+     * @return int
+     */
+    private function count_stalled_rows($row_condition) {
+        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+
+        return (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*)
+                 FROM {$this->table_name} h
+                 WHERE {$stalled_sql}
+                   AND {$row_condition}",
+                $stalled_args
+            )
         );
     }
 
@@ -818,8 +1653,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * associative array with 'completed', 'failed', and 'total' counts.
      * Days with no records are omitted; callers should fill gaps as needed.
      *
-     * Applies the same row-exclusion filters as get_stats() so that
-     * auxiliary lifecycle rows and empty-shell records are not counted.
+     * Applies the same row filter as get_stats(): generation runs only, so event
+     * containers, background jobs and empty-shell records are not counted.
      *
      * @param int $days Number of calendar days to look back (inclusive today). Default 14.
      * @return array<string, array{completed: int, failed: int, total: int}>
@@ -829,9 +1664,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $start_day = AIPS_DateTime::now()->advance( '-' . ( $days - 1 ) . ' days' )->format( 'Y-m-d' );
         $start     = AIPS_DateTime::fromDate( $start_day )->timestamp();
 
-        $auxiliary_methods = $this->get_auxiliary_creation_methods();
-        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
-        $query_args = array_merge(array($start), $auxiliary_methods);
+        $run_condition = self::generation_run_condition();
         $results = $this->wpdb->get_results(
             $this->wpdb->prepare(
                 "SELECT
@@ -841,11 +1674,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
                     COUNT(*) AS total
                  FROM {$this->table_name}
                  WHERE created_at >= %d
-                   AND COALESCE(creation_method, '') NOT IN ({$auxiliary_placeholders})
-                   AND NOT (creation_method IS NULL AND template_id IS NULL AND topic_id IS NULL AND post_id IS NULL AND author_id IS NULL)
+                   AND {$run_condition}
                  GROUP BY DATE(FROM_UNIXTIME(created_at))
                  ORDER BY day ASC",
-                ...$query_args
+                $start
             )
         );
 
@@ -869,23 +1701,9 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      */
     public function get_template_stats($template_id) {
         return (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status = 'completed'",
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status IN ('completed', 'partial')",
             $template_id
         ));
-    }
-
-    /**
-     * Return creation_method values used for internal lifecycle containers.
-     *
-     * @return string[]
-     */
-    private function get_auxiliary_creation_methods() {
-        return array(
-            'schedule_lifecycle',
-            'template_lifecycle',
-            'campaign_lifecycle',
-            'notification_sent',
-        );
     }
 
     /**
@@ -897,7 +1715,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $results = $this->wpdb->get_results("
             SELECT template_id, COUNT(*) as count
             FROM {$this->table_name}
-            WHERE status = 'completed'
+            WHERE status IN ('completed', 'partial')
             GROUP BY template_id
         ");
 
@@ -926,27 +1744,29 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return array();
         }
 
-        $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+        $id_placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+
+        // Events that represent a generated post for a schedule container.
+        $event_types = AIPS_History_Event_Type::expand(array(
+            AIPS_History_Event_Type::POST_PUBLISHED,
+            AIPS_History_Event_Type::POST_DRAFT,
+            AIPS_History_Event_Type::MANUAL_SCHEDULE_COMPLETED,
+        ));
+        $event_placeholders = implode(', ', array_fill(0, count($event_types), '%s'));
 
         $sql = "
             SELECT history_id, COUNT(*) AS count
             FROM {$this->table_name_log}
-            WHERE history_id IN ({$placeholders})
+            WHERE history_id IN ({$id_placeholders})
                 AND history_type_id IN (%d, %d)
-                AND (
-                    details LIKE %s
-                    OR details LIKE %s
-                    OR details LIKE %s
-                )
+                AND event_type IN ({$event_placeholders})
             GROUP BY history_id
         ";
 
         $args = $history_ids;
         $args[] = AIPS_History_Type::ACTIVITY;
         $args[] = AIPS_History_Type::ERROR;
-        $args[] = '%"event_type":"post_published"%';
-        $args[] = '%"event_type":"post_draft"%';
-        $args[] = '%"event_type":"manual_schedule_completed"%';
+        $args = array_merge($args, $event_types);
 
         $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
 
@@ -975,18 +1795,18 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             return array();
         }
 
-        $where_events = array();
+        // Expand each requested event type to its canonical name plus every
+        // registered legacy alias, then match the indexed event_type column so
+        // both new canonical rows and historical rows surface.
+        $match_types = AIPS_History_Event_Type::expand($event_types);
+        $event_placeholders = implode(', ', array_fill(0, count($match_types), '%s'));
+
         $args = array(
             $author_id,
             AIPS_History_Type::ACTIVITY,
             AIPS_History_Type::ERROR,
         );
-
-        foreach ($event_types as $event_type) {
-            $where_events[] = 'hl.details LIKE %s';
-            $args[] = '%"event_type":"' . $this->wpdb->esc_like($event_type) . '"%';
-        }
-
+        $args = array_merge($args, $match_types);
         $args[] = $limit;
 
         $sql = "
@@ -995,7 +1815,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             INNER JOIN {$this->table_name} h ON hl.history_id = h.id
             WHERE h.author_id = %d
                 AND hl.history_type_id IN (%d, %d)
-                AND (" . implode(' OR ', $where_events) . ")
+                AND hl.event_type IN ({$event_placeholders})
             ORDER BY hl.timestamp DESC
             LIMIT %d
         ";
@@ -1014,25 +1834,34 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Activity entries
      */
     public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
-        $where_clauses = array("history_type_id = %d");
+        $where_clauses = array("hl.history_type_id = %d");
         $where_args = array(AIPS_History_Type::ACTIVITY);
 
-        // Event type filter
+        // Event type filter — match the requested canonical name plus every
+        // registered legacy alias, using the indexed event_type column.
         if (!empty($filters['event_type'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_type":"' . $this->wpdb->esc_like($filters['event_type']) . '"%';
+            $type_names = AIPS_History_Event_Type::expand(array($filters['event_type']));
+            $placeholders = implode(', ', array_fill(0, count($type_names), '%s'));
+            $where_clauses[] = "hl.event_type IN ({$placeholders})";
+            $where_args = array_merge($where_args, $type_names);
         }
 
-        // Event status filter
+        // Event status filter — match every stored synonym of the canonical
+        // status, using the indexed event_status column.
         if (!empty($filters['event_status'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_status":"' . $this->wpdb->esc_like($filters['event_status']) . '"%';
+            $status_values = AIPS_History_Event_Status::synonyms_for($filters['event_status']);
+            if (empty($status_values)) {
+                $status_values = array((string) $filters['event_status']);
+            }
+            $placeholders = implode(', ', array_fill(0, count($status_values), '%s'));
+            $where_clauses[] = "hl.event_status IN ({$placeholders})";
+            $where_args = array_merge($where_args, $status_values);
         }
 
         // Search filter
         if (!empty($filters['search'])) {
             $search_term = '%' . $this->wpdb->esc_like($filters['search']) . '%';
-            $where_clauses[] = "details LIKE %s";
+            $where_clauses[] = "hl.details LIKE %s";
             $where_args[] = $search_term;
         }
 
@@ -1125,18 +1954,21 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
+            'post_type' => isset($data['post_type']) ? sanitize_key($data['post_type']) : null,
             'created_at' => absint($data['created_at']),
+            'record_kind' => AIPS_History_Record_Kind::resolve($data),
         );
-        
-        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
+
+        $format = array('%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
+        $insert_id = $result ? (int) $this->wpdb->insert_id : false;
         
         if ($result) {
             $this->invalidate_cache_domain( 'history', array(), 'history_mutated' );
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return $insert_id;
     }
     
     /**
@@ -1159,7 +1991,17 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $update_data['post_id'] = absint($data['post_id']);
             $format[] = '%d';
         }
-        
+
+        if (isset($data['post_type'])) {
+            $update_data['post_type'] = sanitize_key($data['post_type']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['record_kind']) && AIPS_History_Record_Kind::is_valid($data['record_kind'])) {
+            $update_data['record_kind'] = $data['record_kind'];
+            $format[] = '%s';
+        }
+
         if (isset($data['generated_title'])) {
             $update_data['generated_title'] = sanitize_text_field($data['generated_title']);
             $format[] = '%s';
@@ -1359,6 +2201,442 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'deleted' => $deleted !== false ? (int) $deleted : 0,
             'message' => $deleted !== false ? "Deleted {$deleted} history records" : "Failed to delete history records"
         );
+    }
+
+    /**
+     * Count generation runs that are in progress but idle past their threshold.
+     *
+     * Event-only containers (including persistent lifecycle containers, which stay
+     * open on purpose) are never counted.
+     *
+     * @return array{count:int,oldest_idle_seconds:int|null}
+     */
+    public function get_stalled_summary() {
+        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+
+        $methods      = self::event_only_creation_methods();
+        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
+        $row          = $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT COUNT(*) AS total,
+                    MIN(GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0))) AS oldest_activity
+             FROM {$this->table_name} h
+             WHERE {$stalled_sql}
+               AND COALESCE(h.creation_method, '') NOT IN ({$placeholders})",
+            array_merge($stalled_args, $methods)
+        ));
+
+        $count = $row ? (int) $row->total : 0;
+
+        return array(
+            'count'               => $count,
+            'oldest_idle_seconds' => ($count > 0 && $row->oldest_activity !== null)
+                ? max(0, AIPS_DateTime::now()->timestamp() - (int) $row->oldest_activity)
+                : null,
+        );
+    }
+
+    /**
+     * Keep a post's latest generation run in step with its component state.
+     *
+     * A generation that finished with missing components is 'partial'; once the
+     * components are fixed it becomes 'completed' again (and vice versa). The row that
+     * moves is the post's newest completed/partial generation run, the same row the
+     * Pending Review and Partial Generations tabs show. Indexing, other background jobs
+     * and event containers carry the post_id too and are always newer than the run, so
+     * they are never the target; failed and in-progress rows are left alone.
+     *
+     * @param int  $post_id    Post ID.
+     * @param bool $incomplete Whether any component is still missing.
+     * @return bool True when a row changed.
+     */
+    public function sync_generation_status_for_post($post_id, $incomplete) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return false;
+        }
+
+        // One conditional UPDATE: no read is needed to find out the row is already correct.
+        $target     = $incomplete ? 'partial' : 'completed';
+        $latest_run = self::latest_generation_run_subquery(array('post_id' => $post_id));
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
+             SET h.status = %s
+             WHERE h.status <> %s",
+            $target,
+            $target
+        ));
+
+        return $this->finish_bulk_status_update($updated) > 0;
+    }
+
+    /**
+     * Classify existing rows as generation runs or background jobs.
+     *
+     * The schema upgrade adds record_kind with the default 'event', so every existing
+     * row starts as an event. This promotes the rows that are generation runs or jobs
+     * from their creation_method, in batches. Only rows still marked 'event' are
+     * touched, so a kind written by newer code is never overwritten and a second run
+     * changes nothing.
+     *
+     * 'bulk_generate' is both the Planner's per-post run and the bulk summary container:
+     * a completed row without a post is the summary and becomes a job; with a post, or
+     * failed, pending or in progress, it is a run. New rows are tagged when written;
+     * this is the best available rule for historic ones.
+     *
+     * Rows that carry a post but match no known method are left as events; they are
+     * returned in `unclassified` (method => count) so the caller can report them.
+     *
+     * @param int $batch_size Rows updated per statement.
+     * @return array{generation:int, job:int, errors:int, unclassified:array<string,int>}
+     */
+    public function backfill_record_kind($batch_size = 1000) {
+        $batch_size = max(1, absint($batch_size));
+
+        $runs   = self::quoted_sql_list(self::generation_run_creation_methods());
+        $events = self::quoted_sql_list(AIPS_History_Record_Kind::event_creation_methods());
+        $jobs   = self::quoted_sql_list(AIPS_History_Record_Kind::job_creation_methods());
+        $chain  = array();
+        foreach (self::chain_method_patterns() as $pattern) {
+            $chain[] = "creation_method LIKE '{$pattern}'";
+        }
+
+        // Only a finished row can be told apart: a Planner run that is still pending or
+        // in progress has no post yet either, and must stay a generation.
+        $bulk_summary = "(creation_method = 'bulk_generate' AND post_id IS NULL AND status = 'completed')";
+
+        $conditions = array(
+            AIPS_History_Record_Kind::GENERATION => "((creation_method IN ({$runs}) AND NOT {$bulk_summary})"
+                . " OR ((creation_method IS NULL OR creation_method = '')"
+                . ' AND (template_id IS NOT NULL OR topic_id IS NOT NULL OR post_id IS NOT NULL OR author_id IS NOT NULL)))',
+            AIPS_History_Record_Kind::JOB        => '(((creation_method IN (' . $jobs . ') OR ' . implode(' OR ', $chain) . ')'
+                . " AND creation_method NOT IN ({$runs}) AND creation_method NOT IN ({$events}))"
+                . " OR {$bulk_summary})",
+        );
+
+        $counts = array(AIPS_History_Record_Kind::GENERATION => 0, AIPS_History_Record_Kind::JOB => 0);
+        $errors = 0;
+
+        // The SQL contains LIKE wildcards, so it is not passed through prepare(); every
+        // interpolated value is a code constant or an integer.
+        foreach ($conditions as $kind => $condition) {
+            $total = 0;
+            do {
+                $changed = $this->wpdb->query(
+                    "UPDATE {$this->table_name} SET record_kind = '{$kind}' WHERE record_kind = 'event' AND {$condition} LIMIT {$batch_size}"
+                );
+                if ($changed === false) {
+                    $errors++;
+                    break;
+                }
+                $total += (int) $changed;
+            } while ((int) $changed === $batch_size);
+
+            $counts[$kind] = $this->finish_bulk_status_update($total);
+        }
+
+        return array(
+            'generation'   => $counts[AIPS_History_Record_Kind::GENERATION],
+            'job'          => $counts[AIPS_History_Record_Kind::JOB],
+            'errors'       => $errors,
+            'unclassified' => $this->unclassified_methods_with_posts(),
+        );
+    }
+
+    /**
+     * Creation methods of rows that carry a post but are still marked 'event' without
+     * being a known event type: the rows a name-based backfill may have misjudged.
+     *
+     * @param int $limit Maximum number of methods to return.
+     * @return array<string,int> creation_method => row count, most frequent first.
+     */
+    private function unclassified_methods_with_posts($limit = 10) {
+        $events = self::quoted_sql_list(AIPS_History_Record_Kind::event_creation_methods());
+        $rows   = $this->wpdb->get_results(
+            "SELECT creation_method AS method, COUNT(*) AS n
+             FROM {$this->table_name}
+             WHERE record_kind = 'event'
+               AND post_id IS NOT NULL
+               AND creation_method NOT IN ({$events})
+             GROUP BY creation_method
+             ORDER BY n DESC
+             LIMIT " . absint($limit)
+        );
+
+        $methods = array();
+        foreach ((array) $rows as $row) {
+            $methods[(string) $row->method] = (int) $row->n;
+        }
+
+        return $methods;
+    }
+
+    /**
+     * Fill aips_history.post_type from the linked post for generation runs that lack it.
+     *
+     * Rows written after the column was introduced (3.4.0) but before the write path
+     * populated it have a NULL post_type. Only generation-run rows whose post still
+     * exists are touched, an existing value is never overwritten, and event rows are
+     * left alone. Batched and idempotent.
+     *
+     * @param int $batch_size Rows updated per statement.
+     * @return int Number of rows changed.
+     */
+    public function backfill_post_type($batch_size = 500) {
+        $batch_size    = max(1, absint($batch_size));
+        $posts_table   = $this->wpdb->posts;
+        $run_condition = self::generation_run_condition('h');
+        $total         = 0;
+
+        do {
+            $ids = $this->wpdb->get_col($this->wpdb->prepare(
+                "SELECT h.id
+                 FROM {$this->table_name} h
+                 INNER JOIN {$posts_table} p ON p.ID = h.post_id
+                 WHERE h.post_id IS NOT NULL
+                   AND (h.post_type IS NULL OR h.post_type = '')
+                   AND p.post_type <> ''
+                   AND {$run_condition}
+                 LIMIT %d",
+                $batch_size
+            ));
+            if (empty($ids)) {
+                break;
+            }
+
+            $ids          = array_map('intval', $ids);
+            $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+            $updated      = $this->wpdb->query($this->wpdb->prepare(
+                "UPDATE {$this->table_name} h
+                 INNER JOIN {$posts_table} p ON p.ID = h.post_id
+                 SET h.post_type = p.post_type
+                 WHERE h.id IN ({$placeholders})",
+                $ids
+            ));
+            if ($updated === false || $updated < 1) {
+                break;
+            }
+            $total += (int) $updated;
+        } while (count($ids) === $batch_size);
+
+        return $this->finish_bulk_status_update($total);
+    }
+
+    /**
+     * Mark existing generation runs as partial when their post is flagged incomplete.
+     *
+     * One-time backfill for rows written before generations could be 'partial'.
+     * Only the newest generation run of each post is touched.
+     *
+     * @return int Number of rows changed.
+     */
+    public function backfill_partial_generation_status() {
+        return $this->finish_bulk_status_update(
+            $this->set_run_status_by_incomplete_flag('true', 'completed', 'partial')
+        );
+    }
+
+    /**
+     * Move each post's newest generation run between statuses according to its post's
+     * incomplete flag.
+     *
+     * @param string $flag   Value the post's incomplete meta must have ('true' or 'false').
+     * @param string $from   Current run status to change.
+     * @param string $to     New run status.
+     * @return int|false Rows changed, or false when the query failed.
+     */
+    private function set_run_status_by_incomplete_flag($flag, $from, $to) {
+        $latest_run = self::latest_generation_run_subquery();
+
+        return $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             INNER JOIN {$latest_run} latest ON latest.latest_history_id = h.id
+             INNER JOIN {$this->wpdb->postmeta} pm ON pm.post_id = h.post_id AND pm.meta_key = %s AND pm.meta_value = %s
+             SET h.status = %s
+             WHERE h.status = %s",
+            AIPS_Post_Manager::META_GENERATION_INCOMPLETE,
+            $flag,
+            $to,
+            $from
+        ));
+    }
+
+    /**
+     * Repair statuses written by the sync before it targeted the generation run.
+     *
+     * The sync and the 3.7.13 backfill picked each post's newest non-event row, which
+     * for an indexed post is the content_indexing row. That row was marked 'partial'
+     * (indexing never ends partial) while the real run kept its old status. This:
+     *
+     * 1. resets content_indexing rows that carry a post_id from 'partial' to 'completed'
+     *    (only that creation_method: it is the only background job the old sync reached
+     *    in practice, and any other 'partial' row may be a real run the allowlist does
+     *    not name);
+     * 2. marks each post's newest run 'partial' when its post is flagged incomplete;
+     * 3. marks it 'completed' again when the post's incomplete flag is 'false'.
+     *
+     * Idempotent: a second run changes nothing.
+     *
+     * @return array{jobs_reset:int, marked_partial:int, marked_completed:int, errors:int}
+     *         `errors` counts the statements that failed; callers should not treat the
+     *         repair as done when it is above zero.
+     */
+    public function repair_generation_statuses() {
+        $jobs_reset = $this->wpdb->query(
+            "UPDATE {$this->table_name}
+             SET status = 'completed'
+             WHERE post_id IS NOT NULL
+               AND status = 'partial'
+               AND creation_method = 'content_indexing'"
+        );
+        $marked_partial   = $this->set_run_status_by_incomplete_flag('true', 'completed', 'partial');
+        $marked_completed = $this->set_run_status_by_incomplete_flag('false', 'partial', 'completed');
+
+        $errors = count(array_filter(array($jobs_reset, $marked_partial, $marked_completed), function ($result) {
+            return $result === false;
+        }));
+
+        return array(
+            'jobs_reset'       => $this->finish_bulk_status_update($jobs_reset),
+            'marked_partial'   => $this->finish_bulk_status_update($marked_partial),
+            'marked_completed' => $this->finish_bulk_status_update($marked_completed),
+            'errors'           => $errors,
+        );
+    }
+
+    /**
+     * Close event-only containers that were left in 'processing'.
+     *
+     * One-shot event containers (review-queue actions, topic-generation wrappers,
+     * notifications) used to be created without ever being closed. A container is
+     * closed as 'failed' when any of its log entries carries a failed event status,
+     * and as 'completed' otherwise. completed_at is set to its last log activity.
+     *
+     * @param string[] $creation_methods creation_method values to repair.
+     * @return int Number of rows closed.
+     */
+    public function close_orphaned_event_rows(array $creation_methods) {
+        $creation_methods = array_values(array_filter(array_map('strval', $creation_methods)));
+
+        // Without the indexed event_status column a failed run cannot be told
+        // apart from a successful one, so leave the rows untouched.
+        if (empty($creation_methods) || !$this->history_log_has_event_columns()) {
+            return 0;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($creation_methods), '%s'));
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             SET h.status = CASE
+                     WHEN EXISTS (
+                         SELECT 1 FROM {$this->table_name_log} l
+                         WHERE l.history_id = h.id AND l.event_status = 'failed'
+                     ) THEN 'failed'
+                     ELSE 'completed'
+                 END,
+                 h.completed_at = GREATEST(
+                     h.created_at,
+                     COALESCE((SELECT MAX(l2.timestamp) FROM {$this->table_name_log} l2 WHERE l2.history_id = h.id), 0)
+                 )
+             WHERE h.status = 'processing'
+               AND h.creation_method IN ({$placeholders})",
+            $creation_methods
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Close 'processing' containers that have shown no activity for a while.
+     *
+     * Last activity is the newest log entry, falling back to created_at. Matching
+     * rows are closed as 'terminated' (never deleted) with an explanatory message,
+     * so a genuinely running job keeps its row and a dead one stops showing as
+     * in progress.
+     *
+     * @param int      $stale_seconds   Inactivity, in seconds, after which a row is stale.
+     * @param string[] $exclude_methods creation_method values that must never be closed
+     *                                  (persistent lifecycle containers).
+     * @return int Number of rows closed.
+     */
+    public function close_stale_processing_rows($stale_seconds, array $exclude_methods = array()) {
+        $stale_seconds = max(60, (int) $stale_seconds);
+        $cutoff        = AIPS_DateTime::now()->timestamp() - $stale_seconds;
+        $last_activity = "GREATEST(h.created_at, COALESCE((SELECT MAX(l.timestamp) FROM {$this->table_name_log} l WHERE l.history_id = h.id), 0))";
+
+        // Placeholders appear in SQL order: message, excluded methods, cutoff.
+        $args            = array(__('Closed automatically: no activity was recorded and the run did not finish.', 'ai-post-scheduler'));
+        $where_exclude   = '';
+        $exclude_methods = array_values(array_filter(array_map('strval', $exclude_methods)));
+        if (!empty($exclude_methods)) {
+            $where_exclude = " AND COALESCE(h.creation_method, '') NOT IN (" . implode(', ', array_fill(0, count($exclude_methods), '%s')) . ')';
+            $args          = array_merge($args, $exclude_methods);
+        }
+        $args[] = $cutoff;
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             SET h.completed_at = {$last_activity},
+                 h.error_message = CASE WHEN h.error_message IS NULL OR h.error_message = '' THEN %s ELSE h.error_message END,
+                 h.status = 'terminated'
+             WHERE h.status = 'processing'{$where_exclude}
+               AND {$last_activity} < %d",
+            $args
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Close runs that are currently shown as Stalled.
+     *
+     * Uses the same idle thresholds as the Stalled status (15 minutes for
+     * generation runs, longer for chained jobs), so a run that History still shows
+     * as Processing is never closed. Rows are marked 'terminated', not deleted.
+     *
+     * @param string[] $exclude_methods creation_method values that must never be closed.
+     * @return int Number of rows closed.
+     */
+    public function close_stalled_processing_rows(array $exclude_methods = array()) {
+        list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+
+        $args            = array(__('Closed automatically: no activity was recorded and the run did not finish.', 'ai-post-scheduler'));
+        $args            = array_merge($args, $stalled_args);
+        $where_exclude   = '';
+        $exclude_methods = array_values(array_filter(array_map('strval', $exclude_methods)));
+        if (!empty($exclude_methods)) {
+            $where_exclude = " AND COALESCE(h.creation_method, '') NOT IN (" . implode(', ', array_fill(0, count($exclude_methods), '%s')) . ')';
+            $args          = array_merge($args, $exclude_methods);
+        }
+
+        $updated = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->table_name} h
+             SET h.completed_at = GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0)),
+                 h.error_message = CASE WHEN h.error_message IS NULL OR h.error_message = '' THEN %s ELSE h.error_message END,
+                 h.status = 'terminated'
+             WHERE {$stalled_sql}{$where_exclude}",
+            $args
+        ));
+
+        return $this->finish_bulk_status_update($updated);
+    }
+
+    /**
+     * Normalise a bulk UPDATE result and invalidate History caches when rows changed.
+     *
+     * @param int|false $updated Result of $wpdb->query().
+     * @return int Rows affected.
+     */
+    private function finish_bulk_status_update($updated) {
+        if ($updated === false || $updated < 1) {
+            return 0;
+        }
+
+        $this->invalidate_cache_domain('history', array(), 'history_mutated');
+
+        return (int) $updated;
     }
 
     /**

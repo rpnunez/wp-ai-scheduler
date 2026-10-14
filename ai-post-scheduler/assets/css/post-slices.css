@@ -7,42 +7,44 @@
 
 .aips-post-slices-summary {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--aips-space-4);
-	margin-bottom: var(--aips-space-6);
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
 }
 
 .aips-post-slices-summary-card {
 	background: #fff;
-	border: 1px solid var(--aips-gray-200);
-	border-radius: var(--aips-radius-lg);
-	box-shadow: var(--aips-shadow-sm);
-	padding: var(--aips-space-5);
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	padding: 14px 16px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	min-height: 86px;
+	box-sizing: border-box;
+	transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-.aips-post-slices-summary-card.is-active {
-	border-left: 4px solid var(--aips-success);
-}
-
-.aips-post-slices-summary-card.is-inactive {
-	border-left: 4px solid var(--aips-gray-400);
+.aips-post-slices-summary-card:hover {
+	border-color: #c3c4c7;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .aips-post-slices-summary-value {
-	color: var(--aips-gray-900);
+	color: #1d2327;
 	display: block;
-	font-size: 28px;
+	font-size: 24px;
 	font-weight: 700;
-	line-height: 1;
-	margin-bottom: var(--aips-space-2);
+	line-height: 1.2;
 }
 
 .aips-post-slices-summary-label {
-	color: var(--aips-gray-500);
+	color: #64748b;
 	display: block;
-	font-size: var(--aips-text-xs);
-	font-weight: var(--aips-font-semibold);
-	letter-spacing: 0.04em;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
 	text-transform: uppercase;
 }
 

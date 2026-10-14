@@ -1,0 +1,155 @@
+/**
+ * AI Post Scheduler — Related Posts Frontend Styles
+ */
+
+.aips-related-posts-container {
+	margin: 2.5em 0;
+	padding: 1.5em 0;
+	border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.aips-related-posts-heading {
+	font-size: 1.35em;
+	margin: 0 0 1.25em 0;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+/* Grid Layout */
+.aips-related-grid .aips-related-posts-items {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 1.5em;
+}
+
+.aips-related-grid .aips-related-post-card {
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+	border-radius: 8px;
+	overflow: hidden;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.aips-related-grid .aips-related-post-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.aips-related-grid .aips-related-post-thumb {
+	position: relative;
+	width: 100%;
+	height: 140px;
+	overflow: hidden;
+	background: #f0f0f1;
+}
+
+.aips-related-grid .aips-related-post-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+	transition: transform 0.3s ease;
+}
+
+.aips-related-grid .aips-related-post-card:hover .aips-related-post-thumb img {
+	transform: scale(1.04);
+}
+
+.aips-related-grid .aips-related-post-content {
+	padding: 1em;
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+}
+
+.aips-related-grid .aips-related-post-title {
+	font-size: 1em;
+	line-height: 1.35;
+	margin: 0 0 0.5em 0;
+	font-weight: 600;
+}
+
+.aips-related-grid .aips-related-post-title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.aips-related-grid .aips-related-post-title a:hover {
+	color: #0073aa;
+	text-decoration: underline;
+}
+
+.aips-related-grid .aips-related-post-excerpt {
+	font-size: 0.88em;
+	color: #555;
+	line-height: 1.45;
+	margin: 0;
+}
+
+/* List Layout */
+.aips-related-list .aips-related-posts-items {
+	display: flex;
+	flex-direction: column;
+	gap: 1em;
+}
+
+.aips-related-list .aips-related-post-card {
+	display: flex;
+	gap: 1.25em;
+	align-items: center;
+	padding: 0.75em 0;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.aips-related-list .aips-related-post-thumb {
+	width: 100px;
+	height: 70px;
+	flex-shrink: 0;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #f0f0f1;
+}
+
+.aips-related-list .aips-related-post-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.aips-related-list .aips-related-post-title {
+	font-size: 1.05em;
+	margin: 0 0 0.25em 0;
+}
+
+.aips-related-list .aips-related-post-title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.aips-related-list .aips-related-post-title a:hover {
+	color: #0073aa;
+	text-decoration: underline;
+}
+
+.aips-related-list .aips-related-post-excerpt {
+	font-size: 0.85em;
+	color: #666;
+	margin: 0;
+}
+
+@media (max-width: 600px) {
+	.aips-related-grid .aips-related-posts-items {
+		grid-template-columns: 1fr;
+	}
+	.aips-related-list .aips-related-post-card {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.aips-related-list .aips-related-post-thumb {
+		width: 100%;
+		height: 140px;
+	}
+}

@@ -28,6 +28,7 @@ class AIPS_Test_Stub_History_Repository_For_Correlation implements AIPS_History_
 		return $this->id;
 	}
 	public function get_history($args = array()) { return array(); }
+	public function get_partial_generations($args = array()) { return array(); }
 	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) { return array(); }
 	public function get_by_id($id) { return null; }
 	public function get_by_post_id($post_id) { return array(); }

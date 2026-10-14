@@ -136,6 +136,9 @@ class AIPS_Authors_Repository {
 		}
 
 		$result = $this->wpdb->insert($this->table_name, $data);
+		// Read insert_id before cache invalidation: invalidation can write
+		// to other tables (cache, cache index), which overwrites it.
+		$insert_id = $result ? (int) $this->wpdb->insert_id : 0;
 		if ( $result ) {
 			$this->invalidate_cache_domain(
 				'author',
@@ -143,7 +146,7 @@ class AIPS_Authors_Repository {
 				'author_created'
 			);
 		}
-		return $result ? $this->wpdb->insert_id : false;
+		return $result ? $insert_id : false;
 	}
 	
 	/**
@@ -226,21 +229,24 @@ class AIPS_Authors_Repository {
 	 */
 	public function get_due_for_post_generation() {
 		$current_time = AIPS_DateTime::now()->timestamp();
+		$lock_cutoff  = $current_time - (int) apply_filters( 'aips_author_post_generation_lock_ttl', 900, null );
 
 		return $this->cache_read(
 			'authors.get_due_for_post_generation',
 			array(
 				'current_time' => (int) $current_time,
 			),
-			function() use ( $current_time ) {
+			function() use ( $current_time, $lock_cutoff ) {
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT * FROM {$this->table_name}
 					WHERE is_active = 1
 					AND (post_generation_is_active IS NULL OR post_generation_is_active = 1)
 					AND post_generation_next_run IS NOT NULL
 					AND post_generation_next_run <= %d
+					AND (post_generation_lock = 0 OR post_generation_lock < %d)
 					ORDER BY post_generation_next_run ASC",
-					$current_time
+					$current_time,
+					$lock_cutoff
 				));
 			},
 			array(
@@ -348,6 +354,114 @@ class AIPS_Authors_Repository {
 	}
 
 	/**
+	 * Update only topic generation last run for an author.
+	 *
+	 * @param int      $author_id Author ID.
+	 * @param int|null $last_run  Optional timestamp. Defaults to now.
+	 * @return int|false The number of rows updated, or false on error.
+	 */
+	public function update_topic_generation_last_run($author_id, $last_run = null) {
+		$last_run = is_numeric($last_run) && (int) $last_run > 0 ? (int) $last_run : AIPS_DateTime::now()->timestamp();
+		$result = $this->wpdb->update(
+			$this->table_name,
+			array(
+				'topic_generation_last_run' => $last_run,
+				'updated_at'                => AIPS_DateTime::now()->timestamp(),
+			),
+			array('id' => absint($author_id)),
+			array('%d', '%d'),
+			array('%d')
+		);
+		if ( $result !== false ) {
+			$this->invalidate_author_cache( $author_id, 'author_topic_generation_last_run_updated' );
+		}
+		return $result;
+	}
+
+	/**
+	 * Update only post generation last run for an author.
+	 *
+	 * @param int      $author_id Author ID.
+	 * @param int|null $last_run  Optional timestamp. Defaults to now.
+	 * @return int|false The number of rows updated, or false on error.
+	 */
+	public function update_post_generation_last_run($author_id, $last_run = null) {
+		$last_run = is_numeric($last_run) && (int) $last_run > 0 ? (int) $last_run : AIPS_DateTime::now()->timestamp();
+		$result = $this->wpdb->update(
+			$this->table_name,
+			array(
+				'post_generation_last_run' => $last_run,
+				'updated_at'               => AIPS_DateTime::now()->timestamp(),
+			),
+			array('id' => absint($author_id)),
+			array('%d', '%d'),
+			array('%d')
+		);
+		if ( $result !== false ) {
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_last_run_updated' );
+		}
+		return $result;
+	}
+
+	/**
+	 * Atomically acquire the post-generation lock for an author.
+	 *
+	 * Prevents overlapping cron workers or manual runs from generating posts
+	 * for the same author concurrently.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $lock_ttl  Lock TTL in seconds. Default 900 (15 minutes).
+	 * @return bool True if acquired, false if already held.
+	 */
+	public function acquire_post_generation_lock( int $author_id, int $lock_ttl = 900 ): bool {
+		$now    = AIPS_DateTime::now()->timestamp();
+		$cutoff = $now - max( 60, $lock_ttl );
+
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table_name}
+				SET post_generation_lock = %d
+				WHERE id = %d
+				AND (post_generation_lock = 0 OR post_generation_lock < %d)",
+				$now,
+				$author_id,
+				$cutoff
+			)
+		);
+
+		if ( false !== $result && $result > 0 ) {
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_locked' );
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Release the post-generation lock for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function release_post_generation_lock( int $author_id ): bool {
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table_name}
+				SET post_generation_lock = 0
+				WHERE id = %d",
+				$author_id
+			)
+		);
+
+		if ( false !== $result ) {
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_unlocked' );
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Return the repository cache group for author reads.
 	 *
 	 * @return string
@@ -396,12 +510,23 @@ class AIPS_Authors_Repository {
 	 * @return void
 	 */
 	private function invalidate_author_cache( $author_id, $reason ) {
+		$author_id = absint( $author_id );
 		$this->invalidate_cache_domain(
 			'author',
 			array(
-				'author_id' => absint( $author_id ),
+				'author_id' => $author_id,
 			),
 			(string) $reason
 		);
+
+		delete_transient( 'aips_author_composite_vec_' . $author_id );
+
+		if ( 'author_deleted' === $reason ) {
+			$container = class_exists( 'AIPS_Container' ) ? AIPS_Container::get_instance() : null;
+			$emb_repo  = $container && $container->has( AIPS_Embeddings_Repository::class )
+				? $container->make( AIPS_Embeddings_Repository::class )
+				: new AIPS_Embeddings_Repository();
+			$emb_repo->delete_by_author_id( $author_id );
+		}
 	}
 }

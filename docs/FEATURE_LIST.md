@@ -23,9 +23,8 @@
 7. [Research](#7-research)
 8. [History & Observability](#8-history--observability)
 9. [Data, Settings & Admin UI](#9-data-settings--admin-ui)
-10. [MCP Bridge](#10-mcp-bridge)
-11. [Cron Jobs](#cron-jobs)
-12. [Database Tables](#database-tables)
+10. [Cron Jobs](#cron-jobs)
+11. [Database Tables](#database-tables)
 
 ---
 
@@ -206,12 +205,9 @@ A persona-driven content pipeline where AI authors generate topic ideas, users a
 - Processes up to a configured batch size per cron run
 
 ### Unified Schedule View (`AIPS_Unified_Schedule_Service`)
-Aggregates all schedule types (template, author topics, author posts) into one normalized list for the Schedule admin page. Fields across types are normalized for display.
+Aggregates all schedule types (template, author topics, author posts) into one normalized list for the Automations → Schedules admin page. `get_all_grouped()` additionally collapses a persona's topic-generation and post-generation rows into a single Blueprint row carrying both as stages.
 
-### Schedule Calendar
-Visual calendar showing upcoming scheduled generation runs.
-
-**Admin pages:** AI Post Scheduler → Schedule, AI Post Scheduler → Schedule Calendar
+**Admin pages:** AI Post Scheduler → Automations (Schedules tab)
 
 ---
 
@@ -373,19 +369,6 @@ Available only when `aips_developer_mode` is enabled in Settings:
 
 ---
 
-## 10. MCP Bridge
-
-`ai-post-scheduler/mcp-bridge.php` exposes a subset of plugin functionality via a JSON-RPC–style interface for MCP (Model Context Protocol) integration.
-
-- Schema defined in `mcp-bridge-schema.json`
-- Not auto-loaded in the standard plugin runtime — loaded on demand
-- Enables external AI agents and tools to query and trigger plugin operations
-- Validated by `validate-mcp-bridge.php` (CLI-only, no WordPress required)
-
-Full MCP documentation: [docs/MCP_BRIDGE.md](MCP_BRIDGE.md)
-
----
-
 ## Cron Jobs
 
 All cron hooks are registered and cleared centrally via `AI_Post_Scheduler::get_cron_events()`.
@@ -420,3 +403,22 @@ All tables use the WordPress prefix. Schema source of truth: `AIPS_DB_Manager::g
 | `aips_author_topic_logs` | Topic-level history and post linkage |
 | `aips_topic_feedback` | Approval/rejection feedback metadata |
 | `aips_notifications` | Admin toolbar/system notifications |
+| `aips_embeddings` | Unified polymorphic vector store (posts, CPTs, author topics) |
+| `aips_relationships` | Precomputed semantic relationship and cosine similarity matrix |
+
+---
+
+## 13. Semantic Intelligence & Content Indexer (v3.6.5)
+
+- **Polymorphic Vector Store (`wp_aips_embeddings`)**: Stores AI embedding vectors across WordPress posts, custom post types, and author topics with content hashing.
+- **Precomputed Relationship Matrix (`wp_aips_relationships`)**: Sub-millisecond queries for related content without runtime vector math.
+- **Top-Level Content Indexer Suite (`aips-content-indexer`)**:
+  - Interactive SVG force-directed semantic graph visualizer with node drawers.
+  - Progressive chunked backfill scanner with pause/resume and multi-CPT coverage breakdown.
+  - Duplicate & cannibalization clustering audit engine.
+- **Related Posts Presentation Layer**:
+  - `[aips_related_posts]` dynamic shortcode.
+  - `aips/related-posts` Gutenberg block.
+  - Automatic append content filter for single posts.
+- **Decoupled Embeddings Provider**: Independent vector engine configuration (`aips_embeddings_provider`) with auto-discovery of Meow AI Engine custom environments (Percona Server pgvector, OpenAI, Pinecone, Qdrant, Ollama, Chroma).
+- **Vector Dimension Mismatch Guard**: Flags dimension variance between stored vectors and active models with a one-click guided re-index.

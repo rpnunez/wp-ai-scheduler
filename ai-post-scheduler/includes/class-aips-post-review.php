@@ -141,16 +141,105 @@ class AIPS_Post_Review {
 		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
 		$search = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 		$template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-		
+		$post_type = isset($_POST['post_type']) ? sanitize_key(wp_unslash($_POST['post_type'])) : '';
+
 		$draft_posts = $this->get_draft_posts(array(
 			'page' => $page,
 			'search' => $search,
 			'template_id' => $template_id,
+			'post_type' => $post_type,
 		));
 		
 		AIPS_Ajax_Response::success($draft_posts);
 	}
 	
+	/**
+	 * Record a one-off review-queue action in its own history container and close it.
+	 *
+	 * Review actions are events, not generation runs: the container is closed as
+	 * completed (or failed) immediately so it never lingers as "processing".
+	 *
+	 * @param int    $post_id      Related post ID, or 0 when there is none.
+	 * @param string $message      Human-readable message.
+	 * @param string $event_type   Event type (e.g. 'post_published').
+	 * @param string $event_status 'success' or 'failed'.
+	 * @param array  $context      Extra context stored with the event.
+	 * @return void
+	 */
+	private function log_review_action($post_id, $message, $event_type, $event_status, $context = array()) {
+		$post_id = absint($post_id);
+		$subject = $post_id
+			? AIPS_History_Subject::of(AIPS_History_Subject::TYPE_POST, $post_id)
+			: AIPS_History_Subject::none();
+
+		// The recorder writes the Trigger Source / Trigger Method entries, closes the
+		// container, and never throws, so History cannot break the review action itself.
+		AIPS_History_Event_Recorder::instance()->record_simple(
+			$event_type,
+			$event_status !== 'failed',
+			$message,
+			'post_review_action',
+			array('event' => __('Review queue action', 'ai-post-scheduler')),
+			'manual',
+			$context,
+			$subject
+		);
+	}
+
+	/**
+	 * Append a review-queue event to an existing container.
+	 *
+	 * @param AIPS_History_Container $history      Container to record into.
+	 * @param int                    $post_id      Related post ID, or 0.
+	 * @param string                 $message      Human-readable message.
+	 * @param string                 $event_type   Event type.
+	 * @param string                 $event_status 'success' or 'failed'.
+	 * @param array                  $context      Extra context.
+	 * @return void
+	 */
+	private function record_review_event($history, $post_id, $message, $event_type, $event_status, $context = array()) {
+		if ($post_id) {
+			$context = array_merge(array('post_id' => (int) $post_id), $context);
+		}
+
+		$history->record(
+			'activity',
+			$message,
+			array('event_type' => $event_type, 'event_status' => $event_status),
+			null,
+			$context
+		);
+	}
+
+	/**
+	 * Close a bulk review container: failed when nothing succeeded, partial when
+	 * only some items did, completed otherwise.
+	 *
+	 * @param AIPS_History_Container $history       Container to close.
+	 * @param int                    $failed_count  Items that failed.
+	 * @param int                    $success_count Items that succeeded.
+	 * @param string                 $summary       Summary message.
+	 * @return void
+	 */
+	private function close_review_container($history, $failed_count, $success_count, $summary) {
+		$this->record_review_event(
+			$history,
+			0,
+			$summary,
+			'post_published',
+			$failed_count > 0 && $success_count === 0 ? 'failed' : 'success',
+			array('published' => (int) $success_count, 'failed' => (int) $failed_count)
+		);
+
+		if ($failed_count > 0 && $success_count === 0) {
+			$history->complete_failure($summary);
+		} elseif ($failed_count > 0) {
+			$history->complete_partial($summary);
+		} else {
+			$history->complete_success();
+		}
+	}
+
 	/**
 	 * AJAX handler to publish a single post.
 	 */
@@ -160,68 +249,33 @@ class AIPS_Post_Review {
 		}
 		
 		if (!current_user_can('manage_options')) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Post publish failed: Permission denied', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array()
-			);
+			$this->log_review_action(0, __('Post publish failed: Permission denied', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::permission_denied();
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		
 		if (!$post_id) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Post publish failed: Invalid post ID', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array()
-			);
+			$this->log_review_action(0, __('Post publish failed: Invalid post ID', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post exists and is a draft managed by this plugin
 		$post = get_post($post_id);
 		if (!$post || $post->post_status !== 'draft') {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post publish failed: Post not found or not a draft', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post publish failed: Post not found or not a draft', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post is in the review queue (has a history record)
 		if (!$this->history_service->post_has_history_and_completed($post_id)) {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post publish failed: Post not found in review queue', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post publish failed: Post not found in review queue', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::error(__('Post not found in review queue.', 'ai-post-scheduler'));
 		}
 		
 		// Check per-post capability
 		if (!current_user_can('publish_post', $post_id)) {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post publish failed: Insufficient permissions', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post publish failed: Insufficient permissions', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::error(__('You do not have permission to publish this post.', 'ai-post-scheduler'));
 		}
 		
@@ -231,26 +285,12 @@ class AIPS_Post_Review {
 		));
 		
 		if (is_wp_error($result)) {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				sprintf(__('Post publish failed: %s', 'ai-post-scheduler'), $result->get_error_message()),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id, 'error' => $result->get_error_message())
-			);
+			$this->log_review_action($post_id, sprintf(__('Post publish failed: %s', 'ai-post-scheduler'), $result->get_error_message()), 'post_published', 'failed', array('error' => $result->get_error_message()));
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 		}
 		
 		// Log the publish activity
-		$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-		$history->record(
-			'activity',
-			__('Post published from review queue', 'ai-post-scheduler'),
-			array('event_type' => 'post_published', 'event_status' => 'success'),
-			null,
-			array('post_id' => $post_id)
-		);
+		$this->log_review_action($post_id, __('Post published from review queue', 'ai-post-scheduler'), 'post_published', 'success');
 		
 		/**
 		 * Fires after a post is published from the review queue.
@@ -274,14 +314,7 @@ class AIPS_Post_Review {
 		}
 		
 		if (!current_user_can('manage_options')) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Bulk publish failed: Permission denied', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array()
-			);
+			$this->log_review_action(0, __('Bulk publish failed: Permission denied', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::permission_denied();
 		}
 		
@@ -297,17 +330,13 @@ class AIPS_Post_Review {
 		}
 		
 		if (empty($post_ids)) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Bulk publish failed: No posts selected', 'ai-post-scheduler'),
-				array('event_type' => 'post_published', 'event_status' => 'failed'),
-				null,
-				array()
-			);
+			$this->log_review_action(0, __('Bulk publish failed: No posts selected', 'ai-post-scheduler'), 'post_published', 'failed');
 			AIPS_Ajax_Response::error(__('No posts selected.', 'ai-post-scheduler'));
 		}
 		
+		// A summary container for the whole action; each post also gets its own linked row
+		// so its publish outcome is traceable from the post.
+		$bulk_history = $this->history_service->create('post_review_action', array());
 		$success_count = 0;
 		$failed_count = 0;
 		
@@ -320,42 +349,21 @@ class AIPS_Post_Review {
 			$post = get_post($post_id);
 			if (!$post || $post->post_status !== 'draft') {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk publish failed: Post not found or not a draft', 'ai-post-scheduler'),
-					array('event_type' => 'post_published', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$this->log_review_action($post_id, __('Bulk publish failed: Post not found or not a draft', 'ai-post-scheduler'), 'post_published', 'failed');
 				continue;
 			}
 			
 			// Verify the post is in the review queue
 			if (!$this->history_service->post_has_history_and_completed($post_id)) {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk publish failed: Post not in review queue', 'ai-post-scheduler'),
-					array('event_type' => 'post_published', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$this->log_review_action($post_id, __('Bulk publish failed: Post not in review queue', 'ai-post-scheduler'), 'post_published', 'failed');
 				continue;
 			}
 			
 			// Check per-post capability
 			if (!current_user_can('publish_post', $post_id)) {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk publish failed: Insufficient permissions', 'ai-post-scheduler'),
-					array('event_type' => 'post_published', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$this->log_review_action($post_id, __('Bulk publish failed: Insufficient permissions', 'ai-post-scheduler'), 'post_published', 'failed');
 				continue;
 			}
 			
@@ -368,14 +376,7 @@ class AIPS_Post_Review {
 				$success_count++;
 				
 				// Log the publish activity
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Post published from review queue (bulk)', 'ai-post-scheduler'),
-					array('event_type' => 'post_published', 'event_status' => 'success'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$this->log_review_action($post_id, __('Post published from review queue (bulk)', 'ai-post-scheduler'), 'post_published', 'success');
 				
 				/**
 				 * Fires after a post is published from the review queue.
@@ -385,16 +386,21 @@ class AIPS_Post_Review {
 				do_action('aips_post_review_published', $post_id);
 			} else {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					sprintf(__('Bulk publish failed: %s', 'ai-post-scheduler'), $result->get_error_message()),
-					array('event_type' => 'post_published', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id, 'error' => $result->get_error_message())
-				);
+				$this->log_review_action($post_id, sprintf(__('Bulk publish failed: %s', 'ai-post-scheduler'), $result->get_error_message()), 'post_published', 'failed', array('error' => $result->get_error_message()));
 			}
 		}
+		
+		$this->close_review_container(
+			$bulk_history,
+			$failed_count,
+			$success_count,
+			sprintf(
+				/* translators: 1: published count, 2: failed count */
+				__('Bulk publish from review queue: %1$d published, %2$d failed', 'ai-post-scheduler'),
+				$success_count,
+				$failed_count
+			)
+		);
 		
 		AIPS_Ajax_Response::success(array(
 			'message' => sprintf(__('%d posts published successfully.', 'ai-post-scheduler'), $success_count),
@@ -454,32 +460,21 @@ class AIPS_Post_Review {
 		
 		// Trigger regeneration using the generator (same API as history retry)
 		$generator = new AIPS_Generator();
-		$result = $generator->generate_post($template);
+		$result = $generator->generate_post($template, null, null, array(
+			'creation_method' => 'regenerate',
+			'trigger_context' => array('detail' => sprintf(__('Regeneration of History #%d', 'ai-post-scheduler'), (int) $history_id)),
+		));
 		
 		if (is_wp_error($result)) {
 			// Log the regeneration failure
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				sprintf(__('Post regeneration failed: %s', 'ai-post-scheduler'), $result->get_error_message()),
-				array('event_type' => 'post_regenerated', 'event_status' => 'failed'),
-				null,
-				array('error' => $result->get_error_message())
-			);
+			$this->log_review_action(0, sprintf(__('Post regeneration failed: %s', 'ai-post-scheduler'), $result->get_error_message()), 'post_regenerated', 'failed', array('error' => $result->get_error_message()));
 			
 			AIPS_Ajax_Response::error(array('message' => $result->get_error_message()));
 			return;
 		}
 		
 		// Log the regeneration success
-		$history = $this->history_service->create('post_review_action', array('post_id' => $result));
-		$history->record(
-			'activity',
-			__('Post regenerated from review queue', 'ai-post-scheduler'),
-			array('event_type' => 'post_regenerated', 'event_status' => 'success'),
-			null,
-			array('post_id' => $result)
-		);
+		$this->log_review_action($result, __('Post regenerated from review queue', 'ai-post-scheduler'), 'post_regenerated', 'success');
 		
 		/**
 		 * Fires after a post is regenerated from the review queue.
@@ -649,7 +644,10 @@ class AIPS_Post_Review {
 					'error_message' => null,
 				));
 
-				$regen_result = $generator->generate_post($template);
+				$regen_result = $generator->generate_post($template, null, null, array(
+					'creation_method' => 'regenerate',
+					'trigger_context' => array('detail' => sprintf(__('Bulk regeneration of History #%d', 'ai-post-scheduler'), (int) $history_id)),
+				));
 
 				if (is_wp_error($regen_result)) {
 					return $regen_result;
@@ -715,14 +713,7 @@ class AIPS_Post_Review {
 		}
 		
 		if (!current_user_can('manage_options')) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Post delete failed: Permission denied', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array()
-			);
+			$this->log_review_action(0, __('Post delete failed: Permission denied', 'ai-post-scheduler'), 'post_deleted', 'failed');
 			AIPS_Ajax_Response::permission_denied();
 		}
 		
@@ -730,54 +721,26 @@ class AIPS_Post_Review {
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		
 		if (!$post_id) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Post delete failed: Invalid post ID', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array()
-			);
+			$this->log_review_action(0, __('Post delete failed: Invalid post ID', 'ai-post-scheduler'), 'post_deleted', 'failed');
 			AIPS_Ajax_Response::error(__('Invalid post ID.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post exists and is a draft
 		$post = get_post($post_id);
 		if (!$post || $post->post_status !== 'draft') {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post delete failed: Post not found or not a draft', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post delete failed: Post not found or not a draft', 'ai-post-scheduler'), 'post_deleted', 'failed');
 			AIPS_Ajax_Response::error(__('Post not found or not a draft.', 'ai-post-scheduler'));
 		}
 		
 		// Verify the post is in the review queue
 		if (!$this->history_service->post_has_history_and_completed($post_id)) {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post delete failed: Post not in review queue', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post delete failed: Post not in review queue', 'ai-post-scheduler'), 'post_deleted', 'failed');
 			AIPS_Ajax_Response::error(__('Post not found in review queue.', 'ai-post-scheduler'));
 		}
 		
 		// Check per-post capability
 		if (!current_user_can('delete_post', $post_id)) {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post delete failed: Insufficient permissions', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post delete failed: Insufficient permissions', 'ai-post-scheduler'), 'post_deleted', 'failed');
 			AIPS_Ajax_Response::error(__('You do not have permission to delete this post.', 'ai-post-scheduler'));
 		}
 		
@@ -785,14 +748,7 @@ class AIPS_Post_Review {
 		$result = wp_delete_post($post_id, true);
 		
 		if (!$result) {
-			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-			$history->record(
-				'activity',
-				__('Post delete failed: Unable to delete post', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array('post_id' => $post_id)
-			);
+			$this->log_review_action($post_id, __('Post delete failed: Unable to delete post', 'ai-post-scheduler'), 'post_deleted', 'failed');
 			AIPS_Ajax_Response::error(__('Failed to delete post.', 'ai-post-scheduler'));
 		}
 		
@@ -804,14 +760,7 @@ class AIPS_Post_Review {
 		}
 		
 		// Log the delete activity
-		$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-		$history->record(
-			'activity',
-			__('Draft post deleted from review queue', 'ai-post-scheduler'),
-			array('event_type' => 'post_deleted', 'event_status' => 'success'),
-			null,
-			array('post_id' => $post_id)
-		);
+		$this->log_review_action($post_id, __('Draft post deleted from review queue', 'ai-post-scheduler'), 'post_deleted', 'success');
 		
 		/**
 		 * Fires after a post is deleted from the review queue.

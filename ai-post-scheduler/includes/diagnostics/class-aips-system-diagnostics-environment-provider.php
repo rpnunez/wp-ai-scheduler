@@ -13,10 +13,11 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 	 */
 	public function get_diagnostics(): array {
 		return array(
-			'environment' => $this->check_environment(),
-			'plugin'      => $this->check_plugin(),
-			'database'    => $this->check_database(),
-			'filesystem'  => $this->check_filesystem(),
+			'environment'      => $this->check_environment(),
+			'plugin'           => $this->check_plugin(),
+			'database'         => $this->check_database(),
+			'embeddings cache' => $this->check_embeddings_cache(),
+			'filesystem'       => $this->check_filesystem(),
 		);
 	}
 
@@ -181,6 +182,46 @@ class AIPS_System_Diagnostics_Environment_Provider implements AIPS_System_Diagno
 				'label'  => __( 'Log Directory', 'ai-post-scheduler' ),
 				'value'  => $exists ? ( $writable ? __( 'Writable', 'ai-post-scheduler' ) : __( 'Not Writable', 'ai-post-scheduler' ) ) : __( 'Missing', 'ai-post-scheduler' ),
 				'status' => ( $exists && $writable ) ? 'ok' : 'error',
+			),
+		);
+	}
+
+	/**
+	 * Check embeddings vector cache status, driver, and size.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function check_embeddings_cache() {
+		$container = AIPS_Container::get_instance();
+		$repo      = $container->has(AIPS_Embeddings_Repository::class)
+			? $container->make(AIPS_Embeddings_Repository::class)
+			: new AIPS_Embeddings_Repository();
+
+		$stats = $repo->get_embeddings_cache_stats();
+
+		return array(
+			'cache_driver' => array(
+				'label'  => __('Active Cache Driver', 'ai-post-scheduler'),
+				'value'  => $stats['driver'],
+				'status' => 'ok',
+			),
+			'cached_vectors' => array(
+				'label'  => __('Persisted Vector Transients', 'ai-post-scheduler'),
+				'value'  => sprintf(
+					/* translators: %d: number of cached vectors */
+					_n('%d vector cached', '%d vectors cached', (int) $stats['cached_vectors'], 'ai-post-scheduler'),
+					(int) $stats['cached_vectors']
+				),
+				'status' => 'ok',
+			),
+			'cache_ttl' => array(
+				'label'  => __('Cache Expiration Window', 'ai-post-scheduler'),
+				'value'  => sprintf(
+					/* translators: %d: TTL days */
+					__('%d Days', 'ai-post-scheduler'),
+					(int) $stats['ttl_days']
+				),
+				'status' => 'info',
 			),
 		);
 	}

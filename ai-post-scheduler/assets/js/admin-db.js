@@ -20,11 +20,9 @@
             e.preventDefault();
             var $btn = $(this);
             AIPS.Utilities.confirm('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.', 'Confirm', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, repair', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Repairing...');
-
-                    $.ajax({
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: 'Yes, repair', className: 'aips-btn aips-btn-primary', action: function() {
+                    var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
@@ -41,10 +39,12 @@
                         },
                         error: function() {
                             AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Repair DB Tables');
                         }
+                    });
+
+                    AIPS.Utilities.withLock($btn, req, {
+                        loadingText: 'Repairing...',
+                        timeout: 60000
                     });
                 }}
             ]);
@@ -62,11 +62,9 @@
             e.preventDefault();
             var $btn = $(this);
             AIPS.Utilities.confirm('Run the date/time repair routine? This will normalize legacy date/time storage and backfill missing next-run values for active schedules, authors, and sources.', 'Confirm', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, fix values', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Fixing...');
-
-                    $.ajax({
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+                { label: 'Yes, fix values', className: 'aips-btn aips-btn-primary', action: function() {
+                    var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
@@ -83,10 +81,12 @@
                         },
                         error: function() {
                             AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Fix Date/Time Values in DB');
                         }
+                    });
+
+                    AIPS.Utilities.withLock($btn, req, {
+                        loadingText: 'Fixing...',
+                        timeout: 60000
                     });
                 }}
             ]);
@@ -114,11 +114,9 @@
             }
 
             AIPS.Utilities.confirm(msg, 'Confirm', [
-                { label: 'No, cancel',    className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel',    className: 'aips-btn aips-btn-secondary' },
                 { label: 'Yes, reinstall', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Reinstalling...');
-
-                    $.ajax({
+                    var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
@@ -136,10 +134,12 @@
                         },
                         error: function() {
                             AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Reinstall DB Tables');
                         }
+                    });
+
+                    AIPS.Utilities.withLock($btn, req, {
+                        loadingText: 'Reinstalling...',
+                        timeout: 60000
                     });
                 }}
             ]);
@@ -158,11 +158,9 @@
             e.preventDefault();
             var $btn = $(this);
             AIPS.Utilities.confirm('Are you sure you want to WIPE ALL DATA? This cannot be undone.', 'Warning', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
                 { label: 'Yes, wipe all data', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Wiping...');
-
-                    $.ajax({
+                    var req = $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
                         data: {
@@ -179,10 +177,12 @@
                         },
                         error: function() {
                             AIPS.Utilities.showToast('An error occurred.', 'error');
-                        },
-                        complete: function() {
-                            $btn.prop('disabled', false).text('Wipe Plugin Data');
                         }
+                    });
+
+                    AIPS.Utilities.withLock($btn, req, {
+                        loadingText: 'Wiping...',
+                        timeout: 60000
                     });
                 }}
             ]);
@@ -208,12 +208,11 @@
                 'Use this when duplicate cron events have accumulated and are causing excessive AI calls. Continue?',
                 'Flush WP-Cron Events',
                 [
-                    { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                    { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                        $btn.prop('disabled', true).text('Flushing...');
+                    { label: 'No, cancel', className: 'aips-btn aips-btn-secondary' },
+                    { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-primary', action: function() {
                         $result.hide().empty();
 
-                        $.ajax({
+                        var req = $.ajax({
                             url: aipsAjax.ajaxUrl,
                             type: 'POST',
                             data: {
@@ -239,10 +238,12 @@
                             },
                             error: function() {
                                 AIPS.Utilities.showToast('An error occurred while flushing cron events.', 'error');
-                            },
-                            complete: function() {
-                                $btn.prop('disabled', false).text('Flush WP-Cron Events');
                             }
+                        });
+
+                        AIPS.Utilities.withLock($btn, req, {
+                            loadingText: 'Flushing...',
+                            timeout: 60000
                         });
                     } }
                 ]

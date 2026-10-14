@@ -138,6 +138,7 @@ class AIPS_Config {
 			'aips_wp_ai_connector_mode' => 'all',
 			'aips_wp_ai_connector_ids' => array(),
 			'aips_wp_ai_connector_failover' => true,
+			'aips_prevent_scheduled_ai_generation' => false,
             'aips_max_tokens_limit' => 16000,
             'aips_max_tokens_title' => 150,
             'aips_max_tokens_excerpt' => 300,
@@ -152,8 +153,12 @@ class AIPS_Config {
             'aips_default_post_author' => 1,
             // General
             'aips_unsplash_access_key' => '',
+            'aips_gsc_service_account' => '',
+            'aips_gsc_property'        => '',
+            'aips_gsc_anchor_enabled'  => true,
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
+            'aips_persist_table_filters' => true,
             'aips_log_retention_days' => 30,
             'aips_topic_similarity_threshold' => 0.85,
             // Notifications
@@ -168,6 +173,8 @@ class AIPS_Config {
 				'manual_generation_completed' => 'db',
 				'post_ready_for_review' => 'db',
 				'post_rejected' => 'db',
+				'post_consolidated' => 'both',
+				'duplicate_groups_found' => 'db',
 				'partial_generation_completed' => 'db',
 				'post_generated' => 'both',
             ),
@@ -215,6 +222,102 @@ class AIPS_Config {
             'aips_cache_monitor_full_value_debug_only' => true,
             'aips_cache_monitor_live_refresh_enabled'  => false,
             'aips_cache_monitor_live_refresh_interval' => 30,
+            // Content Indexer & Embeddings
+            'aips_embeddings_enabled'                  => true,
+            'aips_embeddings_persistent_cache_enabled' => true,
+            'aips_embeddings_provider'                 => '', // '' = auto-detect (Meow preferred)
+            'aips_embeddings_model'                    => 'text-embedding-3-small',
+            'aips_embeddings_env_id'                   => '',
+            'aips_embeddings_dimensions'               => 1536,
+            'aips_embeddings_scope'                    => 'aips_only', // 'aips_only', 'all', 'date_range'
+            'aips_embeddings_date_days'                => 30,
+            'aips_embeddings_date_after'               => '',
+            'aips_embeddings_rate_limits_enabled'      => true,
+            'aips_embeddings_daily_limit'              => 50,
+            'aips_embeddings_weekly_limit'             => 200,
+            'aips_embeddings_monthly_limit'            => 500,
+            'aips_indexer_verbose_history'             => false,
+            'aips_indexer_post_types'                  => array('post'),
+            'aips_indexer_similarity_threshold'        => 0.65,
+            'aips_auto_index_on_publish'               => true,
+            'aips_indexer_publish_execution_timing'    => 'queued',
+            'aips_indexer_batch_size'                  => 10,
+            'aips_indexer_queue_debounce_seconds'      => 15,
+            'aips_indexer_quota_pause_enabled'         => true,
+            'aips_indexer_queue_notifications_enabled' => true,
+            'aips_indexer_post_cluster_threshold'      => 0.65,
+            'aips_indexer_error_pause_duration'        => 30,
+            'aips_indexer_error_pause_unit'            => 'minutes',
+            'aips_indexer_consecutive_error_threshold' => 2,
+            'aips_post_clusters'                       => array(),
+            'aips_author_topic_auto_approval_mode'     => 'manual',
+            'aips_author_topic_auto_approval_min_score' => 70,
+            'aips_author_topic_auto_approval_min_relevance' => 65,
+            'aips_author_topic_auto_approval_max_similarity' => 0.85,
+            'aips_author_topic_auto_approval_fallback' => 'smart_split',
+            'aips_link_index_enabled'                  => true,
+            'aips_link_index_post_types'               => array('post', 'page'),
+            'aips_link_index_batch_size'               => 50,
+            'aips_link_index_batch_delay'              => 20,
+            'aips_link_rules_enabled'                  => true,
+            'aips_link_rules_max_per_post'             => 3,
+            'aips_redirect_provider'                   => 'auto',
+            'aips_publish_linking_mode'                => 'review',
+            'aips_publish_linking_outbound'            => true,
+            'aips_link_click_tracking_enabled'         => false,
+            'aips_link_click_retention_days'           => 365,
+            'aips_silo_guide_enabled'                  => true,
+            'aips_silo_guide_position'                 => 'end',
+            'aips_silo_guide_max'                      => 10,
+            'aips_silo_guide_style'                    => 'aips',
+            'aips_silo_guide_heading'                  => '',
+            'aips_autolink_enabled'                    => false,
+            'aips_autolink_auto_apply_threshold'       => 0.85,
+            'aips_autolink_review_threshold'           => 0.70,
+            'aips_autolink_max_links_per_post'         => 3,
+            'aips_autolink_max_total_internal_per_post' => 15,
+            'aips_autolink_max_inbound_per_target'     => 5,
+            'aips_autolink_skip_first_paragraph'       => true,
+            'aips_autolink_rel'                        => '',
+            'aips_autolink_target_blank'               => false,
+            'aips_enable_post_insights_ui'             => true,
+            'aips_indexer_topics_continuous_sync'      => true,
+            'aips_indexer_topics_execution_timing'     => 'immediate',
+            'aips_indexer_scan_entity_scope'           => 'all',
+            // Related Posts
+            'aips_related_posts_enabled'               => true,
+            'aips_related_posts_auto_append'           => false,
+            'aips_related_posts_count'                 => 4,
+            'aips_related_posts_heading'               => 'Related Articles',
+            'aips_related_posts_layout'                => 'grid',
+            'aips_related_posts_show_thumbnails'       => true,
+            'aips_related_posts_show_excerpts'         => true,
+            // Deduplication & Cannibalization Shield
+            'aips_deduplication_mode'                  => 'warn',
+            'aips_deduplication_threshold'             => 0.85,
+            // Duplicate review queue (Cannibalization Shield) & cluster detection limits
+            'aips_cluster_detection_max_posts'         => 250,
+            'aips_cluster_detection_time_budget'       => 8,
+            'aips_duplicate_review_threshold'          => 0.88,
+            'aips_duplicate_review_max_group_size'     => 5,
+            'aips_duplicate_review_max_pairs'          => 1000,
+            'aips_duplicate_keep_strategy'             => 'balanced',
+            'aips_duplicate_excluded_post_types'       => array(),
+            'aips_duplicate_excluded_categories'       => array(),
+            'aips_duplicate_excluded_post_ids'         => '',
+            'aips_duplicate_exclude_pillars'           => true,
+            'aips_duplicate_protect_inbound_links'     => 10,
+            'aips_duplicate_default_merge_mode'        => 'revision',
+            'aips_duplicate_scan_schedule'             => 'off', // 'off', 'daily', 'weekly'
+            'aips_duplicate_dismissed'                 => array(),
+            'aips_cluster_default_min_size'            => 3,
+            'aips_cluster_tightness'                   => 'balanced', // 'loose', 'balanced', 'strict'
+            'aips_pillar_spoke_similarity'             => 0.75,
+            'aips_audit_result_limit'                  => 50,
+            'aips_generation_inject_related_context'   => true,
+            // Server load & generation pacing
+            'aips_generation_delay_seconds'            => 2,
+            'aips_batch_resume_cooldown_minutes'       => 5,
         );
     }
     
@@ -403,12 +506,16 @@ class AIPS_Config {
      * Get AI model configuration.
      *
      * Returns all settings needed to configure an AI generation request,
-     * including the model identifier, optional environment/project ID,
+     * including the selected provider, model identifier, optional
+     * environment/project ID, whether scheduled AI generation is prevented,
      * token limit, and temperature.
      *
      * @return array AI model configuration with keys:
+     *               'provider'                      (string) AI provider identifier.
      *               'model'            (string) AI model identifier.
      *               'env_id'           (string) Optional AI Engine environment ID.
+     *               'prevent_scheduled_generation' (bool)  Whether schedule-driven AI
+     *                                              generation (cron and manual runs) is prevented.
      *               'max_tokens_limit' (int)    Hard cap on total tokens per request.
      *               'temperature'      (float)  Sampling temperature (creativity).
      */
@@ -417,10 +524,31 @@ class AIPS_Config {
             'provider'         => (string) $this->get_option('aips_ai_provider'),
             'model'            => (string) $this->get_option('aips_ai_model'),
             'env_id'           => (string) $this->get_option('aips_ai_env_id'),
+            'prevent_scheduled_generation' => $this->is_scheduled_ai_generation_prevented(),
             'max_tokens_limit' => (int) $this->get_option('aips_max_tokens_limit'),
             'temperature'      => (float) $this->get_option('aips_temperature'),
         );
     }
+
+	/**
+	 * Check whether schedule-driven AI generation is prevented.
+	 *
+	 * Applies to both cron-started runs and manual "Run Now" executions.
+	 *
+	 * @return bool True when schedule-driven AI generation is prevented, false otherwise.
+	 */
+	public function is_scheduled_ai_generation_prevented() {
+		return (bool) $this->get_option('aips_prevent_scheduled_ai_generation');
+	}
+
+	/**
+	 * Get the user-facing label for the AI generation prevention setting.
+	 *
+	 * @return string
+	 */
+	public function get_scheduled_ai_generation_prevention_label() {
+		return __('Prevent AI Generation (Scheduled & Manual)', 'ai-post-scheduler');
+	}
     
     /**
      * Get retry configuration.
@@ -604,6 +732,26 @@ class AIPS_Config {
             'unsplash_access_key'      => (string) $this->get_option('aips_unsplash_access_key'),
             'topic_similarity_threshold' => (float) $this->get_option('aips_topic_similarity_threshold'),
         );
+    }
+
+    /**
+     * Get generation delay in seconds between batch post generations.
+     *
+     * @return int Delay in seconds.
+     */
+    public function get_generation_delay_seconds(): int {
+        return min(30, max(0, (int) $this->get_option('aips_generation_delay_seconds', 2)));
+    }
+
+    /**
+     * Get the cooldown before an automated batch that yielded to avoid a
+     * script timeout resumes its remaining posts.
+     *
+     * @return int Cooldown in seconds (minimum one minute).
+     */
+    public function get_batch_resume_cooldown_seconds(): int {
+        $minutes = min(1440, max(1, (int) $this->get_option('aips_batch_resume_cooldown_minutes', 5)));
+        return $minutes * MINUTE_IN_SECONDS;
     }
     
     // ========================================

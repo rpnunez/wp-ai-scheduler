@@ -397,6 +397,18 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
     }
 
     /**
+     * Test parsing skips balanced non-JSON brackets before the response object.
+     */
+    public function test_parse_ai_variables_response_ignores_non_json_brackets() {
+        $response     = 'Analysis [draft]: {"Framework1":"Laravel"}';
+        $ai_variables = array( 'Framework1' );
+
+        $values = $this->processor->parse_ai_variables_response( $response, $ai_variables );
+
+        $this->assertSame( array( 'Framework1' => 'Laravel' ), $values );
+    }
+
+    /**
      * Test parse_ai_variables_response handles invalid JSON gracefully
      */
     public function test_parse_ai_variables_response_invalid_json() {

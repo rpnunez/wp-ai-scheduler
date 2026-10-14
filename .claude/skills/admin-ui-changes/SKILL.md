@@ -16,16 +16,22 @@ Use this skill when changing WordPress admin pages, menus, templates, and admin 
 3. **Security + hygiene**
    - Escape all output (`esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`).
    - Verify nonce/capability for state-changing actions.
-4. **Asset updates**
-   - Place admin interactions in `ai-post-scheduler/assets/js/`.
-   - Keep styles in `ai-post-scheduler/assets/css/` and reuse existing classes when possible.
-5. **Validation**
+4. **Asset updates & JS Module Pattern**
+   - Follow the standard JS module IIFE pattern: `window.AIPS.ModuleName = { init(), bindEvents(), ... }`.
+   - Dynamic HTML generation MUST use `AIPS.Templates.render(id, data)` (auto-escaped) or `AIPS.Templates.renderRaw(id, data)` for trusted HTML. Never string concatenation.
+   - Use `AIPS.Utilities.showToast(message, type)` instead of `alert()`, and `AIPS.Utilities.confirm(message, heading, buttons)` instead of `confirm()`.
+   - Refresh DOM via AJAX and re-render with `AIPS.Templates`; never call `location.reload()`.
+5. **CSS Layout Structure**
+   - Wrap pages in `div.wrap.aips-wrap` → `div.aips-page-container` → `div.aips-page-header` / `div.aips-content-panel`.
+   - Re-use standard button classes (`aips-btn`, `aips-btn-primary`, `aips-btn-danger`) and table classes (`table.aips-table`).
+6. **Validation**
    - Exercise affected admin pages.
    - Run relevant PHPUnit tests for touched controllers/services.
 
 ## Guardrails
 - Do not register menu pages in `AIPS_Settings`; use `AIPS_Admin_Menu`.
 - Avoid render-time controller reinstantiation patterns.
+- Never use direct string concatenation for HTML generation in JS; use `AIPS.Templates`.
 - Follow plugin style conventions (tabs, `array()`).
 
 ## Useful files

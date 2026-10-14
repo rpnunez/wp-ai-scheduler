@@ -22,6 +22,20 @@ class AIPS_Repository_Cache_Config {
 	private static $driver_name_cache = null;
 
 	/**
+	 * Clear the memoized persistent driver name.
+	 *
+	 * The driver name is normally memoized once per request, but tests that
+	 * change the 'aips_cache_driver' option mid-process need a way to force
+	 * it to be re-read; otherwise the first value resolved in the process
+	 * sticks for every later test.
+	 *
+	 * @return void
+	 */
+	public static function reset_driver_name_cache(): void {
+		self::$driver_name_cache = null;
+	}
+
+	/**
 	 * Return the resolved configuration for a repository cache tier.
 	 *
 	 * @param string $tier Tier name.

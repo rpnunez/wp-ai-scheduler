@@ -6,26 +6,17 @@ if (!defined('ABSPATH')) {
 class AIPS_System_Status {
 
 
-    public function render_page($embedded = false) {
+    public function render_page() {
         $system_info = $this->get_system_info();
         $refresh_task_groups = $this->get_refresh_task_groups();
         if ( isset( $system_info['database'] ) ) {
             $system_info['database'] = $this->condense_database_checks( $system_info['database'] );
         }
-        $embedded = (bool) $embedded;
 
         $active_ai_provider          = AIPS_AI_Provider_Factory::create();
         $ai_provider_label           = $active_ai_provider->get_label();
         $ai_provider_available       = $active_ai_provider->is_available();
         $ai_provider_unavailable_msg = $ai_provider_available ? '' : $active_ai_provider->get_unavailable_reason();
-
-        if ( $data_management ) {
-            $export_formats = $data_management->get_export_formats();
-            $import_formats = $data_management->get_import_formats();
-        } else {
-            $export_formats = array();
-            $import_formats = array();
-        }
 
         include AIPS_PLUGIN_DIR . 'templates/admin/system-status.php';
     }

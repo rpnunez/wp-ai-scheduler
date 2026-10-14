@@ -3,583 +3,34 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-// Data for the unified schedules page
-$unified_service = new AIPS_Unified_Schedule_Service();
-$type_filter     = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
-$all_schedules   = $unified_service->get_all($type_filter);
-
-// Also fetch template-schedule data needed for the "Add Schedule" modal
-$templates_handler  = new AIPS_Templates();
-$templates          = $templates_handler->get_all(true);
-$structure_manager  = new AIPS_Article_Structure_Manager();
-$article_structures = $structure_manager->get_active_structures();
+// Fetch template-schedule data needed for the "Add Schedule" modal
+$templates_handler      = new AIPS_Templates();
+$templates              = $templates_handler->get_all(true);
+$structure_manager      = new AIPS_Article_Structure_Manager();
+$article_structures     = $structure_manager->get_active_structures();
 $template_type_selector = new AIPS_Template_Type_Selector();
-$rotation_patterns  = $template_type_selector->get_rotation_patterns();
-$campaign_options = AIPS_Campaigns_Repository::instance()->get_campaign_filter_options();
-$campaign_map = array();
-foreach ($campaign_options as $campaign_option) {
-	$campaign_map[(int) $campaign_option->id] = $campaign_option;
-}
+$rotation_patterns      = $template_type_selector->get_rotation_patterns();
 
 $preselect_template_id  = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
-$is_embedded_schedule_view = !empty($embedded);
-
-$date_format = get_option('date_format') . ' ' . get_option('time_format');
-
-/**
- * Helper: render a human-readable frequency label.
- */
-if (!function_exists('aips_frequency_label')) {
-	function aips_frequency_label($frequency) {
-		if (empty($frequency)) {
-			return __('—', 'ai-post-scheduler');
-		}
-		$schedules = wp_get_schedules();
-		if (isset($schedules[$frequency])) {
-			return $schedules[$frequency]['display'];
-		}
-		return ucfirst(str_replace('_', ' ', $frequency));
-	}
-}
-
-/**
- * Helper: render a type badge.
- */
-if (!function_exists('aips_type_badge')) {
-	function aips_type_badge($type) {
-		switch ($type) {
-			case AIPS_Unified_Schedule_Service::TYPE_TEMPLATE:
-				return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
-			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC:
-				return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
-			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
-				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
-		}
-		return '';
-	}
-}
-
-/**
- * Helper: render last-run output label for the Last Run column.
- */
-if (!function_exists('aips_run_output_label')) {
-	function aips_run_output_label($type) {
-		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
-			return __('Generated topics for author queue', 'ai-post-scheduler');
-		}
-		if ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
-			return __('Generated approved-topic post', 'ai-post-scheduler');
-		}
-		return __('Generated post from template', 'ai-post-scheduler');
-	}
-}
-
-/**
- * Helper: format a future/past timestamp as a relative countdown string.
- * Returns e.g. "In 2 hours 15 minutes", "In 6 days 4 hours", or "Past due".
- */
-if (!function_exists('aips_next_run_relative')) {
-	function aips_next_run_relative($timestamp) {
-		$diff = $timestamp - time();
-		if ($diff <= 0) {
-			return __('Past due', 'ai-post-scheduler');
-		}
-
-		$units = array(
-			array(
-				'seconds'  => DAY_IN_SECONDS,
-				'singular' => '%s day',
-				'plural'   => '%s days',
-			),
-			array(
-				'seconds'  => HOUR_IN_SECONDS,
-				'singular' => '%s hour',
-				'plural'   => '%s hours',
-			),
-			array(
-				'seconds'  => MINUTE_IN_SECONDS,
-				'singular' => '%s minute',
-				'plural'   => '%s minutes',
-			),
-		);
-		$parts = array();
-
-		foreach ($units as $unit) {
-			if ($diff < $unit['seconds']) {
-				continue;
-			}
-
-			$value = (int) floor($diff / $unit['seconds']);
-			if ($value <= 0) {
-				continue;
-			}
-
-			$parts[] = sprintf(
-				_n($unit['singular'], $unit['plural'], $value, 'ai-post-scheduler'),
-				number_format_i18n($value)
-			);
-			$diff -= $value * $unit['seconds'];
-
-			if (count($parts) === 2) {
-				break;
-			}
-		}
-
-		if (empty($parts)) {
-			$parts[] = sprintf(_n('%s minute', '%s minutes', 1, 'ai-post-scheduler'), '1');
-		}
-
-		/* translators: %s = human-readable time difference, e.g. "6 days 4 hours" */
-		return sprintf(__('In %s', 'ai-post-scheduler'), implode(' ', $parts));
-	}
-}
-
-/**
- * Helper: normalize a DB date/time value to an AIPS_DateTime instance.
- */
-if (!function_exists('aips_datetime_from_db_value')) {
-	function aips_datetime_from_db_value($value) {
-		if (empty($value) || '0000-00-00 00:00:00' === $value) {
-			return null;
-		}
-
-		if (is_numeric($value)) {
-			$timestamp = (int) $value;
-			if ($timestamp > 0 && $timestamp < AIPS_Date_Time_DB_Repair::MIN_VALID_TIMESTAMP) {
-				return null;
-			}
-			return AIPS_DateTime::fromTimestampOrNull($timestamp);
-		}
-
-		return AIPS_DateTime::fromMysqlOrNull((string) $value);
-	}
-}
 ?>
-<?php if (!$is_embedded_schedule_view) : ?>
-<div class="wrap aips-wrap">
-	<div class="aips-page-container">
-
-		<!-- Page Header -->
-		<div class="aips-page-header">
-			<div class="aips-page-header-top">
-				<div>
-					<h1 class="aips-page-title"><?php esc_html_e('Schedules', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('All scheduled processes — template post generation, author topic generation, and author post generation — in one view.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-page-actions">
-					<?php if (!empty($templates)): ?>
-					<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
-						<span class="dashicons dashicons-plus-alt"></span>
-						<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
-					</button>
-					<?php else: ?>
-					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-media-document"></span>
-						<?php esc_html_e('Create Template First', 'ai-post-scheduler'); ?>
-					</a>
-					<?php endif; ?>
-				</div>
-			</div>
-		</div>
-<?php endif; ?>
 		<div id="aips-schedule-status-strip" class="aips-content-panel aips-schedule-status-strip">
 			<div class="aips-panel-body">
 				<div id="aips-schedule-status-summary" class="aips-schedule-status-summary-cards"><?php esc_html_e('Loading schedule status…', 'ai-post-scheduler'); ?></div>
-				<div class="aips-schedule-status-columns">
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Upcoming Schedule Runs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-					<div class="aips-schedule-status-column">
-						<h3 class="aips-schedule-status-heading"><?php esc_html_e('Worker Queue Jobs (Next 24h)', 'ai-post-scheduler'); ?></h3>
-						<div id="aips-schedule-status-queue-timeline" class="aips-schedule-status-timeline"></div>
-					</div>
-				</div>
 				<div id="aips-schedule-status-warnings" class="aips-schedule-status-warnings"></div>
 			</div>
 		</div>
 
-		<!-- Tabbed Navigation -->
-		<div class="aips-tabs">
-			<a href="#" class="aips-tab aips-tab-active" data-tab="all"><?php esc_html_e('All Schedules', 'ai-post-scheduler'); ?></a>
-			<a href="#" class="aips-tab" data-tab="content"><?php esc_html_e('Content Pipelines', 'ai-post-scheduler'); ?></a>
-			<a href="#" class="aips-tab" data-tab="author"><?php esc_html_e('Author Workflows', 'ai-post-scheduler'); ?></a>
-		</div>
-
-		<!-- Content Panel -->
+		<!-- Schedules List Table Panel -->
 		<div class="aips-content-panel">
-
-			<!-- Filter Bar -->
-			<div class="aips-filter-bar">
-				<div class="aips-filter-left">
-					<select id="aips-unified-type-filter" class="aips-form-select">
-						<option value="" <?php selected($type_filter, ''); ?>><?php esc_html_e('All Types', 'ai-post-scheduler'); ?></option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_TEMPLATE); ?>>
-							<?php esc_html_e('Post Generation', 'ai-post-scheduler'); ?>
-						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC); ?>>
-							<?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?>
-						</option>
-						<option value="<?php echo esc_attr(AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>" <?php selected($type_filter, AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST); ?>>
-							<?php esc_html_e('Author Posts', 'ai-post-scheduler'); ?>
-						</option>
-					</select>
-				</div>
-				<div class="aips-filter-right">
-					<label class="screen-reader-text" for="aips-unified-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
-					<input type="search" id="aips-unified-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules…', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-unified-search-clear" class="aips-btn aips-btn-sm aips-btn-ghost" style="display:none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
-				</div>
-			</div>
-
-			<!-- Bulk Actions Toolbar -->
-			<div class="aips-panel-toolbar">
-				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
-					<button type="button" id="aips-unified-select-all" class="aips-btn aips-btn-secondary aips-btn-sm">
-						<?php esc_html_e('Select All', 'ai-post-scheduler'); ?>
-					</button>
-					<button type="button" id="aips-unified-unselect-all" class="aips-btn aips-btn-secondary aips-btn-sm" disabled>
-						<?php esc_html_e('Unselect All', 'ai-post-scheduler'); ?>
-					</button>
-					<select id="aips-unified-bulk-action" class="aips-form-input" style="width:auto;">
-						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-						<option value="run_now"><?php esc_html_e('Run Now', 'ai-post-scheduler'); ?></option>
-						<option value="pause"><?php esc_html_e('Pause', 'ai-post-scheduler'); ?></option>
-						<option value="resume"><?php esc_html_e('Resume', 'ai-post-scheduler'); ?></option>
-						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-					</select>
-					<button type="button" id="aips-unified-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
-						<?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
-					</button>
-					<span id="aips-unified-selected-count" class="aips-selected-count" style="display:none;"></span>
-				</div>
-			</div>
-
-			<!-- Unified Schedules Table -->
 			<div class="aips-panel-body no-padding">
-				<?php if (!empty($all_schedules)): ?>
-				<table class="aips-table aips-unified-schedule-table">
-					<thead>
-						<tr>
-							<th class="check-column">
-								<input type="checkbox" id="cb-select-all-unified" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
-							</th>
-							<th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Stats', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-							<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-					<?php foreach ($all_schedules as $sched):
-						$next_run_dt = aips_datetime_from_db_value($sched['next_run']);
-						$last_run_dt = aips_datetime_from_db_value($sched['last_run']);
-						$next_run_ts = $next_run_dt ? $next_run_dt->timestamp() : 0;
-						$last_run_ts = $last_run_dt ? $last_run_dt->timestamp() : 0;
-						$is_active   = $sched['is_active'];
-						$status      = $sched['status'];
-						$circuit_state = isset($sched['circuit_state']) ? $sched['circuit_state'] : 'closed';
-						$has_incomplete_batch = !empty($sched['has_incomplete_batch']);
-
-						// Health indicator based on circuit_state
-						switch ($circuit_state) {
-							case 'open':
-								$health_badge_cls = 'aips-badge-error';
-								$health_icon_cls  = 'dashicons-dismiss';
-								$health_label     = __('Circuit Open', 'ai-post-scheduler');
-								break;
-							case 'half_open':
-								$health_badge_cls = 'aips-badge-warning';
-								$health_icon_cls  = 'dashicons-warning';
-								$health_label     = __('Recovering', 'ai-post-scheduler');
-								break;
-							default:
-								$health_badge_cls = 'aips-badge-success';
-								$health_icon_cls  = 'dashicons-yes';
-								$health_label     = __('Healthy', 'ai-post-scheduler');
-						}
-
-						// Status badge (active/paused/failed)
-						switch ($status) {
-							case 'failed':
-								$badge_cls = 'aips-badge-error';
-								$icon_cls  = 'dashicons-warning';
-								$status_lbl = __('Failed', 'ai-post-scheduler');
-								break;
-							case 'inactive':
-								$badge_cls = 'aips-badge-neutral';
-								$icon_cls  = 'dashicons-minus';
-								$status_lbl = __('Paused', 'ai-post-scheduler');
-								break;
-							default:
-								$badge_cls = 'aips-badge-info';
-								$icon_cls  = 'dashicons-yes-alt';
-								$status_lbl = __('Active', 'ai-post-scheduler');
-						}
-
-						// Composite row ID for JS (e.g. "template_schedule:5")
-						$row_key = esc_attr($sched['type'] . ':' . $sched['id']);
-
-						// Tab category for filtering
-						$tab_category = 'all';
-						if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
-							$tab_category = 'content';
-						} elseif ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC || $sched['type'] === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST) {
-							$tab_category = 'author';
-						}
-					?>
-					<tr class="aips-unified-row"
-						data-id="<?php echo esc_attr($sched['id']); ?>"
-						data-type="<?php echo esc_attr($sched['type']); ?>"
-						data-row-key="<?php echo $row_key; ?>"
-						data-tab-category="<?php echo esc_attr($tab_category); ?>"
-						data-can-delete="<?php echo esc_attr($sched['can_delete'] ? '1' : '0'); ?>"
-						data-is-active="<?php echo esc_attr($is_active); ?>"
-						data-circuit-state="<?php echo esc_attr($circuit_state); ?>"
-						data-has-incomplete-batch="<?php echo esc_attr($has_incomplete_batch ? '1' : '0'); ?>"
-						data-title="<?php echo esc_attr($sched['title']); ?>"
-						data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
-						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
-						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
-						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
-						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
-						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
-						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>">
-						<th scope="row" class="check-column">
-							<input type="checkbox"
-								class="aips-unified-checkbox"
-								value="<?php echo $row_key; ?>"
-								aria-label="<?php echo esc_attr(sprintf(__('Select: %s', 'ai-post-scheduler'), $sched['title'])); ?>">
-						</th>
-						<td class="column-title">
-							<div class="cell-primary">
-								<strong><?php echo esc_html($sched['title']); ?></strong>
-							</div>
-							<?php if (!empty($sched['subtitle'])): ?>
-							<div class="cell-meta"><?php echo esc_html($sched['subtitle']); ?></div>
-							<?php endif; ?>
-							<?php if (!empty($sched['campaign_id']) && isset($campaign_map[(int) $sched['campaign_id']])): ?>
-							<div class="cell-meta" style="margin-top:4px;">
-								<a class="aips-badge aips-badge-info" href="<?php echo esc_url(add_query_arg(array('page' => 'aips-generated-posts', 'campaign_id' => absint($sched['campaign_id'])), admin_url('admin.php'))); ?>">
-									<?php echo esc_html($campaign_map[(int) $sched['campaign_id']]->name); ?>
-								</a>
-							</div>
-							<?php endif; ?>
-							<div class="aips-row-actions">
-								<a href="#"
-									class="aips-view-unified-history"
-									data-id="<?php echo esc_attr($sched['id']); ?>"
-									data-type="<?php echo esc_attr($sched['type']); ?>"
-									data-name="<?php echo esc_attr($sched['title']); ?>"
-									data-limit="5">
-									<?php esc_html_e('History', 'ai-post-scheduler'); ?>
-								</a>
-							</div>
-						</td>
-						<td class="column-type">
-							<?php echo aips_type_badge($sched['type']); // WPCS: XSS ok — output is safe HTML. ?>
-							<div class="cell-meta" style="font-size:11px;margin-top:4px;opacity:.7;">
-								<?php echo esc_html($sched['cron_hook']); ?>
-							</div>
-						</td>
-						<td class="column-frequency">
-							<span class="aips-badge aips-badge-info">
-								<?php echo esc_html(aips_frequency_label($sched['frequency'])); ?>
-							</span>
-						</td>
-						<td class="column-last-run">
-							<?php if ($last_run_ts): ?>
-							<div class="cell-meta"><?php echo esc_html(date_i18n($date_format, $last_run_ts)); ?></div>
-							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(aips_run_output_label($sched['type'])); ?></div>
-							<?php else: ?>
-							<div class="cell-meta aips-muted"><?php esc_html_e('Never', 'ai-post-scheduler'); ?></div>
-							<?php endif; ?>
-						</td>
-						<td class="column-next-run">
-							<?php if (!$is_active): ?>
-							<div class="cell-meta aips-muted"><?php esc_html_e('N/A', 'ai-post-scheduler'); ?></div>
-							<?php elseif ($next_run_ts): ?>
-							<div class="cell-primary aips-next-run-countdown" title="<?php echo esc_attr(date_i18n($date_format, $next_run_ts)); ?>">
-								<?php echo esc_html(aips_next_run_relative($next_run_ts)); ?>
-							</div>
-							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(date_i18n($date_format, $next_run_ts)); ?></div>
-							<?php if ($next_run_ts < time()): ?>
-							<div class="cell-meta" style="color:var(--aips-warning);font-size:11px;"><?php esc_html_e('Due — runs on next cron trigger', 'ai-post-scheduler'); ?></div>
-							<?php endif; ?>
-							<?php else: ?>
-							<div class="cell-meta aips-muted"><?php esc_html_e('—', 'ai-post-scheduler'); ?></div>
-							<?php endif; ?>
-						</td>
-						<td class="column-stats">
-							<div class="cell-primary">
-								<strong><?php echo esc_html(number_format_i18n($sched['stats_count'])); ?></strong>
-							</div>
-							<?php if (!empty($sched['stats_label'])): ?>
-							<div class="cell-meta"><?php echo esc_html($sched['stats_label']); ?></div>
-							<?php endif; ?>
-						</td>
-						<td class="column-status">
-							<div class="aips-schedule-status-wrapper" style="display:flex;flex-direction:column;gap:6px;">
-								<!-- Health Indicator -->
-								<div style="display:flex;align-items:center;gap:8px;">
-									<span class="aips-badge <?php echo esc_attr($health_badge_cls); ?>" title="<?php esc_attr_e('Circuit Breaker Status', 'ai-post-scheduler'); ?>">
-										<span class="dashicons <?php echo esc_attr($health_icon_cls); ?>"></span>
-										<?php echo esc_html($health_label); ?>
-									</span>
-								</div>
-								<!-- Status Badge + Toggle -->
-								<div style="display:flex;align-items:center;gap:8px;">
-									<span class="aips-badge <?php echo esc_attr($badge_cls); ?>">
-										<span class="dashicons <?php echo esc_attr($icon_cls); ?>"></span>
-										<?php echo esc_html($status_lbl); ?>
-									</span>
-									<label class="aips-toggle">
-										<input type="checkbox"
-											class="aips-unified-toggle-schedule"
-											data-id="<?php echo esc_attr($sched['id']); ?>"
-											data-type="<?php echo esc_attr($sched['type']); ?>"
-											aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>"
-											<?php checked($is_active, 1); ?>>
-										<span class="aips-toggle-slider"></span>
-									</label>
-								</div>
-							</div>
-						</td>
-						<td class="column-actions">
-							<div class="cell-actions">
-								<!-- Edit (template schedules only) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
-									aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>"
-									title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>"
-									data-schedule-id="<?php echo esc_attr($sched['id']); ?>"
-									data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
-									data-title="<?php echo esc_attr($sched['title']); ?>"
-									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
-									data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
-									data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
-									data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
-									data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>"
-									data-is-active="<?php echo esc_attr($is_active); ?>">
-									<span class="dashicons dashicons-edit"></span>
-								</button>
-								<?php endif; ?>
-
-								<!-- Run Now (all types) -->
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-run-now"
-									data-id="<?php echo esc_attr($sched['id']); ?>"
-									data-type="<?php echo esc_attr($sched['type']); ?>"
-									aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>"
-									title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-controls-play"></span>
-								</button>
-
-								<!-- Reset Circuit (template schedules only, when circuit is open) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $circuit_state === 'open'): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-warning aips-reset-circuit"
-									data-id="<?php echo esc_attr($sched['id']); ?>"
-									data-type="<?php echo esc_attr($sched['type']); ?>"
-									aria-label="<?php esc_attr_e('Reset circuit breaker', 'ai-post-scheduler'); ?>"
-									title="<?php esc_attr_e('Reset Circuit & Retry', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-update"></span>
-								</button>
-								<?php endif; ?>
-
-								<!-- Resume Batch (template schedules only, when batch is incomplete) -->
-								<?php if ($sched['type'] === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE && $has_incomplete_batch): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-info aips-resume-batch"
-									data-id="<?php echo esc_attr($sched['id']); ?>"
-									data-type="<?php echo esc_attr($sched['type']); ?>"
-									aria-label="<?php esc_attr_e('Resume incomplete batch', 'ai-post-scheduler'); ?>"
-									title="<?php esc_attr_e('Resume Batch', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-controls-forward"></span>
-								</button>
-								<?php endif; ?>
-
-								<!-- Delete (template schedules only) -->
-								<?php if ($sched['can_delete']): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
-									data-id="<?php echo esc_attr($sched['id']); ?>"
-									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
-									title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-trash"></span>
-								</button>
-								<?php elseif (!empty($sched['campaign_id'])): ?>
-								<button class="aips-btn aips-btn-sm aips-btn-danger" disabled
-									aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>"
-									title="<?php esc_attr_e('This schedule cannot be deleted here because it belongs to a campaign. Delete it from the Campaigns page.', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-trash"></span>
-								</button>
-								<?php endif; ?>
-							</div>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-					</tbody>
-				</table>
-
-				<!-- No Search Results State -->
-				<div id="aips-unified-search-no-results" class="aips-empty-state" style="display:none;padding:60px 20px;">
-					<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
-					<p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
-					<div class="aips-empty-state-actions">
-						<button type="button" class="aips-btn aips-btn-primary aips-clear-unified-search-btn">
-							<span class="dashicons dashicons-dismiss"></span>
-							<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-						</button>
-					</div>
-				</div>
-
-				<?php else: ?>
-				<!-- Empty State -->
-				<div class="aips-empty-state" style="padding:60px 20px;">
-					<div class="dashicons dashicons-calendar-alt aips-empty-state-icon" aria-hidden="true"></div>
-					<h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Yet', 'ai-post-scheduler'); ?></h3>
-					<p class="aips-empty-state-description">
-						<?php if (!empty($type_filter)): ?>
-						<?php esc_html_e('No schedules found for the selected type.', 'ai-post-scheduler'); ?>
-						<?php else: ?>
-						<?php esc_html_e('Create a template schedule, or configure authors with topic / post generation schedules, to see them here.', 'ai-post-scheduler'); ?>
-						<?php endif; ?>
-					</p>
-					<?php if (!empty($templates)): ?>
-					<div class="aips-empty-state-actions">
-						<button class="aips-btn aips-btn-primary aips-add-schedule-btn">
-							<span class="dashicons dashicons-plus-alt"></span>
-							<?php esc_html_e('Add Template Schedule', 'ai-post-scheduler'); ?>
-						</button>
-					</div>
-					<?php endif; ?>
-				</div>
-				<?php endif; ?>
+				<?php
+				$schedules_list_table = new AIPS_Schedules_List_Table();
+				$schedules_list_table->prepare_items();
+				$schedules_list_table->display_page();
+				?>
 			</div>
-
-			<!-- Table footer -->
-			<?php if (!empty($all_schedules)): ?>
-			<div class="tablenav">
-				<span class="aips-table-footer-count">
-					<?php
-					$count = count($all_schedules);
-					printf(
-						esc_html(_n('%s schedule', '%s schedules', $count, 'ai-post-scheduler')),
-						number_format_i18n($count)
-					);
-					?>
-				</span>
-			</div>
-			<?php endif; ?>
-		</div><!-- /.aips-content-panel -->
-
-<?php if (!$is_embedded_schedule_view) : ?>
-	</div><!-- /.aips-page-container -->
-</div><!-- /.wrap -->
-<?php endif; ?>
+		</div>
 
 <!-- ============================================================ -->
 <!-- Add / Edit Template Schedule Modal                           -->
@@ -593,7 +44,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
-			<form id="aips-schedule-form">
+			<form id="aips-schedule-form" data-aips-async="true">
 				<input type="hidden" name="schedule_id" id="schedule_id" value="">
 				<div class="aips-form-row">
 					<label for="schedule_title"><?php esc_html_e('Title (Optional)', 'ai-post-scheduler'); ?></label>
@@ -609,86 +60,124 @@ if (!function_exists('aips_datetime_from_db_value')) {
 						<?php endforeach; ?>
 					</select>
 				</div>
-				<div class="aips-form-row">
-					<label for="schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
-					<select id="schedule_frequency" name="frequency">
-						<?php
-						$cron_schedules_list = wp_get_schedules();
-						uasort($cron_schedules_list, function ($a, $b) {
-							return $a['interval'] - $b['interval'];
-						});
+				<!-- Unified Schedule & Cadence Builder -->
+				<div class="aips-form-row aips-schedule-builder-wrap">
+					<label class="aips-builder-title"><?php esc_html_e('Schedule Cadence', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+					<p class="description" style="margin-top:0; margin-bottom:12px;"><?php esc_html_e('Choose how often and when this schedule should run.', 'ai-post-scheduler'); ?></p>
 
-						// The 7 single-day frequencies (every_monday ... every_sunday) are chosen
-						// via the "Repeat On" day picker below instead of being listed here
-						// individually — that used to mean scanning past 7 near-duplicate entries
-						// to find e.g. "Every Monday".
-						$day_specific_keys = array_map(function ($day) {
-							return 'every_' . strtolower($day);
-						}, array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'));
+					<!-- Hidden inputs submitted with form -->
+					<input type="hidden" id="schedule_frequency" name="frequency" value="weekly">
+					<input type="hidden" id="schedule_repeat_day" name="repeat_day" value="monday">
+					<input type="hidden" id="schedule_start_time" name="start_time" value="">
 
-						$frequency_groups = array(
-							'hourly'  => array('label' => __('Hourly', 'ai-post-scheduler'), 'options' => array()),
-							'daily'   => array('label' => __('Daily', 'ai-post-scheduler'), 'options' => array()),
-							'weekly'  => array('label' => __('Weekly', 'ai-post-scheduler'), 'options' => array()),
-							'monthly' => array('label' => __('Monthly', 'ai-post-scheduler'), 'options' => array()),
-							'once'    => array('label' => __('One-Time', 'ai-post-scheduler'), 'options' => array()),
-						);
-
-						foreach ($cron_schedules_list as $key => $schedule) {
-							if (in_array($key, $day_specific_keys, true)) {
-								continue;
-							}
-							if ('once' === $key) {
-								$group_key = 'once';
-							} elseif ($schedule['interval'] < DAY_IN_SECONDS) {
-								$group_key = 'hourly';
-							} elseif ($schedule['interval'] === DAY_IN_SECONDS) {
-								$group_key = 'daily';
-							} elseif ($schedule['interval'] <= 2 * WEEK_IN_SECONDS) {
-								$group_key = 'weekly';
-							} else {
-								$group_key = 'monthly';
-							}
-							$frequency_groups[$group_key]['options'][$key] = $schedule['display'];
-						}
-
-						foreach ($frequency_groups as $group) {
-							if (empty($group['options'])) {
-								continue;
-							}
-							echo '<optgroup label="' . esc_attr($group['label']) . '">';
-							foreach ($group['options'] as $key => $display) {
-								echo '<option value="' . esc_attr($key) . '" ' . selected('daily', $key, false) . '>' . esc_html($display) . '</option>';
-							}
-							echo '</optgroup>';
-						}
-						?>
-					</select>
-				</div>
-				<div class="aips-form-row" id="aips-schedule-repeat-on-row" style="display:none;">
-					<label><?php esc_html_e('Repeat On', 'ai-post-scheduler'); ?></label>
-					<input type="hidden" id="schedule_repeat_day" name="repeat_day" value="">
-					<div class="aips-btn-group" role="group" aria-label="<?php esc_attr_e('Day of week', 'ai-post-scheduler'); ?>">
-						<?php
-						$day_picker_labels = array(
-							'monday'    => __('Mon', 'ai-post-scheduler'),
-							'tuesday'   => __('Tue', 'ai-post-scheduler'),
-							'wednesday' => __('Wed', 'ai-post-scheduler'),
-							'thursday'  => __('Thu', 'ai-post-scheduler'),
-							'friday'    => __('Fri', 'ai-post-scheduler'),
-							'saturday'  => __('Sat', 'ai-post-scheduler'),
-							'sunday'    => __('Sun', 'ai-post-scheduler'),
-						);
-						foreach ($day_picker_labels as $day_key => $day_label): ?>
-						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-schedule-day-btn" data-day="<?php echo esc_attr($day_key); ?>"><?php echo esc_html($day_label); ?></button>
-						<?php endforeach; ?>
+					<!-- Cadence Segmented Tabs -->
+					<div class="aips-cadence-tabs" role="tablist" aria-label="<?php esc_attr_e('Schedule Cadence', 'ai-post-scheduler'); ?>">
+						<button type="button" class="aips-cadence-tab" data-cadence="once" role="tab" aria-selected="false"><?php esc_html_e('One-Time', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-cadence-tab" data-cadence="hourly" role="tab" aria-selected="false"><?php esc_html_e('Hourly', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-cadence-tab" data-cadence="daily" role="tab" aria-selected="false"><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-cadence-tab active" data-cadence="weekly" role="tab" aria-selected="true"><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-cadence-tab" data-cadence="monthly" role="tab" aria-selected="false"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-cadence-tab" data-cadence="advanced" role="tab" aria-selected="false"><?php esc_html_e('Advanced', 'ai-post-scheduler'); ?></button>
 					</div>
-					<p class="description"><?php esc_html_e('Choose which day of the week this schedule should run on.', 'ai-post-scheduler'); ?></p>
-				</div>
-				<div class="aips-form-row">
-					<label for="schedule_start_time"><?php esc_html_e('Start Time', 'ai-post-scheduler'); ?></label>
-					<input type="datetime-local" id="schedule_start_time" name="start_time">
-					<p class="description"><?php esc_html_e('Leave empty to start from now', 'ai-post-scheduler'); ?></p>
+
+					<!-- Contextual Cadence Panes -->
+					<div class="aips-cadence-panes">
+						<!-- WEEKLY PANE (Default) -->
+						<div class="aips-cadence-pane" id="aips-pane-weekly" style="display:block;">
+							<div class="aips-pane-field-label"><?php esc_html_e('Repeat On', 'ai-post-scheduler'); ?></div>
+							<div class="aips-btn-group aips-weekday-btn-group" role="group" aria-label="<?php esc_attr_e('Day of week', 'ai-post-scheduler'); ?>">
+								<?php
+								$day_picker_labels = array(
+									'monday'    => __('Mon', 'ai-post-scheduler'),
+									'tuesday'   => __('Tue', 'ai-post-scheduler'),
+									'wednesday' => __('Wed', 'ai-post-scheduler'),
+									'thursday'  => __('Thu', 'ai-post-scheduler'),
+									'friday'    => __('Fri', 'ai-post-scheduler'),
+									'saturday'  => __('Sat', 'ai-post-scheduler'),
+									'sunday'    => __('Sun', 'ai-post-scheduler'),
+								);
+								foreach ($day_picker_labels as $day_key => $day_label): ?>
+								<button type="button" class="aips-btn aips-btn-sm aips-schedule-day-btn<?php echo ('monday' === $day_key) ? ' active' : ''; ?>" data-day="<?php echo esc_attr($day_key); ?>"><?php echo esc_html($day_label); ?></button>
+								<?php endforeach; ?>
+							</div>
+						</div>
+
+						<!-- HOURLY PANE -->
+						<div class="aips-cadence-pane" id="aips-pane-hourly" style="display:none;">
+							<div class="aips-pane-field-label"><?php esc_html_e('Interval', 'ai-post-scheduler'); ?></div>
+							<div class="aips-btn-group aips-hourly-step-group" role="group">
+								<button type="button" class="aips-btn aips-btn-sm aips-hourly-step-btn active" data-freq="hourly"><?php esc_html_e('Every Hour', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-sm aips-hourly-step-btn" data-freq="every_2_hours"><?php esc_html_e('Every 2h', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-sm aips-hourly-step-btn" data-freq="every_4_hours"><?php esc_html_e('Every 4h', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-sm aips-hourly-step-btn" data-freq="every_6_hours"><?php esc_html_e('Every 6h', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-sm aips-hourly-step-btn" data-freq="every_12_hours"><?php esc_html_e('Every 12h', 'ai-post-scheduler'); ?></button>
+							</div>
+						</div>
+
+						<!-- DAILY PANE -->
+						<div class="aips-cadence-pane" id="aips-pane-daily" style="display:none;">
+							<p class="description" style="margin:0;"><?php esc_html_e('Runs once each day at the designated time below.', 'ai-post-scheduler'); ?></p>
+						</div>
+
+						<!-- MONTHLY PANE -->
+						<div class="aips-cadence-pane" id="aips-pane-monthly" style="display:none;">
+							<div class="aips-pane-field-label"><?php esc_html_e('Day of Month', 'ai-post-scheduler'); ?></div>
+							<div class="aips-btn-group aips-monthly-step-group" role="group">
+								<button type="button" class="aips-btn aips-btn-sm aips-monthly-day-btn active" data-month-day="1"><?php esc_html_e('1st of Month', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-sm aips-monthly-day-btn" data-month-day="15"><?php esc_html_e('15th of Month', 'ai-post-scheduler'); ?></button>
+								<button type="button" class="aips-btn aips-btn-sm aips-monthly-day-btn" data-month-day="last"><?php esc_html_e('Last Day', 'ai-post-scheduler'); ?></button>
+							</div>
+						</div>
+
+						<!-- ONE-TIME PANE -->
+						<div class="aips-cadence-pane" id="aips-pane-once" style="display:none;">
+							<div class="aips-pane-field-label"><?php esc_html_e('Target Execution Date', 'ai-post-scheduler'); ?></div>
+							<input type="date" id="schedule_builder_date" class="regular-text" style="max-width:220px;">
+						</div>
+
+						<!-- ADVANCED PANE -->
+						<div class="aips-cadence-pane" id="aips-pane-advanced" style="display:none;">
+							<div class="aips-pane-field-label"><?php esc_html_e('Custom Recurrence', 'ai-post-scheduler'); ?></div>
+							<div class="aips-custom-interval-stepper">
+								<span><?php esc_html_e('Every', 'ai-post-scheduler'); ?></span>
+								<input type="number" id="schedule_builder_interval_val" min="1" max="90" value="2" style="width:65px;">
+								<select id="schedule_builder_interval_unit" style="max-width:130px;">
+									<option value="days" selected><?php esc_html_e('Days', 'ai-post-scheduler'); ?></option>
+									<option value="weeks"><?php esc_html_e('Weeks', 'ai-post-scheduler'); ?></option>
+									<option value="hours"><?php esc_html_e('Hours', 'ai-post-scheduler'); ?></option>
+								</select>
+							</div>
+						</div>
+					</div>
+
+					<!-- TIME PICKER & PRESET CHIPS -->
+					<div class="aips-builder-time-row" id="aips-builder-time-row">
+						<div class="aips-builder-time-header">
+							<span class="aips-pane-field-label" style="margin:0;"><?php esc_html_e('Time of Day', 'ai-post-scheduler'); ?></span>
+							<span class="aips-tz-badge" id="aips-builder-tz-badge"><?php echo esc_html(wp_timezone_string()); ?></span>
+						</div>
+						<div class="aips-builder-time-controls">
+							<input type="time" id="schedule_builder_time" value="09:00">
+							<div class="aips-time-chips" role="group" aria-label="<?php esc_attr_e('Time presets', 'ai-post-scheduler'); ?>">
+								<button type="button" class="aips-time-chip active" data-time="09:00">09:00 AM</button>
+								<button type="button" class="aips-time-chip" data-time="14:00">02:00 PM</button>
+								<button type="button" class="aips-time-chip" data-time="18:00">06:00 PM</button>
+								<button type="button" class="aips-time-chip" data-time="22:00">10:00 PM</button>
+							</div>
+						</div>
+						<p class="description aips-builder-time-hint" id="aips-builder-time-hint" style="margin-top:4px; display:none;"></p>
+					</div>
+
+					<!-- DYNAMIC LIVE SUMMARY CARD -->
+					<div class="aips-schedule-summary-card" id="aips-schedule-summary-card">
+						<div class="aips-summary-card-icon">
+							<span class="dashicons dashicons-calendar-alt"></span>
+						</div>
+						<div class="aips-summary-card-body">
+							<div class="aips-summary-card-title" id="aips-summary-card-title"><?php esc_html_e('Every Monday at 9:00 AM', 'ai-post-scheduler'); ?></div>
+							<div class="aips-summary-card-subtitle" id="aips-summary-card-subtitle">...</div>
+						</div>
+					</div>
 				</div>
 				<div class="aips-form-row">
 					<label for="schedule_topic"><?php esc_html_e('Topic (Optional)', 'ai-post-scheduler'); ?></label>
@@ -734,7 +223,7 @@ if (!function_exists('aips_datetime_from_db_value')) {
 	role="dialog" aria-modal="true">
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
-			<h2 class="aips-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
+			<h2 class="aips-modal-title" id="aips-schedule-history-modal-title"><?php esc_html_e('Recent History', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">

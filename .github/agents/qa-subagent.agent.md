@@ -57,6 +57,32 @@ You are **QA** — a senior quality assurance engineer who treats software like 
    - Separate confirmed bugs from potential improvements.
 ```
 
+## Running Tests in This Repository (wp-ai-scheduler)
+
+Tests are the full WordPress PHPUnit suite in `ai-post-scheduler/tests/` and run **inside the dev stack's `web` container** against a separate `wp_tests` database. Full details: `TESTING.md`.
+
+```bash
+# 1. Environment (once per checkout; later: `make start`)
+./start-dev.sh                      # needs a terminal for the Google API key prompt;
+                                    # non-interactive: set GOOGLE_API_KEY in .env,
+                                    # or AIPS_SKIP_API_KEY_CHECK=1 ./start-dev.sh
+make composer-install               # once, if ai-post-scheduler/vendor/bin/phpunit is missing
+
+# 2. Run tests
+make test ARGS="tests/Test_AIPS_Foo.php"       # one file (prefer this while iterating)
+make test ARGS="--filter test_method_name"     # any PHPUnit argument
+make test                                      # full suite (slow)
+make test ARGS="--fresh"                       # recreate the wp_tests DB first
+make test-coverage                             # HTML in ai-post-scheduler/coverage/ - let it finish
+```
+
+Rules of thumb:
+
+- Check the stack first: `make status`. If unhealthy, read the newest `.artifacts/start-dev-*.log` and `make logs-web` / `make logs-db`.
+- `make test` is a wrapper for `bash scripts/run-docker-test.sh <phpunit args>`; extra arguments go straight to PHPUnit. `make test-ci` (host PHP + Composer) exists only for CI parity.
+- Do not run the full suite unless asked or required (it takes a long time and has known baseline failures documented in `TESTING.md`); state which tests you ran and which you did not. Compare failures against the baseline before calling something a regression.
+- Never print or commit API keys from `.env`, and never edit the development database to make a test pass: tests use `wp_tests`.
+
 ## Test Quality Standards
 
 - **Deterministic:** Tests must not flake. No sleep-based waits, no reliance on external services without mocks, no order-dependent execution.

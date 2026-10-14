@@ -130,10 +130,15 @@ class AIPS_History_Service implements AIPS_History_Service_Interface {
 		$args = array(
 			'per_page' => 20,
 			'page' => 1,
-			'status' => 'processing',
+			// 'in_progress' includes runs that went idle: a stalled container can still be resumed.
+			'status' => 'in_progress',
 			'orderby' => 'created_at',
 			'order' => 'DESC',
 		);
+
+		if (!empty($type)) {
+			$args['creation_method'] = (string) $type;
+		}
 
 		if (!empty($metadata['author_id'])) {
 			$args['author_id'] = absint($metadata['author_id']);

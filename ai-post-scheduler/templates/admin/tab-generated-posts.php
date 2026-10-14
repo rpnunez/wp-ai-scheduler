@@ -15,6 +15,8 @@
  * @var array $posts_data
  * @var array $history
  * @var int $current_page
+ * @var array $selectable_post_types
+ * @var string $post_type_filter
  *
  * @package AI_Post_Scheduler
  * @since 2.0.0
@@ -28,6 +30,7 @@ if (!defined('ABSPATH')) {
 				<div class="aips-filter-bar">
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
+						<input type="hidden" name="tab" value="aips-generated-posts">
 						<div class="aips-filter-left">
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
@@ -62,12 +65,23 @@ if (!defined('ABSPATH')) {
 								<?php endforeach; ?>
 							</select>
 							<?php endif; ?>
+							<?php if (!empty($selectable_post_types)): ?>
+							<label class="screen-reader-text" for="aips-filter-post-type-generated"><?php esc_html_e('Filter by Post Type:', 'ai-post-scheduler'); ?></label>
+							<select name="post_type" id="aips-filter-post-type-generated" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Post Types', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($selectable_post_types as $post_type_key => $post_type_info): ?>
+								<option value="<?php echo esc_attr($post_type_key); ?>" <?php selected($post_type_filter, $post_type_key); ?>>
+									<?php echo esc_html($post_type_info['label']); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
 							<button type="submit" id="aips-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
 								<span class="dashicons dashicons-filter" aria-hidden="true"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id)): ?>
-							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php if (!empty($author_id) || !empty($template_id) || !empty($campaign_id) || !empty($post_type_filter)): ?>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id', 'campaign_id', 'post_type', 'generated_paged'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear filters', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
@@ -78,11 +92,24 @@ if (!defined('ABSPATH')) {
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
 							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+							<a href="<?php echo esc_url(remove_query_arg(array('s', 'generated_paged'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost" title="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><span class="dashicons dashicons-dismiss" aria-hidden="true"></span></a>
 							<?php endif; ?>
 						</div>
 					</form>
 				</div>
+
+				<?php if (!empty($posts_data)): ?>
+				<!-- Bulk Actions Toolbar -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+						<select id="aips-generated-bulk-action" class="aips-form-select">
+							<option value=""><?php esc_html_e('Bulk actions', 'ai-post-scheduler'); ?></option>
+							<option value="trash"><?php esc_html_e('Move to Trash', 'ai-post-scheduler'); ?></option>
+						</select>
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-generated-bulk-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+					</div>
+				</div>
+				<?php endif; ?>
 
 				<!-- Generated posts table -->
 				<div class="aips-panel-body no-padding">
@@ -90,8 +117,9 @@ if (!defined('ABSPATH')) {
 					<table class="aips-table">
 						<thead>
 							<tr>
+								<th scope="col" class="manage-column column-cb check-column"><input type="checkbox" id="aips-generated-cb-all"></th>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-
+								<th scope="col"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
@@ -101,11 +129,18 @@ if (!defined('ABSPATH')) {
 						<tbody>
 							<?php foreach ($posts_data as $post_data): ?>
 							<tr>
+								<th scope="row" class="check-column"><input type="checkbox" class="aips-generated-cb" value="<?php echo esc_attr($post_data['id']); ?>"></th>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
 									</a>
 									<span class="aips-cell-source"><?php echo esc_html($post_data['source']); ?></span>
+								</td>
+								<td>
+									<?php $post_type_obj = get_post_type_object($post_data['post_type']); ?>
+									<span class="aips-badge aips-badge-neutral">
+										<?php echo esc_html($post_type_obj ? $post_type_obj->labels->singular_name : $post_data['post_type']); ?>
+									</span>
 								</td>
 								<td>
 									<div class="cell-meta">
@@ -187,7 +222,7 @@ if (!defined('ABSPATH')) {
 							<h3 class="aips-empty-state-title"><?php esc_html_e('No Posts Found', 'ai-post-scheduler'); ?></h3>
 							<p class="aips-empty-state-description"><?php esc_html_e('No generated posts match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
 							<div class="aips-empty-state-actions">
-								<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-primary">
+								<a href="<?php echo esc_url(remove_query_arg(array('s', 'generated_paged'))); ?>" class="aips-btn aips-btn-primary">
 									<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
 									<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 								</a>
@@ -225,12 +260,13 @@ if (!defined('ABSPATH')) {
 					$start = max(1, $current - 3);
 					$end = min($pages, $current + 3);
 					$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $campaign_id, $search_query) {
+					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $campaign_id, $post_type_filter, $search_query) {
 						return add_query_arg(array_filter(array(
 							'generated_paged' => absint($page_number),
 							'author_id' => $author_id ? $author_id : false,
 							'template_id' => $template_id ? $template_id : false,
 							'campaign_id' => $campaign_id ? $campaign_id : false,
+							'post_type' => $post_type_filter ? $post_type_filter : false,
 							's' => $search_query ? $search_query : false,
 						)), $base_url);
 					};
