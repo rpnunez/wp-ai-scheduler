@@ -633,29 +633,10 @@ class AIPS_Author_Topics_Generator {
 	 * @return array Processed topic arrays.
 	 */
 	public function apply_auto_approval_rules($author, array $topics): array {
-		$config = AIPS_Config::get_instance();
-
-		// Determine effective policy: inherit from global settings or use author custom settings
-		$author_mode = !empty($author->topic_auto_approval_mode) ? $author->topic_auto_approval_mode : 'inherit';
-
-		if ($author_mode === 'inherit') {
-			$global_enabled = (bool) $config->get_option('aips_author_topic_auto_approval_enabled', false);
-			if (!$global_enabled) {
-				return $topics; // Manual review by default
-			}
-			$mode           = (string) $config->get_option('aips_author_topic_approval_mode', 'embeddings');
-			$min_score      = 70;
-			$min_relevance  = (float) $config->get_option('aips_author_topic_min_relevance', 0.65);
-			$max_similarity = (float) $config->get_option('aips_author_topic_max_duplicate', 0.80);
-			$fallback       = (string) $config->get_option('aips_author_topic_fallback_action', 'smart_split');
-		} else {
-			$mode           = $author_mode;
-			$min_score      = isset($author->topic_auto_approval_min_score) ? (int) $author->topic_auto_approval_min_score : 70;
-			// In similarity/embeddings mode, topic_auto_approval_min_score stores relevance percentage (1-100)
-			$min_relevance  = isset($author->topic_auto_approval_min_score) ? max(0.01, min(1.0, (float) ($author->topic_auto_approval_min_score / 100))) : 0.65;
-			$max_similarity = isset($author->topic_auto_approval_max_similarity) ? (float) $author->topic_auto_approval_max_similarity : 0.80;
-			$fallback       = !empty($author->topic_auto_approval_fallback) ? $author->topic_auto_approval_fallback : 'smart_split';
-		}
+		// Resolve the effective policy once (author columns, or global options for
+		// 'inherit') and pass it to the evaluator so both agree.
+		$policy = AIPS_Author_Topic_Approval_Policy::resolve($author);
+		$mode   = $policy['mode'];
 
 		if ($mode === 'manual') {
 			return $topics;
@@ -664,7 +645,7 @@ class AIPS_Author_Topics_Generator {
 		$now                 = AIPS_DateTime::now()->timestamp();
 		$author_baseline_vec = null;
 
-		if (in_array($mode, array('similarity', 'embeddings'), true)) {
+		if ('similarity' === $mode) {
 			// Check rate limits and auto-cooldown before attempting remote embedding calls
 			if ($this->rate_limiter->is_in_cooldown()) {
 				$cooldown_info = $this->rate_limiter->get_cooldown_status();
@@ -719,7 +700,7 @@ class AIPS_Author_Topics_Generator {
 		}
 
 		foreach ($topics as &$topic) {
-			$eval_result = $this->similarity_evaluator->evaluate_author_topic_auto_approval($topic, $author, $author_baseline_vec);
+			$eval_result = $this->similarity_evaluator->evaluate_author_topic_auto_approval($topic, $author, $author_baseline_vec, $policy);
 
 			$topic['status']   = $eval_result['decision'];
 			$topic['metadata'] = wp_json_encode($eval_result['meta']);

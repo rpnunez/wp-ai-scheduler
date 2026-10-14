@@ -492,7 +492,7 @@ if (!defined('ABSPATH')) {
                                 <?php echo wp_kses(
                                     sprintf(
                                         __( 'When enabled, affiliate link mappings matching this post tags will be injected. Manage mappings on the %s page.', 'ai-post-scheduler' ),
-                                        '<a href="' . esc_url( admin_url( 'admin.php?page=aips-affiliate-links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
+                                        '<a href="' . esc_url( AIPS_Admin_Menu_Helper::get_page_url( 'affiliate_links' ) ) . '" target="_blank">' . esc_html__( 'Affiliate Links', 'ai-post-scheduler' ) . '</a>'
                                     ),
                                     array(
                                         'a' => array(

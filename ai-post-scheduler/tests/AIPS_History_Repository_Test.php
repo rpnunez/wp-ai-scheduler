@@ -361,8 +361,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 					'error_message'    => null,
 					// created_at is a unix-timestamp column; a datetime string would be stored as 2026.
 					'created_at'       => strtotime($today . ' 12:00:00 UTC'),
+					'record_kind'      => 'generation',
 				),
-				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
+				array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s')
 			);
 			$extra_ids[] = $wpdb->insert_id;
 		}
@@ -379,8 +380,9 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 				'prompt'           => '',
 				'error_message'    => null,
 				'created_at'       => strtotime($yesterday . ' 12:00:00 UTC'),
+					'record_kind'      => 'generation',
 			),
-			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d')
+			array('%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s')
 		);
 		$extra_ids[] = $wpdb->insert_id;
 

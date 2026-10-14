@@ -113,10 +113,15 @@
 			});
 			function updateAuthorApprovalFields() {
 				var mode = $('#aips_author_topic_auto_approval_mode').val();
+				var isScore = mode === 'score';
 				var isSimilarity = mode === 'similarity';
-				$('#aips_author_topic_auto_approval_min_score, #aips_author_topic_auto_approval_max_similarity, #aips_author_topic_auto_approval_fallback')
+				var hasFallback = isScore || isSimilarity;
+				$('#aips_author_topic_auto_approval_min_score').closest('tr').toggle(isScore);
+				$('#aips_author_topic_auto_approval_min_relevance, #aips_author_topic_auto_approval_max_similarity')
 					.closest('tr')
 					.toggle(isSimilarity);
+				$('#aips_author_topic_auto_approval_fallback').closest('tr').toggle(hasFallback);
+				$('#aips-auto-approval-embeddings-warning').toggle(isSimilarity);
 			}
 			$(document).on('change', '#aips_author_topic_auto_approval_mode', updateAuthorApprovalFields);
 			updateAuthorApprovalFields();

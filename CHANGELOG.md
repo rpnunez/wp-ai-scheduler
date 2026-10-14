@@ -8,11 +8,52 @@
   - Added post cache priming (`_prime_post_caches`) in `detect_post_clusters()` and `get_orphan_posts()` to avoid individual database queries per post for title, permalink, and edit link resolution.
   - Exposed cluster candidate truncation state and candidate metadata (`truncated`, `total_candidates`, `analyzed_candidates`, `max_candidates`) in `AIPS_Content_Indexer_Controller::ajax_get_post_clusters()` and `AIPS_Similarity_Evaluator::get_last_cluster_meta()`.
   - Replaced method-level static caches in `table_exists()` and `topics_table_exists()` with test-resettable class-level static cache and `reset_table_cache()`.
+### Added
+- **History `record_kind` Column:**
+  - Every History row now stores what it is: `generation` (a run that produces or regenerates a post), `job` (content indexing, embeddings, bulk slices, source fetches and other background work) or `event` (lifecycle containers, topic-generation wrappers, review actions, notifications). Run lists, run statistics and the status sync filter on the stored kind instead of guessing from `creation_method` names, so a new container type can no longer leak into them: anything unclassified is an event.
+  - The generator tags every run as a generation whatever its `creation_method`, and the bulk-generation summary container is a job, which separates it from the Planner's per-post runs that share its name. `AIPS_History_Record_Kind` classifies everything else; the `aips_generation_run_creation_methods` and `aips_history_job_creation_methods` filters extend it.
+  - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
+
+### Fixed
+- **History Status Sync Targets the Generation Run:**
+  - Moving a post's History status between `completed` and `partial` (when its components become incomplete or are repaired) now updates the post's newest generation run, the row the Pending Review and Partial Generations tabs show. It used to update the post's newest non-event row, which for an indexed post is the `content_indexing` row: that row was marked partial while the real run kept its old status, and a failed indexing row blocked the update entirely.
+  - Migration 3.7.16 resets background-job rows that were wrongly marked partial and puts the status back on the generation run.
+
+## [3.7.14] - 2026-10-13
+
+### Fixed
+- **History, Dashboard and Metrics Statistics Count Generation Runs Only:**
+  - History stats and the daily chart, the dashboard summary, daily chart and recent posts, and the metrics repository (generation counts, duration percentiles, average AI calls, queue-health partial/failed/retry counts, recent outcomes) now count only post-generation runs. Topic-generation wrappers, review actions, notifications, lifecycle containers and content-indexing/background-job rows are no longer included, so totals and the success rate are no longer inflated and each failure counts once instead of once for the run and once for its wrapper.
+  - The dashboard "posts by topic" list shows a topic once; the run and its topic-generation wrapper both matched before.
+  - Queue health no longer logs a database error and reports 0 stalled runs when nothing is in progress (the stalled-run condition rendered a `CASE` with no `WHEN`).
+  - The dashboard no longer keeps its own list of excluded creation methods; the History list still hides lifecycle and notification rows as before.
+  - History page: the stat tiles are now labelled as generation runs (Failed runs, Runs in progress, Stalled runs, Run success rate, Median run duration) and clicking one filters the list to generation runs, so the tile and the list count the same rows. A new Background jobs tile shows content-indexing, bulk, source-fetch and similar work (with failed and stalled counts) and filters the list to it. "Generation runs" and "Background jobs" are also available in the Domain filter.
+- **History Run Queries (Partial Generations, Campaign Recent Posts):**
+  - Partial Generations and the campaign recent-posts list now resolve each post to its newest generation run instead of its newest History row, so topic-generation wrappers, review actions, content-indexing runs and notifications no longer replace the run (wrong row, wrong history link).
+  - Pending Review also lists runs whose `creation_method` is the container default `post_generation`, which the first Pending Review fix left out.
+  - The Partial Generations post-type filter now works; it was passed by the page but ignored by the query.
+  - Migration 3.7.15 backfills `aips_history.post_type` for generation runs written before the column was populated, so the History post-type filter no longer hides them.
+- **Author Post Generation Race Condition & Duplicate Runs (#2203):**
+  - Added atomic compare-and-swap (CAS) topic claim lock (`claimed_at`) with TTL (default 15 minutes) and historical post check (`NOT EXISTS` in `aips_author_topic_logs`) before post generation starts.
+  - Added per-author post generation run lock (`post_generation_lock`) with TTL (default 15 minutes) on `aips_authors` to prevent concurrent slice executions or overlapping manual/scheduled generation runs for the same author.
+  - Implemented automatic claim release on generation failure or exception so topics can be retried on subsequent schedule runs.
+  - Supported post regeneration flows by allowing claim override when `allow_regenerate` is explicitly requested.
+  - Added database migration `migrate_to_3_7_14()` adding `post_generation_lock` and `claimed_at` columns and index keys.
 
 ### Removed
 - **MCP Bridge:** Removed `mcp-bridge.php`, its schema, validator, test script, example clients and `docs/MCP_BRIDGE.md`. The `AIPS_MCP_BRIDGE_ENABLED` and `AIPS_MCP_BRIDGE_TOKEN` constants are no longer used and can be deleted from `wp-config.php`.
 
 ### Fixed
+- **Author Topic Auto-Approval:** Global Settings → Authors now actually control authors set to "Use Global Settings".
+  - New `AIPS_Author_Topic_Approval_Policy::resolve()` is the single policy resolver; the generator passes the resolved policy to `evaluate_author_topic_auto_approval()` instead of the evaluator re-deriving it from the author row.
+  - Removed the hidden, UI-less option family (`aips_author_topic_auto_approval_enabled`, `..._approval_mode`, `..._min_relevance`, `..._max_duplicate`, `..._fallback_action`); the global default mode is now `manual`.
+  - Quality score and niche relevance are separate settings, columns (`topic_auto_approval_min_relevance`) and Authors-form fields; settings gain the `score` mode and `pending` fallback, and legacy `reject`/`embeddings`/`none` values are normalized.
+  - Similarity mode no longer auto-approves topics whose niche relevance could not be measured (embeddings disabled or failing); the fallback applies instead. Author max-similarity is now clamped to 0.50-0.99, and saving an author in `manual`/`inherit` mode resets that author's stored thresholds to defaults.
+  - Migration 3.7.18 switches existing authors on `manual` (the old column default) to `inherit`; explicit `score`/`all`/`similarity` authors are unchanged.
+- **Pending Review Duplicate Rows:**
+  - A draft is now listed once, however many History rows reference it. Topic-generation wrappers, review-queue actions, content-indexing runs and notifications carry the same post ID and finish as completed; the list, its total and the dashboard draft count now use only the newest generation run per post (`AIPS_History_Repository::generation_run_condition()` / `latest_generation_run_subquery()`).
+  - The Type column reads the post's own type, so History rows written before the `post_type` column existed no longer show a dash.
+  - The template and search filters on Pending Review now match each post's newest generation run.
 - **Stress Test Data Privacy:**
   - Stress test cases that create content (`save_post`, `save_page`, `author_post`, `post_with_taxonomies`, `cpt_complex_meta`, and `meta_fields_*`) now strictly create data as `private` and never `publish`.
   - Added `enforce_private_status()` helper to guarantee post, page, custom post type, and featured image attachment fixtures are private.

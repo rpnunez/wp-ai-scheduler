@@ -229,21 +229,24 @@ class AIPS_Authors_Repository {
 	 */
 	public function get_due_for_post_generation() {
 		$current_time = AIPS_DateTime::now()->timestamp();
+		$lock_cutoff  = $current_time - (int) apply_filters( 'aips_author_post_generation_lock_ttl', 900, null );
 
 		return $this->cache_read(
 			'authors.get_due_for_post_generation',
 			array(
 				'current_time' => (int) $current_time,
 			),
-			function() use ( $current_time ) {
+			function() use ( $current_time, $lock_cutoff ) {
 				return $this->wpdb->get_results($this->wpdb->prepare(
 					"SELECT * FROM {$this->table_name}
 					WHERE is_active = 1
 					AND (post_generation_is_active IS NULL OR post_generation_is_active = 1)
 					AND post_generation_next_run IS NOT NULL
 					AND post_generation_next_run <= %d
+					AND (post_generation_lock = 0 OR post_generation_lock < %d)
 					ORDER BY post_generation_next_run ASC",
-					$current_time
+					$current_time,
+					$lock_cutoff
 				));
 			},
 			array(
@@ -398,6 +401,64 @@ class AIPS_Authors_Repository {
 			$this->invalidate_author_cache( $author_id, 'author_post_generation_last_run_updated' );
 		}
 		return $result;
+	}
+
+	/**
+	 * Atomically acquire the post-generation lock for an author.
+	 *
+	 * Prevents overlapping cron workers or manual runs from generating posts
+	 * for the same author concurrently.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $lock_ttl  Lock TTL in seconds. Default 900 (15 minutes).
+	 * @return bool True if acquired, false if already held.
+	 */
+	public function acquire_post_generation_lock( int $author_id, int $lock_ttl = 900 ): bool {
+		$now    = AIPS_DateTime::now()->timestamp();
+		$cutoff = $now - max( 60, $lock_ttl );
+
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table_name}
+				SET post_generation_lock = %d
+				WHERE id = %d
+				AND (post_generation_lock = 0 OR post_generation_lock < %d)",
+				$now,
+				$author_id,
+				$cutoff
+			)
+		);
+
+		if ( false !== $result && $result > 0 ) {
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_locked' );
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Release the post-generation lock for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function release_post_generation_lock( int $author_id ): bool {
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$this->table_name}
+				SET post_generation_lock = 0
+				WHERE id = %d",
+				$author_id
+			)
+		);
+
+		if ( false !== $result ) {
+			$this->invalidate_author_cache( $author_id, 'author_post_generation_unlocked' );
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

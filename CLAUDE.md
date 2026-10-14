@@ -22,7 +22,7 @@ Project-scoped subagents live in `.claude/agents/` and are auto-delegated by Cla
 | `pr-triage` | Overlap detection, risk classification, and review readiness for pull requests |
 
 Skills (step-by-step implementation guides) live in `.claude/skills/`:
-`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`, `batch-job-changes`.
+`ajax-controller-changes`, `db-changes`, `feature-slicing`, `generation-changes`, `pr-triage`, `admin-ui-changes`, `batch-job-changes`, `sql-batch` (read-only SQL diagnostics on dev/prod via `make sql-batch`).
 
 Saved multi-agent workflows live in `.claude/workflows/`:
 - `.claude/workflows/ajax-security-sweep.md` — fans out one agent per AJAX controller to audit security compliance.
