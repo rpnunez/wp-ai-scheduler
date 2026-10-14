@@ -31,19 +31,23 @@ AI_CONNECTOR_FIXED="ai-provider-for-google"
 
 usage() {
     cat <<'USAGE'
-Usage: ./start-dev.sh [--import-sql <file.sql|file.sql.gz>] [--force-import]
+Usage: ./start-dev.sh [--import-sql <file.sql|file.sql.gz>] [--force-import] [--random-ports] [--random-containers]
 
-  --import-sql FILE   Import a SQL dump into the Docker database. Only runs when
-                      the database has no tables; otherwise it is skipped and logged.
-                      Default can be set with AIPS_IMPORT_SQL in .env.
-  --force-import      With --import-sql: back up the current database to .artifacts/
-                      and replace it even if it already has data.
-  -h, --help          Show this help.
+  --import-sql FILE    Import a SQL dump into the Docker database. Only runs when
+                       the database has no tables; otherwise it is skipped and logged.
+                       Default can be set with AIPS_IMPORT_SQL in .env.
+  --force-import       With --import-sql: back up the current database to .artifacts/
+                       and replace it even if it already has data.
+  --random-ports       Force selection of new random ports even if ports in .env are free.
+  --random-containers  Force generation of new random container name suffix.
+  -h, --help           Show this help.
 USAGE
 }
 
 IMPORT_SQL=""
 FORCE_IMPORT=0
+RANDOM_PORTS=0
+RANDOM_CONTAINERS=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --import-sql)
@@ -60,6 +64,14 @@ while [ $# -gt 0 ]; do
             ;;
         --force-import)
             FORCE_IMPORT=1
+            shift
+            ;;
+        --random-ports)
+            RANDOM_PORTS=1
+            shift
+            ;;
+        --random-containers)
+            RANDOM_CONTAINERS=1
             shift
             ;;
         -h|--help)
@@ -129,20 +141,64 @@ if [ ! -f ".env" ]; then
     ENV_CREATED=1
 fi
 
-NEW_INSTANCE=0
-if ! grep -q "^AIPS_INSTANCE_ID=" .env 2>/dev/null; then
-    # Each checkout / git worktree gets a unique instance id and container
-    # names (host ports are provisioned inside main). Delete the auto-generated
-    # block in .env to regenerate.
-    INSTANCE_ID="$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')"
-    INSTANCE_ID="$(printf '%s' "$INSTANCE_ID" | tail -c 12)-$(printf '%04x' $((RANDOM % 65536)))"
+DIR_SLUG="$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9' | tail -c 12)"
+DIR_SLUG="${DIR_SLUG:-dev}"
+
+generate_unique_instance_id() {
+    local slug="$1"
+    local candidate
+    local attempt=0
+    while [ "$attempt" -lt 100 ]; do
+        local rand
+        rand="$(printf '%04x' $((RANDOM % 65536)))"
+        candidate="${slug}-${rand}"
+        if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qE "^wp-ai-scheduler-(web|db|phpmyadmin)-${candidate}$"; then
+            echo "$candidate"
+            return 0
+        fi
+        attempt=$((attempt + 1))
+    done
+    echo "${slug}-$(date +%s | tail -c 4)"
+}
+
+CUR_INSTANCE_ID="$(get_env_var AIPS_INSTANCE_ID)"
+CUR_WEB_CONTAINER="$(get_env_var AIPS_WEB_CONTAINER)"
+
+NEED_NEW_INSTANCE=0
+if [ -z "$CUR_INSTANCE_ID" ] || [ "$RANDOM_CONTAINERS" = "1" ] || [ "${AIPS_RANDOMIZE_CONTAINER:-0}" = "1" ]; then
+    NEED_NEW_INSTANCE=1
+elif [ -z "$CUR_WEB_CONTAINER" ] || [ "$CUR_WEB_CONTAINER" = "wp-ai-scheduler-web" ]; then
+    NEED_NEW_INSTANCE=1
+else
+    # Check if instance ID matches current directory slug (detects .env copied from another worktree)
+    case "$CUR_INSTANCE_ID" in
+        "${DIR_SLUG}-"*) ;;
+        *) NEED_NEW_INSTANCE=1 ;;
+    esac
+
+    # Check if the existing container name collides with a container from another directory/project
+    if [ "$NEED_NEW_INSTANCE" = "0" ] && docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${CUR_WEB_CONTAINER}$"; then
+        CURRENT_PROJECT="$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')"
+        EXISTING_PROJECT="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$CUR_WEB_CONTAINER" 2>/dev/null || true)"
+        if [ -n "$EXISTING_PROJECT" ] && [ "$EXISTING_PROJECT" != "$CURRENT_PROJECT" ]; then
+            NEED_NEW_INSTANCE=1
+        else
+            EXISTING_DIR="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$CUR_WEB_CONTAINER" 2>/dev/null || true)"
+            if [ -n "$EXISTING_DIR" ] && [ "$EXISTING_DIR" != "$PWD" ]; then
+                NEED_NEW_INSTANCE=1
+            fi
+        fi
+    fi
+fi
+
+if [ "$NEED_NEW_INSTANCE" = "1" ]; then
+    INSTANCE_ID="$(generate_unique_instance_id "$DIR_SLUG")"
     set_env_var AIPS_INSTANCE_ID   "${INSTANCE_ID}"
     set_env_var AIPS_WEB_CONTAINER "wp-ai-scheduler-web-${INSTANCE_ID}"
     set_env_var AIPS_DB_CONTAINER  "wp-ai-scheduler-db-${INSTANCE_ID}"
     set_env_var AIPS_PMA_CONTAINER "wp-ai-scheduler-phpmyadmin-${INSTANCE_ID}"
-    NEW_INSTANCE=1
 else
-    INSTANCE_ID="$(get_env_var AIPS_INSTANCE_ID)"
+    INSTANCE_ID="$CUR_INSTANCE_ID"
 fi
 INSTANCE_ID="${INSTANCE_ID:-default}"
 
@@ -224,42 +280,6 @@ main() {
     fi
 
     echo -e "${GREEN}✓ All required files found${NC}"
-
-    # --------------------------------------------------------------
-    # Host ports for a newly provisioned instance
-    # --------------------------------------------------------------
-
-    # Return success if the given TCP port on 127.0.0.1 has no listener. If
-    # /dev/tcp is unsupported the connect errors out and the port is treated
-    # as free, so the script falls back to the default base ports.
-    port_is_free() {
-        ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
-    }
-
-    # Print the first free port at or above the given base port.
-    find_free_port() {
-        local port="$1"
-        while ! port_is_free "$port"; do
-            port=$((port + 1))
-        done
-        echo "$port"
-    }
-
-    if [ "$NEW_INSTANCE" = "1" ]; then
-        echo -e "${YELLOW}Provisioning a unique instance (names + ports) in .env...${NC}"
-
-        WP_PORT_PICK="$(find_free_port 8080)"
-        PHPMYADMIN_PORT_PICK="$(find_free_port 8082)"
-        MYSQL_PORT_PICK="$(find_free_port 3307)"
-        XDEBUG_PORT_PICK="$(find_free_port 9003)"
-
-        set_env_var WP_PORT         "${WP_PORT_PICK}"
-        set_env_var PHPMYADMIN_PORT "${PHPMYADMIN_PORT_PICK}"
-        set_env_var MYSQL_PORT      "${MYSQL_PORT_PICK}"
-        set_env_var XDEBUG_PORT     "${XDEBUG_PORT_PICK}"
-
-        echo -e "${GREEN}✓ Instance '${INSTANCE_ID}' → WP:${WP_PORT_PICK} phpMyAdmin:${PHPMYADMIN_PORT_PICK} MySQL:${MYSQL_PORT_PICK} Xdebug:${XDEBUG_PORT_PICK}${NC}"
-    fi
 
     # Ensure image/core settings exist in .env (existing instances keep their values).
     grep -q "^WP_IMAGE_TAG=" .env 2>/dev/null || set_env_var WP_IMAGE_TAG "7.1-php8.3-apache"
@@ -358,17 +378,6 @@ main() {
         echo -e "${YELLOW}Warning: --force-import has no effect without --import-sql.${NC}"
     fi
 
-    # Read back the effective ports for the summary below (docker compose
-    # reads .env on its own for interpolation).
-    WP_PORT="$(get_env_var WP_PORT)"
-    WP_PORT="${WP_PORT:-8080}"
-    PHPMYADMIN_PORT="$(get_env_var PHPMYADMIN_PORT)"
-    PHPMYADMIN_PORT="${PHPMYADMIN_PORT:-8082}"
-    WP_ADMIN_USER_SHOWN="$(get_env_var WP_ADMIN_USER)"
-    WP_ADMIN_USER_SHOWN="${WP_ADMIN_USER_SHOWN:-admin}"
-    WP_ADMIN_PASSWORD_SHOWN="$(get_env_var WP_ADMIN_PASSWORD)"
-    WP_ADMIN_PASSWORD_SHOWN="${WP_ADMIN_PASSWORD_SHOWN:-admin}"
-
     # Build first (with retries) so a registry hiccup never leaves a
     # previously running environment stopped.
     echo -e "${GREEN}Building containers...${NC}"
@@ -392,8 +401,120 @@ main() {
         fi
     done
 
-    echo -e "${YELLOW}Stopping existing containers...${NC}"
-    $DOCKER_COMPOSE down
+    echo -e "${YELLOW}Stopping existing containers for this instance...${NC}"
+    $DOCKER_COMPOSE down --remove-orphans
+
+    # --------------------------------------------------------------
+    # Host ports: validate existing ports or allocate randomized free ports
+    # --------------------------------------------------------------
+    declare -a ALLOCATED_PORTS=()
+
+    port_in_allocated_list() {
+        local p="$1"
+        for ap in "${ALLOCATED_PORTS[@]}"; do
+            [ "$ap" -eq "$p" ] && return 0
+        done
+        return 1
+    }
+
+    port_is_free() {
+        local port="$1"
+        [ -z "$port" ] && return 1
+        port_in_allocated_list "$port" && return 1
+
+        # Check if Docker has mapped this host port on any running container
+        if docker ps --format '{{.Ports}}' 2>/dev/null | grep -qE "(:${port}->|0\.0\.0\.0:${port}|\[::\]:${port})"; then
+            return 1
+        fi
+
+        # Check connection on localhost
+        if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+            return 1
+        fi
+
+        # Check socket bind with python if available
+        if command -v python3 >/dev/null 2>&1; then
+            python3 -c "import socket, sys; s = socket.socket(); s.bind(('', int(sys.argv[1]))); s.close()" "$port" 2>/dev/null || return 1
+        fi
+
+        return 0
+    }
+
+    find_random_free_port() {
+        local min="$1"
+        local max="$2"
+        local span=$(( max - min + 1 ))
+        local candidate
+        local attempt=0
+
+        while [ "$attempt" -lt 500 ]; do
+            candidate=$(( min + (RANDOM % span) ))
+            if port_is_free "$candidate"; then
+                ALLOCATED_PORTS+=("$candidate")
+                echo "$candidate"
+                return 0
+            fi
+            attempt=$((attempt + 1))
+        done
+
+        candidate="$min"
+        while [ "$candidate" -le "$max" ]; do
+            if port_is_free "$candidate"; then
+                ALLOCATED_PORTS+=("$candidate")
+                echo "$candidate"
+                return 0
+            fi
+            candidate=$((candidate + 1))
+        done
+
+        echo -e "${RED}Error: Could not find a free port in range ${min}-${max}${NC}" >&2
+        return 1
+    }
+
+    pick_or_keep_port() {
+        local current="$1"
+        local min="$2"
+        local max="$3"
+
+        if [ "$RANDOM_PORTS" != "1" ] && [ "${AIPS_RANDOMIZE_PORTS:-0}" != "1" ] && [ -n "$current" ] && port_is_free "$current"; then
+            ALLOCATED_PORTS+=("$current")
+            echo "$current"
+        else
+            find_random_free_port "$min" "$max"
+        fi
+    }
+
+    CUR_WP_PORT="$(get_env_var WP_PORT)"
+    CUR_PMA_PORT="$(get_env_var PHPMYADMIN_PORT)"
+    CUR_MYSQL_PORT="$(get_env_var MYSQL_PORT)"
+    CUR_XDEBUG_PORT="$(get_env_var XDEBUG_PORT)"
+
+    WP_PORT_PICK="$(pick_or_keep_port "$CUR_WP_PORT" 8100 8899)"
+    PHPMYADMIN_PORT_PICK="$(pick_or_keep_port "$CUR_PMA_PORT" 8900 9699)"
+    MYSQL_PORT_PICK="$(pick_or_keep_port "$CUR_MYSQL_PORT" 3310 3999)"
+    XDEBUG_PORT_PICK="$(pick_or_keep_port "$CUR_XDEBUG_PORT" 9700 9999)"
+
+    for var_name in WP_PORT_PICK PHPMYADMIN_PORT_PICK MYSQL_PORT_PICK XDEBUG_PORT_PICK; do
+        val="${!var_name}"
+        if ! [[ "$val" =~ ^[0-9]+$ ]] || [ "$val" -le 0 ] || [ "$val" -gt 65535 ]; then
+            echo -e "${RED}Error: Invalid port allocated for ${var_name}: '${val}'.${NC}" >&2
+            exit 1
+        fi
+    done
+
+    set_env_var WP_PORT         "${WP_PORT_PICK}"
+    set_env_var PHPMYADMIN_PORT "${PHPMYADMIN_PORT_PICK}"
+    set_env_var MYSQL_PORT      "${MYSQL_PORT_PICK}"
+    set_env_var XDEBUG_PORT     "${XDEBUG_PORT_PICK}"
+
+    WP_PORT="${WP_PORT_PICK}"
+    PHPMYADMIN_PORT="${PHPMYADMIN_PORT_PICK}"
+    WP_ADMIN_USER_SHOWN="$(get_env_var WP_ADMIN_USER)"
+    WP_ADMIN_USER_SHOWN="${WP_ADMIN_USER_SHOWN:-admin}"
+    WP_ADMIN_PASSWORD_SHOWN="$(get_env_var WP_ADMIN_PASSWORD)"
+    WP_ADMIN_PASSWORD_SHOWN="${WP_ADMIN_PASSWORD_SHOWN:-admin}"
+
+    echo -e "${GREEN}✓ Instance '${INSTANCE_ID}' ports → WP:${WP_PORT} phpMyAdmin:${PHPMYADMIN_PORT} MySQL:${MYSQL_PORT_PICK} Xdebug:${XDEBUG_PORT_PICK}${NC}"
 
     if $DOCKER_COMPOSE up --help 2>/dev/null | grep -q -- '--wait'; then
         UP_ARGS="-d --pull never --wait --wait-timeout 300"
@@ -478,18 +599,17 @@ main() {
         exit 1
     fi
 
-    # After an import, point the site at this instance's local URL. The old URL
-    # is whatever the imported database stores; search-replace is serialization-safe.
-    if [ "$IMPORTED_SQL" = "1" ]; then
-        WP_CLI_WEB="$DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes"
+    # Point the site at this instance's local URL (serialization-safe).
+    WP_CLI_WEB="$DOCKER_COMPOSE exec -T web wp --path=/var/www/html --allow-root --skip-plugins --skip-themes"
+    if $WP_CLI_WEB core is-installed >/dev/null 2>&1; then
         NEW_URL="http://localhost:${WP_PORT}"
-        OLD_URL="$($WP_CLI_WEB option get siteurl | tr -d '\r')"
+        OLD_URL="$($WP_CLI_WEB option get siteurl 2>/dev/null | tr -d '\r' || true)"
         if [ -n "$OLD_URL" ] && [ "$OLD_URL" != "$NEW_URL" ]; then
-            echo "Rewriting URLs in the imported database: ${OLD_URL} -> ${NEW_URL}"
+            echo "Syncing WordPress site URL: ${OLD_URL} -> ${NEW_URL}"
             $WP_CLI_WEB search-replace "$OLD_URL" "$NEW_URL" --all-tables --skip-columns=guid --report-changed-only
             $WP_CLI_WEB option update home "$NEW_URL"
             $WP_CLI_WEB option update siteurl "$NEW_URL"
-        else
+        elif [ "$IMPORTED_SQL" = "1" ]; then
             echo "Imported site URL already matches ${NEW_URL}."
         fi
         echo ""
