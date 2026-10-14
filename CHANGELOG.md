@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Performance
+- **Embeddings, Similarity & Clustering Performance Hardening (#2218):**
+  - Eliminated N+1 database queries in `AIPS_Similarity_Evaluator::find_similar_topics()`, `suggest_related_topics()`, and `calculate_max_similarity_for_topic()` by batch reading embeddings via `get_by_source_ids()` / `get_by_topic_ids()`.
+  - Removed unbounded inline AI API calls during topic similarity checks when embeddings are missing; enqueued missing embeddings to `AIPS_Author_Embeddings_Process` background worker with an explicit opt-in parameter (`$compute_missing = false`).
+  - Added multi-tier persistent caching and L2 unit-normalization in `AIPS_Embeddings_Repository::decode_and_normalize_embedding()` to accelerate cosine dot products without repeated norm recalculations or option queries.
+  - Added post cache priming (`_prime_post_caches`) in `detect_post_clusters()` and `get_orphan_posts()` to avoid individual database queries per post for title, permalink, and edit link resolution.
+  - Exposed cluster candidate truncation state and candidate metadata (`truncated`, `total_candidates`, `analyzed_candidates`, `max_candidates`) in `AIPS_Content_Indexer_Controller::ajax_get_post_clusters()` and `AIPS_Similarity_Evaluator::get_last_cluster_meta()`.
+  - Replaced method-level static caches in `table_exists()` and `topics_table_exists()` with test-resettable class-level static cache and `reset_table_cache()`.
 ### Added
 - **History `record_kind` Column:**
   - Every History row now stores what it is: `generation` (a run that produces or regenerates a post), `job` (content indexing, embeddings, bulk slices, source fetches and other background work) or `event` (lifecycle containers, topic-generation wrappers, review actions, notifications). Run lists, run statistics and the status sync filter on the stored kind instead of guessing from `creation_method` names, so a new container type can no longer leak into them: anything unclassified is an event.

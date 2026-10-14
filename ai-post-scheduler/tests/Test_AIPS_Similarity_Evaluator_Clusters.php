@@ -27,6 +27,7 @@ class Test_AIPS_Similarity_Evaluator_Clusters extends WP_UnitTestCase {
 		parent::setUp();
 
 		delete_option('aips_post_clusters');
+		delete_post_meta_by_key(AIPS_Link_Index_Service::HASH_META_KEY);
 
 		// Posts A and B are near-identical, C is unrelated.
 		$vectors = array(
@@ -174,6 +175,7 @@ class Test_AIPS_Similarity_Evaluator_Clusters extends WP_UnitTestCase {
 	}
 
 	public function test_get_orphan_posts_links_flags_unlinked_only() {
+		delete_post_meta_by_key(AIPS_Link_Index_Service::HASH_META_KEY);
 		$unlinked = $this->post_ids[2];
 		$this->relationships_repo->method('count_incoming_internal_links')->willReturnCallback(function ($post_id) use ($unlinked) {
 			return ((int) $post_id === $unlinked) ? 0 : 2;
