@@ -528,6 +528,41 @@
 		if ($('#aips_cache_driver').length) {
 			$(document).on('change', '#aips_cache_driver', updateCacheDriverFields);
 		}
+
+		$(document).on('click', '#aips_prune_logs_btn', function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var $status = $('#aips_prune_logs_status');
+			var days = $('#aips_log_retention_days').val() || 30;
+
+			$btn.prop('disabled', true);
+			$status.text('Pruning...').css('color', '#666');
+
+			$.ajax({
+				url: (window.aipsAjax && aipsAjax.ajaxUrl) ? aipsAjax.ajaxUrl : ajaxurl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'aips_prune_logs_now',
+					nonce: (window.aipsAjax && aipsAjax.noncePruneLogsNow) ? aipsAjax.noncePruneLogsNow : '',
+					retention_days: days
+				}
+			}).done(function(res) {
+				if (res && res.success) {
+					var payload = (res.data && res.data.data) ? res.data.data : (res.data || {});
+					var deletedDb = payload.db_rows_deleted !== undefined ? payload.db_rows_deleted : (payload.deleted_db_rows || 0);
+					var deletedFiles = payload.files_deleted !== undefined ? payload.files_deleted : (payload.deleted_files_count || 0);
+					$status.text('✓ Cleaned ' + deletedDb + ' DB rows and ' + deletedFiles + ' log files.').css('color', '#008a20');
+				} else {
+					var err = (res && res.data && res.data.message) ? res.data.message : 'Pruning failed.';
+					$status.text('✗ ' + err).css('color', '#dc3232');
+				}
+			}).fail(function() {
+				$status.text('✗ Request failed.').css('color', '#dc3232');
+			}).always(function() {
+				$btn.prop('disabled', false);
+			});
+		});
 	});
 
 })(jQuery);

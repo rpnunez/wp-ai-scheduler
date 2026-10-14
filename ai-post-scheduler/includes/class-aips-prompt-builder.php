@@ -318,7 +318,18 @@ INSTRUCTIONS
      * @return string Formatted context block ending with two newlines, or empty string.
      */
     public function build_site_context_block() {
-        $ctx   = AIPS_Site_Context::get();
+        $cache_enabled = (bool) AIPS_Config::get_instance()->get_option( 'aips_enable_prompt_caching', true );
+        $ctx           = AIPS_Site_Context::get();
+        $hash          = md5( serialize( $ctx ) );
+        $cache_key     = 'site_context_' . $hash;
+
+        if ( $cache_enabled ) {
+            $cached = AIPS_Cache_Factory::instance()->get( $cache_key, 'prompt_cache' );
+            if ( null !== $cached ) {
+                return (string) $cached;
+            }
+        }
+
         $lines = array();
 
         if (!empty($ctx['niche'])) {
@@ -350,10 +361,16 @@ INSTRUCTIONS
         }
 
         if (empty($lines)) {
-            return '';
+            $result = '';
+        } else {
+            $result = "Site-wide content context:\n" . implode("\n", $lines) . "\n\n";
         }
 
-        return "Site-wide content context:\n" . implode("\n", $lines) . "\n\n";
+        if ( $cache_enabled ) {
+            AIPS_Cache_Factory::instance()->set( $cache_key, $result, HOUR_IN_SECONDS, 'prompt_cache' );
+        }
+
+        return $result;
     }
 
     /**
