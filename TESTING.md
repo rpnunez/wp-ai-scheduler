@@ -141,6 +141,50 @@ Run `bash scripts/run-wp-tests-docker.sh` (reinstalls the test library and core 
 
 `start-dev.sh` retries transient `auth.docker.io` 5xx errors and reuses cached images; see [README.md](README.md#troubleshooting).
 
+## SQL diagnostics (`sql-batch`)
+
+`ai-post-scheduler/bin/sql-batch.php` runs a file of read-only SQL queries against the database of the WordPress install it lives in and writes the results to `REPORT.md` + one JSON file per query + a zip. It reads the DB credentials from `wp-config.php`, so the same file works on dev and production.
+
+Query file format (`{prefix}` becomes `$table_prefix`):
+
+```sql
+-- name: orphaned_history_rows
+-- purpose: Why this query is being run (shown in REPORT.md)
+SELECT COUNT(*) AS n FROM {prefix}aips_history WHERE ...;
+```
+
+Redaction is best effort: it masks sensitive columns (also when aliased), keys inside serialized/JSON values, and the value columns of queries that filter on a secret-looking option/meta name (`api_key`, `secret`, `token`, `password`, ...). A secret selected under another name through an expression or a differently named filter can still appear, so select only the columns you need.
+
+Safety, enforced by the runner: CLI only; only `SELECT` / `WITH` / `SHOW` / `DESCRIBE` / `EXPLAIN` run (anything else is refused); read-only transaction; 60 s per-query timeout; 10,000-row cap; passwords, e-mails, tokens and API keys are replaced with `[REDACTED]` (`--no-redact` to disable); output is never written inside the WordPress directory.
+
+**Dev (Docker)** - start the stack, then:
+
+```bash
+make sql-batch QUERIES=.artifacts/sql-queries/my-queries.sql
+```
+
+Results land in `.artifacts/sql-results/sql-batch-<timestamp>-<db>/` (read `REPORT.md` first) next to the `.zip`. Validate new queries here before running them on production.
+
+**Production (SSH or Webuzo Terminal)** - the script ships with the plugin via `git pull`. Run it through the plugin symlink so `wp-config.php` is auto-discovered, or pass `--wp-config`:
+
+```bash
+php /home/USER/sites/SITE/public_html/wp-content/plugins/ai-post-scheduler/bin/sql-batch.php ~/queries.sql
+# or, from the repo path:
+php /home/USER/repos/REPO/ai-post-scheduler/bin/sql-batch.php ~/queries.sql --wp-config=/home/USER/sites/SITE/public_html/wp-config.php
+# or paste the queries without uploading a file:
+php .../bin/sql-batch.php - <<'SQL'
+SELECT ...;
+SQL
+```
+
+It prints `RESULTS_ZIP=...` (default folder `~/sql-results/`). Download that zip (scp or the Webuzo File Manager), then:
+
+```bash
+make sql-batch-unpack ZIP=~/Downloads/sql-batch-20261013-142200-dbname.zip
+```
+
+and point the agent at `.artifacts/sql-results/<run>/REPORT.md`. Unit tests: `make test ARGS="tests/Test_AIPS_Sql_Batch.php"`.
+
 ## Notes
 
 - The test database is disposable. Use `--fresh` to reset it.
