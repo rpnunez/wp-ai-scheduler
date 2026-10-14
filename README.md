@@ -189,7 +189,7 @@ All variables live in `.env` (created from `.env.example`, gitignored). `docker 
 | `MYSQL_PORT` | `3307` | Host port for the database (for external DB tools). |
 | `XDEBUG_PORT` | `9003` | Host port mapped to the container's Xdebug port. |
 
-**Instance identity** (written by `start-dev.sh`; delete `AIPS_INSTANCE_ID` to re-provision)
+**Instance identity** (auto-managed by `start-dev.sh`; use `--random-containers` or `--random-ports` to re-randomize)
 
 | Variable | Default | What it does |
 | :--- | :--- | :--- |
@@ -246,7 +246,7 @@ See [docs/SETUP.md](docs/SETUP.md#xdebug--vs-code-debugging) for the full env-va
 | Build fails with `auth.docker.io ... 500/504` | Docker Hub outage. `start-dev.sh` retries automatically; if it still fails, retry later or `docker login`. Images already cached locally are reused without contacting Docker Hub. |
 | `start-dev.sh` exits with "GOOGLE_API_KEY is not set" | Run it in a terminal to be prompted, set the key in `.env`, or use `AIPS_SKIP_API_KEY_CHECK=1`. |
 | Need to see what a run did | Open the newest `.artifacts/start-dev-*.log`. |
-| Ports already in use | Delete `AIPS_INSTANCE_ID` from `.env` and re-run `start-dev.sh` to re-provision. |
+| Ports already in use | `start-dev.sh` automatically detects occupied ports and assigns free random ports. Use `--random-ports` to force re-assignment. |
 
 ## Configuration & Settings Reference
 
