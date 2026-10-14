@@ -253,5 +253,65 @@ class Test_AIPS_Embeddings_Repository extends WP_UnitTestCase {
 		$this->assertEquals( 24, $summary['byte_size'] );
 		$this->assertTrue( $summary['is_binary'] );
 	}
+
+	/**
+	 * Test get_by_source_ids and get_by_topic_ids batch readers.
+	 */
+	public function test_get_by_source_ids_and_topic_ids() {
+		$vec1 = array( 0.1, 0.2, 0.3 );
+		$vec2 = array( 0.4, 0.5, 0.6 );
+		$this->repo->upsert( 'topic', 101, $vec1, 'model-1', 3, 'hash1', '' );
+		$this->repo->upsert( 'topic', 102, $vec2, 'model-1', 3, 'hash2', '' );
+		$this->repo->upsert( 'post', 201, $vec1, 'model-1', 3, 'hash3', 'post' );
+
+		// Batch read topics
+		$topics = $this->repo->get_by_topic_ids( array( 101, 102, 999 ) );
+		$this->assertCount( 2, $topics );
+		$this->assertArrayHasKey( 101, $topics );
+		$this->assertArrayHasKey( 102, $topics );
+		$this->assertArrayNotHasKey( 999, $topics );
+		$this->assertEquals( 101, (int) $topics[101]->object_id );
+		$this->assertEquals( 'topic', $topics[101]->object_type );
+
+		// Batch read posts via get_by_source_ids
+		$posts = $this->repo->get_by_source_ids( 'post', array( 201, 999 ) );
+		$this->assertCount( 1, $posts );
+		$this->assertArrayHasKey( 201, $posts );
+		$this->assertEquals( 201, (int) $posts[201]->object_id );
+
+		// Empty IDs
+		$this->assertEmpty( $this->repo->get_by_source_ids( 'topic', array() ) );
+	}
+
+	/**
+	 * Test decode_and_normalize_embedding normalizes vector to unit length and caches.
+	 */
+	public function test_decode_and_normalize_embedding() {
+		// Vector with magnitude 5: [3, 4] -> normalized [0.6, 0.8]
+		$raw = array( 3.0, 4.0 );
+		$normalized = $this->repo->decode_and_normalize_embedding( $raw, 'topic', 301, 'hash_test' );
+
+		$this->assertCount( 2, $normalized );
+		$this->assertEqualsWithDelta( 0.6, $normalized[0], 0.0001 );
+		$this->assertEqualsWithDelta( 0.8, $normalized[1], 0.0001 );
+
+		// Second call should return cached instance
+		$cached = $this->repo->decode_and_normalize_embedding( $raw, 'topic', 301, 'hash_test' );
+		$this->assertSame( $normalized, $cached );
+
+		// Invalidation flushes cache
+		$this->repo->invalidate_cached_vector( 'topic', 301 );
+		$refetched = $this->repo->decode_and_normalize_embedding( $raw, 'topic', 301, 'hash_test' );
+		$this->assertEqualsWithDelta( 0.6, $refetched[0], 0.0001 );
+	}
+
+	/**
+	 * Test reset_table_cache clears cached table existence flags.
+	 */
+	public function test_reset_table_cache() {
+		$this->assertTrue( $this->repo->table_exists() );
+		AIPS_Embeddings_Repository::reset_table_cache();
+		$this->assertTrue( $this->repo->table_exists() );
+	}
 }
 
