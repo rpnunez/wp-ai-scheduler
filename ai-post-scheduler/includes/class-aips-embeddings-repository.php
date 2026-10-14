@@ -41,6 +41,13 @@ class AIPS_Embeddings_Repository {
 	private $decoded_memory_cache = array();
 
 	/**
+	 * Cached table existence map keyed by table name.
+	 *
+	 * @var array<string, bool>
+	 */
+	private static array $table_exists_cache = array();
+
+	/**
 	 * Initialize the repository.
 	 *
 	 * @param AIPS_Config|null $config Config instance.
@@ -59,12 +66,11 @@ class AIPS_Embeddings_Repository {
 	 * @return bool
 	 */
 	public function table_exists(): bool {
-		static $exists = null;
-		if ($exists === null) {
+		if (!isset(self::$table_exists_cache[$this->table])) {
 			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $this->table));
-			$exists = ($found === $this->table);
+			self::$table_exists_cache[$this->table] = ($found === $this->table);
 		}
-		return (bool) $exists;
+		return self::$table_exists_cache[$this->table];
 	}
 
 	/**
@@ -124,23 +130,30 @@ class AIPS_Embeddings_Repository {
 	}
 
 	/**
-	 * Get multiple embeddings for a list of post IDs.
+	 * Get multiple embeddings for a list of object IDs by object/source type.
 	 *
-	 * @param int[] $post_ids Array of WordPress post IDs.
-	 * @return array<int, object> Array of row objects keyed by post_id.
+	 * @param string $object_type Entity type ('post', 'topic', etc.).
+	 * @param int[]  $object_ids  Array of object IDs.
+	 * @return array<int, object> Array of row objects keyed by object_id.
 	 */
-	public function get_by_post_ids(array $post_ids) {
-		if (empty($post_ids) || !$this->table_exists()) {
+	public function get_by_source_ids(string $object_type, array $object_ids): array {
+		if (empty($object_ids) || !$this->table_exists()) {
 			return array();
 		}
 
-		$post_ids     = array_map('absint', $post_ids);
-		$placeholders = implode(',', array_fill(0, count($post_ids), '%d'));
+		$object_type = sanitize_key($object_type);
+		$object_ids  = array_values(array_unique(array_filter(array_map('absint', $object_ids))));
+		if (empty($object_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($object_ids), '%d'));
 
 		$rows = (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE object_type = 'post' AND object_id IN ($placeholders)",
-				...$post_ids
+				"SELECT * FROM {$this->table} WHERE object_type = %s AND object_id IN ($placeholders)",
+				$object_type,
+				...$object_ids
 			)
 		);
 
@@ -152,6 +165,26 @@ class AIPS_Embeddings_Repository {
 		}
 
 		return $indexed;
+	}
+
+	/**
+	 * Get multiple embeddings for a list of post IDs.
+	 *
+	 * @param int[] $post_ids Array of WordPress post IDs.
+	 * @return array<int, object> Array of row objects keyed by post_id.
+	 */
+	public function get_by_post_ids(array $post_ids): array {
+		return $this->get_by_source_ids('post', $post_ids);
+	}
+
+	/**
+	 * Get multiple embeddings for a list of Author Topic IDs.
+	 *
+	 * @param int[] $topic_ids Array of topic IDs.
+	 * @return array<int, object> Array of row objects keyed by topic_id.
+	 */
+	public function get_by_topic_ids(array $topic_ids): array {
+		return $this->get_by_source_ids('topic', $topic_ids);
 	}
 
 	/**
@@ -254,7 +287,7 @@ class AIPS_Embeddings_Repository {
 			$placeholders = implode(',', array_fill(0, count($post_types), '%s'));
 
 			$sql = $this->wpdb->prepare(
-				"SELECT e.object_id, e.object_post_type, e.embedding, e.dimensions, e.model
+				"SELECT e.object_id, e.object_post_type, e.embedding, e.dimensions, e.model, e.content_hash
 				FROM {$this->table} e
 				INNER JOIN {$this->wpdb->posts} p ON e.object_id = p.ID
 				WHERE e.object_type = 'post'
@@ -269,7 +302,7 @@ class AIPS_Embeddings_Repository {
 
 		return (array) $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT object_id, object_post_type, embedding, dimensions, model
+				"SELECT object_id, object_post_type, embedding, dimensions, model, content_hash
 				FROM {$this->table}
 				WHERE object_type = %s
 				ORDER BY object_id ASC",
@@ -354,14 +387,18 @@ class AIPS_Embeddings_Repository {
 						$this->decoded_memory_cache[$mem_key] = $cached;
 						return $cached;
 					}
+				} else {
+					$cache_driver = null;
 				}
 			}
 
-			// Fallback: WordPress transient
-			$cached_transient = get_transient($transient_key);
-			if (is_array($cached_transient) && !empty($cached_transient)) {
-				$this->decoded_memory_cache[$mem_key] = $cached_transient;
-				return $cached_transient;
+			// Fallback: WordPress transient only when cache driver is not available
+			if (!$cache_driver) {
+				$cached_transient = get_transient($transient_key);
+				if (is_array($cached_transient) && !empty($cached_transient)) {
+					$this->decoded_memory_cache[$mem_key] = $cached_transient;
+					return $cached_transient;
+				}
 			}
 		}
 
@@ -394,6 +431,104 @@ class AIPS_Embeddings_Repository {
 
 		if (!empty($object_type) && $object_id > 0) {
 			$ttl = 7 * DAY_IN_SECONDS; // 7 days expiration window
+			if ($cache_driver && $cache_driver->is_available()) {
+				$cache_driver->set($cache_key, $vector, $ttl, 'aips_embeddings');
+			} else {
+				set_transient($transient_key, $vector, $ttl);
+			}
+		}
+
+		return $vector;
+	}
+
+	/**
+	 * Decode an embedding and normalize it to unit length (L2 norm = 1.0) with multi-tier caching.
+	 *
+	 * Normalizing vectors allows cosine similarity to be calculated via a fast dot product
+	 * without computing square roots or norms during pairwise comparison loops.
+	 *
+	 * Caching tiers:
+	 * 1. In-memory runtime cache: norm_{type}_{id}_{hash}
+	 * 2. AIPS_Cache: norm_vec_{type}_{id}_{hash} ('aips_embeddings' group)
+	 * 3. Transient: aips_nv_{hash} (7-day TTL)
+	 *
+	 * @param mixed  $raw          Raw embedding blob or decoded float array.
+	 * @param string $object_type  Optional entity type ('post', 'topic', etc.).
+	 * @param int    $object_id    Optional object ID.
+	 * @param string $content_hash Optional content hash.
+	 * @return float[] Unit-normalized vector array.
+	 */
+	public function decode_and_normalize_embedding($raw, $object_type = '', $object_id = 0, $content_hash = ''): array {
+		if (empty($raw)) {
+			return array();
+		}
+
+		$object_type = sanitize_key($object_type);
+		$object_id   = absint($object_id);
+		$hash_suffix = !empty($content_hash) ? substr($content_hash, 0, 16) : (is_string($raw) ? substr(md5($raw), 0, 16) : substr(md5(serialize($raw)), 0, 16));
+
+		$mem_key = (!empty($object_type) && $object_id > 0)
+			? "norm_{$object_type}_{$object_id}_{$hash_suffix}"
+			: 'norm_raw_' . $hash_suffix;
+
+		if (isset($this->decoded_memory_cache[$mem_key])) {
+			return $this->decoded_memory_cache[$mem_key];
+		}
+
+		$cache_key     = '';
+		$transient_key = '';
+		$cache_driver  = null;
+
+		if (!empty($object_type) && $object_id > 0) {
+			$cache_key     = "norm_vec_{$object_type}_{$object_id}_{$hash_suffix}";
+			$transient_key = 'aips_nv_' . substr(md5("{$object_type}_{$object_id}_{$hash_suffix}"), 0, 32);
+
+			if (class_exists('AIPS_Cache_Factory')) {
+				$cache_driver = AIPS_Cache_Factory::instance();
+				if ($cache_driver && $cache_driver->is_available()) {
+					$cached = $cache_driver->get($cache_key, 'aips_embeddings');
+					if (is_array($cached) && !empty($cached)) {
+						$this->decoded_memory_cache[$mem_key] = $cached;
+						return $cached;
+					}
+				} else {
+					$cache_driver = null;
+				}
+			}
+
+			// Fallback: WordPress transient only when cache driver is not available
+			if (!$cache_driver) {
+				$cached_transient = get_transient($transient_key);
+				if (is_array($cached_transient) && !empty($cached_transient)) {
+					$this->decoded_memory_cache[$mem_key] = $cached_transient;
+					return $cached_transient;
+				}
+			}
+		}
+
+		// Decode raw vector
+		$vector = $this->decode_embedding($raw, $object_type, $object_id, $content_hash);
+		if (empty($vector)) {
+			return array();
+		}
+
+		// Compute L2 norm and unit normalize
+		$norm = 0.0;
+		foreach ($vector as $val) {
+			$norm += ((float) $val) * ((float) $val);
+		}
+		$norm = sqrt($norm);
+		if ($norm > 1e-9) {
+			foreach ($vector as $idx => $val) {
+				$vector[$idx] = ((float) $val) / $norm;
+			}
+		}
+
+		// Cache normalized vector
+		$this->decoded_memory_cache[$mem_key] = $vector;
+
+		if (!empty($object_type) && $object_id > 0) {
+			$ttl = 7 * DAY_IN_SECONDS;
 			if ($cache_driver && $cache_driver->is_available()) {
 				$cache_driver->set($cache_key, $vector, $ttl, 'aips_embeddings');
 			} else {
@@ -578,9 +713,10 @@ class AIPS_Embeddings_Repository {
 		$object_id   = absint($object_id);
 
 		// 1. Purge in-memory instance cache entries
-		$prefix = "{$object_type}_{$object_id}_";
+		$prefix      = "{$object_type}_{$object_id}_";
+		$norm_prefix = "norm_{$object_type}_{$object_id}_";
 		foreach (array_keys($this->decoded_memory_cache) as $key) {
-			if (strpos($key, $prefix) === 0) {
+			if (strpos($key, $prefix) === 0 || strpos($key, $norm_prefix) === 0) {
 				unset($this->decoded_memory_cache[$key]);
 			}
 		}
@@ -591,15 +727,17 @@ class AIPS_Embeddings_Repository {
 			if ($cache && $cache->is_available()) {
 				// Delete common cache keys
 				$cache->delete("vec_{$object_type}_{$object_id}", 'aips_embeddings');
+				$cache->delete("norm_vec_{$object_type}_{$object_id}", 'aips_embeddings');
 			}
 		}
 
-		// 3. Purge related transients
+		// 3. Purge related transients (raw and normalized)
 		$search_pattern = '%' . $this->wpdb->esc_like("_{$object_type}_{$object_id}_") . '%';
 		$this->wpdb->query(
 			$this->wpdb->prepare(
 				"DELETE FROM {$this->wpdb->options}
-				 WHERE (option_name LIKE '_transient_aips_ev_%' OR option_name LIKE '_transient_timeout_aips_ev_%')
+				 WHERE (option_name LIKE '_transient_aips_ev_%' OR option_name LIKE '_transient_timeout_aips_ev_%'
+				    OR option_name LIKE '_transient_aips_nv_%' OR option_name LIKE '_transient_timeout_aips_nv_%')
 				   AND option_name LIKE %s",
 				$search_pattern
 			)
@@ -1055,13 +1193,21 @@ class AIPS_Embeddings_Repository {
 	 * @return bool
 	 */
 	public function topics_table_exists(): bool {
-		static $exists = null;
-		if ($exists === null) {
-			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		if (!isset(self::$table_exists_cache[$topics_table])) {
 			$found = $this->wpdb->get_var($this->wpdb->prepare('SHOW TABLES LIKE %s', $topics_table));
-			$exists = ($found === $topics_table);
+			self::$table_exists_cache[$topics_table] = ($found === $topics_table);
 		}
-		return (bool) $exists;
+		return self::$table_exists_cache[$topics_table];
+	}
+
+	/**
+	 * Reset table existence cache (useful for testing and migration runs).
+	 *
+	 * @return void
+	 */
+	public static function reset_table_cache(): void {
+		self::$table_exists_cache = array();
 	}
 
 	/**

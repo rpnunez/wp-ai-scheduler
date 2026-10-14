@@ -62,6 +62,12 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 					'status' => 'approved'
 				);
 			}
+			public function claim_topic_for_generation(int $topic_id, int $claim_timeout = 900, bool $allow_regenerate = false): bool {
+				return true;
+			}
+			public function release_topic_claim(int $topic_id): bool {
+				return true;
+			}
 		};
 
 		$logs_repository = new class {
@@ -207,6 +213,12 @@ class Test_AIPS_Author_Post_Generator_Expansion extends WP_UnitTestCase {
 					'topic_title' => 'New Topic Without Similar Topics',
 					'status' => 'approved'
 				);
+			}
+			public function claim_topic_for_generation(int $topic_id, int $claim_timeout = 900, bool $allow_regenerate = false): bool {
+				return true;
+			}
+			public function release_topic_claim(int $topic_id): bool {
+				return true;
 			}
 		};
 

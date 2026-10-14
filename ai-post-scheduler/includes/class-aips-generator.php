@@ -1128,6 +1128,8 @@ class AIPS_Generator {
         // Get creation_method from context, default to 'manual' if not specified
         $creation_method = $context->get_creation_method() ?: 'manual';
         $history_metadata['creation_method'] = $creation_method;
+        // Every run is a generation whatever its creation_method (extensions may pass their own).
+        $history_metadata['record_kind'] = AIPS_History_Record_Kind::GENERATION;
 
         $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
 

@@ -55,6 +55,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 			'post_id' => $post_id,
 			'template_id' => $template_id,
 			'status' => 'completed',
+			'record_kind' => 'generation',
 			'generated_title' => 'Test Generated Title',
 			'generated_content' => 'Test generated content',
 			'created_at' => current_time('mysql'),
@@ -140,7 +141,7 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual(1, $result['total']);
 		$found = false;
 		foreach ($result['items'] as $item) {
-			if ($item->post_id === $test_data['post_id']) {
+			if ((int) $item->post_id === (int) $test_data['post_id']) {
 				$found = true;
 				break;
 			}

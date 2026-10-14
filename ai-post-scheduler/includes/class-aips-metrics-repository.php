@@ -267,8 +267,12 @@ class AIPS_Metrics_Repository {
 					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'pending'"
 				);
 
+				// Generation runs only: event containers and indexing rows carry
+				// their own completed/failed/partial outcomes that are not generations.
+				$run_condition = AIPS_History_Repository::generation_run_condition();
+
 				$partial_count = (int) $this->wpdb->get_var(
-					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial'"
+					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial' AND {$run_condition}"
 				);
 
 				// --- Stuck jobs ---
@@ -316,6 +320,7 @@ class AIPS_Metrics_Repository {
 					$this->wpdb->prepare(
 						"SELECT COUNT(*) FROM {$this->table_history}
 						WHERE status = 'failed'
+						  AND {$run_condition}
 						  AND completed_at IS NOT NULL
 						  AND completed_at >= %d",
 						$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
@@ -334,6 +339,7 @@ class AIPS_Metrics_Repository {
 							SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed
 						FROM {$this->table_history}
 						WHERE status IN ('completed','failed')
+						  AND {$run_condition}
 						  AND completed_at IS NOT NULL
 						  AND completed_at >= %d",
 						$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
@@ -440,7 +446,8 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	private function get_generation_counts( $window_days ) {
-		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$run_condition = AIPS_History_Repository::generation_run_condition();
 
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
@@ -451,7 +458,8 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'partial'    THEN 1 ELSE 0 END) AS `partial`,
 					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS `terminated`
 				FROM {$this->table_history}
-				WHERE created_at >= %d",
+				WHERE created_at >= %d
+				  AND {$run_condition}",
 				$cutoff
 			)
 		);
@@ -485,7 +493,8 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	private function get_duration_percentiles( $window_days ) {
-		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$run_condition = AIPS_History_Repository::generation_run_condition();
 
 		// Fetch all durations so we can compute percentiles in PHP without
 		// relying on ROW_NUMBER() / NTILE() which require MySQL 8+.
@@ -498,6 +507,7 @@ class AIPS_Metrics_Repository {
 				"SELECT (completed_at - created_at) AS duration
 				FROM {$this->table_history}
 				WHERE status = 'completed'
+				  AND {$run_condition}
 				  AND completed_at >= created_at
 				  AND created_at >= %d
 				ORDER BY duration ASC",
@@ -553,7 +563,8 @@ class AIPS_Metrics_Repository {
 	 * @return float Average count (0.0 if no data).
 	 */
 	private function get_avg_ai_calls_per_post( $window_days ) {
-		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$run_condition = AIPS_History_Repository::generation_run_condition('h');
 
 		// Compute average AI request entries per completed history record,
 		// including posts with zero AI requests (counted as 0).
@@ -574,6 +585,7 @@ class AIPS_Metrics_Repository {
 						ON hl.history_id = h.id
 						AND hl.history_type_id = %d
 					WHERE h.status = 'completed'
+					  AND {$run_condition}
 					  AND h.created_at >= %d
 				) AS stats",
 				AIPS_History_Type::AI_REQUEST,
@@ -713,6 +725,7 @@ class AIPS_Metrics_Repository {
 				        CASE WHEN completed_at >= created_at THEN completed_at - created_at ELSE NULL END AS duration_seconds,
 				        error_message
 				FROM {$this->table_history}
+				WHERE " . AIPS_History_Repository::generation_run_condition() . "
 				ORDER BY created_at DESC
 				LIMIT %d",
 				$limit

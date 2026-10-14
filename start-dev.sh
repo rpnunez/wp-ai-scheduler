@@ -629,6 +629,7 @@ main() {
         echo "  Password: ${WP_ADMIN_PASSWORD_SHOWN}"
     fi
     echo ""
+    echo "SQL diagnostics (read-only, results in .artifacts/sql-results/): make sql-batch QUERIES=<file.sql>"
     echo "To view logs, run: $DOCKER_COMPOSE logs -f"
     echo "To stop the environment, run: $DOCKER_COMPOSE down  (or: make stop / make down)"
     echo ""
