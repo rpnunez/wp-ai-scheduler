@@ -614,6 +614,19 @@ class Test_AIPS_Config extends WP_UnitTestCase {
 	}
 
 	/** @test */
+	public function test_get_option_honours_different_defaults_after_default_less_read() {
+		$this->config->flush_option_cache();
+		delete_option( 'aips_unregistered_probe' );
+		delete_option( 'aips_related_posts_enabled' );
+
+		$this->assertNull( $this->config->get_option( 'aips_unregistered_probe' ) );
+		$this->assertSame( 'other', $this->config->get_option( 'aips_unregistered_probe', 'other' ) );
+
+		$this->config->get_option( 'aips_related_posts_enabled' );
+		$this->assertSame( 'custom', $this->config->get_option( 'aips_related_posts_enabled', 'custom' ) );
+	}
+
+	/** @test */
 	public function test_get_option_cache_invalidation_on_option_update() {
 		$this->config->flush_option_cache();
 		delete_option( 'aips_related_posts_enabled' );
