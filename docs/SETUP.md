@@ -87,7 +87,7 @@ WP_IMAGE_TAG=7.1-php8.3-apache
 # DB_IMAGE=mariadb:10.6
 ```
 
-Ports are auto-assigned on first run (first free port at or above 8080 / 8082 / 3307 / 9003) and stored as `WP_PORT`, `PHPMYADMIN_PORT`, `MYSQL_PORT`, `XDEBUG_PORT`; edit them if you want specific ones.
+Ports are dynamically validated and assigned on startup (using free randomized ports from non-conflicting bands if occupied) and stored as `WP_PORT`, `PHPMYADMIN_PORT`, `MYSQL_PORT`, `XDEBUG_PORT`. You can edit them, or run `./start-dev.sh --random-ports` to force new random ports.
 
 The complete variable reference (every variable, its default and what it does) is in the [README](../README.md#environment-variables).
 
