@@ -197,7 +197,7 @@ $type_labels = array(
 		<?php if (empty($ai_logs)): ?><p><?php esc_html_e('No AI calls were recorded for this run.', 'ai-post-scheduler'); ?></p><?php endif; ?>
 		<?php foreach ($ai_logs as $display_log): ?>
 			<article class="aips-history-ai-call-card">
-				<header><strong><?php echo esc_html($display_log['log_type']); ?></strong><span><?php echo esc_html($display_log['timestamp']); ?></span></header>
+				<header><strong><?php echo esc_html($display_log['log_type']); ?></strong><span><?php echo esc_html($display_log['timestamp_display']); ?></span></header>
 				<?php foreach ($display_log['sections'] as $section): ?>
 					<details <?php echo count($display_log['sections']) === 1 ? 'open' : ''; ?>><summary><?php echo esc_html($section['label'] ?: $display_log['type_label']); ?></summary>
 					<?php if (!empty($section['message_html'])): ?><p><?php echo $section['message_html']; ?></p><?php endif; ?>
@@ -258,7 +258,7 @@ $type_labels = array(
 				<tbody>
 					<?php foreach ($display_logs as $display_log): ?>
 						<tr data-type-ids="<?php echo esc_attr(implode(',', $display_log['type_ids'])); ?>">
-							<td class="aips-history-log-timestamp"><?php echo esc_html($display_log['timestamp']); ?></td>
+							<td class="aips-history-log-timestamp"><?php echo esc_html($display_log['timestamp_display']); ?></td>
 							<td><span class="aips-badge <?php echo esc_attr($display_log['type_class']); ?>"><?php echo esc_html($display_log['type_label']); ?></span></td>
 							<td class="aips-history-log-type-code"><?php echo esc_html($display_log['log_type']); ?></td>
 							<td>
@@ -269,7 +269,7 @@ $type_labels = array(
 												<div class="aips-ai-log-section-header">
 													<strong><?php echo esc_html($section['label']); ?></strong>
 													<?php if (!empty($section['timestamp'])): ?>
-														<span class="aips-ai-log-section-time"><?php echo esc_html($section['timestamp']); ?></span>
+														<span class="aips-ai-log-section-time"><?php echo esc_html($section['timestamp_display']); ?></span>
 													<?php endif; ?>
 												</div>
 											<?php endif; ?>
