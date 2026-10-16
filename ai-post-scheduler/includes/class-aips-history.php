@@ -431,7 +431,7 @@ class AIPS_History {
             'image_edit_url'  => $entity_data['thumb_edit_url'],
             'has_content'     => $entity_data['has_content'],
             'custom_fields'   => $entity_data['custom_fields'],
-            'error_text'      => !empty($container['root_issue']) ? $container['root_issue'] : (!empty($history_item->error_message) ? $history_item->error_message : ''),
+            'error_text'      => !empty($container['root_issue']) ? $container['root_issue'] : (($history_item && !empty($history_item->error_message)) ? $history_item->error_message : ''),
             'warning_text'    => $events_data['warning_text'],
             'events'          => $events_data['formatted_events'],
         );
@@ -441,32 +441,34 @@ class AIPS_History {
      * Extract post entity details (type, title, excerpt, image, custom fields) for timeline display.
      *
      * @param array<string,mixed> $container Prepared container payload.
-     * @param object $history_item History container database object.
+     * @param object|null $history_item History container database object or null.
      * @return array<string,mixed>
      */
     private function extract_timeline_post_entity_data($container, $history_item) {
-        $post_id = !empty($history_item->post_id) ? (int) $history_item->post_id : (!empty($container['post_id']) ? (int) $container['post_id'] : 0);
+        $post_id = ($history_item && !empty($history_item->post_id)) ? (int) $history_item->post_id : (!empty($container['post_id']) ? (int) $container['post_id'] : 0);
         $post = $post_id ? get_post($post_id) : null;
 
         // Only generation runs own the post's components; event rows (publish,
         // delete, lifecycle, ...) just link to the post.
-        $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
+        $creation_method = ($history_item && isset($history_item->creation_method)) ? (string) $history_item->creation_method : '';
         $show_milestones = $post_id > 0 && self::is_generation_method($creation_method);
 
         $post_type = '';
         if ($post) {
             $post_type = $post->post_type;
-        } elseif (!empty($history_item->post_type)) {
+        } elseif ($history_item && !empty($history_item->post_type)) {
             $post_type = $history_item->post_type;
         } elseif (!empty($container['post_type'])) {
             $post_type = $container['post_type'];
+        } else {
+            $post_type = 'post';
         }
         $post_type_label = self::humanize_post_type_label($post_type);
 
         $generated_title = '';
         if ($post && !empty($post->post_title)) {
             $generated_title = $post->post_title;
-        } elseif (!empty($history_item->generated_title)) {
+        } elseif ($history_item && !empty($history_item->generated_title)) {
             $generated_title = $history_item->generated_title;
         } elseif (!empty($container['generated_title'])) {
             $generated_title = $container['generated_title'];
