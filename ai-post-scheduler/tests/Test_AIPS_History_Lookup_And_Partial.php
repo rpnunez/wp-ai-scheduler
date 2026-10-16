@@ -89,10 +89,23 @@ class Test_AIPS_History_Lookup_And_Partial extends WP_UnitTestCase {
 		$this->assertSame($generation, (int) $this->repository->get_by_post_id(21)->id);
 	}
 
+	public function test_get_by_post_id_prefers_the_generation_row_over_newer_job_rows() {
+		$generation = $this->row('post_generation', array('post_id' => 23));
+		$this->row('content_indexing', array('post_id' => 23));
+
+		$this->assertSame($generation, (int) $this->repository->get_by_post_id(23)->id);
+	}
+
 	public function test_get_by_post_id_is_null_when_only_event_rows_exist() {
 		$this->row('post_review_action', array('post_id' => 22));
 
 		$this->assertNull($this->repository->get_by_post_id(22));
+	}
+
+	public function test_get_by_post_id_is_null_when_only_job_rows_exist() {
+		$this->row('content_indexing', array('post_id' => 24));
+
+		$this->assertNull($this->repository->get_by_post_id(24));
 	}
 
 	// -- post_has_history_and_completed ---------------------------------------------
@@ -114,6 +127,13 @@ class Test_AIPS_History_Lookup_And_Partial extends WP_UnitTestCase {
 		$this->row('topic_post_generation', array('post_id' => 35), 'completed');
 
 		$this->assertFalse($this->repository->post_has_history_and_completed(35));
+	}
+
+	public function test_review_gate_ignores_completed_job_rows() {
+		$this->row('content_indexing', array('post_id' => 36), 'completed');
+		$this->row('author_topic_generation', array('post_id' => 36), 'completed');
+
+		$this->assertFalse($this->repository->post_has_history_and_completed(36));
 	}
 
 	// -- find_incomplete -------------------------------------------------------------

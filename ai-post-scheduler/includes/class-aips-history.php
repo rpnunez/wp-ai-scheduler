@@ -112,7 +112,7 @@ class AIPS_History {
      * @return bool
      */
     public static function is_generation_method( string $method ): bool {
-        return ! in_array( $method, AIPS_History_Repository::event_only_creation_methods(), true );
+        return AIPS_History_Record_Kind::for_creation_method( $method ) === AIPS_History_Record_Kind::GENERATION;
     }
 
     /**
@@ -213,7 +213,7 @@ class AIPS_History {
         // that are currently Stalled are closed (as terminated), and they are kept.
         if ($status === 'processing' && $older_than_days === 0) {
             $closed  = $this->repository->close_stalled_processing_rows(
-                AIPS_History_Event_Recorder::lifecycle_creation_methods()
+                AIPS_History_Record_Kind::GENERATION
             );
             $message = sprintf(
                 /* translators: %d: number of runs closed */
@@ -422,7 +422,10 @@ class AIPS_History {
         // Only generation runs own the post's components; event rows (publish,
         // delete, lifecycle, ...) just link to the post.
         $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
-        $show_milestones = $post_id > 0 && self::is_generation_method($creation_method);
+        $is_generation   = isset($history_item->record_kind) && AIPS_History_Record_Kind::is_valid($history_item->record_kind)
+            ? ($history_item->record_kind === AIPS_History_Record_Kind::GENERATION)
+            : self::is_generation_method($creation_method);
+        $show_milestones = $post_id > 0 && $is_generation;
 
         $post_type = '';
         if ($post) {
@@ -1339,6 +1342,21 @@ class AIPS_History {
     }
 
     /**
+     * Format a stored log timestamp (unix or datetime string) for display.
+     *
+     * @param mixed $value Raw timestamp value.
+     * @return string
+     */
+    private function format_history_log_timestamp($value) {
+        $ts = $this->normalize_history_timestamp_for_math($value);
+        if ($ts === null) {
+            return (string) $value;
+        }
+
+        return wp_date(get_option('date_format') . ' ' . get_option('time_format'), $ts);
+    }
+
+    /**
      * Pair AI request/response logs in a single pass and prepare display rows.
      *
      * @param array<int,array<string,mixed>> $logs             Normalized logs.
@@ -1355,6 +1373,7 @@ class AIPS_History {
                 $phase_key = $this->derive_ai_phase_key($log);
                 $display_logs[] = array(
                     'timestamp' => $log['timestamp'],
+                'timestamp_display' => $this->format_history_log_timestamp($log['timestamp']),
                     'type_label' => __('AI Request / Response', 'ai-post-scheduler'),
                     'type_class' => $this->get_history_type_class(5),
                     'log_type' => $this->humanize_ai_phase_label($phase_key),
@@ -1383,6 +1402,7 @@ class AIPS_History {
                 } else {
                     $display_logs[] = array(
                         'timestamp' => $log['timestamp'],
+                'timestamp_display' => $this->format_history_log_timestamp($log['timestamp']),
                         'type_label' => __('AI Response', 'ai-post-scheduler'),
                         'type_class' => $this->get_history_type_class(6),
                         'log_type' => $this->humanize_ai_phase_label($phase_key),
@@ -1398,6 +1418,7 @@ class AIPS_History {
 
             $display_logs[] = array(
                 'timestamp' => $log['timestamp'],
+                'timestamp_display' => $this->format_history_log_timestamp($log['timestamp']),
                 'type_label' => $log['type_label'],
                 'type_class' => $log['type_class'],
                 'log_type' => $log['log_type'],
@@ -1431,6 +1452,7 @@ class AIPS_History {
             'label' => $section_label,
             'show_header' => $section_label !== '',
             'timestamp' => isset($log['timestamp']) ? $log['timestamp'] : '',
+            'timestamp_display' => $this->format_history_log_timestamp(isset($log['timestamp']) ? $log['timestamp'] : ''),
             'message_html' => !empty($log['details']['message'])
                 ? $this->format_history_multiline_text($log['details']['message'])
                 : '',

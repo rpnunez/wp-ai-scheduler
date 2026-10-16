@@ -137,6 +137,61 @@ class Test_AIPS_Cache extends WP_UnitTestCase {
 		$this->assertSame( 1, $calls, 'Callback should only be called once.' );
 	}
 
+	public function test_remember_does_not_cache_null_results() {
+		$calls = 0;
+		$cb    = function() use ( &$calls ) {
+			$calls++;
+			return null;
+		};
+
+		$this->assertNull( $this->cache->remember( 'nullable', 60, $cb ) );
+		$this->assertNull( $this->cache->remember( 'nullable', 60, $cb ) );
+		$this->assertSame( 2, $calls, 'null is a miss and must be recomputed, not served as a hit.' );
+	}
+
+	public function test_remember_caches_falsy_non_null_results() {
+		foreach ( array( false, 0, '' ) as $i => $falsy ) {
+			$calls = 0;
+			$cb    = function() use ( &$calls, $falsy ) {
+				$calls++;
+				return $falsy;
+			};
+			$this->cache->remember( "falsy_$i", 60, $cb );
+			$this->assertSame( $falsy, $this->cache->remember( "falsy_$i", 60, $cb ) );
+			$this->assertSame( 1, $calls );
+		}
+	}
+
+	public function test_bump_tag_version_ignores_stale_l1_copy() {
+		// The Array driver disables L1, so wrap it in a non-array driver.
+		$backing = new AIPS_Cache_Array_Driver();
+		$wrapper = new class( $backing ) implements AIPS_Cache_Driver {
+			private $b;
+			public function __construct( $b ) { $this->b = $b; }
+			public function is_available() { return true; }
+			public function get( $key, $group = 'default' ) { return $this->b->get( $key, $group ); }
+			public function get_multiple( array $keys, $group = 'default' ) { return $this->b->get_multiple( $keys, $group ); }
+			public function set( $key, $value, $ttl = 0, $group = 'default' ) { return $this->b->set( $key, $value, $ttl, $group ); }
+			public function delete( $key, $group = 'default' ) { return $this->b->delete( $key, $group ); }
+			public function flush() { return $this->b->flush(); }
+			public function has( $key, $group = 'default' ) { return $this->b->has( $key, $group ); }
+		};
+		$cache = new AIPS_Cache( $wrapper );
+
+		$this->assertSame( 2, $cache->bump_tag_version( 'posts' ) );
+		$this->assertSame( 2, $cache->get_tag_version( 'posts' ) ); // primes L1 with v2
+
+		// Another process bumps the tag behind this instance's back.
+		$backing->set( 'tag_version:posts', 5, 0, 'default' );
+
+		$this->assertSame( 6, $cache->bump_tag_version( 'posts' ), 'Bump must build on the stored version, not a stale L1 copy.' );
+
+		$backing->set( 'tag_version:posts', 9, 0, 'default' );
+		$cache->get_tag_versions( array( 'posts' ) ); // re-prime L1
+		$backing->set( 'tag_version:posts', 12, 0, 'default' );
+		$this->assertSame( array( 'posts' => 13 ), $cache->bump_tag_versions( array( 'posts' ) ) );
+	}
+
 	// ------------------------------------------------------------------
 	// increment() / decrement()
 	// ------------------------------------------------------------------

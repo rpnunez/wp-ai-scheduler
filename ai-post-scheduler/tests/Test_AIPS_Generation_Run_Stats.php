@@ -308,6 +308,25 @@ class Test_AIPS_Generation_Run_Stats extends WP_UnitTestCase {
 		$this->assertNull($summary['oldest_idle_seconds']);
 	}
 
+	public function test_stalled_summary_counts_only_generation_runs() {
+		global $wpdb;
+
+		$this->reset_history();
+
+		$run = $this->seed('scheduled', 'processing');
+		$job = $this->seed('author_embeddings', 'processing');
+
+		// Age both rows past their stalled thresholds (2 hours for runs, 8 hours for chain jobs).
+		$past_run = AIPS_DateTime::now()->timestamp() - 2 * HOUR_IN_SECONDS;
+		$past_job = AIPS_DateTime::now()->timestamp() - 8 * HOUR_IN_SECONDS;
+		$wpdb->update($wpdb->prefix . 'aips_history', array('created_at' => $past_run), array('id' => $run));
+		$wpdb->update($wpdb->prefix . 'aips_history', array('created_at' => $past_job), array('id' => $job));
+
+		$summary = $this->history->get_stalled_summary();
+
+		$this->assertSame(1, $summary['count'], 'Stalled summary must count generation runs only.');
+	}
+
 	// ------------------------------------------------------------ Duration, AI calls, retry saturation
 
 	public function test_duration_figures_ignore_event_rows() {
@@ -419,5 +438,90 @@ class Test_AIPS_Generation_Run_Stats extends WP_UnitTestCase {
 		$result = $this->history->get_history(array('domain' => $domain, 'per_page' => 100, 'fields' => 'list'));
 
 		return array_map('intval', wp_list_pluck($result['items'], 'id'));
+	}
+
+	public function test_template_stats_and_schedule_count_only_count_generation_runs() {
+		global $wpdb;
+
+		$this->reset_history();
+		$template_id = 777;
+
+		$wpdb->insert($wpdb->prefix . 'aips_schedule', array(
+			'template_id' => $template_id,
+			'frequency'   => 'daily',
+			'next_run'    => time() + 3600,
+			'is_active'   => 1,
+			'created_at'  => time() - 60,
+		));
+		$schedule_id = (int) $wpdb->insert_id;
+
+		try {
+			$this->seed('scheduled', 'completed', array('template_id' => $template_id));
+			$this->seed('manual', 'partial', array('template_id' => $template_id));
+			// Non-generation rows carrying the same template_id must be ignored.
+			$this->seed('template_lifecycle', 'completed', array('template_id' => $template_id));
+			$this->seed('post_review_action', 'completed', array('template_id' => $template_id));
+			$this->seed('content_indexing', 'completed', array('template_id' => $template_id));
+
+			$this->assertSame(2, $this->history->get_template_stats($template_id));
+			$all_stats = $this->history->get_all_template_stats();
+			$this->assertSame(2, $all_stats[$template_id]);
+			$this->assertSame(1, $this->history->count_completed_for_schedule($schedule_id));
+		} finally {
+			$wpdb->delete($wpdb->prefix . 'aips_schedule', array('id' => $schedule_id), array('%d'));
+		}
+	}
+
+	public function test_trend_duration_and_failure_reasons_only_count_generation_runs() {
+		$this->reset_history();
+
+		$run_ok   = $this->seed('scheduled', 'completed');
+		$run_fail = $this->seed('scheduled', 'failed', array('error_message' => 'AI provider timeout'));
+		$this->set_duration($run_ok, 120);
+
+		// Event and job rows that must not pollute trend, duration, or failure reasons.
+		$event_fail = $this->seed('topic_post_generation', 'failed', array('error_message' => 'Wrapper failure'));
+		$job_ok     = $this->seed('content_indexing', 'completed');
+		$this->set_duration($event_fail, 5);
+		$this->set_duration($job_ok, 10);
+
+		$trends = $this->history->get_daily_success_failure_trend(1);
+		$this->assertNotEmpty($trends);
+		$today_trend = end($trends);
+		$this->assertSame(1, (int) $today_trend['success_count']);
+		$this->assertSame(1, (int) $today_trend['failure_count']);
+
+		$flows = $this->history->get_average_duration_by_flow(1);
+		$flow_types = wp_list_pluck($flows, 'flow_type');
+		$this->assertContains('scheduled', $flow_types);
+		$this->assertNotContains('topic_post_generation', $flow_types);
+		$this->assertNotContains('content_indexing', $flow_types);
+
+		$reasons = $this->history->get_top_failure_reasons(1, 8);
+		$reason_labels = wp_list_pluck($reasons, 'reason');
+		$this->assertContains('AI provider timeout', $reason_labels);
+		$this->assertNotContains('Wrapper failure', $reason_labels);
+	}
+
+	public function test_get_history_filters_by_correlation_id() {
+		$this->reset_history();
+
+		$corr_a = 'corr-uuid-alpha';
+		$corr_b = 'corr-uuid-beta';
+
+		$run_a = $this->seed('scheduled', 'completed', array('correlation_id' => $corr_a));
+		$job_a = $this->seed('content_indexing', 'completed', array('correlation_id' => $corr_a));
+		$run_b = $this->seed('scheduled', 'completed', array('correlation_id' => $corr_b));
+
+		$result = $this->history->get_history(array(
+			'correlation_id' => $corr_a,
+			'per_page'       => 50,
+			'fields'         => 'list',
+		));
+		$ids = array_map('intval', wp_list_pluck($result['items'], 'id'));
+
+		$this->assertContains($run_a, $ids);
+		$this->assertContains($job_a, $ids);
+		$this->assertNotContains($run_b, $ids);
 	}
 }

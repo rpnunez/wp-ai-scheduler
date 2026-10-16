@@ -37,18 +37,10 @@ $type_labels = array(
 ?>
 
 <div class="aips-history-log-renderer aips-json-viewer-enabled" style="white-space: normal;">
-	<div class="aips-history-modal-toolbar" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin: 12px 0 14px; padding: 14px 18px; border: 1px solid #dcdcde; border-radius: 10px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
-		<div class="aips-history-modal-heading">
-			<h4 class="aips-history-modal-title" style="margin: 0 0 3px; font-size: 16px; font-weight: 600; line-height: 1.25;"><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></h4>
-			<p class="aips-history-modal-subtitle" style="margin: 0; color: #646970; font-size: 12.5px; line-height: 1.4;"><?php esc_html_e('Human-readable context first, then the full technical log trail below.', 'ai-post-scheduler'); ?></p>
-		</div>
-		<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic" data-diagnostic="<?php echo esc_attr($container['diagnostic_text']); ?>"><?php esc_html_e('Copy diagnostic', 'ai-post-scheduler'); ?></button>
-	</div>
-
 	<nav class="aips-history-detail-tabs" role="tablist" aria-label="<?php esc_attr_e('History detail sections', 'ai-post-scheduler'); ?>" style="display: flex; gap: 4px; border-bottom: 1px solid #dcdcde; margin: 0 0 14px;">
 		<button type="button" class="aips-history-detail-tab is-active" role="tab" aria-selected="true" data-tab="overview"><?php esc_html_e('Overview', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="timeline"><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></button>
-		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls"><?php echo esc_html(sprintf(__('AI Calls (%d)', 'ai-post-scheduler'), count($ai_logs))); ?></button>
+		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls"><?php esc_html_e('AI Calls', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="technical"><?php esc_html_e('Technical', 'ai-post-scheduler'); ?></button>
 	</nav>
 
@@ -197,7 +189,7 @@ $type_labels = array(
 		<?php if (empty($ai_logs)): ?><p><?php esc_html_e('No AI calls were recorded for this run.', 'ai-post-scheduler'); ?></p><?php endif; ?>
 		<?php foreach ($ai_logs as $display_log): ?>
 			<article class="aips-history-ai-call-card">
-				<header><strong><?php echo esc_html($display_log['log_type']); ?></strong><span><?php echo esc_html($display_log['timestamp']); ?></span></header>
+				<header><strong><?php echo esc_html($display_log['log_type']); ?></strong><span><?php echo esc_html($display_log['timestamp_display']); ?></span></header>
 				<?php foreach ($display_log['sections'] as $section): ?>
 					<details <?php echo count($display_log['sections']) === 1 ? 'open' : ''; ?>><summary><?php echo esc_html($section['label'] ?: $display_log['type_label']); ?></summary>
 					<?php if (!empty($section['message_html'])): ?><p><?php echo $section['message_html']; ?></p><?php endif; ?>
@@ -258,7 +250,7 @@ $type_labels = array(
 				<tbody>
 					<?php foreach ($display_logs as $display_log): ?>
 						<tr data-type-ids="<?php echo esc_attr(implode(',', $display_log['type_ids'])); ?>">
-							<td class="aips-history-log-timestamp"><?php echo esc_html($display_log['timestamp']); ?></td>
+							<td class="aips-history-log-timestamp"><?php echo esc_html($display_log['timestamp_display']); ?></td>
 							<td><span class="aips-badge <?php echo esc_attr($display_log['type_class']); ?>"><?php echo esc_html($display_log['type_label']); ?></span></td>
 							<td class="aips-history-log-type-code"><?php echo esc_html($display_log['log_type']); ?></td>
 							<td>
@@ -269,7 +261,7 @@ $type_labels = array(
 												<div class="aips-ai-log-section-header">
 													<strong><?php echo esc_html($section['label']); ?></strong>
 													<?php if (!empty($section['timestamp'])): ?>
-														<span class="aips-ai-log-section-time"><?php echo esc_html($section['timestamp']); ?></span>
+														<span class="aips-ai-log-section-time"><?php echo esc_html($section['timestamp_display']); ?></span>
 													<?php endif; ?>
 												</div>
 											<?php endif; ?>
