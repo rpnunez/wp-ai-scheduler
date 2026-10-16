@@ -28,6 +28,13 @@ class AIPS_Ability_Workflow_Document_Validator {
 	const STRATEGIES = array( 'continue', 'stop', 'skip' );
 
 	/**
+	 * Allowed characters for step keys and output aliases. Both are used as
+	 * path segments in {{steps.<name>.output.field}} references, which are split
+	 * on dots, so a dot or any other punctuation would make a step unreachable.
+	 */
+	const KEY_PATTERN = '/^[A-Za-z0-9_]+$/';
+
+	/**
 	 * @var AIPS_Ability_Workflow_Condition_Evaluator
 	 */
 	private $condition_evaluator;
@@ -76,6 +83,7 @@ class AIPS_Ability_Workflow_Document_Validator {
 		$seen_keys     = array();
 		$earlier_keys  = array();
 		$earlier_alias = array();
+		$alias_owner   = array();
 
 		foreach ( $steps as $index => $step ) {
 			if ( ! is_array( $step ) ) {
@@ -91,6 +99,34 @@ class AIPS_Ability_Workflow_Document_Validator {
 				$errors[] = sprintf( 'Duplicate step_key "%s".', $step_key );
 			} else {
 				$seen_keys[ $step_key ] = true;
+			}
+
+			if ( '' !== $step_key ) {
+				$key_error = $this->validate_identifier( $step_key, 'step_key', AIPS_Ability_Workflow_Repository::STEP_KEY_MAX_LENGTH );
+				if ( '' !== $key_error ) {
+					$errors[] = $key_error;
+				}
+			}
+
+			// Outputs are addressed by output_alias, or by step_key when no
+			// alias is set (that is how the executor stores them).
+			$alias = isset( $step['output_alias'] ) && is_scalar( $step['output_alias'] ) ? (string) $step['output_alias'] : '';
+
+			if ( '' !== $alias ) {
+				$alias_error = $this->validate_identifier( $alias, 'output_alias', AIPS_Ability_Workflow_Repository::OUTPUT_ALIAS_MAX_LENGTH );
+				if ( '' !== $alias_error ) {
+					$errors[] = sprintf( 'Step "%s": %s', $step_key, $alias_error );
+				}
+			}
+
+			$effective_alias = '' !== $alias ? $alias : $step_key;
+
+			if ( '' !== $effective_alias ) {
+				if ( isset( $alias_owner[ $effective_alias ] ) && $alias_owner[ $effective_alias ] !== $step_key ) {
+					$errors[] = sprintf( 'Step "%s" output name "%s" is already used by step "%s".', $step_key, $effective_alias, $alias_owner[ $effective_alias ] );
+				} else {
+					$alias_owner[ $effective_alias ] = $step_key;
+				}
 			}
 
 			if ( empty( $step['ability_name'] ) ) {
@@ -116,6 +152,11 @@ class AIPS_Ability_Workflow_Document_Validator {
 				$condition_result = $this->condition_evaluator->validate_condition_tree( $step['condition_tree'] );
 				if ( is_wp_error( $condition_result ) ) {
 					$errors[] = sprintf( 'Step "%s": %s', $step_key, $condition_result->get_error_message() );
+				}
+
+				// Left and right operands may both reference earlier outputs.
+				foreach ( $this->validate_input_map( $step['condition_tree'], $earlier_alias ) as $message ) {
+					$errors[] = sprintf( 'Step "%s": %s', $step_key, $message );
 				}
 			}
 
@@ -143,8 +184,8 @@ class AIPS_Ability_Workflow_Document_Validator {
 			if ( '' !== $step_key ) {
 				$earlier_keys[] = $step_key;
 			}
-			if ( ! empty( $step['output_alias'] ) ) {
-				$earlier_alias[] = (string) $step['output_alias'];
+			if ( '' !== $effective_alias ) {
+				$earlier_alias[] = $effective_alias;
 			}
 		}
 
@@ -153,6 +194,26 @@ class AIPS_Ability_Workflow_Document_Validator {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Check a step key or output alias for allowed characters and length.
+	 *
+	 * @param string $value      Value to check.
+	 * @param string $field      Field name for the message.
+	 * @param int    $max_length Column width.
+	 * @return string Error message, or an empty string when valid.
+	 */
+	private function validate_identifier( string $value, string $field, int $max_length ): string {
+		if ( ! preg_match( self::KEY_PATTERN, $value ) ) {
+			return sprintf( '%s "%s" may only contain letters, numbers and underscores.', $field, $value );
+		}
+
+		if ( strlen( $value ) > $max_length ) {
+			return sprintf( '%s "%s" must be at most %d characters.', $field, $value, $max_length );
+		}
+
+		return '';
 	}
 
 	/**

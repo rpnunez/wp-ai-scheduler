@@ -41,9 +41,26 @@ class AIPS_Ability_Workflow_Repository {
 	);
 
 	/**
+	 * Column widths of the steps table. Values longer than these would be
+	 * truncated or rejected by MySQL, so save_steps() refuses them up front.
+	 */
+	const STEP_KEY_MAX_LENGTH     = 100;
+	const OUTPUT_ALIAS_MAX_LENGTH = 100;
+	const ABILITY_NAME_MAX_LENGTH = 191;
+	const STEP_NAME_MAX_LENGTH    = 255;
+
+	/**
 	 * @var self|null
 	 */
 	private static $instance = null;
+
+	/**
+	 * Whether the open atomic section is a savepoint inside the caller's
+	 * transaction rather than a transaction of its own.
+	 *
+	 * @var bool
+	 */
+	private $use_savepoint = false;
 
 	/**
 	 * @var wpdb
@@ -189,6 +206,13 @@ class AIPS_Ability_Workflow_Repository {
 
 		if ( $result === false ) {
 			return $this->build_error( 'ability_workflow_update_failed', __( 'Failed to update workflow.', 'ai-post-scheduler' ) );
+		}
+
+		// Settings (max steps, destructive gate, ...) are part of the definition
+		// a run was dispatched against, so changing them bumps the version just
+		// like saving steps does. The executor fails runs whose version moved.
+		if ( array_key_exists( 'settings', $data ) ) {
+			$this->bump_version( $workflow_id );
 		}
 
 		return true;
@@ -378,7 +402,14 @@ class AIPS_Ability_Workflow_Repository {
 				$steps
 			);
 
-			$this->save_steps( $new_id, $step_payload );
+			$saved = $this->save_steps( $new_id, $step_payload );
+
+			if ( is_wp_error( $saved ) ) {
+				// Do not leave a half-copied workflow behind.
+				$this->delete_workflow( $new_id );
+
+				return $saved;
+			}
 		}
 
 		return $new_id;
@@ -391,6 +422,10 @@ class AIPS_Ability_Workflow_Repository {
 	/**
 	 * Replace all steps for a workflow and bump its version.
 	 *
+	 * Every step is validated before anything is deleted, and the delete plus
+	 * the inserts run in one transaction, so a failure part-way through can no
+	 * longer leave the workflow with no steps or only some of them.
+	 *
 	 * @param int   $workflow_id Workflow ID.
 	 * @param array $steps       Array of step field arrays (step_key, name, ability_name,
 	 *                            position, depends_on, input_map, condition_tree,
@@ -398,50 +433,158 @@ class AIPS_Ability_Workflow_Repository {
 	 * @return bool|WP_Error
 	 */
 	public function save_steps( int $workflow_id, array $steps ) {
-		$this->delete_steps( $workflow_id );
+		$now  = time();
+		$rows = array();
 
-		$now = time();
+		foreach ( array_values( $steps ) as $index => $step ) {
+			$valid = $this->validate_step_for_storage( $step );
 
-		foreach ( $steps as $index => $step ) {
-			if ( empty( $step['step_key'] ) || empty( $step['ability_name'] ) ) {
-				return new WP_Error( 'ability_workflow_step_invalid', __( 'Each step requires a step_key and ability_name.', 'ai-post-scheduler' ) );
+			if ( is_wp_error( $valid ) ) {
+				return $valid;
 			}
 
+			$rows[] = array(
+				'workflow_id'    => $workflow_id,
+				'step_key'       => (string) $step['step_key'],
+				'name'           => isset( $step['name'] ) && '' !== (string) $step['name'] ? (string) $step['name'] : null,
+				'ability_name'   => (string) $step['ability_name'],
+				'position'       => isset( $step['position'] ) ? (int) $step['position'] : $index,
+				'depends_on'     => wp_json_encode( isset( $step['depends_on'] ) && is_array( $step['depends_on'] ) ? array_values( $step['depends_on'] ) : array() ),
+				'input_map'      => wp_json_encode( isset( $step['input_map'] ) && is_array( $step['input_map'] ) ? $step['input_map'] : array() ),
+				'condition_tree' => wp_json_encode( isset( $step['condition_tree'] ) && is_array( $step['condition_tree'] ) ? $step['condition_tree'] : array() ),
+				'output_alias'   => isset( $step['output_alias'] ) && '' !== (string) $step['output_alias'] ? (string) $step['output_alias'] : null,
+				'on_success'     => wp_json_encode( isset( $step['on_success'] ) && is_array( $step['on_success'] ) ? $step['on_success'] : array( 'strategy' => 'continue' ) ),
+				'on_failure'     => wp_json_encode( isset( $step['on_failure'] ) && is_array( $step['on_failure'] ) ? $step['on_failure'] : array( 'strategy' => 'stop' ) ),
+				'retry_policy'   => wp_json_encode( isset( $step['retry_policy'] ) && is_array( $step['retry_policy'] ) ? $step['retry_policy'] : array( 'attempts' => 0, 'backoff_seconds' => 0 ) ),
+				'created_at'     => $now,
+				'updated_at'     => $now,
+			);
+		}
+
+		$this->begin_transaction();
+
+		if ( false === $this->wpdb->delete( $this->steps_table, array( 'workflow_id' => $workflow_id ), array( '%d' ) ) ) {
+			return $this->rollback_with_error( 'ability_workflow_step_save_failed', __( 'Failed to save workflow step.', 'ai-post-scheduler' ) );
+		}
+
+		foreach ( $rows as $row ) {
 			$result = $this->wpdb->insert(
 				$this->steps_table,
-				array(
-					'workflow_id'    => $workflow_id,
-					'step_key'       => (string) $step['step_key'],
-					'name'           => isset( $step['name'] ) ? (string) $step['name'] : null,
-					'ability_name'   => (string) $step['ability_name'],
-					'position'       => isset( $step['position'] ) ? (int) $step['position'] : $index,
-					'depends_on'     => wp_json_encode( isset( $step['depends_on'] ) && is_array( $step['depends_on'] ) ? $step['depends_on'] : array() ),
-					'input_map'      => wp_json_encode( isset( $step['input_map'] ) && is_array( $step['input_map'] ) ? $step['input_map'] : array() ),
-					'condition_tree' => wp_json_encode( isset( $step['condition_tree'] ) && is_array( $step['condition_tree'] ) ? $step['condition_tree'] : array() ),
-					'output_alias'   => isset( $step['output_alias'] ) ? (string) $step['output_alias'] : null,
-					'on_success'     => wp_json_encode( isset( $step['on_success'] ) && is_array( $step['on_success'] ) ? $step['on_success'] : array( 'strategy' => 'continue' ) ),
-					'on_failure'     => wp_json_encode( isset( $step['on_failure'] ) && is_array( $step['on_failure'] ) ? $step['on_failure'] : array( 'strategy' => 'stop' ) ),
-					'retry_policy'   => wp_json_encode( isset( $step['retry_policy'] ) && is_array( $step['retry_policy'] ) ? $step['retry_policy'] : array( 'attempts' => 0, 'backoff_seconds' => 0 ) ),
-					'created_at'     => $now,
-					'updated_at'     => $now,
-				),
+				$row,
 				array( '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
 			);
 
 			if ( $result === false ) {
-				return $this->build_error( 'ability_workflow_step_save_failed', __( 'Failed to save workflow step.', 'ai-post-scheduler' ) );
+				return $this->rollback_with_error( 'ability_workflow_step_save_failed', __( 'Failed to save workflow step.', 'ai-post-scheduler' ) );
 			}
 		}
 
-		$this->wpdb->query(
+		if ( ! $this->bump_version( $workflow_id, $now ) ) {
+			return $this->rollback_with_error( 'ability_workflow_step_save_failed', __( 'Failed to save workflow step.', 'ai-post-scheduler' ) );
+		}
+
+		$this->commit_transaction();
+
+		return true;
+	}
+
+	/**
+	 * Check a step payload against the steps table's constraints.
+	 *
+	 * @param mixed $step Step payload.
+	 * @return true|WP_Error
+	 */
+	private function validate_step_for_storage( $step ) {
+		if ( ! is_array( $step ) || empty( $step['step_key'] ) || empty( $step['ability_name'] ) ) {
+			return new WP_Error( 'ability_workflow_step_invalid', __( 'Each step requires a step_key and ability_name.', 'ai-post-scheduler' ) );
+		}
+
+		$limits = array(
+			'step_key'     => self::STEP_KEY_MAX_LENGTH,
+			'ability_name' => self::ABILITY_NAME_MAX_LENGTH,
+			'output_alias' => self::OUTPUT_ALIAS_MAX_LENGTH,
+			'name'         => self::STEP_NAME_MAX_LENGTH,
+		);
+
+		foreach ( $limits as $field => $max ) {
+			if ( isset( $step[ $field ] ) && is_scalar( $step[ $field ] ) && $this->string_length( (string) $step[ $field ] ) > $max ) {
+				return new WP_Error(
+					'ability_workflow_step_invalid',
+					/* translators: 1: field name, 2: maximum length */
+					sprintf( __( 'Step field "%1$s" must be at most %2$d characters.', 'ai-post-scheduler' ), $field, $max )
+				);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Character length of a string, multibyte-safe when mbstring is present.
+	 *
+	 * @param string $value Value to measure.
+	 * @return int
+	 */
+	private function string_length( string $value ): int {
+		return function_exists( 'mb_strlen' ) ? mb_strlen( $value, 'UTF-8' ) : strlen( $value );
+	}
+
+	/**
+	 * Increment a workflow's version.
+	 *
+	 * @param int      $workflow_id Workflow ID.
+	 * @param int|null $now         Timestamp for updated_at; defaults to now.
+	 * @return bool
+	 */
+	private function bump_version( int $workflow_id, ?int $now = null ): bool {
+		$now = $now ?? time();
+
+		return false !== $this->wpdb->query(
 			$this->wpdb->prepare(
 				"UPDATE {$this->workflows_table} SET version = version + 1, updated_at = %d WHERE id = %d",
 				$now,
 				$workflow_id
 			)
 		);
+	}
 
-		return true;
+	/**
+	 * Roll back the open transaction and build the mutation error.
+	 *
+	 * @param string $code    Error code.
+	 * @param string $message Display message.
+	 * @return WP_Error
+	 */
+	private function rollback_with_error( $code, $message ) {
+		$error = $this->build_error( $code, $message );
+
+		$this->wpdb->query( $this->use_savepoint ? 'ROLLBACK TO SAVEPOINT aips_ability_steps' : 'ROLLBACK' );
+
+		return $error;
+	}
+
+	/**
+	 * Open an atomic section.
+	 *
+	 * A plain START TRANSACTION would implicitly commit a transaction the
+	 * caller already has open (autocommit off, as in the WordPress test
+	 * harness), so in that case a savepoint is used instead.
+	 *
+	 * @return void
+	 */
+	private function begin_transaction(): void {
+		$this->use_savepoint = '0' === (string) $this->wpdb->get_var( 'SELECT @@autocommit' );
+
+		$this->wpdb->query( $this->use_savepoint ? 'SAVEPOINT aips_ability_steps' : 'START TRANSACTION' );
+	}
+
+	/**
+	 * Close the atomic section opened by begin_transaction().
+	 *
+	 * @return void
+	 */
+	private function commit_transaction(): void {
+		$this->wpdb->query( $this->use_savepoint ? 'RELEASE SAVEPOINT aips_ability_steps' : 'COMMIT' );
 	}
 
 	/**
@@ -571,6 +714,24 @@ class AIPS_Ability_Workflow_Repository {
 		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $placeholders ) );
 
 		return false !== $result;
+	}
+
+	/**
+	 * Remember which History container records a run, so every cron
+	 * invocation of the run reuses one container instead of opening a new one.
+	 *
+	 * @param int $run_id     Run ID.
+	 * @param int $history_id History container ID.
+	 * @return bool
+	 */
+	public function set_run_history_id( int $run_id, int $history_id ): bool {
+		return false !== $this->wpdb->update(
+			$this->runs_table,
+			array( 'history_id' => $history_id ),
+			array( 'id' => $run_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
 	}
 
 	/**
@@ -738,6 +899,135 @@ class AIPS_Ability_Workflow_Repository {
 		);
 
 		return array_map( array( 'AIPS_Ability_Workflow_Step_Run', 'from_row' ), $rows ?: array() );
+	}
+
+	// -----------------------------------------------------------------------
+	// Run locks
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Atomically claim an expiring lock stored in the options table.
+	 *
+	 * The first claim is an INSERT IGNORE on the unique option_name key. An
+	 * expired lock is taken over with a compare-and-swap UPDATE on the value
+	 * that was read, so two workers that both see the same expired lock cannot
+	 * both win (the loser's UPDATE matches no row).
+	 *
+	 * @param string $key   Option name.
+	 * @param string $token Ownership token.
+	 * @param int    $ttl   Seconds until the lock may be taken over.
+	 * @return bool True when this caller now holds the lock.
+	 */
+	public function acquire_lock( string $key, string $token, int $ttl ): bool {
+		$now   = time();
+		$value = $token . '|' . ( $now + max( 1, $ttl ) );
+		$table = $this->wpdb->options;
+
+		$inserted = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"INSERT IGNORE INTO {$table} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+				$key,
+				$value
+			)
+		);
+
+		if ( 1 === (int) $inserted ) {
+			$this->flush_option_cache( $key );
+			return true;
+		}
+
+		$existing = $this->wpdb->get_var(
+			$this->wpdb->prepare( "SELECT option_value FROM {$table} WHERE option_name = %s", $key )
+		);
+
+		if ( null === $existing ) {
+			return false;
+		}
+
+		$parts  = explode( '|', (string) $existing );
+		$expiry = isset( $parts[1] ) ? (int) $parts[1] : 0;
+
+		if ( $expiry > $now ) {
+			return false;
+		}
+
+		$swapped = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$table} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+				$value,
+				$key,
+				$existing
+			)
+		);
+
+		$this->flush_option_cache( $key );
+
+		return 1 === (int) $swapped;
+	}
+
+	/**
+	 * Push a held lock's expiry forward. Does nothing if the lock is no longer ours.
+	 *
+	 * @param string $key   Option name.
+	 * @param string $token Ownership token.
+	 * @param int    $ttl   Seconds from now.
+	 * @return bool True when the lock was still ours and was extended.
+	 */
+	public function refresh_lock( string $key, string $token, int $ttl ): bool {
+		$table   = $this->wpdb->options;
+		$owner   = $this->wpdb->esc_like( $token ) . '|%';
+		$updated = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"UPDATE {$table} SET option_value = %s WHERE option_name = %s AND option_value LIKE %s",
+				$token . '|' . ( time() + max( 1, $ttl ) ),
+				$key,
+				$owner
+			)
+		);
+
+		$this->flush_option_cache( $key );
+
+		if ( 1 === (int) $updated ) {
+			return true;
+		}
+
+		// MySQL reports 0 changed rows when the new value equals the old one
+		// (a refresh within the same second), so confirm ownership directly.
+		return null !== $this->wpdb->get_var(
+			$this->wpdb->prepare( "SELECT option_id FROM {$table} WHERE option_name = %s AND option_value LIKE %s", $key, $owner )
+		);
+	}
+
+	/**
+	 * Release a lock, but only if this token still owns it.
+	 *
+	 * @param string $key   Option name.
+	 * @param string $token Ownership token.
+	 * @return void
+	 */
+	public function release_lock( string $key, string $token ): void {
+		$table = $this->wpdb->options;
+
+		$this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$table} WHERE option_name = %s AND option_value LIKE %s",
+				$key,
+				$this->wpdb->esc_like( $token ) . '|%'
+			)
+		);
+
+		$this->flush_option_cache( $key );
+	}
+
+	/**
+	 * Drop cached copies of an option after it was changed with raw SQL.
+	 *
+	 * @param string $key Option name.
+	 * @return void
+	 */
+	private function flush_option_cache( string $key ): void {
+		wp_cache_delete( $key, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
 	}
 
 	// -----------------------------------------------------------------------

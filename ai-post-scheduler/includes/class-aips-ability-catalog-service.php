@@ -128,7 +128,9 @@ class AIPS_Ability_Catalog_Service {
 	 *     @type array       $input_schema         Input schema, if provided by the raw ability.
 	 *     @type array       $output_schema        Output schema, if provided by the raw ability.
 	 *     @type string|null $permission_callback  Permission callback identifier, if any.
-	 *     @type bool        $is_destructive       Whether invoking this ability mutates state destructively.
+	 *     @type bool        $is_destructive       Whether the ability explicitly declares itself destructive.
+	 *     @type bool        $requires_approval    Whether the workflow's "allow destructive abilities" setting must be on
+	 *                                             (declared destructive, or no annotation at all).
 	 *     @type bool        $is_available         Whether this ability is currently invocable.
 	 *     @type array       $metadata             Any remaining raw fields, for forward-compat display.
 	 * }
@@ -147,8 +149,12 @@ class AIPS_Ability_Catalog_Service {
 			? $raw_ability['annotations']
 			: array();
 		$destructive_state = null;
+		$readonly          = ! empty( $annotations['readonly'] );
 
-		if ( array_key_exists( 'destructive', $annotations ) && null !== $annotations['destructive'] ) {
+		if ( $readonly ) {
+			// A read-only ability cannot be destructive, whatever else it declares.
+			$destructive_state = false;
+		} elseif ( array_key_exists( 'destructive', $annotations ) && null !== $annotations['destructive'] ) {
 			$destructive_state = (bool) $annotations['destructive'];
 		} elseif ( array_key_exists( 'is_destructive', $raw_ability ) ) {
 			$destructive_state = (bool) $raw_ability['is_destructive'];
@@ -168,6 +174,11 @@ class AIPS_Ability_Catalog_Service {
 			'annotations'          => $annotations,
 			'destructive_state'    => $destructive_state,
 			'is_destructive'       => true === $destructive_state,
+			// Only abilities that declare themselves non-destructive (or read-only)
+			// run without approval. An ability that says nothing is treated as
+			// potentially destructive, as the Abilities API does for a missing
+			// annotation.
+			'requires_approval'    => true === $destructive_state || null === $destructive_state,
 			'is_available'         => array_key_exists( 'is_available', $raw_ability ) ? (bool) $raw_ability['is_available'] : true,
 			'metadata'             => array_diff_key( $raw_ability, array_flip( $known_keys ) ),
 		);

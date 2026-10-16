@@ -74,7 +74,10 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
+		$is_update   = $workflow_id > 0;
 		$name        = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
 
 		if ( '' === trim( $name ) ) {
@@ -108,7 +111,7 @@ class AIPS_Ability_Workflows_Controller {
 		}
 
 		do_action( 'aips_ability_workflow_changed', array(
-			'action'      => $workflow_id ? 'saved' : 'created',
+			'action'      => $is_update ? 'saved' : 'created',
 			'workflow_id' => absint( $workflow_id ),
 			'user_id'     => get_current_user_id(),
 		) );
@@ -132,6 +135,8 @@ class AIPS_Ability_Workflows_Controller {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			AIPS_Ajax_Response::permission_denied();
 		}
+
+		AIPS_Ability_Workflows_Feature::guard_ajax();
 
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 		$workflow    = $workflow_id > 0 ? $this->repository->get_workflow( $workflow_id ) : null;
@@ -163,6 +168,8 @@ class AIPS_Ability_Workflows_Controller {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			AIPS_Ajax_Response::permission_denied();
 		}
+
+		AIPS_Ability_Workflows_Feature::guard_ajax();
 
 		$args = array(
 			'status'       => isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '',
@@ -196,6 +203,8 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 
 		if ( $workflow_id <= 0 ) {
@@ -226,6 +235,8 @@ class AIPS_Ability_Workflows_Controller {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			AIPS_Ajax_Response::permission_denied();
 		}
+
+		AIPS_Ability_Workflows_Feature::guard_ajax();
 
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 
@@ -265,6 +276,8 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 
 		if ( $workflow_id <= 0 ) {
@@ -295,6 +308,8 @@ class AIPS_Ability_Workflows_Controller {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			AIPS_Ajax_Response::permission_denied();
 		}
+
+		AIPS_Ability_Workflows_Feature::guard_ajax();
 
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 

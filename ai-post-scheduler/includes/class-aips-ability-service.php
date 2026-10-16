@@ -268,7 +268,28 @@ class AIPS_Ability_Service {
 			return new WP_Error('ability_not_found', sprintf(__('Ability "%s" is not registered.', 'ai-post-scheduler'), $slug));
 		}
 
-		return $ability->execute($payload);
+		return $ability->execute($this->wp_ability_input($ability, $payload));
+	}
+
+	/**
+	 * Decide what to hand to WP_Ability::execute() for an input payload.
+	 *
+	 * WordPress rejects any non-null input for an ability that declares no
+	 * input schema, so an empty payload must reach such an ability as null.
+	 * Abilities that do declare a schema keep receiving the payload as-is.
+	 *
+	 * @param object $ability WP_Ability instance.
+	 * @param array  $payload Ability input payload.
+	 * @return array|null
+	 */
+	private function wp_ability_input($ability, $payload) {
+		if (!empty($payload)) {
+			return $payload;
+		}
+
+		$has_schema = method_exists($ability, 'get_input_schema') && !empty($ability->get_input_schema());
+
+		return $has_schema ? $payload : null;
 	}
 
 	/**

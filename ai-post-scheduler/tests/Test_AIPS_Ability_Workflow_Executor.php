@@ -20,6 +20,7 @@ class Test_AIPS_Ability_Workflow_Executor extends WP_UnitTestCase {
 
 	public function setUp(): void {
 		parent::setUp();
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 1 );
 		$this->executor = new AIPS_Ability_Workflow_Executor();
 	}
 
@@ -32,6 +33,7 @@ class Test_AIPS_Ability_Workflow_Executor extends WP_UnitTestCase {
 
 		$this->created_workflow_ids = array();
 		delete_option( 'aips_ability_workflow_lock_987654' );
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 0 );
 		wp_set_current_user( 0 );
 
 		parent::tearDown();

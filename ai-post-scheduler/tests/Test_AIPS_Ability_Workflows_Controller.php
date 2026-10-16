@@ -21,6 +21,7 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 		parent::setUp();
 
 		$this->reset_ability_singletons();
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 1 );
 		$this->admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $this->admin_user_id );
 
@@ -37,6 +38,7 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 
 		remove_all_filters( 'aips_ability_provider' );
 		$this->reset_ability_singletons();
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 0 );
 
 		$_POST    = array();
 		$_REQUEST = array();

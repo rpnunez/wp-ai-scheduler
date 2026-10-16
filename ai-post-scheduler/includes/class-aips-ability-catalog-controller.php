@@ -48,6 +48,8 @@ class AIPS_Ability_Catalog_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$args = array(
 			'category' => isset( $_POST['category'] ) ? sanitize_key( wp_unslash( $_POST['category'] ) ) : '',
 			'search'   => isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '',

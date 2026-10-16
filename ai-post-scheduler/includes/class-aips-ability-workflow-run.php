@@ -27,6 +27,7 @@ class AIPS_Ability_Workflow_Run {
 	public readonly int $finished_at;
 	public readonly ?int $created_by;
 	public readonly ?string $correlation_id;
+	public readonly ?int $history_id;
 
 	private function __construct(
 		int $id,
@@ -37,7 +38,8 @@ class AIPS_Ability_Workflow_Run {
 		int $started_at,
 		int $finished_at,
 		?int $created_by,
-		?string $correlation_id
+		?string $correlation_id,
+		?int $history_id = null
 	) {
 		$this->id               = $id;
 		$this->workflow_id      = $workflow_id;
@@ -48,6 +50,7 @@ class AIPS_Ability_Workflow_Run {
 		$this->finished_at      = $finished_at;
 		$this->created_by       = $created_by;
 		$this->correlation_id   = $correlation_id;
+		$this->history_id       = $history_id;
 	}
 
 	/**
@@ -66,7 +69,8 @@ class AIPS_Ability_Workflow_Run {
 			isset( $row->started_at ) ? (int) $row->started_at : 0,
 			isset( $row->finished_at ) ? (int) $row->finished_at : 0,
 			isset( $row->created_by ) && $row->created_by !== null ? (int) $row->created_by : null,
-			isset( $row->correlation_id ) && $row->correlation_id !== '' ? (string) $row->correlation_id : null
+			isset( $row->correlation_id ) && $row->correlation_id !== '' ? (string) $row->correlation_id : null,
+			isset( $row->history_id ) && (int) $row->history_id > 0 ? (int) $row->history_id : null
 		);
 	}
 
@@ -86,6 +90,7 @@ class AIPS_Ability_Workflow_Run {
 			'finished_at'      => $this->finished_at,
 			'created_by'       => $this->created_by,
 			'correlation_id'   => $this->correlation_id,
+			'history_id'       => $this->history_id,
 		);
 	}
 

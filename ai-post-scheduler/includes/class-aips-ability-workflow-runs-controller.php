@@ -56,6 +56,8 @@ class AIPS_Ability_Workflow_Runs_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 
 		if ( $workflow_id <= 0 ) {
@@ -98,6 +100,8 @@ class AIPS_Ability_Workflow_Runs_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$workflow_id = isset( $_POST['workflow_id'] ) ? absint( $_POST['workflow_id'] ) : 0;
 
 		if ( $workflow_id <= 0 ) {
@@ -134,6 +138,8 @@ class AIPS_Ability_Workflow_Runs_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$run_id = isset( $_POST['run_id'] ) ? absint( $_POST['run_id'] ) : 0;
 		$run    = $run_id > 0 ? $this->repository->get_run( $run_id ) : null;
 
@@ -154,9 +160,9 @@ class AIPS_Ability_Workflow_Runs_Controller {
 	}
 
 	/**
-	 * Cancel a queued/running run. Best-effort — an in-flight cron
-	 * invocation completes its current step before observing the
-	 * cancellation and stopping.
+	 * Cancel a queued/running run. A cron invocation that is already
+	 * executing a step finishes that step, then stops before starting the
+	 * next one. Runs that have already finished cannot be cancelled.
 	 */
 	public function ajax_cancel_run() {
 		if ( ! check_ajax_referer( 'aips_ajax_nonce', 'nonce', false ) ) {
@@ -167,17 +173,19 @@ class AIPS_Ability_Workflow_Runs_Controller {
 			AIPS_Ajax_Response::permission_denied();
 		}
 
+		AIPS_Ability_Workflows_Feature::guard_ajax();
+
 		$run_id = isset( $_POST['run_id'] ) ? absint( $_POST['run_id'] ) : 0;
 
 		if ( $run_id <= 0 || ! $this->repository->get_run( $run_id ) ) {
 			AIPS_Ajax_Response::not_found( __( 'Run', 'ai-post-scheduler' ) );
 		}
 
-		$this->repository->update_run_status(
-			$run_id,
-			AIPS_Ability_Workflow_Repository::RUN_STATUS_CANCELLED,
-			array( 'finished_at' => time() )
-		);
+		$cancelled = $this->executor->cancel_run( $run_id );
+
+		if ( is_wp_error( $cancelled ) ) {
+			AIPS_Ajax_Response::error( $cancelled->get_error_message(), $cancelled->get_error_code() );
+		}
 
 		do_action( 'aips_ability_workflow_changed', array(
 			'action'  => 'run_cancelled',

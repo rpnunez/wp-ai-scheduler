@@ -53,6 +53,19 @@ class AIPS_Ability_Workflow_Executor {
 	const RUN_LOCK_TTL_SECONDS = 180;
 
 	/**
+	 * Delay (seconds) before an event that found the run locked by another
+	 * worker is retried, so the run is not dropped when the lock holder
+	 * finishes or crashes.
+	 */
+	const LOCK_RETRY_DELAY_SECONDS = 10;
+
+	/**
+	 * Workflow statuses whose runs are refused at dispatch and abandoned if
+	 * the workflow changes to one of them while a run is in flight.
+	 */
+	const NON_RUNNABLE_STATUSES = array( 'archived', 'paused' );
+
+	/**
 	 * Step-run statuses that mean "already resolved, do not re-attempt".
 	 */
 	const RESOLVED_STEP_STATUSES = array( 'completed', 'failed', 'skipped' );
@@ -158,10 +171,22 @@ class AIPS_Ability_Workflow_Executor {
 	 * @return int|WP_Error New run ID, or WP_Error.
 	 */
 	public function dispatch_run( int $workflow_id, array $trigger_context = array() ) {
+		if ( ! AIPS_Ability_Workflows_Feature::is_enabled() ) {
+			return new WP_Error( 'ability_workflows_disabled', __( 'Ability Workflows are disabled.', 'ai-post-scheduler' ) );
+		}
+
 		$workflow = $this->repository->get_workflow( $workflow_id );
 
 		if ( ! $workflow ) {
 			return new WP_Error( 'ability_workflow_not_found', __( 'Workflow not found.', 'ai-post-scheduler' ) );
+		}
+
+		if ( in_array( $workflow->status, self::NON_RUNNABLE_STATUSES, true ) ) {
+			return new WP_Error(
+				'ability_workflow_not_runnable',
+				/* translators: %s: workflow status */
+				sprintf( __( 'A %s workflow cannot be run.', 'ai-post-scheduler' ), $workflow->status )
+			);
 		}
 
 		$correlation_id = AIPS_Correlation_ID::generate();
@@ -201,6 +226,42 @@ class AIPS_Ability_Workflow_Executor {
 	}
 
 	/**
+	 * Cancel a queued or running run.
+	 *
+	 * Takes effect immediately for the status and the History record. A worker
+	 * that is already executing a step finishes that step, then stops before
+	 * starting the next one.
+	 *
+	 * @param int $run_id Run ID.
+	 * @return true|WP_Error True when the run was cancelled.
+	 */
+	public function cancel_run( int $run_id ) {
+		$run = $this->repository->get_run( $run_id );
+
+		if ( ! $run ) {
+			return new WP_Error( 'ability_workflow_run_not_found', __( 'Workflow run not found.', 'ai-post-scheduler' ) );
+		}
+
+		if ( in_array( $run->status, AIPS_Ability_Workflow_Repository::RUN_TERMINAL_STATUSES, true ) ) {
+			return new WP_Error(
+				'ability_workflow_run_finished',
+				/* translators: %s: run status */
+				sprintf( __( 'This run has already finished (%s).', 'ai-post-scheduler' ), $run->status )
+			);
+		}
+
+		$this->repository->update_run_status(
+			$run_id,
+			AIPS_Ability_Workflow_Repository::RUN_STATUS_CANCELLED,
+			array( 'finished_at' => time() )
+		);
+
+		$this->terminate_history( $run, __( 'Workflow run cancelled.', 'ai-post-scheduler' ) );
+
+		return true;
+	}
+
+	/**
 	 * Cron callback bound to self::HOOK. Executes (or resumes) a run.
 	 *
 	 * @param int    $run_id         Run ID.
@@ -214,7 +275,28 @@ class AIPS_Ability_Workflow_Executor {
 			$correlation_id = AIPS_Correlation_ID::generate();
 		}
 
+		$run = $this->repository->get_run( $run_id );
+
+		// Nothing to do (and no History row to open) for a run that is gone,
+		// cancelled, or already finished.
+		if ( ! $run || in_array( $run->status, AIPS_Ability_Workflow_Repository::RUN_TERMINAL_STATUSES, true ) ) {
+			AIPS_Correlation_ID::reset();
+			return;
+		}
+
+		if ( ! AIPS_Ability_Workflows_Feature::is_enabled() ) {
+			$this->repository->update_run_status( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, array( 'finished_at' => time() ) );
+			$this->terminate_history( $run, __( 'Ability Workflows were disabled while this run was queued.', 'ai-post-scheduler' ) );
+			AIPS_Correlation_ID::reset();
+			return;
+		}
+
 		if ( !$this->acquire_run_lock( $run_id ) ) {
+			// Another worker holds the lock. Do not drop the event: if that
+			// worker is still going it will finish the run and the retry finds
+			// it terminal; if it crashed, the retry takes the lock over once
+			// its TTL expires.
+			$this->schedule_continuation( $run_id, $correlation_id, self::LOCK_RETRY_DELAY_SECONDS );
 			AIPS_Correlation_ID::reset();
 			return;
 		}
@@ -223,10 +305,7 @@ class AIPS_Ability_Workflow_Executor {
 		$previous_user_id = get_current_user_id();
 
 		try {
-			$history = $this->history_service->create(
-				'ability_workflow_run',
-				array( 'run_id' => $run_id, 'creation_method' => 'ability_workflow_run' )
-			);
+			$history = $this->resolve_history( $run );
 
 			$principal = $this->establish_execution_principal( $run_id );
 
@@ -271,37 +350,90 @@ class AIPS_Ability_Workflow_Executor {
 	}
 
 	/**
+	 * Get the History container that records a run, creating it on the first
+	 * invocation. Later invocations (time-budget continuations and retries)
+	 * resume the same container, so one run is one History row that is closed
+	 * exactly once, when the run reaches a terminal status.
+	 *
+	 * @param AIPS_Ability_Workflow_Run $run Run being processed.
+	 * @return AIPS_History_Container|false
+	 */
+	private function resolve_history( AIPS_Ability_Workflow_Run $run ) {
+		if ( $run->history_id ) {
+			$existing = AIPS_History_Container::load_existing( AIPS_History_Repository::instance(), $run->history_id );
+
+			if ( $existing ) {
+				return $existing;
+			}
+		}
+
+		$history = $this->history_service->create(
+			'ability_workflow_run',
+			array( 'run_id' => $run->id, 'creation_method' => 'ability_workflow_run' )
+		);
+
+		if ( $history && $history->get_id() ) {
+			$this->repository->set_run_history_id( $run->id, (int) $history->get_id() );
+		}
+
+		return $history;
+	}
+
+	/**
+	 * Close a run's History row as terminated (cancelled, disabled, ...).
+	 *
+	 * @param AIPS_Ability_Workflow_Run $run     Run whose History to close.
+	 * @param string                    $message Reason shown in History.
+	 * @return void
+	 */
+	private function terminate_history( AIPS_Ability_Workflow_Run $run, string $message ): void {
+		if ( ! $run->history_id ) {
+			return;
+		}
+
+		$history = AIPS_History_Container::load_existing( AIPS_History_Repository::instance(), $run->history_id );
+
+		if ( $history ) {
+			$history->complete_terminated( $message );
+		}
+	}
+
+	/**
+	 * Whether the run was cancelled while this invocation was working.
+	 *
+	 * @param int $run_id Run ID.
+	 * @return bool
+	 */
+	private function is_run_cancelled( int $run_id ): bool {
+		$run = $this->repository->get_run( $run_id );
+
+		return $run && AIPS_Ability_Workflow_Repository::RUN_STATUS_CANCELLED === $run->status;
+	}
+
+	/**
+	 * Option name of a run's lock.
+	 *
+	 * @param int $run_id Workflow run ID.
+	 * @return string
+	 */
+	private function run_lock_key( int $run_id ): string {
+		return 'aips_ability_workflow_lock_' . $run_id;
+	}
+
+	/**
 	 * Acquire an atomic, expiring lock for a workflow run.
 	 *
-	 * add_option() is backed by the options table's unique option_name key, so
-	 * two cron workers cannot both win the claim. Expiry permits recovery when
-	 * PHP terminates before the finally block releases the lock.
+	 * The repository claims the lock with an INSERT IGNORE on the unique
+	 * option_name key and takes an expired lock over with a compare-and-swap,
+	 * so two cron workers cannot both win it.
 	 *
 	 * @param int $run_id Workflow run ID.
 	 * @return bool
 	 */
 	private function acquire_run_lock( int $run_id ): bool {
-		$key        = 'aips_ability_workflow_lock_' . $run_id;
-		$token      = wp_generate_uuid4();
-		$expires_at = time() + self::RUN_LOCK_TTL_SECONDS;
-		$value      = $token . '|' . $expires_at;
+		$token = wp_generate_uuid4();
 
-		if ( add_option( $key, $value, '', false ) ) {
-			$this->run_locks[ $run_id ] = $token;
-			return true;
-		}
-
-		$existing        = (string) get_option( $key, '' );
-		$existing_parts  = explode( '|', $existing );
-		$existing_expiry = isset( $existing_parts[1] ) ? (int) $existing_parts[1] : 0;
-
-		if ( $existing_expiry > time() ) {
-			return false;
-		}
-
-		delete_option( $key );
-
-		if ( ! add_option( $key, $value, '', false ) ) {
+		if ( ! $this->repository->acquire_lock( $this->run_lock_key( $run_id ), $token, self::RUN_LOCK_TTL_SECONDS ) ) {
 			return false;
 		}
 
@@ -311,18 +443,26 @@ class AIPS_Ability_Workflow_Executor {
 	}
 
 	/**
+	 * Extend the lock this worker holds. A step can take a while, and the
+	 * lock must not expire under a worker that is still making progress.
+	 *
+	 * @param int $run_id Workflow run ID.
+	 * @return bool False when the lock is no longer ours.
+	 */
+	private function refresh_run_lock( int $run_id ): bool {
+		return isset( $this->run_locks[ $run_id ] )
+			&& $this->repository->refresh_lock( $this->run_lock_key( $run_id ), $this->run_locks[ $run_id ], self::RUN_LOCK_TTL_SECONDS );
+	}
+
+	/**
 	 * Release a workflow run lock.
 	 *
 	 * @param int $run_id Workflow run ID.
 	 * @return void
 	 */
 	private function release_run_lock( int $run_id ): void {
-		$key   = 'aips_ability_workflow_lock_' . $run_id;
-		$value = (string) get_option( $key, '' );
-		$parts = explode( '|', $value );
-
-		if ( isset( $this->run_locks[ $run_id ], $parts[0] ) && hash_equals( $this->run_locks[ $run_id ], $parts[0] ) ) {
-			delete_option( $key );
+		if ( isset( $this->run_locks[ $run_id ] ) ) {
+			$this->repository->release_lock( $this->run_lock_key( $run_id ), $this->run_locks[ $run_id ] );
 		}
 
 		unset( $this->run_locks[ $run_id ] );
@@ -397,7 +537,21 @@ class AIPS_Ability_Workflow_Executor {
 		$workflow = $this->repository->get_workflow( $run->workflow_id );
 
 		if ( ! $workflow ) {
-			$this->repository->update_run_status( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, array( 'finished_at' => time() ) );
+			$this->finish_run( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $history, __( 'Workflow no longer exists.', 'ai-post-scheduler' ) );
+			return;
+		}
+
+		if ( in_array( $workflow->status, self::NON_RUNNABLE_STATUSES, true ) ) {
+			$this->finish_run( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $history, __( 'Workflow was archived or paused while this run was in progress.', 'ai-post-scheduler' ) );
+			return;
+		}
+
+		// Steps and settings are read live, so a run must not continue against
+		// a definition that changed after it was dispatched: step runs are keyed
+		// by step_key and a renamed, reordered or re-gated step would be
+		// skipped, repeated or run under different rules.
+		if ( (int) $workflow->version !== (int) $run->workflow_version ) {
+			$this->finish_run( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $history, __( 'Workflow was modified while this run was in progress.', 'ai-post-scheduler' ) );
 			return;
 		}
 
@@ -445,12 +599,28 @@ class AIPS_Ability_Workflow_Executor {
 				continue;
 			}
 
+			if ( $this->is_run_cancelled( $run_id ) ) {
+				// cancel_run() already closed the History row; this covers a
+				// cancellation that arrived by another route.
+				if ( $history ) {
+					$history->complete_terminated( __( 'Workflow run cancelled.', 'ai-post-scheduler' ) );
+				}
+				return;
+			}
+
+			if ( ! $this->refresh_run_lock( $run_id ) ) {
+				// Another worker took the run over; two workers must not run steps.
+				return;
+			}
+
 			if ( microtime( true ) >= $deadline ) {
 				if ( ! $this->schedule_continuation( $run_id, $correlation_id, self::CONTINUATION_DELAY_SECONDS ) ) {
 					// Without a scheduled continuation nothing will ever
 					// resume this run — fail it now instead of leaving it
 					// stuck at 'running' indefinitely.
 					$this->finish_run( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $history, __( 'Failed to schedule workflow continuation.', 'ai-post-scheduler' ) );
+				} elseif ( $history ) {
+					$history->record( 'activity', __( 'Time budget reached; the run continues in the next cron slice.', 'ai-post-scheduler' ) );
 				}
 				return;
 			}
@@ -571,8 +741,16 @@ class AIPS_Ability_Workflow_Executor {
 			return $this->fail_step( $run_id, $step, $step_run_id, $ability, $attempt, $history, $correlation_id );
 		}
 
-		if ( ! empty( $ability['is_destructive'] ) && ! $allow_destructive ) {
-			return $this->fail_step( $run_id, $step, $step_run_id, new WP_Error( 'ability_workflow_destructive_forbidden', __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' ) ), $attempt, $history, $correlation_id );
+		$requires_approval = array_key_exists( 'requires_approval', $ability )
+			? ! empty( $ability['requires_approval'] )
+			: ! empty( $ability['is_destructive'] );
+
+		if ( $requires_approval && ! $allow_destructive ) {
+			$message = ! empty( $ability['is_destructive'] )
+				? __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' )
+				: __( 'This ability does not declare whether it is destructive, so it is not allowed for this workflow. Enable "Allow destructive abilities" to run it.', 'ai-post-scheduler' );
+
+			return $this->fail_step( $run_id, $step, $step_run_id, new WP_Error( 'ability_workflow_destructive_forbidden', $message ), $attempt, $history, $correlation_id );
 		}
 
 		if ( $history ) {
@@ -650,6 +828,11 @@ class AIPS_Ability_Workflow_Executor {
 					'finished_at' => 0,
 				)
 			);
+
+			if ( $history ) {
+				/* translators: 1: step key, 2: attempt number, 3: seconds */
+				$history->record( 'activity', sprintf( __( 'Step "%1$s" failed (attempt %2$d); retrying in %3$d s.', 'ai-post-scheduler' ), $step->step_key, $attempt, $backoff_seconds ) );
+			}
 
 			if ( ! $this->schedule_continuation( $run_id, $correlation_id, $backoff_seconds ) ) {
 				// No further progress is possible without a scheduled retry —
