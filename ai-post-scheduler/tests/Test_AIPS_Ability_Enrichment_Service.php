@@ -27,7 +27,8 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 
 		$this->post_id       = self::factory()->post->create( array( 'post_title' => 'Generated Post' ) );
 		$this->attachment_id = self::factory()->attachment->create( array( 'post_parent' => $this->post_id ) );
-		set_post_thumbnail( $this->post_id, $this->attachment_id );
+		// set_post_thumbnail() rejects attachments that have no real image file.
+		update_post_meta( $this->post_id, '_thumbnail_id', $this->attachment_id );
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 	}

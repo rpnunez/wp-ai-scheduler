@@ -20,6 +20,7 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		$this->reset_ability_singletons();
 		$this->admin_user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $this->admin_user_id );
 
@@ -35,11 +36,34 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 		}
 
 		remove_all_filters( 'aips_ability_provider' );
+		$this->reset_ability_singletons();
 
 		$_POST    = array();
 		$_REQUEST = array();
 
 		parent::tearDown();
+	}
+
+	/**
+	 * Drop the container's cached ability services.
+	 *
+	 * AIPS_Ability_Service caches its resolved provider and catalog per
+	 * instance, and the container keeps one instance for the whole PHP
+	 * process. Without this, whichever test runs first decides which provider
+	 * every later test sees.
+	 */
+	private function reset_ability_singletons() {
+		$property = ( new ReflectionClass( AIPS_Container::class ) )->getProperty( 'singletons' );
+		$property->setAccessible( true );
+		$cached = $property->getValue( AIPS_Container::get_instance() );
+
+		unset(
+			$cached[ AIPS_Ability_Service::class ],
+			$cached[ AIPS_Ability_Catalog_Service::class ],
+			$cached[ AIPS_Ability_Workflow_Executor::class ]
+		);
+
+		$property->setValue( AIPS_Container::get_instance(), $cached );
 	}
 
 	/**
