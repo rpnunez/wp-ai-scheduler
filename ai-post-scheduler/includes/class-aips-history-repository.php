@@ -356,10 +356,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'history.get_schedule_completed_count',
             array( 'schedule_id' => $schedule_id ),
             function() use ( $schedule, $schedule_id ) {
+                $generation_cond = self::generation_run_condition();
                 $count = $this->wpdb->get_var($this->wpdb->prepare(
                     "SELECT COALESCE(COUNT(*), 0) FROM {$this->table_name}
                     WHERE template_id = %d
                     AND status = %s
+                    AND {$generation_cond}
                     AND created_at >= (
                         SELECT created_at FROM {$this->schedule_table} WHERE id = %d
                     )",
@@ -419,15 +421,17 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
 
     public function get_daily_success_failure_trend($days = 14) {
         $days = max(1, absint($days));
+        $generation_cond = self::generation_run_condition();
 
         return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT DATE(FROM_UNIXTIME(created_at)) AS metric_date, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS success_count, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failure_count FROM {$this->table_name} WHERE created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY metric_date ORDER BY metric_date ASC",
+            "SELECT DATE(FROM_UNIXTIME(created_at)) AS metric_date, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS success_count, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failure_count FROM {$this->table_name} WHERE {$generation_cond} AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY metric_date ORDER BY metric_date ASC",
             $days
         ), ARRAY_A);
     }
 
     public function get_average_duration_by_flow($days = 14) {
         $days = max(1, absint($days));
+        $generation_cond = self::generation_run_condition();
 
         // completed_at / created_at are UNSIGNED BIGINT timestamps defaulting to 0.
         // Incomplete rows keep completed_at = 0, and `completed_at IS NOT NULL` never
@@ -435,7 +439,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         // then underflows the unsigned type (MySQL error 1690). Guard on
         // completed_at >= created_at so only genuinely finished rows are averaged.
         return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT COALESCE(NULLIF(creation_method, ''), 'unknown') AS flow_type, AVG(completed_at - created_at) AS avg_duration_seconds, COUNT(*) AS sample_count FROM {$this->table_name} WHERE completed_at >= created_at AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY flow_type ORDER BY avg_duration_seconds DESC",
+            "SELECT COALESCE(NULLIF(creation_method, ''), 'unknown') AS flow_type, AVG(completed_at - created_at) AS avg_duration_seconds, COUNT(*) AS sample_count FROM {$this->table_name} WHERE {$generation_cond} AND completed_at >= created_at AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY flow_type ORDER BY avg_duration_seconds DESC",
             $days
         ), ARRAY_A);
     }
@@ -454,9 +458,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     public function get_top_failure_reasons($days = 14, $limit = 8) {
         $days = max(1, absint($days));
         $limit = max(1, absint($limit));
+        $generation_cond = self::generation_run_condition();
 
         return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT COALESCE(NULLIF(TRIM(error_message), ''), 'Unknown failure') AS reason, COUNT(*) AS failure_count FROM {$this->table_name} WHERE status = 'failed' AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY reason ORDER BY failure_count DESC LIMIT %d",
+            "SELECT COALESCE(NULLIF(TRIM(error_message), ''), 'Unknown failure') AS reason, COUNT(*) AS failure_count FROM {$this->table_name} WHERE {$generation_cond} AND status = 'failed' AND created_at >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL %d DAY)) GROUP BY reason ORDER BY failure_count DESC LIMIT %d",
             $days,
             $limit
         ), ARRAY_A);
@@ -758,6 +763,11 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             $where_args[] = sanitize_key($args['post_type']);
         }
 
+        if (!empty($args['correlation_id'])) {
+            $where_clauses[] = "h.correlation_id = %s";
+            $where_args[] = sanitize_text_field((string) $args['correlation_id']);
+        }
+
         if (!empty($args['domain'])) {
             $domain = sanitize_key($args['domain']);
 
@@ -864,6 +874,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'record_kind' => '',
             'actor' => '',
             'post_type' => '',
+            'correlation_id' => '',
             'date_from' => '',
             'date_to' => '',
             'orderby' => 'created_at',
@@ -1736,8 +1747,10 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return int Number of completed posts for this template.
      */
     public function get_template_stats($template_id) {
+        $generation_cond = self::generation_run_condition();
+
         return (int) $this->wpdb->get_var($this->wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status IN ('completed', 'partial')",
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status IN ('completed', 'partial') AND {$generation_cond}",
             $template_id
         ));
     }
@@ -1748,10 +1761,12 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return array Associative array of template ID => count.
      */
     public function get_all_template_stats() {
+        $generation_cond = self::generation_run_condition();
         $results = $this->wpdb->get_results("
             SELECT template_id, COUNT(*) as count
             FROM {$this->table_name}
             WHERE status IN ('completed', 'partial')
+              AND {$generation_cond}
             GROUP BY template_id
         ");
 
