@@ -57,17 +57,39 @@ class AIPS_Ability_Enrichment_Service {
 	private $logger;
 
 	/**
-	 * @param AIPS_Ability_Service|null         $abilities Ability adapter.
-	 * @param AIPS_Ability_Catalog_Service|null $catalog   Ability catalog.
-	 * @param AIPS_Logger_Interface|null        $logger    Logger.
+	 * @var AIPS_Ability_Enrichment_Queue_Repository
 	 */
-	public function __construct(?AIPS_Ability_Service $abilities = null, ?AIPS_Ability_Catalog_Service $catalog = null, ?AIPS_Logger_Interface $logger = null) {
+	private $queue;
+
+	/**
+	 * Wakes the enrichment background process after a post is queued.
+	 *
+	 * @var callable|null
+	 */
+	private $kick;
+
+	/**
+	 * @param AIPS_Ability_Service|null                       $abilities Ability adapter.
+	 * @param AIPS_Ability_Catalog_Service|null               $catalog   Ability catalog.
+	 * @param AIPS_Logger_Interface|null                      $logger    Logger.
+	 * @param AIPS_Ability_Enrichment_Queue_Repository|null   $queue     Queue of posts waiting for enrichment.
+	 * @param callable|null                                   $kick      Wakes the background process; defaults to the registered process.
+	 */
+	public function __construct(
+		?AIPS_Ability_Service $abilities = null,
+		?AIPS_Ability_Catalog_Service $catalog = null,
+		?AIPS_Logger_Interface $logger = null,
+		?AIPS_Ability_Enrichment_Queue_Repository $queue = null,
+		?callable $kick = null
+	) {
 		$container       = AIPS_Container::get_instance();
 		$this->abilities = $abilities ?: $container->make(AIPS_Ability_Service::class);
 		$this->catalog   = $catalog ?: $container->make(AIPS_Ability_Catalog_Service::class);
 		$this->logger    = $logger ?: ($container->has(AIPS_Logger_Interface::class)
 			? $container->make(AIPS_Logger_Interface::class)
 			: AIPS_Logger::instance());
+		$this->queue     = $queue ?: new AIPS_Ability_Enrichment_Queue_Repository();
+		$this->kick      = $kick;
 	}
 
 	/**
@@ -82,6 +104,10 @@ class AIPS_Ability_Enrichment_Service {
 	/**
 	 * `aips_post_generated` listener. Never throws.
 	 *
+	 * Only queues the post and wakes the background process: the ability calls
+	 * (which are usually AI calls) must not run inside the generation request
+	 * or the cron slice that generated the post.
+	 *
 	 * @param int $post_id Generated post ID.
 	 * @return void
 	 */
@@ -93,19 +119,47 @@ class AIPS_Ability_Enrichment_Service {
 		}
 
 		try {
-			$this->enrich_post($post_id);
+			$this->queue->enqueue($post_id, get_current_user_id());
+
+			$kicked = $this->wake_process();
+
+			if (is_wp_error($kicked)) {
+				$this->logger->log('Ability enrichment could not be started: ' . $kicked->get_error_message(), 'warning', array('post_id' => $post_id));
+			}
 		} catch (Throwable $e) {
-			$this->logger->log('Ability enrichment aborted: ' . $e->getMessage(), 'error', array('post_id' => $post_id));
+			$this->logger->log('Ability enrichment could not queue the post: ' . $e->getMessage(), 'error', array('post_id' => $post_id));
 		}
 	}
 
 	/**
-	 * Run every enrichment step against a post.
+	 * Wake the enrichment background process.
 	 *
-	 * @param int $post_id Post ID.
+	 * @return true|WP_Error
+	 */
+	private function wake_process() {
+		if ($this->kick) {
+			$result = call_user_func($this->kick);
+
+			return is_wp_error($result) ? $result : true;
+		}
+
+		$process = AIPS_Container::get_instance()->make(AIPS_Background_Process_Manager::class)->get(AIPS_Ability_Enrichment_Process::KEY);
+
+		return $process instanceof AIPS_Ability_Enrichment_Process
+			? $process->kick()
+			: new WP_Error('ability_enrichment_process_missing', __('The enrichment background process is not available.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Run every enrichment step against a post, now.
+	 *
+	 * @param int      $post_id Post ID.
+	 * @param int|null $user_id User to run as when they may edit the post (the user who
+	 *                          triggered the generation); falls back to the current user and
+	 *                          then to the configured service user.
 	 * @return array<string,string> Step key => outcome (`applied`, `skipped:<reason>` or `error:<code>`).
 	 */
-	public function enrich_post($post_id) {
+	public function enrich_post($post_id, $user_id = null) {
 		$post_id = absint($post_id);
 		$results = array();
 
@@ -124,7 +178,7 @@ class AIPS_Ability_Enrichment_Service {
 			'classification' => array($this, 'step_classification'),
 		), $post_id);
 
-		$principal = $this->resolve_principal($post_id);
+		$principal = $this->resolve_principal($post_id, (int) $user_id);
 
 		if (!$principal) {
 			$this->logger->log('Ability enrichment skipped: no user with permission to edit the post.', 'warning', array('post_id' => $post_id));
@@ -140,7 +194,12 @@ class AIPS_Ability_Enrichment_Service {
 					continue;
 				}
 
-				$outcome = call_user_func($callback, $post_id);
+				try {
+					$outcome = call_user_func($callback, $post_id);
+				} catch (Throwable $e) {
+					// One broken step must not stop the steps after it.
+					$outcome = new WP_Error('step_exception', $e->getMessage());
+				}
 
 				if (is_wp_error($outcome)) {
 					$results[$key] = 'error:' . $outcome->get_error_code();
@@ -284,7 +343,11 @@ class AIPS_Ability_Enrichment_Service {
 			$response = $this->abilities->invoke(self::CLASSIFICATION_ABILITY, $payload);
 
 			if (is_wp_error($response)) {
-				$errors[$taxonomy] = $response;
+				// With existing_only and no matching term on the site the real ability answers
+				// `no_results`: nothing to suggest, not a failure.
+				if ('no_results' !== $response->get_error_code()) {
+					$errors[$taxonomy] = $response;
+				}
 				continue;
 			}
 
@@ -405,13 +468,19 @@ class AIPS_Ability_Enrichment_Service {
 	}
 
 	/**
-	 * Pick the user steps run as: the current user when they may edit the
-	 * post, otherwise the configured service user (re-validated every run).
+	 * Pick the user steps run as: the user who triggered the generation, then
+	 * the current user, when they may edit the post; otherwise the configured
+	 * service user. Each candidate is re-validated on every run.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int $post_id   Post ID.
+	 * @param int $preferred User who triggered the generation (0 when unknown).
 	 * @return int User ID, or 0 when nobody qualifies.
 	 */
-	private function resolve_principal($post_id) {
+	private function resolve_principal($post_id, $preferred = 0) {
+		if ($preferred > 0 && get_userdata($preferred) && user_can($preferred, 'edit_post', $post_id)) {
+			return $preferred;
+		}
+
 		$current = get_current_user_id();
 
 		if ($current > 0 && user_can($current, 'edit_post', $post_id)) {

@@ -92,6 +92,76 @@ class Test_AIPS_Ability_Workflows_Controller extends WP_UnitTestCase {
 		return json_decode( strtok( trim( ob_get_clean() ), "\r\n" ), true );
 	}
 
+	private function save_workflow( array $post ) {
+		$_POST = array_merge( array( 'nonce' => wp_create_nonce( 'aips_ajax_nonce' ) ), $post );
+
+		return $this->capture_ajax( array( new AIPS_Ability_Workflows_Controller(), 'ajax_save_workflow' ) );
+	}
+
+	public function test_saving_a_workflow_stores_only_known_settings_within_bounds() {
+		$response = $this->save_workflow(
+			array(
+				'workflow_id' => $this->workflow_id,
+				'name'        => 'Edited name',
+				'status'      => 'active',
+				'settings'    => wp_json_encode(
+					array(
+						'max_steps'                   => 5000,
+						'max_runtime_seconds'         => -3,
+						'allow_destructive_abilities' => 1,
+						'log_payloads'                => false,
+						'evil'                        => '<script>',
+					)
+				),
+			)
+		);
+
+		$this->assertTrue( $response['success'] );
+
+		$workflow = $this->repository->get_workflow( $this->workflow_id );
+		$this->assertSame( 'Edited name', $workflow->name );
+		$this->assertSame( 'active', $workflow->status );
+		$this->assertSame(
+			array(
+				'max_steps'                   => 100,
+				'max_runtime_seconds'         => 1,
+				'allow_destructive_abilities' => true,
+			),
+			$workflow->settings
+		);
+	}
+
+	public function test_saving_a_workflow_rejects_an_unknown_status() {
+		$response = $this->save_workflow( array( 'workflow_id' => $this->workflow_id, 'name' => 'Whatever', 'status' => 'exploded' ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'draft', $this->repository->get_workflow( $this->workflow_id )->status );
+	}
+
+	public function test_the_trigger_is_always_manual() {
+		$this->save_workflow( array( 'workflow_id' => $this->workflow_id, 'name' => 'Trigger test', 'trigger_type' => 'scheduled' ) );
+
+		$this->assertSame( 'manual', $this->repository->get_workflow( $this->workflow_id )->trigger_type );
+	}
+
+	public function test_editing_settings_bumps_the_version_so_runs_in_flight_stop() {
+		$before = $this->repository->get_workflow( $this->workflow_id )->version;
+
+		$this->save_workflow( array( 'workflow_id' => $this->workflow_id, 'name' => 'Version test', 'settings' => wp_json_encode( array( 'max_steps' => 3 ) ) ) );
+
+		$this->assertSame( $before + 1, $this->repository->get_workflow( $this->workflow_id )->version );
+	}
+
+	public function test_a_workflow_can_be_reactivated_by_editing_its_status() {
+		$this->repository->archive_workflow( $this->workflow_id );
+		$this->assertSame( 'archived', $this->repository->get_workflow( $this->workflow_id )->status );
+
+		$response = $this->save_workflow( array( 'workflow_id' => $this->workflow_id, 'name' => 'Back again', 'status' => 'active' ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( 'active', $this->repository->get_workflow( $this->workflow_id )->status );
+	}
+
 	/**
 	 * Finding: the controller previously constructed
 	 * AIPS_Ability_Workflow_Document_Validator with no catalog service, so

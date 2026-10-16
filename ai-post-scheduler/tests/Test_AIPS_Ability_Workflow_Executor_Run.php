@@ -3,7 +3,7 @@
  * End-to-end tests for AIPS_Ability_Workflow_Executor::process_run().
  *
  * Runs real workflows (real repository, real History) against a fake ability
- * provider and a scheduler that records instead of scheduling, covering the
+ * provider and a stub that records process wake-ups, covering the
  * run loop: ordering and variable passing, conditions, dependencies, the
  * destructive gate, retries and backoff, the time budget, cancellation,
  * definition changes, locking and History handling.
@@ -16,8 +16,11 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 	/** @var AIPS_Ability_Workflow_Repository */
 	private $repository;
 
-	/** @var object Scheduler stub recording schedule_simple() calls. */
-	private $scheduler;
+	/** @var int Times the executor woke the background process. */
+	private $kicks = 0;
+
+	/** @var true|WP_Error What the wake-up stub returns. */
+	private $kick_result = true;
 
 	/** @var array[] Ability invocations in order: slug, payload, user_id. */
 	private $calls = array();
@@ -37,16 +40,8 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 
 		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 1 );
 
-		$this->scheduler = new class extends AIPS_Job_Scheduler {
-			public $scheduled = array();
-			public $accept    = true;
-
-			public function schedule_simple( string $hook, int $fire_at, array $args = array(), array $options = array() ): bool {
-				$this->scheduled[] = array( 'hook' => $hook, 'fire_at' => $fire_at, 'args' => $args );
-
-				return $this->accept;
-			}
-		};
+		$this->kicks       = 0;
+		$this->kick_result = true;
 	}
 
 	public function tearDown(): void {
@@ -152,7 +147,13 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 			$abilities,
 			null,
 			null,
-			$this->scheduler
+			null,
+			null,
+			function () {
+				$this->kicks++;
+
+				return $this->kick_result;
+			}
 		);
 	}
 
@@ -277,10 +278,19 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$run_id      = $this->make_run( $workflow_id );
 		$this->repository->update_run_status( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_COMPLETED, array( 'finished_at' => time() ) );
 
-		$this->executor()->process_run( $run_id );
+		$result = $this->executor()->process_run( $run_id );
 
 		$this->assertCount( 0, $this->calls );
 		$this->assertNull( $this->repository->get_run( $run_id )->history_id );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_FINISHED, $result['state'] );
+		$this->assertFalse( $result['worked'] );
+	}
+
+	public function test_an_unknown_run_is_reported_finished() {
+		$result = $this->executor()->process_run( 987654321 );
+
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_FINISHED, $result['state'] );
+		$this->assertFalse( $result['worked'] );
 	}
 
 	// ---------------------------------------------------------------------
@@ -511,7 +521,18 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 	// Retries and the time budget
 	// ---------------------------------------------------------------------
 
-	public function test_transient_failure_schedules_a_retry_and_the_resumed_run_reuses_one_history_row() {
+	/**
+	 * Make a parked retry due now, as if its backoff had elapsed.
+	 */
+	private function make_retry_due( $run_id, $step_key ) {
+		$step_run = $this->step_runs_by_key( $run_id )[ $step_key ];
+		$error    = $step_run->error;
+
+		$error['next_retry_at'] = time() - 1;
+		$this->repository->update_step_run_status( $step_run->id, 'pending', array( 'error' => $error ) );
+	}
+
+	public function test_transient_failure_parks_the_step_and_the_retry_reuses_one_history_row() {
 		$attempts = 0;
 		$this->register_abilities(
 			array(
@@ -532,14 +553,13 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$executor = $this->executor();
 
 		$before = time();
-		$executor->process_run( $run_id, 'corr-test' );
+		$result  = $executor->process_run( $run_id );
 
 		$run = $this->repository->get_run( $run_id );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_RUNNING, $run->status );
-		$this->assertCount( 1, $this->scheduler->scheduled );
-		$this->assertSame( AIPS_Ability_Workflow_Executor::HOOK, $this->scheduler->scheduled[0]['hook'] );
-		$this->assertSame( array( $run_id, 'corr-test' ), $this->scheduler->scheduled[0]['args'] );
-		$this->assertGreaterThanOrEqual( $before + 7, $this->scheduler->scheduled[0]['fire_at'] );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_CONTINUE, $result['state'] );
+		$this->assertGreaterThanOrEqual( $before + 7, $result['retry_at'] );
+		$this->assertTrue( $result['worked'] );
 		$step_run = $this->step_runs_by_key( $run_id )['a'];
 		$this->assertSame( 'pending', $step_run->status );
 		$this->assertSame( 1, $step_run->error['attempts'] );
@@ -550,9 +570,18 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$this->assertNotNull( $history_id );
 		$this->assertSame( 'processing', $this->history_status( $run_id ) );
 
-		$executor->process_run( $run_id, 'corr-test' );
+		// Asking again before the backoff has elapsed does not run the step.
+		$early = $executor->process_run( $run_id );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_CONTINUE, $early['state'] );
+		$this->assertFalse( $early['worked'] );
+		$this->assertSame( $result['retry_at'], $early['retry_at'] );
+		$this->assertSame( 1, $attempts );
+
+		$this->make_retry_due( $run_id, 'a' );
+		$final = $executor->process_run( $run_id );
 
 		$run = $this->repository->get_run( $run_id );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_FINISHED, $final['state'] );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_COMPLETED, $run->status );
 		$this->assertSame( $history_id, $run->history_id, 'No second History row may be opened.' );
 		$this->assertSame( 'completed', $this->history_status( $run_id ) );
@@ -578,6 +607,7 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$executor = $this->executor();
 
 		$executor->process_run( $run_id );
+		$this->make_retry_due( $run_id, 'a' );
 		$executor->process_run( $run_id );
 
 		$this->assertCount( 2, $this->calls, 'One attempt plus one retry.' );
@@ -602,37 +632,14 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		);
 		$run_id = $this->make_run( $workflow_id );
 
-		$this->executor()->process_run( $run_id );
+		$result = $this->executor()->process_run( $run_id );
 
-		$this->assertCount( 1, $this->calls );
-		$this->assertCount( 0, $this->scheduler->scheduled );
+		$this->assertCount( 1, $this->calls, 'A permanent error is not retried.' );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_FINISHED, $result['state'] );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $this->repository->get_run( $run_id )->status );
 	}
 
-	public function test_failed_retry_scheduling_fails_the_run_instead_of_leaving_it_stuck() {
-		$this->register_abilities(
-			array(
-				'vendor/flaky' => array(
-					'run'         => function () {
-						return new WP_Error( 'provider_timeout', 'Timed out.' );
-					},
-					'annotations' => array( 'destructive' => false ),
-				),
-			)
-		);
-		$this->scheduler->accept = false;
-		$workflow_id             = $this->make_workflow(
-			array( $this->step( 'a', 'vendor/flaky', array( 'retry_policy' => array( 'attempts' => 3, 'backoff_seconds' => 1 ) ) ) )
-		);
-		$run_id = $this->make_run( $workflow_id );
-
-		$this->executor()->process_run( $run_id );
-
-		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, $this->repository->get_run( $run_id )->status );
-		$this->assertSame( 'failed', $this->history_status( $run_id ) );
-	}
-
-	public function test_exhausted_time_budget_schedules_a_continuation_and_the_next_slice_finishes_the_run() {
+	public function test_exhausted_time_budget_asks_to_continue_and_the_next_slice_finishes_the_run() {
 		$this->register_abilities(
 			array(
 				'vendor/slow'  => array(
@@ -653,15 +660,17 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$run_id   = $this->make_run( $workflow_id );
 		$executor = $this->executor();
 
-		$executor->process_run( $run_id, 'corr-test' );
+		$first = $executor->process_run( $run_id );
 
 		$this->assertSame( array( 'vendor/slow' ), $this->called_slugs() );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_RUNNING, $this->repository->get_run( $run_id )->status );
-		$this->assertCount( 1, $this->scheduler->scheduled );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_CONTINUE, $first['state'] );
+		$this->assertGreaterThan( 0, $first['retry_at'] );
 		$this->assertSame( 'processing', $this->history_status( $run_id ), 'The History row stays open across slices.' );
 
-		$executor->process_run( $run_id, 'corr-test' );
+		$second = $executor->process_run( $run_id );
 
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_FINISHED, $second['state'] );
 		$this->assertSame( array( 'vendor/slow', 'vendor/after' ), $this->called_slugs(), 'The completed step is not repeated.' );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_COMPLETED, $this->repository->get_run( $run_id )->status );
 		$this->assertSame( 'completed', $this->history_status( $run_id ) );
@@ -787,6 +796,8 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 			$this->assertSame( 'ability_workflow_not_runnable', $result->get_error_code() );
 			$this->assertSame( 0, $this->repository->list_runs( $workflow_id )['total'], 'No run row may be created.' );
 		}
+
+		$this->assertSame( 0, $this->kicks );
 	}
 
 	public function test_dispatch_allows_draft_workflows_for_testing() {
@@ -797,7 +808,8 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 		$run_id = $this->executor()->dispatch_run( $workflow_id );
 
 		$this->assertIsInt( $run_id );
-		$this->assertCount( 1, $this->scheduler->scheduled );
+		$this->assertSame( 1, $this->kicks, 'The background process must be woken.' );
+		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_QUEUED, $this->repository->get_run( $run_id )->status );
 	}
 
 	public function test_dispatch_is_refused_when_the_feature_is_disabled() {
@@ -809,7 +821,7 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_workflows_disabled', $result->get_error_code() );
-		$this->assertCount( 0, $this->scheduler->scheduled );
+		$this->assertSame( 0, $this->kicks );
 	}
 
 	public function test_queued_run_fails_when_the_feature_is_disabled_before_it_starts() {
@@ -875,20 +887,21 @@ class Test_AIPS_Ability_Workflow_Executor_Run extends WP_UnitTestCase {
 	// Locking and principal
 	// ---------------------------------------------------------------------
 
-	public function test_a_run_locked_by_another_worker_is_rescheduled_not_dropped() {
+	public function test_a_run_locked_by_another_worker_reports_busy_and_is_left_alone() {
 		$this->register_abilities( array( 'vendor/a' => $this->safe() ) );
 		$workflow_id = $this->make_workflow( array( $this->step( 'a', 'vendor/a' ) ) );
 		$run_id      = $this->make_run( $workflow_id );
 
 		$this->assertTrue( $this->repository->acquire_lock( 'aips_ability_workflow_lock_' . $run_id, 'other-worker', 60 ) );
 
-		$this->executor()->process_run( $run_id, 'corr-test' );
+		$result = $this->executor()->process_run( $run_id );
 
 		$this->assertCount( 0, $this->calls );
 		$this->assertSame( AIPS_Ability_Workflow_Repository::RUN_STATUS_QUEUED, $this->repository->get_run( $run_id )->status );
-		$this->assertCount( 1, $this->scheduler->scheduled );
-		$this->assertSame( array( $run_id, 'corr-test' ), $this->scheduler->scheduled[0]['args'] );
-		$this->assertGreaterThanOrEqual( time() + AIPS_Ability_Workflow_Executor::LOCK_RETRY_DELAY_SECONDS - 1, $this->scheduler->scheduled[0]['fire_at'] );
+		$this->assertSame( AIPS_Ability_Workflow_Executor::RESULT_BUSY, $result['state'] );
+		$this->assertFalse( $result['worked'] );
+		$this->assertGreaterThanOrEqual( time() + AIPS_Ability_Workflow_Executor::BUSY_RETRY_SECONDS - 1, $result['retry_at'] );
+		$this->assertNull( $this->repository->get_run( $run_id )->history_id, 'A busy run must not open a History row.' );
 
 		$this->repository->release_lock( 'aips_ability_workflow_lock_' . $run_id, 'other-worker' );
 	}

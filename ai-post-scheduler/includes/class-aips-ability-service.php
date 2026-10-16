@@ -35,6 +35,15 @@ class AIPS_Ability_Service {
 	private $abilities = null;
 
 	/**
+	 * Abilities actually invoked during this PHP request, across every instance.
+	 * Background processes read the delta to meter how many ability (usually AI)
+	 * calls a slice made.
+	 *
+	 * @var int
+	 */
+	private static $invocations = 0;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AIPS_Logger_Interface|null $logger Logger.
@@ -49,6 +58,15 @@ class AIPS_Ability_Service {
 		$this->logger = $container->has(AIPS_Logger_Interface::class)
 			? $container->make(AIPS_Logger_Interface::class)
 			: AIPS_Logger::instance();
+	}
+
+	/**
+	 * Number of abilities invoked so far in this request.
+	 *
+	 * @return int
+	 */
+	public static function get_invocation_count(): int {
+		return self::$invocations;
 	}
 
 	/**
@@ -166,6 +184,8 @@ class AIPS_Ability_Service {
 		}
 
 		$this->log_request('invoke', $slug, $payload, array('provider' => $provider['name'], 'options' => $options));
+
+		self::$invocations++;
 
 		try {
 			$response = call_user_func($provider['invoke'], $slug, $payload, $options);

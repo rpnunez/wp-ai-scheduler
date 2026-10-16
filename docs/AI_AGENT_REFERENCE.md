@@ -55,7 +55,6 @@ Recurring hooks:
 - `aips_fetch_sources`
 - `aips_cleanup_bulk_batch_jobs`
 - `aips_cache_monitor_maintenance`
-- `aips_dispatch_scheduled_ability_workflows`
 
 Single-event hooks:
 
@@ -67,4 +66,3 @@ Single-event hooks:
 - `aips_process_bulk_batch`
 - `aips_process_author_embeddings`
 - `aips_index_posts_batch`
-- `aips_run_ability_workflow`

@@ -48,6 +48,11 @@ if ($aips_workflow_id <= 0) {
 					</p>
 				</div>
 				<div class="aips-page-actions">
+					<span class="aips-badge aips-badge-warning" id="aips-builder-dirty" hidden><?php esc_html_e('Unsaved changes', 'ai-post-scheduler'); ?></span>
+					<a class="aips-btn aips-btn-ghost" href="<?php echo esc_url(add_query_arg('edit', $aips_workflow_id, $aips_workflows_url)); ?>">
+						<span class="dashicons dashicons-admin-generic"></span>
+						<?php esc_html_e('Workflow settings', 'ai-post-scheduler'); ?>
+					</a>
 					<button type="button" class="aips-btn aips-btn-secondary" id="aips-builder-run-now-btn">
 						<span class="dashicons dashicons-controls-play"></span>
 						<?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
@@ -145,6 +150,8 @@ if ($aips_workflow_id <= 0) {
 						<span class="required" aria-hidden="true">*</span>
 					</label>
 					<select id="aips-step-ability" class="aips-form-select"></select>
+					<p class="description" id="aips-step-ability-description"></p>
+					<p class="description" id="aips-step-ability-hint"></p>
 				</div>
 
 				<div class="aips-form-row">
@@ -164,6 +171,7 @@ if ($aips_workflow_id <= 0) {
 					<table class="aips-table" id="aips-input-map-table">
 						<thead><tr>
 							<th><?php esc_html_e('Field', 'ai-post-scheduler'); ?></th>
+							<th style="width:130px;"><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
 							<th><?php esc_html_e('Value / Template', 'ai-post-scheduler'); ?></th>
 							<th style="width:40px;"></th>
 						</tr></thead>
@@ -172,7 +180,7 @@ if ($aips_workflow_id <= 0) {
 					<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-add-input-map-row-btn">
 						<span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e('Add Field', 'ai-post-scheduler'); ?>
 					</button>
-					<p class="description"><?php esc_html_e('Use {{trigger.field}} or {{steps.<alias>.output.field}} to reference earlier data.', 'ai-post-scheduler'); ?></p>
+					<p class="description"><?php esc_html_e('Use {{trigger.field}} or {{steps.<alias>.output.field}} to reference earlier data. A value that is exactly one reference keeps its type. Pick Number, True/false or JSON for fixed values that are not text.', 'ai-post-scheduler'); ?></p>
 				</div>
 
 				<div class="aips-form-row">
@@ -269,7 +277,7 @@ if ($aips_workflow_id <= 0) {
 			</button>
 		</td>
 		<td class="cell-primary">{{step_key}}<div class="cell-meta">{{name}}</div></td>
-		<td>{{ability_name}}</td>
+		<td>{{ability_name}}<div class="cell-meta">{{ability_note}}</div></td>
 		<td>{{output_alias}}</td>
 		<td class="column-actions">
 			<div class="aips-action-buttons">
@@ -287,6 +295,14 @@ if ($aips_workflow_id <= 0) {
 <script type="text/html" id="aips-tmpl-input-map-row">
 	<tr data-row-index="{{row_index}}">
 		<td><input type="text" class="regular-text aips-input-map-field" value="{{field}}"></td>
+		<td>
+			<select class="aips-form-select aips-input-map-type">
+				<option value="string"><?php esc_html_e('Text', 'ai-post-scheduler'); ?></option>
+				<option value="number"><?php esc_html_e('Number', 'ai-post-scheduler'); ?></option>
+				<option value="boolean"><?php esc_html_e('True/false', 'ai-post-scheduler'); ?></option>
+				<option value="json"><?php esc_html_e('JSON (list/object)', 'ai-post-scheduler'); ?></option>
+			</select>
+		</td>
 		<td><input type="text" class="regular-text aips-input-map-value" value="{{value}}"></td>
 		<td><button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-remove-input-map-row" data-row-index="{{row_index}}">&times;</button></td>
 	</tr>

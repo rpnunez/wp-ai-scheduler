@@ -18,6 +18,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Ability_Workflows_Controller {
 
 	/**
+	 * Workflow statuses an administrator can choose.
+	 */
+	const STATUSES = array( 'draft', 'active', 'paused', 'archived' );
+
+	/**
 	 * @var AIPS_Ability_Workflow_Repository
 	 */
 	private $repository;
@@ -84,13 +89,20 @@ class AIPS_Ability_Workflows_Controller {
 			AIPS_Ajax_Response::error( __( 'Workflow name is required.', 'ai-post-scheduler' ) );
 		}
 
+		$status = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : 'draft';
+
+		if ( ! in_array( $status, self::STATUSES, true ) ) {
+			AIPS_Ajax_Response::invalid_request( __( 'Unknown workflow status.', 'ai-post-scheduler' ) );
+		}
+
 		$data = array(
 			'name'           => $name,
 			'description'    => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
-			'status'         => isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : 'draft',
-			'trigger_type'   => isset( $_POST['trigger_type'] ) ? sanitize_key( wp_unslash( $_POST['trigger_type'] ) ) : 'manual',
-			'trigger_config' => $this->decode_json_field( $_POST['trigger_config'] ?? '' ),
-			'settings'       => $this->decode_json_field( $_POST['settings'] ?? '' ),
+			'status'         => $status,
+			// Manual is the only trigger that exists; the column keeps room for others.
+			'trigger_type'   => 'manual',
+			'trigger_config' => array(),
+			'settings'       => $this->sanitize_settings( $this->decode_json_field( $_POST['settings'] ?? '' ) ),
 		);
 
 		if ( $workflow_id > 0 ) {
@@ -355,6 +367,20 @@ class AIPS_Ability_Workflows_Controller {
 				}, $saved_steps ),
 			),
 			__( 'Workflow steps saved successfully.', 'ai-post-scheduler' )
+		);
+	}
+
+	/**
+	 * Keep only the settings the executor understands, with sane bounds.
+	 *
+	 * @param array $raw Decoded settings from the request.
+	 * @return array
+	 */
+	private function sanitize_settings( array $raw ): array {
+		return array(
+			'max_steps'                   => max( 1, min( 100, isset( $raw['max_steps'] ) ? (int) $raw['max_steps'] : 20 ) ),
+			'max_runtime_seconds'         => max( 1, min( 3600, isset( $raw['max_runtime_seconds'] ) ? (int) $raw['max_runtime_seconds'] : 120 ) ),
+			'allow_destructive_abilities' => ! empty( $raw['allow_destructive_abilities'] ),
 		);
 	}
 

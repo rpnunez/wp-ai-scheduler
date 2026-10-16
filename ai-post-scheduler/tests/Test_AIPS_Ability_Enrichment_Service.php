@@ -87,9 +87,13 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 	}
 
 	private function service() {
+		return $this->service_with_kick( null );
+	}
+
+	private function service_with_kick( $kick ) {
 		$abilities = new AIPS_Ability_Service();
 
-		return new AIPS_Ability_Enrichment_Service( $abilities, new AIPS_Ability_Catalog_Service( $abilities ) );
+		return new AIPS_Ability_Enrichment_Service( $abilities, new AIPS_Ability_Catalog_Service( $abilities ), null, null, $kick );
 	}
 
 	private function alt() {
@@ -100,26 +104,70 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 	// Switch / listener behaviour
 	// ---------------------------------------------------------------------
 
-	public function test_disabled_flag_does_nothing() {
+	public function test_disabled_flag_queues_nothing() {
 		$this->register_provider();
 		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_enrichment', 0 );
+		$kicks = 0;
 
 		$this->assertFalse( AIPS_Ability_Enrichment_Service::is_enabled() );
 
-		$this->service()->handle_post_generated( $this->post_id );
+		$this->service_with_kick(
+			function () use ( &$kicks ) {
+				$kicks++;
 
+				return true;
+			}
+		)->handle_post_generated( $this->post_id );
+
+		$this->assertSame( 0, $kicks );
+		$this->assertSame( 0, ( new AIPS_Ability_Enrichment_Queue_Repository() )->count_pending() );
 		$this->assertCount( 0, $this->calls );
 		$this->assertSame( '', $this->alt() );
 	}
 
-	public function test_enabled_flag_applies_alt_text_through_listener() {
+	public function test_the_listener_only_queues_the_post_and_wakes_the_process() {
 		$this->register_provider();
+		$kicks = 0;
+		$queue = new AIPS_Ability_Enrichment_Queue_Repository();
 
 		$this->assertTrue( AIPS_Ability_Enrichment_Service::is_enabled() );
 
-		$this->service()->handle_post_generated( $this->post_id );
+		$this->service_with_kick(
+			function () use ( &$kicks ) {
+				$kicks++;
 
-		$this->assertSame( 'A red bicycle', $this->alt() );
+				return true;
+			}
+		)->handle_post_generated( $this->post_id );
+
+		$this->assertSame( 1, $kicks );
+		$this->assertSame( array( array( 'post_id' => $this->post_id, 'user_id' => get_current_user_id() ) ), $queue->get_pending( 10 ) );
+		$this->assertCount( 0, $this->calls, 'No ability may be called inside the generation request.' );
+		$this->assertSame( '', $this->alt() );
+	}
+
+	public function test_a_failed_wake_up_is_logged_but_the_post_stays_queued() {
+		$this->register_provider();
+
+		$this->service_with_kick(
+			function () {
+				return new WP_Error( 'no_process', 'No process.' );
+			}
+		)->handle_post_generated( $this->post_id );
+
+		$this->assertSame( 1, ( new AIPS_Ability_Enrichment_Queue_Repository() )->count_pending() );
+	}
+
+	public function test_the_listener_never_throws() {
+		$this->register_provider();
+
+		$this->service_with_kick(
+			function () {
+				throw new RuntimeException( 'process exploded' );
+			}
+		)->handle_post_generated( $this->post_id );
+
+		$this->assertTrue( true, 'handle_post_generated() must swallow the failure.' );
 	}
 
 	public function test_invalid_post_id_is_ignored() {
@@ -128,25 +176,51 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 		$this->service()->handle_post_generated( 0 );
 		$this->assertSame( array(), $this->service()->enrich_post( 999999 ) );
 		$this->assertCount( 0, $this->calls );
+		$this->assertSame( 0, ( new AIPS_Ability_Enrichment_Queue_Repository() )->count_pending() );
 	}
 
-	public function test_listener_never_throws_when_a_step_throws() {
+	public function test_a_throwing_step_is_reported_and_does_not_stop_later_steps() {
 		$this->register_provider();
 		add_filter(
 			'aips_ability_enrichment_steps',
 			function () {
 				return array(
-					'boom' => function () {
+					'boom'  => function () {
 						throw new RuntimeException( 'step exploded' );
+					},
+					'after' => function () {
+						return 'applied';
 					},
 				);
 			}
 		);
 		$before = get_current_user_id();
 
-		$this->service()->handle_post_generated( $this->post_id );
+		$results = $this->service()->enrich_post( $this->post_id );
 
+		$this->assertSame( array( 'boom' => 'error:step_exception', 'after' => 'applied' ), $results );
 		$this->assertSame( $before, get_current_user_id(), 'The current user is restored even when a step throws.' );
+	}
+
+	public function test_enrich_post_prefers_the_user_who_triggered_the_generation() {
+		$this->register_provider();
+		$author = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( 0 );
+
+		$this->service()->enrich_post( $this->post_id, $author );
+
+		$this->assertSame( $author, $this->calls[0]['user_id'] );
+		$this->assertSame( 0, get_current_user_id() );
+	}
+
+	public function test_a_triggering_user_who_cannot_edit_the_post_is_ignored() {
+		$this->register_provider();
+		$subscriber = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$editor_id  = get_current_user_id();
+
+		$this->service()->enrich_post( $this->post_id, $subscriber );
+
+		$this->assertSame( $editor_id, $this->calls[0]['user_id'], 'Falls back to the current user who can edit the post.' );
 	}
 
 	// ---------------------------------------------------------------------

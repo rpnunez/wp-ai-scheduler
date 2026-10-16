@@ -735,6 +735,34 @@ class AIPS_Ability_Workflow_Repository {
 	}
 
 	/**
+	 * Number of runs that still need work (queued or running).
+	 *
+	 * @return int
+	 */
+	public function count_open_runs(): int {
+		return (int) $this->wpdb->get_var(
+			"SELECT COUNT(*) FROM {$this->runs_table} WHERE status IN ('queued','running')"
+		);
+	}
+
+	/**
+	 * IDs of the runs that still need work, oldest first.
+	 *
+	 * @param int $limit Maximum number of IDs.
+	 * @return int[]
+	 */
+	public function get_open_run_ids( int $limit = 50 ): array {
+		$ids = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT id FROM {$this->runs_table} WHERE status IN ('queued','running') ORDER BY id ASC LIMIT %d",
+				max(1, $limit)
+			)
+		);
+
+		return array_map( 'intval', $ids ?: array() );
+	}
+
+	/**
 	 * Fetch a run by ID.
 	 *
 	 * @param int $run_id Run ID.

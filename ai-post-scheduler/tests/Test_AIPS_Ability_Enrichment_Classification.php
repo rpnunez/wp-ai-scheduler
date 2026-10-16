@@ -373,6 +373,29 @@ class Test_AIPS_Ability_Enrichment_Classification extends WP_UnitTestCase {
 		$this->assertSame( 'error:no_provider', $results['classification'] );
 	}
 
+	public function test_no_results_from_the_ability_is_not_a_failure() {
+		$this->register_classifier(
+			array(
+				'post_tag' => new WP_Error( 'no_results', 'No matching terms.' ),
+				'category' => new WP_Error( 'no_results', 'No matching terms.' ),
+			)
+		);
+
+		$this->assertSame( 'skipped:no_suggestions', $this->classify() );
+	}
+
+	public function test_no_results_for_one_taxonomy_still_applies_the_other() {
+		$this->register_classifier(
+			array(
+				'category' => new WP_Error( 'no_results', 'No matching terms.' ),
+				'post_tag' => array( $this->suggestion( 'Machine Learning' ) ),
+			)
+		);
+		self::factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Machine Learning' ) );
+
+		$this->assertSame( 'applied', $this->classify() );
+	}
+
 	public function test_one_failing_taxonomy_does_not_block_the_other() {
 		$this->register_classifier(
 			array(

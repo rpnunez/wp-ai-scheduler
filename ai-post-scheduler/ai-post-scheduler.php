@@ -1068,18 +1068,10 @@ final class AI_Post_Scheduler {
             }
         );
 
-        // Ability Workflow run execution/continuation: a dedicated single-event
-        // hook, deliberately NOT registered through AIPS_Bulk_Batch_Processor's
-        // strategy registry — workflow steps run in dependency order with
-        // conditional branching that can only be resolved once earlier steps
-        // have produced output, so they cannot be pre-sliced like a flat,
-        // order-independent batch job. The executor reschedules this same
-        // hook itself to continue a run across invocations (time budget or
-        // retry backoff).
-        // Args: run_id, correlation_id.
-        add_action('aips_run_ability_workflow', function( $run_id, $correlation_id = '' ) {
-            (new AIPS_Ability_Workflow_Executor())->process_run((int) $run_id, (string) $correlation_id);
-        }, 10, 2);
+        // Ability Workflow runs and post-generation enrichment have no cron hook of
+        // their own: they are managed background processes (AIPS_Ability_Workflows_Process,
+        // AIPS_Ability_Enrichment_Process) advanced by the shared aips_bg_process_tick event
+        // registered above.
 
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {

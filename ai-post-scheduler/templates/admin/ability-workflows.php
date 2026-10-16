@@ -116,14 +116,7 @@ $aips_builder_base_url = admin_url('admin.php?page=aips-ability-workflow-builder
 						<option value="paused"><?php esc_html_e('Paused', 'ai-post-scheduler'); ?></option>
 						<option value="archived"><?php esc_html_e('Archived', 'ai-post-scheduler'); ?></option>
 					</select>
-				</div>
-
-				<div class="aips-form-row">
-					<label for="aips-workflow-trigger-type"><?php esc_html_e('Trigger', 'ai-post-scheduler'); ?></label>
-					<select id="aips-workflow-trigger-type" name="trigger_type" class="aips-form-select">
-						<option value="manual"><?php esc_html_e('Manual (Run Now)', 'ai-post-scheduler'); ?></option>
-						<option value="scheduled"><?php esc_html_e('Scheduled (coming soon)', 'ai-post-scheduler'); ?></option>
-					</select>
+					<p class="description"><?php esc_html_e('Workflows are started with Run Now. Draft and Active workflows can run; Paused and Archived ones cannot. Change the status here to reactivate a workflow.', 'ai-post-scheduler'); ?></p>
 				</div>
 
 				<div class="aips-form-row">
@@ -141,15 +134,10 @@ $aips_builder_base_url = admin_url('admin.php?page=aips-ability-workflow-builder
 						<input type="checkbox" id="aips-workflow-allow-destructive" name="allow_destructive_abilities" value="1">
 						<?php esc_html_e('Allow destructive abilities', 'ai-post-scheduler'); ?>
 					</label>
-					<p class="description"><?php esc_html_e('When unchecked, steps using an ability flagged as destructive will fail instead of running.', 'ai-post-scheduler'); ?></p>
+					<p class="description"><?php esc_html_e('When unchecked, steps whose ability is flagged destructive, or does not say whether it is, will fail instead of running.', 'ai-post-scheduler'); ?></p>
 				</div>
 
-				<div class="aips-form-row">
-					<label class="aips-checkbox-label">
-						<input type="checkbox" id="aips-workflow-log-payloads" name="log_payloads" value="1" checked>
-						<?php esc_html_e('Log step inputs/outputs for audit history', 'ai-post-scheduler'); ?>
-					</label>
-				</div>
+				<p class="description"><?php esc_html_e('Each run stores the inputs and outputs of its steps so the run history can show them.', 'ai-post-scheduler'); ?></p>
 			</form>
 		</div>
 		<div class="aips-modal-footer">
@@ -174,9 +162,12 @@ $aips_builder_base_url = admin_url('admin.php?page=aips-ability-workflow-builder
 		<td class="column-updated">{{updated_display}}</td>
 		<td class="column-actions">
 			<div class="aips-action-buttons">
-				<a class="aips-btn aips-btn-sm" href="{{builder_url}}" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
-					<span class="dashicons dashicons-edit"></span>
+				<a class="aips-btn aips-btn-sm" href="{{builder_url}}" title="<?php esc_attr_e('Edit steps', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-list-view"></span>
 				</a>
+				<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-workflow" data-id="{{id}}" title="<?php esc_attr_e('Edit settings', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-admin-generic"></span>
+				</button>
 				<button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-workflow-now" data-id="{{id}}" title="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>">
 					<span class="dashicons dashicons-controls-play"></span>
 				</button>

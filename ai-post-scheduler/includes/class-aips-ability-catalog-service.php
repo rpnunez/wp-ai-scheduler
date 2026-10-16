@@ -175,9 +175,9 @@ class AIPS_Ability_Catalog_Service {
 			'destructive_state'    => $destructive_state,
 			'is_destructive'       => true === $destructive_state,
 			// Only abilities that declare themselves non-destructive (or read-only)
-			// run without approval. An ability that says nothing is treated as
-			// potentially destructive, as the Abilities API does for a missing
-			// annotation.
+			// run without approval. WordPress leaves a missing `destructive`
+			// annotation null (unknown), and unknown is treated as potentially
+			// destructive here.
 			'requires_approval'    => true === $destructive_state || null === $destructive_state,
 			'is_available'         => array_key_exists( 'is_available', $raw_ability ) ? (bool) $raw_ability['is_available'] : true,
 			'metadata'             => array_diff_key( $raw_ability, array_flip( $known_keys ) ),

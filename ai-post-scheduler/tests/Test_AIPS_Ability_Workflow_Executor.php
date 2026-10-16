@@ -170,27 +170,32 @@ class Test_AIPS_Ability_Workflow_Executor extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Finding: schedule_continuation()'s underlying schedule_simple() return
-	 * value was previously discarded — a scheduling failure left a run
-	 * stuck at 'running'/'queued' forever. dispatch_run() must now mark the
-	 * just-created run row 'failed' instead of leaving it orphaned.
+	 * A run that nothing can pick up must not be left orphaned at 'queued':
+	 * when waking the background process fails, dispatch_run() marks the
+	 * just-created run row 'failed' and reports the error.
 	 */
-	public function test_dispatch_run_marks_run_failed_when_scheduling_fails() {
+	public function test_dispatch_run_marks_run_failed_when_the_process_cannot_be_started() {
 		$repository = AIPS_Ability_Workflow_Repository::instance();
-		$workflow_id = $repository->create_workflow( array( 'name' => 'Test Scheduling Failure Workflow' ) );
+		$workflow_id = $repository->create_workflow( array( 'name' => 'Test Kick Failure Workflow' ) );
 		$this->created_workflow_ids[] = $workflow_id;
 
-		$failing_scheduler = new class extends AIPS_Job_Scheduler {
-			public function schedule_simple( string $hook, int $fire_at, array $args = array(), array $options = array() ): bool {
-				return false;
+		$executor = new AIPS_Ability_Workflow_Executor(
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			function () {
+				return new WP_Error( 'process_unavailable', 'No process.' );
 			}
-		};
-
-		$executor = new AIPS_Ability_Workflow_Executor( null, null, null, null, null, $failing_scheduler );
+		);
 
 		$result = $executor->dispatch_run( $workflow_id );
 
 		$this->assertInstanceOf( 'WP_Error', $result );
+		$this->assertSame( 'process_unavailable', $result->get_error_code() );
 
 		$runs = $repository->list_runs( $workflow_id );
 		$this->assertCount( 1, $runs['items'] );
