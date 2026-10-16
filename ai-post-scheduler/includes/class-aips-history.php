@@ -416,35 +416,64 @@ class AIPS_History {
      * @return array<string,mixed>
      */
     private function build_history_timeline_data($container, $history_item, $display_logs) {
-        $post_id = !empty($history_item->post_id) ? (int) $history_item->post_id : (!empty($container['post_id']) ? (int) $container['post_id'] : 0);
+        $entity_data = $this->extract_timeline_post_entity_data($container, $history_item);
+        $events_data = $this->format_timeline_chronological_events($display_logs, $entity_data['warning_text']);
+
+        return array(
+            'post_type_label' => $entity_data['post_type_label'],
+            'attempt_text'    => sprintf(__('Attempting to create a %s', 'ai-post-scheduler'), $entity_data['post_type_label']),
+            'post_title'      => $entity_data['generated_title'],
+            'post_excerpt'    => $entity_data['excerpt_30'],
+            'show_milestones' => $entity_data['show_milestones'],
+            'has_image'       => !empty($entity_data['thumb_url']),
+            'image_status'    => $entity_data['image_status'],
+            'image_url'       => $entity_data['thumb_url'],
+            'image_edit_url'  => $entity_data['thumb_edit_url'],
+            'has_content'     => $entity_data['has_content'],
+            'custom_fields'   => $entity_data['custom_fields'],
+            'error_text'      => !empty($container['root_issue']) ? $container['root_issue'] : (($history_item && !empty($history_item->error_message)) ? $history_item->error_message : ''),
+            'warning_text'    => $events_data['warning_text'],
+            'events'          => $events_data['formatted_events'],
+        );
+    }
+
+    /**
+     * Extract post entity details (type, title, excerpt, image, custom fields) for timeline display.
+     *
+     * @param array<string,mixed> $container Prepared container payload.
+     * @param object|null $history_item History container database object or null.
+     * @return array<string,mixed>
+     */
+    private function extract_timeline_post_entity_data($container, $history_item) {
+        $post_id = ($history_item && !empty($history_item->post_id)) ? (int) $history_item->post_id : (!empty($container['post_id']) ? (int) $container['post_id'] : 0);
         $post = $post_id ? get_post($post_id) : null;
 
         // Only generation runs own the post's components; event rows (publish,
         // delete, lifecycle, ...) just link to the post.
-        $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
+        $creation_method = ($history_item && isset($history_item->creation_method)) ? (string) $history_item->creation_method : '';
         $show_milestones = $post_id > 0 && self::is_generation_method($creation_method);
 
         $post_type = '';
         if ($post) {
             $post_type = $post->post_type;
-        } elseif (!empty($history_item->post_type)) {
+        } elseif ($history_item && !empty($history_item->post_type)) {
             $post_type = $history_item->post_type;
         } elseif (!empty($container['post_type'])) {
             $post_type = $container['post_type'];
+        } else {
+            $post_type = 'post';
         }
         $post_type_label = self::humanize_post_type_label($post_type);
 
-        // Title
         $generated_title = '';
         if ($post && !empty($post->post_title)) {
             $generated_title = $post->post_title;
-        } elseif (!empty($history_item->generated_title)) {
+        } elseif ($history_item && !empty($history_item->generated_title)) {
             $generated_title = $history_item->generated_title;
         } elseif (!empty($container['generated_title'])) {
             $generated_title = $container['generated_title'];
         }
 
-        // Excerpt snippet (up to 30 chars)
         $excerpt_raw = '';
         if ($post && !empty($post->post_excerpt)) {
             $excerpt_raw = $post->post_excerpt;
@@ -458,12 +487,10 @@ class AIPS_History {
             $excerpt_30 .= '…';
         }
 
-        // Featured image
         $thumb_id = $post ? get_post_thumbnail_id($post->ID) : 0;
         $thumb_url = $thumb_id ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : '';
         $thumb_edit_url = $thumb_id ? admin_url('post.php?post=' . $thumb_id . '&action=edit') : '';
 
-        // Content
         $has_content = false;
         if ($post && !empty(trim($post->post_content))) {
             $has_content = true;
@@ -521,15 +548,37 @@ class AIPS_History {
         }
 
         // Errors & Warnings
-        $error_text = !empty($container['root_issue']) ? $container['root_issue'] : (!empty($history_item->error_message) ? $history_item->error_message : '');
         $warning_text = '';
         if (!empty($incomplete_components)) {
             /* translators: %s: comma-separated list of components that did not generate */
             $warning_text = sprintf(__('Generation incomplete: %s did not generate.', 'ai-post-scheduler'), implode(', ', $incomplete_components));
         }
 
-        // Format chronological events
+        return array(
+            'post_type_label' => $post_type_label,
+            'generated_title' => $generated_title,
+            'excerpt_30'      => $excerpt_30,
+            'show_milestones' => $show_milestones,
+            'image_status'    => $image_status,
+            'thumb_url'       => $thumb_url,
+            'thumb_edit_url'  => $thumb_edit_url,
+            'has_content'     => $has_content,
+            'custom_fields'   => $custom_fields,
+            'warning_text'    => $warning_text,
+        );
+    }
+
+    /**
+     * Format display logs into chronological timeline events and extract warning text.
+     *
+     * @param array<int,array<string,mixed>> $display_logs Prepared display logs.
+     * @param string $initial_warning_text Optional pre-extracted warning text (e.g. from incomplete components).
+     * @return array<string,mixed>
+     */
+    private function format_timeline_chronological_events($display_logs, $initial_warning_text = '') {
+        $warning_text = $initial_warning_text;
         $formatted_events = array();
+
         foreach ($display_logs as $log) {
             $raw_type = !empty($log['log_type']) ? $log['log_type'] : (!empty($log['type_label']) ? $log['type_label'] : '');
             $type_label = $this->humanize_timeline_event_label($raw_type);
@@ -565,20 +614,8 @@ class AIPS_History {
         }
 
         return array(
-            'post_type_label' => $post_type_label,
-            'attempt_text' => sprintf(__('Attempting to create a %s', 'ai-post-scheduler'), $post_type_label),
-            'post_title' => $generated_title,
-            'post_excerpt' => $excerpt_30,
-            'show_milestones' => $show_milestones,
-            'has_image' => !empty($thumb_url),
-            'image_status' => $image_status,
-            'image_url' => $thumb_url,
-            'image_edit_url' => $thumb_edit_url,
-            'has_content' => $has_content,
-            'custom_fields' => $custom_fields,
-            'error_text' => $error_text,
             'warning_text' => $warning_text,
-            'events' => $formatted_events,
+            'formatted_events' => $formatted_events,
         );
     }
 

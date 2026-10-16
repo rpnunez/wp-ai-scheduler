@@ -1466,3 +1466,11 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Applied "Separation of Concerns" by extracting root node creation, quick links creation, notifications creation, and background processes creation into distinct private helper methods. The main `add_toolbar_node` function was reduced to roughly 15 lines serving strictly as the orchestrator.
 **Consequence:** Increased the number of private methods on the class, but vastly improved readability and maintainability. Backwards compatibility for the admin bar remains 100% intact.
 **Tests:** Ran the existing PHPUnit test suite to ensure no regressions were introduced. Tests related to AIPS_Admin_Bar all passed.
+
+## 2026-10-10 - [Refactor History Timeline Builder God Method]
+
+- **Context:** `AIPS_History::build_history_timeline_data` was a 126-line God method handling post entity resolution, excerpt normalization, thumbnail resolution, custom fields extraction, log type humanization, date formatting, and event payload formatting all in one function, violating SRP and SoC.
+- **Decision:** Applied Extract Method refactoring to extract `extract_timeline_post_entity_data()` and `format_timeline_chronological_events()` helper methods. Reduced `build_history_timeline_data()` to a clean, 20-line orchestrator method with 100% backward compatibility.
+- **Consequence:** Improved code readability and maintainability without breaking any existing timeline functionality or contract.
+- **Tests:** Ran full PHPUnit test suite including `Test_AIPS_History_Query_Service` to ensure 0 regressions.
+
