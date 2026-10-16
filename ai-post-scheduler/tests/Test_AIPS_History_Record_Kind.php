@@ -287,4 +287,50 @@ class Test_AIPS_History_Record_Kind extends WP_UnitTestCase {
 			$this->assertSame('generation', $this->kind_of($id));
 		}
 	}
+
+	// ------------------------------------------------------------ kind_condition & query visibility
+
+	public function test_kind_condition_builds_expected_sql() {
+		$this->assertSame("record_kind = 'generation'", AIPS_History_Repository::kind_condition('generation'));
+		$this->assertSame("h.record_kind = 'generation'", AIPS_History_Repository::kind_condition('generation', 'h'));
+		$this->assertSame("record_kind IN ('generation', 'job')", AIPS_History_Repository::kind_condition(array('generation', 'job')));
+		$this->assertSame("h.record_kind IN ('generation', 'job')", AIPS_History_Repository::kind_condition(array('generation', 'job'), 'h'));
+		$this->assertSame("1=0", AIPS_History_Repository::kind_condition('invalid_kind'));
+	}
+
+	public function test_default_history_list_excludes_all_event_kinds() {
+		$run          = $this->history->create(array('creation_method' => 'scheduled', 'status' => 'completed', 'record_kind' => 'generation'));
+		$job          = $this->history->create(array('creation_method' => 'content_indexing', 'status' => 'completed', 'record_kind' => 'job'));
+		$wrapper      = $this->history->create(array('creation_method' => 'manual_generation', 'status' => 'completed', 'record_kind' => 'event'));
+		$topic_gen    = $this->history->create(array('creation_method' => 'topic_post_generation', 'status' => 'completed', 'record_kind' => 'event'));
+		$review       = $this->history->create(array('creation_method' => 'post_review_action', 'status' => 'completed', 'record_kind' => 'event'));
+		$notification = $this->history->create(array('creation_method' => 'notification_sent', 'status' => 'completed', 'record_kind' => 'event'));
+
+		$this->history_ids = array_merge($this->history_ids, array($run, $job, $wrapper, $topic_gen, $review, $notification));
+
+		$default_list = $this->history->get_history();
+		$default_ids  = wp_list_pluck($default_list['items'], 'id');
+
+		$this->assertContains((string) $run, $default_ids);
+		$this->assertContains((string) $job, $default_ids);
+		$this->assertNotContains((string) $wrapper, $default_ids);
+		$this->assertNotContains((string) $topic_gen, $default_ids);
+		$this->assertNotContains((string) $review, $default_ids);
+		$this->assertNotContains((string) $notification, $default_ids);
+
+		// Explicit review domain includes the review action.
+		$review_list = $this->history->get_history(array('domain' => 'post_review'));
+		$review_ids  = wp_list_pluck($review_list['items'], 'id');
+		$this->assertContains((string) $review, $review_ids);
+
+		// Explicit record_kind=event includes all events.
+		$event_list = $this->history->get_history(array('record_kind' => 'event'));
+		$event_ids  = wp_list_pluck($event_list['items'], 'id');
+		$this->assertContains((string) $wrapper, $event_ids);
+		$this->assertContains((string) $topic_gen, $event_ids);
+		$this->assertContains((string) $review, $event_ids);
+		$this->assertContains((string) $notification, $event_ids);
+		$this->assertNotContains((string) $run, $event_ids);
+		$this->assertNotContains((string) $job, $event_ids);
+	}
 }
