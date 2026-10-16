@@ -206,10 +206,11 @@ The `[xdebug]` block was removed from `dev-php.ini` — Xdebug config now comes 
 
 ### Canonical workflow (Docker, recommended)
 
-With the dev stack running (`./start-dev.sh`), run the suite inside the `web` container. No host PHP, Composer or svn needed:
+Follow the [Agent test protocol](../TESTING.md#agent-test-protocol-mandatory-for-ai-agents-and-humans-alike). With the stack provisioned once (`./start-dev.sh`), run the suite inside the `web` container. No host PHP, Composer or svn needed:
 
 ```bash
-make test                                  # whole suite (or: bash scripts/run-docker-test.sh)
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: stops what it started
+make test                                  # whole suite (leaves the stack up)
 make test ARGS="tests/Test_AIPS_DB_Migrations.php"   # one file
 make test ARGS="--fresh"                   # recreate the wp_tests database first
 make test-coverage                         # text coverage report (enables Xdebug coverage)

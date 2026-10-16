@@ -4,6 +4,33 @@ This repository maintains a single PHPUnit suite: the full WordPress test-librar
 
 The recommended way to run it is **inside the running dev stack**: PHPUnit executes in the `web` container against a separate `wp_tests` database on the `db` container. No host PHP, Composer, or `svn` is needed, and your development data is never touched.
 
+## Agent test protocol (mandatory for AI agents and humans alike)
+
+This is the single supported way to run tests. Every other instruction file (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.codex/`, `.jules/`) points here.
+
+**Run:**
+
+```bash
+make test-session ARGS="tests/Test_A.php tests/Test_B.php"   # preferred: runs, then stops what it started
+make test ARGS="tests/Test_A.php"                            # same run, but leaves the stack up
+```
+
+Rules:
+
+1. **Entrypoint is `make`.** Do not call `scripts/run-docker-test.sh` directly, do not wrap it in `bash.exe -lc "..."`, and do not hand-roll `docker compose exec ... phpunit`. On Windows run `make` from Git Bash or PowerShell; it is on `PATH`.
+2. **One invocation per batch.** Pass every file (and any flags) in a single `ARGS`. Do not loop over files, and do not chain runs with `&&` / `;`: each run re-checks the stack and recreates the DB, and a failure in one hides the rest.
+3. **Do not filter output.** No piping to `grep`, `head` or `tail`; it hides failure detail and forces a rerun. If output is long, redirect it to a file in your scratch directory and read that.
+4. **Never run `./start-dev.sh` just to test.** It is first-time provisioning (image build, `.env`, API-key prompt). The test runner starts `db` and `web` itself. Use `start-dev.sh` only when the checkout has never been provisioned, with `AIPS_SKIP_API_KEY_CHECK=1` when no key is available.
+5. **Scope.** Run the tests that cover the touched code. Run the full suite (`make test-session`) only before opening a PR or when asked. Install dev dependencies once with `make composer-install` if `vendor/bin/phpunit` is missing.
+
+**Clean up after yourself.** Leave the machine the way you found it:
+
+1. Before testing, note whether the stack was already running (`docker compose ps`). `make test-session` does this and the next step for you.
+2. If you started the stack, stop it when finished: `make stop` (or `make test-stop`, which also stops phpMyAdmin). If it was already running, leave it alone; it may belong to the user or to another agent.
+3. Never use `make down`, `docker compose down -v`, `make clean`, `make prune` or any reset to clean up. They destroy containers or data volumes.
+4. Delete files you generated and do not intend to keep: `ai-post-scheduler/coverage/`, `ai-post-scheduler/.artifacts/`, scratch SQL/output files, stray background jobs or watchers you started.
+5. Say in your final report what you started and what you stopped (for example "stack was already up, left running" or "started db+web, stopped them").
+
 ## Requirements
 
 - Docker Desktop (or Docker Engine + Docker Compose v2), running
