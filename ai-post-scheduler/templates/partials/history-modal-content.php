@@ -48,7 +48,7 @@ $type_labels = array(
 	<nav class="aips-history-detail-tabs" role="tablist" aria-label="<?php esc_attr_e('History detail sections', 'ai-post-scheduler'); ?>" style="display: flex; gap: 4px; border-bottom: 1px solid #dcdcde; margin: 0 0 14px;">
 		<button type="button" class="aips-history-detail-tab is-active" role="tab" aria-selected="true" data-tab="overview"><?php esc_html_e('Overview', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="timeline"><?php esc_html_e('Timeline', 'ai-post-scheduler'); ?></button>
-		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls"><?php echo esc_html(sprintf(__('AI Calls (%d)', 'ai-post-scheduler'), count($ai_logs))); ?></button>
+		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="ai-calls"><?php esc_html_e('AI Calls', 'ai-post-scheduler'); ?></button>
 		<button type="button" class="aips-history-detail-tab" role="tab" aria-selected="false" data-tab="technical"><?php esc_html_e('Technical', 'ai-post-scheduler'); ?></button>
 	</nav>
 
