@@ -30,3 +30,17 @@
 - **Cache invalidation:** Hook-based invalidation (updated_option, added_option, deleted_option) and set_option() flush $this->cache as before.
 - **Backward compatibility:** Preserved AIPS_Config::get_option() signature, ad-hoc fallback behavior for unregistered options, and return types.
 - **Tests:** Test_AIPS_Config: added explicit-default caching and mixed-default tests; also corrected stale expectations (log level follows debug mode, similarity threshold 0.85). Not re-run after review fixes.
+
+## 2026-10-16 - Batch Author Lookups in Retry Failed Slices
+
+- **Target:** ai-post-scheduler/includes/class-aips-author-slice-scheduler-base.php::AIPS_Author_Slice_Scheduler_Base::retry_failed_slices
+- **Lens:** Cron/batch hot paths
+- **Problem:** Retrying failed author slice cron jobs executed 1 SELECT query per author ID in a loop (N queries for N failed author IDs).
+- **Fix:** Added batched `AIPS_Authors_Repository::get_by_ids()` executing a single `WHERE id IN (...)` query and updated `retry_failed_slices()` to call it once.
+- **Before / After:**
+  - N=10: 10 queries -> 1 query
+  - N=100: 100 queries -> 1 query
+  - N=500: 512 queries -> 1 query
+- **Cache invalidation:** Not applicable (direct ID query on transient retry execution).
+- **Backward compatibility:** Preserved original `get_by_id()` public signature and behavior. Added `get_by_ids()` alongside.
+- **Tests:** Test_Author_Slice_Scheduler_Retry
