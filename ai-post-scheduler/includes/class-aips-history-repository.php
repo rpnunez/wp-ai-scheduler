@@ -98,7 +98,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string[]
      */
     public static function generation_run_creation_methods() {
-        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation');
+        $methods = array('scheduled', 'manual', 'regenerate', 'retry', 'bulk_generate', 'post_generation', 'author_post_gen');
 
         /**
          * Filters the creation_method values classified as post-generation runs when a
@@ -116,6 +116,29 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     }
 
     /**
+     * SQL condition matching one or more record kinds.
+     *
+     * @param string|string[] $kinds Single kind or array of kinds ('generation', 'job', 'event').
+     * @param string          $alias Optional table alias (without the dot).
+     * @return string SQL snippet e.g. "record_kind = 'generation'" or "h.record_kind IN ('generation', 'job')".
+     */
+    public static function kind_condition($kinds, $alias = '') {
+        $kinds  = array_values(array_intersect((array) $kinds, AIPS_History_Record_Kind::all()));
+        $prefix = ($alias !== '') ? $alias . '.' : '';
+
+        if (empty($kinds)) {
+            return '1=0';
+        }
+
+        if (count($kinds) === 1) {
+            return $prefix . "record_kind = '" . esc_sql($kinds[0]) . "'";
+        }
+
+        $in_sql = implode("', '", array_map('esc_sql', $kinds));
+        return $prefix . "record_kind IN ('" . $in_sql . "')";
+    }
+
+    /**
      * SQL condition matching generation runs: rows whose stored record_kind is
      * 'generation'.
      *
@@ -126,7 +149,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string
      */
     public static function generation_run_condition($alias = '') {
-        return ($alias !== '' ? $alias . '.' : '') . "record_kind = 'generation'";
+        return self::kind_condition(AIPS_History_Record_Kind::GENERATION, $alias);
     }
 
     /**
@@ -139,7 +162,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return string
      */
     public static function background_job_condition($alias = '') {
-        return ($alias !== '' ? $alias . '.' : '') . "record_kind = 'job'";
+        return self::kind_condition(AIPS_History_Record_Kind::JOB, $alias);
     }
 
     /**
@@ -671,14 +694,16 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
         $where_clauses = array("1=1");
         $where_args = array();
 
-        $auxiliary_methods = $this->get_auxiliary_creation_methods();
-        // Review-queue actions are hidden by default but can be listed explicitly.
-        if (!empty($args['domain']) && sanitize_key($args['domain']) === 'post_review') {
-            $auxiliary_methods = array_values(array_diff($auxiliary_methods, array('post_review_action')));
+        if (!empty($args['record_kind'])) {
+            $where_clauses[] = self::kind_condition($args['record_kind'], 'h');
+        } elseif (!empty($args['domain']) && sanitize_key($args['domain']) === 'post_review') {
+            // Explicit post review event domain requested.
+        } elseif (!empty($args['creation_method']) && in_array($args['creation_method'], AIPS_History_Record_Kind::event_creation_methods(), true)) {
+            // Explicit event creation method filter requested.
+        } else {
+            // Default list hides all event rows (lifecycle containers, notifications, review actions, wrappers).
+            $where_clauses[] = self::kind_condition(array(AIPS_History_Record_Kind::GENERATION, AIPS_History_Record_Kind::JOB), 'h');
         }
-        $auxiliary_placeholders = implode(', ', array_fill(0, count($auxiliary_methods), '%s'));
-        $where_clauses[] = "COALESCE(h.creation_method, '') NOT IN ({$auxiliary_placeholders})";
-        $where_args = array_merge($where_args, $auxiliary_methods);
         // Keep excluding legacy orphaned containers that have no contextual linkage.
         $where_clauses[] = "NOT (h.creation_method IS NULL AND h.template_id IS NULL AND h.topic_id IS NULL AND h.post_id IS NULL AND h.author_id IS NULL)";
 
@@ -836,6 +861,7 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
             'author_id' => 0,
             'creation_method' => '',
             'domain' => '',
+            'record_kind' => '',
             'actor' => '',
             'post_type' => '',
             'date_from' => '',
@@ -1312,10 +1338,15 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return bool True if the post has a completed history entry, false otherwise.
      */
     public function post_has_history_and_completed($post_id) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return false;
+        }
+
         $count = $this->wpdb->get_var($this->wpdb->prepare(
             "SELECT COUNT(*) FROM {$this->table_name}
              WHERE post_id = %d AND status IN ('completed', 'partial')
-               AND COALESCE(creation_method, '') NOT IN (" . self::event_only_in_sql() . ")",
+               AND " . self::generation_run_condition(),
             $post_id
         ));
         
@@ -1333,12 +1364,17 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * @return object|null History record or null if not found.
      */
     public function get_by_post_id($post_id) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return null;
+        }
+
         return $this->wpdb->get_row($this->wpdb->prepare(
             "SELECT id, uuid, correlation_id, post_id, template_id, campaign_id, author_id, topic_id,
                     creation_method, status, generated_title, error_message,
-                    created_at, completed_at
+                    created_at, completed_at, record_kind
              FROM {$this->table_name}
-             WHERE post_id = %d AND COALESCE(creation_method, '') NOT IN (" . self::event_only_in_sql() . ")
+             WHERE post_id = %d AND " . self::generation_run_condition() . "
              ORDER BY created_at DESC, id DESC LIMIT 1",
             $post_id
         ));
@@ -2206,23 +2242,23 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
     /**
      * Count generation runs that are in progress but idle past their threshold.
      *
-     * Event-only containers (including persistent lifecycle containers, which stay
-     * open on purpose) are never counted.
+     * Scoped to generation runs by default to match the Overview "Generation runs: stalled"
+     * tile and provide accurate stuck job counts for queue health.
      *
+     * @param string|string[] $kinds Record kinds to inspect. Default 'generation'.
      * @return array{count:int,oldest_idle_seconds:int|null}
      */
-    public function get_stalled_summary() {
+    public function get_stalled_summary($kinds = AIPS_History_Record_Kind::GENERATION) {
         list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+        $kind_sql                          = self::kind_condition($kinds, 'h');
 
-        $methods      = self::event_only_creation_methods();
-        $placeholders = implode(', ', array_fill(0, count($methods), '%s'));
-        $row          = $this->wpdb->get_row($this->wpdb->prepare(
+        $row = $this->wpdb->get_row($this->wpdb->prepare(
             "SELECT COUNT(*) AS total,
                     MIN(GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0))) AS oldest_activity
              FROM {$this->table_name} h
              WHERE {$stalled_sql}
-               AND COALESCE(h.creation_method, '') NOT IN ({$placeholders})",
-            array_merge($stalled_args, $methods)
+               AND {$kind_sql}",
+            $stalled_args
         ));
 
         $count = $row ? (int) $row->total : 0;
@@ -2595,12 +2631,22 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
      * Uses the same idle thresholds as the Stalled status (15 minutes for
      * generation runs, longer for chained jobs), so a run that History still shows
      * as Processing is never closed. Rows are marked 'terminated', not deleted.
+     * Scoped by default to generation runs, matching the Clear In-Progress button in the
+     * Generation runs overview card. Event rows are never closed.
      *
-     * @param string[] $exclude_methods creation_method values that must never be closed.
+     * @param string|string[] $kinds           Record kinds to close. Default 'generation'.
+     * @param string[]        $exclude_methods Optional creation_method values that must never be closed.
      * @return int Number of rows closed.
      */
-    public function close_stalled_processing_rows(array $exclude_methods = array()) {
+    public function close_stalled_processing_rows($kinds = AIPS_History_Record_Kind::GENERATION, array $exclude_methods = array()) {
+        // If an array of exclude_methods was passed into first parameter (legacy callers), adapt gracefully.
+        if (is_array($kinds) && !empty($kinds) && !AIPS_History_Record_Kind::is_valid(reset($kinds))) {
+            $exclude_methods = $kinds;
+            $kinds           = AIPS_History_Record_Kind::GENERATION;
+        }
+
         list($stalled_sql, $stalled_args) = $this->stalled_condition('h');
+        $kind_sql                          = self::kind_condition($kinds, 'h');
 
         $args            = array(__('Closed automatically: no activity was recorded and the run did not finish.', 'ai-post-scheduler'));
         $args            = array_merge($args, $stalled_args);
@@ -2616,7 +2662,8 @@ class AIPS_History_Repository implements AIPS_History_Repository_Interface {
              SET h.completed_at = GREATEST(h.created_at, COALESCE((SELECT MAX(sl.timestamp) FROM {$this->table_name_log} sl WHERE sl.history_id = h.id), 0)),
                  h.error_message = CASE WHEN h.error_message IS NULL OR h.error_message = '' THEN %s ELSE h.error_message END,
                  h.status = 'terminated'
-             WHERE {$stalled_sql}{$where_exclude}",
+             WHERE {$stalled_sql}
+               AND {$kind_sql}{$where_exclude}",
             $args
         ));
 

@@ -308,6 +308,25 @@ class Test_AIPS_Generation_Run_Stats extends WP_UnitTestCase {
 		$this->assertNull($summary['oldest_idle_seconds']);
 	}
 
+	public function test_stalled_summary_counts_only_generation_runs() {
+		global $wpdb;
+
+		$this->reset_history();
+
+		$run = $this->seed('scheduled', 'processing');
+		$job = $this->seed('author_embeddings', 'processing');
+
+		// Age both rows past their stalled thresholds (2 hours for runs, 8 hours for chain jobs).
+		$past_run = AIPS_DateTime::now()->timestamp() - 2 * HOUR_IN_SECONDS;
+		$past_job = AIPS_DateTime::now()->timestamp() - 8 * HOUR_IN_SECONDS;
+		$wpdb->update($wpdb->prefix . 'aips_history', array('created_at' => $past_run), array('id' => $run));
+		$wpdb->update($wpdb->prefix . 'aips_history', array('created_at' => $past_job), array('id' => $job));
+
+		$summary = $this->history->get_stalled_summary();
+
+		$this->assertSame(1, $summary['count'], 'Stalled summary must count generation runs only.');
+	}
+
 	// ------------------------------------------------------------ Duration, AI calls, retry saturation
 
 	public function test_duration_figures_ignore_event_rows() {
