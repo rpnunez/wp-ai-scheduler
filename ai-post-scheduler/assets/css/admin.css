@@ -6403,15 +6403,11 @@ li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
     height: 16px;
 }
 
-.detail-tabs-panel .aips-tab-content {
-    display: none;
+.aips-dashboard-tab-panels {
+    display: block;
     padding: var(--aips-space-2) 0;
     background: var(--aips-white);
     min-height: 250px;
-}
-
-.detail-tabs-panel .aips-tab-content.active {
-    display: block;
 }
 
 .aips-tab-panel {
