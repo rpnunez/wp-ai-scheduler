@@ -873,6 +873,7 @@ class AIPS_DB_Manager {
             created_by bigint(20) DEFAULT NULL,
             correlation_id varchar(36) DEFAULT NULL,
             history_id bigint(20) unsigned DEFAULT NULL,
+            created_at bigint(20) unsigned NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY workflow_id (workflow_id),
             KEY status (status),

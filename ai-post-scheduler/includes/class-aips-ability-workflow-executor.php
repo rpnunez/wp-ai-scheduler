@@ -257,6 +257,48 @@ class AIPS_Ability_Workflow_Executor {
 	}
 
 	/**
+	 * Fail open runs that have shown no activity for a long time.
+	 *
+	 * A run can be left open when its process was stopped for good, its worker
+	 * died after the watchdog gave up, or the site was restored from a partial
+	 * backup. Runs another worker currently holds are left alone. Each failed
+	 * run's History row is closed too.
+	 *
+	 * @param int $older_than_seconds Inactivity after which an open run counts as stale (minimum 60).
+	 * @return int Number of runs failed.
+	 */
+	public function fail_stale_runs( int $older_than_seconds ): int {
+		$older_than_seconds = max( 60, $older_than_seconds );
+		$failed             = 0;
+
+		foreach ( $this->repository->get_stale_run_ids( time() - $older_than_seconds ) as $run_id ) {
+			if ( ! $this->acquire_run_lock( $run_id ) ) {
+				continue;
+			}
+
+			try {
+				$run = $this->repository->get_run( $run_id );
+
+				if ( ! $run || in_array( $run->status, AIPS_Ability_Workflow_Repository::RUN_TERMINAL_STATUSES, true ) ) {
+					continue;
+				}
+
+				$this->repository->update_run_status( $run_id, AIPS_Ability_Workflow_Repository::RUN_STATUS_FAILED, array( 'finished_at' => time() ) );
+				$this->terminate_history(
+					$run,
+					/* translators: %d: hours without activity */
+					sprintf( __( 'Closed as stale: no activity for %d hours.', 'ai-post-scheduler' ), (int) floor( $older_than_seconds / HOUR_IN_SECONDS ) )
+				);
+				$failed++;
+			} finally {
+				$this->release_run_lock( $run_id );
+			}
+		}
+
+		return $failed;
+	}
+
+	/**
 	 * Perform one bounded slice of a run: execute (or resume) its steps until
 	 * the run finishes, a step needs a backoff, or the time budget runs out.
 	 *

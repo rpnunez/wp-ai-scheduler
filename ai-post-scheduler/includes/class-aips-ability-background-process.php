@@ -35,6 +35,25 @@ abstract class AIPS_Ability_Background_Process extends AIPS_Managed_Background_P
 	}
 
 	/**
+	 * Re-queue the tick of an open run, and start a run when items are waiting
+	 * but none is open (for example a post queued just as the last run finished).
+	 * Safe to call on every Heartbeat; a paused run stays paused.
+	 *
+	 * @return void
+	 */
+	public function ensure_scheduled(): void {
+		if (!$this->repository->get_open($this->get_key())) {
+			if (true === $this->can_run() && $this->count_remaining() > 0) {
+				$this->start();
+			}
+
+			return;
+		}
+
+		parent::ensure_scheduled();
+	}
+
+	/**
 	 * Make sure the process is working through newly queued items.
 	 *
 	 * Starts a run when none is open; otherwise re-queues the tick of the open

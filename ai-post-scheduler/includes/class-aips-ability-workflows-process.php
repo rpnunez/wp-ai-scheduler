@@ -45,6 +45,11 @@ class AIPS_Ability_Workflows_Process extends AIPS_Ability_Background_Process {
 	const MAX_DELAY = 60;
 
 	/**
+	 * Inactivity (seconds) after which an open run is failed by the daily sweep.
+	 */
+	const STALE_AFTER_SECONDS = 21600;
+
+	/**
 	 * @var AIPS_Ability_Workflow_Repository
 	 */
 	private $workflows;
@@ -185,6 +190,36 @@ class AIPS_Ability_Workflows_Process extends AIPS_Ability_Background_Process {
 				? sprintf(_n('%d run still open.', '%d runs still open.', $remaining, 'ai-post-scheduler'), $remaining)
 				: '',
 		);
+	}
+
+	/**
+	 * Fail open runs that have shown no activity for a long time (daily cleanup).
+	 *
+	 * Does nothing while the process is paused: an administrator who paused
+	 * workflows on purpose should not find their queued runs failed.
+	 *
+	 * @return int Number of runs failed.
+	 */
+	public function sweep_stale_runs(): int {
+		if (!AIPS_Ability_Workflows_Feature::is_enabled()) {
+			return 0;
+		}
+
+		$open = $this->repository->get_open($this->get_key());
+
+		if ($open && $open->status === AIPS_Background_Process_Repository::STATUS_PAUSED) {
+			return 0;
+		}
+
+		/**
+		 * Filters how long (seconds) an open workflow run may show no activity
+		 * before the daily sweep fails it. Return 0 to disable the sweep.
+		 *
+		 * @param int $seconds Default 6 hours.
+		 */
+		$after = (int) apply_filters('aips_ability_workflow_stale_after', self::STALE_AFTER_SECONDS);
+
+		return $after > 0 ? $this->get_executor()->fail_stale_runs($after) : 0;
 	}
 
 	/**

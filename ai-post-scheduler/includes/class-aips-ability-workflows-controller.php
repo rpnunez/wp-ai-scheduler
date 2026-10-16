@@ -191,6 +191,16 @@ class AIPS_Ability_Workflows_Controller {
 			'per_page'     => isset( $_POST['per_page'] ) ? absint( $_POST['per_page'] ) : 20,
 		);
 
+		// Opening the list is a cheap moment to restart execution that stalled (queued
+		// runs with no open background process, for example after the process was stopped).
+		if ( $this->repository->count_open_runs() > 0 ) {
+			$process = AIPS_Container::get_instance()->make( AIPS_Background_Process_Manager::class )->get( AIPS_Ability_Workflows_Process::KEY );
+
+			if ( $process instanceof AIPS_Ability_Workflows_Process ) {
+				$process->ensure_scheduled();
+			}
+		}
+
 		$result = $this->repository->list_workflows( $args );
 
 		AIPS_Ajax_Response::success(

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.20
+ * Version: 3.7.21
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.20');
+    define('AIPS_VERSION', '3.7.21');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -1078,6 +1078,15 @@ final class AI_Post_Scheduler {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
             $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
+
+            // Fail workflow runs left open with no activity (see aips_ability_workflow_stale_after).
+            $stale = (new AIPS_Ability_Workflows_Process())->sweep_stale_runs();
+            if ( $stale > 0 ) {
+                ( new AIPS_Logger() )->log(
+                    sprintf( 'Ability workflow sweep: failed %d stale runs.', $stale ),
+                    'info'
+                );
+            }
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),

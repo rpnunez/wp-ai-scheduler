@@ -667,8 +667,9 @@ class AIPS_Ability_Workflow_Repository {
 				'finished_at'      => 0,
 				'created_by'       => get_current_user_id() ?: null,
 				'correlation_id'   => '' !== $correlation_id ? $correlation_id : null,
+				'created_at'       => time(),
 			),
-			array( '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%s' )
+			array( '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%s', '%d' )
 		);
 
 		if ( $result === false ) {
@@ -756,6 +757,37 @@ class AIPS_Ability_Workflow_Repository {
 			$this->wpdb->prepare(
 				"SELECT id FROM {$this->runs_table} WHERE status IN ('queued','running') ORDER BY id ASC LIMIT %d",
 				max(1, $limit)
+			)
+		);
+
+		return array_map( 'intval', $ids ?: array() );
+	}
+
+	/**
+	 * IDs of open runs that have shown no sign of life since `$cutoff`.
+	 *
+	 * A run's last activity is the latest of when it was created, started, or
+	 * touched one of its step runs.
+	 *
+	 * @param int $cutoff Unix time; runs whose last activity is older are stale.
+	 * @param int $limit  Maximum number of IDs.
+	 * @return int[]
+	 */
+	public function get_stale_run_ids( int $cutoff, int $limit = 100 ): array {
+		$ids = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT r.id FROM {$this->runs_table} r
+				LEFT JOIN (
+					SELECT run_id, MAX(GREATEST(started_at, finished_at)) AS last_activity
+					FROM {$this->step_runs_table}
+					GROUP BY run_id
+				) s ON s.run_id = r.id
+				WHERE r.status IN ('queued','running')
+				AND GREATEST(r.created_at, r.started_at, COALESCE(s.last_activity, 0)) < %d
+				ORDER BY r.id ASC
+				LIMIT %d",
+				$cutoff,
+				max( 1, $limit )
 			)
 		);
 
