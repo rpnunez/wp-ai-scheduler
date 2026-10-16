@@ -74,6 +74,24 @@
 
 			$actions.html(actionsHtml);
 			$status.html(statusHtml);
+			this.renderDiagnosticButton($modal, container && container.diagnostic_text);
+		},
+
+		/**
+		 * Render (or clear) the "Copy diagnostic" button under the header close button.
+		 *
+		 * @param {jQuery} $modal Modal element.
+		 * @param {string} text   Diagnostic text; empty clears the button.
+		 */
+		renderDiagnosticButton: function ($modal, text) {
+			var $slot = $modal.find('.aips-history-modal-header-diagnostic').empty();
+			if (!text) {
+				return;
+			}
+			$('<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-copy-diagnostic"></button>')
+				.text((window.aipsHistoryL10n && aipsHistoryL10n.copyDiagnostic) || 'Copy diagnostic')
+				.attr('data-diagnostic', text)
+				.appendTo($slot);
 		},
 
 		/**
@@ -99,6 +117,7 @@
 			if (settings.statusSelector) {
 				$modal.find(settings.statusSelector).empty();
 			}
+			this.renderDiagnosticButton($modal, '');
 		},
 
 		/**

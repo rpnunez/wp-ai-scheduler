@@ -1691,9 +1691,16 @@
 
 .aips-history-modal-header-side {
     display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.aips-history-modal-header-tools {
+    display: flex;
     align-items: center;
     gap: 12px;
-    flex-shrink: 0;
 }
 
 /* ==========================================================================
