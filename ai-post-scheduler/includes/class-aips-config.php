@@ -114,6 +114,12 @@ class AIPS_Config {
             if ($this->cache !== null) {
                 $this->cache->delete($option);
             }
+            // Persistent entries (up to an hour TTL) must also drop when the
+            // option is written outside set_option() — e.g. the onboarding
+            // wizard's update_option()/delete_option() or the Settings API.
+            if (in_array($option, self::$persistent_cache_options, true)) {
+                AIPS_Cache_Factory::instance()->delete($option);
+            }
         };
         add_action('updated_option', $invalidate);
         add_action('added_option',   $invalidate);
