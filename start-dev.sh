@@ -417,28 +417,62 @@ main() {
         return 1
     }
 
+    # Probes are chosen so a missing/broken tool can never make every port look
+    # "in use" (e.g. the Windows Store python3 stub exits 49 on every call).
+
+    # Snapshot of ports Docker publishes (running containers), taken once.
+    DOCKER_PUBLISHED_PORTS="$(docker ps --format '{{.Ports}}' 2>/dev/null || true)"
+
+    # A python that really runs (skips the Microsoft Store stub); empty if none.
+    PY_BIN=""
+    for candidate_py in python3 python; do
+        if command -v "$candidate_py" >/dev/null 2>&1 && "$candidate_py" -c 'import socket' >/dev/null 2>&1; then
+            PY_BIN="$candidate_py"
+            break
+        fi
+    done
+
+    # Bound the /dev/tcp connect probe: it can take seconds per port on Windows.
+    TIMEOUT_BIN=""
+    command -v timeout >/dev/null 2>&1 && TIMEOUT_BIN="timeout 1"
+
     port_is_free() {
         local port="$1"
         [ -z "$port" ] && return 1
         port_in_allocated_list "$port" && return 1
 
-        # Check if Docker has mapped this host port on any running container
-        if docker ps --format '{{.Ports}}' 2>/dev/null | grep -qE "(:${port}->|0\.0\.0\.0:${port}|\[::\]:${port})"; then
+        # Docker-published port (also matches ranges such as 8100-8102->80)
+        if printf '%s\n' "$DOCKER_PUBLISHED_PORTS" | grep -qE "[:-]${port}(-[0-9]+)?->"; then
             return 1
         fi
 
-        # Check connection on localhost
-        if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+        # Something already accepts connections on localhost (only exit 0 counts;
+        # a timeout or refusal means nothing is listening).
+        if $TIMEOUT_BIN bash -c "exec 3<>/dev/tcp/127.0.0.1/$port" 2>/dev/null; then
             return 1
         fi
 
-        # Check socket bind with python if available
-        if command -v python3 >/dev/null 2>&1; then
-            python3 -c "import socket, sys; s = socket.socket(); s.bind(('', int(sys.argv[1]))); s.close()" "$port" 2>/dev/null || return 1
+        # Socket bind check. Only the script's explicit exit 99 means "in use";
+        # any other failure is an unusable interpreter, not a busy port.
+        if [ -n "$PY_BIN" ]; then
+            local rc=0
+            "$PY_BIN" -c "import socket, sys
+s = socket.socket()
+try:
+    s.bind(('', int(sys.argv[1])))
+except OSError:
+    sys.exit(99)
+finally:
+    s.close()" "$port" >/dev/null 2>&1 || rc=$?
+            [ "$rc" -eq 99 ] && return 1
         fi
 
         return 0
     }
+
+    # Results are returned via PICKED_PORT (not stdout): callers run in the main
+    # shell so ALLOCATED_PORTS persists. Inside $(...) the array update was lost.
+    PICKED_PORT=""
 
     find_random_free_port() {
         local min="$1"
@@ -447,11 +481,11 @@ main() {
         local candidate
         local attempt=0
 
-        while [ "$attempt" -lt 500 ]; do
+        while [ "$attempt" -lt 100 ]; do
             candidate=$(( min + (RANDOM % span) ))
             if port_is_free "$candidate"; then
                 ALLOCATED_PORTS+=("$candidate")
-                echo "$candidate"
+                PICKED_PORT="$candidate"
                 return 0
             fi
             attempt=$((attempt + 1))
@@ -461,7 +495,7 @@ main() {
         while [ "$candidate" -le "$max" ]; do
             if port_is_free "$candidate"; then
                 ALLOCATED_PORTS+=("$candidate")
-                echo "$candidate"
+                PICKED_PORT="$candidate"
                 return 0
             fi
             candidate=$((candidate + 1))
@@ -478,7 +512,7 @@ main() {
 
         if [ "$RANDOM_PORTS" != "1" ] && [ "${AIPS_RANDOMIZE_PORTS:-0}" != "1" ] && [ -n "$current" ] && port_is_free "$current"; then
             ALLOCATED_PORTS+=("$current")
-            echo "$current"
+            PICKED_PORT="$current"
         else
             find_random_free_port "$min" "$max"
         fi
@@ -489,10 +523,10 @@ main() {
     CUR_MYSQL_PORT="$(get_env_var MYSQL_PORT)"
     CUR_XDEBUG_PORT="$(get_env_var XDEBUG_PORT)"
 
-    WP_PORT_PICK="$(pick_or_keep_port "$CUR_WP_PORT" 8100 8899)"
-    PHPMYADMIN_PORT_PICK="$(pick_or_keep_port "$CUR_PMA_PORT" 8900 9699)"
-    MYSQL_PORT_PICK="$(pick_or_keep_port "$CUR_MYSQL_PORT" 3310 3999)"
-    XDEBUG_PORT_PICK="$(pick_or_keep_port "$CUR_XDEBUG_PORT" 9700 9999)"
+    pick_or_keep_port "$CUR_WP_PORT" 8100 8899;   WP_PORT_PICK="$PICKED_PORT"
+    pick_or_keep_port "$CUR_PMA_PORT" 8900 9699;  PHPMYADMIN_PORT_PICK="$PICKED_PORT"
+    pick_or_keep_port "$CUR_MYSQL_PORT" 3310 3999; MYSQL_PORT_PICK="$PICKED_PORT"
+    pick_or_keep_port "$CUR_XDEBUG_PORT" 9700 9999; XDEBUG_PORT_PICK="$PICKED_PORT"
 
     for var_name in WP_PORT_PICK PHPMYADMIN_PORT_PICK MYSQL_PORT_PICK XDEBUG_PORT_PICK; do
         val="${!var_name}"

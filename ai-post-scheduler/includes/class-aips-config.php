@@ -46,6 +46,14 @@ class AIPS_Config {
     private $null_sentinel = null;
 
     /**
+     * Option names whose per-request cache entry came from the registered default
+     * rather than a stored value.
+     *
+     * @var array<string,bool>
+     */
+    private $default_resolved = array();
+
+    /**
      * @var array Options that should use persistent cache to reduce DB hits on every page load.
      */
     private static $persistent_cache_options = array(
@@ -331,9 +339,10 @@ class AIPS_Config {
      * Critical options (those accessed on every page load) use persistent cache
      * to reduce database queries. Other values use a per-request in-memory cache.
      *
-     * When an explicit $default is supplied by the caller the result is NOT
-     * cached (to avoid polluting the cache with ad-hoc fallback values that
-     * differ from the authoritative AIPS_Config defaults).
+     * When an explicit $default is supplied by the caller and the option is not
+     * stored, the result is only cached if the default equals the authoritative
+     * AIPS_Config default (to avoid polluting the cache with ad-hoc fallback
+     * values). Stored values are always cached.
      *
      * @param string $option_name Option name.
      * @param mixed  $default     Optional. Default value if option not found.
@@ -358,9 +367,14 @@ class AIPS_Config {
         }
 
         // Use per-request cache for all other options
-        if ($default === null && $this->cache !== null && $this->cache->has($option_name)) {
+        if ($this->cache !== null && $this->cache->has($option_name)) {
             $cached = $this->cache->get($option_name);
-            return ($cached === $this->null_sentinel) ? null : $cached;
+            $cached = ($cached === $this->null_sentinel) ? null : $cached;
+            // A cached registered default is only valid for callers that want that
+            // same default; anything else must fall through to honour its fallback.
+            if ($default === null || empty($this->default_resolved[$option_name]) || $cached === $default) {
+                return $cached;
+            }
         }
 
         // Use a sentinel to distinguish "option not in database" from a stored
@@ -375,22 +389,26 @@ class AIPS_Config {
 
         if ($value === $not_set) {
             // Option is not stored in the database.
-            if ($default === null) {
-                $defaults = $this->get_default_options();
-                $value    = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
-                // Cache only authoritative defaults; use the null sentinel when
+            $defaults     = $this->get_default_options();
+            $auth_default = isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+
+            if ($default === null || $default === $auth_default) {
+                $value = $auth_default;
+                // Cache authoritative defaults; use the null sentinel when
                 // the resolved value is null so that has() returns true next time.
                 if ($this->cache !== null) {
+                    $this->default_resolved[$option_name] = true;
                     $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
                 }
             } else {
-                // Caller supplied a fallback — honour it but do NOT cache.
+                // Caller supplied an ad-hoc fallback — honour it but do NOT cache.
                 $value = $default;
             }
         } else {
             // Option exists in the database — always cache the live value;
             // use the null sentinel when the DB value is null.
             if ($this->cache !== null) {
+                unset($this->default_resolved[$option_name]);
                 $this->cache->set($option_name, ($value === null) ? $this->null_sentinel : $value);
             }
         }
