@@ -408,6 +408,9 @@ class AIPS_Schedule_Processor {
                     ),
                     'warning'
                 );
+                if ($history) {
+                    $history->complete_success();
+                }
                 return;
             }
 
@@ -421,10 +424,14 @@ class AIPS_Schedule_Processor {
                 'timestamp'      => AIPS_DateTime::now()->toIso8601(),
             ));
 
-            // Clean up one-time schedules now that all posts have been generated.
+            // Soft-complete one-time schedules now that all posts have been generated.
             if (isset($schedule->frequency) && $schedule->frequency === 'once') {
-                $this->repository->delete($schedule_id);
-                $this->logger->log('Batch-queued one-time schedule completed and deleted: ' . $schedule_id, 'info');
+                $this->repository->update($schedule_id, array(
+                    'is_active' => 0,
+                    'status'    => 'completed',
+                    'last_run'  => AIPS_DateTime::now()->timestamp(),
+                ));
+                $this->logger->log('Batch-queued one-time schedule completed and deactivated: ' . $schedule_id, 'info');
             } else {
                 $this->repository->update_last_run($schedule_id, AIPS_DateTime::now()->timestamp());
             }
@@ -467,6 +474,11 @@ class AIPS_Schedule_Processor {
                         'total'        => $total_quantity,
                     )
                 );
+
+                $history->complete_failure($errors[0]->get_error_message(), array(
+                    'schedule_id' => $schedule_id,
+                    'error_code'  => $errors[0]->get_error_code(),
+                ));
             } else {
                 $history->record(
                     'activity',
@@ -491,6 +503,8 @@ class AIPS_Schedule_Processor {
                         'post_ids'     => $successful_post_ids,
                     )
                 );
+
+                $history->complete_success();
             }
         }
     }
@@ -995,7 +1009,7 @@ class AIPS_Schedule_Processor {
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {
-            $this->result_handler->handle_post_execution_cleanup($schedule, $overall_result);
+            $this->result_handler->handle_post_execution_cleanup($schedule, $overall_result, $history);
         } else {
             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
 
@@ -1107,6 +1121,8 @@ class AIPS_Schedule_Processor {
                     'resume_at'   => $resume_at,
                 )
             );
+
+            $history->complete_partial();
         }
     }
 
@@ -1181,6 +1197,9 @@ class AIPS_Schedule_Processor {
      */
     private function dispatch_large_batch($schedule, $batch_service, $post_quantity, $is_manual, $history) {
         if ($this->should_skip_batch_redispatch($schedule, $batch_service)) {
+            if ($history) {
+                $history->complete_success();
+            }
             return;
         }
 
@@ -1228,10 +1247,16 @@ class AIPS_Schedule_Processor {
             }
 
             if ($is_manual) {
+                if ($history) {
+                    $history->complete_failure($dispatch_summary->get_error_message(), array(
+                        'schedule_id' => $schedule->schedule_id,
+                        'error_code'  => $dispatch_summary->get_error_code(),
+                    ));
+                }
                 return $dispatch_summary;
             }
 
-            $this->result_handler->handle_post_execution_cleanup($schedule, $dispatch_summary);
+            $this->result_handler->handle_post_execution_cleanup($schedule, $dispatch_summary, $history);
             $this->result_handler->handle_execution_failure($schedule, $dispatch_summary, $history, false);
             return;
         }
@@ -1288,6 +1313,8 @@ class AIPS_Schedule_Processor {
                     'correlation_id'  => $correlation_id,
                 )
             );
+
+            $history->complete_success();
         }
 
         // Return early — the result_handler is NOT called for the dispatch path.

@@ -120,6 +120,7 @@ class AIPS_DB_Manager {
             post_id bigint(20) DEFAULT NULL,
             post_type varchar(50) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
+            schedule_id bigint(20) DEFAULT NULL,
             campaign_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
@@ -138,6 +139,7 @@ class AIPS_DB_Manager {
             KEY post_id (post_id),
             KEY post_type (post_type),
             KEY template_id (template_id),
+            KEY schedule_id (schedule_id),
             KEY campaign_id (campaign_id),
             KEY author_id (author_id),
             KEY topic_id (topic_id),
@@ -146,6 +148,7 @@ class AIPS_DB_Manager {
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at),
             KEY template_status (template_id, status),
+            KEY schedule_status (schedule_id, status),
             KEY post_status (post_id, status),
             KEY record_kind_status_post (record_kind, status, post_id),
             KEY correlation_id (correlation_id)

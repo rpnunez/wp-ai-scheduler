@@ -256,6 +256,13 @@ class AIPS_DB_Migrations {
 		if ( version_compare( $from_version, '3.7.18', '<' ) ) {
 			$this->migrate_to_3_7_18();
 		}
+
+		// migrate_to_3_7_19() backfills aips_history.schedule_id (added by the
+		// Layer-1 schema apply above) and closes orphaned schedule_lifecycle
+		// and schedule_execution event containers left in 'processing'.
+		if ( version_compare( $from_version, '3.7.19', '<' ) ) {
+			$this->migrate_to_3_7_19();
+		}
     
 		// Use AIPS_Config::set_option() so the per-request option cache is
 		// invalidated immediately; bare update_option() would leave the cache
@@ -1315,6 +1322,34 @@ class AIPS_DB_Migrations {
 		}
 
 		$this->logger->log( 'Migration 3.7.18: Consolidated author topic auto-approval options and backfilled min_relevance.', 'info' );
+	}
+
+	/**
+	 * Migration for version 3.7.19.
+	 *
+	 * Backfills `aips_history.schedule_id` from `aips_schedule.schedule_history_id`,
+	 * `aips_history_log` JSON payloads, and sibling `correlation_id` containers,
+	 * then closes historic `schedule_lifecycle` and `schedule_execution` event
+	 * containers that were left in `processing`.
+	 *
+	 * @return void
+	 */
+	private function migrate_to_3_7_19() {
+		$repository = AIPS_History_Repository::instance();
+
+		$backfilled = $repository->backfill_schedule_id();
+		$closed     = $repository->close_orphaned_event_rows(
+			array( 'schedule_lifecycle', 'schedule_execution' )
+		);
+
+		$this->logger->log(
+			sprintf(
+				'Migration 3.7.19: Backfilled schedule_id on %d History rows and closed %d orphaned schedule event containers.',
+				$backfilled,
+				$closed
+			),
+			'info'
+		);
 	}
 
 	/**

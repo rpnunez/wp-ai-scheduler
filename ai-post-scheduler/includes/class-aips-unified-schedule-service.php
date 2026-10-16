@@ -454,13 +454,14 @@ class AIPS_Unified_Schedule_Service {
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
 				$schedule = $this->schedule_repository->get_by_id($id);
-				if (!$schedule || empty($schedule->schedule_history_id)) {
+				if (!$schedule) {
 					return array();
 				}
-				$logs = $this->history_repository->get_logs_by_history_id(
-					absint($schedule->schedule_history_id),
+				$logs = $this->history_repository->get_schedule_history_logs(
+					$id,
 					array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
-					$limit
+					$limit,
+					!empty($schedule->schedule_history_id) ? absint($schedule->schedule_history_id) : 0
 				);
 				return $this->format_history_logs($logs);
 
@@ -509,24 +510,24 @@ class AIPS_Unified_Schedule_Service {
 		$raw    = $this->schedule_repository->get_all();
 		$result = array();
 
-		// Batch-fetch generated-post counts by schedule history container.
+		// Batch-fetch generated-post counts by schedule_id.
 		$schedule_stats = array();
 		if ($include_stats) {
-			$history_ids = array();
+			$schedule_ids = array();
 			foreach ($raw as $schedule) {
-				if (!empty($schedule->schedule_history_id)) {
-					$history_ids[] = absint($schedule->schedule_history_id);
+				if (!empty($schedule->id)) {
+					$schedule_ids[] = absint($schedule->id);
 				}
 			}
-			$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($history_ids);
+			$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($schedule_ids);
 		}
 
 		foreach ($raw as $schedule) {
-			$schedule_history_id = !empty($schedule->schedule_history_id) ? (int) $schedule->schedule_history_id : 0;
-			$stats  = isset($schedule_stats[$schedule_history_id]) ? (int) $schedule_stats[$schedule_history_id] : 0;
+			$schedule_id = !empty($schedule->id) ? (int) $schedule->id : 0;
+			$stats  = isset($schedule_stats[$schedule_id]) ? (int) $schedule_stats[$schedule_id] : 0;
 			$status = !empty($schedule->is_active) ? 'active' : 'inactive';
-			if (isset($schedule->status) && $schedule->status === 'failed') {
-				$status = 'failed';
+			if (isset($schedule->status) && in_array($schedule->status, array('failed', 'completed'), true)) {
+				$status = $schedule->status;
 			}
 
 			$title = !empty($schedule->title) ? $schedule->title

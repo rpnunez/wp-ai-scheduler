@@ -788,13 +788,11 @@ class AIPS_Schedule_Controller {
             AIPS_Ajax_Response::error(__('Schedule not found.', 'ai-post-scheduler'));
         }
 
-        if (empty($schedule->schedule_history_id)) {
-            AIPS_Ajax_Response::success(array('entries' => array()));
-        }
-
-        $logs = $this->history_repository->get_logs_by_history_id(
-            absint($schedule->schedule_history_id),
-            array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
+        $logs = $this->history_repository->get_schedule_history_logs(
+            $schedule_id,
+            array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
+            0,
+            !empty($schedule->schedule_history_id) ? absint($schedule->schedule_history_id) : 0
         );
 
         // Normalize via the shared read model so event_type/event_status are
