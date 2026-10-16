@@ -391,11 +391,22 @@ Filters the maximum number of similar approved topics used as expanded context w
 
 ### `aips_ability_enrichment_steps`
 
-Filters the post-generation enrichment steps (only run when **Ability Enrichment** is enabled). Default: `alt_text`, which calls `ai/alt-text-generation` for a featured image that has no alt text.
+Filters the post-generation enrichment steps (only run when **Ability Enrichment** is enabled). Defaults: `alt_text` (`ai/alt-text-generation` for a featured image without alt text) and `classification` (`ai/content-classification` for categories and tags the post does not have yet).
 
 *   **Type:** `filter`
 *   **Arguments:**
     *   `array<string,callable> $steps` Step key => callable receiving the post ID and returning an outcome string or `WP_Error`.
+    *   `int $post_id` Generated post ID.
+
+---
+
+### `aips_ability_enrichment_classification_args`
+
+Filters the settings of the classification step: `strategy` (`existing_only` default, or `allow_new`, which creates missing terms only if the run user can manage them), `max_suggestions` (1-10, default 5) and `min_confidence` (default 0.5). Taxonomies where the post already has terms (other than the default category) are never touched.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $args` Settings to override.
     *   `int $post_id` Generated post ID.
 
 ---

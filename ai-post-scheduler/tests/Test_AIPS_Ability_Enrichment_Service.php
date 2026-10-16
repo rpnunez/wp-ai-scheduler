@@ -157,7 +157,7 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 		$this->register_provider();
 		delete_post_thumbnail( $this->post_id );
 
-		$this->assertSame( array( 'alt_text' => 'skipped:no_featured_image' ), $this->service()->enrich_post( $this->post_id ) );
+		$this->assertSame( 'skipped:no_featured_image', $this->service()->enrich_post( $this->post_id )['alt_text'] );
 		$this->assertCount( 0, $this->calls );
 	}
 
@@ -165,7 +165,7 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 		$this->register_provider();
 		update_post_meta( $this->attachment_id, '_wp_attachment_image_alt', 'Hand written' );
 
-		$this->assertSame( array( 'alt_text' => 'skipped:alt_text_present' ), $this->service()->enrich_post( $this->post_id ) );
+		$this->assertSame( 'skipped:alt_text_present', $this->service()->enrich_post( $this->post_id )['alt_text'] );
 		$this->assertCount( 0, $this->calls );
 		$this->assertSame( 'Hand written', $this->alt() );
 	}
@@ -174,14 +174,14 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 		$this->register_provider();
 		update_post_meta( $this->attachment_id, '_wp_attachment_image_alt', '   ' );
 
-		$this->assertSame( array( 'alt_text' => 'applied' ), $this->service()->enrich_post( $this->post_id ) );
+		$this->assertSame( 'applied', $this->service()->enrich_post( $this->post_id )['alt_text'] );
 		$this->assertSame( 'A red bicycle', $this->alt() );
 	}
 
 	public function test_skips_when_ability_is_not_registered() {
 		$this->register_provider( null, null, false );
 
-		$this->assertSame( array( 'alt_text' => 'skipped:ability_unavailable' ), $this->service()->enrich_post( $this->post_id ) );
+		$this->assertSame( 'skipped:ability_unavailable', $this->service()->enrich_post( $this->post_id )['alt_text'] );
 		$this->assertCount( 0, $this->calls );
 	}
 
@@ -268,7 +268,7 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 
 		$results = $this->service()->enrich_post( $this->post_id );
 
-		$this->assertSame( array( 'alt_text' => 'error:no_provider' ), $results );
+		$this->assertSame( 'error:no_provider', $results['alt_text'] );
 		$this->assertSame( '', $this->alt() );
 	}
 
@@ -281,7 +281,7 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 
 		$results = $this->service()->enrich_post( $this->post_id );
 
-		$this->assertSame( array( 'alt_text' => 'error:ability_enrichment_empty_output' ), $results );
+		$this->assertSame( 'error:ability_enrichment_empty_output', $results['alt_text'] );
 		$this->assertSame( '', $this->alt() );
 	}
 
@@ -318,7 +318,7 @@ class Test_AIPS_Ability_Enrichment_Service extends WP_UnitTestCase {
 
 		$results = $this->service()->enrich_post( $this->post_id );
 
-		$this->assertSame( array( 'alt_text' => 'applied' ), $results );
+		$this->assertSame( 'applied', $results['alt_text'] );
 		$this->assertSame( $service_user, $this->calls[0]['user_id'] );
 		$this->assertSame( 0, get_current_user_id(), 'The cron request returns to user 0.' );
 	}

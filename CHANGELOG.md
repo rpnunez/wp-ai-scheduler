@@ -10,7 +10,7 @@
   - Replaced method-level static caches in `table_exists()` and `topics_table_exists()` with test-resettable class-level static cache and `reset_table_cache()`.
 ### Added
 - **Ability Enrichment of Generated Posts (opt-in):**
-  - After a post is generated, optional steps call installed WordPress Abilities. The first step fills in missing featured-image alt text via `ai/alt-text-generation`. Runs as the current user or a configured service user, trims the payload to the ability's input schema, and never fails generation. Settings: `aips_enable_ability_enrichment`, `aips_ability_enrichment_user_id`.
+  - After a post is generated, optional steps call installed WordPress Abilities. Steps: fill in missing featured-image alt text via `ai/alt-text-generation` (skipped when the ability reports the image as decorative), and suggest categories and tags via `ai/content-classification` (existing terms only by default, never overwriting terms the post already has). Runs as the current user or a configured service user, trims the payload to the ability's input schema, and never fails generation. Settings: `aips_enable_ability_enrichment`, `aips_ability_enrichment_user_id`.
 - **Ability Workflows (feature-flagged, off by default):**
   - Multi-step automation built on the WordPress Abilities API: workflow builder, catalog of registered abilities, cron-driven executor with retries, conditions, variable references and a destructive-ability gate, and run history.
   - Four new tables (`aips_ability_workflows`, `aips_ability_workflow_steps`, `aips_ability_workflow_runs`, `aips_ability_workflow_step_runs`) are created by `install_tables()` on upgrade to 3.7.19; no data migration is needed.
