@@ -15,6 +15,13 @@
   - Migration 3.7.17 adds the column (indexed with the status and post), classifies existing rows in batches, and re-runs the `post_type` backfill and the status repair, which select rows by kind. A failed statement leaves the version unstamped so the next request retries, and the log lists any creation methods whose rows with a post were left as events so a misjudged run type can be fixed with the filter and a re-run of `backfill_record_kind()`.
 
 ### Fixed
+- **History: Move Remaining Name-Based Row Checks to `record_kind` (#2213):**
+  - Migrated `AIPS_History_Repository::get_by_post_id()` to query `record_kind = 'generation'`, preventing background jobs (such as `content_indexing`) from masquerading as a post's generation history in AI Edit, History Container, and Post History UI quick links.
+  - Migrated `AIPS_History_Repository::post_has_history_and_completed()` review-gate validation to require completed or partial generation runs, preventing review queue operations (publish, delete, regenerate) on posts that were merely indexed.
+  - Migrated History modal Timeline milestones to check the row's `record_kind`, suppressing generation milestones (title, image, content) for background jobs and event wrappers.
+  - Scoped `AIPS_History_Repository::get_stalled_summary()` and "Clear In-Progress" (`close_stalled_processing_rows()`) to `generation` runs by default via `AIPS_History_Repository::kind_condition()`, aligning stuck job counts with Overview tiles without terminating background jobs or lifecycle containers.
+  - Updated default History list visibility in `get_history()` to filter on `record_kind IN ('generation', 'job')`, hiding all internal event containers and wrappers without hand-kept method name allowlists.
+  - Scoped `get_template_stats()`, `get_all_template_stats()`, `count_completed_for_schedule()`, `get_daily_success_failure_trend()`, `get_average_duration_by_flow()`, and `get_top_failure_reasons()` to `record_kind = 'generation'`, and wired up `correlation_id` filtering in `AIPS_History_Repository::build_history_where()`.
 - **History Status Sync Targets the Generation Run:**
   - Moving a post's History status between `completed` and `partial` (when its components become incomplete or are repaired) now updates the post's newest generation run, the row the Pending Review and Partial Generations tabs show. It used to update the post's newest non-event row, which for an indexed post is the `content_indexing` row: that row was marked partial while the real run kept its old status, and a failed indexing row blocked the update entirely.
   - Migration 3.7.16 resets background-job rows that were wrongly marked partial and puts the status back on the generation run.

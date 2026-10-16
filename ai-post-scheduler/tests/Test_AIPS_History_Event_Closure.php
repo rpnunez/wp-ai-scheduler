@@ -259,6 +259,25 @@ class Test_AIPS_History_Event_Closure extends WP_UnitTestCase {
 		$this->assertSame('processing', $this->status_of($lifecycle->get_id()));
 	}
 
+	public function test_close_stalled_processing_rows_leaves_stalled_jobs_and_events_untouched() {
+		$stalled_run = $this->open_event_container('post_generation', 'success', array('topic_id' => 1));
+		$this->age_row($stalled_run->get_id(), 2 * HOUR_IN_SECONDS);
+		// Chained job idle 8 hours (past 6 hour threshold, so stalled).
+		$stalled_job = $this->open_event_container('author_embeddings', 'success', array('author_id' => 1));
+		$this->age_row($stalled_job->get_id(), 8 * HOUR_IN_SECONDS);
+		// Open lifecycle container idle 30 days.
+		$lifecycle = $this->open_event_container('schedule_lifecycle', 'success', array('schedule_id' => 1));
+		$this->age_row($lifecycle->get_id(), 30 * DAY_IN_SECONDS);
+
+		// Default close_stalled_processing_rows closes generation runs only.
+		$closed = $this->repository->close_stalled_processing_rows();
+
+		$this->assertSame(1, $closed);
+		$this->assertSame('terminated', $this->status_of($stalled_run->get_id()));
+		$this->assertSame('processing', $this->status_of($stalled_job->get_id()), 'Stalled background jobs must not be closed by Clear In-Progress runs.');
+		$this->assertSame('processing', $this->status_of($lifecycle->get_id()), 'Lifecycle events must never be closed by stalled cleanup.');
+	}
+
 	public function test_clear_in_progress_ajax_terminates_stalled_rows_and_deletes_nothing() {
 		$stalled = $this->open_event_container('post_generation', 'success', array('topic_id' => 1));
 		$this->age_row($stalled->get_id(), 2 * HOUR_IN_SECONDS);

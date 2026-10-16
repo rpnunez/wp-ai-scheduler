@@ -112,7 +112,7 @@ class AIPS_History {
      * @return bool
      */
     public static function is_generation_method( string $method ): bool {
-        return ! in_array( $method, AIPS_History_Repository::event_only_creation_methods(), true );
+        return AIPS_History_Record_Kind::for_creation_method( $method ) === AIPS_History_Record_Kind::GENERATION;
     }
 
     /**
@@ -213,7 +213,7 @@ class AIPS_History {
         // that are currently Stalled are closed (as terminated), and they are kept.
         if ($status === 'processing' && $older_than_days === 0) {
             $closed  = $this->repository->close_stalled_processing_rows(
-                AIPS_History_Event_Recorder::lifecycle_creation_methods()
+                AIPS_History_Record_Kind::GENERATION
             );
             $message = sprintf(
                 /* translators: %d: number of runs closed */
@@ -422,7 +422,10 @@ class AIPS_History {
         // Only generation runs own the post's components; event rows (publish,
         // delete, lifecycle, ...) just link to the post.
         $creation_method = isset($history_item->creation_method) ? (string) $history_item->creation_method : '';
-        $show_milestones = $post_id > 0 && self::is_generation_method($creation_method);
+        $is_generation   = isset($history_item->record_kind) && AIPS_History_Record_Kind::is_valid($history_item->record_kind)
+            ? ($history_item->record_kind === AIPS_History_Record_Kind::GENERATION)
+            : self::is_generation_method($creation_method);
+        $show_milestones = $post_id > 0 && $is_generation;
 
         $post_type = '';
         if ($post) {
