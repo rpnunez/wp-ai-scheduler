@@ -616,10 +616,9 @@
 			$(document).on('click', '#aips-clear-processing-btn', this.clearProcessingHistory.bind(this));
 
 			/* --- Row Action Events --- */
-			// Overflow toggle for the action group
-			$(document).on('click', '.aips-row-action-overflow-toggle', this.onRowActionOverflowToggle.bind(this));
-			$(document).on('click', '.aips-row-action-menu .aips-row-action-item', this.onRowActionItemClick.bind(this));
-			$(document).on('click', this.onDocumentClick.bind(this));
+			// The overflow toggle, item-click and outside-click handlers are bound
+			// globally by admin.js (AIPS.bindCoreEvents). Binding them again here
+			// toggled the menu open then closed within the same click.
 			$(document).on('keydown', this.onDocumentKeyDown.bind(this));
 
 			// Individual row delete
@@ -678,38 +677,6 @@
 		/* ========================================================================
 		 * Row Action Overflow Menu
 		 * ======================================================================== */
-
-		onRowActionOverflowToggle: function (e) {
-			e.preventDefault();
-			e.stopPropagation();
-
-			var $toggle = $(e.currentTarget);
-			var menuId  = $toggle.attr('aria-controls');
-			var $menu   = menuId ? $('#' + menuId) : $();
-
-			if (!$menu.length) {
-				return;
-			}
-
-			var isExpanded = $toggle.attr('aria-expanded') === 'true';
-			this.closeAllRowActionMenus();
-
-			if (!isExpanded) {
-				$toggle.attr('aria-expanded', 'true');
-				$menu.prop('hidden', false);
-			}
-		},
-
-		onRowActionItemClick: function () {
-			this.closeAllRowActionMenus();
-		},
-
-		onDocumentClick: function (e) {
-			if ($(e.target).closest('.aips-row-action-group, .aips-row-action-menu').length) {
-				return;
-			}
-			this.closeAllRowActionMenus();
-		},
 
 		onDocumentKeyDown: function (e) {
 			if (e.key === 'Escape') {
@@ -1345,7 +1312,7 @@
 		},
 
 		/**
-		 * Clear all in-progress / stalled history records via AJAX.
+		 * Close stalled in-progress history records via AJAX (rows are kept, not deleted).
 		 *
 		 * @param {Event} e Click event.
 		 */
@@ -1355,11 +1322,11 @@
 			var self = this;
 			var $btn = $(e.currentTarget);
 			var processingCount = parseInt($('#aips-stat-processing').text() || '0', 10);
-			var msg = (aipsHistoryL10n.confirmClearProcessing || 'Clear all %d in-progress history entries? Stalled background runs will be removed.').replace('%d', processingCount || '');
+			var msg = (aipsHistoryL10n.confirmClearProcessing || 'Close stalled in-progress runs? Runs shown as Stalled are marked as terminated and kept in History; runs that are still working are left alone.').replace('%d', processingCount || '');
 
-			AIPS.Utilities.confirm(msg, 'Clear In-Progress Runs', [
+			AIPS.Utilities.confirm(msg, 'Close Stalled Runs', [
 				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-secondary' },
-				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, clear runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
+				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, close stalled runs', className: 'aips-btn aips-btn-danger-solid', action: function () {
 					var req = $.ajax({
 						url: aipsAjax.ajaxUrl,
 						type: 'POST',
@@ -1370,9 +1337,14 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Cleared in-progress entries.', 'success');
-								$('#aips-stat-processing').text('0');
-								$('#aips-clear-processing-btn').hide();
+								AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Closed stalled runs.', 'success');
+								if (response.data && response.data.stats) {
+									$('#aips-stat-processing').text(response.data.stats.processing);
+									$('#aips-stat-stalled').text(response.data.stats.stalled || 0);
+								}
+								if (!response.data || !response.data.stats || (parseInt(response.data.stats.processing || 0, 10) + parseInt(response.data.stats.stalled || 0, 10)) === 0) {
+									$('#aips-clear-processing-btn').hide();
+								}
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
@@ -1598,10 +1570,21 @@
 						$('#aips-stat-completed').text(stats.completed);
 						$('#aips-stat-failed').text(stats.failed);
 						$('#aips-stat-processing').text(stats.processing);
+						$('#aips-stat-stalled').text(stats.stalled || 0);
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
-						$('#aips-stat-median-duration').text(self.formatDuration(stats.median_duration));
+						var runs24h = parseInt(stats.runs_24h || 0, 10);
+						var runsPrev = parseInt(stats.runs_prev_24h || 0, 10);
+						$('#aips-stat-runs-24h').text(runs24h);
+						$('#aips-stat-runs-24h-trend').text(((runs24h - runsPrev) > 0 ? '+' : '') + (runs24h - runsPrev) + ' vs ' + runsPrev + ' previous 24h');
+						$('#aips-stat-top-failure-count').text(stats.top_failure ? stats.top_failure.count : 0);
+						$('#aips-stat-top-failure-reason').text(stats.top_failure ? stats.top_failure.reason : (aipsHistoryL10n.noFailures || 'No failures'));
+						if (stats.jobs) {
+							$('#aips-stat-jobs').text(stats.jobs.total || 0);
+							$('#aips-stat-jobs-failed').text(stats.jobs.failed || 0);
+							$('#aips-stat-jobs-stalled').text(stats.jobs.stalled || 0);
+						}
 
-						if (parseInt(stats.processing || 0, 10) > 0) {
+						if (parseInt(stats.processing || 0, 10) + parseInt(stats.stalled || 0, 10) > 0) {
 							$('#aips-clear-processing-btn').show();
 						} else {
 							$('#aips-clear-processing-btn').hide();
@@ -1732,7 +1715,10 @@
 
 		applyMetricFilter: function (e) {
 			e.preventDefault();
-			$('#aips-filter-status').val($(e.currentTarget).data('status') || '');
+			var $tile = $(e.currentTarget);
+			$('#aips-filter-status').val($tile.data('status') || '');
+			// Run tiles list generation runs only, so the tile and the list count the same rows.
+			$('#aips-filter-domain').val($tile.data('domain') || '');
 			this.applyFilter();
 		},
 

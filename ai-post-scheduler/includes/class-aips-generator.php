@@ -1128,6 +1128,8 @@ class AIPS_Generator {
         // Get creation_method from context, default to 'manual' if not specified
         $creation_method = $context->get_creation_method() ?: 'manual';
         $history_metadata['creation_method'] = $creation_method;
+        // Every run is a generation whatever its creation_method (extensions may pass their own).
+        $history_metadata['record_kind'] = AIPS_History_Record_Kind::GENERATION;
 
         $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
 
@@ -1263,14 +1265,20 @@ class AIPS_Generator {
         }
 
         // Use new history API to complete with success
-        $this->current_history->complete_success(array(
+        $completion_data = array(
             'post_id' => $post_id,
             'post_type' => $context->get_post_type(),
             'generated_title' => $title,
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
-        ));
+        );
+        if ($generation_incomplete) {
+            // The post exists but some components failed: record that as partial, not completed.
+            $this->current_history->complete_partial('', $completion_data);
+        } else {
+            $this->current_history->complete_success($completion_data);
+        }
 
         if ($context instanceof AIPS_Template_Context) {
             $template = $context->get_template();

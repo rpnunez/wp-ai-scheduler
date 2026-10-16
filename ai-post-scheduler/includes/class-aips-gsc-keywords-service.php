@@ -222,6 +222,8 @@ class AIPS_GSC_Keywords_Service {
 			'fields'         => 'ids',
 			'posts_per_page' => -1,
 			'no_found_rows'  => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
 		));
 		foreach ((array) $stale as $post_id) {
 			if (!isset($by_post[(int) $post_id])) {

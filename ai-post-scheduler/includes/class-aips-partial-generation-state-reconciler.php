@@ -31,6 +31,26 @@ class AIPS_Partial_Generation_State_Reconciler {
 		add_action('save_post', array($this, 'on_save_post'), 20, 3);
 		add_action('wp_after_insert_post', array($this, 'on_after_insert_post'), 20, 4);
 		add_action('aips_post_components_updated', array($this, 'on_post_components_updated'), 10, 3);
+		add_action('aips_partial_generation_state_reconciled', array($this, 'sync_history_status'), 10, 2);
+	}
+
+	/**
+	 * Move the post's generation History row between completed and partial to
+	 * match its reconciled component statuses.
+	 *
+	 * @param int   $post_id  Post ID.
+	 * @param array $statuses Normalized component statuses.
+	 * @return void
+	 */
+	public function sync_history_status($post_id, $statuses) {
+		if (!is_array($statuses) || empty($statuses) || !class_exists('AIPS_History_Repository')) {
+			return;
+		}
+
+		AIPS_History_Repository::instance()->sync_generation_status_for_post(
+			absint($post_id),
+			in_array(false, $statuses, true)
+		);
 	}
 
 	/**

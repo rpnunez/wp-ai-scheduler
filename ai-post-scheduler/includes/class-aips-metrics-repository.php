@@ -243,8 +243,8 @@ class AIPS_Metrics_Repository {
 	 * @return array {
 	 *     @type int        $pending_count              Jobs in 'pending' status right now.
 	 *     @type int        $partial_count              Jobs in 'partial' status right now.
-	 *     @type int        $stuck_count                Jobs in 'pending' or 'partial' status
-	 *                                                  created more than STUCK_JOB_THRESHOLD_MINUTES ago.
+	 *     @type int        $stuck_count                Pending jobs older than STUCK_JOB_THRESHOLD_MINUTES plus
+	 *                                                  in-progress runs idle past their stalled threshold.
 	 *     @type int|null   $oldest_stuck_age_minutes   Age (minutes) of the oldest stuck job, or null if none.
 	 *     @type int        $failed_24h                 Jobs that transitioned to 'failed' in the last 24 hours
 	 *                                                  (window based on completed_at).
@@ -267,34 +267,49 @@ class AIPS_Metrics_Repository {
 					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'pending'"
 				);
 
+				// Generation runs only: event containers and indexing rows carry
+				// their own completed/failed/partial outcomes that are not generations.
+				$run_condition = AIPS_History_Repository::generation_run_condition();
+
 				$partial_count = (int) $this->wpdb->get_var(
-					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial'"
+					"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial' AND {$run_condition}"
 				);
 
-				// --- Stuck jobs (pending or partial, older than threshold) ---
-				$stuck_count = (int) $this->wpdb->get_var(
+				// --- Stuck jobs ---
+				// 'partial' is a finished state (post created, some components missing),
+				// not a stuck one. Stuck work is pending jobs that never started plus
+				// in-progress runs that have gone idle (shown as Stalled in History).
+				$stuck_cutoff        = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
+				$stuck_pending_count = (int) $this->wpdb->get_var(
 					$this->wpdb->prepare(
 						"SELECT COUNT(*) FROM {$this->table_history}
-						WHERE status IN ('pending','partial')
+						WHERE status = 'pending'
 						  AND created_at <= %d",
-						$now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS )
+						$stuck_cutoff
 					)
 				);
+				$stalled_summary = AIPS_History_Repository::instance()->get_stalled_summary();
+				$stuck_count     = $stuck_pending_count + $stalled_summary['count'];
 
 				$oldest_stuck_age_minutes = null;
 				if ( $stuck_count > 0 ) {
-					$stuck_cutoff = $now_ts - ( self::STUCK_JOB_THRESHOLD_MINUTES * MINUTE_IN_SECONDS );
-					$age_raw = $this->wpdb->get_var(
-						$this->wpdb->prepare(
-							"SELECT MIN(created_at)
-							FROM {$this->table_history}
-							WHERE status IN ('pending','partial')
-							  AND created_at <= %d",
-							$stuck_cutoff
-						)
-					);
-					if ( $age_raw !== null ) {
-						$oldest_stuck_age_minutes = (int) floor( ( $now_ts - (int) $age_raw ) / MINUTE_IN_SECONDS );
+					$oldest_seconds = $stalled_summary['oldest_idle_seconds'];
+					if ( $stuck_pending_count > 0 ) {
+						$age_raw = $this->wpdb->get_var(
+							$this->wpdb->prepare(
+								"SELECT MIN(created_at)
+								FROM {$this->table_history}
+								WHERE status = 'pending'
+								  AND created_at <= %d",
+								$stuck_cutoff
+							)
+						);
+						if ( $age_raw !== null ) {
+							$oldest_seconds = max( (int) $oldest_seconds, $now_ts - (int) $age_raw );
+						}
+					}
+					if ( $oldest_seconds !== null ) {
+						$oldest_stuck_age_minutes = (int) floor( $oldest_seconds / MINUTE_IN_SECONDS );
 					}
 				}
 
@@ -305,6 +320,7 @@ class AIPS_Metrics_Repository {
 					$this->wpdb->prepare(
 						"SELECT COUNT(*) FROM {$this->table_history}
 						WHERE status = 'failed'
+						  AND {$run_condition}
 						  AND completed_at IS NOT NULL
 						  AND completed_at >= %d",
 						$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
@@ -323,6 +339,7 @@ class AIPS_Metrics_Repository {
 							SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed
 						FROM {$this->table_history}
 						WHERE status IN ('completed','failed')
+						  AND {$run_condition}
 						  AND completed_at IS NOT NULL
 						  AND completed_at >= %d",
 						$now_ts - ( self::RETRY_WINDOW_HOURS * HOUR_IN_SECONDS )
@@ -429,7 +446,8 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	private function get_generation_counts( $window_days ) {
-		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$run_condition = AIPS_History_Repository::generation_run_condition();
 
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
@@ -440,7 +458,8 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'partial'    THEN 1 ELSE 0 END) AS `partial`,
 					SUM(CASE WHEN status = 'terminated' THEN 1 ELSE 0 END) AS `terminated`
 				FROM {$this->table_history}
-				WHERE created_at >= %d",
+				WHERE created_at >= %d
+				  AND {$run_condition}",
 				$cutoff
 			)
 		);
@@ -474,7 +493,8 @@ class AIPS_Metrics_Repository {
 	 * }
 	 */
 	private function get_duration_percentiles( $window_days ) {
-		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$run_condition = AIPS_History_Repository::generation_run_condition();
 
 		// Fetch all durations so we can compute percentiles in PHP without
 		// relying on ROW_NUMBER() / NTILE() which require MySQL 8+.
@@ -487,6 +507,7 @@ class AIPS_Metrics_Repository {
 				"SELECT (completed_at - created_at) AS duration
 				FROM {$this->table_history}
 				WHERE status = 'completed'
+				  AND {$run_condition}
 				  AND completed_at >= created_at
 				  AND created_at >= %d
 				ORDER BY duration ASC",
@@ -542,7 +563,8 @@ class AIPS_Metrics_Repository {
 	 * @return float Average count (0.0 if no data).
 	 */
 	private function get_avg_ai_calls_per_post( $window_days ) {
-		$cutoff = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$cutoff        = AIPS_DateTime::now()->timestamp() - ( (int) $window_days * DAY_IN_SECONDS );
+		$run_condition = AIPS_History_Repository::generation_run_condition('h');
 
 		// Compute average AI request entries per completed history record,
 		// including posts with zero AI requests (counted as 0).
@@ -563,6 +585,7 @@ class AIPS_Metrics_Repository {
 						ON hl.history_id = h.id
 						AND hl.history_type_id = %d
 					WHERE h.status = 'completed'
+					  AND {$run_condition}
 					  AND h.created_at >= %d
 				) AS stats",
 				AIPS_History_Type::AI_REQUEST,
@@ -702,6 +725,7 @@ class AIPS_Metrics_Repository {
 				        CASE WHEN completed_at >= created_at THEN completed_at - created_at ELSE NULL END AS duration_seconds,
 				        error_message
 				FROM {$this->table_history}
+				WHERE " . AIPS_History_Repository::generation_run_condition() . "
 				ORDER BY created_at DESC
 				LIMIT %d",
 				$limit

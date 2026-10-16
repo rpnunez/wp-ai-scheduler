@@ -7,7 +7,7 @@
 	test test-verbose test-coverage test-ci composer-install composer-update \
 	db-backup db-restore \
 	xdebug-log xdebug-log-follow xdebug-status xdebug-on xdebug-off \
-	urls sync-wp-core
+	urls sync-wp-core sql-batch sql-batch-unpack
 
 # Default target
 .DEFAULT_GOAL := help
@@ -189,6 +189,14 @@ test-coverage: ## Run all tests with coverage: text summary + HTML in ai-post-sc
 test-ci: ## Run the host-side CI runner (needs host PHP + composer)
 	@echo "$(BLUE)Running CI-style tests on the host...$(NC)"
 	bash ./scripts/run-wp-tests-docker.sh
+
+sql-batch: ## Run read-only SQL diagnostics on the DEV db (QUERIES=path/to/queries.sql)
+	@[ -n "$(QUERIES)" ] || { echo "Usage: make sql-batch QUERIES=.artifacts/sql-queries/my-queries.sql"; exit 1; }
+	bash ./scripts/sql-batch.sh run "$(QUERIES)"
+
+sql-batch-unpack: ## Unpack a results zip made elsewhere, e.g. prod (ZIP=path/to/results.zip)
+	@[ -n "$(ZIP)" ] || { echo "Usage: make sql-batch-unpack ZIP=path/to/sql-batch-results.zip"; exit 1; }
+	bash ./scripts/sql-batch.sh unpack "$(ZIP)"
 
 composer-install: ## Install Composer dependencies in plugin
 	@echo "$(BLUE)Installing Composer dependencies...$(NC)"

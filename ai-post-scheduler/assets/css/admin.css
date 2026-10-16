@@ -591,19 +591,38 @@
 
 
 /* Compact, troubleshooting-first History page. */
-.aips-history-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
+.aips-history-overview { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); border-bottom:1px solid var(--aips-gray-200); background:#fff; }
 .aips-history-metric { appearance:none; border:0; border-right:1px solid var(--aips-gray-200); background:transparent; padding:14px 18px; text-align:left; }
 .aips-history-metric:last-child { border-right:0; }
 .aips-history-metric-filter { cursor:pointer; }
 .aips-history-metric-filter:hover,.aips-history-metric-filter:focus-visible { background:var(--aips-gray-50); }
 .aips-history-metric-value { display:block; color:var(--aips-gray-900); font-size:22px; font-weight:700; line-height:1.1; }
 .aips-history-metric-label { display:block; margin-top:4px; color:var(--aips-gray-600); font-size:12px; }
+.aips-history-metric-sub { display:block; margin-top:2px; color:var(--aips-gray-500); font-size:11px; }
+.aips-history-metric-reason { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .aips-history-quick-dates { display:inline-flex; gap:2px; }
-.aips-history-page .aips-filter-left { width:100%; }
-.aips-filter-left #aips-history-search-input { flex:0 1 320px; min-width:220px; width:320px; }
-.aips-filter-left #aips-filter-status { flex:0 0 170px; }
-.aips-history-advanced-filters { display:flex; flex-basis:100%; gap:8px; align-items:center; padding-top:8px; }
-.aips-history-advanced-filters[hidden] { display:none; }
+/* Filter bar: row 1 = dropdowns (left) + search inputs (right); row 2 = dates + Filter. */
+.aips-history-filter-bar { flex-direction:column; align-items:stretch; gap:10px; }
+.aips-history-filter-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.aips-history-filter-selects,.aips-history-filter-search { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.aips-history-filter-search { margin-left:auto; }
+.aips-history-filter-bar .aips-form-select { flex:0 0 auto; width:auto; min-width:0; max-width:150px; }
+.aips-history-filter-bar #aips-history-search-input { flex:0 1 180px; width:180px; min-width:140px; }
+.aips-history-filter-bar #aips-filter-correlation { flex:0 1 160px; width:160px; min-width:120px; }
+.aips-history-filter-row-dates .aips-date-range-group { display:inline-flex; align-items:center; gap:6px; }
+.aips-history-filter-row-dates .aips-date-range-group .aips-form-input { width:140px; }
+.aips-history-filter-row-dates .aips-history-filter-apply { margin-left:auto; }
+
+/* History pagination: compact, primary-blue controls. */
+.aips-history-pagination { display:flex; align-items:center; gap:12px; }
+.aips-history-pagination .pagination-links { display:inline-flex; align-items:center; gap:4px; }
+.aips-history-pagination .aips-history-page-nav.button { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; min-height:0; padding:0; line-height:1; color:var(--aips-primary); border-color:var(--aips-primary); background:#fff; }
+.aips-history-pagination .aips-history-page-nav.button .dashicons { width:18px; height:18px; font-size:18px; line-height:18px; color:inherit; }
+.aips-history-pagination .aips-history-page-nav.button:hover:not(:disabled),
+.aips-history-pagination .aips-history-page-nav.button:focus-visible:not(:disabled) { color:var(--aips-primary-hover); border-color:var(--aips-primary-hover); background:var(--aips-primary-light); }
+.aips-history-pagination .aips-history-page-nav.button:disabled { color:var(--aips-gray-400, #a7aaad); border-color:var(--aips-gray-300, #dcdcde); background:#f6f7f7; opacity:1; }
+.aips-history-pagination .paging-input { display:inline-flex; align-items:center; gap:4px; }
+.aips-history-pagination .aips-history-page-input { width:52px; min-width:0; height:30px; min-height:0; padding:0 4px; text-align:center; }
 .aips-history-filter-chips { display:flex; flex-basis:100%; flex-wrap:wrap; gap:6px; min-height:0; }
 .aips-history-filter-chips:empty { display:none; }
 .aips-history-filter-chip,.aips-history-clear-filters { border:0; background:var(--aips-gray-100); border-radius:999px; color:var(--aips-gray-700); cursor:pointer; font-size:12px; padding:4px 9px; }
@@ -662,7 +681,7 @@
 .aips-history-ai-call-card > header { display:flex; justify-content:space-between; background:var(--aips-gray-50); padding:10px 12px; }
 .aips-history-ai-call-card details { padding:10px 12px; border-top:1px solid var(--aips-gray-200); }
 .aips-history-ai-call-card pre { max-height:480px; overflow:auto; white-space:pre-wrap; }
-@media (max-width: 782px) { .aips-history-overview { grid-template-columns:repeat(2,1fr); } .aips-history-table .column-type { display:none; } .aips-history-advanced-filters { align-items:stretch; flex-direction:column; } }
+@media (max-width: 782px) { .aips-history-overview { grid-template-columns:repeat(2,1fr); } .aips-history-table .column-type { display:none; } .aips-history-filter-row-selects .aips-form-select, .aips-history-filter-row-inputs .aips-form-input { flex:1 1 100% !important; max-width:none !important; } .aips-history-filter-row-dates .aips-history-filter-apply { margin-left:0; } }
 
 /* History Table Contiguous Grouping */
 .aips-history-group-header {
@@ -8557,4 +8576,50 @@ tr.aips-row-details > td {
     width: var(--aips-toolbar-control-h);
     height: var(--aips-toolbar-control-h);
     padding: 0;
+}
+
+/* ==========================================================================
+   List table empty state: keep title and message centered together
+   ========================================================================== */
+.aips-list-table-wrap .wp-list-table tr.no-items td {
+	text-align: center;
+}
+
+.aips-list-table-empty .aips-empty-state-title,
+.aips-list-table-empty .aips-empty-state-text {
+	display: block;
+	float: none;
+	width: auto;
+	max-width: 480px;
+	margin-left: auto;
+	margin-right: auto;
+	text-align: center;
+}
+
+/* ==========================================================================
+   Author Topics queue: keep the table inside its panel
+   ========================================================================== */
+#aips-author-topics-panel .aips-author-topics-table {
+	table-layout: auto;
+	width: 100%;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .column-topic {
+	width: auto;
+	overflow-wrap: anywhere;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .column-created_at {
+	width: 140px;
+	white-space: nowrap;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .column-actions {
+	width: 1%;
+	white-space: nowrap;
+}
+
+#aips-author-topics-panel .aips-author-topics-table .cell-actions {
+	flex-wrap: wrap;
+	justify-content: flex-end;
 }

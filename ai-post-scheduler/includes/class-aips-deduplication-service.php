@@ -151,6 +151,7 @@ class AIPS_Deduplication_Service {
 			}
 
 			$metadata['embedding'] = $embedding;
+			$topic['embedding']    = $embedding;
 
 			if ($best_similarity >= $threshold) {
 				$metadata['potential_duplicate']  = true;
