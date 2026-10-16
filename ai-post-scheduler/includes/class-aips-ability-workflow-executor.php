@@ -257,6 +257,34 @@ class AIPS_Ability_Workflow_Executor {
 	}
 
 	/**
+	 * The destructive-ability gate: why a step using this ability may not run,
+	 * or null when it may.
+	 *
+	 * Abilities that declare themselves non-destructive (or read-only) always
+	 * run; abilities declared destructive, or that do not say, run only when the
+	 * workflow allows destructive abilities.
+	 *
+	 * @param array $ability           Normalized catalog entry (AIPS_Ability_Catalog_Service).
+	 * @param bool  $allow_destructive Whether the workflow allows destructive abilities.
+	 * @return WP_Error|null
+	 */
+	public function get_approval_error( array $ability, bool $allow_destructive ): ?WP_Error {
+		$requires_approval = array_key_exists( 'requires_approval', $ability )
+			? ! empty( $ability['requires_approval'] )
+			: ! empty( $ability['is_destructive'] );
+
+		if ( ! $requires_approval || $allow_destructive ) {
+			return null;
+		}
+
+		$message = ! empty( $ability['is_destructive'] )
+			? __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' )
+			: __( 'This ability does not declare whether it is destructive, so it is not allowed for this workflow. Enable "Allow destructive abilities" to run it.', 'ai-post-scheduler' );
+
+		return new WP_Error( 'ability_workflow_destructive_forbidden', $message );
+	}
+
+	/**
 	 * Fail open runs that have shown no activity for a long time.
 	 *
 	 * A run can be left open when its process was stopped for good, its worker
@@ -851,16 +879,10 @@ class AIPS_Ability_Workflow_Executor {
 			return $this->fail_step( $run_id, $step, $step_run_id, $ability, $attempt, $history );
 		}
 
-		$requires_approval = array_key_exists( 'requires_approval', $ability )
-			? ! empty( $ability['requires_approval'] )
-			: ! empty( $ability['is_destructive'] );
+		$approval_error = $this->get_approval_error( $ability, $allow_destructive );
 
-		if ( $requires_approval && ! $allow_destructive ) {
-			$message = ! empty( $ability['is_destructive'] )
-				? __( 'Destructive abilities are not allowed for this workflow.', 'ai-post-scheduler' )
-				: __( 'This ability does not declare whether it is destructive, so it is not allowed for this workflow. Enable "Allow destructive abilities" to run it.', 'ai-post-scheduler' );
-
-			return $this->fail_step( $run_id, $step, $step_run_id, new WP_Error( 'ability_workflow_destructive_forbidden', $message ), $attempt, $history );
+		if ( $approval_error ) {
+			return $this->fail_step( $run_id, $step, $step_run_id, $approval_error, $attempt, $history );
 		}
 
 		if ( $history ) {

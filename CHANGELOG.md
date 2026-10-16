@@ -11,6 +11,8 @@
 ### Added
 - **Ability Enrichment of Generated Posts (opt-in):**
   - After a post is generated, optional steps call installed WordPress Abilities. Steps: fill in missing featured-image alt text via `ai/alt-text-generation` (skipped when the ability reports the image as decorative), and suggest categories and tags via `ai/content-classification` (existing terms only by default, never overwriting terms the post already has). Runs as the current user or a configured service user, trims the payload to the ability's input schema, and never fails generation. Settings: `aips_enable_ability_enrichment`, `aips_ability_enrichment_user_id`.
+- **Diagnostics > Stress Test: Abilities cases:**
+  - Four read-only cases (discovery, core invocation latency, real AI abilities, the destructive-ability gate) that need no AIPS AI provider and create no data. The result now reports `ability_calls`.
 - **Ability Workflows (feature-flagged, off by default):**
   - Multi-step automation built on the WordPress Abilities API: workflow builder, catalog of registered abilities, cron-driven executor with retries, conditions, variable references and a destructive-ability gate, and run history.
   - Workflow and enrichment execution run as managed background processes (`ability_workflows`, `ability_enrichment`) under Diagnostics > Background Processes; generation only queues a post for enrichment.

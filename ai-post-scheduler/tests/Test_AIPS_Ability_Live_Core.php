@@ -199,6 +199,28 @@ class Test_AIPS_Ability_Live_Core extends WP_UnitTestCase {
 		$this->assertWPError( $result );
 	}
 
+	public function test_the_stress_test_ability_cases_pass_against_the_real_registry() {
+		$cases = new AIPS_Stress_Test_Ability_Cases();
+
+		$this->assertTrue( $cases->is_available() );
+
+		$discovery = $cases->run( 'ability_discovery' );
+		$this->assertSame( 'passed', $discovery['status'], (string) ( $discovery['error'] ?? '' ) );
+		$this->assertGreaterThanOrEqual( 3, $discovery['plugin_value']['abilities'] );
+
+		$core = $cases->run( 'ability_invoke_core' );
+		$this->assertSame( 'passed', $core['status'], (string) ( $core['error'] ?? '' ) );
+		$this->assertSame( 0, $core['plugin_value']['latency']['errors'] );
+		$this->assertGreaterThanOrEqual( AIPS_Stress_Test_Ability_Cases::CORE_INVOCATIONS, $core['ability_calls'] );
+
+		$gate = $cases->run( 'ability_destructive_gate' );
+		$this->assertSame( 'passed', $gate['status'], (string) ( $gate['error'] ?? '' ) );
+
+		// Without the AI plugin the AI case is skipped, never failed.
+		$ai = $cases->run( 'ability_invoke_ai' );
+		$this->assertSame( 'passed', $ai['status'], (string) ( $ai['error'] ?? '' ) );
+	}
+
 	public function test_a_workflow_runs_real_core_abilities_end_to_end() {
 		$workflow_id = $this->repository->create_workflow( array( 'name' => 'Live core workflow', 'status' => 'active' ) );
 		$this->workflow_ids[] = $workflow_id;

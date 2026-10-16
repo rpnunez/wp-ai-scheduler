@@ -145,6 +145,22 @@ class Test_AIPS_Ability_Live_AI extends WP_UnitTestCase {
 		$this->assertNotEmpty( $result );
 	}
 
+	public function test_the_stress_test_ability_cases_pass_with_the_real_ai_abilities() {
+		$cases = new AIPS_Stress_Test_Ability_Cases();
+
+		$discovery = $cases->run( 'ability_discovery' );
+		$this->log( 'stress discovery', $discovery['plugin_value'] );
+		$this->assertSame( 'passed', $discovery['status'], (string) ( $discovery['error'] ?? '' ) );
+		$this->assertContains( 'ai/title-generation', wp_list_pluck( $discovery['ai_value'], 'name' ) );
+
+		$ai = $cases->run( 'ability_invoke_ai' );
+		$this->log( 'stress ai', array( $ai['summary'], $ai['plugin_value'], $ai['ability_calls'] ) );
+		$this->assertSame( 'passed', $ai['status'], (string) ( $ai['error'] ?? '' ) );
+		$this->assertArrayNotHasKey( 'skipped', $ai['artifacts'] ?? array() );
+		$this->assertGreaterThanOrEqual( 1, $ai['ability_calls'] );
+		$this->assertSame( 'ok', $ai['plugin_value']['ai/title-generation']['status'] );
+	}
+
 	// ---------------------------------------------------------------------
 	// Enrichment with real abilities
 	// ---------------------------------------------------------------------
