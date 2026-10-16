@@ -227,19 +227,23 @@ class Test_AIPS_History_Stalled_Status extends WP_UnitTestCase {
 		foreach (array('post_generation', 'scheduled', 'manual', 'regenerate', 'bulk_generate', 'author_post_gen') as $method) {
 			$this->assertTrue(AIPS_History::is_generation_method($method), $method);
 		}
-		foreach (array('post_review_action', 'topic_post_generation', 'schedule_lifecycle', 'notification_sent', 'bulk_delete') as $method) {
+		foreach (array('post_review_action', 'topic_post_generation', 'schedule_lifecycle', 'notification_sent', 'bulk_delete', 'content_indexing', 'author_embeddings', 'manual_generation', 'manual_regeneration', 'mystery_method') as $method) {
 			$this->assertFalse(AIPS_History::is_generation_method($method), $method);
 		}
 	}
 
 	// -- Timeline data ------------------------------------------------------------
 
-	private function timeline_for($creation_method, $post_id) {
+	private function timeline_for($creation_method, $post_id, $record_kind = null) {
 		$handler = new AIPS_History();
 		$method  = new ReflectionMethod($handler, 'build_history_timeline_data');
 		$method->setAccessible(true);
 
-		$item = (object) array('post_id' => $post_id, 'creation_method' => $creation_method, 'post_type' => 'post', 'generated_title' => '', 'error_message' => '');
+		$item_data = array('post_id' => $post_id, 'creation_method' => $creation_method, 'post_type' => 'post', 'generated_title' => '', 'error_message' => '');
+		if ($record_kind !== null) {
+			$item_data['record_kind'] = $record_kind;
+		}
+		$item = (object) $item_data;
 
 		return $method->invoke($handler, array('post_id' => $post_id), $item, array());
 	}
@@ -248,7 +252,12 @@ class Test_AIPS_History_Stalled_Status extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(array('post_title' => 'Telemetry post', 'post_content' => 'Body'));
 
 		$this->assertFalse($this->timeline_for('post_review_action', $post_id)['show_milestones']);
+		$this->assertFalse($this->timeline_for('content_indexing', $post_id)['show_milestones'], 'Background jobs must not show generation milestones.');
+		$this->assertFalse($this->timeline_for('manual_generation', $post_id)['show_milestones'], 'Wrappers must not show generation milestones.');
+		$this->assertFalse($this->timeline_for('scheduled', $post_id, 'job')['show_milestones'], 'Rows with record_kind=job must not show generation milestones.');
+		$this->assertFalse($this->timeline_for('scheduled', $post_id, 'event')['show_milestones'], 'Rows with record_kind=event must not show generation milestones.');
 		$this->assertTrue($this->timeline_for('post_generation', $post_id)['show_milestones']);
+		$this->assertTrue($this->timeline_for('scheduled', $post_id, 'generation')['show_milestones']);
 	}
 
 	public function test_internal_meta_is_not_listed_as_custom_fields() {
