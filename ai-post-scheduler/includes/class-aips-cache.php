@@ -596,7 +596,10 @@ class AIPS_Cache {
 		if (!self::is_system_enabled()) {
 			return $callback();
 		}
-		if ($this->has( $key, $group )) {
+		// Single read (not has() then get()): the two can disagree across drivers
+		// and for entries that expire between the calls. null always means miss.
+		$cached = $this->get( $key, $group );
+		if (null !== $cached) {
 			$this->record_cache_event(
 				'remember',
 				array(
@@ -606,11 +609,15 @@ class AIPS_Cache {
 					'hit'   => true,
 				)
 			);
-			return $this->get( $key, $group );
+			return $cached;
 		}
 
 		$value = $callback();
-		$this->set( $key, $value, (int) $ttl, $group );
+		// null is indistinguishable from a miss on read, and drivers disagree on
+		// whether a stored null counts as present, so it is never cached.
+		if (null !== $value) {
+			$this->set( $key, $value, (int) $ttl, $group );
+		}
 		$this->record_cache_event(
 			'remember',
 			array(
@@ -734,7 +741,10 @@ class AIPS_Cache {
 			return 2;
 		}
 
-		$key     = $this->build_tag_version_key( $tag_key );
+		$key = $this->build_tag_version_key( $tag_key );
+		// Read-modify-write: bypass L1 like increment() so a stale request-local
+		// copy cannot make the bump lose to (or regress) another process's bump.
+		unset( $this->l1_store[ $group . ':' . $key ] );
 		$current = $this->get( $key, $group, null );
 		$version = null === $current ? 2 : max( 2, (int) $current + 1 );
 		$this->set( $key, $version, 0, $group );
@@ -815,6 +825,10 @@ class AIPS_Cache {
 			$tag_keys_map[ $this->build_tag_version_key( $tag ) ] = $tag;
 		}
 
+		// Read-modify-write: bypass L1 (see bump_tag_version()).
+		foreach ( array_keys( $tag_keys_map ) as $tag_key_name ) {
+			unset( $this->l1_store[ $group . ':' . $tag_key_name ] );
+		}
 		$current_vals = $this->get_multiple( array_keys( $tag_keys_map ), $group );
 
 		foreach ( $tag_keys_map as $key => $tag ) {
