@@ -144,6 +144,20 @@ class AIPS_Internal_Links_Controller {
 		$items = $this->links_repo->get_paginated($per_page, $page, $status, $search, $origin);
 		$total = $this->links_repo->get_paginated_count($status, $search, $origin);
 
+		$post_ids = array();
+		foreach ($items as $item) {
+			if (!empty($item->source_post_id)) {
+				$post_ids[] = (int) $item->source_post_id;
+			}
+			if (!empty($item->target_post_id)) {
+				$post_ids[] = (int) $item->target_post_id;
+			}
+		}
+
+		if (!empty($post_ids) && function_exists('_prime_post_caches')) {
+			_prime_post_caches(array_unique($post_ids), false, true);
+		}
+
 		// Enrich items with edit URLs
 		foreach ($items as $item) {
 			$item->source_edit_url = get_edit_post_link($item->source_post_id, 'url');
