@@ -2055,6 +2055,10 @@ class AIPS_Admin_Assets {
                 'cancel'                => __('Cancel', 'ai-post-scheduler'),
                 'clearWord'             => AIPS_Content_Indexer_Controller::CLEAR_CONFIRM_WORD,
                 'requestFailed'         => __('Request failed. Please try again.', 'ai-post-scheduler'),
+                /* translators: %s: number of stale embeddings. */
+                'reindexStale'          => __('Re-index Stale (%s)', 'ai-post-scheduler'),
+                /* translators: 1: unindexed posts, 2: unindexed topics. */
+                'pendingBreakdown'      => __('%1$s posts, %2$s topics pending', 'ai-post-scheduler'),
                 'indexed'               => __('Indexed', 'ai-post-scheduler'),
                 'pendingIndex'          => __('Pending Index', 'ai-post-scheduler'),
                 'authorTopic'           => __('Author Topic', 'ai-post-scheduler'),

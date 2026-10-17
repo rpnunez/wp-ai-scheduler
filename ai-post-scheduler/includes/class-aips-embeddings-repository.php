@@ -944,7 +944,7 @@ class AIPS_Embeddings_Repository {
 		$params  = array();
 
 		if ('' !== (string) $model) {
-			$clauses[] = "(e.model <> '' AND e.model <> %s)";
+			$clauses[] = "(e.model <> '' AND BINARY e.model <> BINARY %s)";
 			$params[]  = (string) $model;
 		}
 

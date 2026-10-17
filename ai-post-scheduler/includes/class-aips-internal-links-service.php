@@ -141,8 +141,12 @@ class AIPS_Internal_Links_Service {
 		// Make sure the source post is indexed with the current text and model. A
 		// current row costs no embedding call. If re-embedding is not possible right
 		// now (cooldown, lock), a previously stored vector is still good enough.
-		$ensured    = $allow_embedding ? $this->get_indexer()->ensure_indexed($source_post_id) : true;
 		$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
+		$ensured    = ($allow_embedding && !$source_row) ? $this->get_indexer()->ensure_indexed($source_post_id) : true;
+
+		if (!is_wp_error($ensured) && !$source_row) {
+			$source_row = $this->embeddings_repo->get_by_post_id($source_post_id);
+		}
 
 		if (!$allow_embedding && !$source_row) {
 			return new WP_Error('not_indexed', __('The post is not indexed yet.', 'ai-post-scheduler'));

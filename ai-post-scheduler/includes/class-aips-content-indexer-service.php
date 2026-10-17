@@ -207,7 +207,7 @@ class AIPS_Content_Indexer_Service {
 					return true;
 				}
 
-				return $this->embed_and_store($post, $text, $content_hash, $compute_relationships);
+				return $this->embed_and_store($post, $text, $content_hash, $compute_relationships, $force || $this->is_stale($this->embeddings_repo->get_by_post_id($post->ID)));
 			},
 			self::LOCK_TTL
 		);
@@ -281,11 +281,18 @@ class AIPS_Content_Indexer_Service {
 		$observed = get_option(self::OBSERVED_DIMENSIONS_OPTION, array());
 		$model    = $this->embeddings_service->get_active_model();
 
+		$configured = max(0, (int) $this->config->get_option('aips_embeddings_dimensions', 1536));
+
+		// The observed count is only trusted while the configured count is the one it was
+		// observed under; changing the setting makes rows made under the old one stale.
 		if (is_array($observed) && isset($observed[$model]) && (int) $observed[$model] > 0) {
-			return (int) $observed[$model];
+			$seen_under = isset($observed['@configured'][$model]) ? (int) $observed['@configured'][$model] : $configured;
+			if ($seen_under === $configured) {
+				return (int) $observed[$model];
+			}
 		}
 
-		return max(0, (int) $this->config->get_option('aips_embeddings_dimensions', 1536));
+		return $configured;
 	}
 
 	/**
@@ -299,11 +306,15 @@ class AIPS_Content_Indexer_Service {
 		$observed = get_option(self::OBSERVED_DIMENSIONS_OPTION, array());
 		$observed = is_array($observed) ? $observed : array();
 
-		if (isset($observed[$model]) && (int) $observed[$model] === (int) $dimensions) {
+		$configured = max(0, (int) $this->config->get_option('aips_embeddings_dimensions', 1536));
+
+		if (isset($observed[$model]) && (int) $observed[$model] === (int) $dimensions
+			&& isset($observed['@configured'][$model]) && (int) $observed['@configured'][$model] === $configured) {
 			return;
 		}
 
-		$observed[$model] = (int) $dimensions;
+		$observed[$model]                 = (int) $dimensions;
+		$observed['@configured'][$model]  = $configured;
 		update_option(self::OBSERVED_DIMENSIONS_OPTION, $observed, false);
 	}
 
@@ -323,7 +334,7 @@ class AIPS_Content_Indexer_Service {
 	 * @param bool    $compute_relationships Whether to recompute related posts afterwards.
 	 * @return true|WP_Error
 	 */
-	private function embed_and_store($post, $text, $content_hash, $compute_relationships) {
+	private function embed_and_store($post, $text, $content_hash, $compute_relationships, $force_fresh = false) {
 		$post_id    = (int) $post->ID;
 		$start_time = microtime(true);
 		$model      = $this->embeddings_service->get_active_model();
@@ -390,7 +401,7 @@ class AIPS_Content_Indexer_Service {
 			);
 		}
 
-		$embedding = $this->embeddings_service->generate_embedding($text);
+		$embedding = $this->embeddings_service->generate_embedding($text, $force_fresh ? array('fresh' => true) : array());
 
 		if (is_wp_error($embedding)) {
 			$duration      = round(microtime(true) - $start_time, 3);
@@ -1412,6 +1423,8 @@ class AIPS_Content_Indexer_Service {
 			$result = $this->index_post($post_id, false);
 
 			if (self::is_skippable_error($result)) {
+				// Busy or index being cleared: keep it queued for the next slice.
+				$post_rem[] = $post_id;
 				continue;
 			}
 

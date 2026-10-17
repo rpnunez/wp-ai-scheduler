@@ -200,7 +200,7 @@ class AIPS_Publish_Linking_Service {
 
 		$outbound = 0;
 		if ($wants_outbound) {
-			$result = (new AIPS_Internal_Links_Service())->generate_suggestions_for_post($post_id, null, null, $embed_inline);
+			$result = (new AIPS_Internal_Links_Service())->generate_suggestions_for_post($post_id, null, null, $embed_inline || ($can_index && !$this->is_indexed($post_id)));
 			if (!is_wp_error($result)) {
 				$outbound = count((array) $result);
 			}

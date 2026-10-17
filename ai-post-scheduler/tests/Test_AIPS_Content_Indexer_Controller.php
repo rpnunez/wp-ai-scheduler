@@ -26,6 +26,7 @@ class Test_AIPS_Content_Indexer_Controller extends WP_UnitTestCase {
 		// clear lock it took would outlive the rollback and block later tests for its TTL.
 		global $wpdb;
 		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'aips\_lock\_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_internal_links" );
 		$wpdb->query( 'COMMIT' );
 	}
 

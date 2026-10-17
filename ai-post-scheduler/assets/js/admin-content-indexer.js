@@ -1119,10 +1119,10 @@
 			$('#aips-topics-progress-bar').css('width', (st.topics_percent || 0) + '%');
 
 			$('#aips-stat-unindexed').text((st.unindexed || 0) + (st.unindexed_topics || 0));
-			$('#aips-stat-unindexed-breakdown').text(st.unindexed + ' posts, ' + st.unindexed_topics + ' topics pending');
+			$('#aips-stat-unindexed-breakdown').text((aipsContentIndexerL10n.pendingBreakdown || '%1$s posts, %2$s topics pending').replace('%1$s', st.unindexed).replace('%2$s', st.unindexed_topics));
 
 			var stale = st.stale || 0;
-			$('#aips-reindex-stale-btn').toggle(stale > 0).find('.btn-text').text('Re-index Stale (' + stale + ')');
+			$('#aips-reindex-stale-btn').toggle(stale > 0).find('.btn-text').text((aipsContentIndexerL10n.reindexStale || 'Re-index Stale (%s)').replace('%s', stale));
 			$('#aips-stat-stale-line').toggle(stale > 0);
 
 			if (st.rate_limits) {
@@ -1141,15 +1141,9 @@
 			var wLimitText = wLim > 0 ? String(wLim) : '∞';
 			var mLimitText = mLim > 0 ? String(mLim) : '∞';
 
-			if (window.AIPS && AIPS.Templates && AIPS.Templates.get('aips-tmpl-indexer-meter-count')) {
-				$('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
-				$('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
-				$('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
-			} else {
-				$('#aips-meter-daily-count').html('<strong>' + dCnt + '</strong> / ' + dLimitText);
-				$('#aips-meter-weekly-count').html('<strong>' + wCnt + '</strong> / ' + wLimitText);
-				$('#aips-meter-monthly-count').html('<strong>' + mCnt + '</strong> / ' + mLimitText);
-			}
+			$('#aips-meter-daily-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: dCnt, limit: dLimitText }));
+			$('#aips-meter-weekly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: wCnt, limit: wLimitText }));
+			$('#aips-meter-monthly-count').html(AIPS.Templates.render('aips-tmpl-indexer-meter-count', { count: mCnt, limit: mLimitText }));
 			if (dLim > 0) { $('#aips-meter-daily-bar').css('width', Math.min(100, Math.round((dCnt / dLim) * 100)) + '%'); }
 			if (wLim > 0) { $('#aips-meter-weekly-bar').css('width', Math.min(100, Math.round((wCnt / wLim) * 100)) + '%'); }
 			if (mLim > 0) { $('#aips-meter-monthly-bar').css('width', Math.min(100, Math.round((mCnt / mLim) * 100)) + '%'); }
