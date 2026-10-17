@@ -140,6 +140,12 @@ class AIPS_Ability_Workflow_Document_Validator {
 				$available = $this->catalog->validate_ability_available( (string) $step['ability_name'] );
 				if ( is_wp_error( $available ) ) {
 					$errors[] = $this->step_error( $step_key, $available->get_error_message() );
+				} else {
+					$input_map = isset( $step['input_map'] ) && is_array( $step['input_map'] ) ? $step['input_map'] : array();
+
+					foreach ( $this->validate_against_input_schema( (string) $step['ability_name'], $input_map ) as $message ) {
+						$errors[] = $this->step_error( $step_key, $message );
+					}
 				}
 			}
 
@@ -202,6 +208,148 @@ class AIPS_Ability_Workflow_Document_Validator {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Check a step's input map against the ability's declared input schema.
+	 *
+	 * Reports required fields that are missing, fields the schema does not allow,
+	 * and fixed values of the wrong type or outside an enum. A value that is
+	 * (or contains) a {{reference}} is only known at run time, so it is not
+	 * checked. Only the top level of the input is checked, and schema keywords
+	 * beyond type, enum, required and additionalProperties are left to the
+	 * ability itself.
+	 *
+	 * @param string $ability_name Ability slug.
+	 * @param array  $input_map    The step's input map.
+	 * @return string[] Messages, empty when the input fits (or the ability declares no input fields).
+	 */
+	private function validate_against_input_schema( string $ability_name, array $input_map ): array {
+		if ( ! $this->catalog instanceof AIPS_Ability_Catalog_Service ) {
+			return array();
+		}
+
+		$schema = $this->catalog->get_input_schema( $ability_name );
+
+		if ( is_wp_error( $schema ) || ! is_array( $schema ) || empty( $schema ) ) {
+			return array();
+		}
+
+		$properties = isset( $schema['properties'] ) && is_array( $schema['properties'] ) ? $schema['properties'] : array();
+		$required   = isset( $schema['required'] ) && is_array( $schema['required'] ) ? $schema['required'] : array();
+		$errors     = array();
+
+		foreach ( $required as $field ) {
+			if ( is_string( $field ) && ! array_key_exists( $field, $input_map ) ) {
+				/* translators: %s: input field name */
+				$errors[] = sprintf( __( 'The ability needs the input field "%s".', 'ai-post-scheduler' ), $field );
+			}
+		}
+
+		foreach ( $input_map as $field => $value ) {
+			$field = (string) $field;
+
+			if ( ! isset( $properties[ $field ] ) || ! is_array( $properties[ $field ] ) ) {
+				if ( ! empty( $properties ) && isset( $schema['additionalProperties'] ) && false === $schema['additionalProperties'] ) {
+					/* translators: %s: input field name */
+					$errors[] = sprintf( __( 'The ability has no input field "%s".', 'ai-post-scheduler' ), $field );
+				}
+				continue;
+			}
+
+			if ( $this->contains_reference( $value ) ) {
+				continue;
+			}
+
+			$property = $properties[ $field ];
+
+			if ( isset( $property['type'] ) && ! $this->matches_type( $value, $property['type'] ) ) {
+				/* translators: 1: input field name, 2: expected type */
+				$errors[] = sprintf( __( 'Input field "%1$s" should be of type %2$s.', 'ai-post-scheduler' ), $field, implode( '/', (array) $property['type'] ) );
+				continue;
+			}
+
+			if ( isset( $property['enum'] ) && is_array( $property['enum'] ) && is_scalar( $value ) && ! in_array( $value, $property['enum'], true ) ) {
+				$allowed = array_map(
+					function ( $option ) {
+						return is_bool( $option ) ? ( $option ? 'true' : 'false' ) : (string) $option;
+					},
+					array_filter( $property['enum'], 'is_scalar' )
+				);
+
+				/* translators: 1: input field name, 2: comma-separated allowed values */
+				$errors[] = sprintf( __( 'Input field "%1$s" must be one of: %2$s.', 'ai-post-scheduler' ), $field, implode( ', ', $allowed ) );
+			}
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * Whether a value is, or contains, a {{reference}} resolved at run time.
+	 *
+	 * @param mixed $value Input value.
+	 * @return bool
+	 */
+	private function contains_reference( $value ): bool {
+		if ( is_string( $value ) ) {
+			return false !== strpos( $value, '{{' );
+		}
+
+		if ( is_array( $value ) ) {
+			foreach ( $value as $item ) {
+				if ( $this->contains_reference( $item ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether a fixed value fits a JSON Schema type (or list of types).
+	 *
+	 * Unrecognised type names are accepted rather than rejected.
+	 *
+	 * @param mixed        $value Input value.
+	 * @param string|array $types Schema type or types.
+	 * @return bool
+	 */
+	private function matches_type( $value, $types ): bool {
+		foreach ( (array) $types as $type ) {
+			switch ( $type ) {
+				case 'string':
+					$ok = is_string( $value );
+					break;
+				case 'integer':
+					$ok = is_int( $value ) || ( is_float( $value ) && floor( $value ) === $value );
+					break;
+				case 'number':
+					$ok = is_int( $value ) || is_float( $value );
+					break;
+				case 'boolean':
+					$ok = is_bool( $value );
+					break;
+				case 'null':
+					$ok = null === $value;
+					break;
+				case 'array':
+					$ok = is_array( $value ) && ( array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 ) );
+					break;
+				case 'object':
+					$ok = is_array( $value ) && ( array() === $value || array_keys( $value ) !== range( 0, count( $value ) - 1 ) );
+					break;
+				default:
+					$ok = true;
+			}
+
+			if ( $ok ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

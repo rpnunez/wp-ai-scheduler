@@ -180,6 +180,10 @@ if ($aips_workflow_id <= 0) {
 					<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-add-input-map-row-btn">
 						<span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e('Add Field', 'ai-post-scheduler'); ?>
 					</button>
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-add-required-fields-btn">
+						<span class="dashicons dashicons-yes"></span> <?php esc_html_e('Add Required Fields', 'ai-post-scheduler'); ?>
+					</button>
+					<div id="aips-input-map-options" hidden></div>
 					<p class="description"><?php esc_html_e('Use {{trigger.field}} or {{steps.<alias>.output.field}} to reference earlier data. A value that is exactly one reference keeps its type. Pick Number, True/false or JSON for fixed values that are not text.', 'ai-post-scheduler'); ?></p>
 				</div>
 

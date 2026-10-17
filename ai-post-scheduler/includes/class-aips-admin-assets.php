@@ -1809,6 +1809,8 @@ class AIPS_Admin_Assets {
                 'approveAbility'         => __('Approve for this workflow', 'ai-post-scheduler'),
                 'requiresApprovalShort'  => __('may change data', 'ai-post-scheduler'),
                 'noInputFields'          => __('This ability declares no input fields.', 'ai-post-scheduler'),
+                'requiredFieldsAdded'    => __('Added the required fields. Fill in their values.', 'ai-post-scheduler'),
+                'noRequiredFields'       => __('Every required field is already in the input map, or this ability declares none.', 'ai-post-scheduler'),
                 'inputFieldsPrefix'      => __('Input fields:', 'ai-post-scheduler'),
                 'requiredField'          => __('required', 'ai-post-scheduler'),
                 'runUnsavedHeading'      => __('Unsaved changes', 'ai-post-scheduler'),

@@ -134,6 +134,29 @@ class Test_AIPS_Ability_Live_AI extends WP_UnitTestCase {
 		$this->log( 'title output schema', $ability['output_schema'] );
 	}
 
+	public function test_the_validator_checks_step_input_against_the_real_ability_schemas() {
+		$abilities = new AIPS_Ability_Service();
+		$resolver  = new AIPS_Ability_Workflow_Variable_Resolver();
+		$validator = new AIPS_Ability_Workflow_Document_Validator(
+			new AIPS_Ability_Workflow_Condition_Evaluator( $resolver ),
+			$resolver,
+			new AIPS_Ability_Catalog_Service( $abilities )
+		);
+		$validate  = function ( $ability, array $input_map ) use ( $validator ) {
+			$result = $validator->validate( array( 'steps' => array( array( 'step_key' => 't', 'ability_name' => $ability, 'input_map' => $input_map ) ) ) );
+
+			return is_wp_error( $result ) ? implode( ' | ', $result->get_error_data()['errors'] ) : true;
+		};
+
+		$this->assertTrue( $validate( 'ai/title-generation', array( 'content' => '{{trigger.text}}' ) ) );
+		$this->assertTrue( $validate( 'ai/title-generation', array( 'content' => 'A fixed article body.' ) ) );
+		$this->assertTrue( $validate( 'ai/summarization', array( 'content' => 'Body', 'length' => 'short' ) ) );
+
+		$this->assertStringContainsString( '"length" must be one of', $validate( 'ai/summarization', array( 'content' => 'Body', 'length' => 'huge' ) ) );
+		$this->assertStringContainsString( '"attachment_id" should be of type integer', $validate( 'ai/alt-text-generation', array( 'attachment_id' => '12' ) ) );
+		$this->assertTrue( $validate( 'ai/alt-text-generation', array( 'attachment_id' => 12 ) ) );
+	}
+
 	public function test_title_generation_returns_a_real_title_through_the_adapter() {
 		$result = ( new AIPS_Ability_Service() )->invoke(
 			'ai/title-generation',

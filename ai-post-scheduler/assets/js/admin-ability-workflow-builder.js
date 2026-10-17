@@ -117,6 +117,8 @@
 			$(document).on('change', '#aips-step-ability', this.onAbilityChange.bind(this));
 
 			$(document).on('click', '#aips-add-input-map-row-btn', this.addInputMapRow.bind(this));
+			$(document).on('click', '#aips-add-required-fields-btn', this.addRequiredFields.bind(this));
+			$(document).on('input change', '.aips-input-map-field', this.refreshValueOptions.bind(this));
 			$(document).on('click', '.aips-remove-input-map-row', this.removeInputMapRow.bind(this));
 
 			$(document).on('click', '#aips-add-condition-rule-btn', this.addConditionRuleRow.bind(this));
@@ -352,6 +354,109 @@
 
 			$('#aips-step-ability-description').text(ability && ability.description ? ability.description : '');
 			$('#aips-step-ability-hint').text(this.schemaHint(ability));
+			this.refreshValueOptions();
+		},
+
+		/**
+		 * The declared input properties of the ability selected in the step form.
+		 *
+		 * @return {Object} Property name => schema, empty when none are declared.
+		 */
+		currentProperties() {
+			var ability = this.abilitiesByName[$('#aips-step-ability').val()];
+			var schema = ability && ability.input_schema;
+
+			return schema && schema.properties && typeof schema.properties === 'object' ? schema.properties : {};
+		},
+
+		/**
+		 * Type selector value that fits a JSON Schema type.
+		 *
+		 * @param {string|string[]} schemaType Declared type or types.
+		 * @return {string}
+		 */
+		inputTypeFor(schemaType) {
+			var type = Array.isArray(schemaType) ? schemaType.filter(function(t) { return t !== 'null'; })[0] : schemaType;
+
+			if (type === 'integer' || type === 'number') {
+				return 'number';
+			}
+
+			if (type === 'boolean') {
+				return 'boolean';
+			}
+
+			if (type === 'array' || type === 'object') {
+				return 'json';
+			}
+
+			return 'string';
+		},
+
+		/**
+		 * Add a row for every required field the input map does not have yet,
+		 * with the type selector set from the schema.
+		 */
+		addRequiredFields() {
+			var ability = this.abilitiesByName[$('#aips-step-ability').val()];
+			var schema = ability && ability.input_schema;
+			var required = schema && Array.isArray(schema.required) ? schema.required : [];
+			var properties = this.currentProperties();
+			var present = {};
+			var added = 0;
+			var self = this;
+
+			$('#aips-input-map-table-body .aips-input-map-field').each(function() {
+				present[$(this).val()] = true;
+			});
+
+			required.forEach(function(field) {
+				if (present[field]) {
+					return;
+				}
+
+				var $body = $('#aips-input-map-table-body');
+				var $row = $(AIPS.Templates.render('aips-tmpl-input-map-row', { row_index: $body.find('tr').length, field: field, value: '' }));
+
+				$row.find('.aips-input-map-type').val(self.inputTypeFor((properties[field] || {}).type));
+				$body.append($row);
+				added++;
+			});
+
+			this.refreshValueOptions();
+			AIPS.Utilities.showToast(added ? L10n.requiredFieldsAdded : L10n.noRequiredFields, added ? 'success' : 'info');
+		},
+
+		/**
+		 * Offer an ability's enum values as suggestions for the matching field's
+		 * value box. The box stays free text so a {{reference}} can still be typed.
+		 */
+		refreshValueOptions() {
+			var properties = this.currentProperties();
+			var $list = $('#aips-input-map-options');
+
+			$list.empty();
+
+			$('#aips-input-map-table-body tr').each(function() {
+				var $row = $(this);
+				var property = properties[$row.find('.aips-input-map-field').val()] || {};
+				var $value = $row.find('.aips-input-map-value');
+
+				if (!Array.isArray(property.enum) || !property.enum.length) {
+					$value.removeAttr('list');
+					return;
+				}
+
+				var listId = 'aips-input-map-options-' + $row.index();
+				var $options = $('<datalist></datalist>').attr('id', listId);
+
+				property.enum.forEach(function(option) {
+					$options.append($('<option></option>').val(String(option)));
+				});
+
+				$list.append($options);
+				$value.attr('list', listId);
+			});
 		},
 
 		/**
@@ -571,6 +676,8 @@
 				$row.find('.aips-input-map-type').val(described.type);
 				$body.append($row);
 			});
+
+			this.refreshValueOptions();
 		},
 
 		addInputMapRow() {
