@@ -39,6 +39,17 @@ class AIPS_Stress_Test_Ability_Cases {
 	const AI_SUMMARIZATION      = 'ai/summarization';
 
 	/**
+	 * Name prefix of the workflows the workflow cases create. Cleanup finds
+	 * leftovers by it.
+	 */
+	const WORKFLOW_PREFIX = '[aips-stress] ';
+
+	/**
+	 * Most slices a case may spend driving one run before it gives up.
+	 */
+	const MAX_SLICES = 40;
+
+	/**
 	 * Article the real AI abilities are asked about.
 	 */
 	const SAMPLE_ARTICLE = 'Repairing a flat bicycle tyre takes four steps: remove the wheel, find the puncture, patch the inner tube, and refit the tyre without pinching the tube. Carry a spare tube and a small pump so a flat never ends your ride.';
@@ -126,6 +137,30 @@ class AIPS_Stress_Test_Ability_Cases {
 				'creates'     => false,
 				'needs_ai'    => false,
 			),
+			array(
+				'id'          => 'workflow_two_step',
+				'label'       => __('Abilities: Two-Step Workflow', 'ai-post-scheduler'),
+				'description' => __('Creates a temporary two-step workflow from fixture abilities, where the second step reads a number and a text from the first, runs it through the workflow executor, and checks both steps completed with the values (and their types) passed on, and that exactly one History record was written and closed. The workflow, its runs and the History record are removed afterwards. Needs Ability Workflows to be enabled.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
+			array(
+				'id'          => 'workflow_retry_backoff',
+				'label'       => __('Abilities: Workflow Retry and Backoff', 'ai-post-scheduler'),
+				'description' => __('Runs a workflow whose step fails once with a transient error and has one retry with a one second backoff. Checks the step is parked, is not retried before it is due, is retried once when due, and the run completes with one History record. Takes about two seconds. Needs Ability Workflows to be enabled.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
+			array(
+				'id'          => 'workflow_cancel',
+				'label'       => __('Abilities: Workflow Cancel', 'ai-post-scheduler'),
+				'description' => __('Runs a three-step workflow and cancels it while the first step is running. Checks the later steps never run, the run is cancelled and its History record is closed as terminated. Needs Ability Workflows to be enabled.', 'ai-post-scheduler'),
+				'group'       => self::GROUP,
+				'creates'     => true,
+				'needs_ai'    => false,
+			),
 		);
 	}
 
@@ -166,6 +201,15 @@ class AIPS_Stress_Test_Ability_Cases {
 				break;
 			case 'ability_destructive_gate':
 				$result = $this->case_destructive_gate();
+				break;
+			case 'workflow_two_step':
+				$result = $this->case_workflow_two_step();
+				break;
+			case 'workflow_retry_backoff':
+				$result = $this->case_workflow_retry_backoff();
+				break;
+			case 'workflow_cancel':
+				$result = $this->case_workflow_cancel();
 				break;
 			default:
 				$result = $this->failed(__('Case is not implemented.', 'ai-post-scheduler'));
@@ -498,6 +542,529 @@ class AIPS_Stress_Test_Ability_Cases {
 			),
 			'ai_value'     => null,
 			'plugin_value' => $rows,
+		);
+	}
+
+	// -----------------------------------------------------------------------
+	// Workflow cases
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Two steps, the second reading the first's output with its types intact.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_workflow_two_step(): array {
+		$skip = $this->workflow_skip();
+		if (null !== $skip) {
+			return $skip;
+		}
+
+		$abilities = array(
+			'aips-stress/source' => function () {
+				return array('name' => 'Stress Site', 'count' => 3);
+			},
+			'aips-stress/echo'   => function ($payload) {
+				return array('received' => $payload);
+			},
+		);
+
+		return $this->with_workflow('workflow_two_step', $abilities, array(
+			array('step_key' => 'source', 'ability_name' => 'aips-stress/source'),
+			array(
+				'step_key'     => 'echo',
+				'ability_name' => 'aips-stress/echo',
+				'depends_on'   => array('source'),
+				'input_map'    => array(
+					'name'  => '{{steps.source.output.name}}',
+					'count' => '{{steps.source.output.count}}',
+				),
+			),
+		), function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id): array {
+			$started = microtime(true);
+			$run_id  = $executor->dispatch_run($workflow_id, array('type' => 'stress_test'));
+
+			if (is_wp_error($run_id)) {
+				return $this->failed($run_id->get_error_message());
+			}
+
+			$drive = $this->drive($executor, (int) $run_id);
+			$ms    = (microtime(true) - $started) * 1000;
+			$run   = $this->repository()->get_run((int) $run_id);
+			$steps = $this->step_runs_by_key((int) $run_id);
+
+			$problems = array();
+			if ('finished' !== $drive['state'] || !$run || 'completed' !== $run->status) {
+				$problems[] = sprintf(
+					/* translators: %s: run status */
+					__('The run ended as "%s", not completed.', 'ai-post-scheduler'),
+					$run ? $run->status : 'missing'
+				);
+			}
+
+			foreach (array('source', 'echo') as $key) {
+				if (!isset($steps[$key]) || 'completed' !== $steps[$key]->status) {
+					/* translators: %s: step key */
+					$problems[] = sprintf(__('Step "%s" did not complete.', 'ai-post-scheduler'), $key);
+				}
+			}
+
+			$received = isset($steps['echo']) && is_array($steps['echo']->output_snapshot) && isset($steps['echo']->output_snapshot['received'])
+				? $steps['echo']->output_snapshot['received']
+				: array();
+
+			if (!isset($received['count']) || 3 !== $received['count']) {
+				$problems[] = __('The number from step one was not passed on as a number.', 'ai-post-scheduler');
+			}
+
+			if (!isset($received['name']) || 'Stress Site' !== $received['name']) {
+				$problems[] = __('The text from step one was not passed on.', 'ai-post-scheduler');
+			}
+
+			$history = $this->history_status($run);
+			if ('completed' !== $history['status']) {
+				/* translators: %s: History status */
+				$problems[] = sprintf(__('The History record is "%s", not completed.', 'ai-post-scheduler'), $history['status']);
+			}
+
+			$metrics = array(
+				'run_status'  => $run ? $run->status : null,
+				'slices'      => $drive['slices'],
+				'duration_ms' => round($ms, 1),
+				'history'     => $history,
+				'received'    => $received,
+			);
+
+			if (!empty($problems)) {
+				return $this->failed_with($problems, $metrics);
+			}
+
+			return array(
+				'status'       => 'passed',
+				'summary'      => sprintf(
+					/* translators: 1: milliseconds, 2: slices */
+					__('Both steps completed in %1$d ms over %2$d slice(s); values and types were passed on; one History record.', 'ai-post-scheduler'),
+					(int) round($ms),
+					$drive['slices']
+				),
+				'ai_value'     => null,
+				'plugin_value' => $metrics,
+			);
+		});
+	}
+
+	/**
+	 * A transient failure that is parked, left alone until due, then retried.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_workflow_retry_backoff(): array {
+		$skip = $this->workflow_skip();
+		if (null !== $skip) {
+			return $skip;
+		}
+
+		$attempts  = 0;
+		$abilities = array(
+			'aips-stress/flaky' => function () use (&$attempts) {
+				$attempts++;
+
+				if (1 === $attempts) {
+					return new WP_Error('aips_stress_transient', 'Simulated transient failure.');
+				}
+
+				return array('ok' => true);
+			},
+		);
+
+		return $this->with_workflow('workflow_retry_backoff', $abilities, array(
+			array(
+				'step_key'     => 'flaky',
+				'ability_name' => 'aips-stress/flaky',
+				'retry_policy' => array('attempts' => 1, 'backoff_seconds' => 1),
+			),
+		), function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id) use (&$attempts): array {
+			$run_id = $executor->dispatch_run($workflow_id, array('type' => 'stress_test'));
+
+			if (is_wp_error($run_id)) {
+				return $this->failed($run_id->get_error_message());
+			}
+
+			$run_id   = (int) $run_id;
+			$problems = array();
+
+			$first = $executor->process_run($run_id);
+			$step  = $this->step_runs_by_key($run_id)['flaky'] ?? null;
+
+			if (1 !== $attempts) {
+				$problems[] = __('The first slice should make exactly one attempt.', 'ai-post-scheduler');
+			}
+
+			if (!$step || 'pending' !== $step->status || empty($step->error['next_retry_at'])) {
+				$problems[] = __('The failed step was not parked for a retry.', 'ai-post-scheduler');
+			}
+
+			if ('continue' !== $first['state'] || (int) $first['retry_at'] < time()) {
+				$problems[] = __('The executor did not report when the retry is due.', 'ai-post-scheduler');
+			}
+
+			// Asking again straight away must not retry early.
+			$executor->process_run($run_id);
+			if (1 !== $attempts) {
+				$problems[] = __('The step was retried before its backoff elapsed.', 'ai-post-scheduler');
+			}
+
+			$drive = $this->drive($executor, $run_id);
+			$run   = $this->repository()->get_run($run_id);
+			$step  = $this->step_runs_by_key($run_id)['flaky'] ?? null;
+
+			if (2 !== $attempts) {
+				$problems[] = sprintf(
+					/* translators: %d: attempts */
+					__('Expected two attempts in total, saw %d.', 'ai-post-scheduler'),
+					$attempts
+				);
+			}
+
+			if (!$run || 'completed' !== $run->status || !$step || 'completed' !== $step->status) {
+				$problems[] = __('The run did not complete after the retry.', 'ai-post-scheduler');
+			}
+
+			$history = $this->history_status($run);
+			if ('completed' !== $history['status']) {
+				/* translators: %s: History status */
+				$problems[] = sprintf(__('The History record is "%s", not completed.', 'ai-post-scheduler'), $history['status']);
+			}
+
+			$metrics = array(
+				'attempts'   => $attempts,
+				'run_status' => $run ? $run->status : null,
+				'slices'     => $drive['slices'] + 2,
+				'history'    => $history,
+			);
+
+			if (!empty($problems)) {
+				return $this->failed_with($problems, $metrics);
+			}
+
+			return array(
+				'status'       => 'passed',
+				'summary'      => __('The failed step was parked, not retried early, retried once when due, and the run completed with one History record.', 'ai-post-scheduler'),
+				'ai_value'     => null,
+				'plugin_value' => $metrics,
+			);
+		});
+	}
+
+	/**
+	 * A run cancelled while its first step is running.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function case_workflow_cancel(): array {
+		$skip = $this->workflow_skip();
+		if (null !== $skip) {
+			return $skip;
+		}
+
+		$later_calls = 0;
+		$cancel      = null;
+		$abilities   = array(
+			'aips-stress/cancel_now' => function () use (&$cancel) {
+				if (is_callable($cancel)) {
+					call_user_func($cancel);
+				}
+
+				return array('ok' => true);
+			},
+			'aips-stress/later'      => function () use (&$later_calls) {
+				$later_calls++;
+
+				return array('ok' => true);
+			},
+		);
+
+		return $this->with_workflow('workflow_cancel', $abilities, array(
+			array('step_key' => 'first', 'ability_name' => 'aips-stress/cancel_now'),
+			array('step_key' => 'second', 'ability_name' => 'aips-stress/later', 'depends_on' => array('first')),
+			array('step_key' => 'third', 'ability_name' => 'aips-stress/later', 'depends_on' => array('second')),
+		), function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id) use (&$later_calls, &$cancel): array {
+			$run_id = $executor->dispatch_run($workflow_id, array('type' => 'stress_test'));
+
+			if (is_wp_error($run_id)) {
+				return $this->failed($run_id->get_error_message());
+			}
+
+			$run_id = (int) $run_id;
+			$cancel = function () use ($executor, $run_id) {
+				$executor->cancel_run($run_id);
+			};
+
+			$executor->process_run($run_id);
+
+			$run      = $this->repository()->get_run($run_id);
+			$steps    = $this->step_runs_by_key($run_id);
+			$history  = $this->history_status($run);
+			$problems = array();
+
+			if (!$run || 'cancelled' !== $run->status) {
+				$problems[] = sprintf(
+					/* translators: %s: run status */
+					__('The run ended as "%s", not cancelled.', 'ai-post-scheduler'),
+					$run ? $run->status : 'missing'
+				);
+			}
+
+			if (0 !== $later_calls) {
+				$problems[] = sprintf(
+					/* translators: %d: number of calls */
+					__('%d step(s) ran after the cancel.', 'ai-post-scheduler'),
+					$later_calls
+				);
+			}
+
+			if (isset($steps['second']) || isset($steps['third'])) {
+				$problems[] = __('Steps after the cancel left step runs behind.', 'ai-post-scheduler');
+			}
+
+			if ('terminated' !== $history['status']) {
+				/* translators: %s: History status */
+				$problems[] = sprintf(__('The History record is "%s", not terminated.', 'ai-post-scheduler'), $history['status']);
+			}
+
+			$metrics = array(
+				'run_status'  => $run ? $run->status : null,
+				'step_runs'   => array_keys($steps),
+				'later_calls' => $later_calls,
+				'history'     => $history,
+			);
+
+			if (!empty($problems)) {
+				return $this->failed_with($problems, $metrics);
+			}
+
+			return array(
+				'status'       => 'passed',
+				'summary'      => __('The run was cancelled during the first step; the later steps never ran and the History record was closed as terminated.', 'ai-post-scheduler'),
+				'ai_value'     => null,
+				'plugin_value' => $metrics,
+			);
+		});
+	}
+
+	// -----------------------------------------------------------------------
+	// Workflow case support
+	// -----------------------------------------------------------------------
+
+	/**
+	 * A result that skips a workflow case when workflows are switched off.
+	 *
+	 * @return array<string,mixed>|null Null when the case may run.
+	 */
+	private function workflow_skip(): ?array {
+		if (!AIPS_Ability_Workflows_Feature::is_enabled()) {
+			return $this->skipped(__('Ability Workflows are disabled (Settings > Ability Workflows).', 'ai-post-scheduler'));
+		}
+
+		return null;
+	}
+
+	/**
+	 * Run a callback against a temporary workflow driven by fixture abilities.
+	 *
+	 * The fixtures replace the ability provider only for the duration of the
+	 * call, and the workflow, its runs and their History rows are removed in
+	 * every outcome, so the real abilities on the site are never touched.
+	 *
+	 * @param string   $case_id   Case id, used in the workflow name.
+	 * @param array    $abilities Fixture slug => callable(payload).
+	 * @param array    $steps     Step definitions.
+	 * @param callable $body      function (AIPS_Ability_Workflow_Executor $executor, int $workflow_id): array
+	 * @return array<string,mixed>
+	 */
+	private function with_workflow(string $case_id, array $abilities, array $steps, callable $body): array {
+		$provider = function () use ($abilities) {
+			return array(
+				'name'   => 'aips-stress-fixture',
+				'list'   => function () use ($abilities) {
+					$list = array();
+
+					foreach (array_keys($abilities) as $slug) {
+						$list[$slug] = array('slug' => $slug, 'annotations' => array('readonly' => true));
+					}
+
+					return $list;
+				},
+				'invoke' => function ($slug, $payload) use ($abilities) {
+					return call_user_func($abilities[$slug], $payload);
+				},
+			);
+		};
+
+		$repository  = $this->repository();
+		$workflow_id = 0;
+		add_filter('aips_ability_provider', $provider, 999);
+
+		try {
+			$fixture_abilities = new AIPS_Ability_Service();
+			$executor          = new AIPS_Ability_Workflow_Executor(
+				$repository,
+				new AIPS_Ability_Catalog_Service($fixture_abilities),
+				$fixture_abilities,
+				null,
+				null,
+				null,
+				null,
+				'__return_true'
+			);
+
+			$workflow_id = $repository->create_workflow(array(
+				'name'     => self::WORKFLOW_PREFIX . $case_id,
+				'status'   => 'active',
+				'settings' => array('stress_test' => true),
+			));
+
+			if (is_wp_error($workflow_id)) {
+				return $this->failed($workflow_id->get_error_message());
+			}
+
+			$saved = $repository->save_steps((int) $workflow_id, $steps);
+
+			if (is_wp_error($saved)) {
+				return $this->failed($saved->get_error_message());
+			}
+
+			return $body($executor, (int) $workflow_id);
+		} catch (Throwable $e) {
+			return $this->failed($e->getMessage());
+		} finally {
+			remove_filter('aips_ability_provider', $provider, 999);
+
+			if ($workflow_id && !is_wp_error($workflow_id)) {
+				$this->remove_workflow((int) $workflow_id);
+			}
+		}
+	}
+
+	/**
+	 * Process a run until it finishes, waiting out retry backoffs.
+	 *
+	 * @param AIPS_Ability_Workflow_Executor $executor Executor.
+	 * @param int                            $run_id   Run ID.
+	 * @return array{state:string, slices:int}
+	 */
+	private function drive(AIPS_Ability_Workflow_Executor $executor, int $run_id): array {
+		$state  = 'continue';
+		$slices = 0;
+
+		while ($slices < self::MAX_SLICES) {
+			$outcome = $executor->process_run($run_id);
+			$state   = $outcome['state'];
+			$slices++;
+
+			if ('finished' === $state) {
+				break;
+			}
+
+			$wait = (int) $outcome['retry_at'] - time();
+			if ($wait > 0) {
+				usleep((int) (min($wait, 3) * 1000000) + 100000);
+			}
+		}
+
+		return array('state' => $state, 'slices' => $slices);
+	}
+
+	/**
+	 * Step runs of a run, keyed by step key.
+	 *
+	 * @param int $run_id Run ID.
+	 * @return array<string,AIPS_Ability_Workflow_Step_Run>
+	 */
+	private function step_runs_by_key(int $run_id): array {
+		$keyed = array();
+
+		foreach ($this->repository()->get_step_runs($run_id) as $step_run) {
+			$keyed[$step_run->step_key] = $step_run;
+		}
+
+		return $keyed;
+	}
+
+	/**
+	 * The History record of a run: its ID and status.
+	 *
+	 * @param AIPS_Ability_Workflow_Run|null $run Run.
+	 * @return array{id:int, status:string}
+	 */
+	private function history_status($run): array {
+		$history_id = $run ? (int) $run->history_id : 0;
+		$row        = $history_id > 0 ? AIPS_History_Repository::instance()->get_by_id($history_id) : null;
+
+		return array('id' => $history_id, 'status' => $row ? (string) $row->status : 'missing');
+	}
+
+	/**
+	 * Delete a stress workflow, its runs and their History rows.
+	 *
+	 * @param int $workflow_id Workflow ID.
+	 */
+	private function remove_workflow(int $workflow_id): void {
+		$removed = $this->repository()->delete_workflow_with_runs($workflow_id);
+
+		if (!empty($removed['history_ids'])) {
+			AIPS_History_Repository::instance()->delete_bulk($removed['history_ids']);
+		}
+	}
+
+	/**
+	 * Number of stress workflows left behind (for example by a request that died).
+	 *
+	 * @return int
+	 */
+	public function count_leftovers(): int {
+		return count($this->repository()->get_workflow_ids_by_name_prefix(self::WORKFLOW_PREFIX));
+	}
+
+	/**
+	 * Delete stress workflows left behind, with their runs and History rows.
+	 *
+	 * @return int Workflows removed.
+	 */
+	public function cleanup(): int {
+		$removed = 0;
+
+		foreach ($this->repository()->get_workflow_ids_by_name_prefix(self::WORKFLOW_PREFIX) as $workflow_id) {
+			$this->remove_workflow($workflow_id);
+			$removed++;
+		}
+
+		return $removed;
+	}
+
+	/**
+	 * @return AIPS_Ability_Workflow_Repository
+	 */
+	private function repository(): AIPS_Ability_Workflow_Repository {
+		return AIPS_Ability_Workflow_Repository::instance();
+	}
+
+	/**
+	 * A failed result listing every problem, with the metrics gathered.
+	 *
+	 * @param string[] $problems What went wrong.
+	 * @param mixed    $metrics  Details to show.
+	 * @return array<string,mixed>
+	 */
+	private function failed_with(array $problems, $metrics): array {
+		$message = implode(' ', $problems);
+
+		return array(
+			'status'       => 'failed',
+			'error'        => $message,
+			'summary'      => $message,
+			'ai_value'     => null,
+			'plugin_value' => $metrics,
 		);
 	}
 

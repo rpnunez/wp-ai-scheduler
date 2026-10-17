@@ -31,9 +31,12 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 
 		$this->calls = array();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 1 );
 	}
 
 	public function tearDown(): void {
+		( new AIPS_Stress_Test_Ability_Cases() )->cleanup();
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 0 );
 		remove_all_filters( 'aips_ability_provider' );
 		wp_set_current_user( 0 );
 
@@ -105,19 +108,19 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 	// Definitions
 	// ---------------------------------------------------------------------
 
-	public function test_the_group_defines_four_cases_that_need_no_ai_provider_and_create_no_data() {
+	public function test_the_group_defines_its_cases_that_need_no_ai_provider_and_only_workflow_cases_create_data() {
 		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
 
 		$definitions = $this->cases()->get_definitions();
 
 		$this->assertSame(
-			array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate' ),
+			array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate', 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel' ),
 			wp_list_pluck( $definitions, 'id' )
 		);
 
 		foreach ( $definitions as $definition ) {
 			$this->assertSame( 'abilities', $definition['group'] );
-			$this->assertFalse( $definition['creates'], $definition['id'] );
+			$this->assertSame( 0 === strpos( $definition['id'], 'workflow_' ), $definition['creates'], $definition['id'] );
 			$this->assertFalse( $definition['needs_ai'], $definition['id'] );
 			$this->assertNotSame( '', $definition['label'] );
 			$this->assertNotSame( '', $definition['description'] );
@@ -354,6 +357,120 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 	}
 
 	// ---------------------------------------------------------------------
+	// Workflow cases
+	// ---------------------------------------------------------------------
+
+	private function provider_filter_left_behind() {
+		global $wp_filter;
+
+		return isset( $wp_filter['aips_ability_provider'] ) && isset( $wp_filter['aips_ability_provider']->callbacks[999] );
+	}
+
+	private function assert_nothing_left_behind( $result ) {
+		$this->assertSame( 0, $this->cases()->count_leftovers(), 'The workflow must be removed.' );
+		$this->assertFalse( $this->provider_filter_left_behind(), 'The fixture provider must be removed.' );
+
+		if ( ! empty( $result['plugin_value']['history']['id'] ) ) {
+			$this->assertNull( AIPS_History_Repository::instance()->get_by_id( $result['plugin_value']['history']['id'] ), 'The History record must be removed.' );
+		}
+	}
+
+	public function test_the_two_step_case_passes_with_typed_values_one_history_record_and_cleans_up() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$result = $this->cases()->run( 'workflow_two_step' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertSame( 2, $result['ability_calls'] );
+		$this->assertSame( 'completed', $result['plugin_value']['run_status'] );
+		$this->assertSame( 3, $result['plugin_value']['received']['count'], 'The number keeps its type.' );
+		$this->assertSame( 'completed', $result['plugin_value']['history']['status'] );
+		$this->assert_nothing_left_behind( $result );
+	}
+
+	public function test_the_retry_case_parks_waits_retries_once_and_cleans_up() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$started = microtime( true );
+		$result  = $this->cases()->run( 'workflow_retry_backoff' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertSame( 2, $result['plugin_value']['attempts'] );
+		$this->assertSame( 2, $result['ability_calls'], 'One failed attempt and one retry.' );
+		$this->assertGreaterThanOrEqual( 0.9, microtime( true ) - $started, 'The retry waits out its one second backoff.' );
+		$this->assertSame( 'completed', $result['plugin_value']['history']['status'] );
+		$this->assert_nothing_left_behind( $result );
+	}
+
+	public function test_the_cancel_case_stops_after_the_first_step_and_terminates_history() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		$result = $this->cases()->run( 'workflow_cancel' );
+
+		$this->assertSame( 'passed', $result['status'], (string) ( $result['error'] ?? '' ) );
+		$this->assertSame( 1, $result['ability_calls'], 'Only the first step ran.' );
+		$this->assertSame( 'cancelled', $result['plugin_value']['run_status'] );
+		$this->assertSame( array( 'first' ), $result['plugin_value']['step_runs'] );
+		$this->assertSame( 'terminated', $result['plugin_value']['history']['status'] );
+		$this->assert_nothing_left_behind( $result );
+	}
+
+	public function test_workflow_cases_are_skipped_not_failed_when_workflows_are_disabled() {
+		AIPS_Config::get_instance()->set_option( 'aips_enable_ability_workflows', 0 );
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+
+		foreach ( array( 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel' ) as $case_id ) {
+			$result = $this->cases()->run( $case_id );
+
+			$this->assertSame( 'passed', $result['status'], $case_id );
+			$this->assertStringContainsString( 'Skipped', $result['summary'], $case_id );
+			$this->assertTrue( $result['artifacts']['skipped'], $case_id );
+			$this->assertSame( 0, $result['ability_calls'], $case_id );
+		}
+
+		$this->assertSame( 0, $this->cases()->count_leftovers() );
+	}
+
+	public function test_cleanup_removes_leftover_stress_workflows_with_runs_and_history_but_nothing_else() {
+		$repository = AIPS_Ability_Workflow_Repository::instance();
+		$stress_id  = $repository->create_workflow( array( 'name' => AIPS_Stress_Test_Ability_Cases::WORKFLOW_PREFIX . 'left behind' ) );
+		$normal_id  = $repository->create_workflow( array( 'name' => 'A real workflow' ) );
+		$run_id     = $repository->create_run( $stress_id, 1, array( 'type' => 'stress_test' ) );
+		$history_id = AIPS_History_Service::instance()->create( 'ability_workflow_run', array( 'source' => 'test' ) )->get_id();
+		$repository->set_run_history_id( $run_id, $history_id );
+
+		$this->assertSame( 1, $this->cases()->count_leftovers() );
+
+		$this->assertSame( 1, $this->cases()->cleanup() );
+
+		$this->assertNull( $repository->get_workflow( $stress_id ) );
+		$this->assertNull( $repository->get_run( $run_id ) );
+		$this->assertNull( AIPS_History_Repository::instance()->get_by_id( $history_id ) );
+		$this->assertNotNull( $repository->get_workflow( $normal_id ), 'Only stress workflows are removed.' );
+		$this->assertSame( 0, $this->cases()->count_leftovers() );
+
+		$repository->delete_workflow( $normal_id );
+	}
+
+	public function test_delete_workflow_with_runs_removes_step_runs_and_reports_history_ids() {
+		$repository  = AIPS_Ability_Workflow_Repository::instance();
+		$workflow_id = $repository->create_workflow( array( 'name' => 'Disposable' ) );
+		$repository->save_steps( $workflow_id, array( array( 'step_key' => 'a', 'ability_name' => 'vendor/one' ) ) );
+		$run_id = $repository->create_run( $workflow_id, 1 );
+		$repository->set_run_history_id( $run_id, 987654 );
+		$step = $repository->get_steps( $workflow_id )[0];
+		$repository->create_step_run( $run_id, $workflow_id, $step, array() );
+
+		$removed = $repository->delete_workflow_with_runs( $workflow_id );
+
+		$this->assertSame( 1, $removed['runs'] );
+		$this->assertSame( array( 987654 ), $removed['history_ids'] );
+		$this->assertNull( $repository->get_workflow( $workflow_id ) );
+		$this->assertNull( $repository->get_run( $run_id ) );
+		$this->assertSame( array(), $repository->get_step_runs( $run_id ) );
+	}
+
+	// ---------------------------------------------------------------------
 	// Integration with the stress test service
 	// ---------------------------------------------------------------------
 
@@ -367,7 +484,7 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 
 		$ids = wp_list_pluck( $service->get_cases(), 'id' );
 
-		foreach ( array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate' ) as $id ) {
+		foreach ( array( 'ability_discovery', 'ability_invoke_core', 'ability_invoke_ai', 'ability_destructive_gate', 'workflow_two_step', 'workflow_retry_backoff', 'workflow_cancel' ) as $id ) {
 			$this->assertContains( $id, $ids );
 			$this->assertTrue( $service->has_case( $id ) );
 		}
@@ -429,4 +546,17 @@ class Test_AIPS_Stress_Test_Ability_Cases extends WP_UnitTestCase {
 class AIPS_Test_Stress_Logger_For_Abilities implements AIPS_Logger_Interface {
 	public function log( $message, $level = 'info', $context = array() ) {}
 	public function addSeparator( $text ) {}
+
+	public function test_the_service_counts_and_cleans_leftover_stress_workflows() {
+		$this->register_abilities( array( 'core/get-site-info' => $this->site_info() ) );
+		AIPS_Ability_Workflow_Repository::instance()->create_workflow( array( 'name' => AIPS_Stress_Test_Ability_Cases::WORKFLOW_PREFIX . 'left behind' ) );
+		$service = $this->service();
+
+		$this->assertSame( 1, $service->count_test_data()['workflows'] );
+
+		$deleted = $service->cleanup_test_data();
+
+		$this->assertSame( 1, $deleted['workflows'] );
+		$this->assertSame( 0, $service->count_test_data()['workflows'] );
+	}
 }

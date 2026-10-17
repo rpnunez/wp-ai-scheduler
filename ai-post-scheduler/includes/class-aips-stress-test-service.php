@@ -2072,12 +2072,13 @@ class AIPS_Stress_Test_Service {
     /**
      * Count posts and attachments created by this page.
      *
-     * @return array{posts: int, attachments: int}
+     * @return array{posts: int, attachments: int, workflows: int}
      */
     public function count_test_data() {
         return array(
             'posts'       => count($this->get_test_post_ids()),
             'attachments' => count($this->get_test_attachment_ids()),
+            'workflows'   => $this->ability_cases->count_leftovers(),
         );
     }
 
@@ -2138,7 +2139,7 @@ class AIPS_Stress_Test_Service {
     /**
      * Permanently delete everything this page created.
      *
-     * @return array{posts: int, attachments: int}
+     * @return array{posts: int, attachments: int, workflows: int}
      */
     public function cleanup_test_data() {
         $deleted_posts = 0;
@@ -2158,12 +2159,16 @@ class AIPS_Stress_Test_Service {
             }
         }
 
+        // Workflow cases remove their own workflows; this catches ones left by a request that died.
+        $deleted_workflows = $this->ability_cases->cleanup();
+
         $this->logger->log('Stress test data cleaned up', 'info', array(
             'posts'       => $deleted_posts,
             'attachments' => $deleted_media,
+            'workflows'   => $deleted_workflows,
         ));
 
-        return array('posts' => $deleted_posts, 'attachments' => $deleted_media);
+        return array('posts' => $deleted_posts, 'attachments' => $deleted_media, 'workflows' => $deleted_workflows);
     }
 
     /**

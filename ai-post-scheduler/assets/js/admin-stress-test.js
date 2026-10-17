@@ -305,7 +305,7 @@
 				var data = response && response.success && response.data ? response.data.test_data : null;
 
 				if (data) {
-					self.setTestDataCount((parseInt(data.posts, 10) || 0) + (parseInt(data.attachments, 10) || 0));
+					self.setTestDataCount((parseInt(data.posts, 10) || 0) + (parseInt(data.attachments, 10) || 0) + (parseInt(data.workflows, 10) || 0));
 				}
 			});
 		},

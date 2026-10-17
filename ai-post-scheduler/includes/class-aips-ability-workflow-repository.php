@@ -338,6 +338,64 @@ class AIPS_Ability_Workflow_Repository {
 	}
 
 	/**
+	 * Delete a workflow together with its steps, runs and step runs.
+	 *
+	 * Normal deletion keeps runs for audit; this is for disposable workflows
+	 * such as the Stress Test fixtures. The History rows of the deleted runs are
+	 * not touched: their IDs are returned so the caller can remove them.
+	 *
+	 * @param int $workflow_id Workflow ID.
+	 * @return array{runs:int, history_ids:int[]}
+	 */
+	public function delete_workflow_with_runs( int $workflow_id ): array {
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare( "SELECT id, history_id FROM {$this->runs_table} WHERE workflow_id = %d", $workflow_id )
+		);
+
+		$run_ids     = array();
+		$history_ids = array();
+
+		foreach ( $rows ?: array() as $row ) {
+			$run_ids[] = (int) $row->id;
+
+			if ( (int) $row->history_id > 0 ) {
+				$history_ids[] = (int) $row->history_id;
+			}
+		}
+
+		if ( ! empty( $run_ids ) ) {
+			$placeholders = implode( ',', array_fill( 0, count( $run_ids ), '%d' ) );
+
+			$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM {$this->step_runs_table} WHERE run_id IN ($placeholders)", $run_ids ) );
+			$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM {$this->runs_table} WHERE id IN ($placeholders)", $run_ids ) );
+		}
+
+		$this->delete_workflow( $workflow_id );
+
+		return array(
+			'runs'        => count( $run_ids ),
+			'history_ids' => $history_ids,
+		);
+	}
+
+	/**
+	 * IDs of workflows whose name starts with a prefix.
+	 *
+	 * @param string $prefix Name prefix.
+	 * @return int[]
+	 */
+	public function get_workflow_ids_by_name_prefix( string $prefix ): array {
+		$ids = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT id FROM {$this->workflows_table} WHERE name LIKE %s ORDER BY id ASC",
+				$this->wpdb->esc_like( $prefix ) . '%'
+			)
+		);
+
+		return array_map( 'intval', $ids ?: array() );
+	}
+
+	/**
 	 * Archive a workflow (soft — sets status to 'archived').
 	 *
 	 * @param int $workflow_id Workflow ID.
