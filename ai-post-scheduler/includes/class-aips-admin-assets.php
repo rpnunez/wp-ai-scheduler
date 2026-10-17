@@ -59,6 +59,8 @@ class AIPS_Admin_Assets {
 	private const PAGE_CANNIBALIZATION = 'aips-cannibalization';
 	private const PAGE_CONTENT_INDEXER = 'aips-content-indexer';
 	private const PAGE_CACHE_MONITOR  = 'aips-cache-monitor';
+	private const PAGE_ABILITY_WORKFLOWS = 'aips-ability-workflows';
+	private const PAGE_ABILITY_WORKFLOW_BUILDER = 'aips-ability-workflow-builder';
 	private const PAGE_STRESS_TEST    = 'aips-stress-test';
 
     /**
@@ -250,6 +252,14 @@ class AIPS_Admin_Assets {
 
         if (self::PAGE_CACHE_MONITOR === $page || $this->hook_contains($hook, self::PAGE_CACHE_MONITOR) || $this->is_diagnostics_tab($page, 'cache-monitor')) {
 			$this->enqueue_cache_monitor_assets();
+		}
+
+		if ((self::PAGE_ABILITY_WORKFLOWS === $page || $this->hook_contains($hook, self::PAGE_ABILITY_WORKFLOWS)) && AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows')) {
+			$this->enqueue_ability_workflows_assets();
+		}
+
+		if ((self::PAGE_ABILITY_WORKFLOW_BUILDER === $page || $this->hook_contains($hook, self::PAGE_ABILITY_WORKFLOW_BUILDER)) && AIPS_Config::get_instance()->get_option('aips_enable_ability_workflows')) {
+			$this->enqueue_ability_workflow_builder_assets();
 		}
 
 		if (self::PAGE_STRESS_TEST === $page || $this->hook_contains($hook, self::PAGE_STRESS_TEST) || $this->is_diagnostics_tab($page, 'stress-test')) {
@@ -1713,6 +1723,99 @@ class AIPS_Admin_Assets {
                     'save'   => wp_create_nonce('aips_source_data_save'),
                     'delete' => wp_create_nonce('aips_source_data_delete'),
                 ),
+            ));
+    }
+
+    /**
+     * Enqueue assets for the Ability Workflows list page.
+     */
+    private function enqueue_ability_workflows_assets() {
+            wp_enqueue_script(
+                'aips-admin-ability-workflows',
+                AIPS_PLUGIN_URL . 'assets/js/admin-ability-workflows.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-ability-workflows', 'aipsAbilityWorkflowsL10n', array(
+                'addNewWorkflow'   => __('Create Workflow', 'ai-post-scheduler'),
+                'editWorkflow'     => __('Edit Workflow Settings', 'ai-post-scheduler'),
+                'saveWorkflow'     => __('Save Workflow', 'ai-post-scheduler'),
+                'saving'           => __('Saving…', 'ai-post-scheduler'),
+                'loadFailed'       => __('Failed to load workflows.', 'ai-post-scheduler'),
+                'saveFailed'       => __('Failed to save workflow.', 'ai-post-scheduler'),
+                'deleteFailed'     => __('Failed to delete workflow.', 'ai-post-scheduler'),
+                'duplicateFailed'  => __('Failed to duplicate workflow.', 'ai-post-scheduler'),
+                'archiveFailed'    => __('Failed to archive workflow.', 'ai-post-scheduler'),
+                'runFailed'        => __('Failed to start workflow run.', 'ai-post-scheduler'),
+                'runStarted'       => __('Workflow run started.', 'ai-post-scheduler'),
+                'nameRequired'     => __('Workflow name is required.', 'ai-post-scheduler'),
+                'deleteConfirm'    => __('Are you sure you want to delete this workflow?', 'ai-post-scheduler'),
+                'deleteHeading'    => __('Delete Workflow', 'ai-post-scheduler'),
+                'archiveConfirm'   => __('Archive this workflow? An archived workflow cannot be run. Change its status in Edit settings to reactivate it.', 'ai-post-scheduler'),
+                'archiveHeading'   => __('Archive Workflow', 'ai-post-scheduler'),
+                'cancel'           => __('Cancel', 'ai-post-scheduler'),
+                'archive'          => __('Archive', 'ai-post-scheduler'),
+                'delete'           => __('Delete', 'ai-post-scheduler'),
+                'statusDraft'      => __('Draft', 'ai-post-scheduler'),
+                'statusActive'     => __('Active', 'ai-post-scheduler'),
+                'statusPaused'     => __('Paused', 'ai-post-scheduler'),
+                'statusArchived'   => __('Archived', 'ai-post-scheduler'),
+                'countOne'         => __('1 workflow', 'ai-post-scheduler'),
+                /* translators: %d: number of workflows */
+                'countMany'        => __('%d workflows', 'ai-post-scheduler'),
+            ));
+    }
+
+    /**
+     * Enqueue assets for the Ability Workflow Builder page.
+     */
+    private function enqueue_ability_workflow_builder_assets() {
+            wp_enqueue_script(
+                'aips-admin-ability-workflow-builder',
+                AIPS_PLUGIN_URL . 'assets/js/admin-ability-workflow-builder.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-ability-workflow-builder', 'aipsAbilityWorkflowBuilderL10n', array(
+                'addStep'                => __('Add Step', 'ai-post-scheduler'),
+                'editStep'               => __('Edit Step', 'ai-post-scheduler'),
+                'saveStep'               => __('Save Step', 'ai-post-scheduler'),
+                'saveSteps'              => __('Save Steps', 'ai-post-scheduler'),
+                'saving'                 => __('Saving…', 'ai-post-scheduler'),
+                'removeStepConfirm'      => __('Remove this step from the workflow?', 'ai-post-scheduler'),
+                'removeStepHeading'      => __('Remove Step', 'ai-post-scheduler'),
+                'cancel'                 => __('Cancel', 'ai-post-scheduler'),
+                'remove'                 => __('Remove', 'ai-post-scheduler'),
+                'saveFailed'             => __('Failed to save workflow steps.', 'ai-post-scheduler'),
+                'loadWorkflowFailed'     => __('Failed to load the workflow.', 'ai-post-scheduler'),
+                'loadAbilitiesFailed'    => __('Failed to load available abilities.', 'ai-post-scheduler'),
+                'loadRunsFailed'         => __('Failed to load workflow runs.', 'ai-post-scheduler'),
+                'runFailed'              => __('Failed to start workflow run.', 'ai-post-scheduler'),
+                'stepKeyRequired'        => __('Each step needs a unique key.', 'ai-post-scheduler'),
+                'abilityRequired'        => __('Please choose an ability for this step.', 'ai-post-scheduler'),
+                'nestedConditionWarning' => __('This step has nested AND/OR condition groups that this editor cannot show. Saving the step will drop them.', 'ai-post-scheduler'),
+                'invalidNumber'          => __('Enter a number.', 'ai-post-scheduler'),
+                'invalidBoolean'         => __('Enter true or false.', 'ai-post-scheduler'),
+                'invalidJson'            => __('Enter valid JSON, for example ["a","b"] or {"key":"value"}.', 'ai-post-scheduler'),
+                'unknownAbilityNote'     => __('(not registered)', 'ai-post-scheduler'),
+                'unavailableNote'        => __('This ability is currently unavailable.', 'ai-post-scheduler'),
+                'unavailableShort'       => __('unavailable', 'ai-post-scheduler'),
+                'requiresApprovalNote'   => __('Does not say whether it changes data: approve it for this workflow, or enable "Allow destructive abilities" in the workflow settings.', 'ai-post-scheduler'),
+                'approvedNote'           => __('Approved to run in this workflow.', 'ai-post-scheduler'),
+                'approveAbility'         => __('Approve for this workflow', 'ai-post-scheduler'),
+                'requiresApprovalShort'  => __('may change data', 'ai-post-scheduler'),
+                'noInputFields'          => __('This ability declares no input fields.', 'ai-post-scheduler'),
+                'requiredFieldsAdded'    => __('Added the required fields. Fill in their values.', 'ai-post-scheduler'),
+                'noRequiredFields'       => __('Every required field is already in the input map, or this ability declares none.', 'ai-post-scheduler'),
+                'inputFieldsPrefix'      => __('Input fields:', 'ai-post-scheduler'),
+                'requiredField'          => __('required', 'ai-post-scheduler'),
+                'runUnsavedHeading'      => __('Unsaved changes', 'ai-post-scheduler'),
+                'runUnsavedConfirm'      => __('You have unsaved changes. Run Now starts the last saved version of this workflow, not the edits on screen.', 'ai-post-scheduler'),
+                'runSavedVersion'        => __('Run saved version', 'ai-post-scheduler'),
             ));
     }
 

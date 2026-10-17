@@ -125,4 +125,6 @@ fi
 "${COMPOSE[@]}" exec -T \
   -e AIPS_TEST_FRESH="$FRESH" \
   -e AIPS_TEST_COVERAGE="$WANTS_COVERAGE" \
+  -e GOOGLE_API_KEY \
+  -e AIPS_LIVE_PLUGINS_DIR \
   web bash -c "$CONTAINER_SCRIPT" _ "${PHPUNIT_ARGS[@]}"

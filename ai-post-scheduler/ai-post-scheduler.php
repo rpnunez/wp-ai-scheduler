@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://nunezserver.com/nunezscheduler
- * Version: 3.7.18
+ * Version: 3.7.21
  * Author: Raymond Nunez
  * Author URI: https://nunezserver.com
  * License: GPL v2 or later
@@ -43,7 +43,7 @@ if (!defined('AIPS_TELEMETRY_QUERY_SAMPLE_LIMIT')) {
 
 // Define plugin constants
 if (!defined('AIPS_VERSION')) {
-    define('AIPS_VERSION', '3.7.18');
+    define('AIPS_VERSION', '3.7.21');
 }
 
 if (!defined('AIPS_PLUGIN_DIR')) {
@@ -406,6 +406,10 @@ final class AI_Post_Scheduler {
             return $container->make(AIPS_Logger::class);
         });
 
+        $container->singleton(AIPS_Ability_Service::class, function( $container ) {
+            return new AIPS_Ability_Service($container->make(AIPS_Logger_Interface::class));
+        });
+      
         $container->singleton(AIPS_AI_Provider_Interface::class, function( $container ) {
             return AIPS_AI_Provider_Factory::create();
         });
@@ -437,6 +441,33 @@ final class AI_Post_Scheduler {
             return AIPS_Template_Repository::instance();
         });
 
+        // Register AIPS_Ability_Workflow_Repository
+        $container->singleton(AIPS_Ability_Workflow_Repository::class, function( $container ) {
+            return AIPS_Ability_Workflow_Repository::instance();
+        });
+
+        // Register AIPS_Ability_Catalog_Service
+        $container->singleton(AIPS_Ability_Catalog_Service::class, function( $container ) {
+            return new AIPS_Ability_Catalog_Service($container->make(AIPS_Ability_Service::class));
+        });
+
+        // Register AIPS_Ability_Workflow_Executor
+        $container->singleton(AIPS_Ability_Workflow_Executor::class, function( $container ) {
+            return new AIPS_Ability_Workflow_Executor(
+                $container->make(AIPS_Ability_Workflow_Repository::class),
+                $container->make(AIPS_Ability_Catalog_Service::class),
+                $container->make(AIPS_Ability_Service::class)
+            );
+        });
+
+        // Register AIPS_Ability_Enrichment_Service
+        $container->singleton(AIPS_Ability_Enrichment_Service::class, function( $container ) {
+            return new AIPS_Ability_Enrichment_Service(
+                $container->make(AIPS_Ability_Service::class),
+                $container->make(AIPS_Ability_Catalog_Service::class)
+            );
+        });
+      
         // Register AIPS_System_Diagnostics_Service
         $container->singleton(AIPS_System_Diagnostics_Service::class, function( $container ) {
             return new AIPS_System_Diagnostics_Service();
@@ -699,6 +730,14 @@ final class AI_Post_Scheduler {
         add_action('aips_template_changed', function ($args) {
             (new AIPS_Integration_Manager())->handle_template_deleted($args);
         });
+
+        // Opt-in Ability enrichment (e.g. featured-image alt text). The flag is
+        // checked before the service is resolved so disabled sites pay nothing.
+        add_action('aips_post_generated', function ($post_id) {
+            if (AIPS_Ability_Enrichment_Service::is_enabled()) {
+                AIPS_Container::get_instance()->make(AIPS_Ability_Enrichment_Service::class)->handle_post_generated($post_id);
+            }
+        }, 20, 1);
 
         // Continuous semantic indexing: automatically index published posts and refresh relationships
         add_action('save_post', function ($post_id, $post) {
@@ -1029,11 +1068,34 @@ final class AI_Post_Scheduler {
             }
         );
 
+        // Ability Workflow runs and post-generation enrichment have no cron hook of
+        // their own: they are managed background processes (AIPS_Ability_Workflows_Process,
+        // AIPS_Ability_Enrichment_Process) advanced by the shared aips_bg_process_tick event
+        // registered above.
+
         // Daily cleanup of completed/failed bulk-batch job rows.
         add_action('aips_cleanup_bulk_batch_jobs', function() {
             $store   = new AIPS_Bulk_Batch_Job_Store();
             $deleted = $store->cleanup_old_jobs();
             $deleted += (new AIPS_Background_Process_Repository())->cleanup_old();
+
+            // Fail workflow runs left open with no activity (see aips_ability_workflow_stale_after).
+            $stale = (new AIPS_Ability_Workflows_Process())->sweep_stale_runs();
+            if ( $stale > 0 ) {
+                ( new AIPS_Logger() )->log(
+                    sprintf( 'Ability workflow sweep: failed %d stale runs.', $stale ),
+                    'info'
+                );
+            }
+
+            // Drop finished workflow runs (and their stored payloads) past the retention period.
+            $pruned = (new AIPS_Ability_Workflows_Process())->prune_old_runs();
+            if ( $pruned > 0 ) {
+                ( new AIPS_Logger() )->log(
+                    sprintf( 'Ability workflow retention: deleted %d old runs.', $pruned ),
+                    'info'
+                );
+            }
             if ( $deleted > 0 ) {
                 ( new AIPS_Logger() )->log(
                     sprintf( 'Bulk batch job cleanup: deleted %d old job rows.', $deleted ),

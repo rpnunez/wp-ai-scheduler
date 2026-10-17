@@ -120,10 +120,11 @@ class AIPS_Stress_Test_Controller {
                 'test_data' => $this->service->count_test_data(),
             ),
             sprintf(
-                /* translators: 1: post count, 2: attachment count */
-                __('Removed %1$d posts and %2$d attachments.', 'ai-post-scheduler'),
+                /* translators: 1: post count, 2: attachment count, 3: workflow count */
+                __('Removed %1$d posts, %2$d attachments and %3$d workflows.', 'ai-post-scheduler'),
                 $deleted['posts'],
-                $deleted['attachments']
+                $deleted['attachments'],
+                $deleted['workflows']
             )
         );
     }

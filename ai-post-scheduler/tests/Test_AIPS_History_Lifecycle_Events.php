@@ -391,7 +391,7 @@ class Test_AIPS_History_Lifecycle_Events extends WP_UnitTestCase {
 		$allowlist = array(
 			'content_indexing', 'content_index_operation', 'notification_sent', 'schedule_lifecycle',
 			'post_generation', 'topic_post_generation', 'taxonomy_generation', 'stress_test', 'bulk_schedule',
-			'research_run', 'source_fetch', 'gsc_sync', 'link_index_run', 'author_suggestion', 'settings_connection_test',
+			'research_run', 'source_fetch', 'gsc_sync', 'link_index_run', 'ability_workflow_run', 'author_suggestion', 'settings_connection_test',
 		);
 		$files   = glob(dirname(__DIR__) . '/includes/*.php');
 		$files[] = dirname(__DIR__) . '/ai-post-scheduler.php';

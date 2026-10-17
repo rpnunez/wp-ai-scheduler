@@ -389,6 +389,116 @@ Filters the maximum number of similar approved topics used as expanded context w
 
 ---
 
+### `aips_ability_enrichment_steps`
+
+Filters the post-generation enrichment steps (only run when **Ability Enrichment** is enabled). Defaults: `alt_text` (`ai/alt-text-generation` for a featured image without alt text) and `classification` (`ai/content-classification` for categories and tags the post does not have yet).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array<string,callable> $steps` Step key => callable receiving the post ID and returning an outcome string or `WP_Error`.
+    *   `int $post_id` Generated post ID.
+
+---
+
+### `aips_ability_enrichment_classification_args`
+
+Filters the settings of the classification step: `strategy` (`existing_only` default, or `allow_new`, which creates missing terms only if the run user can manage them), `max_suggestions` (1-10, default 5) and `min_confidence` (default 0.5). Taxonomies where the post already has terms (other than the default category) are never touched.
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $args` Settings to override.
+    *   `int $post_id` Generated post ID.
+
+---
+
+### `aips_ability_enrichment_user_id`
+
+Filters the service user enrichment runs as when generation has no logged-in user who can edit the post (cron). Revalidated with `edit_post` on every run; abilities still perform their own permission checks.
+
+*   **Type:** `filter`
+*   **Default:** The `aips_ability_enrichment_user_id` setting (`0` skips enrichment).
+*   **Arguments:**
+    *   `int $user_id` Service user ID.
+    *   `int $post_id` Generated post ID.
+
+---
+
+### `aips_ability_workflow_execution_user_id`
+
+Filters the service user for an Ability Workflow run that was dispatched
+without an initiating user, such as a system trigger. The selected user is
+revalidated for `manage_options` before every cron invocation; each invoked
+WordPress ability still performs its own input-specific permission check.
+
+*   **Type:** `filter`
+*   **Default:** `0` (no implicit service user; the run fails closed)
+*   **Arguments:**
+    *   `int $user_id` Service user ID.
+    *   `AIPS_Ability_Workflow_Run $run` The persisted workflow run.
+
+---
+
+### `aips_ability_enrichment_demote_flagged`
+
+Filters whether a published or scheduled post flagged by a quality-gate enrichment step (Yoast SEO or readability score below its setting) is moved back to draft so it appears in Pending Review. Drafts and pending posts are already in review. Nothing is regenerated.
+
+*   **Type:** `filter`
+*   **Default:** `false`
+*   **Arguments:**
+    *   `bool $demote` Whether to move the post back to draft.
+    *   `int $post_id` Post ID.
+    *   `string $kind` `seo` or `readability`.
+    *   `int $score` Recorded score.
+
+---
+
+### `aips_ability_enrichment_post_flagged`
+
+Fires after a quality-gate step flags a post that scored below its threshold. The post meta `_aips_quality_flag` (`kind`, `score`, `threshold`) is already set.
+
+*   **Type:** `action`
+*   **Arguments:**
+    *   `int $post_id` Post ID.
+    *   `string $kind` `seo` or `readability`.
+    *   `int $score` Recorded score.
+    *   `int $threshold` Configured minimum.
+
+---
+
+### `aips_ability_workflow_stale_after`
+
+Filters how long (seconds) an open Ability Workflow run may show no activity (creation, start or step activity) before the daily cleanup fails it and closes its History row. Runs a worker currently holds are left alone, and the sweep is skipped while the `ability_workflows` process is paused.
+
+*   **Type:** `filter`
+*   **Default:** `21600` (6 hours); return `0` to disable the sweep.
+*   **Arguments:**
+    *   `int $seconds` Inactivity threshold.
+
+---
+
+### `aips_ability_workflow_retention_days`
+
+Filters how many days finished Ability Workflow runs (and the inputs and outputs stored for their steps) are kept before the daily cleanup deletes them. History rows have their own retention.
+
+*   **Type:** `filter`
+*   **Default:** The `aips_ability_workflow_retention_days` setting (`30`); return `0` to keep everything.
+*   **Arguments:**
+    *   `int $days` Retention in days.
+
+---
+
+### `aips_ability_workflow_redact_payload`
+
+Filters a payload just before it is stored with a workflow run, so sensitive fields can be removed or masked. Applies to what is stored only; steps keep the full values while a run executes. A payload still larger than 256 KB afterwards has its largest values replaced by short markers (with a `_truncated` key listing them).
+
+*   **Type:** `filter`
+*   **Arguments:**
+    *   `array $data` The trigger context, step input or step output.
+    *   `string $kind` `trigger`, `step_input` or `step_output`.
+    *   `int $id` Related run or step-run ID, `0` when unknown.
+
+---
+
 ## Semantic Embeddings & Related Posts Filters (added in 3.6.5)
 
 ### `aips_related_posts_query_args`

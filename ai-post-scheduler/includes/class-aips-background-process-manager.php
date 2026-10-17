@@ -52,6 +52,8 @@ class AIPS_Background_Process_Manager {
 			AIPS_Relationships_Recompute_Process::KEY => 'AIPS_Relationships_Recompute_Process',
 			AIPS_Author_Embeddings_Process::KEY       => 'AIPS_Author_Embeddings_Process',
 			AIPS_Bulk_Generation_Process::KEY         => 'AIPS_Bulk_Generation_Process',
+			AIPS_Ability_Workflows_Process::KEY       => 'AIPS_Ability_Workflows_Process',
+			AIPS_Ability_Enrichment_Process::KEY      => 'AIPS_Ability_Enrichment_Process',
 		);
 
 		/**

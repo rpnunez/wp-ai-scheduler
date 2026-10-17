@@ -156,7 +156,14 @@ class AIPS_Stress_Test_Service {
      */
     private $history_repository;
 
-    public function __construct($ai_service = null, $logger = null) {
+    /**
+     * Cases of the `abilities` group (they use abilities, not AIPS's AI provider).
+     *
+     * @var AIPS_Stress_Test_Ability_Cases
+     */
+    private $ability_cases;
+
+    public function __construct($ai_service = null, $logger = null, $ability_cases = null) {
         $container = AIPS_Container::get_instance();
 
         $this->logger = $logger ?: ($container->has(AIPS_Logger_Interface::class) ? $container->make(AIPS_Logger_Interface::class) : new AIPS_Logger());
@@ -172,6 +179,8 @@ class AIPS_Stress_Test_Service {
             $resilience_service = new AIPS_Resilience_Service($this->logger, $resilience_config);
             $this->ai_service   = new AIPS_AI_Service($this->logger, $config, $resilience_service);
         }
+
+        $this->ability_cases = $ability_cases ?: new AIPS_Stress_Test_Ability_Cases();
 
         $this->register_test_post_type();
     }
@@ -377,7 +386,8 @@ class AIPS_Stress_Test_Service {
             );
         }
 
-        return $cases;
+        // Ability cases are listed only when an ability provider is usable.
+        return array_merge($cases, $this->ability_cases->get_definitions());
     }
 
     /**
@@ -447,7 +457,8 @@ class AIPS_Stress_Test_Service {
             return $this->fail($case_id, __('Unknown test case.', 'ai-post-scheduler'), 0.0);
         }
 
-        if (!$this->ai_service->is_available()) {
+        // Ability cases bring their own providers and never use AIPS's AI service.
+        if (($case['needs_ai'] ?? true) && !$this->ai_service->is_available()) {
             return $this->fail($case_id, __('No AI provider is available. Check the provider settings.', 'ai-post-scheduler'), 0.0);
         }
 
@@ -522,7 +533,9 @@ class AIPS_Stress_Test_Service {
                     $result = $this->case_meta_fields_acf();
                     break;
                 default:
-                    $result = array('status' => 'failed', 'error' => __('Case is not implemented.', 'ai-post-scheduler'));
+                    $result = $this->ability_cases->has_case($case_id)
+                        ? $this->ability_cases->run($case_id)
+                        : array('status' => 'failed', 'error' => __('Case is not implemented.', 'ai-post-scheduler'));
             }
         } catch (Throwable $e) {
             // Throwable, not Exception: a TypeError deep in a provider adapter
@@ -2059,12 +2072,13 @@ class AIPS_Stress_Test_Service {
     /**
      * Count posts and attachments created by this page.
      *
-     * @return array{posts: int, attachments: int}
+     * @return array{posts: int, attachments: int, workflows: int}
      */
     public function count_test_data() {
         return array(
             'posts'       => count($this->get_test_post_ids()),
             'attachments' => count($this->get_test_attachment_ids()),
+            'workflows'   => $this->ability_cases->count_leftovers(),
         );
     }
 
@@ -2125,7 +2139,7 @@ class AIPS_Stress_Test_Service {
     /**
      * Permanently delete everything this page created.
      *
-     * @return array{posts: int, attachments: int}
+     * @return array{posts: int, attachments: int, workflows: int}
      */
     public function cleanup_test_data() {
         $deleted_posts = 0;
@@ -2145,12 +2159,16 @@ class AIPS_Stress_Test_Service {
             }
         }
 
+        // Workflow cases remove their own workflows; this catches ones left by a request that died.
+        $deleted_workflows = $this->ability_cases->cleanup();
+
         $this->logger->log('Stress test data cleaned up', 'info', array(
             'posts'       => $deleted_posts,
             'attachments' => $deleted_media,
+            'workflows'   => $deleted_workflows,
         ));
 
-        return array('posts' => $deleted_posts, 'attachments' => $deleted_media);
+        return array('posts' => $deleted_posts, 'attachments' => $deleted_media, 'workflows' => $deleted_workflows);
     }
 
     /**
