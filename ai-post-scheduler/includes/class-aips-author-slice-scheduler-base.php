@@ -262,15 +262,16 @@ abstract class AIPS_Author_Slice_Scheduler_Base {
 				'info'
 			);
 
-			// Fetch the author objects
-			$authors = array();
-			foreach ( $author_ids as $author_id ) {
-				$author = $this->authors_repository->get_by_id( $author_id );
-				if ( $author ) {
-					$authors[] = $author;
-				} else {
+			// Fetch the author objects in batch via WHERE id IN (...)
+			$authors = $this->authors_repository->get_by_ids( $author_ids );
+			if ( count( $authors ) < count( $author_ids ) ) {
+				$found_ids = array_map( function( $author ) {
+					return (int) $author->id;
+				}, $authors );
+				$missing_ids = array_diff( array_map( 'absint', $author_ids ), $found_ids );
+				foreach ( $missing_ids as $missing_id ) {
 					$this->logger->log(
-						sprintf( 'Retry: author ID %d not found', $author_id ),
+						sprintf( 'Retry: author ID %d not found', $missing_id ),
 						'warning'
 					);
 				}
